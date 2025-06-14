@@ -6,7 +6,7 @@
 
         <!--Comments-->
         <a
-            class="pointer"
+            class="hover:cursor-pointer"
             id="dropdownCommentsMenu"
             data-bs-toggle="modal"
             data-bs-target="#commentsModal"
@@ -28,7 +28,7 @@
 
         <!--Todos-->
         <a
-            class="pointer"
+            class="hover:cursor-pointer"
             data-bs-toggle="modal"
             data-bs-target="#todoModal"
             hx-get="{% url 'components_todos' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
@@ -42,7 +42,7 @@
 
         <!--Object AI-->
         <a
-            class="pointer"
+            class="hover:cursor-pointer"
             data-bs-toggle="modal"
             data-bs-target="#modal_object_ai"
         >
@@ -66,7 +66,7 @@
 		</li>
 
         {% if not disable_tab_select %}
-		<li class="dropdown-item pointer">
+		<li class="dropdown-item hover:cursor-pointer">
 			<a data-bs-toggle="modal" data-bs-target="#updateTabsModal">Update tabs</a>
 		</li>
         {% endif %}

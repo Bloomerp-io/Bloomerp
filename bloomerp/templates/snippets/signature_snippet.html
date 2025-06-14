@@ -28,7 +28,7 @@ Variables:
 
         document.addEventListener('shown.bs.modal', resizeCanvas);
 
-        // Replace touch and mouse event listeners with pointer events
+        // Replace touch and mouse event listeners with hover:cursor-pointer events
         canvas.addEventListener("pointerdown", startDraw);
         canvas.addEventListener("pointerup", endDraw);
         canvas.addEventListener("pointermove", draw);

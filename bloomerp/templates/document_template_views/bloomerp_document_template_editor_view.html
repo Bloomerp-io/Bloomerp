@@ -114,7 +114,7 @@
                         <h5>Application fields</h5>
                         {% for field in object.application_fields %}
                             <a 
-                                class="pointer" 
+                                class="hover:cursor-pointer" 
                                 onclick="addVariable('{{field.field}}','{{field.field_type}}')"
                                 data-bs-dismiss="modal"
                                 >{{ field.field }}
@@ -128,7 +128,7 @@
                         <h5>Free variables</h5>
                         {% for field in object.free_variables.all %}
                             <a 
-                                class="pointer" 
+                                class="hover:cursor-pointer" 
                                 onclick="addFreeVariable('{{field.slug}}', '{{field.variable_type}}')"
                                 data-bs-dismiss="modal"
                                 >{{ field }}

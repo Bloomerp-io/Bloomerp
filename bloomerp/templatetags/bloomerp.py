@@ -160,11 +160,11 @@ def render_link(link_id:int):
     try:
         link = Link.objects.get(pk=link_id)
         if link.is_external_url():
-            return mark_safe(f'<a link-id="{link.pk}" class="pointer text-primary link-item" href="https://{link.url}" target="_blank">{link.name}</a>')
+            return mark_safe(f'<a link-id="{link.pk}" class="hover:cursor-pointer text-primary link-item" href="https://{link.url}" target="_blank">{link.name}</a>')
         elif link.is_absolute_url:
-            return mark_safe(f'<a link-id="{link.pk}" class="pointer text-primary link-item" hx-get="{link.url}" hx-target="#main-content" hx-push-url="true">{link.name}</a>')
+            return mark_safe(f'<a link-id="{link.pk}" class="hover:cursor-pointer text-primary link-item" hx-get="{link.url}" hx-target="#main-content" hx-push-url="true">{link.name}</a>')
         elif not link.requires_args():
-            return mark_safe(f'<a link-id="{link.pk}" class="pointer text-primary link-item" hx-get="{reverse(link.url)}" hx-target="#main-content" hx-push-url="true">{link.name}</a>')
+            return mark_safe(f'<a link-id="{link.pk}" class="hover:cursor-pointer text-primary link-item" hx-get="{reverse(link.url)}" hx-target="#main-content" hx-push-url="true">{link.name}</a>')
         else:
             return mark_safe("<p>Link requires arguments</p>")
     except:

@@ -15,14 +15,13 @@ Parameters:
 
 <!--Table-->
 <div class="table-responsive">
-
     {% if data_table_view_type == 'list' %}
     <table class="table table-hover">
         <thead>
             <tr>
                 {% if include_actions %}
                     {% if user_can_bulk_change or user_can_bulk_delete %}
-                    <th style="width=50px">
+                    <th style="width:50px">
                         <input 
                             type="checkbox" 
                             name="select_all" 
@@ -38,13 +37,14 @@ Parameters:
                         <th>{{ column.field_name }}</th>
                     {% elif data_table_order_by == column.application_field.field %}
                         <th 
-                            class="pointer" 
-                            onclick="filterDataTable('data_table_order_by=-{{column.application_field.field}}','{{datatable_id}}')">
+                            class="hover:cursor-pointer" 
+                            onclick="filterDataTable('data_table_order_by=-{{column.application_field.field}}','{{datatable_id}}')"
+                            >
                             <u>{{ column.field_name }}</u>
                         </th>
                     {% else %}
                         <th 
-                            class="pointer"
+                            class="hover:cursor-pointer"
                             onclick="filterDataTable('data_table_order_by={{column.application_field.field}}','{{datatable_id}}')">{{ column.field_name }}</th>
                     {% endif %}
                     
@@ -80,25 +80,26 @@ Parameters:
                     {% endfor %}
 
                     {% if include_actions %}
-                        <td>
-                            <div class="d-flex justify-content-start gap-2">
+                        <td class="flex justify-between gap-2 w-36">
+                            
                             <a
                                 hx-get="{{ object|detail_view_url }}"
                                 hx-push-url="true"
                                 hx-target="#main-content"
                                 hx-swap="innerHTML"
-                                class="pointer"
+                                class="hover:cursor-pointer"
                                 >
                                 <img src="{% static 'bloomerp/icons/eye.svg' %}" alt="View" width="20" height="20">
                             </a>
 
 
                             {% if user_can_change %}
-                            <a href="#" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#updateModal"
-                                data-bs-object-id="{{ object.pk }}"
-                                data-bs-content-type-id="{{ content_type_id }}"
+                            <a 
+                                href="#" 
+                                onclick="openModal('updateObject')"
+                                hx-get="{% url 'components_object_model_form' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
+                                hx-target="#updateObject-modal-body"
+                                hx-trigger="click"
                                 >
                                 <img src="{% static 'bloomerp/icons/edit.svg' %}" alt="Edit" width="20" height="20">
                             </a>
@@ -128,7 +129,6 @@ Parameters:
                                 >
                                 <img src="{% static 'bloomerp/icons/notebook.svg' %}" alt="Comments" width="20" height="20">
                             </a>
-                            </div>
                         </td>
                     {% endif %}
                 </tr>
@@ -157,7 +157,7 @@ Parameters:
     </p>
 
     <!--Pagination-->
-    <div class="d-flex justify-content-start">
+    <div class="flex align-items-center">
         <div class="btn-group" role="group">
             <button type="button" hx-include="#filterForm{{ datatable_id }}" hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}" hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=25" class="btn btn-outline-primary btn-sm">25</button>
             <button type="button" hx-include="#filterForm{{ datatable_id }}" hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}" hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=50" class="btn btn-outline-primary btn-sm">50</button>
@@ -172,9 +172,9 @@ Parameters:
 <!--Table dropdown-->
 <div id="{{ datatable_id }}-context-menu" class="context-menu">
     <ul style="list-style:none; margin:0; padding:0;">
-        <li class="dropdown-item"><a class="pointer"  id="{{ datatable_id }}-context-menu-copy-value">Copy Value</a></li>
+        <li class="dropdown-item"><a class="hover:cursor-pointer"  id="{{ datatable_id }}-context-menu-copy-value">Copy Value</a></li>
         <li class="dropdown-item" id="{{ datatable_id }}-context-menu-filter-value-list-item">
-            <a class="pointer" id="{{ datatable_id }}-context-menu-filter-value">Filter on Value</a>
+            <a class="hover:cursor-pointer" id="{{ datatable_id }}-context-menu-filter-value">Filter on Value</a>
         </li>
     </ul>
 </div>
@@ -198,13 +198,12 @@ Parameters:
         </button>
         <div class="dropdown-menu" aria-labelledby="bulkActionsButton">
             {% if user_can_bulk_change %}
-                <a class="dropdown-item pointer"
-                    data-bs-toggle="modal"
-                    data-bs-target="#bulkUpdateModal"
+                <a class="dropdown-item hover:cursor-pointer"
+                    onclick="openModal('bulkUpdateModal')"
                 >Update</a>
             {% endif %}
             {% if user_can_bulk_delete %}
-                <a class="dropdown-item pointer"
+                <a class="dropdown-item hover:cursor-pointer"
                     data-bs-toggle="modal"
                     data-bs-target="#bulkDeleteModal"
                 >Delete</a>
@@ -215,15 +214,9 @@ Parameters:
 <!--End bulk actions-->
 {% endif %}
 
-{% if user_can_bulk_change %}
 <!-- Bulk Update Modal -->
-<div
-    class="modal fade"
-    id="bulkUpdateModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="bulkUpdateModalTitle"
-    aria-hidden="true"
+{% if user_can_bulk_change %}
+<c-ui.modal id="bulkUpdateModal" title="Bulk Update Objects"
 >
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -303,8 +296,9 @@ Parameters:
             </form>
         </div>
     </div>
-</div>
+</c-ui.modal>
 {% endif %}
+
 
 {% if user_can_bulk_delete %}
 <!-- Bulk Delete Modal -->
@@ -454,46 +448,11 @@ Parameters:
 
 {% if user_can_change %}
 <!--Update modal-->
-<div
-    class="modal fade"
-    id="updateModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="updateModalTitle"
-    aria-hidden="true"
->
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateModalTitle">
-                    Update object
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form id="updateForm">
-                {% csrf_token %}
-                <div class="modal-body" id="updateFormDiv">
-                    
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<c-ui.modal id="updateObject" title="Update object">
+    
+</c-ui.modal>
+
+
 
 <script>
     var modalId = document.getElementById('updateModal');
@@ -505,7 +464,7 @@ Parameters:
         let objectId = button.getAttribute('data-bs-object-id');
         let contentTypeId = button.getAttribute('data-bs-content-type-id');
         
-        url = "{% url 'components_object_model_form' %}?object_id=" + objectId + "&content_type_id=" + contentTypeId;
+        url = ";
         
         updateUrl = "{{ api_endpoint | escapejs }}" + objectId + "/";
 
@@ -555,9 +514,9 @@ Parameters:
 
 {% if user_can_delete %}
 
-<c-ui.modal id="deleteModal" title="Delete object">
-
-</c-ui.modal>
+<!--Delete modal-->
+<c-ui.modal id="deleteModal" title="Delete object"></c-ui.modal>
+<!--End Delete modal-->
 
 
 {% endif %}

@@ -56,7 +56,7 @@ Variables:
             >
                 <div class="py-1" role="none">                    <button 
                         type="button"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
                         @click="openModal('calendarViewModal{{datatable_id}}'); open = false"
                         role="menuitem">
                         Calendar view
@@ -168,13 +168,13 @@ Variables:
                 <div class="py-1" role="none">
                     <a 
                         href="{% url 'users_my_profile_list_view_preference' %}?content_type_id={{ content_type_id }}&return_to={{ request.path }}"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
                         role="menuitem">
                         Select fields
                     </a>
                     <button 
                         type="button"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
                         hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=csv"
                         hx-include="#filterForm{{ datatable_id }}"
                         hx-swap="none"
@@ -184,7 +184,7 @@ Variables:
                     </button>
                     <button 
                         type="button"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
                         hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=xlsx"
                         hx-include="#filterForm{{ datatable_id }}"
                         hx-swap="none"

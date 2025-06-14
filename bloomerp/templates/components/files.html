@@ -21,14 +21,14 @@ Variables:
                 hx-get="{% url 'components_files' %}?{% if content_type_id %}content_type_id={{ content_type_id }}&{% endif %}{% if object_id %}object_id={{ object_id }}{% endif %}"
                 hx-trigger="click"
                 hx-target="#{{ target }}"
-                class="card-title pointer"
+                class="card-title hover:cursor-pointer"
                 >
                 Root
             </a>
             <span class="card-title"> > </span>
         {% else %}
             <a 
-                class="card-title pointer active" 
+                class="card-title hover:cursor-pointer active" 
                 aria-current="page"
                 data-bs-toggle="dropdown"
                 aria-haspopup="true"
@@ -42,8 +42,8 @@ Variables:
                 class="dropdown-menu dropdown-menu-start"
                 aria-labelledby="triggerId"
                 >   
-                    <a class="dropdown-item pointer" data-bs-toggle="modal" data-bs-target="#uploadFileModal">Upload file</a>
-                    <a class="dropdown-item pointer" data-bs-toggle="modal" data-bs-target="#createFolderModal">Create new folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#uploadFileModal">Upload file</a>
+                    <a class="dropdown-item hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#createFolderModal">Create new folder</a>
             </div>
         {% endif %}
 
@@ -52,7 +52,7 @@ Variables:
                 hx-get="{% url 'components_files' %}?folder_id={{ parent.id }}&{% if content_type_id %}content_type_id={{ content_type_id }}&{% endif %}{% if object_id %}object_id={{ object_id }}{% endif %}"
                 hx-trigger="click"
                 hx-target="#{{target}}"
-                class="card-title pointer"
+                class="card-title hover:cursor-pointer"
                 dropable="true"
                 id = "folder_link_{{ parent.pk }}"
                 >{{ parent.name }}</a>
@@ -62,7 +62,7 @@ Variables:
         <!-- Current folder -->
         {% if current_folder %}
             <a 
-                class="card-title active pointer" 
+                class="card-title active hover:cursor-pointer" 
                 aria-current="page"
                 data-bs-toggle="dropdown"
                 aria-haspopup="true"
@@ -74,11 +74,11 @@ Variables:
                 class="dropdown-menu dropdown-menu-start"
                 aria-labelledby="triggerId"
                 >   
-                    <a class="dropdown-item pointer" href="#" data-bs-toggle="modal" data-bs-target="#uploadFileModal">Upload file</a>
-                    <a class="dropdown-item pointer" href="#" data-bs-toggle="modal" data-bs-target="#createFolderModal">Create new folder</a>
-                    <a class="dropdown-item pointer" href="#" data-bs-toggle="modal" data-bs-target="#renameFolderModal">Rename folder</a>
-                    <a class="dropdown-item pointer" href="#">Download</a>
-                    <a class="dropdown-item pointer" data-bs-toggle="modal" data-bs-target="#deleteFolderModal">Delete folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" data-bs-toggle="modal" data-bs-target="#uploadFileModal">Upload file</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" data-bs-toggle="modal" data-bs-target="#createFolderModal">Create new folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" data-bs-toggle="modal" data-bs-target="#renameFolderModal">Rename folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#">Download</a>
+                    <a class="dropdown-item hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#deleteFolderModal">Delete folder</a>
             </div>
 
 
@@ -230,7 +230,7 @@ Variables:
                                 data-bs-toggle="modal"
                                 data-bs-fileId="{{ file.pk }}"
                                 onclick="document.getElementById('signatureFileId').value = '{{ file.pk }}'"
-                                class="pointer"
+                                class="hover:cursor-pointer"
                                 draggable="false"
                                 >
                                 <img src="{% static 'bloomerp/icons/pen.svg' %}" alt="View" width="20" height="20">
@@ -272,19 +272,19 @@ Variables:
                 Bulk actions on <span id="selectedObjectsCount"></span> objects
             </button>
             <div class="dropdown-menu" aria-labelledby="bulkActionsButton">
-                <a class="dropdown-item pointer"
+                <a class="dropdown-item hover:cursor-pointer"
                     data-bs-toggle="modal"
                     data-bs-target="#bulkShareModal"
                 >Share</a>
-                <a class="dropdown-item pointer"
+                <a class="dropdown-item hover:cursor-pointer"
                     data-bs-toggle="modal"
                     data-bs-target="#bulkDeleteModal"
                 >Delete</a>
-                <a class="dropdown-item pointer"
+                <a class="dropdown-item hover:cursor-pointer"
                     data-bs-toggle="modal"
                     data-bs-target="#bulkDownloadModal"
                 >Download</a>
-                <a class="dropdown-item pointer">Bookmark</a>
+                <a class="dropdown-item hover:cursor-pointer">Bookmark</a>
             </div>
         </div>
     </div>

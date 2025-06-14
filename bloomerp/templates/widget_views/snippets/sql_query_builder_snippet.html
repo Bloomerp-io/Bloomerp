@@ -16,7 +16,7 @@
 <div class="d-flex mb-2 gap-3">
     <!-- Database icon -->
     <a
-        class="pointer"
+        class="hover:cursor-pointer"
         data-bs-toggle="collapse"
         data-bs-target="#tablesSearchContainer"
     >
@@ -26,7 +26,7 @@
 
     <!--Magic icon-->
     <a
-        class="pointer"
+        class="hover:cursor-pointer"
         data-bs-toggle="modal"
         data-bs-target="#modal_sql_query_ai"
     >
@@ -65,7 +65,7 @@
             {% for table in db_tables_and_columns %}
                 <div class="table-item">
                     <a
-                        class="pointer dropdown-toggle mb-2"
+                        class="hover:cursor-pointer dropdown-toggle mb-2"
                         type="button"
                         id="{{ table.0 }}"
                         onclick="document.getElementById('{{ table.0 }}_fields').classList.toggle('d-none')"
@@ -76,22 +76,22 @@
                         <ul style="list-style-type: none;">
                             <li 
                                     onclick="addFieldToEditor('{{ table.0 }}')"
-                                    class="pointer mb-2"
+                                    class="hover:cursor-pointer mb-2"
                                     >
                                     <b>{{ table.0 }} (table)</b>
                                     
-                                    <img src="{% static 'bloomerp/icons/insert-content.svg' %}" alt="Select" class="pointer" width=14 height=14>
+                                    <img src="{% static 'bloomerp/icons/insert-content.svg' %}" alt="Select" class="hover:cursor-pointer" width=14 height=14>
                             </li>
 
 
                             {% for field in table.1 %}
                                 <li 
                                     onclick="addFieldToEditor('{{field.0}}')"
-                                    class="pointer mb-2"
+                                    class="hover:cursor-pointer mb-2"
                                     >
                                     {{ field.0 }} <span>({{ field.1}})</span>
                                     
-                                    <img src="{% static 'bloomerp/icons/insert-content.svg' %}" alt="Select" class="pointer" width=14 height=14>
+                                    <img src="{% static 'bloomerp/icons/insert-content.svg' %}" alt="Select" class="hover:cursor-pointer" width=14 height=14>
                                 </li>
                             {% endfor %}
                         </ul>

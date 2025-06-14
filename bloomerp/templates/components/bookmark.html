@@ -1,6 +1,6 @@
 {% load static %}
 <a 
-    class="pointer"  
+    class="hover:cursor-pointer"  
     data-bs-toggle="dropdown" 
     aria-expanded="false"
     hx-post="{% url 'components_bookmark' %}?object_id={{object_id}}&content_type_id={{content_type_id}}"

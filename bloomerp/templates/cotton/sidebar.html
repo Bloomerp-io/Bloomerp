@@ -12,7 +12,7 @@
         <div class="mb-6" x-data="{ personalOpen: true }">
             <button 
                 @click="personalOpen = !personalOpen"
-                class="flex items-center justify-between w-full text-left text-sm font-semibold text-secondary hover:text-primary-800 transition-colors mb-3 hover:cursor-pointer"
+                class="flex items-center justify-between w-full text-left text-sm font-semibold text-secondary hover:text-primary-800 transition-colors mb-3 hover:cursor-hover:cursor-pointer"
             >
                 <span>Personal workspaces</span>
                 <svg 
@@ -41,7 +41,7 @@
                     hx-get="{% url 'view_workspace' workspace.pk %}" 
                     hx-target="#main-content" 
                     hx-push-url="true"
-                    class="block px-3 py-2 text-sm text-primary-900 font-bold hover:text-primary-800 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                    class="block px-3 py-2 text-sm text-primary-900 font-bold hover:text-primary-800 hover:bg-gray-100 rounded-md transition-colors cursor-hover:cursor-pointer"
                 >
                     {{ workspace.name }}
                 </a>
@@ -53,7 +53,7 @@
         <div class="mb-6" x-data="{ modelOpen: true }">
             <button 
                 @click="modelOpen = !modelOpen"
-                class="flex items-center justify-between w-full text-left text-sm font-semibold text-gray-700 hover:text-primary-800 transition-colors mb-3 hover:cursor-pointer"
+                class="flex items-center justify-between w-full text-left text-sm font-semibold text-gray-700 hover:text-primary-800 transition-colors mb-3 hover:cursor-hover:cursor-pointer"
             >
                 <span>Model workspaces</span>
                 <svg 
@@ -90,7 +90,7 @@
                 <div class="space-y-1">
                     {% for content_type in request.user.accessible_content_types %}
                     <a 
-                        class="content-type-item block px-3 py-2 text-sm text-primary-900 font-bold hover:text-primary-800 hover:bg-secondary rounded-md transition-colors cursor-pointer" 
+                        class="content-type-item block px-3 py-2 text-sm text-primary-900 font-bold hover:text-primary-800 hover:bg-secondary rounded-md transition-colors cursor-hover:cursor-pointer" 
                         hx-get="{{ content_type | model_dashboard_url }}"
                         hx-target="#main-content"
                         hx-push-url="true"

@@ -10,11 +10,11 @@
                 hx-target="#main-content"
                 hx-swap="innerHTML"
                 hx-push-url="true"
-                class="flex items-center cursor-pointer">
+                class="flex items-center cursor-hover:cursor-pointer">
             <img src="{% static 'bloomerp/img/logo.png' %}" class="hidden md:block" width="120" height="38">
             <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
             </a>
-            <i class="bi bi-list ml-4 text-gray-600 cursor-pointer hover:text-gray-800 transition-colors" onclick="toggleSidebar()"></i>
+            <i class="bi bi-list ml-4 text-gray-600 cursor-hover:cursor-pointer hover:text-gray-800 transition-colors" onclick="toggleSidebar()"></i>
         </div>
         <!-- End Logo -->
 
@@ -45,7 +45,7 @@
                 <li>
                     <a 
                         onclick="openModal('todoModal')" 
-                        class="relative text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" 
+                        class="relative text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-hover:cursor-pointer" 
                         hx-get="{% url 'components_todos' %}"
                         hx-target="#todo-container"
                         hx-swap="innerHTML"
@@ -60,7 +60,7 @@
                 <li>
                     <a 
                         onclick="openModal('modal_bloom_ai')" 
-                        class="flex items-center text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" 
+                        class="flex items-center text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-hover:cursor-pointer" 
                         href="#">
                         <img src="{% static 'bloomerp/icons/ai.svg' %}" width="20" height="20">
                     </a>

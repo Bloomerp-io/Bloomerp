@@ -4,7 +4,7 @@
     <li class="d-flex align-items-center mx-2">
 
         <a 
-            class="dropdown-item pointer"
+            class="dropdown-item hover:cursor-pointer"
             {% if type == "fk" %}
             onclick="setForeignKeyValue('{{ object.pk }}', '{{ object | escapejs }}', '{{ field_name | escapejs }}')"
             {% else %}
@@ -15,7 +15,7 @@
         </a>
 
         <a
-            class="pointer"
+            class="hover:cursor-pointer"
             hx-get="{{ object.get_absolute_url }}"
             hx-trigger="click"
             hx-target="#main-content"

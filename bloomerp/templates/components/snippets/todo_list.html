@@ -32,7 +32,7 @@
                 hx-trigger="click"
                 hx-push-url="true"
                 hx-history-push="true"
-                class="badge bg-info pointer"
+                class="badge bg-info hover:cursor-pointer"
                 data-bs-dismiss="modal"
 
                 >Object: {{ todo.content_object }}</a>
@@ -62,7 +62,7 @@
                 hx-trigger="click"
                 hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                 >
-            <span class="pointer ms-2" role="button" data-bs-toggle="collapse" data-bs-target="#detailedTodo{{todo.id}}">
+            <span class="hover:cursor-pointer ms-2" role="button" data-bs-toggle="collapse" data-bs-target="#detailedTodo{{todo.id}}">
                 {% if todo.is_completed %}
                     <s>{{ todo.title }}</s>
                 {% else %}
@@ -89,7 +89,7 @@
                             hx-swap="innerHTML"
                             hx-trigger="click"
                             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                            class="pointer"
+                            class="hover:cursor-pointer"
                             >
                             <img src="{% static 'bloomerp/icons/delete.svg' %}" width="20" height="20">
                         </a>

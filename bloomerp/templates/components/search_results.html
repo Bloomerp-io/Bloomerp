@@ -5,7 +5,7 @@
     <li class="dropdown-item fw-bold">{{ item.model_name | title }}</li>
         {% for link in item.links %}
             <a 
-                class="dropdown-item pointer"
+                class="dropdown-item hover:cursor-pointer"
                 hx-get="{% url link.url %}"
                 hx-push-url="true"
                 hx-target="#main-content"
@@ -19,7 +19,7 @@
 {% elif app_level_links %}
     {% for link in app_level_links %}
         <a 
-            class="dropdown-item pointer"
+            class="dropdown-item hover:cursor-pointer"
             hx-get="{% url link.url %}"
             hx-push-url="true"
             hx-target="#main-content"
@@ -36,7 +36,7 @@
 
         {% for object in result|get_dict_value:'objects' %}
             <a 
-            class="dropdown-item pointer" 
+            class="dropdown-item hover:cursor-pointer" 
             hx-get="{{ object | detail_view_url }}" 
             hx-push-url="true" 
             hx-target="#main-content" 
