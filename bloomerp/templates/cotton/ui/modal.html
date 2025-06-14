@@ -18,7 +18,8 @@ Parameters:
 <!-- Modal backdrop -->
 <div 
     id="{{ id }}-backdrop" 
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4"
+    class="fixed inset-0 bg-opacity-50 z-50 hidden items-center justify-center p-4 transition-opacity duration-200 ease-out"
+    
     {% if backdrop_click_close|default:True %}onclick="closeModal('{{ id }}')"{% endif %}
 >
     <!-- Modal container -->
@@ -36,9 +37,10 @@ Parameters:
             {% else %}
                 max-w-2xl w-full
             {% endif %}
-            transform transition-all duration-200
-        "
-        onclick="event.stopPropagation()"
+            transform transition-all duration-200 ease-out
+        " 
+        style="opacity: 0; transform: scale(0.95);"
+        onclick="event.stopPropagation()" 
         id="{{ id }}-container"
     >
         {% if show_header|default:True %}
@@ -48,13 +50,16 @@ Parameters:
                 {{ title|default:"Modal" }}
             </h3>
             {% if closable|default:True %}
+            
+            <!--Close button-->
             <button 
-                type="button"
+                type="button" 
                 onclick="closeModal('{{ id }}')"
-                class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition-colors"
-            >
+                class="text-gray-400 hover:text-gray-600 hover:cursor-pointer hover:bg-gray-100 rounded-lg p-1.5 transition-colors">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    <path fill-rule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clip-rule="evenodd"></path>
                 </svg>
             </button>
             {% endif %}
@@ -69,11 +74,9 @@ Parameters:
                 max-h-96 overflow-y-auto
             {% endif %}
             p-6 {{ body_class }}
-        ">
+        " id="modal-{{ id }}-body">
             {{ slot }}
-        </div>
-
-        {% if show_footer|default:False %}
+        </div>        {% if show_footer|default:False %}
         <!-- Modal footer -->
         <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 {{ footer_class }}">
             {{ footer_slot }}
@@ -83,66 +86,80 @@ Parameters:
 </div>
 
 <script>
-// Modal functionality
-function openModal(modalId) {
-    const backdrop = document.getElementById(modalId + '-backdrop');
-    const container = document.getElementById(modalId + '-container');
-    
-    if (backdrop && container) {
-        backdrop.classList.remove('hidden');
-        backdrop.classList.add('flex');
+// Modal functionality - only add once per page
+if (!window.modalFunctionsLoaded) {
+    window.modalFunctionsLoaded = true;
+      function openModal(modalId) {
+        const backdrop = document.getElementById(modalId + '-backdrop');
+        const container = document.getElementById(modalId + '-container');
         
-        // Add animation
-        setTimeout(() => {
-            container.classList.add('scale-100', 'opacity-100');
-            container.classList.remove('scale-95', 'opacity-0');
-        }, 10);
-        
-        // Prevent body scroll
-        document.body.style.overflow = 'hidden';
-        
-        // Focus trap (simple implementation)
-        container.focus();
-    }
-}
-
-function closeModal(modalId) {
-    const backdrop = document.getElementById(modalId + '-backdrop');
-    const container = document.getElementById(modalId + '-container');
-    
-    if (backdrop && container) {
-        // Add closing animation
-        container.classList.add('scale-95', 'opacity-0');
-        container.classList.remove('scale-100', 'opacity-100');
-        
-        setTimeout(() => {
-            backdrop.classList.add('hidden');
-            backdrop.classList.remove('flex');
+        if (backdrop && container) {
+            // Show backdrop first
+            backdrop.classList.remove('hidden');
+            backdrop.classList.add('flex');
             
-            // Restore body scroll
-            document.body.style.overflow = '';
-        }, 200);
-    }
-}
-
-// ESC key to close modal
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        // Close the topmost modal (if multiple are open)
-        const openModals = document.querySelectorAll('[id$="-backdrop"]:not(.hidden)');
-        if (openModals.length > 0) {
-            const lastModal = openModals[openModals.length - 1];
-            const modalId = lastModal.id.replace('-backdrop', '');
-            closeModal(modalId);
+            // Force reflow to ensure the element is rendered
+            backdrop.offsetHeight;
+            
+            // Animate backdrop opacity
+            backdrop.style.opacity = '1';
+            
+            // Animate container with slight delay for better effect
+            setTimeout(() => {
+                container.style.opacity = '1';
+                container.style.transform = 'scale(1)';
+            }, 10);
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // Focus management
+            const firstFocusable = container.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (firstFocusable) {
+                firstFocusable.focus();
+            }
         }
     }
-});
 
-// Initialize modal animations
-document.addEventListener('DOMContentLoaded', function() {
-    const modalContainers = document.querySelectorAll('[id$="-container"]');
-    modalContainers.forEach(container => {
-        container.classList.add('scale-95', 'opacity-0');
+    function closeModal(modalId) {
+        const backdrop = document.getElementById(modalId + '-backdrop');
+        const container = document.getElementById(modalId + '-container');
+        
+        if (backdrop && container) {
+            // Animate container out
+            container.style.opacity = '0';
+            container.style.transform = 'scale(0.95)';
+            
+            // Animate backdrop out
+            backdrop.style.opacity = '0';
+            
+            // Hide backdrop after animation completes
+            setTimeout(() => {
+                backdrop.classList.add('hidden');
+                backdrop.classList.remove('flex');
+                
+                // Reset styles for next opening
+                backdrop.style.opacity = '0';
+                container.style.opacity = '0';
+                container.style.transform = 'scale(0.95)';
+                
+                // Restore body scroll
+                document.body.style.overflow = '';
+            }, 200);
+        }
+    }
+
+    // ESC key to close modal
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            // Close the topmost modal (if multiple are open)
+            const openModals = document.querySelectorAll('[id$="-backdrop"]:not(.hidden)');
+            if (openModals.length > 0) {
+                const lastModal = openModals[openModals.length - 1];
+                const modalId = lastModal.id.replace('-backdrop', '');
+                closeModal(modalId);
+            }
+        }
     });
-});
+}
 </script>

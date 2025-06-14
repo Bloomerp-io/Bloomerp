@@ -1,7 +1,7 @@
-<!--
+{% comment %}
 A snippet that renders a queryset in table format.
 
-Variables:
+Parameters:
     - request: The request object.
     - object_list: The queryset to render.
     - list_view_preferences: The user preferences for the list view. Includes which columns to display. Is a queryset of ListViewPreference model.
@@ -9,10 +9,11 @@ Variables:
     - include_actions (optional): If True, includes the actions column.
     - content_type_id : The content type id of the model.
     - application_fields: The application fields of the model.
--->
+{% endcomment %}
 {% load bloomerp %}
 {% load static %}
 
+<!--Table-->
 <div class="table-responsive">
 
     {% if data_table_view_type == 'list' %}
@@ -105,11 +106,12 @@ Variables:
 
                             {% if user_can_delete %}
                             <a 
-                                href="#" 
-                                data-bs-toggle="modal"
-                                data-bs-target="#deleteModal"
-                                data-bs-object-id="{{ object.pk }}"
-                                data-bs-object-str="{{ object }}"
+                                href="#"
+                                onclick="openModal('deleteModal')" 
+                                hx-get="{% url 'components_delete_object' %}"
+                                hx-target="#modal-deleteModal-content"
+                                hx-swap="innerHTML"
+                                hx-trigger="click"
                                 >
                                 <img src="{% static 'bloomerp/icons/delete.svg' %}" alt="Delete" style="fill:red" width="20" height="20">
                             </a>
@@ -165,6 +167,7 @@ Variables:
     </div>
     <!--End pagination-->
 </div>
+<!--End Table-->
 
 <!--Table dropdown-->
 <div id="{{ datatable_id }}-context-menu" class="context-menu">
@@ -462,7 +465,7 @@ Variables:
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="updateModalTitle"">
+                <h5 class="modal-title" id="updateModalTitle">
                     Update object
                 </h5>
                 <button
@@ -551,88 +554,12 @@ Variables:
 {% endif %}
 
 {% if user_can_delete %}
-<!--Delete modal-->
-<div
-    class="modal fade"
-    id="deleteModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
->
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Delete object
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form>
-                {% csrf_token %}
-                <div class="modal-body" id="deleteFormDiv">
-                    <p>Are you sure you want to delete <span id="deleteObjectSpan" class="fw-bold"></span>?</p>
-                </div>
-                <input type="hidden" name="object_id" id="deleteObjectId">
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">Delete</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
-<script>
-    var deleteModal = document.getElementById('deleteModal');
+<c-ui.modal id="deleteModal" title="Delete object">
 
-    deleteModal.addEventListener('show.bs.modal', function (event) {
-        // Button that triggered the modal
-        let button = event.relatedTarget;
-        // Extract info from data-bs-
-        let objectId = button.getAttribute('data-bs-object-id');
-        let object = button.getAttribute('data-bs-object-str');
+</c-ui.modal>
 
-        // Update modal title
-        document.getElementById('deleteObjectSpan').innerHTML = object;
 
-        // Update hidden input
-        document.getElementById('deleteObjectId').value = objectId;
-    });
-
-    deleteModal.querySelector('form').addEventListener('submit', function (event) {
-        event.preventDefault();
-        // Extract info from hidden input
-        let objectId = document.getElementById('deleteObjectId').value;
-
-        let url = "{{ api_endpoint }}" + objectId + "/";
-
-        fetch(url, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        }).then(response => {
-            if (response.ok) {
-                // Reload table
-                reloadTable('{{ datatable_id }}', '{{ request_params | safe }}', '{% url "components_datatable" %}');
-            }
-        });
-    });
-</script>
-<!--End delete modal-->
 {% endif %}
 
 {% endif %}

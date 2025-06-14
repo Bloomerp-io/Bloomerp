@@ -10,15 +10,16 @@ Variables:
     -->
 {% load static %}
 {% load bloomerp %}
+{% load cotton %}
 
-<div class="d-flex justify-content-between">
+<div class="flex justify-between items-center">
 
-    <div class="d-flex gap-2">
+    <div class="flex gap-2">
         <!-- Search -->
-        <div class="d-flex">
+        <div class="flex">
             <input 
                 type="text" 
-                class="form-control form-control-sm" 
+                class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
                 placeholder="Search" 
                 autocomplete="off"
                 name="data_table_string_search"
@@ -28,220 +29,228 @@ Variables:
                 hx-include="#filterForm{{ datatable_id }}"
                 hx-trigger="keyup delay:500ms"
                 >
-        </div>
-        <!-- End search -->
+        </div>        <!-- End search -->
     </div>
 
-    <div class="d-flex">
-
-        <!--Toggle view button-->
-        <div class="dropdown">
-            <button
-                    class="btn btn-borderless bg-transparent text-dark btn-sm"
-                    type="button"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false">
-                    <img src="{% static 'bloomerp/icons/eye.svg' %}" height="20" alt="Filter"/>
+    <div class="flex gap-1"><!--Toggle view button-->
+        <div class="relative inline-block text-left" x-data="{ open: false }" @click.away="open = false">
+            <button 
+                type="button"
+                class="bg-transparent text-gray-700 hover:bg-gray-50 border-0 p-2 rounded-md transition-colors duration-200"
+                @click="open = !open">
+                <img src="{% static 'bloomerp/icons/eye.svg' %}" height="20" alt="View Options" class="w-5 h-5"/>
             </button>
-        
-            <div class="dropdown-menu">
-                
-                <a 
-                    class="dropdown-item" 
-                    href="#" 
-                    data-bs-toggle="modal" 
-                    data-bs-target="#calendarViewModal{{datatable_id}}">Calendar view</a>
-            </div>
-        </div>
-        <!--End toggle view button-->
-
-        <!-- Filter button -->
-        <div class="dropdown">
-            <button
-                    class="btn btn-borderless bg-transparent text-dark btn-sm"
-                    type="button"
-                    data-bs-toggle="dropdown"
-                    data-bs-auto-close="outside"
-                    aria-expanded="false">
-                    <img src="{% static 'bloomerp/icons/filter.svg' %}" height="20" alt="Filter"/>
-            </button>
-        
-            <div class="dropdown-menu filter-dropdown-menu dropdown-menu-arrow" id="filterDropdown">
-                <div 
-                    id="filterForm{{ datatable_id }}"
-                    >
-                    <div
-                        class="row justify-content-center align-items-center g-2"
-                        id="filterInputContainer{{ datatable_id }}"
-                        hx-get="{% url 'components_list_view_filter_inputs' %}?step=row&content_type_id={{ content_type_id }}"
-                        hx-target="#filterInputContainer{{ datatable_id }}"
-                        hx-swap="innerHTML"
-                        hx-trigger="load"
-                    >
-                        
-                    </div>
-
-                    <hr>
-
-                    <!-- Apply filters section -->
-                    <div class="d-flex justify-content-between align-items-center">
-
-                        <a 
-                            href="#" 
-                            class="d-flex align-items-center gap-1"
-                            hx-get="{% url 'components_list_view_filter_inputs' %}?step=row&content_type_id={{ content_type_id }}"
-                            hx-target="#filterForm{{ datatable_id }} .new-filter-input-row"
-                            hx-swap="outerHTML"
-                            >
-                            <img src="{% static 'bloomerp/icons/add.svg' %}" height="16" alt="Add filter"/>
-                            <span class="text-muted" style="font-size: 0.875rem;">Add new filter</span>
-                        </a>
-
-                        <div class="d-flex gap-2">
-                            <button 
-                                class="btn btn-sm btn-primary"
-                                hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}"
-                                hx-target="#{{ datatable_id }}"
-                                hx-include="#filterForm{{ datatable_id }}"
-                                hx-swap="innerHTML"
-                                >
-                                    Apply filter
-                            </button>
-                            <button 
-                                class="btn btn-sm btn-secondary" 
-                                type="button"
-                                hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}"
-                                hx-target="#{{ datatable_id }}"
-                                hx-swap="innerHTML"
-                                hx-trigger="click"
-                                    >Remove filters
-                            </button>
-                        </div>
-                    </div>
-                    <!-- End apply filters section -->
+            
+            <div 
+                class="absolute z-50 mt-2 w-56 origin-top-right right-0 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out rounded-md shadow-lg" 
+                x-show="open"
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="transform opacity-0 scale-95"
+                x-transition:enter-end="transform opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-75"
+                x-transition:leave-start="transform opacity-100 scale-100"
+                x-transition:leave-end="transform opacity-0 scale-95"
+                role="menu" 
+                aria-orientation="vertical" 
+                style="display: none;"
+            >
+                <div class="py-1" role="none">                    <button 
+                        type="button"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
+                        @click="openModal('calendarViewModal{{datatable_id}}'); open = false"
+                        role="menuitem">
+                        Calendar view
+                    </button>
                 </div>
             </div>
         </div>
-        <!-- End filter button -->
-        
-        <!-- Settings -->
-        <div class="dropdown">
-            <button
-                    class="btn btn-borderless bg-transparent text-dark btn-sm"
-                    type="button"
-                    data-bs-toggle="dropdown"
-                    data-bs-auto-close="outside"
-                    aria-expanded="false">
-                    <img src="{% static 'bloomerp/icons/dots.svg' %}" height="20" alt="Settings"/>
+        <!--End toggle view button-->        <!-- Filter button -->
+        <div class="relative inline-block text-left" x-data="{ open: false }" @click.away="open = false">
+            <button 
+                type="button"
+                class="bg-transparent text-gray-700 hover:bg-gray-50 border-0 p-2 rounded-md transition-colors duration-200"
+                @click="open = !open">
+                <img src="{% static 'bloomerp/icons/filter.svg' %}" height="20" alt="Filter" class="w-5 h-5"/>
             </button>
-        
-            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                <li>
+            
+            <div 
+                class="absolute z-50 mt-2 min-w-96 origin-top-right right-0 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out rounded-md shadow-lg" 
+                x-show="open"
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="transform opacity-0 scale-95"
+                x-transition:enter-end="transform opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-75"
+                x-transition:leave-start="transform opacity-100 scale-100"
+                x-transition:leave-end="transform opacity-0 scale-95"
+                role="menu" 
+                aria-orientation="vertical" 
+                style="display: none;"
+            >
+                <div class="p-4">
+                    <div 
+                        id="filterForm{{ datatable_id }}"
+                        >
+                        <div
+                            class="grid grid-cols-1 gap-4 justify-center items-center"
+                            id="filterInputContainer{{ datatable_id }}"
+                            hx-get="{% url 'components_list_view_filter_inputs' %}?step=row&content_type_id={{ content_type_id }}"
+                            hx-target="#filterInputContainer{{ datatable_id }}"
+                            hx-swap="innerHTML"
+                            hx-trigger="load"
+                        >
+                            
+                        </div>
+
+                        <hr class="my-4 border-gray-200">
+
+                        <!-- Apply filters section -->
+                        <div class="flex justify-between items-center">
+
+                            <a 
+                                href="#" 
+                                class="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors duration-200"
+                                hx-get="{% url 'components_list_view_filter_inputs' %}?step=row&content_type_id={{ content_type_id }}"
+                                hx-target="#filterForm{{ datatable_id }} .new-filter-input-row"
+                                hx-swap="outerHTML"
+                                >
+                                <img src="{% static 'bloomerp/icons/add.svg' %}" height="16" alt="Add filter" class="w-4 h-4"/>
+                                <span class="text-sm">Add new filter</span>
+                            </a>
+
+                            <div class="flex gap-2">
+                                <button 
+                                    class="px-3 py-1.5 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 transition-colors duration-200"
+                                    hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}"
+                                    hx-target="#{{ datatable_id }}"
+                                    hx-include="#filterForm{{ datatable_id }}"
+                                    hx-swap="innerHTML"
+                                    >
+                                        Apply filter
+                                </button>
+                                <button 
+                                    class="px-3 py-1.5 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600 transition-colors duration-200" 
+                                    type="button"
+                                    hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}"
+                                    hx-target="#{{ datatable_id }}"
+                                    hx-swap="innerHTML"
+                                    hx-trigger="click"
+                                        >Remove filters
+                                </button>
+                            </div>
+                        </div>
+                        <!-- End apply filters section -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End filter button -->        <!-- Settings -->
+        <div class="relative inline-block text-left" x-data="{ open: false }" @click.away="open = false">
+            <button 
+                type="button"
+                class="bg-transparent text-gray-700 hover:bg-gray-50 border-0 p-2 rounded-md transition-colors duration-200"
+                @click="open = !open">
+                <img src="{% static 'bloomerp/icons/dots.svg' %}" height="20" alt="Settings" class="w-5 h-5"/>
+            </button>
+            
+            <div 
+                class="absolute z-50 mt-2 w-56 origin-top-right right-0 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out rounded-md shadow-lg" 
+                x-show="open"
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="transform opacity-0 scale-95"
+                x-transition:enter-end="transform opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-75"
+                x-transition:leave-start="transform opacity-100 scale-100"
+                x-transition:leave-end="transform opacity-0 scale-95"
+                role="menu" 
+                aria-orientation="vertical" 
+                style="display: none;"
+            >
+                <div class="py-1" role="none">
                     <a 
-                        class="dropdown-item" 
-                        href="{% url 'users_my_profile_list_view_preference' %}?content_type_id={{ content_type_id }}&return_to={{ request.path }}">Select fields</a>
-                    </li>
-                <li><a 
-                        class="dropdown-item btn"
+                        href="{% url 'users_my_profile_list_view_preference' %}?content_type_id={{ content_type_id }}&return_to={{ request.path }}"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
+                        role="menuitem">
+                        Select fields
+                    </a>
+                    <button 
+                        type="button"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
                         hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=csv"
                         hx-include="#filterForm{{ datatable_id }}"
                         hx-swap="none"
                         hx-ext="htmx-download"
-                        >Download csv
-                    </a>
-                </li>
-                <li>
-                    <a 
-                        class="dropdown-item btn"
+                        role="menuitem">
+                        Download csv
+                    </button>
+                    <button 
+                        type="button"
+                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-pointer"
                         hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=xlsx"
                         hx-include="#filterForm{{ datatable_id }}"
                         hx-swap="none"
                         hx-ext="htmx-download"
-                        >Download xlsx
-                    </a>
-                </li>
-            </ul>
+                        role="menuitem">
+                        Download xlsx
+                    </button>
+                </div>
+            </div>
         </div>
         <!-- End Settings -->
     </div>
 </div>
 
 
-<!-- Modal Body -->
-<div
-    class="modal fade"
+<!-- Calendar View Modal -->
+<c-ui.modal 
     id="calendarViewModal{{datatable_id}}"
-    tabindex="-1"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false"
+    title="Calendar view"
+    size="sm"
+    show_footer="true">
     
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
->
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm"
-        role="document"
-    >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    Calendar view
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <div class="modal-body" id="calendarViewInputs{{datatable_id}}">
-                <div class="mb-3">
-                    <label for="start_date" class="form-label">Start Date Field</label>
-                    <select class="form-select" name="data_table_calendar_view_fields">
-                        {% for field in application_fields %}
-                            {% if field.field_type == 'DateField' or field.field_type == 'DateTimeField' %}
-                                <option value="{{ field.field }}">{{ field.field }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="end_date" class="form-label">End Date Field (Optional)</label>
-                    <select class="form-select" name="data_table_calendar_view_fields">
-                        {% for field in application_fields %}
-                            {% if field.field_type == 'DateField' or field.field_type == 'DateTimeField' %}
-                                <option value="{{ field.field }}">{{ field.field }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Specify the end date if you want see calendar date ranges.</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    data-bs-dismiss="modal"
-                >
-                    Close
-                </button>
-                <button
-                    hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}{% if initial_query %}&{{initial_query}}{% endif %}&data_table_view_type=calendar"
-                    hx-include="#calendarViewInputs{{datatable_id}}"
-                    hx-trigger="click"
-                    hx-target="#{{datatable_id}}"
-                    hx-swap="innerHTML"
-                    class="btn btn-primary"
-                    data-bs-dismiss="modal"
-                    >Calendar view
-                </button>
-            </div>
+    <div class="space-y-4" id="calendarViewInputs{{datatable_id}}">
+        <div>
+            <label for="start_date" class="block text-sm font-medium text-gray-700 mb-2">Start Date Field</label>
+            <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500" name="data_table_calendar_view_fields">
+                {% for field in application_fields %}
+                    {% if field.field_type == 'DateField' or field.field_type == 'DateTimeField' %}
+                        <option value="{{ field.field }}">{{ field.field }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="end_date" class="block text-sm font-medium text-gray-700 mb-2">End Date Field (Optional)</label>
+            <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500" name="data_table_calendar_view_fields">
+                {% for field in application_fields %}
+                    {% if field.field_type == 'DateField' or field.field_type == 'DateTimeField' %}
+                        <option value="{{ field.field }}">{{ field.field }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <p class="text-sm text-gray-500 mt-1">Specify the end date if you want see calendar date ranges.</p>
         </div>
     </div>
-</div>
-
-
+    
+    <div slot="footer_slot" class="flex justify-end gap-3">
+        <button
+            type="button"
+            class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+            onclick="closeModal('calendarViewModal{{datatable_id}}')"
+        >
+            Close
+        </button>
+        <button
+            hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}{% if initial_query %}&{{initial_query}}{% endif %}&data_table_view_type=calendar"
+            hx-include="#calendarViewInputs{{datatable_id}}"
+            hx-trigger="click"
+            hx-target="#{{datatable_id}}"
+            hx-swap="innerHTML"
+            class="px-4 py-2 text-sm text-white bg-primary-600 rounded-md hover:bg-primary-700 transition-colors duration-200"
+            onclick="closeModal('calendarViewModal{{datatable_id}}')"
+            >Calendar view
+        </button>
+    </div>
+</c-ui.modal>
 
 <script>
     function removeFilterInputRow(element) {
