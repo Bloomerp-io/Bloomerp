@@ -25,7 +25,9 @@ Parameters:
             {% else %}
                 px-4 py-2 text-base
             {% endif %}
-            inline-flex items-center justify-center w-full rounded-md border border-gray-300 shadow-sm bg-white font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200
+
+            inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200
+            
             {% if disabled %}
                 opacity-50 cursor-not-allowed
             {% else %}
@@ -77,7 +79,7 @@ Parameters:
             {% else %}
                 origin-top-right right-0
             {% endif %}
-            rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out
+                bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out
             {{ menu_class }}
         " 
         x-show="open"
@@ -97,5 +99,3 @@ Parameters:
     </div>
 </div>
 
-<!-- Add Alpine.js if not already included -->
-<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>

@@ -1,7 +1,7 @@
 {% load cotton %}
 
-<div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900 mb-3">{{ title }}</h1>
+<div class="mb-4">
+    <h1 class="text-2xl font-bold text-primary-900 mb-2">{{ title }}</h1>
     <c-ui.breadcrumb.body>
         <!-- Home breadcrumb item -->
         <c-ui.breadcrumb.item 
@@ -10,7 +10,6 @@
             hx_target="#main-content" 
             hx_swap="innerHTML" 
             hx_push_url="true"
-            icon="bi bi-house"
         />
         
         <!-- Model dashboard breadcrumb item -->

@@ -241,11 +241,9 @@ class DocumentTemplate(BloomerpModel):
         return DocumentTemplate.objects.filter(model_variable=content_type, standard_document=True)
     
 
-
 # ---------------------------------
 # Signature Request Model
 # ---------------------------------
-
 class SignatureRequest:
     '''
     The Signature Request model can be used to request a signature from a (authenticated) user.
