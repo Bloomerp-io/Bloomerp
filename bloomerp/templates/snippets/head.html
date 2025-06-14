@@ -1,4 +1,5 @@
 {% load static %}
+{% load static tailwind_tags %}
 
 <meta charset="utf-8" />
 <meta
@@ -89,10 +90,6 @@
 <script src="{% static 'bloomerp/js/htmx-download.js' %}"></script>
 
 <!-- Template Main CSS File -->
-<link
-  href="{% static 'bloomerp/css/style.css' %}"
-  rel="stylesheet"
-/>
 
 <!-- Datatable-->
 <script src="{% static 'bloomerp/js/datatable.js' %}"></script>
@@ -147,3 +144,6 @@ href="{% static 'css/images.css' %}"
 
 <!--Full calendar-->
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+
+
+{% tailwind_css %}

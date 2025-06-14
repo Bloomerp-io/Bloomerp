@@ -1,4 +1,3 @@
-
 BLOOMERP_APPS = [
     "bloomerp",
     "django_htmx",
@@ -6,6 +5,8 @@ BLOOMERP_APPS = [
     "crispy_bootstrap5",
     "rest_framework",
     "django_filters",
+    "tailwind",
+    "django_cotton"
 ]
 
 BLOOMERP_MIDDLEWARE = [
