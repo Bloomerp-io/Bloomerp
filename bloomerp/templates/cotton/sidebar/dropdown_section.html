@@ -3,7 +3,7 @@
 
 <div class="mb-6" x-data="{ {{ section_id }}Open: {{ default_open|default:'true' }} }">
     <button @click="{{ section_id }}Open = !{{ section_id }}Open"
-        class="flex items-center justify-between w-full text-left text-sm font-semibold text-gray-700 hover:text-primary-800 transition-colors mb-3 hover:cursor-hover:cursor-pointer">
+        class="flex items-center justify-between w-full text-left text-sm font-semibold text-gray-700 hover:text-primary-800 transition-colors mb-3 hover:cursor-pointer">
         <span>{{ title }}</span>
         <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': {{ section_id }}Open }"
             fill="currentColor" viewBox="0 0 20 20">
