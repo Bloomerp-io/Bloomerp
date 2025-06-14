@@ -1,40 +1,14 @@
 {% load static %}
+{% load cotton %}
 
-<div
-    class="modal fade"
-    id="todoModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="todoModalLabel"
-    aria-hidden="true"
->
-    <div class="modal-dialog modal-lg" role="document" id="todoModalDialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                    <h5 class="modal-title" id="todoModalLabel">
-                        Todo's
-                    </h5>
-                    <button
-                        type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal"
-                        aria-label="Close"
-                    ></button>
-            </div>
-            <div class="modal-body">
-                <div class="container" id="todo-container">
-                    
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                </button>
-            </div>
-        </div>
+<c-ui.modal id="todoModal" title="Todo's" size="lg" show_footer=True>
+    <div class="container" id="todo-container">
+        
     </div>
-</div>
+    
+    {% slot footer_slot %}
+        <button onclick="closeModal('todoModal')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+            Close
+        </button>
+    {% endslot %}
+</c-ui.modal>

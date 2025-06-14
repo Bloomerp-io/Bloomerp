@@ -1,0 +1,47 @@
+{% comment %}
+Modal trigger button component.
+Parameters:
+- target : ID of the modal to open (required)
+- text : button text (required)
+- class : additional CSS classes
+- variant : button variant - "primary", "secondary", "danger", "success" (default: "primary")
+- size : button size - "sm", "md", "lg" (default: "md")
+- disabled : whether the button is disabled (default: False)
+- icon : icon class (optional)
+{% endcomment %}
+
+<button 
+    type="button"
+    onclick="openModal('{{ target }}')"
+    class="
+        inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2
+        {% if size == 'sm' %}
+            px-3 py-1.5 text-sm
+        {% elif size == 'lg' %}
+            px-6 py-3 text-lg
+        {% else %}
+            px-4 py-2 text-base
+        {% endif %}
+        {% if variant == 'secondary' %}
+            bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500
+        {% elif variant == 'danger' %}
+            bg-red-600 text-white hover:bg-red-700 focus:ring-red-500
+        {% elif variant == 'success' %}
+            bg-green-600 text-white hover:bg-green-700 focus:ring-green-500
+        {% else %}
+            bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500
+        {% endif %}
+        {% if disabled %}
+            opacity-50 cursor-not-allowed
+        {% else %}
+            cursor-pointer
+        {% endif %}
+        {{ class }}
+    "
+    {% if disabled %}disabled{% endif %}
+>
+    {% if icon %}
+        <i class="{{ icon }} {% if text %}mr-2{% endif %} flex-shrink-0"></i>
+    {% endif %}
+    {{ text }}
+</button>

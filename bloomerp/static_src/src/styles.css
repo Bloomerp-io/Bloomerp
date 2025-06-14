@@ -16,24 +16,306 @@
 
 @import "tailwindcss" source("../../../");
 
+/*
+* Custom theme configuration for Tailwind CSS v4
+*/
+@theme {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #4154f1;
+  --color-primary-600: #4154f1;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+  
+  --color-secondary-50: #f8fafc;
+  --color-secondary-100: #f1f5f9;
+  --color-secondary-200: #e2e8f0;
+  --color-secondary-300: #cbd5e1;
+  --color-secondary-400: #94a3b8;
+  --color-secondary-500: #64748b;
+  --color-secondary-600: #475569;
+  --color-secondary-700: #334155;
+  --color-secondary-800: #1e293b;
+  --color-secondary-900: #0f172a;
+  --color-secondary-950: #020617;
+}
 
 /*
-* If you would like to customise you theme, you can do that here too.
-*
-* https://tailwindcss.com/docs/theme
-*
+* Tailwind CSS plugins for v4
 */
-
-@theme {}
-
-
-/*
-* You can install tailwind plugins like below.
-*
-* https://tailwindcss.com/docs/functions-and-directives#plugin-directive
-*
-*/
-
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/aspect-ratio";
+
+/*
+* Custom component utilities
+*/
+@layer components {
+  /* ===== BUTTON UTILITIES ===== */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-600 text-white border-primary-600 hover:bg-primary-700 hover:border-primary-700 focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-secondary-100 text-secondary-900 border-secondary-300 hover:bg-secondary-200 hover:border-secondary-400 focus:ring-secondary-500;
+  }
+  
+  .btn-success {
+    @apply btn bg-green-600 text-white border-green-600 hover:bg-green-700 hover:border-green-700 focus:ring-green-500;
+  }
+  
+  .btn-danger {
+    @apply btn bg-red-600 text-white border-red-600 hover:bg-red-700 hover:border-red-700 focus:ring-red-500;
+  }
+  
+  .btn-warning {
+    @apply btn bg-yellow-500 text-white border-yellow-500 hover:bg-yellow-600 hover:border-yellow-600 focus:ring-yellow-400;
+  }
+  
+  .btn-info {
+    @apply btn bg-blue-500 text-white border-blue-500 hover:bg-blue-600 hover:border-blue-600 focus:ring-blue-400;
+  }
+  
+  .btn-light {
+    @apply btn bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200 hover:border-gray-400 focus:ring-gray-500;
+  }
+  
+  .btn-dark {
+    @apply btn bg-gray-800 text-white border-gray-800 hover:bg-gray-900 hover:border-gray-900 focus:ring-gray-700;
+  }
+  
+  /* Outline button variants */
+  .btn-outline-primary {
+    @apply btn bg-transparent text-primary-600 border-primary-600 hover:bg-primary-600 hover:text-white focus:ring-primary-500;
+  }
+  
+  .btn-outline-secondary {
+    @apply btn bg-transparent text-secondary-600 border-secondary-600 hover:bg-secondary-600 hover:text-white focus:ring-secondary-500;
+  }
+  
+  .btn-outline-success {
+    @apply btn bg-transparent text-green-600 border-green-600 hover:bg-green-600 hover:text-white focus:ring-green-500;
+  }
+  
+  .btn-outline-danger {
+    @apply btn bg-transparent text-red-600 border-red-600 hover:bg-red-600 hover:text-white focus:ring-red-500;
+  }
+  
+  /* Button sizes */
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+  
+  .btn-xl {
+    @apply px-8 py-4 text-lg;
+  }
+  
+  .btn-block {
+    @apply w-full;
+  }
+  
+  /* ===== TABLE UTILITIES ===== */
+  .table {
+    @apply w-full text-sm text-left text-gray-500 border-collapse;
+  }
+  
+  .table thead th {
+    @apply px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 border-b border-gray-200;
+  }
+  
+  .table tbody td {
+    @apply px-4 py-3 border-b border-gray-200;
+  }
+  
+  .table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  
+  /* Table variants */
+  .table-striped tbody tr:nth-child(odd) {
+    @apply bg-gray-50;
+  }
+  
+  .table-hover tbody tr:hover {
+    @apply bg-gray-50;
+  }
+  
+  .table-bordered {
+    @apply border border-gray-300;
+  }
+  
+  .table-bordered th,
+  .table-bordered td {
+    @apply border border-gray-300;
+  }
+  
+  .table-borderless th,
+  .table-borderless td,
+  .table-borderless thead th {
+    @apply border-0;
+  }
+  
+  /* Table sizes */
+  .table-sm th,
+  .table-sm td {
+    @apply px-3 py-1.5 text-xs;
+  }
+  
+  .table-lg th,
+  .table-lg td {
+    @apply px-6 py-4 text-base;
+  }
+  
+  /* Table color themes */
+  .table-primary {
+    @apply bg-primary-50;
+  }
+  
+  .table-primary th {
+    @apply bg-primary-100 text-primary-900;
+  }
+  
+  .table-secondary {
+    @apply bg-secondary-50;
+  }
+  
+  .table-secondary th {
+    @apply bg-secondary-100 text-secondary-900;
+  }
+  
+  .table-success {
+    @apply bg-green-50;
+  }
+  
+  .table-success th {
+    @apply bg-green-100 text-green-900;
+  }
+  
+  .table-danger {
+    @apply bg-red-50;
+  }
+  
+  .table-danger th {
+    @apply bg-red-100 text-red-900;
+  }
+  
+  .table-warning {
+    @apply bg-yellow-50;
+  }
+  
+  .table-warning th {
+    @apply bg-yellow-100 text-yellow-900;
+  }
+  
+  .table-info {
+    @apply bg-blue-50;
+  }
+  
+  .table-info th {
+    @apply bg-blue-100 text-blue-900;
+  }
+  
+  .table-light {
+    @apply bg-gray-50;
+  }
+  
+  .table-light th {
+    @apply bg-gray-100 text-gray-900;
+  }
+  
+  .table-dark {
+    @apply bg-gray-800 text-white;
+  }
+  
+  .table-dark th {
+    @apply bg-gray-900 text-white border-gray-700;
+  }
+  
+  .table-dark td {
+    @apply border-gray-700;
+  }
+  
+  .table-dark.table-striped tbody tr:nth-child(odd) {
+    @apply bg-gray-700;
+  }
+  
+  .table-dark.table-hover tbody tr:hover {
+    @apply bg-gray-700;
+  }
+  
+  /* Table responsive wrappers */
+  .table-responsive {
+    @apply overflow-x-auto;
+  }
+  
+  .table-responsive-sm {
+    @apply sm:overflow-x-auto;
+  }
+  
+  .table-responsive-md {
+    @apply md:overflow-x-auto;
+  }
+  
+  .table-responsive-lg {
+    @apply lg:overflow-x-auto;
+  }
+  
+  .table-responsive-xl {
+    @apply xl:overflow-x-auto;
+  }
+  
+  /* Row context classes */
+  .table-primary-row {
+    @apply bg-primary-50;
+  }
+  
+  .table-secondary-row {
+    @apply bg-secondary-50;
+  }
+  
+  .table-success-row {
+    @apply bg-green-50;
+  }
+  
+  .table-danger-row {
+    @apply bg-red-50;
+  }
+  
+  .table-warning-row {
+    @apply bg-yellow-50;
+  }
+  
+  .table-info-row {
+    @apply bg-blue-50;
+  }
+  
+  .table-light-row {
+    @apply bg-gray-50;
+  }
+  
+  .table-dark-row {
+    @apply bg-gray-800 text-white;
+  }
+  
+  /* Table utility classes */
+  .table-actions {
+    @apply w-24 text-center;
+  }
+  
+  .table-actions-wide {
+    @apply w-32 text-center;
+  }
+}

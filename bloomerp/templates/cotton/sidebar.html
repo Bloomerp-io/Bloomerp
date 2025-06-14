@@ -2,12 +2,12 @@
 
 <aside 
     id="sidebar" 
-    class="fixed left-0 top-16 h-screen w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto"
-    x-data="{ isOpen: true }"
+    class="fixed left-0 top-16 h-[calc(100vh-5rem)] w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto"
+    x-data="{ isOpen: window.innerWidth >= 1024 }"
     :class="{ '-translate-x-full': !isOpen }"
 >
     <!-- Sidebar content -->
-    <nav class="px-4 py-6">
+    <nav class="px-4 py-6 pb-8">
         <!-- Personal workspaces section -->
         <div class="mb-6" x-data="{ personalOpen: true }">
             <button 
@@ -112,7 +112,7 @@
     class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
     x-data="{ isOpen: false }"
     x-show="isOpen"
-    @click="isOpen = false; document.getElementById('sidebar').dispatchEvent(new CustomEvent('toggle-sidebar'))"
+    @click="isOpen = false; toggleSidebar()"
     style="display: none;"
 ></div>
 
@@ -132,46 +132,109 @@
         item.style.display = "none";
       }
     });
-  }
-
-  // Sidebar toggle functionality
+  }  // Sidebar toggle functionality
   function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
+    const main = document.getElementById('main');
     const overlay = document.getElementById('sidebar-overlay');
     
-    // Toggle sidebar
-    if (sidebar.classList.contains('-translate-x-full')) {
-      sidebar.classList.remove('-translate-x-full');
-      if (window.innerWidth < 1024) { // lg breakpoint
-        overlay.style.display = 'block';
-        setTimeout(() => overlay.dispatchEvent(new CustomEvent('show')), 10);
+    // Get Alpine.js component
+    const alpineData = Alpine.$data(sidebar);
+    
+    // Toggle Alpine.js state
+    alpineData.isOpen = !alpineData.isOpen;
+    
+    // Handle main content positioning
+    if (alpineData.isOpen) {
+      // Show sidebar
+      if (window.innerWidth >= 1024) {
+        // Desktop - shift main content
+        main.classList.remove('ml-0');
+        main.classList.add('ml-64');
+      } else {
+        // Mobile - show overlay
+        if (overlay) {
+          overlay.style.display = 'block';
+          setTimeout(() => {
+            const overlayAlpine = Alpine.$data(overlay);
+            overlayAlpine.isOpen = true;
+          }, 10);
+        }
       }
     } else {
-      sidebar.classList.add('-translate-x-full');
-      if (overlay) {
-        overlay.style.display = 'none';
+      // Hide sidebar
+      if (window.innerWidth >= 1024) {
+        // Desktop - shift main content back
+        main.classList.remove('ml-64');
+        main.classList.add('ml-0');
+      } else {
+        // Mobile - hide overlay
+        if (overlay) {
+          const overlayAlpine = Alpine.$data(overlay);
+          overlayAlpine.isOpen = false;
+          setTimeout(() => overlay.style.display = 'none', 150);
+        }
       }
     }
   }
 
   // Make toggle function globally available
-  window.toggleSidebar = toggleSidebar;
-
-  // Handle responsive behavior
+  window.toggleSidebar = toggleSidebar;  // Handle responsive behavior
   window.addEventListener('resize', () => {
     const sidebar = document.getElementById('sidebar');
+    const main = document.getElementById('main');
     const overlay = document.getElementById('sidebar-overlay');
     
     if (window.innerWidth >= 1024) {
-      // Desktop - hide overlay
-      if (overlay) overlay.style.display = 'none';
+      // Desktop - hide overlay and manage main content positioning
+      if (overlay) {
+        const overlayAlpine = Alpine.$data(overlay);
+        overlayAlpine.isOpen = false;
+        overlay.style.display = 'none';
+      }
+      
+      // Check if sidebar is visible and adjust main content accordingly
+      const alpineData = Alpine.$data(sidebar);
+      if (alpineData && alpineData.isOpen) {
+        main.classList.remove('ml-0');
+        main.classList.add('ml-64');
+      } else {
+        main.classList.remove('ml-64');
+        main.classList.add('ml-0');
+      }
+    } else {
+      // Mobile - always remove left margin
+      main.classList.remove('ml-64');
+      main.classList.add('ml-0');
     }
-  });
-
-  // Listen for toggle events from header
+  });  // Listen for toggle events from header
   document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
+    const main = document.getElementById('main');
+    
     sidebar.addEventListener('toggle-sidebar', toggleSidebar);
+    
+    // Wait for Alpine.js to initialize
+    setTimeout(() => {
+      // Initialize proper state based on screen size
+      if (window.innerWidth >= 1024) {
+        // Desktop - sidebar visible by default, main content shifted
+        const alpineData = Alpine.$data(sidebar);
+        if (alpineData) {
+          alpineData.isOpen = true;
+          main.classList.add('ml-64');
+          main.classList.remove('ml-0');
+        }
+      } else {
+        // Mobile - sidebar hidden by default, main content not shifted
+        const alpineData = Alpine.$data(sidebar);
+        if (alpineData) {
+          alpineData.isOpen = false;
+          main.classList.add('ml-0');
+          main.classList.remove('ml-64');
+        }
+      }
+    }, 100);
   });
 </script>
 

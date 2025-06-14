@@ -41,19 +41,17 @@
         
         <!-- Start Icons Navigation -->
         <nav class="ml-auto">
-            <ul class="flex items-center space-x-4">
-                <!--Todo-->
+            <ul class="flex items-center space-x-4 mb-0">                <!--Todo-->
                 <li>
                     <a 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#todoModal" 
-                        class="relative p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors" 
+                        onclick="openModal('todoModal')" 
+                        class="relative text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" 
                         hx-get="{% url 'components_todos' %}"
                         hx-target="#todo-container"
                         hx-swap="innerHTML"
                         hx-trigger="click"
                         href="#">
-                        <img src="{% static 'bloomerp/icons/notebook.svg' %}" width="20" height="20">
+                        <img src="{% static 'bloomerp/icons/notebook.svg' %}" width="20px" height="20px">
                     </a>
                 </li>
                 <!--End Todo-->
@@ -61,14 +59,15 @@
                 <!--AI-->
                 <li>
                     <a 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#modal_bloom_ai" 
-                        class="flex items-center p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors" 
+                        onclick="openModal('modal_bloom_ai')" 
+                        class="flex items-center text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" 
                         href="#">
-                        <img src="{% static 'bloomerp/icons/ai.svg' %}" width="22" height="22">
+                        <img src="{% static 'bloomerp/icons/ai.svg' %}" width="20" height="20">
                     </a>
                 </li>
-                <!--End AI-->                <!--Profile dropdown-->
+                <!--End AI-->
+                
+                <!--Profile dropdown-->
                 <li class="relative pr-3">
                     <c-ui.dropdown.body 
                         trigger_text="{% avatar object=request.user class_name='rounded-full w-8 h-8' size=32 %}<span class='hidden md:block ml-2 text-sm font-medium text-gray-700'>{{request.user.first_name}} {{request.user.last_name}}</span>"

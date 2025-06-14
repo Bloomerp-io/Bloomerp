@@ -9,102 +9,77 @@ Variables:
 -->
 {% load static %}
 {% load bloomerp %}
-<div
-    class="modal fade"
-    id="modal_{{ id }}"
-    tabindex="-1"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false"
-    role="dialog"
->
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg"
-        role="document"
-        id = "modal-dialog-{{ id }}"
-    >
-        <div class="modal-content">
+{% load cotton %}
 
-            <div class="modal-header">
-                <h5 class="modal-title" id="magicModalTitle">
-                    {{ title }}
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            
-            <div class="modal-body container">
-                <!--Controls-->
-                <div class="d-flex gap-2 justify-content-start">
-                    <button
-                        class="btn btn-sm border"  
-                        type="button"
-                        onclick="toggleFullScreenModal('modal-dialog-{{ id }}')"
-                        >
-                        <span>Full screen</span>
-                        <i class="bi bi-arrows-fullscreen pointer"></i>
-                    </button>
-                    <button
-                        class="btn btn-sm border"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#conversation_history_{{ id }}"
-                        hx-get="{% url 'components_ai_conversations' %}?conversation_type={{ query_type }}&target={{ id }}&args={{ args }}"
-                        hx-target="#conversation_history_{{ id }}"
-                        >
-                        <span>Chat history</span>
-                        <i class="bi bi-layout-sidebar-inset"></i>
-                    </button>
-                    <button
-                        class="btn btn-sm border"
-                        type="button"
-                        hx-get="{% url 'components_ai_conversations' %}?conversation_type={{ query_type }}&target={{ id }}&new_conversation=true&args={{ args }}"
-                        hx-target="#conversation_container_{{ id }}"
-                        >
-                        <span>New conversation</span>
-                        <i class="bi bi-plus"></i>
-                    </button>
-                </div>
-                <!--End Controls-->
+<c-ui.modal id="modal_{{ id }}" title="{{ title }}" size="lg" backdrop_click_close=False>
+    <div class="container">
+        <!--Controls-->
+        <div class="flex gap-2 justify-start mb-4">
+            <button
+                class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors"  
+                type="button"
+                onclick="toggleFullScreenModal('modal_{{ id }}-container')"
+                >
+                <span>Full screen</span>
+                <i class="bi bi-arrows-fullscreen ml-1"></i>
+            </button>
+            <button
+                class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#conversation_history_{{ id }}"
+                hx-get="{% url 'components_ai_conversations' %}?conversation_type={{ query_type }}&target={{ id }}&args={{ args }}"
+                hx-target="#conversation_history_{{ id }}"
+                >
+                <span>Chat history</span>
+                <i class="bi bi-layout-sidebar-inset ml-1"></i>
+            </button>
+            <button
+                class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                type="button"
+                hx-get="{% url 'components_ai_conversations' %}?conversation_type={{ query_type }}&target={{ id }}&new_conversation=true&args={{ args }}"
+                hx-target="#conversation_container_{{ id }}"
+                >
+                <span>New conversation</span>
+                <i class="bi bi-plus ml-1"></i>
+            </button>
+        </div>
+        <!--End Controls-->
 
-                <div class="row mt-2 align items-center">
-
-                    <div class="col-md-4 collapse collapse-horizontal" id="conversation_history_{{ id }}">
-                        
-                    </div>
-
-                    <div class="col-md d-block mt-md-0 mt-2">
-                         <!-- Conversation container -->
-                        <div 
-                            id="conversation_container_{{ id }}"
-                            hx-get="{% url 'components_ai_conversations' %}?latest=true&conversation_type={{ query_type }}&args={{ args }}&target={{ id }}"
-                            hx-target="#conversation_container_{{ id }}"
-                            hx-trigger="load"
-                            >
-
-                        </div>
-                        <!-- End conversation container -->
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer d-block">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+            <div class="md:col-span-1 hidden" id="conversation_history_{{ id }}">
                 
-                <div class="container">
-                    <!-- Query -->
-                    <div class="form-floating">
-                        <textarea class="form-control" id="llm_query_{{ id }}"></textarea>
-                        <label for="floatingTextarea">Query</label>  
+            </div>
+
+            <div class="md:col-span-3">
+                 <!-- Conversation container -->
+                <div 
+                    id="conversation_container_{{ id }}"
+                    hx-get="{% url 'components_ai_conversations' %}?latest=true&conversation_type={{ query_type }}&args={{ args }}&target={{ id }}"
+                    hx-target="#conversation_container_{{ id }}"
+                    hx-trigger="load"
+                    class="min-h-96 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 mb-4"
+                    >
+
+                </div>
+                <!-- End conversation container -->
+
+                <!-- Query Input -->
+                <div class="space-y-4">
+                    <div class="relative">
+                        <textarea 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors resize-none" 
+                            id="llm_query_{{ id }}"
+                            placeholder="Enter your query..."
+                            rows="3"
+                        ></textarea>
                     </div>
                     <!-- End query -->
 
-
-                    <div class="d-flex justify-content-center mt-2">                    
+                    <div class="flex justify-center">                    
                         <button 
                             onclick="sendAiMessage('{{ id }}', '{% url "components_llm_executor" %}')"
-                            class="btn btn-primary"
+                            class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                             type="button"
                             id="generate_button_{{ id }}"
                         >
@@ -115,17 +90,30 @@ Variables:
             </div>
         </div>
     </div>
-</div>
+</c-ui.modal>
 
-<div id="llm_output_{{ id }}" class="d-none"></div>
+<div id="llm_output_{{ id }}" class="hidden"></div>
 
 <script>
     document.getElementById('llm_query_{{ id }}').addEventListener('keypress', function(event) {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             document.getElementById('generate_button_{{ id }}').click();
         }
     });
+
+    // Update toggleFullScreenModal function for new modal structure
+    function toggleFullScreenModal(containerId) {
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.classList.toggle('max-w-full');
+            container.classList.toggle('w-full');
+            container.classList.toggle('h-full');
+            container.classList.toggle('rounded-none');
+            container.classList.toggle('max-w-2xl');
+        }
+    }
+</script>
 </script>
 
 
