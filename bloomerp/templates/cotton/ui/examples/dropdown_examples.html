@@ -1,0 +1,67 @@
+{% comment %}
+Example usage of the dropdown components
+{% endcomment %}
+
+{% load cotton %}
+
+<!-- Basic dropdown -->
+<c-dropdown trigger_text="Actions">
+    <c-dropdown_item text="Edit" icon="bi bi-pencil" href="/edit/"/>
+    <c-dropdown_item text="View" icon="bi bi-eye" href="/view/"/>
+    <c-dropdown_item type="divider"/>
+    <c-dropdown_item text="Delete" icon="bi bi-trash" danger=True onclick="confirmDelete()"/>
+</c-dropdown>
+
+<!-- HTMX dropdown -->
+<c-dropdown trigger_text="User Menu" position="right" size="md">
+    <c-dropdown_item 
+        text="Profile" 
+        icon="bi bi-person" 
+        hx_get="{% url 'users_my_profile_overview' %}"
+        hx_target="#main-content"
+        hx_swap="innerHTML"
+        hx_push_url="true"
+    />
+    <c-dropdown_item 
+        text="Settings" 
+        icon="bi bi-gear" 
+        hx_get="{% url 'user_settings' %}"
+        hx_target="#main-content"
+        hx_swap="innerHTML"
+        hx_push_url="true"
+    />
+    <c-dropdown_item type="divider"/>
+    <c-dropdown_item 
+        text="Sign Out" 
+        icon="bi bi-box-arrow-right" 
+        danger=True
+        onclick="document.getElementById('logout-form').submit()"
+    />
+</c-dropdown>
+
+<!-- Small dropdown with custom styling -->
+<c-dropdown 
+    trigger_text="Options" 
+    size="sm" 
+    position="left"
+    trigger_class="border-primary-300 text-primary-700 hover:bg-primary-50"
+    menu_class="border-primary-200"
+>
+    <c-dropdown_item text="Option 1" href="#"/>
+    <c-dropdown_item text="Option 2" href="#"/>
+    <c-dropdown_item text="Disabled Option" disabled=True/>
+</c-dropdown>
+
+<!-- Large dropdown -->
+<c-dropdown trigger_text="Large Menu" size="lg" position="center">
+    <c-dropdown_item text="Dashboard" icon="bi bi-speedometer2" href="/dashboard/"/>
+    <c-dropdown_item text="Reports" icon="bi bi-graph-up" href="/reports/"/>
+    <c-dropdown_item text="Analytics" icon="bi bi-bar-chart" href="/analytics/"/>
+    <c-dropdown_item type="divider"/>
+    <c-dropdown_item text="Help" icon="bi bi-question-circle" href="/help/"/>
+</c-dropdown>
+
+<!-- Disabled dropdown -->
+<c-dropdown trigger_text="Disabled" disabled=True>
+    <c-dropdown_item text="Not accessible"/>
+</c-dropdown>

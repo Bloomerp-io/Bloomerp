@@ -173,7 +173,9 @@ for content_type in content_types:
 # ---------------------------------
 
 urlpatterns += [
-    path('api/', include(drf_router.urls))
+    path('api/', include(drf_router.urls)),
+    path("__reload__/", include("django_browser_reload.urls")), # Browser reload
+
 ]
 
 # ---------------------------------

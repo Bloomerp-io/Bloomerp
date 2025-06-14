@@ -1,0 +1,78 @@
+{% comment %}
+Bloomerp dropdown item component.
+Parameters:
+- href : URL for the link (optional)
+- hx_get : HTMX get URL (optional)
+- hx_target : HTMX target selector (optional)
+- hx_swap : HTMX swap method (optional)
+- hx_push_url : whether to push URL to history (optional)
+- onclick : JavaScript onclick handler (optional)
+- icon : icon class (optional)
+- text : text content
+- class : additional CSS classes
+- type : "link", "button", "divider" (default: "link")
+- danger : whether this is a destructive action (default: False)
+- disabled : whether the item is disabled (default: False)
+{% endcomment %}
+
+{% if type == "divider" %}
+    <div class="border-t border-gray-200 my-1" role="separator"></div>
+{% else %}
+    {% if href or hx_get %}
+        <a 
+            {% if href %}href="{{ href }}"{% else %}href="#"{% endif %}
+            {% if hx_get %}hx-get="{{ hx_get }}"{% endif %}
+            {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
+            {% if hx_swap %}hx-swap="{{ hx_swap }}"{% endif %}
+            {% if hx_push_url %}hx-push-url="{{ hx_push_url }}"{% endif %}
+            {% if onclick %}onclick="{{ onclick }}"{% endif %}
+            class="
+                flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150
+                {% if danger %}
+                    text-red-700 hover:bg-red-50 hover:text-red-900
+                {% else %}
+                    text-gray-700 hover:bg-gray-100 hover:text-gray-900
+                {% endif %}
+                {% if disabled %}
+                    opacity-50 cursor-not-allowed
+                {% else %}
+                    cursor-pointer
+                {% endif %}
+                {{ class }}
+            " 
+            role="menuitem"
+            {% if disabled %}tabindex="-1" aria-disabled="true"{% endif %}
+        >
+            {% if icon %}
+                <i class="{{ icon }} mr-3 w-4 h-4 flex-shrink-0"></i>
+            {% endif %}
+            {{ text }}
+        </a>
+    {% else %}
+        <button 
+            type="button"
+            {% if onclick %}onclick="{{ onclick }}"{% endif %}
+            class="
+                flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150
+                {% if danger %}
+                    text-red-700 hover:bg-red-50 hover:text-red-900
+                {% else %}
+                    text-gray-700 hover:bg-gray-100 hover:text-gray-900
+                {% endif %}
+                {% if disabled %}
+                    opacity-50 cursor-not-allowed
+                {% else %}
+                    cursor-pointer
+                {% endif %}
+                {{ class }}
+            " 
+            role="menuitem"
+            {% if disabled %}disabled tabindex="-1" aria-disabled="true"{% endif %}
+        >
+            {% if icon %}
+                <i class="{{ icon }} mr-3 w-4 h-4 flex-shrink-0"></i>
+            {% endif %}
+            {{ text }}
+        </button>
+    {% endif %}
+{% endif %}

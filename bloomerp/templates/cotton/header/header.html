@@ -1,0 +1,130 @@
+{% load static %}
+{% load bloomerp %}
+
+<header id="header" class="fixed top-0 w-full bg-white shadow-sm border-b border-gray-200 z-50">
+    <div class="flex items-center justify-between px-4 py-1">
+        <!-- Logo -->
+        <div class="flex items-center justify-between">
+            <a
+                hx-get="{% url "bloomerp_home_view" %}"
+                hx-target="#main-content"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+                class="flex items-center cursor-pointer">
+            <img src="{% static 'bloomerp/img/logo.png' %}" class="hidden md:block" width="120" height="38">
+            <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
+            </a>
+            <i class="bi bi-list ml-4 text-gray-600 cursor-pointer hover:text-gray-800 transition-colors" onclick="toggleSidebar()"></i>
+        </div>
+        <!-- End Logo -->
+
+        <!--Search bar-->
+        <div class="relative md:ml-4 ml-1 flex-1 max-w-md" id="searchInputDropdown">
+            <input 
+                type="text" 
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors" 
+                id="searchInput" 
+                name="search_results_query" 
+                placeholder="Search (ctrl + q)" 
+                autocomplete="off"
+                data-bs-toggle="dropdown" 
+                aria-expanded="false" 
+                hx-get="{% url 'components_search_results'%}" 
+                hx-trigger="keyup delay:300ms" 
+                hx-target="#searchResult"
+                >
+            <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto hidden" aria-labelledby="searchInput" id="searchResult">
+                
+            </div>
+        </div>
+        <!--End Search bar-->
+        
+        <!-- Start Icons Navigation -->
+        <nav class="ml-auto">
+            <ul class="flex items-center space-x-4">
+                <!--Todo-->
+                <li>
+                    <a 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#todoModal" 
+                        class="relative p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors" 
+                        hx-get="{% url 'components_todos' %}"
+                        hx-target="#todo-container"
+                        hx-swap="innerHTML"
+                        hx-trigger="click"
+                        href="#">
+                        <img src="{% static 'bloomerp/icons/notebook.svg' %}" width="20" height="20">
+                    </a>
+                </li>
+                <!--End Todo-->
+
+                <!--AI-->
+                <li>
+                    <a 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#modal_bloom_ai" 
+                        class="flex items-center p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors" 
+                        href="#">
+                        <img src="{% static 'bloomerp/icons/ai.svg' %}" width="22" height="22">
+                    </a>
+                </li>
+                <!--End AI-->                <!--Profile dropdown-->
+                <li class="relative pr-3">
+                    <c-ui.dropdown.body 
+                        trigger_text="{% avatar object=request.user class_name='rounded-full w-8 h-8' size=32 %}<span class='hidden md:block ml-2 text-sm font-medium text-gray-700'>{{request.user.first_name}} {{request.user.last_name}}</span>"
+                        position="right"
+                        size="md"
+                        trigger_class="border-0 shadow-none bg-transparent hover:bg-gray-100 p-2"
+                    >
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <h6 class="text-sm font-semibold text-gray-900">{{request.user.username}}</h6>
+                        </div>
+                        
+                        <c-ui.dropdown.item 
+                            text="Account Settings" 
+                            icon="bi bi-gear" 
+                            hx_get="{% url 'users_my_profile_overview' %}"
+                            hx_target="#main-content"
+                            hx_swap="innerHTML"
+                            hx_push_url="true"
+                        />
+                        
+                        {% if request.user.is_staff %}
+                        <c-ui.dropdown.item 
+                            text="Admin page" 
+                            icon="bi bi-hammer" 
+                            href="/admin/"
+                        />
+                        {% endif %}
+                        
+                        <c-ui.dropdown.item 
+                            text="Bookmarks" 
+                            icon="bi bi-bookmark" 
+                            hx_get="{% url 'bookmarks_user_bookmarks' %}"
+                            hx_target="#main-content"
+                            hx_swap="innerHTML"
+                            hx_push_url="true"
+                        />
+                        
+                        <c-ui.dropdown.item type="divider"/>
+                        
+                        <c-ui.dropdown.item 
+                            text="Sign Out" 
+                            icon="bi bi-box-arrow-right" 
+                            danger=True
+                            onclick="document.querySelector('form[action=\'{% url 'logout' %}\']').submit()"
+                        />
+                        
+                        <!-- Hidden logout form -->
+                        <form action="{% url 'logout' %}" method="post" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </c-ui.dropdown.body>
+                </li>
+                <!-- End Profile Dropdown Items -->
+
+            </ul>
+        </nav>
+        <!-- End Icons Navigation -->
+    </div>
+</header>

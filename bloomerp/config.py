@@ -12,6 +12,7 @@ BLOOMERP_APPS = [
 BLOOMERP_MIDDLEWARE = [
     "bloomerp.middleware.HTMXPermissionDeniedMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
 BLOOMERP_USER_MODEL = "bloomerp.User"
