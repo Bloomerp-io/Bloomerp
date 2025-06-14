@@ -1,19 +1,7 @@
 <!-- Page Title -->
-<div class="pagetitle">
-    <h1>{% if model_name_plural %}{{model_name_plural|title}}{% else %}{{workspace.name}}{% endif %}</h1>
-    <nav>
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a 
-            hx-get="{% url "bloomerp_home_view" %}"
-            hx-target="#main-content"
-            hx-push-url="true"
-            hx-swap="innerHTML"
-            class="pointer"
-            >Home</a></li>
-		<li class="breadcrumb-item active"><a>{% if model_name_plural %}{{model_name_plural|title}}{% else %}{{workspace.name}}{% endif %}</a></li>
-      </ol>
-    </nav>
-</div>
+{% load bloomerp %}
+
+{% breadcrumb model=model title="Workspace" %}
 <!-- End Page Title -->
 
 <!-- Workspace -->

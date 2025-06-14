@@ -83,4 +83,5 @@ class BloomerpContentTypeWorkspaceView(
 
         context['workspace'] = workspace
         context['model_name_plural'] = self.model._meta.verbose_name_plural
+        context['model'] = self.model
         return render(request, self.template_name, context)

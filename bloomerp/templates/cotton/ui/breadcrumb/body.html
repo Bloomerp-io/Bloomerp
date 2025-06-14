@@ -1,0 +1,18 @@
+{% comment %}
+Breadcrumb Body Component
+Parameters:
+- class: Additional CSS classes for the breadcrumb container
+- separator: Custom separator between breadcrumb items (default: chevron)
+- separator_class: Additional CSS classes for separators
+- slot: Content containing breadcrumb items
+{% endcomment %}
+
+<nav 
+    class="flex {{ class|default:'' }}" 
+    aria-label="Breadcrumb"
+    x-data="{ separator: '{{ separator|default:'chevron' }}' }"
+>
+    <ol class="inline-flex items-center space-x-1 md:space-x-3">
+        {{ slot }}
+    </ol>
+</nav>

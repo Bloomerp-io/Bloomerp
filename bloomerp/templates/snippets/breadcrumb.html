@@ -1,31 +1,44 @@
-<div class="pagetitle">
-    <h1>{{ title }}</h1>
-    <nav>
-      <ol class="breadcrumb">
-			<li class="breadcrumb-item">
-				<a 
-					class="pointer" 
-					hx-get="{% url 'bloomerp_home_view' %}" 
-					hx-target="#main-content" 
-					hx-swap="innerHTML" 
-					hx-push-url="true">Home</a>
-			</li>
-			{% if model_name_plural %}
-			<li class="breadcrumb-item">
-				<a 
-				class="pointer" 
-				hx-get="{% url model_dashboard_url %}" 
-				hx-target="#main-content" 
-				hx-swap="innerHTML" 
-				hx-push-url="true">{{ model_name_plural | title }}</a>
-			</li>
-			{% endif %}
-			
-			{% if object %}
-			<li class="breadcrumb-item"><a class="pointer" hx-get="{{object.get_absolute_url}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true">{{ object }}</a></li>
-			{% endif %}
+{% load cotton %}
 
-			<li class="breadcrumb-item active">{{ title }}</li>
-      </ol>
-    </nav>
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900 mb-3">{{ title }}</h1>
+    <c-ui.breadcrumb.body>
+        <!-- Home breadcrumb item -->
+        <c-ui.breadcrumb.item 
+            text="Home" 
+            hx_get="{% url 'bloomerp_home_view' %}" 
+            hx_target="#main-content" 
+            hx_swap="innerHTML" 
+            hx_push_url="true"
+            icon="bi bi-house"
+        />
+        
+        <!-- Model dashboard breadcrumb item -->
+        {% if model_name_plural %}
+        <c-ui.breadcrumb.item 
+            text="{{ model_name_plural|title }}" 
+            hx_get="{% url model_dashboard_url %}" 
+            hx_target="#main-content" 
+            hx_swap="innerHTML" 
+            hx_push_url="true"
+        />
+        {% endif %}
+        
+        <!-- Object detail breadcrumb item -->
+        {% if object %}
+        <c-ui.breadcrumb.item 
+            text="{{ object }}" 
+            hx_get="{{ object.get_absolute_url }}" 
+            hx_target="#main-content" 
+            hx_swap="innerHTML" 
+            hx_push_url="true"
+        />
+        {% endif %}
+        
+        <!-- Current page (active) breadcrumb item -->
+        <c-ui.breadcrumb.item 
+            text="{{ title }}" 
+            active=True
+        />
+    </c-ui.breadcrumb.body>
 </div>

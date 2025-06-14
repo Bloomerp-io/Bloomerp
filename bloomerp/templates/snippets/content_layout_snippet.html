@@ -1,9 +1,10 @@
 {% load static %}
 {% load i18n %}
 {% load bloomerp %}
+{% load cotton %}
 
 <!--Workspace-->
-<div class="row" id="contentLayoutContainer">
+<div class="grid grid-cols-12 gap-4" id="contentLayoutContainer">
     {% for item in workspace.content.content %}
         {% workspace_item item %}
     {% endfor %}
@@ -12,199 +13,158 @@
 
 {% if perms.bloomerp.change_workspace %}
 <!--Update workspace-->
-<div class="d-flex justify-content-end gap-2">
-    <button href="#" class="btn btn-sm btn-outline-primary" onclick="changeLayout()">
+<div class="flex justify-end gap-2 mt-4">
+    <button class="btn btn-outline-primary btn-sm" onclick="changeLayout()">
         Change layout
     </button>
 </div>
 <!--End update workspace-->
 
-
-
 <!--Save layout div-->
-<div class="d-none save-layout-div d-flex gap-2">
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addItemModal">Add items</button>
+<div class="hidden save-layout-div flex gap-2 mt-4">    <c-ui.modal_button 
+        target="addItemModal" 
+        text="Add items" 
+        variant="primary"
+        onclick="handleAddItemModal()"
+    />
     <button class="btn btn-primary" onclick="saveLayout('{{ workspace.pk }}')">Save layout</button>
-    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#resetLayoutModal">Reset layout</button>
+    <c-ui.modal_button 
+        target="resetLayoutModal" 
+        text="Reset layout" 
+        variant="danger"
+    />
     <button class="btn btn-secondary" onclick="changeLayout()">Cancel</button>
 </div>
 <!--End save layout div-->
 
 <!--Add item modal-->
-<div
-    class="modal fade"
-    id="addItemModal"
-    tabindex="-1"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false"
-    role="dialog"
-    aria-labelledby="addItemModalTitle"
-    aria-hidden="true"
+<c-ui.modal 
+    id="addItemModal" 
+    title="Dashboard item" 
+    size="lg"
+    show_footer=True
+    backdrop_click_close=False
 >
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg"
-        role="document"
+    <form 
+        hx-get="{% url 'components_create_workspace_item' %}?action=get_snippet"
+        hx-target=".new-workspace-item"
+        hx-swap="outerHTML"
     >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addItemModalTitle">
-                    Dashboard item
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Dashboard item type</label>
+                <select
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    name="item_type"
+                    hx-get="{% url 'components_create_workspace_item' %}?action=get_input_field"
+                    hx-target="#workspaceItemInput"
+                    hx-swap="innerHTML"
+                    id="dashboardItemType"
+                >
+                    <option selected>Select one</option>
+                    <option value="text">Text</option>
+                    <option value="header">Header</option>
+                    <option value="link">Link</option>
+                    <option value="link_list">Link list</option>
+                    <option value="widget">Widget</option>
+                    <option value="sql_query_filter">SQL Query Filters</option>
+                </select>
             </div>
-            <form 
-                hx-get="{% url 'components_create_workspace_item' %}?action=get_snippet"
-                hx-target=".new-workspace-item"
-                hx-swap="outerHTML"
-            >
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="" class="form-label">Dashboard item type</label>
-                        <select
-                            class="form-select"
-                            name="item_type"
-                            hx-get="{% url 'components_create_workspace_item' %}?action=get_input_field"
-                            hx-target="#workspaceItemInput"
-                            hx-swap="innerHTML"
-                            id="dashboardItemType"
-                        >
-                            <option selected>Select one</option>
-                            <option value="text">Text</option>
-                            <option value="header">Header</option>
-                            <option value="link">Link</option>
-                            <option value="link_list">Link list</option>
-                            <option value="widget">Widget</option>
-                            <option value="sql_query_filter">SQL Query Filters</option>
-                        </select>
-                    </div>
-                    
-                    <!--Input size-->
-                    <div class="mb-3">
-                        <label for="" class="form-label">Size</label>
-                        <input
-                            type="number"
-                            class="form-control"
-                            name="size"
-                            placeholder="Size"
-                            max="12"
-                            min="1"
-                            value="12"
-                            >
-                    </div>
-                    <!--End input size-->
+            
+            <!--Input size-->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Size</label>
+                <input
+                    type="number"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    name="size"
+                    placeholder="Size"
+                    max="12"
+                    min="1"
+                    value="12"
+                />
+            </div>
+            <!--End input size-->
 
-                    <!-- Input fields changing based on input -->
-                    <div id="workspaceItemInput">
-
-                    </div>
-                    <!-- End input fields changing based on input -->
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-primary">Insert</button>
-                </div>
-            </form>
+            <!-- Input fields changing based on input -->
+            <div id="workspaceItemInput"></div>
+            <!-- End input fields changing based on input -->
         </div>
-    </div>
-</div>
+    </form>
+    
+    {% slot footer_slot %}
+        <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="closeModal('addItemModal')"
+        >
+            Close
+        </button>
+        <button type="submit" class="btn btn-primary" form="addItemForm">Insert</button>
+    {% endslot %}
+</c-ui.modal>
 
 <!--Reset layout modal-->
-<div
-    class="modal fade"
-    id="resetLayoutModal"
-    tabindex="-1"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false"
-    role="dialog"
-    aria-labelledby="resetLayoutModalTitle"
-    aria-hidden="true"
+<c-ui.modal 
+    id="resetLayoutModal" 
+    title="Reset layout" 
+    size="md"
+    show_footer=True
+    backdrop_click_close=False
 >
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered"
-        role="document"
-    >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="resetLayoutModalTitle">
-                    Reset layout
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <div class="modal-body">
-                <p>
-                    Are you sure you want to reset the layout?
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    data-bs-dismiss="modal"
-                >
-                    Close
-                </button>
-                <button
-                    type="button"
-                    class="btn btn-danger"
-                    hx-post="{% url 'components_reset_workspace' %}"
-                    hx-vals='{"workspace_id": "{{ workspace.pk }}"}'
-                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                    hx-on:htmx:after-request="document.location.reload()"
-                >
-                    Reset layout
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+    <p class="text-gray-700">
+        Are you sure you want to reset the layout?
+    </p>
+    
+    {% slot footer_slot %}
+        <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="closeModal('resetLayoutModal')"
+        >
+            Close
+        </button>
+        <button
+            type="button"
+            class="btn btn-danger"
+            hx-post="{% url 'components_reset_workspace' %}"
+            hx-vals='{"workspace_id": "{{ workspace.pk }}"}'
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            hx-on:htmx:after-request="document.location.reload()"
+        >
+            Reset layout
+        </button>
+    {% endslot %}
+</c-ui.modal>
 <!--End reset layout modal-->
 
-<script>
-    function changeLayout() {
+<script>    function changeLayout() {
         document.querySelectorAll('.workspace-item').forEach(element => {
             element.classList.toggle('border');
             element.classList.toggle('rounded');
         });
 
         document.querySelectorAll('.item-settings-div').forEach(element => {
-            element.classList.toggle('d-none');
+            element.classList.toggle('hidden');
         });
 
-        document.querySelector('.save-layout-div').classList.toggle('d-none');
+        document.querySelector('.save-layout-div').classList.toggle('hidden');
 
         createNewItemDiv();
     }
-    
-    function resizeItem(id, type, customSize) {
+      function resizeItem(id, type, customSize) {
         if (type == 'custom' && !customSize) {
             return
         }
 
-
         // Get the parent row
         let col = document.getElementById(id);
 
-        // Parse the col class from the element that starts with 'col-'
-        let colClass = col.className.match(/col-md-\d+/)[0];
+        // Parse the col class from the element that starts with 'md:col-span-'
+        let colClass = col.className.match(/md:col-span-\d+/)[0];
         
         // Get the number of the col
-        let colNumber = parseInt(colClass.split('-')[1]);
+        let colNumber = parseInt(colClass.split('-')[2]);
         
 
         // Check if the type is shrink or expand
@@ -232,7 +192,7 @@
         col.classList.remove(colClass);
 
         // Add the new col class
-        col.classList.add(`col-md-${colNumber}`);
+        col.classList.add(`md:col-span-${colNumber}`);
 
     }
 
@@ -248,11 +208,9 @@
         } else if (direction === 'down' && item.nextElementSibling) {
             item.parentNode.insertBefore(item.nextElementSibling, item);
         }
-    }
-
-    function getItemSize(element) {
+    }    function getItemSize(element) {
         let col = element.closest('.workspace-item');
-        let colClass = col.className.match(/col-md-\d+/)[0];
+        let colClass = col.className.match(/md:col-span-\d+/)[0];
         let colNumber = parseInt(colClass.split('-')[2]);
 
         if (!colNumber) {
@@ -390,18 +348,7 @@
         newItemDiv.classList.add('new-workspace-item');
         // Append the new item div to the content layout container
         document.getElementById('contentLayoutContainer').appendChild(newItemDiv);
-    }
-
-    addItemModal = document.getElementById('addItemModal');
-    addItemModal.addEventListener('show.bs.modal', function (event) {
-        // Button that triggered the modal
-        let button = event.relatedTarget;
-
-        // Create the new item div
-        createNewItemDiv();
-    });
-
-    // HTMX after request
+    }    // HTMX after request
     document.addEventListener('htmx:afterRequest', function(event) {
         if (event.detail.target.id == 'newItemDiv') {
             // Make it so that the new item div is edited
@@ -411,7 +358,7 @@
             });
 
             document.querySelectorAll('.item-settings-div').forEach(item => {
-                item.classList.remove('d-none');
+                item.classList.remove('hidden');
             });
 
             // Show message
@@ -421,6 +368,11 @@
             createNewItemDiv();
         }
     });
+
+    // Handle modal opening for add item
+    function handleAddItemModal() {
+        createNewItemDiv();
+    }
 
 </script>
 {% endif %}
