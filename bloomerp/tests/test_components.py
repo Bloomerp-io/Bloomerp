@@ -12,6 +12,8 @@ from django.apps import apps
 from django.db import connection
 from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
+from bloomerp.components.files import files
+from bloomerp.models import FileFolder
 
 
 class BookmarkComponentTests(TestCase):
@@ -349,3 +351,126 @@ class TestSearchResultsComponent(TestCase):
         response = search_results(request)
         self.assertEqual(response.status_code, 200)
         # Add more assertions based on your model's string_search results
+
+# ----------------------------
+# FILES COMPONENT TESTS
+# ----------------------------
+class TestFilesComponent(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.url = reverse('components_files')
+        
+        # Create users
+        self.user = AbstractBloomerpUser.objects.create_user(
+            username='testuser', 
+            password='12345'
+        )
+        self.superuser = AbstractBloomerpUser.objects.create_user(
+            username='superuser', 
+            password='12345',
+            is_superuser=True
+        )
+
+        # Create test content type
+        self.content_type = ContentType.objects.create(
+            app_label='test_app',
+            model='testmodel'
+        )
+
+        # Create test files
+        self.file1 = File.objects.create(
+            name='test_file1',
+            content_type=self.content_type,
+            object_id=1
+        )
+        self.file2 = File.objects.create(
+            name='test_file2',
+            content_type=self.content_type,
+            object_id=2
+        )
+
+        # Create test folders
+        self.folder1 = FileFolder.objects.create(
+            name='test_folder1'
+        )
+        self.folder2 = FileFolder.objects.create(
+            name='test_folder2',
+            parent=self.folder1
+        )
+
+        # Add file to folder
+        self.folder1.files.add(self.file1)
+
+    def test_files_permission_denied(self):
+        """Test that users without permission cannot view files"""
+        request = self.factory.get(self.url)
+        request.user = self.user
+        response = files(request)
+        self.assertEqual(response.content, b'User does not have permission to view files')
+
+    def test_files_basic_listing(self):
+        """Test basic file listing for authorized user"""
+        self.user.user_permissions.add(
+            ContentType.objects.get_for_model(File).permission_set.get(codename='view_file').id
+        )
+        request = self.factory.get(self.url)
+        request.user = self.user
+        request.htmx = type('HTMX', (), {'target': None})()
+        response = files(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'test_file2', response.content)  # Only file2 should be visible (not in folder)
+
+    def test_files_folder_filtering(self):
+        """Test filtering files by folder"""
+        self.user.user_permissions.add(
+            ContentType.objects.get_for_model(File).permission_set.get(codename='view_file').id
+        )
+        request = self.factory.get(f'{self.url}?folder_id={self.folder1.id}')
+        request.user = self.user
+        request.htmx = type('HTMX', (), {'target': None})()
+        response = files(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'test_file1', response.content)
+        self.assertIn(b'test_folder2', response.content)
+
+    def test_files_search(self):
+        """Test searching files by name"""
+        self.user.user_permissions.add(
+            ContentType.objects.get_for_model(File).permission_set.get(codename='view_file').id
+        )
+        request = self.factory.get(f'{self.url}?query=file2')
+        request.user = self.user
+        request.htmx = type('HTMX', (), {'target': None})()
+        response = files(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'test_file2', response.content)
+        self.assertNotIn(b'test_file1', response.content)
+
+    def test_files_content_type_filtering(self):
+        """Test filtering files by content type"""
+        self.user.user_permissions.add(
+            ContentType.objects.get_for_model(File).permission_set.get(codename='view_file').id
+        )
+        request = self.factory.get(f'{self.url}?content_type_id={self.content_type.id}')
+        request.user = self.user
+        request.htmx = type('HTMX', (), {'target': None})()
+        response = files(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'test_file2', response.content)
+
+    def test_files_sorting(self):
+        """Test sorting files"""
+        self.user.user_permissions.add(
+            ContentType.objects.get_for_model(File).permission_set.get(codename='view_file').id
+        )
+        request = self.factory.get(f'{self.url}?sort=-name')
+        request.user = self.user
+        request.htmx = type('HTMX', (), {'target': None})()
+        response = files(request)
+        self.assertEqual(response.status_code, 200)
+        # Check if files are sorted in reverse order
+        content = response.content.decode()
+        self.assertTrue(content.index('test_file2') < content.index('test_file1'))
+
+
+
