@@ -573,7 +573,13 @@ Variables:
                     aria-label="Close"
                 ></button>
             </div>
-            <form>
+            <form
+                hx-post="{% url 'components_delete_object' %}?content_type_id={{ content_type_id }}"
+                hx-target="this"
+                hx-swap="none"
+                hx-include="[name='object_id']"
+                hx-on::after-request="if(event.detail.successful){reloadTable('{{ datatable_id }}','{{ request_params | safe }}','{% url 'components_datatable' %}');}"
+            >
                 {% csrf_token %}
                 <div class="modal-body" id="deleteFormDiv">
                     <p>Are you sure you want to delete <span id="deleteObjectSpan" class="fw-bold"></span>?</p>
@@ -611,26 +617,6 @@ Variables:
         document.getElementById('deleteObjectId').value = objectId;
     });
 
-    deleteModal.querySelector('form').addEventListener('submit', function (event) {
-        event.preventDefault();
-        // Extract info from hidden input
-        let objectId = document.getElementById('deleteObjectId').value;
-
-        let url = "{{ api_endpoint }}" + objectId + "/";
-
-        fetch(url, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        }).then(response => {
-            if (response.ok) {
-                // Reload table
-                reloadTable('{{ datatable_id }}', '{{ request_params | safe }}', '{% url "components_datatable" %}');
-            }
-        });
-    });
 </script>
 <!--End delete modal-->
 {% endif %}
