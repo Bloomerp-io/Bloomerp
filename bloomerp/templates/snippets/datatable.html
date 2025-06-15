@@ -517,8 +517,55 @@ Parameters:
 <!--Delete modal-->
 <c-ui.modal id="deleteModal" title="Delete object"></c-ui.modal>
 <!--End Delete modal-->
+<div
+    class="modal fade"
+    id="deleteModal"
+    tabindex="-1"
+    role="dialog"
+    aria-labelledby="modalTitleId"
+    aria-hidden="true"
+>
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitleId">
+                    Delete object
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+            <form
+                hx-post="{% url 'components_delete_object' %}?content_type_id={{ content_type_id }}"
+                hx-target="this"
+                hx-swap="none"
+                hx-include="[name='object_id']"
+                hx-on::after-request="if(event.detail.successful){reloadTable('{{ datatable_id }}','{{ request_params | safe }}','{% url 'components_datatable' %}');}"
+            >
+                {% csrf_token %}
+                <div class="modal-body" id="deleteFormDiv">
+                    <p>Are you sure you want to delete <span id="deleteObjectSpan" class="fw-bold"></span>?</p>
+                </div>
+                <input type="hidden" name="object_id" id="deleteObjectId">
+                <div class="modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        Close
+                    </button>
+                    <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-
+<!--End delete modal-->
 {% endif %}
 
 {% endif %}
