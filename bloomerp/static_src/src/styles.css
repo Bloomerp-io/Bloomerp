@@ -488,6 +488,12 @@
         width: 8rem;
         text-align: center;
     }
+
+    /*Card classes */
+    .card {
+        border: 1cm;
+        border-color: gray;
+    }
 }
 
 @layer utilities {

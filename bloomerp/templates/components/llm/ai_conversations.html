@@ -5,7 +5,7 @@
     {% if ai_conversations %}
         {% for conversation in ai_conversations  %}
             <li class="list-group-item">
-                <div class="flex justify-content-between">
+                <div class="d-flex justify-content-between">
                     <div>
                     <a
                         hx-get="{% url 'components_ai_conversations' %}?conversation_id={{ conversation.id }}&target={{ target }}&args={{ args }}"

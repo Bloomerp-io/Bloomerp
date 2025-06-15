@@ -1,6 +1,6 @@
 {% load static %}
 
-<div class="flex justify-content-between mb-2 px-4 py-2">
+<div class="flex justify-between mb-2 px-4 py-2">
     <!--Comments and bookmark section-->
     <div class="flex gap-3">
 
@@ -14,12 +14,11 @@
         <div id="bookmarkButton"
             hx-get="{% url 'components_bookmark' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
             hx-trigger="load" hx-swap="this">
-
         </div>
         <!--End Bookmark-->
 
         <!--Todos-->
-        <a class="hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#todoModal"
+        <a class="hover:cursor-pointer" onclick="openModal('todoModal')"
             hx-get="{% url 'components_todos' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
             hx-trigger="click" hx-target="#todo-container" hx-swap="innerHTML">
             <img src="{% static 'bloomerp/icons/notebook.svg' %}" height="30" width="30" alt="Comments" />
@@ -31,14 +30,16 @@
             <img src="{% static 'bloomerp/icons/ai.svg' %}" height="30" width="30" alt="Comments" />
         </a>
         <!--End object AI-->
-
-
     </div>
 
 
 
     <!--Settings-->
     <div class="flex">
+        <c-ui.dropdown.body>
+            
+        </c-ui.dropdown.body>
+        
         <a class="icon" href="#" data-bs-toggle="dropdown">
             <img src="{% static 'bloomerp/icons/dots.svg' %}" height="25" width="25" alt="Filter" />
         </a>
@@ -49,34 +50,16 @@
 
             {% if not disable_tab_select %}
             <li class="dropdown-item hover:cursor-pointer">
-                <a data-bs-toggle="modal" data-bs-target="#updateTabsModal">Update tabs</a>
+                <a onclick="openModal('updateTabsModal')">Update tabs</a>
             </li>
             {% endif %}
         </ul>
     </div>
     <!--Settings-->
-</onclick="divopenMod'commentsModal'al()"" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
-    role="dialog" aria-labelledby="modalTitleId" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Comments
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
+</div>
 
-
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-onclick="openModal('commentsModal')"" title="Comments">
+<!--Comments modal-->
+<c-ui.modal id="commentsModal" title="Comments">
     <div hx-get="{% url 'components_comments' %}?content_type_id={{ content_type_id }}&object_id={{ object.pk }}"
         hx-trigger="load" hx-target="this" hx-swap="innerHTML" id="commentsModalContent">
     </div>

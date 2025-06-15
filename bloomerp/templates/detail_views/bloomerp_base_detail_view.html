@@ -16,13 +16,13 @@
 	<div class="card-body">
 
 		<!--Picture-->
-		<div class="flex justify-content-center mb-3">
+		<div class="d-flex justify-content-center mb-3">
 			{% avatar object=object size="6em" class_name="rounded-circle" %}
 		</div>
 		<!--End Picture-->
 
 		<!--Text under picture-->
-		<div class="flex justify-content-center">
+		<div class="d-flex justify-content-center">
 				<h2>{{object}}</h2>
 		</div>
 		<!--End Text under picture-->
@@ -83,27 +83,17 @@
 <!--End Card-->
 
 <!--Update tabs modal-->
-<div class="modal fade" id="updateTabsModal" tabindex="-1" aria-labelledby="updateTabsModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="updateTabsModalLabel">Update tabs</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-				<form method="POST" action="{% url 'components_detail_view_links' %}">
-					{% csrf_token %}
-					
-					{{ detail_links_form | crispy }}
+<c-ui.modal id="updateTabsModal" title="Change Tab Layout">
+	<form method="POST" action="{% url 'components_detail_view_links' %}">
+		{% csrf_token %}
+		
+		{{ detail_links_form | crispy }}
 
-					<div class="flex justify-content-end">
-						<button type="submit" class="btn btn-primary">Save</button>
-					</div>
-				</form>
-			</div>
+		<div class="d-flex justify-content-end">
+			<button type="submit" class="btn btn-primary">Save</button>
 		</div>
-	</div>
-</div>
+	</form>
+</c-ui.modal>
 <!--End Update tabs modal-->
 
 <!--AI Modal snippet-->

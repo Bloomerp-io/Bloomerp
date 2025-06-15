@@ -14,7 +14,7 @@ Variables:
 {% load bloomerp %}
 
 <!--breadcrumb-->
-<div class="flex my-2">
+<div class="d-flex my-2">
     <nav>
         {% if current_folder %}
             <a 
@@ -140,8 +140,8 @@ Variables:
             {% for folder in folders %}
                 <tr
                     class="folder-row"
-                    onmouseover="this.querySelector('.flex').classList.remove('d-none')"
-                    onmouseout="this.querySelector('.flex').classList.add('d-none')"
+                    onmouseover="this.querySelector('.d-flex').classList.remove('d-none')"
+                    onmouseout="this.querySelector('.d-flex').classList.add('d-none')"
                     draggable="true"
                     ondragover="folderDragOverHandler(event)"
                     ondragleave="folderDragLeaveHandler(event)"
@@ -168,7 +168,7 @@ Variables:
                     <td>{{folder.datetime_updated}}</td>
                     <td></td>
                     <td width="120px">
-                        <div class="flex d-none justify-content-between">
+                        <div class="d-flex d-none justify-content-between">
                             
                         </div>
                     </td>
@@ -182,8 +182,8 @@ Variables:
                 {% for file in files %}
                 <tr 
                     class="file-row"
-                    onmouseover="this.querySelector('.flex').classList.remove('d-none')"
-                    onmouseout="this.querySelector('.flex').classList.add('d-none')"
+                    onmouseover="this.querySelector('.d-flex').classList.remove('d-none')"
+                    onmouseout="this.querySelector('.d-flex').classList.add('d-none')"
                     draggable="true"
                     ondragstart="fileDragStartHandler(event)"
                     data-id="{{ file.pk }}"
@@ -223,7 +223,7 @@ Variables:
 
 
                     <td width="120px">
-                        <div class="flex d-none justify-content-between">
+                        <div class="d-flex d-none justify-content-between">
                             {% if file.file_extension == 'pdf' %}
                             <a
                                 data-bs-target="#signPdfModal"
@@ -772,7 +772,7 @@ Variables:
                     
                     {% include "snippets/signature_snippet.html" with signature_field_name="signature" %}
 
-                    <div class="flex justify-content-center">
+                    <div class="d-flex justify-content-center">
                         <button type="submit" class="btn btn-primary">Sign</button>
                     </div>
 

@@ -41,7 +41,7 @@
         </button>
     </div>
 
-    <div class="flex gap-2 mt-sm-0 mt-2">
+    <div class="d-flex gap-2 mt-sm-0 mt-2">
         <a 
             class="hover:cursor-pointer {{ filter_class_dict.all }}"
             hx-get="{% url 'components_todos' %}?filter=all{% if content_type_id and object_id %}&content_type_id={{ content_type_id }}&object_id={{ object_id }}{% endif %}"
@@ -123,7 +123,7 @@
         </div>
     </div>
 
-    <div class="flex justify-content-start mt-2">
+    <div class="d-flex justify-content-start mt-2">
         <button type="submit" class="btn btn-primary btn-sm">Add todo</button>
     </div>
 </form>
