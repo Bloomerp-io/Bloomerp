@@ -1,3 +1,5 @@
+// TODO : Remove JS from HTML component and add it here to avoid duplication
+
 function openModal(modalId) {
     const backdrop = document.getElementById(modalId + '-backdrop');
     const container = document.getElementById(modalId + '-container');

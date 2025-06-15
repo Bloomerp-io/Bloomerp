@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.models import AbstractBloomerpUser, Bookmark
-from bloomerp.components.delete_object import delete_object
+from bloomerp.components.objects.delete_object import delete_object
 
 
 class DeleteObjectComponentTests(TestCase):

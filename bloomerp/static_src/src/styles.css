@@ -59,439 +59,446 @@
 @plugin "@tailwindcss/aspect-ratio";
 
 /*
-* Custom component utilities for Tailwind CSS v4
+* Custom component utilities using @layer for Tailwind CSS v4
 */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1.25rem;
-    border-radius: 0.375rem;
-    border-width: 1px;
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
-}
-
-.btn:focus {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
-    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-    --tw-ring-offset-width: 2px;
-}
-
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-primary {
-    background-color: var(--color-primary-600);
-    color: rgb(255 255 255);
-    border-color: var(--color-primary-600);
-    --tw-ring-color: var(--color-primary-500);
-}
-
-.btn-primary:hover:not(:disabled) {
-    background-color: var(--color-primary-700);
-    border-color: var(--color-primary-700);
-}
-
-.btn-secondary {
-    background-color: var(--color-secondary-100);
-    color: var(--color-secondary-900);
-    border-color: var(--color-secondary-300);
-    --tw-ring-color: var(--color-secondary-500);
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background-color: var(--color-secondary-200);
-    border-color: var(--color-secondary-400);
-}
-
-.btn-success {
-    background-color: rgb(34 197 94);
-    color: rgb(255 255 255);
-    border-color: rgb(34 197 94);
-    --tw-ring-color: rgb(34 197 94);
-}
-
-.btn-success:hover:not(:disabled) {
-    background-color: rgb(21 128 61);
-    border-color: rgb(21 128 61);
-}
-
-.btn-danger {
-    background-color: rgb(239 68 68);
-    color: rgb(255 255 255);
-    border-color: rgb(239 68 68);
-    --tw-ring-color: rgb(239 68 68);
-}
-
-.btn-danger:hover:not(:disabled) {
-    background-color: rgb(185 28 28);
-    border-color: rgb(185 28 28);
-}
-
-.btn-warning {
-    background-color: rgb(245 158 11);
-    color: rgb(255 255 255);
-    border-color: rgb(245 158 11);
-    --tw-ring-color: rgb(251 191 36);
-}
-
-.btn-warning:hover:not(:disabled) {
-    background-color: rgb(217 119 6);
-    border-color: rgb(217 119 6);
-}
-
-.btn-info {
-    background-color: rgb(59 130 246);
-    color: rgb(255 255 255);
-    border-color: rgb(59 130 246);
-    --tw-ring-color: rgb(96 165 250);
-}
-
-.btn-info:hover:not(:disabled) {
-    background-color: rgb(37 99 235);
-    border-color: rgb(37 99 235);
-}
-
-.btn-light {
-    background-color: rgb(243 244 246);
-    color: var(--color-primary-950);
-    border-color: rgb(209 213 219);
-    --tw-ring-color: rgb(107 114 128);
-}
-
-.btn-light:hover:not(:disabled) {
-    background-color: rgb(229 231 235);
-    border-color: rgb(156 163 175);
-}
-
-.btn-dark {
-    background-color: rgb(31 41 55);
-    color: rgb(255 255 255);
-    border-color: rgb(31 41 55);
-    --tw-ring-color: rgb(75 85 99);
-}
-
-.btn-dark:hover:not(:disabled) {
-    background-color: rgb(17 24 39);
-    border-color: rgb(17 24 39);
-}
-
-/* Outline button variants */
-.btn-outline-primary {
-    background-color: transparent;
-    color: var(--color-primary-600);
-    border-color: var(--color-primary-600);
-    --tw-ring-color: var(--color-primary-500);
-}
-
-.btn-outline-primary:hover:not(:disabled) {
-    background-color: var(--color-primary-600);
-    color: rgb(255 255 255);
-}
-
-.btn-outline-secondary {
-    background-color: transparent;
-    color: var(--color-secondary-600);
-    border-color: var(--color-secondary-600);
-    --tw-ring-color: var(--color-secondary-500);
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-    background-color: var(--color-secondary-600);
-    color: rgb(255 255 255);
-}
-
-.btn-outline-success {
-    background-color: transparent;
-    color: rgb(34 197 94);
-    border-color: rgb(34 197 94);
-    --tw-ring-color: rgb(34 197 94);
-}
-
-.btn-outline-success:hover:not(:disabled) {
-    background-color: rgb(34 197 94);
-    color: rgb(255 255 255);
-}
-
-.btn-outline-danger {
-    background-color: transparent;
-    color: rgb(239 68 68);
-    border-color: rgb(239 68 68);
-    --tw-ring-color: rgb(239 68 68);
-}
-
-.btn-outline-danger:hover:not(:disabled) {
-    background-color: rgb(239 68 68);
-    color: rgb(255 255 255);
-}
-
-/* Button sizes */
-.btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    line-height: 1rem;
-}
-
-.btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    line-height: 1.5rem;
-}
-
-.btn-xl {
-    padding: 1rem 2rem;
-    font-size: 1.125rem;
-    line-height: 1.75rem;
-}
-
-.btn-block {
-    width: 100%;
-}
-
-/* ===== TABLE UTILITIES ===== */
-.table {
-    width: 100%;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    text-align: left;
-    color: rgb(107 114 128);
-    border-collapse: collapse;
-}
-
-.table thead th {
-    padding: 0.75rem 1rem;
-    font-size: 0.75rem;
-    line-height: 1rem;
-    font-weight: 500;
-    color: rgb(55 65 81);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background-color: rgb(249 250 251);
-    border-bottom-width: 1px;
-    border-bottom-color: rgb(229 231 235);
-}
-
-.table tbody td {
-    padding: 0.75rem 1rem;
-    border-bottom-width: 1px;
-    border-bottom-color: rgb(229 231 235);
-}
-
-.table tbody tr:last-child td {
-    border-bottom-width: 0px;
-}
-
-/* Table variants */
-.table-striped tbody tr:nth-child(odd) {
-    background-color: rgb(249 250 251);
-}
-
-.table-hover tbody tr:hover {
-    background-color: rgb(249 250 251);
-}
-
-.table-bordered {
-    border-width: 1px;
-    border-color: rgb(209 213 219);
-}
-
-.table-bordered th,
-.table-bordered td {
-    border-width: 1px;
-    border-color: rgb(209 213 219);
-}
-
-.table-borderless th,
-.table-borderless td,
-.table-borderless thead th {
-    border-width: 0px;
-}
-
-/* Table sizes */
-.table-sm th,
-.table-sm td {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    line-height: 1rem;
-}
-
-.table-lg th,
-.table-lg td {
-    padding: 1.5rem;
-    font-size: 1rem;
-    line-height: 1.5rem;
-}
-
-/* Table color themes */
-.table-primary {
-    background-color: var(--color-primary-50);
-}
-
-.table-primary th {
-    background-color: var(--color-primary-100);
-    color: var(--color-primary-900);
-}
-
-.table-secondary {
-    background-color: var(--color-secondary-50);
-}
-
-.table-secondary th {
-    background-color: var(--color-secondary-100);
-    color: var(--color-secondary-900);
-}
-
-.table-success {
-    background-color: rgb(240 253 244);
-}
-
-.table-success th {
-    background-color: rgb(220 252 231);
-    color: rgb(20 83 45);
-}
-
-.table-danger {
-    background-color: rgb(254 242 242);
-}
-
-.table-danger th {
-    background-color: rgb(254 226 226);
-    color: rgb(127 29 29);
-}
-
-.table-warning {
-    background-color: rgb(255 251 235);
-}
-
-.table-warning th {
-    background-color: rgb(254 243 199);
-    color: rgb(146 64 14);
-}
-
-.table-info {
-    background-color: rgb(239 246 255);
-}
-
-.table-info th {
-    background-color: rgb(219 234 254);
-    color: rgb(30 58 138);
-}
-
-.table-light {
-    background-color: rgb(249 250 251);
-}
-
-.table-light th {
-    background-color: rgb(243 244 246);
-    color: var(--color-primary-950);
-}
-
-.table-dark {
-    background-color: rgb(31 41 55);
-    color: rgb(255 255 255);
-}
-
-.table-dark th {
-    background-color: rgb(17 24 39);
-    color: rgb(255 255 255);
-    border-color: rgb(75 85 99);
-}
-
-.table-dark td {
-    border-color: rgb(75 85 99);
-}
-
-.table-dark.table-striped tbody tr:nth-child(odd) {
-    background-color: rgb(75 85 99);
-}
-
-.table-dark.table-hover tbody tr:hover {
-    background-color: rgb(75 85 99);
-}
-
-/* Table responsive wrappers */
-.table-responsive {
-    overflow-x: auto;
-}
-
-.table-responsive-sm {
-    overflow-x: auto;
-}
-
-.table-responsive-md {
-    overflow-x: auto;
-}
-
-.table-responsive-lg {
-    overflow-x: auto;
-}
-
-.table-responsive-xl {
-    overflow-x: auto;
-}
-
-/* Row context classes */
-.table-primary-row {
-    background-color: var(--color-primary-50);
-}
-
-.table-secondary-row {
-    background-color: var(--color-secondary-50);
-}
-
-.table-success-row {
-    background-color: rgb(240 253 244);
-}
-
-.table-danger-row {
-    background-color: rgb(254 242 242);
-}
-
-.table-warning-row {
-    background-color: rgb(255 251 235);
-}
-
-.table-info-row {
-    background-color: rgb(239 246 255);
-}
-
-.table-light-row {
-    background-color: rgb(249 250 251);
-}
-
-.table-dark-row {
-    background-color: rgb(31 41 55);
-    color: rgb(255 255 255);
-}
-
-/* Table utility classes */
-.table-actions {
-    width: 6rem;
-    text-align: center;
-}
-
-.table-actions-wide {
-    width: 8rem;
-    text-align: center;
-}
-
-/*Default utilities*/
-a:hover {
-    cursor: pointer;
-    color: var(--color-primary-700);
-}
-
-/*Page title*/
-.pagetitle {
-    background-color: var(--color-primary-950);
+@layer components {
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1.25rem;
+        border-radius: 0.375rem;
+        border-width: 1px;
+        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 200ms;
+    }
+
+    .btn:focus {
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+        --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+        box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        --tw-ring-offset-width: 2px;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Button variants */
+    .btn-primary {
+        background-color: var(--color-primary-600);
+        color: rgb(255 255 255);
+        border-color: var(--color-primary-600);
+        --tw-ring-color: var(--color-primary-500);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: var(--color-primary-700);
+        border-color: var(--color-primary-700);
+    }
+
+    .btn-secondary {
+        background-color: var(--color-secondary-100);
+        color: var(--color-secondary-900);
+        border-color: var(--color-secondary-300);
+        --tw-ring-color: var(--color-secondary-500);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background-color: var(--color-secondary-200);
+        border-color: var(--color-secondary-400);
+    }
+
+    .btn-success {
+        background-color: rgb(34 197 94);
+        color: rgb(255 255 255);
+        border-color: rgb(34 197 94);
+        --tw-ring-color: rgb(34 197 94);
+    }
+
+    .btn-success:hover:not(:disabled) {
+        background-color: rgb(21 128 61);
+        border-color: rgb(21 128 61);
+    }
+
+    .btn-danger {
+        background-color: rgb(239 68 68);
+        color: rgb(255 255 255);
+        border-color: rgb(239 68 68);
+        --tw-ring-color: rgb(239 68 68);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+        background-color: rgb(185 28 28);
+        border-color: rgb(185 28 28);
+    }
+
+    .btn-warning {
+        background-color: rgb(245 158 11);
+        color: rgb(255 255 255);
+        border-color: rgb(245 158 11);
+        --tw-ring-color: rgb(251 191 36);
+    }
+
+    .btn-warning:hover:not(:disabled) {
+        background-color: rgb(217 119 6);
+        border-color: rgb(217 119 6);
+    }
+
+    .btn-info {
+        background-color: rgb(59 130 246);
+        color: rgb(255 255 255);
+        border-color: rgb(59 130 246);
+        --tw-ring-color: rgb(96 165 250);
+    }
+
+    .btn-info:hover:not(:disabled) {
+        background-color: rgb(37 99 235);
+        border-color: rgb(37 99 235);
+    }
+
+    .btn-light {
+        background-color: rgb(243 244 246);
+        color: var(--color-primary-950);
+        border-color: rgb(209 213 219);
+        --tw-ring-color: rgb(107 114 128);
+    }
+
+    .btn-light:hover:not(:disabled) {
+        background-color: rgb(229 231 235);
+        border-color: rgb(156 163 175);
+    }
+
+    .btn-dark {
+        background-color: rgb(31 41 55);
+        color: rgb(255 255 255);
+        border-color: rgb(31 41 55);
+        --tw-ring-color: rgb(75 85 99);
+    }
+
+    .btn-dark:hover:not(:disabled) {
+        background-color: rgb(17 24 39);
+        border-color: rgb(17 24 39);
+    }
+
+    /* Outline button variants */
+    .btn-outline-primary {
+        background-color: transparent;
+        color: var(--color-primary-600);
+        border-color: var(--color-primary-600);
+        --tw-ring-color: var(--color-primary-500);
+    }
+
+    .btn-outline-primary:hover:not(:disabled) {
+        background-color: var(--color-primary-600);
+        color: rgb(255 255 255);
+    }
+
+    .btn-outline-secondary {
+        background-color: transparent;
+        color: var(--color-secondary-600);
+        border-color: var(--color-secondary-600);
+        --tw-ring-color: var(--color-secondary-500);
+    }
+
+    .btn-outline-secondary:hover:not(:disabled) {
+        background-color: var(--color-secondary-600);
+        color: rgb(255 255 255);
+    }
+
+    .btn-outline-success {
+        background-color: transparent;
+        color: rgb(34 197 94);
+        border-color: rgb(34 197 94);
+        --tw-ring-color: rgb(34 197 94);
+    }
+
+    .btn-outline-success:hover:not(:disabled) {
+        background-color: rgb(34 197 94);
+        color: rgb(255 255 255);
+    }
+
+    .btn-outline-danger {
+        background-color: transparent;
+        color: rgb(239 68 68);
+        border-color: rgb(239 68 68);
+        --tw-ring-color: rgb(239 68 68);
+    }
+
+    .btn-outline-danger:hover:not(:disabled) {
+        background-color: rgb(239 68 68);
+        color: rgb(255 255 255);
+    }
+
+    /* Button sizes */
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+        line-height: 1rem;
+    }
+
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+
+    .btn-xl {
+        padding: 1rem 2rem;
+        font-size: 1.125rem;
+        line-height: 1.75rem;
+    }
+
+    .btn-block {
+        width: 100%;
+    }
+}
+
+@layer components {
+    /* ===== TABLE UTILITIES ===== */
+    .table {
+        width: 100%;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        text-align: left;
+        color: rgb(107 114 128);
+        border-collapse: collapse;
+    }
+
+    .table thead th {
+        padding: 0.75rem 1rem;
+        font-size: 0.75rem;
+        line-height: 1rem;
+        font-weight: 500;
+        color: rgb(55 65 81);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background-color: rgb(249 250 251);
+        border-bottom-width: 1px;
+        border-bottom-color: rgb(229 231 235);
+    }
+
+    .table tbody td {
+        padding: 0.75rem 1rem;
+        border-bottom-width: 1px;
+        border-bottom-color: rgb(229 231 235);
+    }
+
+    .table tbody tr:last-child td {
+        border-bottom-width: 0px;
+    }
+
+    /* Table variants */
+    .table-striped tbody tr:nth-child(odd) {
+        background-color: rgb(249 250 251);
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgb(249 250 251);
+    }
+
+    .table-bordered {
+        border-width: 1px;
+        border-color: rgb(209 213 219);
+    }
+
+    .table-bordered th,
+    .table-bordered td {
+        border-width: 1px;
+        border-color: rgb(209 213 219);
+    }
+
+    .table-borderless th,
+    .table-borderless td,
+    .table-borderless thead th {
+        border-width: 0px;
+    }
+
+    /* Table sizes */
+    .table-sm th,
+    .table-sm td {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+        line-height: 1rem;
+    }
+
+    .table-lg th,
+    .table-lg td {
+        padding: 1.5rem;
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+
+    /* Table color themes */
+    .table-primary {
+        background-color: var(--color-primary-50);
+    }
+
+    .table-primary th {
+        background-color: var(--color-primary-100);
+        color: var(--color-primary-900);
+    }
+
+    .table-secondary {
+        background-color: var(--color-secondary-50);
+    }
+
+    .table-secondary th {
+        background-color: var(--color-secondary-100);
+        color: var(--color-secondary-900);
+    }
+
+    .table-success {
+        background-color: rgb(240 253 244);
+    }
+
+    .table-success th {
+        background-color: rgb(220 252 231);
+        color: rgb(20 83 45);
+    }
+
+    .table-danger {
+        background-color: rgb(254 242 242);
+    }
+
+    .table-danger th {
+        background-color: rgb(254 226 226);
+        color: rgb(127 29 29);
+    }
+
+    .table-warning {
+        background-color: rgb(255 251 235);
+    }
+
+    .table-warning th {
+        background-color: rgb(254 243 199);
+        color: rgb(146 64 14);
+    }
+
+    .table-info {
+        background-color: rgb(239 246 255);
+    }
+
+    .table-info th {
+        background-color: rgb(219 234 254);
+        color: rgb(30 58 138);
+    }
+
+    .table-light {
+        background-color: rgb(249 250 251);
+    }
+
+    .table-light th {
+        background-color: rgb(243 244 246);
+        color: var(--color-primary-950);
+    }
+
+    .table-dark {
+        background-color: rgb(31 41 55);
+        color: rgb(255 255 255);
+    }
+
+    .table-dark th {
+        background-color: rgb(17 24 39);
+        color: rgb(255 255 255);
+        border-color: rgb(75 85 99);
+    }
+
+    .table-dark td {
+        border-color: rgb(75 85 99);
+    }
+
+    .table-dark.table-striped tbody tr:nth-child(odd) {
+        background-color: rgb(75 85 99);
+    }
+
+    .table-dark.table-hover tbody tr:hover {
+        background-color: rgb(75 85 99);
+    }
+
+    /* Table responsive wrappers */
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .table-responsive-sm {
+        overflow-x: auto;
+    }
+
+    .table-responsive-md {
+        overflow-x: auto;
+    }
+
+    .table-responsive-lg {
+        overflow-x: auto;
+    }
+
+    .table-responsive-xl {
+        overflow-x: auto;
+    }
+
+    /* Row context classes */
+    .table-primary-row {
+        background-color: var(--color-primary-50);
+    }
+
+    .table-secondary-row {
+        background-color: var(--color-secondary-50);
+    }
+
+    .table-success-row {
+        background-color: rgb(240 253 244);
+    }
+
+    .table-danger-row {
+        background-color: rgb(254 242 242);
+    }
+
+    .table-warning-row {
+        background-color: rgb(255 251 235);
+    }
+
+    .table-info-row {
+        background-color: rgb(239 246 255);
+    }
+
+    .table-light-row {
+        background-color: rgb(249 250 251);
+    }
+
+    .table-dark-row {
+        background-color: rgb(31 41 55);
+        color: rgb(255 255 255);
+    }
+
+    /* Table utility classes */
+    .table-actions {
+        width: 6rem;
+        text-align: center;
+    }
+
+    .table-actions-wide {
+        width: 8rem;
+        text-align: center;
+    }
+}
+
+@layer utilities {
+    /*Default utilities*/
+    a:hover {
+        cursor: pointer;
+        color: var(--color-primary-700);
+    }
+
+    /*Page title*/
+    .pagetitle {
+        background-color: var(--color-primary-950);
+    }
 }

@@ -23,10 +23,12 @@ class BloomerpConfigChecker:
             client = openai.OpenAI(api_key=openai_key)
             try:
                 client.models.list()
+                return self.OKAY, 'OpenAI key is valid'
             except openai.AuthenticationError:
                 return self.WARNING, 'Invalid OpenAI key' + appended_message
-            else:
-                return self.OKAY, 'OpenAI key is valid'
+            except:
+                return self.WARNING, 'Invalid OpenAI key' + appended_message
+            
 
     def _check_login_url(self) -> tuple[int, str]:
         '''Check if the login url is set'''

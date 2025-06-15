@@ -25,7 +25,6 @@ def bulk_upload_table(request:HttpRequest) -> HttpResponse:
     bulk_upload_file:File = request.FILES.get('bulk_upload_file')
     content_type_id = request.POST.get('bulk_upload_content_type_id')
     
-    print(request.POST)
 
     # Get the model from the content type id
     if not content_type_id:

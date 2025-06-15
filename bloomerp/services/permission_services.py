@@ -22,8 +22,9 @@ class BasePermissions(Enum):
     def __str__(self):
         return self.value
 
-def has_object_permission(user:User, permission:BasePermissions) -> bool:
-    pass
+def has_object_permission(user:User, object:Model, permission:BasePermissions) -> bool:
+    # TODO : Implement this function 
+    return True
 
 
 def has_access_to_object(user: AbstractBloomerpUser, obj: Model) -> bool:

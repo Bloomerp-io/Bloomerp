@@ -19,7 +19,7 @@
 			
 			{% if form.helper %}{% crispy form %}{% else %}{{form|crispy}}{% endif %}
 
-			<div class="d-flex justify-content-center gap-2">
+			<div class="flex justify-content-center gap-2">
 				<button type="submit" class="btn btn-primary">Create {{ model_name }}</button>
 				<button type="reset" class="btn btn-secondary" href="#">Reset</button>
 			</div>

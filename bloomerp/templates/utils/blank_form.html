@@ -1,0 +1,10 @@
+{% load crispy_forms_tags %}
+
+{% if form %}
+{{ form | crispy }}
+{% endif %}
+{% if hidden_args %}
+{% for key, value in hidden_args.items %}
+<input type="hidden" name="{{key}}" value="{{value}}">
+{% endfor %}
+{% endif %}

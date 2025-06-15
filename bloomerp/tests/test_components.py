@@ -2,7 +2,7 @@ from django.test import TestCase, RequestFactory
 from django.urls import reverse
 from bloomerp.models import AbstractBloomerpUser, Bookmark, ContentType, File, BloomerpModel, Link
 from bloomerp.components.bookmark import bookmark
-from bloomerp.components.bulk_update_objects import bulk_update_objects
+from bloomerp.components.objects.bulk_update_objects import bulk_update_objects
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages.middleware import MessageMiddleware
 from django.contrib.sessions.middleware import SessionMiddleware

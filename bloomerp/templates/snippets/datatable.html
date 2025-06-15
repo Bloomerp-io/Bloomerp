@@ -2,13 +2,14 @@
 A snippet that renders a queryset in table format.
 
 Parameters:
-    - request: The request object.
-    - object_list: The queryset to render.
-    - list_view_preferences: The user preferences for the list view. Includes which columns to display. Is a queryset of ListViewPreference model.
-    - target (optional): The target div to render the table.
-    - include_actions (optional): If True, includes the actions column.
-    - content_type_id : The content type id of the model.
-    - application_fields: The application fields of the model.
+- request: The request object.
+- object_list: The queryset to render.
+- list_view_preferences: The user preferences for the list view. Includes which columns to display. Is a queryset of
+ListViewPreference model.
+- target (optional): The target div to render the table.
+- include_actions (optional): If True, includes the actions column.
+- content_type_id : The content type id of the model.
+- application_fields: The application fields of the model.
 {% endcomment %}
 {% load bloomerp %}
 {% load static %}
@@ -20,135 +21,97 @@ Parameters:
         <thead>
             <tr>
                 {% if include_actions %}
-                    {% if user_can_bulk_change or user_can_bulk_delete %}
-                    <th style="width:50px">
-                        <input 
-                            type="checkbox" 
-                            name="select_all" 
-                            id="select_all"
-                            onclick="selectAll(this)"
-                            >
-                    </th>
-                    {% endif %}
+                {% if user_can_bulk_change or user_can_bulk_delete %}
+                <th style="width:50px">
+                    <input type="checkbox" name="select_all" id="select_all" onclick="selectAll(this)">
+                </th>
                 {% endif %}
-                
+                {% endif %}
+
                 {% for column in list_view_preferences %}
-                    {% if column.application_field.field_type == 'Property' %}
-                        <th>{{ column.field_name }}</th>
-                    {% elif data_table_order_by == column.application_field.field %}
-                        <th 
-                            class="hover:cursor-pointer" 
-                            onclick="filterDataTable('data_table_order_by=-{{column.application_field.field}}','{{datatable_id}}')"
-                            >
-                            <u>{{ column.field_name }}</u>
-                        </th>
-                    {% else %}
-                        <th 
-                            class="hover:cursor-pointer"
-                            onclick="filterDataTable('data_table_order_by={{column.application_field.field}}','{{datatable_id}}')">{{ column.field_name }}</th>
-                    {% endif %}
-                    
+                {% if column.application_field.field_type == 'Property' %}
+                <th>{{ column.field_name }}</th>
+                {% elif data_table_order_by == column.application_field.field %}
+                <th class="hover:cursor-pointer"
+                    onclick="filterDataTable('data_table_order_by=-{{column.application_field.field}}','{{datatable_id}}')">
+                    <u>{{ column.field_name }}</u>
+                </th>
+                {% else %}
+                <th class="hover:cursor-pointer"
+                    onclick="filterDataTable('data_table_order_by={{column.application_field.field}}','{{datatable_id}}')">
+                    {{ column.field_name }}</th>
+                {% endif %}
+
                 {% endfor %}
 
                 {% if include_actions %}
-                    <th>Actions</th>
+                <th>Actions</th>
                 {% endif %}
             </tr>
         </thead>
         <tbody>
             {% if object_list %}
             {% for object in object_list %}
-                <tr 
-                    data-id="{{object.pk}}"
-                    data-display-text="{{object}}"
-                    >
-                    {% if include_actions %}
-                        {% if user_can_bulk_change or user_can_bulk_delete %}
-                        <td>
-                            <input 
-                                type="checkbox" 
-                                name="selected_objects" 
-                                value="{{ object.pk }}"
-                                >
-                        </td>
-                        {% endif %}
+            <tr data-id="{{object.pk}}" data-display-text="{{object}}">
+                {% if include_actions %}
+                {% if user_can_bulk_change or user_can_bulk_delete %}
+                <td>
+                    <input type="checkbox" name="selected_objects" value="{{ object.pk }}">
+                </td>
+                {% endif %}
+                {% endif %}
+
+                {% for preference in list_view_preferences %}
+
+                {% field_value object preference.application_field request.user datatable_item=True %}
+                {% endfor %}
+
+                {% if include_actions %}
+                <td class="flex justify-between gap-2 w-36">
+
+                    <a hx-get="{{ object|detail_view_url }}" hx-push-url="true" hx-target="#main-content"
+                        hx-swap="innerHTML" class="hover:cursor-pointer">
+                        <img src="{% static 'bloomerp/icons/eye.svg' %}" alt="View" width="20" height="20">
+                    </a>
+
+
+                    {% if user_can_change %}
+                    <a href="#" onclick="openModal('updateObject')"
+                        hx-get="{% url 'components_object_model_form' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
+                        hx-target="#updateObject-modal-body" hx-trigger="click">
+                        <img src="{% static 'bloomerp/icons/edit.svg' %}" alt="Edit" width="20" height="20">
+                    </a>
                     {% endif %}
 
-                    {% for preference in list_view_preferences %}
-                        
-                        {% field_value object preference.application_field request.user datatable_item=True %}
-                    {% endfor %}
-
-                    {% if include_actions %}
-                        <td class="flex justify-between gap-2 w-36">
-                            
-                            <a
-                                hx-get="{{ object|detail_view_url }}"
-                                hx-push-url="true"
-                                hx-target="#main-content"
-                                hx-swap="innerHTML"
-                                class="hover:cursor-pointer"
-                                >
-                                <img src="{% static 'bloomerp/icons/eye.svg' %}" alt="View" width="20" height="20">
-                            </a>
-
-
-                            {% if user_can_change %}
-                            <a 
-                                href="#" 
-                                onclick="openModal('updateObject')"
-                                hx-get="{% url 'components_object_model_form' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
-                                hx-target="#updateObject-modal-body"
-                                hx-trigger="click"
-                                >
-                                <img src="{% static 'bloomerp/icons/edit.svg' %}" alt="Edit" width="20" height="20">
-                            </a>
-                            {% endif %}
-
-                            {% if user_can_delete %}
-                            <a 
-                                href="#"
-                                onclick="openModal('deleteModal')" 
-                                hx-get="{% url 'components_delete_object' %}"
-                                hx-target="#modal-deleteModal-content"
-                                hx-swap="innerHTML"
-                                hx-trigger="click"
-                                >
-                                <img src="{% static 'bloomerp/icons/delete.svg' %}" alt="Delete" style="fill:red" width="20" height="20">
-                            </a>
-                            {% endif %}  
-                            
-                            <a 
-                                href="#" 
-                                data-bs-toggle="modal"
-                                data-bs-target="#todoModal"
-                                hx-get="{% url 'components_todos' %}?object_id={{ object.pk }}&content_type_id={{ content_type_id }}"
-                                hx-trigger="click"
-                                hx-target="#todo-container"
-                                hx-swap="innerHTML"
-                                >
-                                <img src="{% static 'bloomerp/icons/notebook.svg' %}" alt="Comments" width="20" height="20">
-                            </a>
-                        </td>
+                    {% if user_can_delete %}
+                    <a href="#" onclick="openModal('deleteModal')"
+                        hx-get="{% url 'components_delete_object' %}?content_type_id={{content_type_id}}&object_id={{object.id}}"
+                        hx-target="#deleteModalInputs" hx-swap="innerHTML" hx-trigger="click">
+                        <img src="{% static 'bloomerp/icons/delete.svg' %}" alt="Delete" style="fill:red" width="20"
+                            height="20">
+                    </a>
                     {% endif %}
-                </tr>
+
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#todoModal"
+                        hx-get="{% url 'components_todos' %}?object_id={{ object.pk }}&content_type_id={{ content_type_id }}"
+                        hx-trigger="click" hx-target="#todo-container" hx-swap="innerHTML">
+                        <img src="{% static 'bloomerp/icons/notebook.svg' %}" alt="Comments" width="20" height="20">
+                    </a>
+                </td>
+                {% endif %}
+            </tr>
             {% endfor %}
             {% else %}
-                <tr>
-                    <td 
-                        {% if include_actions %}
-                        colspan="{{ list_view_preferences.count |add:2 }}"
-                        {% else %}
-                        colspan="{{ list_view_preferences.count }}"
-                        {% endif %}
-                        >No data available</td>
-                </tr>
+            <tr>
+                <td {% if include_actions %} colspan="{{ list_view_preferences.count |add:2 }}" {% else %}
+                    colspan="{{ list_view_preferences.count }}" {% endif %}>No data available</td>
+            </tr>
             {% endif %}
         </tbody>
     </table>
 
     {% elif data_table_view_type == 'calendar' %}
-        {% calendar queryset=object_list start_date_field=data_table_calendar_view_fields.0 end_date_field=data_table_calendar_view_fields.1 %}
+    {% calendar queryset=object_list start_date_field=data_table_calendar_view_fields.0 end_date_field=data_table_calendar_view_fields.1 %}
     {% endif %}
 
 
@@ -159,10 +122,22 @@ Parameters:
     <!--Pagination-->
     <div class="flex align-items-center">
         <div class="btn-group" role="group">
-            <button type="button" hx-include="#filterForm{{ datatable_id }}" hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}" hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=25" class="btn btn-outline-primary btn-sm">25</button>
-            <button type="button" hx-include="#filterForm{{ datatable_id }}" hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}" hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=50" class="btn btn-outline-primary btn-sm">50</button>
-            <button type="button" hx-include="#filterForm{{ datatable_id }}" hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}" hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=100" class="btn btn-outline-primary btn-sm">100</button>
-            <button type="button" hx-include="#filterForm{{ datatable_id }}" hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}" hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=all" class="btn btn-outline-primary btn-sm">all</button>
+            <button type="button" hx-include="#filterForm{{ datatable_id }}"
+                hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}"
+                hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=25"
+                class="btn btn-outline-primary btn-sm">25</button>
+            <button type="button" hx-include="#filterForm{{ datatable_id }}"
+                hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}"
+                hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=50"
+                class="btn btn-outline-primary btn-sm">50</button>
+            <button type="button" hx-include="#filterForm{{ datatable_id }}"
+                hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}"
+                hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=100"
+                class="btn btn-outline-primary btn-sm">100</button>
+            <button type="button" hx-include="#filterForm{{ datatable_id }}"
+                hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}"
+                hx-get="{% url 'components_datatable' %}?{{request_params | safe}}&data_table_limit=all"
+                class="btn btn-outline-primary btn-sm">all</button>
         </div>
     </div>
     <!--End pagination-->
@@ -172,7 +147,8 @@ Parameters:
 <!--Table dropdown-->
 <div id="{{ datatable_id }}-context-menu" class="context-menu">
     <ul style="list-style:none; margin:0; padding:0;">
-        <li class="dropdown-item"><a class="hover:cursor-pointer"  id="{{ datatable_id }}-context-menu-copy-value">Copy Value</a></li>
+        <li class="dropdown-item"><a class="hover:cursor-pointer" id="{{ datatable_id }}-context-menu-copy-value">Copy
+                Value</a></li>
         <li class="dropdown-item" id="{{ datatable_id }}-context-menu-filter-value-list-item">
             <a class="hover:cursor-pointer" id="{{ datatable_id }}-context-menu-filter-value">Filter on Value</a>
         </li>
@@ -186,27 +162,16 @@ Parameters:
 <!--Bulk actions-->
 <div class="save-layout-div d-none" id="bulk-actions">
     <div class="dropup">
-        <button
-            class="btn btn-primary dropdown-toggle"
-            type="button"
-            id="bulkActionsButton"            
-            data-bs-toggle="dropdown"
-            aria-haspopup="true"
-            aria-expanded="false"
-        >
+        <button class="btn btn-primary dropdown-toggle" type="button" id="bulkActionsButton" data-bs-toggle="dropdown"
+            aria-haspopup="true" aria-expanded="false">
             Bulk actions on <span id="selectedObjectsCount"></span> objects
         </button>
         <div class="dropdown-menu" aria-labelledby="bulkActionsButton">
             {% if user_can_bulk_change %}
-                <a class="dropdown-item hover:cursor-pointer"
-                    onclick="openModal('bulkUpdateModal')"
-                >Update</a>
+            <a class="dropdown-item hover:cursor-pointer" onclick="openModal('bulkUpdateModal')">Update</a>
             {% endif %}
             {% if user_can_bulk_delete %}
-                <a class="dropdown-item hover:cursor-pointer"
-                    data-bs-toggle="modal"
-                    data-bs-target="#bulkDeleteModal"
-                >Delete</a>
+            <a class="dropdown-item hover:cursor-pointer" onclick="openModal('bulkDeleteModal')">Delete</a>
             {% endif %}
         </div>
     </div>
@@ -216,27 +181,18 @@ Parameters:
 
 <!-- Bulk Update Modal -->
 {% if user_can_bulk_change %}
-<c-ui.modal id="bulkUpdateModal" title="Bulk Update Objects"
->
+<c-ui.modal id="bulkUpdateModal" title="Bulk Update Objects">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="bulkUpdateModalTitle">
                     Bulk Update Objects
                 </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form
                 hx-post="{% url 'components_bulk_update_objects' %}?content_type_id={{ content_type_id }}&bulk_update_form_prefix=bulk_update_{{datatable_id}}"
-                hx-target="#bulkUpdateResponse"
-                hx-swap="innerHTML"
-                id = "bulkUpdateForm"
-            >
+                hx-target="#bulkUpdateResponse" hx-swap="innerHTML" id="bulkUpdateForm">
                 {% csrf_token %}
 
                 <input type="hidden" name="bulk_update_content_type_id" value="{{ content_type_id }}">
@@ -246,16 +202,12 @@ Parameters:
                     <!--Select field-->
                     <div class="mb-3">
                         <label for="" class="form-label">Select field</label>
-                        <select
-                            class="form-select"
-                            name="field_name"
+                        <select class="form-select" name="field_name"
                             hx-get="{% url "components_object_model_form" %}?content_type_id={{ content_type_id }}&form_prefix=bulk_update_{{datatable_id}}"
-                            hx-trigger="change"
-                            hx-target="#bulkInputFieldTarget{{datatable_id}}"
-                        >
+                            hx-trigger="change" hx-target="#bulkInputFieldTarget{{datatable_id}}">
                             <option selected>Select one</option>
                             {% for field in application_fields %}
-                                <option value="{{ field.field }}">{{ field.field }}</option>
+                            <option value="{{ field.field }}">{{ field.field }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -269,10 +221,10 @@ Parameters:
 
                     <!--Object Ids-->
                     <div id="bulkUpdateIds" class="d-none">
-                        
+
                     </div>
-                    <!--End object ids-->  
-                    
+                    <!--End object ids-->
+
                     <!--Bulk update response-->
                     <div id="bulkUpdateResponse">
 
@@ -280,18 +232,10 @@ Parameters:
                     <!--End bulk update response-->
                 </div>
                 <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         Close
                     </button>
-                    <button 
-                        type="submit" 
-                        class="btn btn-primary"
-                        data-bs-dismiss="modal"
-                        >Save</button>
+                    <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Save</button>
                 </div>
             </form>
         </div>
@@ -299,75 +243,37 @@ Parameters:
 </c-ui.modal>
 {% endif %}
 
-
-{% if user_can_bulk_delete %}
 <!-- Bulk Delete Modal -->
-<div
-    class="modal fade"
-    id="bulkDeleteModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="bulkDeleteModalTitle"
-    aria-hidden="true"
->
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="bulkDeleteModalTitle">
-                    Bulk Delete Objects
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
+{% if user_can_bulk_delete %}
+<c-ui.modal id="bulkDeleteModal" title="Bulk delete objects">
+    <form
+        hx-post="{% url 'components_bulk_update_objects' %}?content_type_id={{ content_type_id }}&form_prefix=bulk_delete"
+        id="bulkDeleteForm" hx-target="#bulkDeleteResponse" hx-swap="innerHTML"
+        hx-on::after-request="showMessage('Objects deleted successfully', 'success')">
+        {% csrf_token %}
+        <div class="modal-body" id="bulkDeleteFormDiv">
+            <p>Are you sure you want to delete the selected objects?</p>
+
+            <!--Object Ids-->
+            <div id="bulkDeleteIds" class="d-none">
+
             </div>
-            <form 
-                hx-post="{% url 'components_bulk_update_objects' %}?content_type_id={{ content_type_id }}&form_prefix=bulk_delete"
-                id="bulkDeleteForm"
-                hx-target="#bulkDeleteResponse"
-                hx-swap="innerHTML"
-                hx-on::after-request="showMessage('Objects deleted successfully', 'success')"
-                >
-                {% csrf_token %}
-                <div class="modal-body" id="bulkDeleteFormDiv">
-                    <p>Are you sure you want to delete the selected objects?</p>
+            <!--End object ids-->
 
-                    <!--Object Ids-->
-                    <div id="bulkDeleteIds" class="d-none">
+            <!--Delte objects input-->
+            <input type="hidden" name="delete_objects" value="true">
+            <!--End delete objects input-->
 
-                    </div>
-                    <!--End object ids-->
-
-                    <!--Delte objects input-->
-                    <input type="hidden" name="delete_objects" value="true">
-                    <!--End delete objects input-->
-
-                    <!--Bulk delete response-->
-                    <div id="bulkDeleteResponse"></div>
-                    <!--End bulk delete response-->
-
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button 
-                        type="submit" 
-                        class="btn btn-danger"
-                        data-bs-dismiss="modal"
-                        >Delete</button>
-                </div>
-            </form>
+            <!--Bulk delete response-->
+            <div id="bulkDeleteResponse"></div>
+            <!--End bulk delete response-->
         </div>
-    </div>
-</div>
+    </form>
+</c-ui.modal>
 {% endif %}
+<!--End bulk Delete modal-->
+
+
 
 {% if user_can_bulk_change or user_can_bulk_delete %}
 <script>
@@ -441,138 +347,41 @@ Parameters:
             // Update table
             reloadTable('{{ datatable_id }}', '{{ request_params | safe }}', '{% url "components_datatable" %}')
         }
-      })
+    })
 </script>
-<!--End bulk actions-->
 {% endif %}
 
-{% if user_can_change %}
 <!--Update modal-->
-<c-ui.modal id="updateObject" title="Update object">
-    
-</c-ui.modal>
-
-
-
-<script>
-    var modalId = document.getElementById('updateModal');
-
-    modalId.addEventListener('show.bs.modal', function (event) {
-        // Button that triggered the modal
-        let button = event.relatedTarget;
-        // Extract info from data-bs-
-        let objectId = button.getAttribute('data-bs-object-id');
-        let contentTypeId = button.getAttribute('data-bs-content-type-id');
-        
-        url = ";
-        
-        updateUrl = "{{ api_endpoint | escapejs }}" + objectId + "/";
-
-        // Update modal
-        htmx.ajax('GET', url, '#updateFormDiv');
-
-        // Update form action
-        form = document.getElementById('updateForm');
-        
-
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            let formData = new FormData(form);
-            fetch(updateUrl, {
-                method: 'PATCH',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            }).then(response => {
-                if (response.ok) {
-                    // Reload table
-                    reloadTable('{{ datatable_id }}', '{{ request_params | safe }}', '{% url "components_datatable" %}');
-
-                    // Message
-                    showMessage('Object updated successfully', 'success');
-
-                    // Close modal
-                    var modal = bootstrap.Modal.getInstance(modalId);
-                    if (modal) {
-                        modal.hide();
-                    }
-                } else {
-                    // Message
-                    showMessage('Error updating object', 'danger');
-                }
-            });
-
-        });
-
-
-    });
-</script>
-<!--End update modal-->
+{% if user_can_change %}
+<c-ui.modal id="updateObject" title="Update object"></c-ui.modal>
 {% endif %}
-
-{% if user_can_delete %}
+<!--End update modal-->
 
 <!--Delete modal-->
-<c-ui.modal id="deleteModal" title="Delete object"></c-ui.modal>
-<!--End Delete modal-->
-<div
-    class="modal fade"
-    id="deleteModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
->
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Delete object
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form
-                hx-post="{% url 'components_delete_object' %}?content_type_id={{ content_type_id }}"
-                hx-target="this"
-                hx-swap="none"
-                hx-include="[name='object_id']"
-                hx-on::after-request="if(event.detail.successful){reloadTable('{{ datatable_id }}','{{ request_params | safe }}','{% url 'components_datatable' %}');}"
-            >
-                {% csrf_token %}
-                <div class="modal-body" id="deleteFormDiv">
-                    <p>Are you sure you want to delete <span id="deleteObjectSpan" class="fw-bold"></span>?</p>
-                </div>
-                <input type="hidden" name="object_id" id="deleteObjectId">
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">Delete</button>
-                </div>
-            </form>
+{% if user_can_delete %}
+<c-ui.modal id="deleteModal" title="Delete object">
+    <form hx-post="{% url 'components_delete_object' %}" hx-target="this"
+        hx-on::after-request="if(event.detail.successful){reloadTable('{{ datatable_id }}','{{ request_params | safe }}','{% url 'components_datatable' %}');}">
+        {% csrf_token %}
+        <div class="modal-body" id="deleteFormDiv">
+            <p>Are you sure you want to delete <span id="deleteObjectSpan" class="fw-bold"></span>?</p>
         </div>
-    </div>
-</div>
-
-<!--End delete modal-->
+        <div id="deleteModalInputs"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                Close
+            </button>
+            <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">Delete</button>
+        </div>
+    </form>
+</c-ui.modal>
+<!--End Delete modal-->
 {% endif %}
-
 {% endif %}
 
 <script>
     document.addEventListener('htmx:afterSettle', () => addContextMenu('{{ datatable_id }}'));
 </script>
 
-<input type="hidden" id="{{datatable_id}}-datatable-url" value="{% url 'components_datatable' %}?{{ request_params | safe }}">
-
+<input type="hidden" id="{{datatable_id}}-datatable-url"
+    value="{% url 'components_datatable' %}?{{ request_params | safe }}">

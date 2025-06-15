@@ -15,9 +15,9 @@ Variables:
 <!-- End title -->
 
 <!-- Search & filter -->
-<div class="d-flex justify-content-between">
+<div class="flex justify-content-between">
 
-    <div class="d-flex">
+    <div class="flex">
         <input 
             type="text" 
             class="form-control form-control-sm" 
@@ -31,7 +31,7 @@ Variables:
         >
     </div>
 
-    <div class="d-flex">
+    <div class="flex">
         <!-- Filter button -->
         {% url 'components_files' as url %}
         {% if object and content_type_id %}

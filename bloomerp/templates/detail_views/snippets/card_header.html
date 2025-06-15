@@ -1,51 +1,33 @@
 {% load static %}
 
-<div class="d-flex justify-content-between mb-2 px-4 py-2">
+<div class="flex justify-content-between mb-2 px-4 py-2">
     <!--Comments and bookmark section-->
-    <div class="d-flex gap-3">
+    <div class="flex gap-3">
 
         <!--Comments-->
-        <a
-            class="hover:cursor-pointer"
-            id="dropdownCommentsMenu"
-            data-bs-toggle="modal"
-            data-bs-target="#commentsModal"
-        >
+        <a class="hover:cursor-pointer" id="dropdownCommentsMenu" onclick="openModal('commentsModal')">
             <img src="{% static 'bloomerp/icons/chat-line.svg' %}" height="30" width="30" alt="Comments" />
         </a>
         <!--End Comments-->
-        
+
         <!--Bookmark-->
-        <div 
-            id="bookmarkButton"
+        <div id="bookmarkButton"
             hx-get="{% url 'components_bookmark' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
-            hx-trigger="load"
-            hx-swap="this"
-            >
-            
+            hx-trigger="load" hx-swap="this">
+
         </div>
         <!--End Bookmark-->
 
         <!--Todos-->
-        <a
-            class="hover:cursor-pointer"
-            data-bs-toggle="modal"
-            data-bs-target="#todoModal"
+        <a class="hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#todoModal"
             hx-get="{% url 'components_todos' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
-            hx-trigger="click"
-            hx-target="#todo-container"
-            hx-swap="innerHTML"
-        >
+            hx-trigger="click" hx-target="#todo-container" hx-swap="innerHTML">
             <img src="{% static 'bloomerp/icons/notebook.svg' %}" height="30" width="30" alt="Comments" />
         </a>
         <!--End Todos-->
 
         <!--Object AI-->
-        <a
-            class="hover:cursor-pointer"
-            data-bs-toggle="modal"
-            data-bs-target="#modal_object_ai"
-        >
+        <a class="hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#modal_object_ai">
             <img src="{% static 'bloomerp/icons/ai.svg' %}" height="30" width="30" alt="Comments" />
         </a>
         <!--End object AI-->
@@ -56,78 +38,49 @@
 
 
     <!--Settings-->
-    <div class="d-flex">
-		<a class="icon" href="#" data-bs-toggle="dropdown">
+    <div class="flex">
+        <a class="icon" href="#" data-bs-toggle="dropdown">
             <img src="{% static 'bloomerp/icons/dots.svg' %}" height="25" width="25" alt="Filter" />
         </a>
-		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-		<li class="dropdown-header text-start">
-			<h6>Settings</h6>
-		</li>
+        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+            <li class="dropdown-header text-start">
+                <h6>Settings</h6>
+            </li>
 
-        {% if not disable_tab_select %}
-		<li class="dropdown-item hover:cursor-pointer">
-			<a data-bs-toggle="modal" data-bs-target="#updateTabsModal">Update tabs</a>
-		</li>
-        {% endif %}
-		</ul>
-	</div>
+            {% if not disable_tab_select %}
+            <li class="dropdown-item hover:cursor-pointer">
+                <a data-bs-toggle="modal" data-bs-target="#updateTabsModal">Update tabs</a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
     <!--Settings-->
-</div>
-
-
-<!-- Comments modal -->
-<div
-    class="modal fade"
-    id="commentsModal"  
-    tabindex="-1"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
->
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg"
-        role="document"
-    >
+</onclick="divopenMod'commentsModal'al()"" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
+    role="dialog" aria-labelledby="modalTitleId" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalTitleId">
                     Comments
                 </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                
-                <div
-                    hx-get="{% url 'components_comments' %}?content_type_id={{ content_type_id }}&object_id={{ object.pk }}"
-                    hx-trigger="load"
-                    hx-target="this"
-                    hx-swap="innerHTML"
-                    id="commentsModalContent"
-                >
-                </div>
-                
-                {% include 'detail_views/snippets/post_comment_snippet.html' with target="#commentsModalContent" object=object content_type_id=content_type_id%}
+
 
             </div>
             <div class="modal-footer">
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    data-bs-dismiss="modal"
-                >
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     Close
                 </button>
             </div>
         </div>
     </div>
-</div>
-<!-- End Comments modal -->
+onclick="openModal('commentsModal')"" title="Comments">
+    <div hx-get="{% url 'components_comments' %}?content_type_id={{ content_type_id }}&object_id={{ object.pk }}"
+        hx-trigger="load" hx-target="this" hx-swap="innerHTML" id="commentsModalContent">
+    </div>
 
+    {% include 'detail_views/snippets/post_comment_snippet.html' with target="#commentsModalContent" object=object content_type_id=content_type_id%}
+</c-ui.modal>
+<!-- End Comments modal -->
