@@ -16,23 +16,23 @@
 	<div class="card-body">
 
 		<!--Picture-->
-		<div class="d-flex justify-content-center mb-3">
+		<div class="flex justify-center mb-3">
 			{% avatar object=object size="6em" class_name="rounded-circle" %}
 		</div>
 		<!--End Picture-->
 
 		<!--Text under picture-->
-		<div class="d-flex justify-content-center">
-				<h2>{{object}}</h2>
+		<div class="flex justify-center mb-6">
+			<h2 class="text-xl font-bold">{{object}}</h2>
 		</div>
 		<!--End Text under picture-->
 
 		<!--Card Tabs-->
-		<ul class="nav nav-tabs nav-tabs-bordered mb-2">
+		<c-ui.tabs.container>
 			<!--If tabs are defined in the view, it should override-->
 			{% if tabs %}
 				{% for tab in tabs %}
-				<li class="nav-item">
+				<c-ui.tabs.item>
 					<a class="nav-link"
 					{% if tab.requires_pk %}hx-get="{% url tab.url object.pk %}"{% else %}hx-get="{% url tab.url %}"{% endif %}
 					type="submit"
@@ -44,12 +44,12 @@
 					{% if tab.requires_pk %} id="{% url tab.url object.pk %}" {% else %} id="{% url tab.url %}" {% endif %}>
 					{{tab.name}}
 					</a>
-				</li>
+				</c-ui.tabs.item>
 				{% endfor %}
 			{% else %}
 				{% for tab in detail_view_tabs %}
-				<li class="nav-item">
-					<a class="nav-link"
+				<c-ui.tabs.item>
+					<a
 						hx-get="{% url tab.link.url object.pk %}" 
 						type="submit"
 						hx-swap="innerHTML" 
@@ -61,10 +61,10 @@
 						data-bs-placement="top"
 						title="{{tab.link.description}}"
 						id="{% url tab.link.url object.pk %}">{{tab.link.name}}</a>
-				</li>
+				</c-ui.tabs.item>
 				{% endfor %}
 			{% endif %}
-		</ul>
+		</c-ui.tabs.container>
 		<!--End Card Tabs-->
 
 		<!--Content-->

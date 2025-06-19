@@ -1,0 +1,11 @@
+{% comment %}
+An item inside a tabs container
+
+Parameters:
+- active (bool) : determines whether the tab is lit up or not
+- slot : the content within the tab
+{% endcomment %}
+
+<li class="border-b border-primary-200 text-lg {% if active %} text-primary border-primary{% endif %}">
+{{ slot }}
+</li>

@@ -101,13 +101,13 @@
 
             <div class="row">
                 <div class="col-md-6 col-12">
-                    <span class="text-meta d-block">Requested by: <span class="fw-bold">{% if todo.requested_by == request.user %}you{% else %}{{todo.requested_by}}{% endif %}</span></span>
-                    <span class="text-meta d-block">Assigned to: <span class="fw-bold">{% if todo.assigned_to == request.user %}you{% else %}{{todo.assigned_to}}{% endif %}</span></span>
+                    <span class="text-meta d-block">Requested by: <span class="font-bold">{% if todo.requested_by == request.user %}you{% else %}{{todo.requested_by}}{% endif %}</span></span>
+                    <span class="text-meta d-block">Assigned to: <span class="font-bold">{% if todo.assigned_to == request.user %}you{% else %}{{todo.assigned_to}}{% endif %}</span></span>
                 </div>
 
                 <div class="col-md-6 col-12">
-                    <span class="text-meta d-block">Created: <span class="fw-bold">{{todo.datetime_created|date:request.user.datetime_view_preference}}</span></span>
-                    <span class="text-meta d-block">Completed on: <span class="fw-bold">{{todo.datetime_completed|date:request.user.datetime_view_preference}}</span></span>
+                    <span class="text-meta d-block">Created: <span class="font-bold">{{todo.datetime_created|date:request.user.datetime_view_preference}}</span></span>
+                    <span class="text-meta d-block">Completed on: <span class="font-bold">{{todo.datetime_completed|date:request.user.datetime_view_preference}}</span></span>
                 </div>
             </div>
         </div>

@@ -2,30 +2,21 @@
 {% load static %}
 
 <div class="d-flex justify-content-between">
-  <h5 class="card-title">Overview</h5>
-  <div>
-    <a 
-      hx-get="{% url 'users_my_profile_detail_view_preference' %}?content_type_id={{content_type_id}}&return_to={{request.path}}"
-      hx-target="#main-content"
-      hx-swap="innerHTML"
-      hx-trigger="click"
-      hx-push-url="true"
-      class="hover:cursor-pointer"
-    >
-      <img src="{% static 'bloomerp/icons/settings.svg' %}" alt="Settings" style="width: 20px;">
-    </a>
-  </div>
+    <h5 class="card-title">Overview</h5>
+    <div>
+        <a hx-get="{% url 'users_my_profile_detail_view_preference' %}?content_type_id={{content_type_id}}&return_to={{request.path}}"
+            hx-target="#main-content" hx-swap="innerHTML" hx-trigger="click" hx-push-url="true"
+            class="hover:cursor-pointer">
+            <img src="{% static 'bloomerp/icons/settings.svg' %}" alt="Settings" style="width: 20px;">
+        </a>
+    </div>
 </div>
 
 {% if no_preferences%}
 
-<p>You currently have no list view preferences set for this model. You can your view preferences 
-  <a 
-  hx-get="{% url 'users_my_profile_detail_view_preference' %}?content_type_id={{content_type_id}}&return_to={{request.path}}"
-  hx-target="#main-content"
-  hx-swap="innerHTML"
-  hx-trigger="click"
-  hx-push-url="true">here.</a>
+<p>You currently have no list view preferences set for this model. You can your view preferences
+    <a hx-get="{% url 'users_my_profile_detail_view_preference' %}?content_type_id={{content_type_id}}&return_to={{request.path}}"
+        hx-target="#main-content" hx-swap="innerHTML" hx-trigger="click" hx-push-url="true">here.</a>
 </p>
 
 
@@ -35,54 +26,51 @@
 
 <div class="row">
 
-  {% if left_column %}
-  <div class="col-12 col-sm-{{col_span}}">
-    {% for attribute in left_column %}
-    <div class="row mt-2">
-        <p><span class="fw-bold mb-1 pe-3">{{ attribute.application_field.title }}:   </span>
-          
-          {% field_value object attribute.application_field request.user %}
-          
-      </p>
+    {% if left_column %}
+    <div class="col-12 col-sm-{{col_span}}">
+        {% for attribute in left_column %}
+        <div class="row mt-2">
+            <p><span class="font-bold mb-1 pe-3">{{ attribute.application_field.title }}: </span>
+
+                {% field_value object attribute.application_field request.user %}
+
+            </p>
+        </div>
+
+        {% endfor %}
     </div>
+    {% endif %}
 
-    {% endfor %}
-  </div>  
-  {% endif %}
+    {% if center_column %}
+    <div class="col-12 col-sm-{{col_span}}">
+        {% for attribute in center_column %}
+        <div class="row mt-2">
+            <p><span class="font-bold mb-1 pe-3">{{ attribute.application_field.title }}:</span>
 
-  {% if center_column %}
-  <div class="col-12 col-sm-{{col_span}}">
-    {% for attribute in center_column %}
-    <div class="row mt-2">
-        <p><span class="fw-bold mb-1 pe-3">{{ attribute.application_field.title }}:</span>
-          
-          {% field_value object attribute.application_field request.user %}
-          
-      </p>
+                {% field_value object attribute.application_field request.user %}
+
+            </p>
+        </div>
+
+        {% endfor %}
     </div>
+    {% endif %}
 
-    {% endfor %}
-  </div>  
-  {% endif %}
+    {% if right_column %}
+    <div class="col-12 col-sm-{{col_span}}">
+        {% for attribute in right_column %}
+        <div class="row mt-2">
+            <p><span class="font-bold mb-1 pe-3">{{ attribute.application_field.title }}: </span>
 
-  {% if right_column %}
-  <div class="col-12 col-sm-{{col_span}}">
-    {% for attribute in right_column %}
-    <div class="row mt-2">
-        <p><span class="fw-bold mb-1 pe-3">{{ attribute.application_field.title }}:   </span>
-          
-          {% field_value object attribute.application_field request.user %}
-          
-      </p>
+                {% field_value object attribute.application_field request.user %}
+
+            </p>
+        </div>
+
+        {% endfor %}
     </div>
-
-    {% endfor %}
-  </div>  
-  {% endif %}
+    {% endif %}
 
 
 
 </div>
-
-
-

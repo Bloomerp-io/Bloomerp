@@ -37,23 +37,16 @@
     <!--Settings-->
     <div class="flex">
         <c-ui.dropdown.body>
-            
+            <c-ui.dropdown.item text="Settings"/>
+            {% if not disable_tab_select %}
+            <c-ui.dropdown.item text="Update tabs" onclick="openModal('updateTabsModal')"/>
+            {% endif %}
         </c-ui.dropdown.body>
         
         <a class="icon" href="#" data-bs-toggle="dropdown">
             <img src="{% static 'bloomerp/icons/dots.svg' %}" height="25" width="25" alt="Filter" />
         </a>
-        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-            <li class="dropdown-header text-start">
-                <h6>Settings</h6>
-            </li>
-
-            {% if not disable_tab_select %}
-            <li class="dropdown-item hover:cursor-pointer">
-                <a onclick="openModal('updateTabsModal')">Update tabs</a>
-            </li>
-            {% endif %}
-        </ul>
+            
     </div>
     <!--Settings-->
 </div>

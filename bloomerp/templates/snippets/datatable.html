@@ -364,7 +364,7 @@ ListViewPreference model.
         hx-on::after-request="if(event.detail.successful){reloadTable('{{ datatable_id }}','{{ request_params | safe }}','{% url 'components_datatable' %}');}">
         {% csrf_token %}
         <div class="modal-body" id="deleteFormDiv">
-            <p>Are you sure you want to delete <span id="deleteObjectSpan" class="fw-bold"></span>?</p>
+            <p>Are you sure you want to delete <span id="deleteObjectSpan" class="font-bold"></span>?</p>
         </div>
         <div id="deleteModalInputs"></div>
         <div class="modal-footer">
