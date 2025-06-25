@@ -17,8 +17,3 @@ class IntOrUUIDConverter:
         return str(value)
     
 
-def generate_detail_view_tabs(urlpatterns:list[URLPattern]):
-    '''
-    Generate DetailViewTab objects from urlpatterns.
-    '''
-    

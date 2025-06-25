@@ -18,7 +18,10 @@ from django.db.models import (
 from bloomerp.models.fields import StatusField
 from django_filters import DateFilter
 
-def dynamic_filterset_factory(model):
+from typing import Type
+from django.db.models import Model
+
+def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.FilterSet]:
     """
     Dynamically creates a FilterSet class for the given model. It generates filters
     based on field types, such as `icontains`, `exact`, and `isnull` for string fields,
