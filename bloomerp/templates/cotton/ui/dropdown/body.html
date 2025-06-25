@@ -6,6 +6,7 @@ Parameters:
 - trigger_class : additional CSS classes for the trigger button
 - menu_class : additional CSS classes for the dropdown menu
 - position : dropdown position - "left", "right", or "center" (default: "right")
+- direction : dropdown direction - "up" or "down" (default: "down")
 - size : dropdown size - "sm", "md", "lg" (default: "md")
 - disabled : whether the dropdown is disabled (default: False)
 - icon : whether to show dropdown icon (default: True)
@@ -64,7 +65,12 @@ Parameters:
     <!-- Dropdown menu -->
     <div 
         class="
-            absolute z-50 mt-2 
+            absolute z-50 
+            {% if direction == 'up' %}
+                bottom-full mb-2
+            {% else %}
+                mt-2
+            {% endif %}
             {% if size == 'sm' %}
                 w-48
             {% elif size == 'lg' %}
@@ -73,11 +79,11 @@ Parameters:
                 w-56
             {% endif %}
             {% if position == 'left' %}
-                origin-top-left left-0
+                {% if direction == 'up' %}origin-bottom-left{% else %}origin-top-left{% endif %} left-0
             {% elif position == 'center' %}
-                origin-top left-1/2 transform -translate-x-1/2
+                {% if direction == 'up' %}origin-bottom{% else %}origin-top{% endif %} left-1/2 transform -translate-x-1/2
             {% else %}
-                origin-top-right right-0
+                {% if direction == 'up' %}origin-bottom-right{% else %}origin-top-right{% endif %} right-0
             {% endif %}
                 bg-white border border-gray-200 focus:outline-none transition-all duration-200 ease-in-out
             {{ menu_class }}

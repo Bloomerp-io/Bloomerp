@@ -11,9 +11,9 @@
 		<h4 class="card-title">{{model_name_plural|title}} list</h4>
 		{% datatable content_type_id=content_type_id user=request.user request=request %}
 
-		<div class="d-md-flex justify-content-center gap-2 mt-3">
-			<a class="btn btn-primary d-block" href="{% url create_view_url %}">Add {{ model_name }}</a>
-			<a class="btn btn-secondary mt-2 mt-md-0 d-block" href="{% url bulk_upload_url %}">Bulk upload {{ model_name_plural }}</a>
+		<div class="flex justify-center gap-2 mt-3">
+			<a class="btn btn-primary" href="{% url create_view_url %}">Add {{ model_name }}</a>
+			<a class="btn btn-secondary" href="{% url bulk_upload_url %}">Bulk upload {{ model_name_plural }}</a>
 		</div>
 
 	</div>

@@ -161,20 +161,20 @@ ListViewPreference model.
 {% if user_can_bulk_change or user_can_bulk_delete %}
 <!--Bulk actions-->
 <div class="save-layout-div hidden" id="bulk-actions">
-    <div class="dropup">
-        <button class="btn btn-primary dropdown-toggle" type="button" id="bulkActionsButton" data-bs-toggle="dropdown"
-            aria-haspopup="true" aria-expanded="false">
-            Bulk actions on <span id="selectedObjectsCount"></span> objects
-        </button>
-        <div class="dropdown-menu" aria-labelledby="bulkActionsButton">
-            {% if user_can_bulk_change %}
-            <a class="dropdown-item hover:cursor-pointer" onclick="openModal('bulkUpdateModal')">Update</a>
-            {% endif %}
-            {% if user_can_bulk_delete %}
-            <a class="dropdown-item hover:cursor-pointer" onclick="openModal('bulkDeleteModal')">Delete</a>
-            {% endif %}
-        </div>
-    </div>
+    <c-ui.dropdown.body 
+        trigger_class="px-4 py-2 bg-primary text-white hover:bg-primary-600 rounded-md font-medium"
+        trigger_text='Bulk actions on&nbsp;<span id="selectedObjectsCount"></span>&nbsp;objects'
+        icon="True"
+        size="md"
+        direction="up"
+        >
+        {% if user_can_bulk_change %}
+        <c-ui.dropdown.item text="Update" onclick="openModal('bulkUpdateModal')"/>
+        {% endif %}
+        {% if user_can_bulk_delete %}
+        <c-ui.dropdown.item text="Delete" onclick="openModal('bulkDeleteModal')" danger="True"/>
+        {% endif %}
+    </c-ui.dropdown.body>
 </div>
 <!--End bulk actions-->
 {% endif %}
