@@ -6,6 +6,6 @@ Parameters:
 - slot : the content within the tab
 {% endcomment %}
 
-<li class="border-b border-primary-200 text-lg {% if active %} text-primary border-primary{% endif %}">
+<li class="relative px-6 py-3 cursor-pointer transition-all duration-200 ease-in-out hover:bg-gray-50 {% if active %}border-b-2 border-primary bg-primary/5 text-primary font-medium{% else %}border-b border-primary text-gray-600 hover:text-gray-800{% endif %}">
 {{ slot }}
 </li>

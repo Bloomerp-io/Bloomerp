@@ -508,3 +508,410 @@
         background-color: var(--color-primary-950);
     }
 }
+
+
+
+/*--------------------------------------------------------------
+# Custom
+--------------------------------------------------------------*/
+.timesheet-entry {
+  padding: 2px;
+}
+
+.timesheet-entry:hover {
+  border: 1px solid;
+  border-radius: 1;
+}
+
+
+.filter-section .bi-plus-lg {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex;
+}
+
+.filter-section .filter-item {
+  background-color:rgb(235, 235, 235);
+  padding: 8px;
+  padding-left: 15px;
+  padding-right: 15px;
+  border-radius: 10px;
+  margin: 10px;
+}
+
+.filter-section .filter-item:hover {
+  background-color:rgb(238, 238, 238);
+}
+
+.dropdown-menu.filter-dropdown-menu {
+  padding: 10px;
+  width: 30vw;
+}
+
+@media (max-width: 576px) {
+  .dropdown-menu.filter-dropdown-menu {
+    width: 100vw;
+  }
+}
+
+
+.pointer {
+  cursor: pointer;
+}
+
+.pointer:hover {
+  color: var(--primary-hover);
+}
+
+.copy-icon {
+  cursor: pointer; /* Changes the cursor to indicate the icon is clickable */
+  margin-left: 5px; /* Adds a little space between the text and the icon */
+  position: relative;
+  size: 2;
+}
+
+.copy-icon:hover {
+  color: #b5d2fd;
+}
+
+.list-view-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+
+.label-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: start;
+  color: white;
+}
+
+.label-span {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  padding: 7px;
+  background-color: var(--primary);
+  cursor: pointer;
+}
+
+.label-span:hover {
+  background-color: #6776f4;
+}
+
+/* 
+Dashboard
+*/
+
+.draggable {
+  cursor: move;
+}
+
+.drag-over {
+  background-color: #e3ebfc;
+  border: 1px dashed var(--dark);
+  padding: 10px;
+  margin: 10px;
+}
+
+.dropzone-container {
+  background-color: var(--main-light);
+}
+
+.dropzone-row {
+  background-color: #edf3ff;
+  border: 1px dashed #b5b5b5;
+  padding: 20px;
+  margin: 20px;
+}
+
+.dropzone-row.dropzone-row-add-col {
+  position:absolute;
+  top: 0;
+}
+
+.dropzone-col.dragover {
+  background-color: #6e7685;
+  border: 1px dashed var(--dark);
+  z-index: 1000;
+
+}
+
+.save-layout-div {
+  position: fixed;
+  bottom: 15px; /* Distance from the bottom */
+  right: 60px;  /* Distance from the right */
+  z-index: 1000; /* Ensure it appears above other elements */
+  background-color: transparent;
+}
+
+.href {
+  cursor: pointer;
+  color : var(--primary);
+}
+
+.file-breadcrumb-item {
+  color: var(--dark);
+  font-size:x-large;
+  font-weight: bold;
+}
+
+.checkmark {
+  color: var(--main-dark);
+  font-size: 20px;
+  margin-left: 5px;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+
+.htmx-indicator{
+  display:none;
+  width: 20px;
+  height: 20px;
+}
+.htmx-request .htmx-indicator{
+  display:inline;
+  justify-content:center;
+  align-items:center;
+}
+.htmx-request.htmx-indicator{
+  display:inline;
+}
+
+/* 
+  CSS for content layout
+*/
+.content-layout-row {
+  background-color: #edf3ff;
+  border: 1px dashed #b5b5b5;
+  padding: 10px;
+  margin: 10px;
+}
+
+.content-layout-column {
+  background-color: #c9dafc;
+  border: 1px solid #b5b5b5;
+  padding: 5px;
+  margin: 5px;
+}
+
+.content-layout-column.dragover {
+  background-color: #6e7685;
+  border: 1px dashed var(--dark);
+}
+
+.content-layout-column.draggable {
+  cursor: move;
+}
+
+.content-layout-item {
+  background-color: #bed3fd;
+  border: 1px solid #b5b5b5;
+  padding: 5px;
+  margin: 5px;
+}
+
+
+.is-loading {
+  background: #eee;
+  background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+  border-radius: 5px;
+  background-size: 200% 100%;
+  animation: 1.5s shine linear infinite;
+  z-index: 1000;
+}
+
+@keyframes shine {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+/* 
+  Alert messages
+*/
+/* Wrapper to hold all messages */
+.messages-wrapper {
+  position: fixed;
+  bottom: 40px; /* Distance from the bottom */
+  right: 60px;  /* Distance from the right */
+  z-index: 1100; /* Ensure it appears above other elements */
+  display: flex;
+  flex-direction: column; /* Stack messages vertically */
+  gap: 10px; /* Space between messages */
+}
+
+/* Common styles for all message containers */
+.message-container {
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 400px; /* Optional: Set a minimum width */
+  max-width: 600px; /* Optional: Set a maximum width */
+  opacity: 1; /* Initial opacity */
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out; /* Transition for fade-out and slight upward movement */
+}
+
+/* Specific styles for error messages */
+.alert-message-error {
+  background-color: #f8d7da; /* Light red background */
+  color: #721c24;           /* Dark red text */
+}
+
+/* Specific styles for success messages */
+.alert-message-success {
+  background-color: #d4edda; /* Light green background */
+  color: #155724;           /* Dark green text */
+}
+
+/* Styles for the inner message content */
+.alert-message {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.alert-message-info {
+  background-color: #cce5ff; /* Light blue background */
+  color: #004085;           /* Dark blue text */
+}
+
+.alert-message-warning {
+  background-color: #fff3cd; /* Light yellow background */
+  color: #856404;           /* Dark yellow text */
+}
+
+.alert-icon {
+  padding-right: 5px;
+  height: 24px;
+}
+
+.alert-close {
+  cursor: pointer;
+  height: 20px;
+}
+
+.fade-out {
+  opacity: 0;
+  transform: translateY(-20px); /* Optional: Move the message slightly upwards */
+}
+
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+}
+
+/* 
+  LLM CSS
+*/
+.assistant-bubble {
+  background-color: white;
+  color: black;
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 75%;
+  word-wrap: break-word;
+  border: var(--primary) 2px solid;
+}
+.user-bubble {
+  background-color: var(--primary);
+  color: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 75%;
+  word-wrap: break-word;
+}
+
+/* 
+  Signature css
+*/
+
+.signature-canvas {
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  width: 100%;
+  height: 200px;
+  touch-action: none; 
+}
+
+.initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: gray;
+  color: white;
+}
+
+/* 
+  Context menu
+*/
+
+.context-menu {
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 5px;
+}
+
+/*
+  Legend
+*/
+
+.form-legend {
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--main-dark);
+  font-weight: bold;
+  font-family: var(--font-sans);
+}
+
+/* Full callendar */
+
+.fc .fc-button-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%; /* Makes it circular */
+}
+
+
+.full-screen {
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1050; /* Ensure it's above other elements */
+}
+
+.underline {
+  text-decoration: underline;
+}
+
+/* Meta text */
+.text-meta {
+  font-size: 12px;
+  color: #6c757d;
+}

@@ -36,17 +36,16 @@
 
     <!--Settings-->
     <div class="flex">
-        <c-ui.dropdown.body>
+        <c-ui.dropdown.body 
+            trigger_class="p-2 hover:bg-gray-100 rounded-md" 
+            trigger_text='<img src="{% static "bloomerp/icons/dots.svg" %}" height="25" width="25" alt="Options" />' 
+            icon="False"
+            >
             <c-ui.dropdown.item text="Settings"/>
             {% if not disable_tab_select %}
             <c-ui.dropdown.item text="Update tabs" onclick="openModal('updateTabsModal')"/>
             {% endif %}
         </c-ui.dropdown.body>
-        
-        <a class="icon" href="#" data-bs-toggle="dropdown">
-            <img src="{% static 'bloomerp/icons/dots.svg' %}" height="25" width="25" alt="Filter" />
-        </a>
-            
     </div>
     <!--Settings-->
 </div>
