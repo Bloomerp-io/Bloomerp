@@ -140,8 +140,8 @@ Variables:
             {% for folder in folders %}
                 <tr
                     class="folder-row"
-                    onmouseover="this.querySelector('.d-flex').classList.remove('d-none')"
-                    onmouseout="this.querySelector('.d-flex').classList.add('d-none')"
+                    onmouseover="this.querySelector('.d-flex').classList.remove('hidden')"
+                    onmouseout="this.querySelector('.d-flex').classList.add('hidden')"
                     draggable="true"
                     ondragover="folderDragOverHandler(event)"
                     ondragleave="folderDragLeaveHandler(event)"
@@ -168,7 +168,7 @@ Variables:
                     <td>{{folder.datetime_updated}}</td>
                     <td></td>
                     <td width="120px">
-                        <div class="d-flex d-none justify-content-between">
+                        <div class="d-flex hidden justify-content-between">
                             
                         </div>
                     </td>
@@ -182,8 +182,8 @@ Variables:
                 {% for file in files %}
                 <tr 
                     class="file-row"
-                    onmouseover="this.querySelector('.d-flex').classList.remove('d-none')"
-                    onmouseout="this.querySelector('.d-flex').classList.add('d-none')"
+                    onmouseover="this.querySelector('.d-flex').classList.remove('hidden')"
+                    onmouseout="this.querySelector('.d-flex').classList.add('hidden')"
                     draggable="true"
                     ondragstart="fileDragStartHandler(event)"
                     data-id="{{ file.pk }}"
@@ -223,7 +223,7 @@ Variables:
 
 
                     <td width="120px">
-                        <div class="d-flex d-none justify-content-between">
+                        <div class="d-flex hidden justify-content-between">
                             {% if file.file_extension == 'pdf' %}
                             <a
                                 data-bs-target="#signPdfModal"
@@ -259,7 +259,7 @@ Variables:
     </table>
 
     <!--Bulk actions-->
-    <div class="save-layout-div d-none" id="bulk-actions">
+    <div class="save-layout-div hidden" id="bulk-actions">
         <div class="dropup">
             <button
                 class="btn btn-primary dropdown-toggle"
@@ -715,7 +715,7 @@ Variables:
                     <p>Are you sure you want to delete the selected files?</p>
                     
                     <!--Object Ids-->
-                    <div id="bulkDeleteIds" class="d-none"></div>
+                    <div id="bulkDeleteIds" class="hidden"></div>
                     <!--End Object Ids-->
 
                     <input type="hidden" name="delete_objects" value="true">

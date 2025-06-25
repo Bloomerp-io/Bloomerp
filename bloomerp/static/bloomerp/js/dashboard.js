@@ -122,12 +122,12 @@ function changeLayout() {
 
     const rowFilters = document.querySelectorAll('[id^="row-filter"]');
     rowFilters.forEach((filter) => {
-        filter.classList.toggle('d-none');
+        filter.classList.toggle('hidden');
     })
 
     const columnFilters = document.querySelectorAll('[id^="column-filter"]');
     columnFilters.forEach((filter) => {
-        filter.classList.toggle('d-none');
+        filter.classList.toggle('hidden');
     })
 
 
@@ -137,11 +137,11 @@ function changeLayout() {
     })
 
     // Show the save layout button
-    document.querySelector('.save-layout-div').classList.toggle('d-none');
+    document.querySelector('.save-layout-div').classList.toggle('hidden');
 
     // Show the input to change the dashboard name
-    document.getElementById('user_dashboard_view_name_input').classList.toggle('d-none');
-    document.getElementById('user_dashboard_view_name').classList.toggle('d-none');
+    document.getElementById('user_dashboard_view_name_input').classList.toggle('hidden');
+    document.getElementById('user_dashboard_view_name').classList.toggle('hidden');
 
     // Hide the sidebar to get more space
     hideBloomerpSidebar();

@@ -27,7 +27,7 @@
     </div>
 
     <!-- Hidden fields to store the content type and fields -->
-    <div class="d-none">
+    <div class="hidden">
         <input value="{{content_type_id}}" type="hidden" name="bulk_upload_content_type_id">
         {% for field in fields %}
             <input value="{{ field }}" type="hidden" name="bulk_upload_fields">

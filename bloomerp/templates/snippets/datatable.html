@@ -160,7 +160,7 @@ ListViewPreference model.
 
 {% if user_can_bulk_change or user_can_bulk_delete %}
 <!--Bulk actions-->
-<div class="save-layout-div d-none" id="bulk-actions">
+<div class="save-layout-div hidden" id="bulk-actions">
     <div class="dropup">
         <button class="btn btn-primary dropdown-toggle" type="button" id="bulkActionsButton" data-bs-toggle="dropdown"
             aria-haspopup="true" aria-expanded="false">
@@ -220,7 +220,7 @@ ListViewPreference model.
                     <!--End input field-->
 
                     <!--Object Ids-->
-                    <div id="bulkUpdateIds" class="d-none">
+                    <div id="bulkUpdateIds" class="hidden">
 
                     </div>
                     <!--End object ids-->
@@ -255,7 +255,7 @@ ListViewPreference model.
             <p>Are you sure you want to delete the selected objects?</p>
 
             <!--Object Ids-->
-            <div id="bulkDeleteIds" class="d-none">
+            <div id="bulkDeleteIds" class="hidden">
 
             </div>
             <!--End object ids-->
@@ -296,15 +296,15 @@ ListViewPreference model.
         }
         // Show or hide bulk actions based on the state of the checkboxes
         if (source.checked) {
-            bulkActions.classList.remove('d-none');
+            bulkActions.classList.remove('hidden');
         } else {
-            bulkActions.classList.add('d-none');
+            bulkActions.classList.add('hidden');
         }
         updateSelectedObjectsCount();
         addSelectedObjectsToForm();
     }
 
-    // If at least one checkbox is selected, the bulk-actions dropdown has d-none removed
+    // If at least one checkbox is selected, the bulk-actions dropdown has hidden removed
     document.addEventListener('change', function (event) {
         if (event.target.name == 'selected_objects') {
             let checkboxes = document.getElementsByName('selected_objects');
@@ -317,9 +317,9 @@ ListViewPreference model.
                 }
             }
             if (checked) {
-                bulkActions.classList.remove('d-none');
+                bulkActions.classList.remove('hidden');
             } else {
-                bulkActions.classList.add('d-none');
+                bulkActions.classList.add('hidden');
             }
             updateSelectedObjectsCount();
             addSelectedObjectsToForm();

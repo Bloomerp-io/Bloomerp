@@ -15,7 +15,7 @@
 {% load bloomerp %}
 
 {% if widget_type == 'm2m' %}
-<div class="d-none" id="{{ widget.name }}_input_div" {% for attr, value in widget.attrs.items %} {{attr}}="{{value}}" {% endfor %}>
+<div class="hidden" id="{{ widget.name }}_input_div" {% for attr, value in widget.attrs.items %} {{attr}}="{{value}}" {% endfor %}>
     {% for choice in selected_choices %}
         <input value="{{choice.pk}}" id="{{widget.name}}_{{ choice.pk }}" name="{{ widget.name }}"/>
     {% endfor %}

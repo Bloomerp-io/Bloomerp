@@ -16,7 +16,7 @@
             {% if request.user == comment.created_by %}
             <div class="commentActions d-flex gap-2">
                 <a
-                    onclick="document.getElementById('commentContent{{comment.pk}}').classList.toggle('d-none'); document.getElementById('editComment{{comment.pk}}').classList.toggle('d-none')"
+                    onclick="document.getElementById('commentContent{{comment.pk}}').classList.toggle('hidden'); document.getElementById('editComment{{comment.pk}}').classList.toggle('hidden')"
                     class="btn btn-sm btn-outline-primary">Edit</a>
                 
                 <button
@@ -34,7 +34,7 @@
         <div class="commentBody">
             <p id="commentContent{{comment.pk}}">{{comment.content}}</p>
 
-            <div id="editComment{{comment.pk}}" class="d-none">
+            <div id="editComment{{comment.pk}}" class="hidden">
                 <form
                     hx-post="{% url 'components_comments' %}?edit_comment_id={{comment.pk}}"
                     hx-trigger="submit"

@@ -19,14 +19,14 @@
                 </div>
 
                 <div class="flex-grow-1">
-                    <textarea class="form-control" id="textArea{{target}}" name="content" oninput="document.getElementById('postCommentBtn{{target}}').classList.remove('d-none')" rows="2" placeholder="Write a comment..."></textarea>
+                    <textarea class="form-control" id="textArea{{target}}" name="content" oninput="document.getElementById('postCommentBtn{{target}}').classList.remove('hidden')" rows="2" placeholder="Write a comment..."></textarea>
                 </div>
 
                 <input type="hidden" name="content_type_id" value="{{ content_type_id }}">
                 <input type="hidden" name="object_id" value="{{ object.pk }}">
             </div>
 
-            <div id="postCommentBtn{{target}}" class="d-flex justify-content-end mt-2 d-none">
+            <div id="postCommentBtn{{target}}" class="d-flex justify-content-end mt-2 hidden">
                 <button 
                     type="submit" 
                     class="btn btn-primary" 

@@ -15,7 +15,7 @@ class BloomerpModelformHelper(FormHelper):
             self.layout_defined = False
             return
 
-        content = '''<h3 class="dropdown-toggle form-legend pointer" onclick="document.getElementById('{id}').classList.toggle('d-none')">{title}{asterix}</h3>'''
+        content = '''<h3 class="dropdown-toggle form-legend pointer" onclick="document.getElementById('{id}').classList.toggle('hidden')">{title}{asterix}</h3>'''
 
         fieldsets = []
 

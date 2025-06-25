@@ -336,9 +336,9 @@ document.addEventListener('change', function (event) {
             }
         }
         if (checked) {
-            bulkActions.classList.remove('d-none');
+            bulkActions.classList.remove('hidden');
         } else {
-            bulkActions.classList.add('d-none');
+            bulkActions.classList.add('hidden');
         }
         //updateSelectedObjectsCount();
         addSelectedObjectsToForm();
@@ -354,9 +354,9 @@ function selectAll(source) {
     }
     // Show or hide bulk actions based on the state of the checkboxes
     if (source.checked) {
-        bulkActions.classList.remove('d-none');
+        bulkActions.classList.remove('hidden');
     } else {
-        bulkActions.classList.add('d-none');
+        bulkActions.classList.add('hidden');
     }
     //updateSelectedObjectsCount();
     addSelectedObjectsToForm();

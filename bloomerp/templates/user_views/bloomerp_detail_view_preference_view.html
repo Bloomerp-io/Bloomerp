@@ -61,7 +61,7 @@
 			<tbody>
 				{% for form in formset %}
 				<tr class="" class="d-flex justify-content-center">
-					<td class="d-none">
+					<td class="hidden">
 						<input type="text" name="form-{{forloop.counter0}}-application_field" value="{{ form.application_field.value }}">
 						<input type="text" name="form-{{forloop.counter0}}-user" value="{{ request.user.pk }}">
 						{% if form.id.value %}
@@ -103,9 +103,9 @@
 		);
   
 		if (match) {
-		  row.classList.remove("d-none");
+		  row.classList.remove("hidden");
 		} else {
-		  row.classList.add("d-none");
+		  row.classList.add("hidden");
 		}
 	  });
 	}

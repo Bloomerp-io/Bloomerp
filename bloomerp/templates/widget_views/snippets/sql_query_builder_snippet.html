@@ -68,11 +68,11 @@
                         class="hover:cursor-pointer dropdown-toggle mb-2"
                         type="button"
                         id="{{ table.0 }}"
-                        onclick="document.getElementById('{{ table.0 }}_fields').classList.toggle('d-none')"
+                        onclick="document.getElementById('{{ table.0 }}_fields').classList.toggle('hidden')"
                     >
                         <span><i class="bi bi-table mx-2"></i></span> {{ table.0 }}
                     </a>
-                    <div class="d-none pl-2" id="{{table.0}}_fields">
+                    <div class="hidden pl-2" id="{{table.0}}_fields">
                         <ul style="list-style-type: none;">
                             <li 
                                     onclick="addFieldToEditor('{{ table.0 }}')"
