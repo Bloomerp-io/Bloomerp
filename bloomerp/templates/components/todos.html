@@ -2,7 +2,7 @@
 {% load crispy_forms_field %}
 
 <!--Buttons-->
-<div class="d-md-flex d-block justify-content-between gap-2">
+<div class="d-md-flex d-block justify-between gap-2">
     <div class="gap-2">
         <button 
             hx-get="{% url 'components_todos' %}?filter=all{% if content_type_id and object_id %}&content_type_id={{ content_type_id }}&object_id={{ object_id }}{% endif %}"

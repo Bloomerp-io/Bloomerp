@@ -400,7 +400,9 @@
   }
 }
 
-
+/*
+* Others
+*/
 @layer utilities {
     /*Default utilities*/
     a:hover {
@@ -410,6 +412,10 @@
     /*Page title*/
     .pagetitle {
         background-color: var(--color-primary-950);
+    }
+
+    .card-title {
+      @apply text-primary-900 font-semibold mb-2
     }
 }
 

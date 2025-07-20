@@ -3,47 +3,46 @@
 <input type="hidden" id="csrf_token" name="csrfmiddlewaretoken" value="{{csrf_token}}">
 
 {% for comment in comments %}
-    <div class="border mb-2 p-2 rounded">
-        <div class="commentHeader justify-content-between flex mb-2">
-            <div class="flex align-items-center gap-2">
-                <div class="commentAuthor">
-                    {% avatar object=request.user size="50px" class_name="rounded-circle" %}
+    <div class="bg-white border border-gray-200 shadow-sm p-4 rounded mb-4">
+        <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10">
+                    {% avatar object=request.user size="50px" class_name="rounded-full" %}
                 </div>
-                <div class="font-bold">{{comment.created_by}}</div>
-                <div class="text-muted">{{comment.datetime_created}}</div>
+                <div>
+                    <div class="font-semibold text-gray-800">{{ comment.created_by }}</div>
+                    <div class="text-xs text-gray-500">{{ comment.datetime_created }}</div>
+                </div>
             </div>
-            
             {% if request.user == comment.created_by %}
-            <div class="commentActions flex gap-2">
-                <a
-                    onclick="document.getElementById('commentContent{{comment.pk}}').classList.toggle('hidden'); document.getElementById('editComment{{comment.pk}}').classList.toggle('hidden')"
-                    class="btn btn-sm btn-outline-primary">Edit</a>
-                
-                <button
-                    type="button" 
-                    class="btn btn-sm btn-outline-danger"
-                    hx-post="{% url 'components_comments' %}?delete_comment_id={{comment.pk}}"
+            <div class="flex gap-2">
+                <a onclick="document.getElementById('commentContent{{ comment.pk }}').classList.toggle('hidden'); document.getElementById('editComment{{ comment.pk }}').classList.toggle('hidden')" class="text-blue-500 hover:text-blue-700 text-sm">
+                    Edit
+                </a>
+                <button type="button" class="text-red-500 hover:text-red-700 text-sm"
+                    hx-post="{% url 'components_comments' %}?delete_comment_id={{ comment.pk }}"
                     hx-trigger="click"
-                    hx-target="#{{target}}"
+                    hx-target="#{{ target }}"
                     hx-swap="innerHTML"
-                    hx-include="#csrf_token"
-                    >Delete</button>
+                    hx-include="#csrf_token">
+                    Delete
+                </button>
             </div>
             {% endif %}
         </div>
-        <div class="commentBody">
-            <p id="commentContent{{comment.pk}}">{{comment.content}}</p>
-
-            <div id="editComment{{comment.pk}}" class="hidden">
-                <form
-                    hx-post="{% url 'components_comments' %}?edit_comment_id={{comment.pk}}"
-                    hx-trigger="submit"
-                    hx-target="#{{target}}"
-                    hx-swap="innerHTML"
-                >
+        <div class="text-gray-700">
+            <p id="commentContent{{ comment.pk }}">{{ comment.content }}</p>
+            <div id="editComment{{ comment.pk }}" class="hidden mt-2">
+                <form hx-post="{% url 'components_comments' %}?edit_comment_id={{ comment.pk }}"
+                      hx-trigger="submit"
+                      hx-target="#{{ target }}"
+                      hx-swap="innerHTML">
                     {% csrf_token %}
-                <textarea class="form-control" id="editComment{{comment.pk}}Content" name="content">{{comment.content}}</textarea>
-                <button type="submit" class="btn btn-sm btn-primary mt-1">Save</button>
+                    <textarea class="w-full border border-gray-300 rounded p-2" id="editComment{{ comment.pk }}Content" name="content">{{ comment.content }}</textarea>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        Save
+                    </button>
+                </form>
             </div>
         </div>
     </div>
