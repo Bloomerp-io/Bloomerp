@@ -14,7 +14,7 @@ document.addEventListener('alpine:init', () => {
   <aside
     id="sidebar"
     :class="{ '-translate-x-full': !Alpine.store('sidebar').isOpen }"
-    class="fixed left-0 top-14 h-[calc(100vh-2rem)] w-64 transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto"
+    class="fixed left-0 top-14 h-[calc(100vh-2rem)] w-64 transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto bg-base"
   >
     <nav class="px-4 py-6 pb-8">
         <!-- Personal workspaces section -->
@@ -46,7 +46,7 @@ document.addEventListener('alpine:init', () => {
   <!-- Mobile overlay -->
   <div
     id="sidebar-overlay"
-    class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+    class="fixed inset-0 bg-gray-900/50 z-30 lg:hidden"
     x-show="Alpine.store('sidebar').isOpen"
     @click="toggleSidebar()"
   ></div>
