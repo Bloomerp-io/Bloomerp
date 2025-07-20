@@ -54,30 +54,17 @@ Parameters:
                 <button 
                     type="button" 
                     onclick="toggleModalFullscreen('{{ id }}')"
-                    class="text-gray-400 hover:text-gray-600 hover:cursor-pointer hover:bg-gray-100 rounded-lg p-1.5 transition-colors"
+                    class="hover:cursor-pointer"
                     title="Toggle fullscreen">
-                    <svg class="w-5 h-5 fullscreen-expand" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                            d="M3 3h5a1 1 0 100-2H2a1 1 0 00-1 1v6a1 1 0 102 0V4.414l4.293 4.293a1 1 0 001.414-1.414L4.414 3H3zm14 0h-5a1 1 0 110-2h6a1 1 0 011 1v6a1 1 0 11-2 0V4.414l-4.293 4.293a1 1 0 01-1.414-1.414L15.586 3H17zm-14 14h5a1 1 0 110 2H2a1 1 0 01-1-1v-6a1 1 0 112 0v4.586l4.293-4.293a1 1 0 011.414 1.414L4.414 17H3zm14 0h-5a1 1 0 100 2h6a1 1 0 001-1v-6a1 1 0 10-2 0v4.586l-4.293-4.293a1 1 0 00-1.414 1.414L15.586 17H17z"
-                            clip-rule="evenodd"></path>
-                    </svg>
-                    <svg class="w-5 h-5 fullscreen-collapse hidden" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                            d="M5 4a1 1 0 01-1-1V2a1 1 0 012 0v.586l3.293 3.293a1 1 0 11-1.414 1.414L4.586 4H5zm10 0h-1a1 1 0 110-2h2a1 1 0 011 1v2a1 1 0 11-2 0V4.586l-3.293 3.293a1 1 0 01-1.414-1.414L14.586 4zM5 16v-.586l3.293-3.293a1 1 0 111.414 1.414L6.414 16H7a1 1 0 110 2H5a1 1 0 01-1-1v-2a1 1 0 112 0zm10 0h1a1 1 0 011 1v2a1 1 0 01-1 1h-2a1 1 0 110-2h.586l-3.293-3.293a1 1 0 111.414-1.414L15 15.414V16z"
-                            clip-rule="evenodd"></path>
-                    </svg>
+                    <c-icons.fullscreen size="28"/>
                 </button>
 
                 <!--Close button-->
                 <button 
-                    type="button" 
-                    onclick="closeModal('{{ id }}')"
-                    class="text-gray-400 hover:text-gray-600 hover:cursor-pointer hover:bg-gray-100 rounded-lg p-1.5 transition-colors">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd"></path>
-                    </svg>
+                    type="button"
+                    class="hover:cursor-pointer"
+                    onclick="closeModal('{{ id }}')">
+                    <c-icons.close size="28"/>
                 </button>
             </div>
             {% endif %}
