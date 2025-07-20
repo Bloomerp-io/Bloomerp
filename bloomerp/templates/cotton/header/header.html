@@ -1,17 +1,17 @@
 {% load static %}
 {% load bloomerp %}
 
-<header id="header" class="fixed top-0 w-full z-50 bg-base">
-    <div class="flex items-center justify-between px-3 ">
+<header id="header" class="fixed top-0 w-full z-50 bg-base h-14">
+    <div class="flex items-center justify-between px-3 h-full">
         <!-- Logo -->
-        <div class="flex items-center justify-between w-64">
+        <div class="flex items-center justify-between w-64 h-full">
             <a
                 hx-get="{% url "bloomerp_home_view" %}"
                 hx-target="#main-content"
                 hx-swap="innerHTML"
                 hx-push-url="true"
-                class="flex items-center cursor-hover:cursor-pointer">
-            <img src="{% static 'bloomerp/img/logo.png' %}" class="hidden md:block h-14">
+                class="flex items-center cursor-hover:cursor-pointer h-full overflow-hidden">
+            <img src="{% static 'bloomerp/img/logo.png' %}" class="hidden md:block h-28">
             <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
             </a>
 
