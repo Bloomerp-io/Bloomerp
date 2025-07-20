@@ -6,87 +6,65 @@
 {% breadcrumb object=object model=model title=object %}
 <!--End Pagetitle-->
 
-<!--Card--> 
-<div class="card dashboard">
-	<!--Card header-->
-	{% include "detail_views/snippets/card_header.html" with content_type_id=content_type_id object=object %}
-	<!--End Card header-->
+<!--Card-->
+{% include "detail_views/snippets/card_header.html" with content_type_id=content_type_id object=object %}
+<!--End Card header-->
 
-	<!--Card body-->
-	<div class="card-body">
-
-		<!--Picture-->
-		<div class="flex justify-center mb-3">
-			{% avatar object=object size="6em" class_name="rounded-circle" %}
-		</div>
-		<!--End Picture-->
-
-		<!--Text under picture-->
-		<div class="flex justify-center mb-6">
-			<h2 class="text-xl font-bold">{{object}}</h2>
-		</div>
-		<!--End Text under picture-->
-
-		<!--Card Tabs-->
-		<c-ui.tabs.container>
-			<!--If tabs are defined in the view, it should override-->
-			{% if tabs %}
-				{% for tab in tabs %}
-				<c-ui.tabs.item>
-					<a class="nav-link"
-					{% if tab.requires_pk %}hx-get="{% url tab.url object.pk %}"{% else %}hx-get="{% url tab.url %}"{% endif %}
-					type="submit"
-					hx-swap="innerHTML" 
-					hx-trigger="click"
-					hx-target="#detail-view-content"
-					hx-push-url="true"
-					hx-on::after-request="setActiveTab(this)"
-					{% if tab.requires_pk %} id="{% url tab.url object.pk %}" {% else %} id="{% url tab.url %}" {% endif %}>
-					{{tab.name}}
-					</a>
-				</c-ui.tabs.item>
-				{% endfor %}
-			{% else %}
-				{% for tab in detail_view_tabs %}
-				<c-ui.tabs.item>
-					<a
-						hx-get="{% url tab.link.url object.pk %}" 
-						type="submit"
-						hx-swap="innerHTML" 
-						hx-trigger="click"
-						hx-target="#detail-view-content"
-						hx-push-url="true"
-						hx-on::after-request="setActiveTab(this)"
-						data-bs-toggle="tooltip"
-						data-bs-placement="top"
-						title="{{tab.link.description}}"
-						id="{% url tab.link.url object.pk %}">{{tab.link.name}}</a>
-				</c-ui.tabs.item>
-				{% endfor %}
-			{% endif %}
-		</c-ui.tabs.container>
-		<!--End Card Tabs-->
-
-		<!--Content-->
-		<div id="detail-view-content">
-			{% block content %}
-			{% if include_detail_content %}
-				{% include include_detail_content %}
-			{% endif %}
-			{% endblock content %}
-		</div>
-		<!--End Content-->
-
-	</div>
-	<!--End Card body-->
+<!--Picture-->
+<div class="flex justify-center mb-3">
+	{% avatar object=object size="6em" class_name="rounded-circle" %}
 </div>
-<!--End Card-->
+<!--End Picture-->
+
+<!--Text under picture-->
+<div class="flex justify-center mb-6">
+	<h2 class="text-xl font-bold">{{object}}</h2>
+</div>
+<!--End Text under picture-->
+
+<!--Card Tabs-->
+<c-ui.tabs.container>
+	<!--If tabs are defined in the view, it should override-->
+	{% if tabs %}
+	{% for tab in tabs %}
+	<c-ui.tabs.item>
+		<a class="nav-link" {% if tab.requires_pk %}hx-get="{% url tab.url object.pk %}" {% else
+			%}hx-get="{% url tab.url %}" {% endif %} type="submit" hx-swap="innerHTML" hx-trigger="click"
+			hx-target="#detail-view-content" hx-push-url="true" hx-on::after-request="setActiveTab(this)" {% if
+			tab.requires_pk %} id="{% url tab.url object.pk %}" {% else %} id="{% url tab.url %}" {% endif %}>
+			{{tab.name}}
+		</a>
+	</c-ui.tabs.item>
+	{% endfor %}
+	{% else %}
+	{% for tab in detail_view_tabs %}
+	<c-ui.tabs.item>
+		<a hx-get="{% url tab.link.url object.pk %}" type="submit" hx-swap="innerHTML" hx-trigger="click"
+			hx-target="#detail-view-content" hx-push-url="true" hx-on::after-request="setActiveTab(this)"
+			data-bs-toggle="tooltip" data-bs-placement="top" title="{{tab.link.description}}"
+			id="{% url tab.link.url object.pk %}">{{tab.link.name}}</a>
+	</c-ui.tabs.item>
+	{% endfor %}
+	{% endif %}
+</c-ui.tabs.container>
+<!--End Card Tabs-->
+
+<!--Content-->
+<div id="detail-view-content">
+	{% block content %}
+	{% if include_detail_content %}
+	{% include include_detail_content %}
+	{% endif %}
+	{% endblock content %}
+</div>
+<!--End Content-->
+
 
 <!--Update tabs modal-->
 <c-ui.modal id="updateTabsModal" title="Change Tab Layout">
 	<form method="POST" action="{% url 'components_detail_view_links' %}">
 		{% csrf_token %}
-		
+
 		{{ detail_links_form | crispy }}
 
 		<div class="d-flex justify-content-end">
@@ -97,22 +75,23 @@
 <!--End Update tabs modal-->
 
 <!--AI Modal snippet-->
-{% include "snippets/llm_modal_snippet.html" with id="object_ai" title="Bloom AI for object" query_type="object_bloom_ai" args=llm_args %}
+{% include "snippets/llm_modal_snippet.html" with id="object_ai" title="Bloom AI for object"
+query_type="object_bloom_ai" args=llm_args %}
 <!--End AI Modal snippet-->
 
 <!--Updating tabs-->
 <script>
-    var url_list = window.location.href.split('/')
-    var url = "/";
+	var url_list = window.location.href.split('/')
+	var url = "/";
 
-    url_list.slice(3).map(function (x) { 
-      if (x != "") {
-        url += x + '/'
-      }
-    })
-    	
-    document.getElementById(url).classList.add('active');
-	
+	url_list.slice(3).map(function (x) {
+		if (x != "") {
+			url += x + '/'
+		}
+	})
+
+	document.getElementById(url).classList.add('active');
+
 	function setActiveTab(element) {
 		var tabs = document.querySelectorAll('.nav-link');
 		tabs.forEach(tab => {
@@ -122,4 +101,3 @@
 	}
 </script>
 <!--End Updating tabs-->
-

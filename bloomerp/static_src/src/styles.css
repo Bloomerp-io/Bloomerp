@@ -400,6 +400,24 @@
     }
 }
 
+/*
+* Inputs
+*/
+@layer utilities {
+    /*Default utilities*/
+    .input {
+      @apply px-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-1 focus:ring-primary focus:border-primary
+    }
+
+    /* Input size variants */
+    .input-sm {
+      @apply px-2 py-1 text-xs
+    }
+
+    .input-lg {
+      @apply px-4 py-3 
+    }
+}
 
 
 /*--------------------------------------------------------------

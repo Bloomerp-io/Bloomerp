@@ -15,8 +15,21 @@ Parameters:
 
 {% load static %}
 
-<div class="relative inline-block text-left" x-data="{ open: false }" @click.away="open = false">
+<div class="relative inline-block text-left {% if wrapper_class %}{{ wrapper_class }}{% endif %}" x-data="{ open: false }" @click.away="open = false"
+    {% if trigger_selector %}
+    x-init="(() => {
+        const el = document.querySelector('{{ trigger_selector }}');
+        if (el) {
+            el.addEventListener('focus', () => open = true);
+            el.addEventListener('input', () => open = true);
+        }
+    })()"
+    {% endif %}
+>
     <!-- Dropdown trigger button -->
+{% if trigger_html %}
+    {{ trigger_html|safe }}
+{% elif not trigger_selector %}
     <button 
         type="button" 
         class="
@@ -57,6 +70,7 @@ Parameters:
             </svg>
         {% endif %}
     </button>
+    {% endif %}
 
     <!-- Dropdown menu -->
     <div 
@@ -81,7 +95,7 @@ Parameters:
             {% else %}
                 {% if direction == 'up' %}origin-bottom-right{% else %}origin-top-right{% endif %} right-0
             {% endif %}
-                bg-white border border-gray-200 focus:outline-none transition-all duration-200 ease-in-out
+                bg-white border border-gray-200 rounded-lg focus:outline-none transition-all duration-200 ease-in-out
             {{ menu_class }}
         " 
         x-show="open"

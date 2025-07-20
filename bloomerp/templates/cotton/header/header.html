@@ -18,26 +18,18 @@
         </div>
         <!-- End Logo -->
 
-        <!--Search bar-->
-        <div class="relative md:ml-4 ml-1 flex-1 max-w-md" id="searchInputDropdown">
-            <input 
-                type="text" 
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors" 
-                id="searchInput" 
-                name="search_results_query" 
-                placeholder="Search (ctrl + q)" 
-                autocomplete="off"
-                data-bs-toggle="dropdown" 
-                aria-expanded="false" 
-                hx-get="{% url 'components_search_results'%}" 
-                hx-trigger="keyup delay:300ms" 
-                hx-target="#searchResult"
-                >
-            <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto hidden" aria-labelledby="searchInput" id="searchResult">
-                
-            </div>
-        </div>
-        <!--End Search bar-->
+        <!-- Search bar using dropdown component -->
+        <c-ui.dropdown.body
+            trigger_html='<input type="text" class="w-full input" id="searchInput" name="search_results_query" placeholder="Search (ctrl + q)" autocomplete="off" hx-get="{% url 'components_search_results' %}" hx-trigger="keyup delay:300ms" hx-target="#searchResult" @keyup="open = true" />'
+            trigger_selector="#searchInput"
+            wrapper_class="md:ml-4 ml-1 flex-1 max-w-md"
+            menu_class="w-full max-h-64 overflow-auto"
+        >
+            <div id="searchResult"></div>
+
+            <c-ui.dropdown.item text="Help"/>
+        </c-ui.dropdown.body>
+        <!-- End Search bar -->
         
         <!-- Start Icons Navigation -->
         <nav class="ml-auto">
@@ -111,11 +103,11 @@
                             text="Sign Out" 
                             icon="bi bi-box-arrow-right" 
                             danger=True
-                            onclick="document.querySelector('form[action=\'{% url 'logout' %}\']').submit()"
+                            onclick="document.getElementById('logoutForm').submit()"
                         />
                         
                         <!-- Hidden logout form -->
-                        <form action="{% url 'logout' %}" method="post" style="display: none;">
+                        <form id="logoutForm" action="{% url 'logout' %}" method="post" style="display: none;">
                             {% csrf_token %}
                         </form>
                     </c-ui.dropdown.body>
