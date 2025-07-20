@@ -70,8 +70,14 @@
     }
 
     .btn:focus {
-        @apply outline-none ring-2 ring-offset-2 cursor-pointer;
+        @apply outline-none ring-2 ring-offset-2;
     }
+
+    .btn:hover {
+        @apply cursor-pointer;
+    }
+
+    
 
 
     .btn:disabled {

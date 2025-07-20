@@ -42,8 +42,8 @@ Variables:
                 class="dropdown-menu dropdown-menu-start"
                 aria-labelledby="triggerId"
                 >   
-                    <a class="dropdown-item hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#uploadFileModal">Upload file</a>
-                    <a class="dropdown-item hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#createFolderModal">Create new folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('upload_file_modal')">Upload file</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('create_folder_modal')">Create new folder</a>
             </div>
         {% endif %}
 
@@ -74,14 +74,12 @@ Variables:
                 class="dropdown-menu dropdown-menu-start"
                 aria-labelledby="triggerId"
                 >   
-                    <a class="dropdown-item hover:cursor-pointer" href="#" data-bs-toggle="modal" data-bs-target="#uploadFileModal">Upload file</a>
-                    <a class="dropdown-item hover:cursor-pointer" href="#" data-bs-toggle="modal" data-bs-target="#createFolderModal">Create new folder</a>
-                    <a class="dropdown-item hover:cursor-pointer" href="#" data-bs-toggle="modal" data-bs-target="#renameFolderModal">Rename folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('upload_file_modal')">Upload file</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('create_folder_modal')">Create new folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('rename_folder_modal')">Rename folder</a>
                     <a class="dropdown-item hover:cursor-pointer" href="#">Download</a>
-                    <a class="dropdown-item hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#deleteFolderModal">Delete folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('delete_folder_modal')">Delete folder</a>
             </div>
-
-
         {% endif %}
         <!-- End current folder -->
     </nav>
@@ -226,10 +224,8 @@ Variables:
                         <div class="flex hidden justify-content-between">
                             {% if file.file_extension == 'pdf' %}
                             <a
-                                data-bs-target="#signPdfModal"
-                                data-bs-toggle="modal"
-                                data-bs-fileId="{{ file.pk }}"
-                                onclick="document.getElementById('signatureFileId').value = '{{ file.pk }}'"
+                                href="#"
+                                onclick="document.getElementById('signatureFileId').value = '{{ file.pk }}'; openModal('sign_pdf_modal')"
                                 class="hover:cursor-pointer"
                                 draggable="false"
                                 >
@@ -242,7 +238,7 @@ Variables:
                             <a href="#" draggable="false">
                                 <img src="{% static 'bloomerp/icons/edit.svg' %}" alt="Edit" width="20" height="20">
                             </a>
-                            <a href="#" data-bs-toggle="modal" data-bs-target="#deleteFileModal" data-bs-fileId="{{ file.pk }}" draggable="false">
+                            <a href="#" onclick="openModal('delete_file_modal'); setupDeleteFileModal('{{ file.pk }}');" draggable="false">
                                 <img src="{% static 'bloomerp/icons/delete.svg' %}" alt="Delete" width="20" height="20">
                             </a>
                         </div>
@@ -277,8 +273,8 @@ Variables:
                     data-bs-target="#bulkShareModal"
                 >Share</a>
                 <a class="dropdown-item hover:cursor-pointer"
-                    data-bs-toggle="modal"
-                    data-bs-target="#bulkDeleteModal"
+                    href="#"
+                    onclick="openModal('bulk_delete_modal')"
                 >Delete</a>
                 <a class="dropdown-item hover:cursor-pointer"
                     data-bs-toggle="modal"
@@ -308,115 +304,64 @@ Variables:
 
 {% if current_folder %}
 <!--Rename folder modal-->
-<div
-    class="modal fade"
-    id="renameFolderModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
->
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm"
-        role="document"
+<c-ui.modal title="Rename Folder" id="rename_folder_modal">
+    <form 
+        hx-patch="{% url 'file_folders-detail' current_folder.pk %}"
+        hx-trigger="submit"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-swap="none"
+        hx-target="this"
+        autocomplete="off"
     >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Rename folder
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form 
-                hx-patch="{% url 'file_folders-detail' current_folder.pk %}"
-                hx-trigger="submit"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                hx-swap="none"
-                hx-target="this"
-                autocomplete="off"
-            >
-                <div class="modal-body">
-                    <input
-                        type="text"
-                        class="form-control"
-                        placeholder="Folder name"
-                        value="{{ current_folder.name }}"
-                        name="name"
-                        id="renameFolderInput"
-                    >
-                    <input type="hidden" name="updated_by" value="{{ request.user.pk }}">
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="renameFolderButton" data-bs-dismiss="modal">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+        <input
+            type="text"
+            class="form-control"
+            placeholder="Folder name"
+            value="{{ current_folder.name }}"
+            name="name"
+            id="renameFolderInput"
+        >
+        <input type="hidden" name="updated_by" value="{{ request.user.pk }}">
+    </form>
+</c-ui.modal>
 <!--End Rename folder modal-->
 
 <!--Delete folder modal-->
-<div
-    class="modal fade"
-    id="deleteFolderModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
+<c-ui.modal 
+    title="Delete Folder" 
+    id="delete_folder_modal" 
+    size="sm"
+    show_footer=True
 >
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm"
-        role="document"
+    <form 
+        hx-delete="{% url 'file_folders-detail' current_folder.pk %}"
+        hx-trigger="submit"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-swap="none"
+        hx-target="this"
+        autocomplete="off"
+        id="deleteFolderForm"
     >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Delete folder
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form 
-                hx-delete="{% url 'file_folders-detail' current_folder.pk %}"
-                hx-trigger="submit"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                hx-swap="none"
-                hx-target="this"
-                autocomplete="off"
+        <p class="mb-4">Are you sure you want to delete this folder?</p>
+        
+        <div class="flex justify-end space-x-3">
+            <button
+                type="button"
+                onclick="closeModal('delete_folder_modal')"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
-                <div class="modal-body">
-                    <p>Are you sure you want to delete this folder?</p>
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-danger" id="deleteFolderButton" data-bs-dismiss="modal">Delete</button>
-                </div>
-            </form>
+                Cancel
+            </button>
+            <button 
+                type="submit" 
+                class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
+                onclick="document.getElementById('deleteFolderForm').submit(); closeModal('delete_folder_modal');"
+            >
+                Delete
+            </button>
         </div>
-    </div>
-</div>
+    </form>
+</c-ui.modal>
 <!--End Delete folder modal-->
 
 <form id="currentFolderForm">
@@ -427,210 +372,165 @@ Variables:
 
 
 <!--Create folder modal-->
-<div
-    class="modal fade"
-    id="createFolderModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
+<c-ui.modal 
+    title="Create New Folder" 
+    id="create_folder_modal"
+    show_footer=True
 >
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered"
-        role="document"
+    <form 
+        hx-post="{% url 'file_folders-list' %}"
+        hx-trigger="submit"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-swap="none"
+        hx-target="this"
+        autocomplete="off"
+        id="createFolderForm"
     >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Create new folder
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form 
-                hx-post="{% url 'file_folders-list' %}"
-                hx-trigger="submit"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                hx-swap="none"
-                hx-target="this"
-                autocomplete="off"
+        <div class="mb-4">
+            {{ create_folder_form | crispy}}
+            <input 
+                type="hidden" 
+                name="parent" 
+                {% if current_folder %} value="{{ current_folder.pk }}" {% endif %}
             >
-                <div class="modal-body">
-                    {{ create_folder_form | crispy}}
-                    <input 
-                        type="hidden" 
-                        name="parent" 
-                        {% if current_folder %} value="{{ current_folder.pk }}" {% endif %}
-                    >
-                    <input type="hidden" name="created_by" value="{{ request.user.pk }}">
-                    <input type="hidden" name="updated_by" value="{{ request.user.pk }}">
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="createFolderButton" data-bs-dismiss="modal">Create</button>
-                </div>
-            </form>
+            <input type="hidden" name="created_by" value="{{ request.user.pk }}">
+            <input type="hidden" name="updated_by" value="{{ request.user.pk }}">
         </div>
-    </div>
-</div>
+        
+        <div class="flex justify-end space-x-3">
+            <button
+                type="button"
+                onclick="closeModal('create_folder_modal')"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+                Cancel
+            </button>
+            <button 
+                type="submit" 
+                class="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+                onclick="document.getElementById('createFolderForm').submit(); closeModal('create_folder_modal');"
+            >
+                Create
+            </button>
+        </div>
+    </form>
+</c-ui.modal>
 <!--End Create folder modal-->
 
 
 <!--Delete file modal-->
-<div
-    class="modal fade"
-    id="deleteFileModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
+<c-ui.modal 
+    title="Delete File" 
+    id="delete_file_modal" 
+    size="sm"
+    show_footer=True
 >
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm"
-        role="document"
-    >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Delete file
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form 
-                id="deleteFileForm"
-            >
-                <div class="modal-body">
-                    <p>Are you sure you want to delete this file?
-                    </p>
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-danger" id="deleteFileButton" data-bs-dismiss="modal">Delete</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<script>
-    var deleteFileModal = document.getElementById('deleteFileModal');
-
-    deleteFileModal.addEventListener('show.bs.modal', async function (event) {
-        // Button that triggered the modal
-        let button = event.relatedTarget;
-        // Extract info from data-bs-* attributes
-        let fileId = button.getAttribute('data-bs-fileId');
+    <form id="deleteFileForm">
+        <p class="mb-4">Are you sure you want to delete this file?</p>
         
-        // Get the form and init everything for HTMX as it will otherwise not work
+        <div class="flex justify-end space-x-3">
+            <button
+                type="button"
+                onclick="closeModal('delete_file_modal')"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+                Cancel
+            </button>
+            <button 
+                type="submit" 
+                class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
+            >
+                Delete
+            </button>
+        </div>
+    </form>
+</c-ui.modal>
+<script>
+    // Set up file delete functionality
+    function setupDeleteFileModal(fileId) {
+        // Get the form
         var deleteFileForm = document.getElementById('deleteFileForm');
-
+        
+        // Clear any existing event listeners
+        var newForm = deleteFileForm.cloneNode(true);
+        deleteFileForm.parentNode.replaceChild(newForm, deleteFileForm);
+        deleteFileForm = newForm;
+        
+        // Add event listener for form submission
         deleteFileForm.addEventListener('submit', async function(event) {
             event.preventDefault();
             await deleteFile(fileId);
-
+            
+            // Close the modal
+            closeModal('delete_file_modal');
+            
             // Refresh the files
             refreshFiles('#{{ target }}');
-
+            
             // Show a message
             showMessage('File deleted successfully', 'success');
         });
-    });
-
-    
-
+    }
 </script>
 
 <!--Upload file modal-->
-<div
-    class="modal fade"
-    id="uploadFileModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
+<c-ui.modal 
+    title="Upload File" 
+    id="upload_file_modal" 
+    size="sm"
+    show_footer=True
 >
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm"
-        role="document"
+    <form 
+        hx-post="{% url 'files-list' %}"
+        hx-trigger="submit"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-swap="none"
+        hx-target="this"
+        enctype="multipart/form-data"
+        id="uploadFileForm"
     >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Upload file
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form 
-                hx-post="{% url 'files-list' %}"
-                hx-trigger="submit"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                hx-swap="none"
-                hx-target="this"
-                enctype="multipart/form-data"
-                id="uploadFileForm"
+        <div class="mb-4">
+            <input
+                type="file"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                name="file"
+                id="uploadFileInput"
             >
-                <div class="modal-body">
-                    <input
-                        type="file"
-                        class="form-control"
-                        name="file"
-                        id="uploadFileInput"
-                    >
-                    <input 
-                        type="hidden" 
-                        name="created_by" 
-                        value="{{ request.user.pk }}">
-                    <input type="hidden" name="updated_by" value="{{ request.user.pk }}">
-                    <input 
-                        type="hidden" 
-                        name="content_type"
-                        {% if content_type_id %}value="{{ content_type_id }}"{% endif %}
-                    >
-                    <input 
-                        type="hidden" 
-                        name="object_id"
-                        {% if object_id %}value="{{ object_id }}"{% endif %}
-                        >
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="uploadFileButton" data-bs-dismiss="modal">Upload</button>
-                </div>
-            </form>
+            <input 
+                type="hidden" 
+                name="created_by" 
+                value="{{ request.user.pk }}">
+            <input type="hidden" name="updated_by" value="{{ request.user.pk }}">
+            <input 
+                type="hidden" 
+                name="content_type"
+                {% if content_type_id %}value="{{ content_type_id }}"{% endif %}
+            >
+            <input 
+                type="hidden" 
+                name="object_id"
+                {% if object_id %}value="{{ object_id }}"{% endif %}
+            >
         </div>
-    </div>
-</div>
+        
+        <div class="flex justify-end space-x-3">
+            <button
+                type="button"
+                onclick="closeModal('upload_file_modal')"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+                Cancel
+            </button>
+            <button 
+                type="submit" 
+                class="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+                onclick="document.getElementById('uploadFileForm').submit(); closeModal('upload_file_modal');"
+            >
+                Upload
+            </button>
+        </div>
+    </form>
+</c-ui.modal>
 <script>
     document.getElementById('uploadFileForm').addEventListener('htmx:afterRequest', function(evt) {
         // Get the id of the file
@@ -679,117 +579,61 @@ Variables:
 <!--End Upload file modal-->
 
 <!--Bulk delete modal-->
-<div
-    class="modal fade"
-    id="bulkDeleteModal"
-    tabindex="-1"
-    role="dialog"
-    aria-labelledby="modalTitleId"
-    aria-hidden="true"
->
-    <div
-        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm"
-        role="document"
-    >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                    Delete files
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <form 
-                id="bulkDeleteForm"
-                hx-post="{% url 'components_bulk_update_objects' %}?content_type_id={{ file_content_type_id }}&form_prefix=bulk_delete"
-                hx-trigger="submit"
-                hx-target="this"
-                hx-swap="none"
-                >
-                {% csrf_token %}
-                <div class="modal-body">
-                    <p>Are you sure you want to delete the selected files?</p>
-                    
-                    <!--Object Ids-->
-                    <div id="bulkDeleteIds" class="hidden"></div>
-                    <!--End Object Ids-->
+<c-ui.modal id="bulk_delete_modal" size="sm" title="Delete files">
+    <form 
+        id="bulkDeleteForm"
+        hx-post="{% url 'components_bulk_update_objects' %}?content_type_id={{ file_content_type_id }}&form_prefix=bulk_delete"
+        hx-trigger="submit"
+        hx-target="this"
+        hx-swap="none"
+        >
+        {% csrf_token %}
+        <p>Are you sure you want to delete the selected files?</p>
+        
+        <!--Object Ids-->
+        <div id="bulkDeleteIds" class="hidden"></div>
+        <!--End Object Ids-->
 
-                    <input type="hidden" name="delete_objects" value="true">
+        <input type="hidden" name="delete_objects" value="true">
 
-                </div>
-                <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-danger" id="bulkDeleteButton" data-bs-dismiss="modal">Delete</button>
-                </div>
-            </form>
+        <div slot="footer">
+            <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="closeModal('bulk_delete_modal')"
+            >
+                Close
+            </button>
+            <button type="submit" class="btn btn-danger" id="bulkDeleteButton" onclick="closeModal('bulk_delete_modal')">Delete</button>
         </div>
-    </div>
-</div>
+    </form>
+</c-ui.modal>
 <!--End Bulk delete modal-->
 
 <!--Sign pdf modal-->
-<div
-    class="modal fade"
-    id="signPdfModal"
-    tabindex="-1"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false"
-    role="dialog"
-    aria-labelledby="signPdfModalTitle"
-    aria-hidden="true"
->
-    <div
-        class="modal-dialog   modal-lg"
-        role="document"
-    >
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="signPdfModalTitle">
-                    Sign PDF
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-            <div class="modal-body">
-                <form method="POST" action="{% url "components_sign_file" %}">
-                    {% csrf_token %}
+<c-ui.modal id="sign_pdf_modal" size="lg" title="Sign PDF" static>
+    <form method="POST" action="{% url "components_sign_file" %}">
+        {% csrf_token %}
 
-                    <input type="hidden" name="file_id" id="signatureFileId" value="">
-                    
-                    {% include "snippets/signature_snippet.html" with signature_field_name="signature" %}
+        <input type="hidden" name="file_id" id="signatureFileId" value="">
+        
+        {% include "snippets/signature_snippet.html" with signature_field_name="signature" %}
 
-                    <div class="flex justify-center">
-                        <button type="submit" class="btn btn-primary">Sign</button>
-                    </div>
-
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    data-bs-dismiss="modal"
-                >
-                    Close
-                </button>
-            </div>
+        <div class="flex justify-center">
+            <button type="submit" class="btn btn-primary">Sign</button>
         </div>
-    </div>
-</div>
+
+        <div slot="footer">
+            <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="closeModal('sign_pdf_modal')"
+            >
+                Close
+            </button>
+        </div>
+    </form>
+</c-ui.modal>
 <!--End Sign pdf modal-->
 
 
