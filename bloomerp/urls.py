@@ -84,7 +84,8 @@ from django.conf import settings
 
 from django.urls import reverse_lazy
 urlpatterns = [
-    path(settings.LOGIN_URL, auth_views.LoginView.as_view(
+    # login URL
+    path('login/', auth_views.LoginView.as_view(
             template_name='auth_views/login_view.html',
             next_page=reverse_lazy('bloomerp_home_view')
             ), name='login'),
@@ -174,8 +175,6 @@ for content_type in content_types:
 
 urlpatterns += [
     path('api/', include(drf_router.urls)),
-    path("__reload__/", include("django_browser_reload.urls")), # Browser reload
-
 ]
 
 # ---------------------------------

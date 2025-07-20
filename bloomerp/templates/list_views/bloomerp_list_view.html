@@ -8,7 +8,6 @@
 
 <div class="card">
   	<div class="card-body">
-		<h4 class="card-title">{{model_name_plural|title}} list</h4>
 		{% datatable content_type_id=content_type_id user=request.user request=request %}
 
 		<div class="flex justify-center gap-2 mt-3">

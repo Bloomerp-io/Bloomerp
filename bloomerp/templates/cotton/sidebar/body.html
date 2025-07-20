@@ -1,23 +1,13 @@
 {% load bloomerp %}
 {% load cotton %}
+{% load static %}
 
 <aside id="sidebar"
-    class="fixed left-0 top-14 h-[calc(100vh-2rem)] w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto shadow-r shadow-md"
+    class="fixed left-0 top-14 h-[calc(100vh-2rem)] w-64 bg-primary-50 border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto"
     x-data="{ isOpen: window.innerWidth >= 1024 }" :class="{ '-translate-x-full': !isOpen }"> <!-- Sidebar content -->
     <nav class="px-4 py-6 pb-8">
-
-        <!--Search-->
-        <div class="mb-3">
-            <input type="text" 
-                   placeholder="Search workspace" 
-                   aria-label="Search workspace" 
-                   oninput="searchContentTypes()"
-                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors">
-        </div>
-        <!--End search-->
-
         <!-- Personal workspaces section -->
-        <c-sidebar.dropdown_section title="Personal workspaces" section_id="personal" show_search=False>
+        <c-sidebar.dropdown_section title="Personal workspaces" section_id="personal" show_search=False icon="bi bi-person-workspace">
             {% for workspace in request.user.workspaces %}
             <c-sidebar.item url="{% url 'view_workspace' workspace.pk %}">
                 {{ workspace.name }}
@@ -28,7 +18,7 @@
 
 
         <!-- Model workspaces section -->
-        <c-sidebar.dropdown_section title="Model workspaces" section_id="model" show_search=True
+        <c-sidebar.dropdown_section title="Model Workspaces" section_id="model" show_search=True
             search_placeholder="Search" search_function="searchContentTypes()">
             {% for content_type in request.user.accessible_content_types %}
             <div class="content-type-item">

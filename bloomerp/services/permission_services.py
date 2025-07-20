@@ -3,7 +3,7 @@ This module provides services related to permissions management.
 Classes:
     BasePermissions (Enum): Defines basic permission types such as READ, WRITE, DELETE, and UPDATE.
 Functions:
-    has_object_permission(user: User, permission: BasePermissions) -> bool:
+    has_object_permission(user: User, permission: BasePermission) -> bool:
         Checks if the given user has the specified object-level permission.
 """
 
@@ -12,17 +12,9 @@ from django.db.models import Model
 from bloomerp.models import AbstractBloomerpUser
 from enum import Enum
 from bloomerp.models.auth import User
+from bloomerp.constants.permissions import BasePermission
 
-class BasePermissions(Enum):
-    READ = "read"
-    WRITE = "write"
-    DELETE = "delete"
-    UPDATE = "update"
-    
-    def __str__(self):
-        return self.value
-
-def has_object_permission(user:User, object:Model, permission:BasePermissions) -> bool:
+def has_object_permission(user:User, object:Model, permission:BasePermission) -> bool:
     # TODO : Implement this function 
     return True
 

@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 
 from bloomerp.services.permission_services import has_object_permission
-from bloomerp.services.permission_services import BasePermissions
+from bloomerp.constants.permissions import BasePermission
 from bloomerp.utils.request_utils import render_blank_form
 from bloomerp.utils.request_utils import get_object_from_request
 
@@ -21,7 +21,7 @@ def delete_object(request: HttpRequest) -> HttpResponse:
 
     user = request.user
 
-    if not has_object_permission(user, object, BasePermissions.DELETE):
+    if not has_object_permission(user, object, BasePermission.DELETE):
         return HttpResponse('Permission denied', status=403)
 
     if request.method == "GET":

@@ -6,7 +6,9 @@ BLOOMERP_APPS = [
     "rest_framework",
     "django_filters",
     "tailwind",
-    "django_cotton"
+    "django_cotton",
+    "django_browser_reload",
+    "crispy_tailwind",
 ]
 
 BLOOMERP_MIDDLEWARE = [
