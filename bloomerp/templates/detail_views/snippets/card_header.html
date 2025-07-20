@@ -5,40 +5,47 @@
     <div class="flex gap-3">
 
         <!--Comments-->
-        <a class="hover:cursor-pointer" id="dropdownCommentsMenu" onclick="openModal('commentsModal')">
-            <c-icons.chat/>
-        </a>
+        <c-ui.tooltip text="Comment" position="bottom">
+            <a class="hover:cursor-pointer" id="dropdownCommentsMenu" onclick="openModal('commentsModal')">
+                <c-icons.chat/>
+            </a>
+        </c-ui.tooltip>
         <!--End Comments-->
 
         <!--Bookmark-->
-        <div id="bookmarkButton"
-            hx-get="{% url 'components_bookmark' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
-            hx-trigger="load" hx-swap="this">
-        </div>
+        <c-ui.tooltip text="Bookmark" position="bottom">
+            <div id="bookmarkButton"
+                hx-get="{% url 'components_bookmark' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
+                hx-trigger="load" hx-swap="this">
+            </div>
+        </c-ui.tooltip>
         <!--End Bookmark-->
 
         <!--Todos-->
-        <a class="hover:cursor-pointer" onclick="openModal('todoModal')"
-            hx-get="{% url 'components_todos' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
-            hx-trigger="click" hx-target="#todo-container" hx-swap="innerHTML">
-            <c-icons.todo/>
-        </a>
+        <c-ui.tooltip text="Load todo's" position="bottom">
+            <a class="hover:cursor-pointer" onclick="openModal('todoModal')"
+                hx-get="{% url 'components_todos' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
+                hx-trigger="click" hx-target="#todo-container" hx-swap="innerHTML">
+                <c-icons.todo/>
+            </a>
+        </c-ui.tooltip>
         <!--End Todos-->
 
         <!--Object AI-->
-        <a class="hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#modal_object_ai">
-            <img src="{% static 'bloomerp/icons/ai.svg' %}" height="30" width="30" alt="Comments" />
-        </a>
+        <c-ui.tooltip text="Load BloomAI" position="bottom">
+            <a class="hover:cursor-pointer" data-bs-toggle="modal" data-bs-target="#modal_object_ai">
+                <img src="{% static 'bloomerp/icons/ai.svg' %}" height="30" width="30" alt="Comments" />
+            </a>
+        </c-ui.tooltip>
         <!--End object AI-->
     </div>
 
 
 
     <!--Settings-->
-    <div class="flex">
+    <c-ui.tooltip text="Settings" position="bottom">
         <c-ui.dropdown.body 
-            trigger_class="p-2 hover:bg-gray-100 rounded-md" 
-            trigger_text='<img src="{% static "bloomerp/icons/dots.svg" %}" height="25" width="25" alt="Options" />' 
+            trigger_icon="three_dots"
             icon="False"
             >
             <c-ui.dropdown.item text="Settings"/>
@@ -46,7 +53,7 @@
             <c-ui.dropdown.item text="Update tabs" onclick="openModal('updateTabsModal')"/>
             {% endif %}
         </c-ui.dropdown.body>
-    </div>
+    </c-ui.tooltip>
     <!--Settings-->
 </div>
 

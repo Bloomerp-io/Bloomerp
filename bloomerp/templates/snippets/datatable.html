@@ -115,12 +115,13 @@ ListViewPreference model.
     {% endif %}
 
 
-    <p class="text-muted text-sm mt-2">
-        Showing {{ data_table_shown_results }} out of {{ data_table_total_results }} results
-    </p>
 
     <!--Pagination-->
-    <div class="flex align-items-center">
+    <div class="flex items-center justify-between">
+            <p class="text-muted text-sm mt-2">
+            Showing {{ data_table_shown_results }} out of {{ data_table_total_results }} results
+        </p>
+
         <div class="btn-group" role="group">
             <button type="button" hx-include="#filterForm{{ datatable_id }}"
                 hx-include="[input='data_table_string_search']" hx-target="#{{ datatable_id }}"

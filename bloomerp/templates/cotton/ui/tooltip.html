@@ -1,0 +1,38 @@
+{% comment %}
+Tooltip component that can be wrapped around any other html div
+
+Parameters:
+- text (str) : the tooltip text
+- position (str) : "top", "bottom", "left", or "right"
+- slot : the inner
+{% endcomment %}
+
+<div class="relative group">
+    {% if position == "top" %}
+        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            {{ text }}
+        </div>
+    {% elif position == "bottom" %}
+        <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            {{ text }}
+        </div>
+    {% elif position == "left" %}
+        <div class="absolute right-full top-1/2 transform -translate-y-1/2 mr-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            {{ text }}
+        </div>
+    {% elif position == "right" %}
+        <div class="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            {{ text }}
+        </div>
+    {% else %}
+        <!-- Fallback to top if no valid position is provided -->
+        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            {{ text }}
+        </div>
+    {% endif %}
+    <!-- Slot for the tooltip target content -->
+    <div>
+        {{ slot }}
+    </div>
+</div>
+
