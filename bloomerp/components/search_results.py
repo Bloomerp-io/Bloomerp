@@ -18,7 +18,7 @@ def search_results(request: HttpRequest) -> HttpResponse:
     query = request.GET.get('search_results_query', '')  # Retrieve the search query from the GET parameters
     results = []
     links = None
-    not_found_response = HttpResponse('<li class="dropdown-item">No results found</li>')
+    not_found_response = HttpResponse('<c-ui.dropdown.item text="No results found"/>')
 
 
     if query == '':
@@ -89,7 +89,6 @@ def search_results(request: HttpRequest) -> HttpResponse:
 
             return render(request, 'components/search_results.html', context)
     except Exception as e:
-        print(e)
         return not_found_response
     
 

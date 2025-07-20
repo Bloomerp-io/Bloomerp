@@ -88,7 +88,7 @@ function bloomAiCreateMessage(
 
     // Wrapper
     var wrapper = document.createElement("div");
-    wrapper.className = isUser ? "d-flex justify-content-end" : "d-flex justify-content-start";
+    wrapper.className = isUser ? "flex justify-content-end" : "flex justify-content-start";
 
     // Create bubble
     var messageBubble = document.createElement("div");
@@ -115,7 +115,7 @@ function bloomAiCreateMessage(
 
     // Add another div
     var utilsDiv = document.createElement("div");
-    utilsDiv.className = isUser ? "d-flex justify-content-end mb-3 gap-2" : "d-flex justify-content-start mb-3 gap-2";
+    utilsDiv.className = isUser ? "flex justify-content-end mb-3 gap-2" : "flex justify-content-start mb-3 gap-2";
 
     // Add copy button
     var copyButton = document.createElement("a");

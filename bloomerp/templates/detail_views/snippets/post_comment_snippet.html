@@ -13,7 +13,7 @@
             hx-swap="innerHTML"
         >
             {% csrf_token %}
-            <div class="justify-content-start align-items-center d-flex gap-2">
+            <div class="justify-content-start align-items-center flex gap-2">
                 <div class="commentAuthor">
                     {% avatar object=request.user size="50px" class_name="rounded-circle" %}
                 </div>
@@ -26,7 +26,7 @@
                 <input type="hidden" name="object_id" value="{{ object.pk }}">
             </div>
 
-            <div id="postCommentBtn{{target}}" class="d-flex justify-content-end mt-2 hidden">
+            <div id="postCommentBtn{{target}}" class="flex justify-content-end mt-2 hidden">
                 <button 
                     type="submit" 
                     class="btn btn-primary" 

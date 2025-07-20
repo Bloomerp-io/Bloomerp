@@ -12,7 +12,7 @@
         class="list-group-item list-group-item-action"
 
       >
-        <div class="d-flex w-100 justify-content-between">
+        <div class="flex w-100 justify-content-between">
           <h5 class="mb-1">Object {{notification.verb|title}}</h5>
           <small>{{notification.timestamp|timesince}}</small>
         </div>
@@ -25,7 +25,7 @@
     
     
 
-    <div class="row justify-content-center align-items-center mt-4">
+    <div class="row justify-center align-items-center mt-4">
         <nav aria-label="">
             <ul class="pagination">
                 {%if page_obj.has_previous %}

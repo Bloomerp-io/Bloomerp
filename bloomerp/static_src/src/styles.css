@@ -62,7 +62,7 @@
 
 
 /*
-* Custom component utilities using @layer for Tailwind CSS v4
+* Buttons
 */
 @layer components {
     .btn {
@@ -70,8 +70,9 @@
     }
 
     .btn:focus {
-        @apply outline-none ring-2 ring-offset-2;
+        @apply outline-none ring-2 ring-offset-2 cursor-pointer;
     }
+
 
     .btn:disabled {
         @apply opacity-50 cursor-not-allowed;
@@ -384,6 +385,15 @@
 @layer components {
   .card {
     @apply border border-gray-50 shadow rounded p-4
+  }
+}
+
+/*
+* Text
+*/
+@layer utilities {
+  .text-muted {
+    @apply text-gray-400
   }
 }
 

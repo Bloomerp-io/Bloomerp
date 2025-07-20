@@ -36,7 +36,7 @@
             <ul class="flex items-center space-x-4 mb-0">
                 <li>
                     <a 
-                        onclick="openModal('todoModal')" 
+                        onclick="openModal('todoModal')"
                         class="relative text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-hover:cursor-pointer" 
                         hx-get="{% url 'components_todos' %}"
                         hx-target="#todo-container"
@@ -51,7 +51,7 @@
                 <!--AI-->
                 <li>
                     <a 
-                        onclick="openModal('modal_bloom_ai')" 
+                        onclick="openModal('modal_bloom_ai')"
                         class="flex items-center text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-hover:cursor-pointer" 
                         href="#">
                         <img src="{% static 'bloomerp/icons/ai.svg' %}" width="20" height="20">
@@ -65,7 +65,7 @@
                         trigger_text="{% avatar object=request.user class_name='rounded-full w-8 h-8' size=32 %}<span class='hidden md:block ml-2 text-sm font-medium text-gray-700'>{{request.user.first_name}} {{request.user.last_name}}</span>"
                         position="right"
                         size="md"
-                        trigger_class="border-0 shadow-none bg-transparent hover:bg-gray-100 p-2"
+                        :icon="False"
                     >
                         <div class="px-4 py-3 border-b border-gray-200">
                             <h6 class="text-sm font-semibold text-primary-800">{{request.user.username}}</h6>

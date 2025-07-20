@@ -7,7 +7,7 @@
 <div class="todo mb-3 p-2 rounded">
     <!--Date-->
     <div class="d-md-flex d-block justify-content-between align-items-center">
-        <div class="d-flex gap-2 align-items-center">
+        <div class="flex gap-2 align-items-center">
             <!-- Priority -->
             <span 
                 
@@ -48,7 +48,7 @@
     <!--End Date-->
 
     <!--Short todo-->
-    <div class="d-flex mt-2">
+    <div class="flex mt-2">
         <!-- Left Section: Title -->
             <input 
                 class="form-check-input" 
@@ -80,7 +80,7 @@
                     <p>{% if todo.content %}{{todo.content_safe}}{% else %}<span class="fw-light">No todo description provided</span>{% endif %}</p>
                 </div>
 
-                <div class="col-4 justify-content-end d-flex">
+                <div class="col-4 justify-content-end flex">
                     {% if todo.requested_by == request.user %}
                         <a 
                             hx-post="{% url 'components_todos' %}{% if content_type_id and object_id %}?content_type_id={{ content_type_id }}&object_id={{ object_id }}{% endif %}"

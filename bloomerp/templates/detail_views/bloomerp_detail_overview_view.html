@@ -1,7 +1,7 @@
 {% load bloomerp %}
 {% load static %}
 
-<div class="d-flex justify-content-between">
+<div class="flex justify-content-between">
     <h5 class="card-title">Overview</h5>
     <div>
         <a hx-get="{% url 'users_my_profile_detail_view_preference' %}?content_type_id={{content_type_id}}&return_to={{request.path}}"

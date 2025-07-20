@@ -1,12 +1,12 @@
 {% load static %}
 
-<div class="flex justify-between mb-2 px-4 py-2">
+<div class="flex justify-between mb-2 py-2">
     <!--Comments and bookmark section-->
     <div class="flex gap-3">
 
         <!--Comments-->
         <a class="hover:cursor-pointer" id="dropdownCommentsMenu" onclick="openModal('commentsModal')">
-            <img src="{% static 'bloomerp/icons/chat-line.svg' %}" height="30" width="30" alt="Comments" />
+            <c-icons.chat/>
         </a>
         <!--End Comments-->
 
@@ -21,7 +21,7 @@
         <a class="hover:cursor-pointer" onclick="openModal('todoModal')"
             hx-get="{% url 'components_todos' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
             hx-trigger="click" hx-target="#todo-container" hx-swap="innerHTML">
-            <img src="{% static 'bloomerp/icons/notebook.svg' %}" height="30" width="30" alt="Comments" />
+            <c-icons.todo/>
         </a>
         <!--End Todos-->
 

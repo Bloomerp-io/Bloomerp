@@ -4,8 +4,8 @@
 
 {% for comment in comments %}
     <div class="border mb-2 p-2 rounded">
-        <div class="commentHeader justify-content-between d-flex mb-2">
-            <div class="d-flex align-items-center gap-2">
+        <div class="commentHeader justify-content-between flex mb-2">
+            <div class="flex align-items-center gap-2">
                 <div class="commentAuthor">
                     {% avatar object=request.user size="50px" class_name="rounded-circle" %}
                 </div>
@@ -14,7 +14,7 @@
             </div>
             
             {% if request.user == comment.created_by %}
-            <div class="commentActions d-flex gap-2">
+            <div class="commentActions flex gap-2">
                 <a
                     onclick="document.getElementById('commentContent{{comment.pk}}').classList.toggle('hidden'); document.getElementById('editComment{{comment.pk}}').classList.toggle('hidden')"
                     class="btn btn-sm btn-outline-primary">Edit</a>

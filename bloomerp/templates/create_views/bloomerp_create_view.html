@@ -4,29 +4,23 @@
 
 {% breadcrumb model=model title=title %}
 
-<!--Form card-->
-<div class="card">
-	<div class="card-body">
-		<h4 class="card-title">Create {{model_name}}</h4>
-		{% if form.errors %}
-		<div class="alert alert-danger" role="alert">
-			{{form.errors}}
-		</div>
-		{% endif %}
-
-		<form method="post" action="" enctype="multipart/form-data" class="px-3" data="dsa">
-			{% csrf_token %}
-			
-			{% if form.helper %}{% crispy form %}{% else %}{{form|crispy}}{% endif %}
-
-			<div class="d-flex justify-content-center gap-2">
-				<button type="submit" class="btn btn-primary">Create {{ model_name }}</button>
-				<button type="reset" class="btn btn-secondary" href="#">Reset</button>
-			</div>
-		
-		</form>
-	</div>
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+	{{form.errors}}
 </div>
+{% endif %}
+
+<form method="post" action="" enctype="multipart/form-data">
+	{% csrf_token %}
+	
+	{% if form.helper %}{% crispy form %}{% else %}{{form|crispy}}{% endif %}
+
+	<div class="flex justify-center gap-2 mt-2">
+		<button type="submit" class="btn btn-primary">Create {{ model_name }}</button>
+		<button type="reset" class="btn btn-secondary" href="#">Reset</button>
+	</div>
+
+</form>
 <!--End Form card-->
 
 
