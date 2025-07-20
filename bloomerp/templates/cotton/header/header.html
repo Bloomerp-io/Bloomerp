@@ -1,17 +1,17 @@
 {% load static %}
 {% load bloomerp %}
 
-<header id="header" class="fixed top-0 w-full bg-primary-50 z-50 border-b border-gray-200">
-    <div class="flex items-center justify-between px-4 py-1">
+<header id="header" class="fixed top-0 w-full z-50 bg-base">
+    <div class="flex items-center justify-between px-3 ">
         <!-- Logo -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between w-64">
             <a
                 hx-get="{% url "bloomerp_home_view" %}"
                 hx-target="#main-content"
                 hx-swap="innerHTML"
                 hx-push-url="true"
                 class="flex items-center cursor-hover:cursor-pointer">
-            <img src="{% static 'bloomerp/img/logo.png' %}" class="hidden md:block" width="120" height="38">
+            <img src="{% static 'bloomerp/img/logo.png' %}" class="hidden md:block h-14">
             <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
             </a>
             <i class="bi bi-list ml-4 text-gray-600 hover:cursor-pointer hover:text-gray-800 transition-colors" onclick="toggleSidebar()"></i>
@@ -41,7 +41,7 @@
         
         <!-- Start Icons Navigation -->
         <nav class="ml-auto">
-            <ul class="flex items-center space-x-4 mb-0">                <!--Todo-->
+            <ul class="flex items-center space-x-4 mb-0">
                 <li>
                     <a 
                         onclick="openModal('todoModal')" 
@@ -121,7 +121,6 @@
                     </c-ui.dropdown.body>
                 </li>
                 <!-- End Profile Dropdown Items -->
-
             </ul>
         </nav>
         <!-- End Icons Navigation -->

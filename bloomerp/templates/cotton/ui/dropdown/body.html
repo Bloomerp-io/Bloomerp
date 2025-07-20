@@ -3,13 +3,14 @@ Bloomerp dropdown component.
 Parameters:
 - slot : everything inside of the component
 - trigger_text : text to display on the dropdown button (default: "Options")
+- trigger_icon : HTML for a custom icon to display instead of text (default: None)
 - trigger_class : additional CSS classes for the trigger button
 - menu_class : additional CSS classes for the dropdown menu
 - position : dropdown position - "left", "right", or "center" (default: "right")
 - direction : dropdown direction - "up" or "down" (default: "down")
 - size : dropdown size - "sm", "md", "lg" (default: "md")
 - disabled : whether the dropdown is disabled (default: False)
-- icon : whether to show dropdown icon (default: True)
+- icon : whether to show the arrow indicator icon (default: True; ignored when trigger_icon is set)
 {% endcomment %}
 
 {% load static %}
@@ -41,22 +42,17 @@ Parameters:
         aria-haspopup="true"
         {% if disabled %}disabled{% endif %}
     >
-        {{ trigger_text|default:"Options" }}
-        {% if icon|default:True %}
-            <svg class="
-                {% if size == 'sm' %}
-                    -mr-1 ml-1 h-4 w-4
-                {% elif size == 'lg' %}
-                    -mr-1 ml-2 h-6 w-6
-                {% else %}
-                    -mr-1 ml-2 h-5 w-5
-                {% endif %}
-                transition-transform duration-200" 
+        {# Show custom trigger_icon if provided, else use trigger_text #}
+        {% if trigger_icon %}
+            {{ trigger_icon }}
+        {% else %}
+            {{ trigger_text|default:"Options" }}
+        {% endif %}
+        {# Arrow icon shown only when icon is true and no custom trigger_icon #}
+        {% if icon|default:True and not trigger_icon %}
+            <svg class="-mr-1 ml-2 h-5 w-5 transition-transform duration-200" 
                 :class="{ 'rotate-180': open }"
-                fill="currentColor" 
-                viewBox="0 0 20 20" 
-                xmlns="http://www.w3.org/2000/svg"
-            >
+                fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
             </svg>
         {% endif %}

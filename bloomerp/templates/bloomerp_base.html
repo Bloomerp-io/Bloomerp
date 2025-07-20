@@ -7,7 +7,7 @@
 	<head>
 		{% include "snippets/head.html" %}
 	</head>
-	<body class="" id="bloomerpBody" style="background-color: #fcfcfc;">
+	<body class="bg-base" id="bloomerpBody">
 		
 		<!--Header -->
 		<c-header.header/>
@@ -16,8 +16,8 @@
 		<!-- Sidebar -->
 		<c-sidebar.body/>
 		<!-- End Sidebar-->		<!--Main -->
-		<main id="main" class="transition-all duration-300 ease-in-out ml-0 lg:ml-64 pt-10">
-			<div id="main-content" class="container px-6 py-8" hx-history-elt>
+		<main id="main" class="transition-all duration-300 ease-in-out lg:ml-64 px-8 py-6 mx-2 mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200">
+			<div id="main-content" class="container" hx-history-elt>
 				{% block main %}
 					{% if include_main_content %}
 						{% include include_main_content %}
@@ -38,20 +38,6 @@
 		<!--Todo-->
 		{% include 'snippets/todo_modal.html' %}
 		<!--End Todo-->
-		
-
-
-		<!--Footer -->
-		
-		<!-- End Footer -->
-
-		<!-- Back to top button -->
-		<a href="#" class="back-to-top d-flex align-items-center justify-content-center">
-		<i class="bi bi-arrow-up-short"></i>
-		</a>
-		<!-- End Back to top button -->
-
-
 
 		<!--Simple datatable-->
 		<script src="{% static 'bloomerp/vendor/simple-datatables/simple-datatables.js' %}"></script>

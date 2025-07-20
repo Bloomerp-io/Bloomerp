@@ -12,8 +12,7 @@ Variables:
 {% load bloomerp %}
 {% load cotton %}
 
-<div class="flex justify-between items-center">
-
+<div class="flex justify-between items-center mb-2">
     <div class="flex gap-2">
         <!-- Search -->
         <div class="flex">
@@ -32,60 +31,24 @@ Variables:
         </div>        <!-- End search -->
     </div>
 
-    <div class="flex gap-1"><!--Toggle view button-->
-        <div class="relative inline-block text-left" x-data="{ open: false }" @click.away="open = false">
-            <button 
-                type="button"
-                class="bg-transparent text-gray-700 hover:bg-gray-50 border-0 p-2 rounded-md transition-colors duration-200"
-                @click="open = !open">
-                <img src="{% static 'bloomerp/icons/eye.svg' %}" height="20" alt="View Options" class="w-5 h-5"/>
-            </button>
-            
-            <div 
-                class="absolute z-50 mt-2 w-56 origin-top-right right-0 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out rounded-md shadow-lg" 
-                x-show="open"
-                x-transition:enter="transition ease-out duration-100"
-                x-transition:enter-start="transform opacity-0 scale-95"
-                x-transition:enter-end="transform opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-75"
-                x-transition:leave-start="transform opacity-100 scale-100"
-                x-transition:leave-end="transform opacity-0 scale-95"
-                role="menu" 
-                aria-orientation="vertical" 
-                style="display: none;"
-            >
-                <div class="py-1" role="none">                    <button 
-                        type="button"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
-                        @click="openModal('calendarViewModal{{datatable_id}}'); open = false"
-                        role="menuitem">
-                        Calendar view
-                    </button>
-                </div>
+    <div class="flex gap-1">
+        <!-- Toggle view dropdown -->
+        <c-ui.dropdown.body :icon="False" trigger_icon="<img src='{% static 'bloomerp/icons/eye.svg' %}' class='w-5 h-5' />">
+            <div class="py-1" role="none">
+                <button 
+                    type="button"
+                    class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
+                    @click="openModal('calendarViewModal{{datatable_id}}')"
+                    role="menuitem">
+                    Calendar view
+                </button>
             </div>
-        </div>
-        <!--End toggle view button-->        <!-- Filter button -->
-        <div class="relative inline-block text-left" x-data="{ open: false }" @click.away="open = false">
-            <button 
-                type="button"
-                class="bg-transparent text-gray-700 hover:bg-gray-50 border-0 p-2 rounded-md transition-colors duration-200"
-                @click="open = !open">
-                <img src="{% static 'bloomerp/icons/filter.svg' %}" height="20" alt="Filter" class="w-5 h-5"/>
-            </button>
-            
-            <div 
-                class="absolute z-50 mt-2 min-w-96 origin-top-right right-0 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out rounded-md shadow-lg" 
-                x-show="open"
-                x-transition:enter="transition ease-out duration-100"
-                x-transition:enter-start="transform opacity-0 scale-95"
-                x-transition:enter-end="transform opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-75"
-                x-transition:leave-start="transform opacity-100 scale-100"
-                x-transition:leave-end="transform opacity-0 scale-95"
-                role="menu" 
-                aria-orientation="vertical" 
-                style="display: none;"
-            >
+        </c-ui.dropdown.body>
+        <!-- End toggle view dropdown -->
+
+        <!-- Filter dropdown -->
+        <c-ui.dropdown.body :icon="False" trigger_icon="<img src='{% static 'bloomerp/icons/filter.svg' %}' class='w-5 h-5' />" menu_class="min-w-96 p-4">
+            <div id="filterForm{{ datatable_id }}">
                 <div class="p-4">
                     <div 
                         id="filterForm{{ datatable_id }}"
@@ -142,59 +105,41 @@ Variables:
                     </div>
                 </div>
             </div>
-        </div>
-        <!-- End filter button -->        <!-- Settings -->
-        <div class="relative inline-block text-left" x-data="{ open: false }" @click.away="open = false">
-            <button 
-                type="button"
-                class="bg-transparent text-gray-700 hover:bg-gray-50 border-0 p-2 rounded-md transition-colors duration-200"
-                @click="open = !open">
-                <img src="{% static 'bloomerp/icons/dots.svg' %}" height="20" alt="Settings" class="w-5 h-5"/>
-            </button>
+        </c-ui.dropdown.body>
+        <!-- End filter dropdown -->
+
+        <!-- End Settings -->
+        <c-ui.dropdown.body :icon="False" trigger_icon="<i class='bi bi-three-dots'></i>">
             
-            <div 
-                class="absolute z-50 mt-2 w-56 origin-top-right right-0 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200 ease-in-out rounded-md shadow-lg" 
-                x-show="open"
-                x-transition:enter="transition ease-out duration-100"
-                x-transition:enter-start="transform opacity-0 scale-95"
-                x-transition:enter-end="transform opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-75"
-                x-transition:leave-start="transform opacity-100 scale-100"
-                x-transition:leave-end="transform opacity-0 scale-95"
-                role="menu" 
-                aria-orientation="vertical" 
-                style="display: none;"
-            >
-                <div class="py-1" role="none">
-                    <a 
-                        href="{% url 'users_my_profile_list_view_preference' %}?content_type_id={{ content_type_id }}&return_to={{ request.path }}"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
-                        role="menuitem">
-                        Select fields
-                    </a>
-                    <button 
-                        type="button"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
-                        hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=csv"
-                        hx-include="#filterForm{{ datatable_id }}"
-                        hx-swap="none"
-                        hx-ext="htmx-download"
-                        role="menuitem">
-                        Download csv
-                    </button>
-                    <button 
-                        type="button"
-                        class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
-                        hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=xlsx"
-                        hx-include="#filterForm{{ datatable_id }}"
-                        hx-swap="none"
-                        hx-ext="htmx-download"
-                        role="menuitem">
-                        Download xlsx
-                    </button>
-                </div>
+            <div class="py-1" role="none">
+                <a 
+                    href="{% url 'users_my_profile_list_view_preference' %}?content_type_id={{ content_type_id }}&return_to={{ request.path }}"
+                    class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
+                    role="menuitem">
+                    Select fields
+                </a>
+                <button 
+                    type="button"
+                    class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
+                    hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=csv"
+                    hx-include="#filterForm{{ datatable_id }}"
+                    hx-swap="none"
+                    hx-ext="htmx-download"
+                    role="menuitem">
+                    Download csv
+                </button>
+                <button 
+                    type="button"
+                    class="flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150 text-gray-700 hover:bg-gray-100 hover:text-primary-800 cursor-hover:cursor-pointer"
+                    hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions=true&data_table_download=xlsx"
+                    hx-include="#filterForm{{ datatable_id }}"
+                    hx-swap="none"
+                    hx-ext="htmx-download"
+                    role="menuitem">
+                    Download xlsx
+                </button>
             </div>
-        </div>
+        </c-ui.dropdown.body>
         <!-- End Settings -->
     </div>
 </div>

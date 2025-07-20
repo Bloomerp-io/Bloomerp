@@ -49,14 +49,17 @@
     --color-secondary-800: #1e293b;
     --color-secondary-900: #0f172a;
     --color-secondary-950: #020617;
+
+    --color-base: #f5f5f5
 }
 
 /*
 * Tailwind CSS plugins for v4
 */
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/aspect-ratio";
 
-@import "tailwindcss/preflight";
-@tailwind utilities;
 
 /*
 * Custom component utilities using @layer for Tailwind CSS v4
@@ -76,11 +79,16 @@
 
     /* Button variants */
     .btn-primary {
-        @apply bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] ring-[var(--color-primary-500)];
+        @apply bg-primary text-white border-[var(--color-primary-600)] ring-[var(--color-primary-500)];
     }
 
     .btn-primary:hover:not(:disabled) {
-        @apply bg-[var(--color-primary-700)] border-[var(--color-primary-700)];
+        @apply bg-[var(--color-primary-700)] border-[var(--color-primary-700)] text-white;
+    }
+
+    /* Reset primary button hover text color to override generic link hover */
+    .btn-primary:hover:not(:disabled) {
+        @apply text-white;
     }
 
     .btn-secondary {
@@ -190,246 +198,200 @@
     }
 }
 
+/*
+* Custom component utilities using @layer for Tailwind CSS v4
+*/
 @layer components {
     /* ===== TABLE UTILITIES ===== */
     .table {
-        width: 100%;
-        font-size: 0.875rem;
-        line-height: 1.25rem;
-        text-align: left;
-        color: rgb(107 114 128);
-        border-collapse: collapse;
+        @apply w-full text-sm leading-5 text-left text-gray-500 border-collapse;
     }
 
     .table thead th {
-        padding: 0.75rem 1rem;
-        font-size: 0.75rem;
-        line-height: 1rem;
-        font-weight: 500;
-        color: rgb(55 65 81);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        background-color: rgb(249 250 251);
-        border-bottom-width: 1px;
-        border-bottom-color: rgb(229 231 235);
+        @apply px-4 py-3 text-xs leading-4 font-medium text-gray-700 uppercase tracking-wider bg-base border-b border-gray-200;
     }
 
     .table tbody td {
-        padding: 0.75rem 1rem;
-        border-bottom-width: 1px;
-        border-bottom-color: rgb(229 231 235);
+        @apply px-4 py-3 border-b border-gray-200;
     }
 
     .table tbody tr:last-child td {
-        border-bottom-width: 0px;
+        @apply last:border-b-0;
     }
 
-    /* Table variants */
     .table-striped tbody tr:nth-child(odd) {
-        background-color: rgb(249 250 251);
+        @apply bg-gray-50;
     }
 
     .table-hover tbody tr:hover {
-        background-color: rgb(249 250 251);
+        @apply bg-gray-50;
     }
 
     .table-bordered {
-        border-width: 1px;
-        border-color: rgb(209 213 219);
+        @apply border border-gray-300;
     }
 
     .table-bordered th,
     .table-bordered td {
-        border-width: 1px;
-        border-color: rgb(209 213 219);
+        @apply border border-gray-300;
     }
 
     .table-borderless th,
     .table-borderless td,
     .table-borderless thead th {
-        border-width: 0px;
+        @apply border-0;
     }
 
-    /* Table sizes */
     .table-sm th,
     .table-sm td {
-        padding: 0.375rem 0.75rem;
-        font-size: 0.75rem;
-        line-height: 1rem;
+        @apply px-3 py-1.5 text-xs leading-4;
     }
 
     .table-lg th,
     .table-lg td {
-        padding: 1.5rem;
-        font-size: 1rem;
-        line-height: 1.5rem;
+        @apply px-6 py-6 text-base leading-6;
     }
 
     /* Table color themes */
     .table-primary {
-        background-color: var(--color-primary-50);
+        @apply bg-primary-50;
     }
 
     .table-primary th {
-        background-color: var(--color-primary-100);
-        color: var(--color-primary-900);
+        @apply bg-primary-100 text-primary-900;
     }
 
     .table-secondary {
-        background-color: var(--color-secondary-50);
+        @apply bg-secondary-50;
     }
 
     .table-secondary th {
-        background-color: var(--color-secondary-100);
-        color: var(--color-secondary-900);
+        @apply bg-secondary-100 text-secondary-900;
     }
 
     .table-success {
-        background-color: rgb(240 253 244);
+        @apply bg-green-50;
     }
 
     .table-success th {
-        background-color: rgb(220 252 231);
-        color: rgb(20 83 45);
+        @apply bg-green-100 text-green-800;
     }
 
     .table-danger {
-        background-color: rgb(254 242 242);
+        @apply bg-red-50;
     }
 
     .table-danger th {
-        background-color: rgb(254 226 226);
-        color: rgb(127 29 29);
+        @apply bg-red-100 text-red-800;
     }
 
     .table-warning {
-        background-color: rgb(255 251 235);
+        @apply bg-amber-50;
     }
 
     .table-warning th {
-        background-color: rgb(254 243 199);
-        color: rgb(146 64 14);
+        @apply bg-amber-100 text-amber-800;
     }
 
     .table-info {
-        background-color: rgb(239 246 255);
+        @apply bg-blue-50;
     }
 
     .table-info th {
-        background-color: rgb(219 234 254);
-        color: rgb(30 58 138);
+        @apply bg-blue-100 text-blue-800;
     }
 
     .table-light {
-        background-color: rgb(249 250 251);
+        @apply bg-gray-50;
     }
 
     .table-light th {
-        background-color: rgb(243 244 246);
-        color: var(--color-primary-950);
+        @apply bg-gray-100 text-gray-900;
     }
 
     .table-dark {
-        background-color: rgb(31 41 55);
-        color: rgb(255 255 255);
+        @apply bg-gray-800 text-white;
     }
 
     .table-dark th {
-        background-color: rgb(17 24 39);
-        color: rgb(255 255 255);
-        border-color: rgb(75 85 99);
+        @apply bg-gray-900 text-white border-gray-600;
     }
 
     .table-dark td {
-        border-color: rgb(75 85 99);
+        @apply border-gray-600;
     }
 
     .table-dark.table-striped tbody tr:nth-child(odd) {
-        background-color: rgb(75 85 99);
+        @apply bg-gray-600;
     }
 
     .table-dark.table-hover tbody tr:hover {
-        background-color: rgb(75 85 99);
+        @apply bg-gray-600;
     }
 
     /* Table responsive wrappers */
-    .table-responsive {
-        overflow-x: auto;
-    }
-
-    .table-responsive-sm {
-        overflow-x: auto;
-    }
-
-    .table-responsive-md {
-        overflow-x: auto;
-    }
-
-    .table-responsive-lg {
-        overflow-x: auto;
-    }
-
+    .table-responsive,
+    .table-responsive-sm,
+    .table-responsive-md,
+    .table-responsive-lg,
     .table-responsive-xl {
-        overflow-x: auto;
+        @apply overflow-x-auto;
     }
 
     /* Row context classes */
     .table-primary-row {
-        background-color: var(--color-primary-50);
+        @apply bg-primary-50;
     }
 
     .table-secondary-row {
-        background-color: var(--color-secondary-50);
+        @apply bg-secondary-50;
     }
 
     .table-success-row {
-        background-color: rgb(240 253 244);
+        @apply bg-green-50;
     }
 
     .table-danger-row {
-        background-color: rgb(254 242 242);
+        @apply bg-red-50;
     }
 
     .table-warning-row {
-        background-color: rgb(255 251 235);
+        @apply bg-amber-50;
     }
 
     .table-info-row {
-        background-color: rgb(239 246 255);
+        @apply bg-blue-50;
     }
 
     .table-light-row {
-        background-color: rgb(249 250 251);
+        @apply bg-gray-50;
     }
 
     .table-dark-row {
-        background-color: rgb(31 41 55);
-        color: rgb(255 255 255);
+        @apply bg-gray-800 text-white;
     }
 
     /* Table utility classes */
     .table-actions {
-        width: 6rem;
-        text-align: center;
+        @apply w-24 text-center;
     }
 
     .table-actions-wide {
-        width: 8rem;
-        text-align: center;
-    }
-
-    /*Card classes */
-    .card {
-        border: 1cm;
-        border-color: gray;
+        @apply w-32 text-center;
     }
 }
+
+@layer components {
+  .card {
+    @apply border border-gray-50 shadow rounded p-4
+  }
+}
+
 
 @layer utilities {
     /*Default utilities*/
     a:hover {
         cursor: pointer;
-        color: var(--color-primary-700);
     }
 
     /*Page title*/
