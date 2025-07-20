@@ -20,7 +20,7 @@ Parameters:
             <!-- Regular link -->
             <a 
                 href="{{ href }}" 
-                class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                class="inline-flex items-center text-sm font-medium text-primary-900 hover:text-primary-600 transition-colors"
             >
                 {% if icon %}
                     <i class="{{ icon }} mr-2 text-sm"></i>
@@ -35,7 +35,7 @@ Parameters:
                 {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
                 {% if hx_swap %}hx-swap="{{ hx_swap }}"{% endif %}
                 {% if hx_push_url %}hx-push-url="{{ hx_push_url }}"{% endif %}
-                class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                class="inline-flex items-center text-sm font-medium text-primary-900 hover:text-primary-600 transition-colors"
             >
                 {% if icon %}
                     <i class="{{ icon }} mr-2 text-sm"></i>
@@ -44,7 +44,7 @@ Parameters:
             </a>
         {% else %}
             <!-- Plain text link -->
-            <span class="inline-flex items-center text-sm font-medium text-gray-700">
+            <span class="inline-flex items-center text-sm font-medium text-primary-900">
                 {% if icon %}
                     <i class="{{ icon }} mr-2 text-sm"></i>
                 {% endif %}
@@ -53,7 +53,7 @@ Parameters:
         {% endif %}
     {% else %}
         <!-- Active/current item -->
-        <span class="inline-flex items-center text-sm font-medium text-gray-500" aria-current="page">
+        <span class="inline-flex items-center text-sm font-medium text-gray-400" aria-current="page">
             {% if icon %}
                 <i class="{{ icon }} mr-2 text-sm"></i>
             {% endif %}

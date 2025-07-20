@@ -4,32 +4,59 @@ Tooltip component that can be wrapped around any other html div
 Parameters:
 - text (str) : the tooltip text
 - position (str) : "top", "bottom", "left", or "right"
+- title (str, optional) : Shows a title if given
 - slot : the inner
 {% endcomment %}
 
 <div class="relative group">
     {% if position == "top" %}
-        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
-            {{ text }}
+        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-white text-gray-800 text-sm rounded-md shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            {% if title %}
+                <div class="font-semibold mb-1">{{ title }}</div>
+            {% endif %}
+            <div>{{ text }}</div>
+            <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1
+                        w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-white"></div>
         </div>
     {% elif position == "bottom" %}
-        <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
-            {{ text }}
+        <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-2 bg-white text-gray-800 text-sm rounded-md shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            {% if title %}
+                <div class="font-semibold mb-1">{{ title }}</div>
+            {% endif %}
+            <div>{{ text }}</div>
+            <div class="absolute left-1/2 top-0 transform -translate-x-1/2 -translate-y-1
+                        w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
         </div>
     {% elif position == "left" %}
-        <div class="absolute right-full top-1/2 transform -translate-y-1/2 mr-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
-            {{ text }}
+        <div class="absolute right-full top-1/2 transform -translate-y-1/2 mr-2 px-4 py-2 bg-white text-gray-800 text-sm rounded-md shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            {% if title %}
+                <div class="font-semibold mb-1">{{ title }}</div>
+            {% endif %}
+            <div>{{ text }}</div>
+            <div class="absolute right-0 top-1/2 transform translate-x-1 -translate-y-1/2
+                        w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-white"></div>
         </div>
     {% elif position == "right" %}
-        <div class="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
-            {{ text }}
+        <div class="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-4 py-2 bg-white text-gray-800 text-sm rounded-md shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            {% if title %}
+                <div class="font-semibold mb-1">{{ title }}</div>
+            {% endif %}
+            <div>{{ text }}</div>
+            <div class="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2
+                        w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-white"></div>
         </div>
     {% else %}
-        <!-- Fallback to top if no valid position is provided -->
-        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
-            {{ text }}
+        <!-- fallback to top -->
+        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-white text-gray-800 text-sm rounded-md shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            {% if title %}
+                <div class="font-semibold mb-1">{{ title }}</div>
+            {% endif %}
+            <div>{{ text }}</div>
+            <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1
+                        w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-white"></div>
         </div>
     {% endif %}
+
     <!-- Slot for the tooltip target content -->
     <div>
         {{ slot }}
