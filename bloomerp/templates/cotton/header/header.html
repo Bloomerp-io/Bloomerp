@@ -14,7 +14,11 @@
             <img src="{% static 'bloomerp/img/logo.png' %}" class="hidden md:block h-14">
             <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
             </a>
-            <i class="bi bi-list ml-4 text-gray-600 hover:cursor-pointer hover:text-gray-800 transition-colors" onclick="toggleSidebar()"></i>
+
+            <button onclick="toggleSidebar()" type="button" class="hover:cursor-pointer">
+                <c-icons.lines_horizontal size="24"/>
+            </button>
+            
         </div>
         <!-- End Logo -->
 
@@ -43,7 +47,7 @@
                         hx-swap="innerHTML"
                         hx-trigger="click"
                         href="#">
-                        <img src="{% static 'bloomerp/icons/notebook.svg' %}" width="20px" height="20px">
+                        <c-icons.todo size="24"/>
                     </a>
                 </li>
                 <!--End Todo-->
@@ -54,7 +58,7 @@
                         onclick="openModal('modal_bloom_ai')"
                         class="flex items-center text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-hover:cursor-pointer" 
                         href="#">
-                        <img src="{% static 'bloomerp/icons/ai.svg' %}" width="20" height="20">
+                        <c-icons.ai size="24"/>
                     </a>
                 </li>
                 <!--End AI-->
