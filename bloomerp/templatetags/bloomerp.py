@@ -15,6 +15,8 @@ from bloomerp.utils.encryption import BloomerpEncryptionSuite
 from django.conf import settings
 from django.core.signing import dumps, loads
 
+
+
 register = template.Library()
 
 @register.filter(name='get_dict_value')
@@ -412,6 +414,7 @@ def avatar(object:Model, avatar_attribute:str='avatar', size:int=30, class_name=
 
 
 import uuid
+from django.template.loader import render_to_string
 @register.inclusion_tag('snippets/datatable_and_filter.html')
 def datatable(
     content_type_id:int,
@@ -475,6 +478,17 @@ def generate_uuid(context):
     Returns a unique id.
     '''
     return str(uuid.uuid4())
+
+
+@register.simple_tag(takes_context=True)
+def load_icon(context:dict, icon:str, size:int=30, cls:str|None=None):
+    """Load's an icon"""
+    base = "cotton/icons/{}.html"
+
+    try:
+        return render_to_string(base.format(icon), context={"size":size, "class":cls})
+    except:
+        return "Icon not found"
 
 
 @register.filter

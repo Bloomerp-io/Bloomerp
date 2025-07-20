@@ -33,7 +33,7 @@ Variables:
 
     <div class="flex gap-1">
         <!-- Toggle view dropdown -->
-        <c-ui.dropdown.body :icon="False" trigger_icon="<img src='{% static 'bloomerp/icons/eye.svg' %}' class='w-5 h-5' />">
+        <c-ui.dropdown.body :icon="False" trigger_icon="eye">
             <div class="py-1" role="none">
                 <button 
                     type="button"
@@ -47,7 +47,7 @@ Variables:
         <!-- End toggle view dropdown -->
 
         <!-- Filter dropdown -->
-        <c-ui.dropdown.body :icon="False" trigger_icon="<img src='{% static 'bloomerp/icons/filter.svg' %}' class='w-5 h-5' />" menu_class="min-w-96 p-4">
+        <c-ui.dropdown.body :icon="False" trigger_icon="filter" menu_class="min-w-96 p-4">
             <div id="filterForm{{ datatable_id }}">
                 <div class="p-4">
                     <div 
@@ -109,7 +109,7 @@ Variables:
         <!-- End filter dropdown -->
 
         <!-- End Settings -->
-        <c-ui.dropdown.body :icon="False" trigger_icon="<i class='bi bi-three-dots'></i>">
+        <c-ui.dropdown.body :icon="False" trigger_icon="three_dots">
             
             <div class="py-1" role="none">
                 <a 

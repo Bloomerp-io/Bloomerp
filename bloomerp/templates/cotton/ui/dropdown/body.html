@@ -14,6 +14,7 @@ Parameters:
 {% endcomment %}
 
 {% load static %}
+{% load bloomerp %}
 
 <div class="relative inline-block text-left {% if wrapper_class %}{{ wrapper_class }}{% endif %}" x-data="{ open: false }" @click.away="open = false"
     {% if trigger_selector %}
@@ -34,11 +35,11 @@ Parameters:
         type="button" 
         class="
             {% if size == 'sm' %}
-                px-3 py-1.5 text-sm
+                px-2 py-1.5 text-sm
             {% elif size == 'lg' %}
                 px-6 py-3 text-lg
             {% else %}
-                px-4 py-2 text-base
+                px-3 py-2 text-base
             {% endif %}
 
             inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200
@@ -57,7 +58,7 @@ Parameters:
     >
         {# Show custom trigger_icon if provided, else use trigger_text #}
         {% if trigger_icon %}
-            {{ trigger_icon }}
+            {% load_icon trigger_icon size=24 %}
         {% else %}
             {{ trigger_text|default:"Options" }}
         {% endif %}
