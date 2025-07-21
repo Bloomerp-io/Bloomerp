@@ -20,35 +20,57 @@
 * Custom theme configuration for Tailwind CSS v4
 */
 @theme {
+
+    /*
+    * Primary 
+    */
     --color-primary-50: #F4F4FD;
     --color-primary-100: #dbeafe;
     --color-primary-200: #bfdbfe;
     --color-primary-300: #93c5fd;
     --color-primary-400: #60a5fa;
-
     --color-primary-500: #4154f1;
     --color-primary: #4154f1;
-
     --color-primary-600: #4154f1;
     --color-primary-700: #1d4ed8;
     --color-primary-800: #1e40af;
     --color-primary-900: #1e3a8a;
     --color-primary-950: #172554;
 
+    /*
+    * Secondary
+    */
     --color-secondary-50: #f8fafc;
     --color-secondary-100: #f1f5f9;
     --color-secondary-200: #e2e8f0;
     --color-secondary-300: #cbd5e1;
     --color-secondary-400: #94a3b8;
-
     --color-secondary-500: #64748b;
     --color-secondary: #64748b;
-
     --color-secondary-600: #475569;
     --color-secondary-700: #334155;
     --color-secondary-800: #1e293b;
     --color-secondary-900: #0f172a;
     --color-secondary-950: #020617;
+
+    /*
+    * Success
+    */
+    --color-success-light: #d4edda;
+    --color-success-dark: #155724;
+
+    /*
+    * Danger
+    */
+    --color-danger-light: #f8d7da;
+    --color-danger-dark: #721c24;
+
+    /*
+    * Warning
+    */
+    --color-warning-light: #fff3cd;,
+    --color-warning-dark: #856404;
+
 
     --color-base: #f5f5f5
 }
@@ -104,23 +126,23 @@
     }
 
     .btn-success {
-        @apply bg-green-500 text-white border-green-500 ring-green-500;
+        @apply bg-success-light text-white border-suring-success-light ring-success-light;
     }
 
     .btn-success:hover:not(:disabled) {
-        @apply bg-green-700 border-green-700;
+        @apply bg-suborder-success-dark border-success-dark;
     }
 
     .btn-danger {
-        @apply bg-red-500 text-white border-red-500 ring-red-500;
+        @apply bg-danger-light text-white border-dangbg-danger-light ring-dangbg-danger-light;
     }
 
     .btn-danger:hover:not(:disabled) {
-        @apply bg-red-700 border-red-700;
+        @apply bg-danger-dark border-danger-dark;
     }
 
     .btn-warning {
-        @apply bg-amber-500 text-white border-amber-500 ring-amber-300;
+        @apply bg-warning-light text-white border-warning-light ring-amber-300;
     }
 
     .btn-warning:hover:not(:disabled) {
@@ -169,22 +191,26 @@
     }
 
     .btn-outline-success {
-        @apply bg-transparent text-green-500 border-green-500 ring-green-500;
+        @apply bg-transparent text-suring-success-light border-suring-success-light ring-success-light;
     }
 
     .btn-outline-success:hover:not(:disabled) {
-        @apply bg-green-500 text-white;
+        @apply bg-suring-success-light text-white;
     }
 
     .btn-outline-danger {
-        @apply bg-transparent text-red-500 border-red-500 ring-red-500;
+        @apply bg-transparent text-dangbg-danger-light border-dangbg-danger-light ring-dangbg-danger-light;
     }
 
     .btn-outline-danger:hover:not(:disabled) {
-        @apply bg-red-500 text-white;
+        @apply bg-danger-light text-white;
     }
 
     /* Button sizes */
+    .btn-xs {
+        @apply text-xs leading-4;
+    }
+
     .btn-sm {
         @apply px-3 py-1.5 text-[0.75rem] leading-4;
     }
@@ -203,7 +229,7 @@
 }
 
 /*
-* Custom component utilities using @layer for Tailwind CSS v4
+* Table
 */
 @layer components {
     /* ===== TABLE UTILITIES ===== */
@@ -436,7 +462,31 @@
     .input-lg {
       @apply px-4 py-3 
     }
+}
 
+@layer components {
+  .select {
+    @apply appearance-none bg-no-repeat bg-right;
+    @apply border border-gray-200 rounded-md;
+    @apply px-3 py-2 text-sm;
+    @apply focus:ring-1 focus:ring-primary focus:border-primary;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+
+  .select-sm {
+    @apply px-2 py-1 text-xs;
+    padding-right: 2.5rem;
+    background-position: right 0.25rem center;
+  }
+
+  .select-lg {
+    @apply px-4 py-3 text-base;
+    padding-right: 3rem;
+    background-position: right 0.5rem center;
+  }
 }
 
 
@@ -507,7 +557,8 @@
   width: 35px;
   height: 35px;
   border-radius: 50%;
-  object-fit: cover;
+  -o-object-fit: cover;
+     object-fit: cover;
 }
 
 
@@ -652,8 +703,15 @@ Dashboard
   background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
   border-radius: 5px;
   background-size: 200% 100%;
-  animation: 1.5s shine linear infinite;
+  -webkit-animation: 1.5s shine linear infinite;
+          animation: 1.5s shine linear infinite;
   z-index: 1000;
+}
+
+@-webkit-keyframes shine {
+  to {
+    background-position-x: -200%;
+  }
 }
 
 @keyframes shine {

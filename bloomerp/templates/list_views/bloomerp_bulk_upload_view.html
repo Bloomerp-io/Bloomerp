@@ -4,105 +4,49 @@
 {% breadcrumb title=title model=model %}
 
 
-<div class="card text-start">
-  <div class="card-body">
-    <h4 class="card-title">Bulk upload {{model_name_plural}}</h4>
 
-    <p class="card-text">
-      Please upload a CSV or Excel file to bulk import data.
-      You can download the template file <a 
-        href="#"
-        data-bs-toggle="modal"
-        data-bs-target="#downloadBulkUploadTemplate" 
-        >here</a>. 
-    </p>
+<p class="card-text">
+  Please upload a CSV or Excel file to bulk import data.
+  You can download the template file <a href="#" onclick="openModal('dowload_bulk_upload_template_modal')"
+    class="text-primary hover:text-primary-900">here</a>.
+</p>
 
-    <!--Upload bulk upload form-->
-    <form 
-      hx-encoding='multipart/form-data' 
-      hx-post='{% url "components_bulk_upload_table" %}' 
-      hx-target="#bulkUploadTarget" 
-      hx-swap="innerHTML"
-      hx-trigger="change"
-      hx-on::after-request="this.reset()"
-      >
-      {% csrf_token %}
-      <input class="form-control" type='file' name='bulk_upload_file' accept=".xlsx,.csv,.xls">
-      <input value="{{content_type_id}}" type="hidden" name="bulk_upload_content_type_id">
-    </form>
-    <!--End upload bulk upload form-->
+<!--Upload bulk upload form-->
+<form hx-encoding='multipart/form-data' hx-post='{% url "components_bulk_upload_table" %}' hx-target="#bulkUploadTarget"
+  hx-swap="innerHTML" hx-trigger="change" hx-on::after-request="this.reset()">
+  {% csrf_token %}
+  <input class="form-control" type='file' name='bulk_upload_file' accept=".xlsx,.csv,.xls">
+  <input value="{{content_type_id}}" type="hidden" name="bulk_upload_content_type_id">
+</form>
+<!--End upload bulk upload form-->
 
-    <form
-        enctype="multipart/form-data"
-        hx-post="{% url 'components_bulk_upload_table' %}"
-        hx-target="#bulkUploadTarget"
-        hx-trigger="submit"
-        hx-swap="innerHTML"
-      >
-      {% csrf_token %}
-      <div id="bulkUploadTarget">
-        {% if formset.errors %}
-          {% include "components/bulk_upload_table.html" with formset=formset fields=fields %}
-        {% endif %}
-      </div>
-    </form>
-
-
+<form enctype="multipart/form-data" hx-post="{% url 'components_bulk_upload_table' %}" hx-target="#bulkUploadTarget"
+  hx-trigger="submit" hx-swap="innerHTML">
+  {% csrf_token %}
+  <div id="bulkUploadTarget">
+    {% if formset.errors %}
+    {% include "components/bulk_upload_table.html" with formset=formset fields=fields %}
+    {% endif %}
   </div>
-</div>
+</form>
+
 
 <!-- Modal -->
-<div
-  class="modal fade"
-  id="downloadBulkUploadTemplate"
-  tabindex="-1"
-  data-bs-backdrop="static"
-  data-bs-keyboard="false"
-  
-  role="dialog"
-  aria-labelledby="modalTitleId"
-  aria-hidden="true"
->
-  <div
-    class="modal-dialog modal-dialog-centered"
-    role="document"
-  >
-    <form method="post" action="{% url 'components_download_bulk_upload_template' %}">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitleId">
-                Download Bulk Upload Template
-                </h5>
-                <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-                ></button>
-            </div>
-            
-            <div class="modal-body">
-                <p>Select the fields and file type you want for your template. Some fields are required.</p>
+<c-ui.modal id="dowload_bulk_upload_template_modal" title="Download Bulk Upload Template">
+  <form method="post" action="{% url 'components_download_bulk_upload_template' %}">
 
-                
-                {% csrf_token %}
-                {{ fields_form | crispy }}
-            </div>
-            <div class="modal-footer">
-                <button
-                type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
-                >
-                Close
-                </button>
-                <button type="submit" class="btn btn-primary">Download</button>
-                
-            </div>
-        </div>
-    </form>
-  </div>
-
-</div>
+    <p>Select the fields and file type you want for your template. Some fields are required.</p>
 
 
+    {% csrf_token %}
+    {{ fields_form | crispy }}
+
+    <div class="flex justify-center gap-2s">
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        Close
+      </button>
+      <button type="submit" class="btn btn-primary">Download</button>
+    </div>
+
+  </form>
+</c-ui.modal>

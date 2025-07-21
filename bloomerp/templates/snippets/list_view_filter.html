@@ -76,13 +76,13 @@ Variables:
                                 hx-target="#filterForm{{ datatable_id }} .new-filter-input-row"
                                 hx-swap="outerHTML"
                                 >
-                                <img src="{% static 'bloomerp/icons/add.svg' %}" height="16" alt="Add filter" class="w-4 h-4"/>
+                                <c-icons.add size="24"/>
                                 <span class="text-sm">Add new filter</span>
                             </a>
 
                             <div class="flex gap-2">
                                 <button 
-                                    class="px-3 py-1.5 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 transition-colors duration-200"
+                                    class="btn btn-sm btn-primary"
                                     hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}"
                                     hx-target="#{{ datatable_id }}"
                                     hx-include="#filterForm{{ datatable_id }}"
@@ -91,7 +91,7 @@ Variables:
                                         Apply filter
                                 </button>
                                 <button 
-                                    class="px-3 py-1.5 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600 transition-colors duration-200" 
+                                    class="btn btn-sm btn-secondary" 
                                     type="button"
                                     hx-get="{% url 'components_datatable' %}?data_table_content_type_id={{ content_type_id }}&data_table_include_actions={{ include_actions }}"
                                     hx-target="#{{ datatable_id }}"

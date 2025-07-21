@@ -1,27 +1,16 @@
 {% load static %}
-<div class="filter-input-row row justify-center align-items-center g-2 mb-2">                      
+<div class="filter-input-row flex justify-between align-items-center">
     <div class="flex items-center gap-2">
-        <img 
-            src="{% static 'bloomerp/icons/close.svg' %}" 
-            height="12" 
-            alt="Remove filter"
-            onclick="removeFilterInputRow(this)"
-            class="h-6 w-6 hover:cursor-pointer"
-            >
-
-        <select 
-            class="form-select form-select-sm selectedField"
-            hx-get="{% url 'components_list_view_filter_inputs' %}?step=action"
-            hx-target="#filterActionDiv{{id}}"
-            hx-swap="innerHTML"
-            hx-trigger="change"
-            name = "application_field_id"
-            >
-                <option value="" selected disabled>Select field</option>
+        <button onclick="removeFilterInputRow(this)">
+            <c-icons.close size="24" />
+        </button>
+        <select class="selectedField" hx-get="{% url 'components_list_view_filter_inputs' %}?step=action"
+            hx-target="#filterActionDiv{{id}}" hx-swap="innerHTML" hx-trigger="change" name="application_field_id">
+            <option value="" selected disabled>Select field</option>
             {% for field in filter_application_fields %}
-                {% if field.field_type not in 'Property,OneToManyField' %}
-                    <option value="{{ field.pk }}" type="{{ field.field_type }}">{{ field.title }}</option>
-                {% endif %}
+            {% if field.field_type not in 'Property,OneToManyField' %}
+            <option value="{{ field.pk }}" type="{{ field.field_type }}">{{ field.title }}</option>
+            {% endif %}
             {% endfor %}
         </select>
     </div>
@@ -29,4 +18,6 @@
     </div>
 </div>
 
-<div class="new-filter-input-row"></div>
+<div class="new-filter-input-row">
+
+</div>
