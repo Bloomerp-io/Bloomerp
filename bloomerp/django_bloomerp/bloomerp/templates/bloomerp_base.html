@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+	{% load static %}
+	{% load globals %}
+	{% load bloomerp %}
+
+	<head>
+		{% include "snippets/head.html" %}
+	</head>
+	{% block body %}
+	<body class="bg-base" id="bloomerpBody" x-data>
+		
+		<!--Header -->
+		<c-header.header/>
+		<!-- End Header -->
+
+		<!-- Sidebar -->
+		<c-sidebar.body/>
+		<!-- End Sidebar-->		<!--Main -->
+		<main id="main" class="transition-all duration-300 ease-in-out px-8 py-6 px-2 mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200 me-2"
+			:class="Alpine.store('sidebar').isOpen ? 'lg:ml-64' : 'ml-2'">
+			<div id="main-content" hx-history-elt>
+				{% block main %}
+					{% if include_main_content %}
+						{% include include_main_content %}
+					{% endif %}
+				{% endblock main %}
+			</div>
+		</main>
+		<!-- End-->
+
+		<!--Bloom AI modal-->
+		{% include "snippets/llm_modal_snippet.html" with id="bloom_ai" title="Bloom AI" query_type="bloom_ai" %}
+		<!--End Bloom AI modal-->
+
+		<!--Messages wrapper-->
+		{% include 'snippets/messages.html' %}
+		<!--End messages wrapper-->
+
+		<!--Todo-->
+		{% include 'snippets/todo_modal.html' %}
+		<!--End Todo-->
+
+		<!--Simple datatable-->
+		<script src="{% static 'bloomerp/vendor/simple-datatables/simple-datatables.js' %}"></script>
+
+		<!-- Template Main JS File -->
+		<script src="{% static 'bloomerp/js/main.js' %}"></script>
+
+		<!--Bloomerp messages-->
+		<script src="{% static 'bloomerp/js/messages.js' %}"></script>
+		
+		<!--Bloomerp forms-->
+		<script src="{% static 'bloomerp/js/bloomerpForms.js' %}"></script>
+
+		<!--Bloomerp datatable-->
+		<script src="{% static 'bloomerp/js/datatable.js' %}"></script>
+
+		<!--LLM-->
+		<script src="{% static 'bloomerp/js/llm.js' %}"></script>
+
+		<!--Hotkeys-->
+		<script src="{% static 'bloomerp/js/hotkeys.js' %}"></script>
+
+		<!--Modals-->
+		<script src="{% static 'bloomerp/js/modals.js' %}"></script>
+		
+		<!--Editor JS-->
+		
+
+		{% block scripts %}
+		
+		{% endblock scripts %}
+		
+	</body>
+	{% endblock body %}
+</html>
+

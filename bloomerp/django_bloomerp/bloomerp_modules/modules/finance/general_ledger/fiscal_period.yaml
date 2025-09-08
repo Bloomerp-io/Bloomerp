@@ -1,0 +1,76 @@
+id: fiscal_period
+name: Fiscal Period
+description: Fiscal p  - id
+name_plural: Fiscal Periods
+fields:
+  - id: period_code
+    name: Period Code
+    description: Unique code for the fiscal period
+    type: string
+    options:
+      max_length: 20
+      unique: true
+      
+  - id: period_name
+    name: Period Name
+    description: Name of the fiscal period
+    type: string
+    options:
+      max_length: 100
+      
+  - id: fiscal_year
+    name: Fiscal Year
+    description: Fiscal year this period belongs to
+    type: integer
+    
+  - id: period_number
+    name: Period Number
+    description: Period number within the fiscal year
+    type: integer
+    
+  - id: start_date
+    name: Start Date
+    description: Start date of the fiscal period
+    type: date
+    
+  - id: end_date
+    name: End Date
+    description: End date of the fiscal period
+    type: date
+    
+  - id: status
+    name: Status
+    description: Status of the fiscal period
+    type: string
+    options:
+      max_length: 20
+      choices:
+        OPEN: "Open"
+        CLOSED: "Closed"
+        LOCKED: "Locked"
+      default: "OPEN"
+      
+  - id: is_adjusting_period
+    name: Is Adjusting Period
+    description: Whether this is an adjusting period
+    type: boolean
+    options:
+      default: false
+      
+  - id: closed_by
+    name: Closed By
+    description: User who closed this period
+    type: foreign_key
+    options:
+      to: "bloomerp.User"
+      "null": true
+      blank: true
+      on_delete: "call(django.db.models.SET_NULL)"
+      
+  - id: closed_date
+    name: Closed Date
+    description: Date when period was closed
+    type: datetime
+    options:
+      "null": true
+      blank: true

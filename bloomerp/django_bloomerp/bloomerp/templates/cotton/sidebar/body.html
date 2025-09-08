@@ -1,0 +1,53 @@
+{% load bloomerp %}
+{% load cotton %}
+{% load static %}
+
+<!-- Initialize Alpine store for sidebar -->
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.store('sidebar', { isOpen: window.innerWidth >= 1024 });
+});
+</script>
+
+<div x-cloak>
+  <!-- Sidebar -->
+  <aside
+    id="sidebar"
+    :class="{ '-translate-x-full': !Alpine.store('sidebar').isOpen }"
+    class="fixed left-0 top-14 h-[calc(100vh-2rem)] w-64 transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto bg-base"
+  >
+    <nav class="px-4 py-6 pb-8">
+        <!-- Personal workspaces section -->
+        <c-sidebar.dropdown_section title="Personal workspaces" section_id="personal" show_search=False icon="bi bi-person-workspace">
+            
+        </c-sidebar.dropdown_section>
+        <!--Personal workspaces section-->
+
+
+        <!-- Model workspaces section -->
+        <c-sidebar.dropdown_section title="Model Workspaces" section_id="model" show_search=True
+            search_placeholder="Search" search_function="searchContentTypes()">
+            
+        </c-sidebar.dropdown_section>
+        <!--End model workspaces section-->
+    </nav>
+  </aside>
+
+  <!-- Mobile overlay -->
+  <div
+    id="sidebar-overlay"
+    class="fixed inset-0 bg-gray-900/50 z-30 lg:hidden"
+    x-show="Alpine.store('sidebar').isOpen"
+    @click="toggleSidebar()"
+  ></div>
+</div>
+
+<!-- Simplified toggle/responsive logic -->
+<script>
+function toggleSidebar() {
+    Alpine.store('sidebar').isOpen = !Alpine.store('sidebar').isOpen;
+  };
+
+</script>
+
+

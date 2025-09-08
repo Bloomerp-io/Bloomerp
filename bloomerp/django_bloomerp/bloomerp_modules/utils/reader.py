@@ -1,0 +1,397 @@
+from django.db.models import Model
+from bloomerp.models.core import BloomerpModel
+import yaml
+from enum import Enum
+from django.db import models
+from typing import Optional, Dict, Any, Callable
+from bloomerp_modules.datatypes.modules import (
+    BaseConfig, FieldConfig, ModelConfig, SubModuleConfig, ModuleConfig
+)
+
+class FieldTypeMapping:
+    """Mapping of field type names to Django field classes and their defaults."""
+    
+    FIELD_MAPPING = {
+        # Text Fields
+        "string": (models.CharField, {"max_length": 100}),
+        "text": (models.TextField, {}),
+        "slug": (models.SlugField, {"max_length": 50}),
+        "email": (models.EmailField, {"max_length": 254}),
+        "url": (models.URLField, {"max_length": 200}),
+        
+        # Number Fields
+        "integer": (models.IntegerField, {}),
+        "big_integer": (models.BigIntegerField, {}),
+        "small_integer": (models.SmallIntegerField, {}),
+        "positive_integer": (models.PositiveIntegerField, {}),
+        "positive_small_integer": (models.PositiveSmallIntegerField, {}),
+        "float": (models.FloatField, {}),
+        "decimal": (models.DecimalField, {"max_digits": 10, "decimal_places": 2}),
+        
+        # Boolean Fields
+        "boolean": (models.BooleanField, {"default": False}),
+        "null_boolean": (models.BooleanField, {"null": True, "blank": True}),
+        
+        # Date/Time Fields
+        "date": (models.DateField, {}),
+        "datetime": (models.DateTimeField, {}),
+        "time": (models.TimeField, {}),
+        "duration": (models.DurationField, {}),
+        
+        # File Fields
+        "file": (models.FileField, {"upload_to": "uploads/"}),
+        "image": (models.ImageField, {"upload_to": "images/"}),
+        
+        # JSON and Binary
+        "json": (models.JSONField, {"default": dict}),
+        "binary": (models.BinaryField, {}),
+        
+        # UUID
+        "uuid": (models.UUIDField, {}),
+        
+        # IP Address
+        "ip_address": (models.GenericIPAddressField, {}),
+        
+        # Relationship Fields
+        "foreign_key": (models.ForeignKey, {"on_delete": models.CASCADE}),
+        "many_to_many": (models.ManyToManyField, {}),
+        "one_to_one": (models.OneToOneField, {"on_delete": models.CASCADE}),
+    }
+    
+    @classmethod
+    def get_field_class_and_defaults(cls, field_type: str) -> tuple:
+        """Get Django field class and default options for a field type."""
+        if field_type not in cls.FIELD_MAPPING:
+            raise ValueError(f"Unknown field type: {field_type}")
+        return cls.FIELD_MAPPING[field_type]
+
+
+def _get_validator_functions(field_config:FieldConfig) -> list[Callable]:
+    # Get and import validators
+    validator_functions = []
+    if field_config.validators:
+        for validator_path in field_config.validators:
+            try:
+                # Import validator function from module path
+                module_path, function_name = validator_path.rsplit('.', 1)
+                validator_module = __import__(module_path, fromlist=[function_name])
+                validator_function = getattr(validator_module, function_name)
+                validator_functions.append(validator_function)
+            except (ImportError, AttributeError) as e:
+                print(f"Warning: Could not import validator '{validator_path}': {e}")
+                continue
+    
+    return validator_functions
+
+
+def _get_callable(path: str) -> Callable:
+    """Returns a callable for a particular path
+    
+    Example:
+        path: django.db.models.CASCADE
+    Returns:
+        django.db.models.CASCADE
+    
+    Args:
+        path: Dot-separated module path to the callable
+        
+    Returns:
+        The callable object
+        
+    Raises:
+        ImportError: If the module cannot be imported
+        AttributeError: If the callable doesn't exist in the module
+    """
+    try:
+        # Split the path into module and callable name
+        module_path, callable_name = path.rsplit('.', 1)
+        
+        # Import the module
+        module = __import__(module_path, fromlist=[callable_name])
+        
+        # Get the callable from the module
+        callable_obj = getattr(module, callable_name)
+        
+        return callable_obj
+    except (ImportError, AttributeError, ValueError) as e:
+        raise ImportError(f"Could not import callable '{path}': {e}")
+
+
+def _convert_string_to_callable(field_opts: dict) -> dict:
+    """Convert string values to callables where needed.
+    
+    This function looks for field options that should be callables and converts
+    string paths to actual callable objects.
+    
+    Common callable options:
+    - on_delete: For foreign key relationships
+    - default: When it's a callable default value (contains dots indicating module path)
+    - call(...): When a string starts with "call(" and ends with ")", execute the callable
+    - validators: Already handled separately
+    """
+    updated_opts = {}
+    
+    for field, value in field_opts.items():
+        if isinstance(value, str):
+            # Handle call(...) pattern - execute the callable
+            if value.startswith("call(") and value.endswith(")"):
+                callable_path = value[5:-1]  # Remove "call(" and ")"
+                try:
+                    callable_obj = _get_callable(callable_path)
+                    updated_opts[field] = callable_obj
+                except ImportError as e:
+                    print(f"Warning: Could not call '{callable_path}': {e}")
+                    updated_opts[field] = value  # Keep original string if call fails
+                continue
+        
+        # For all other cases, keep the original value
+        updated_opts[field] = value
+    
+    return updated_opts
+
+
+def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleConfig, module_config: ModuleConfig) -> type[Model]:
+    """Create a Django model class from Pydantic configuration objects."""
+    attrs = {}
+    
+    # Process each field configuration
+    for field_config in model_config.fields:
+        field_class, default_opts = FieldTypeMapping.get_field_class_and_defaults(field_config.type)
+        
+        # Get validator functions
+        validator_functions = _get_validator_functions(field_config)
+        
+        # Start with defaults, then override with field-specific options
+        field_opts = {
+            'help_text': field_config.description,
+            'verbose_name': field_config.name,
+            **default_opts
+        }
+        
+        # Add validators if any were successfully imported
+        if validator_functions:
+            field_opts['validators'] = validator_functions
+        
+        # Apply any custom options from the field config
+        if field_config.options:
+            field_opts.update(field_config.options)
+        
+        # Convert string values to callables where needed
+        field_opts = _convert_string_to_callable(field_opts)
+        
+        # Create the field instance
+        attrs[field_config.id] = field_class(**field_opts)
+    
+    # Create Meta class with model metadata
+    class Meta:
+        verbose_name = model_config.name
+        db_table = f"{module_config.id}_{sub_module.id}_{model_config.id}"
+        
+        if model_config.description:
+            db_table_comment = model_config.description
+            
+        if model_config.name_plural:
+            verbose_name_plural = model_config.name_plural
+            
+        # Handle custom permissions if they exist
+        if model_config.custom_permissions:
+            permissions = [(perm.id, perm.name) for perm in model_config.custom_permissions] if isinstance(model_config.custom_permissions, list) else []
+    
+    attrs['Meta'] = Meta
+    attrs['__module__'] = 'bloomerp_modules.models'
+    
+    # Create class name from model name (remove spaces and special chars)
+    model_class_name = ''.join(word.capitalize() for word in model_config.name.replace('-', ' ').replace('_', ' ').split())
+    
+    # Create and return the model class
+    return type(model_class_name, (BloomerpModel,), attrs)
+
+
+def scan_modules_directory() -> list[ModuleConfig]:
+    """Scan the modules directory and load all module configurations using Pydantic models."""
+    from pathlib import Path
+    
+    modules_dir = Path(__file__).parent.parent / 'modules'
+    modules = []
+    
+    if not modules_dir.exists():
+        return modules
+    
+    for module_dir in modules_dir.iterdir():
+        if not module_dir.is_dir():
+            continue
+            
+        module_config_path = module_dir / 'config.yaml'
+        if not module_config_path.exists():
+            continue
+            
+        # Load module config
+        with open(module_config_path, 'r') as f:
+            module_data = yaml.safe_load(f)
+        
+        # Scan for submodules
+        sub_modules = []
+        for item in module_dir.iterdir():
+            if not item.is_dir():
+                continue
+                
+            submodule_config_path = item / 'config.yaml'
+            if not submodule_config_path.exists():
+                continue
+                
+            # Load submodule config
+            with open(submodule_config_path, 'r') as f:
+                submodule_data = yaml.safe_load(f)
+            
+            # Scan for model files in the submodule directory
+            models = []
+            for model_file in item.iterdir():
+                if model_file.is_file() and model_file.suffix == '.yaml' and model_file.name != 'config.yaml':
+                    with open(model_file, 'r') as f:
+                        model_data = yaml.safe_load(f)
+                    
+                    # Ensure model_data is not None and has required fields
+                    if not model_data:
+                        continue
+                        
+                    # Validate and clean model data before creating Pydantic model
+                    clean_model_data = {
+                        'id': model_data.get('id', model_file.stem),
+                        'name': model_data.get('name', model_file.stem.replace('_', ' ').title()),
+                        'description': model_data.get('description', ''),
+                        'enabled': model_data.get('enabled', True),
+                        'fields': model_data.get('fields', []),
+                        'name_plural': model_data.get('name_plural'),
+                        'custom_permissions': model_data.get('custom_permissions')
+                    }
+                    
+                    # Create ModelConfig from cleaned YAML data using Pydantic
+                    try:
+                        model_config = ModelConfig(**clean_model_data)
+                        models.append(model_config)
+                    except Exception as e:
+                        print(f"Error loading model from {model_file}: {e}")
+                        continue
+            
+            # Create SubModuleConfig from YAML data and add models
+            clean_submodule_data = {
+                'id': submodule_data.get('id', item.name),
+                'name': submodule_data.get('name', item.name.replace('_', ' ').title()),
+                'code': submodule_data.get('code', item.name.upper()),
+                'description': submodule_data.get('description', ''),
+                'enabled': submodule_data.get('enabled', True),
+                'models': models
+            }
+            sub_module_config = SubModuleConfig(**clean_submodule_data)
+            sub_modules.append(sub_module_config)
+        
+        # Create ModuleConfig from YAML data and add submodules
+        clean_module_data = {
+            'id': module_data.get('id', module_dir.name),
+            'name': module_data.get('name', module_dir.name.replace('_', ' ').title()),
+            'code': module_data.get('code', module_dir.name.upper()),
+            'description': module_data.get('description', ''),
+            'enabled': module_data.get('enabled', True),
+            'icon': module_data.get('icon', '📁'),
+            'sub_modules': sub_modules
+        }
+        module_config = ModuleConfig(**clean_module_data)
+        modules.append(module_config)
+    
+    return modules
+
+
+def load_all_models_from_modules() -> dict[str, type[Model]]:
+    """Load all models from the modules directory structure."""
+    modules = scan_modules_directory()
+    models = {}
+    
+    for module in modules:
+        for sub_module in module.sub_modules:
+            for model_config in sub_module.models:
+                model_class = create_model_from_config(
+                    model_config, 
+                    sub_module, 
+                    module
+                )
+                # Use a unique key to avoid conflicts
+                model_key = f"{module.id}_{sub_module.id}_{model_config.id}"
+                models[model_key] = model_class
+    
+    return models
+
+
+def parse_yaml_config(yaml_file_path: str) -> ModuleConfig:
+    """Parse YAML configuration file and return ModuleConfig object."""
+    with open(yaml_file_path, 'r') as file:
+        data = yaml.safe_load(file)
+    
+    module_data = data['module']
+    
+    # Parse sub-modules
+    sub_modules = []
+    if 'sub_modules' in module_data:
+        for sub_module_data in module_data['sub_modules']:
+            # Parse models
+            models = []
+            if 'models' in sub_module_data:
+                for model_data in sub_module_data['models']:
+                    # Parse fields
+                    fields = []
+                    if 'fields' in model_data:
+                        for field_data in model_data['fields']:
+                            field_config = FieldConfig(
+                                id=field_data['id'],
+                                name=field_data['name'],
+                                type=field_data['type'],
+                                description=field_data.get('description'),
+                                options=field_data.get('options', {})
+                            )
+                            fields.append(field_config)
+                    
+                    model_config = ModelConfig(
+                        id=model_data['id'],
+                        name=model_data['name'],
+                        description=model_data.get('description'),
+                        fields=fields,
+                        name_plural=model_data.get('name_plural'),
+                        custom_permissions=model_data.get('custom_permissions')
+                    )
+                    models.append(model_config)
+            
+            sub_module_config = SubModuleConfig(
+                id=sub_module_data['id'],
+                name=sub_module_data['name'],
+                code=sub_module_data['code'],
+                models=models,
+                description=sub_module_data.get('description')
+            )
+            sub_modules.append(sub_module_config)
+    
+    return ModuleConfig(
+        id=module_data['id'],
+        name=module_data['name'],
+        code=module_data['code'],
+        description=module_data.get('description'),
+        icon=module_data['icon'],
+        sub_modules=sub_modules
+    )
+
+
+def load_models_from_yaml(yaml_file_path: str) -> dict[str, type[Model]]:
+    """Load all models from YAML configuration file."""
+    module_config = parse_yaml_config(yaml_file_path)
+    models = {}
+    
+    for sub_module in module_config.sub_modules:
+        for model_config in sub_module.models:
+            model_class = create_model_from_config(
+                model_config, 
+                sub_module, 
+                module_config
+            )
+            models[model_config.name] = model_class
+    
+    return models
+
+

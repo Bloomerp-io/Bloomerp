@@ -1,0 +1,105 @@
+id: budget
+name: Budget
+description: Budget allocations for accounts and periods
+name_plural: Budgets
+fields:
+  - id: budget_code
+    name: Budget Code
+    description: Unique code for the budget
+    type: string
+    options:
+      max_length: 20
+      unique: true
+      
+  - id: budget_name
+    name: Budget Name
+    description: Name of the budget
+    type: string
+    options:
+      max_length: 100
+      
+  - id: account
+    name: Account
+    description: Account this budget applies to
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.Account"
+      on_delete: call(django.db.models.CASCADE)
+      
+  - id: fiscal_period
+    name: Fiscal Period
+    description: Fiscal period for this budget
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.FiscalPeriod"
+      on_delete: call(django.db.models.CASCADE)
+      
+  - id: budget_type
+    name: Budget Type
+    description: Type of budget
+    type: string
+    options:
+      max_length: 20
+      choices:
+        OPERATING: "Operating Budget"
+        CAPITAL: "Capital Budget"
+        CASH_FLOW: "Cash Flow Budget"
+        MASTER: "Master Budget"
+      default: "OPERATING"
+      
+  - id: budgeted_amount
+    name: Budgeted Amount
+    description: Budgeted amount for this account and period
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: actual_amount
+    name: Actual Amount
+    description: Actual amount spent/received
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: variance_amount
+    name: Variance Amount
+    description: Variance between budget and actual
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: variance_percentage
+    name: Variance Percentage
+    description: Variance as percentage of budget
+    type: decimal
+    options:
+      max_digits: 5
+      decimal_places: 2
+      default: 0
+      
+  - id: status
+    name: Status
+    description: Status of the budget
+    type: string
+    options:
+      max_length: 20
+      choices:
+        DRAFT: "Draft"
+        APPROVED: "Approved"
+        ACTIVE: "Active"
+        CLOSED: "Closed"
+      default: "DRAFT"
+      
+  - id: notes
+    name: Notes
+    description: Additional notes about this budget
+    type: text
+    options:
+      "null": true
+      blank: true

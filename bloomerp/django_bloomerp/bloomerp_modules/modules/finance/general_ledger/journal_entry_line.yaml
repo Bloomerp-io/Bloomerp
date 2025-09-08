@@ -1,0 +1,105 @@
+id: journal_entry_line
+name: Journal Entry Line
+description: Individual line item within a journal entry
+name_plural: Journal Entry Lines
+fields:
+  - id: journal_entry
+    name: Journal Entry
+    description: The journal entry this line belongs to
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.JournalEntry"
+      on_delete: call(django.db.models.CASCADE)
+      
+  - id: line_number
+    name: Line Number
+    description: Sequential line number within the entry
+    type: integer
+    
+  - id: account
+    name: Account
+    description: General ledger account for this line
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.Account"
+      on_delete: call(django.db.models.PROTECT)
+      
+  - id: description
+    name: Description
+    description: Description of this line item
+    type: text
+    options:
+      "null": true
+      blank: true
+      
+  - id: debit_amount
+    name: Debit Amount
+    description: Debit amount for this line
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: credit_amount
+    name: Credit Amount
+    description: Credit amount for this line
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: tax_code
+    name: Tax Code
+    description: Tax code for this line item
+    type: string
+    options:
+      max_length: 20
+      "null": true
+      blank: true
+      
+  - id: tax_amount
+    name: Tax Amount
+    description: Tax amount for this line
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: cost_center
+    name: Cost Center
+    description: Cost center for tracking purposes
+    type: string
+    options:
+      max_length: 20
+      "null": true
+      blank: true
+      
+  - id: project_code
+    name: Project Code
+    description: Project code for tracking purposes
+    type: string
+    options:
+      max_length: 20
+      "null": true
+      blank: true
+      
+  - id: department
+    name: Department
+    description: Department for tracking purposes
+    type: string
+    options:
+      max_length: 50
+      "null": true
+      blank: true
+      
+  - id: reference_number
+    name: Reference Number
+    description: Line-specific reference number
+    type: string
+    options:
+      max_length: 50
+      "null": true
+      blank: true

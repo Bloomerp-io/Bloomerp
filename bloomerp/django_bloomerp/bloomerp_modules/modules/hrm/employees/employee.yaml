@@ -1,0 +1,39 @@
+name: Employee
+id: employee
+description: Employee record
+name_plural: Employees
+fields:
+  - id: first_name
+    name: First Name
+    description: First name of the employee
+    type: string
+    options:
+      max_length: 100
+    
+  - id: last_name
+    name: Last Name
+    description: Last name of the employee
+    type: string
+    options:
+      max_length: 100
+      "null": true
+      blank: true
+    
+  - id: middle_name
+    name: Middle Name
+    description: Middle name of the employee
+    type: string
+    options:
+      max_length: 100
+      "null": true
+      blank: true
+
+  - id: date_of_birth
+    name: Date of birth
+    type: date
+    options:
+      "null": true
+      blank: true
+    validators:
+      - bloomerp_modules.validators.date_validators.is_before_today
+

@@ -1,0 +1,106 @@
+id: gl_transaction
+name: GL Transaction
+description: Posted general ledger transaction
+name_plural: GL Transactions
+fields:
+  - id: journal_entry_line
+    name: Journal Entry Line
+    description: Source journal entry line for this transaction
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.JournalEntryLine"
+      on_delete: "call(django.db.models.CASCADE)"
+      
+  - id: account
+    name: Account
+    description: General ledger account
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.Account"
+      on_delete: "call(django.db.models.PROTECT)"
+      
+  - id: fiscal_period
+    name: Fiscal Period
+    description: Fiscal period when transaction was posted
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.FiscalPeriod"
+      on_delete: "call(django.db.models.PROTECT)"
+      
+  - id: transaction_date
+    name: Transaction Date
+    description: Date of the transaction
+    type: date
+    
+  - id: posting_date
+    name: Posting Date
+    description: Date when transaction was posted
+    type: date
+    
+  - id: description
+    name: Description
+    description: Description of the transaction
+    type: text
+    
+  - id: debit_amount
+    name: Debit Amount
+    description: Debit amount
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: credit_amount
+    name: Credit Amount
+    description: Credit amount
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: running_balance
+    name: Running Balance
+    description: Running balance after this transaction
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: reference_number
+    name: Reference Number
+    description: External reference number
+    type: string
+    options:
+      max_length: 50
+      "null": true
+      blank: true
+      
+  - id: cost_center
+    name: Cost Center
+    description: Cost center for tracking
+    type: string
+    options:
+      max_length: 20
+      "null": true
+      blank: true
+      
+  - id: project_code
+    name: Project Code
+    description: Project code for tracking
+    type: string
+    options:
+      max_length: 20
+      "null": true
+      blank: true
+      
+  - id: department
+    name: Department
+    description: Department for tracking
+    type: string
+    options:
+      max_length: 50
+      "null": true
+      blank: true

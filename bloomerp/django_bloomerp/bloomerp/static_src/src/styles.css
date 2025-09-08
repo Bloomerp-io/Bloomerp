@@ -1,0 +1,904 @@
+/*
+* This is where you can configure the folders that Tailwind will scan.
+* 
+* For detailed documents, check the Tailwind docs at:
+*
+* https://tailwindcss.com/docs/detecting-classes-in-source-files#explicitly-registering-sources
+*
+* This default configuration will scan all folder in your root project directory.
+*
+* Here is an example configuration that will only scan your templates/ folder:
+* 
+* @import "tailwindcss" source(none);
+*
+* @source "../../../templates";
+*/
+
+@import "tailwindcss" source("../../../");
+
+/*
+* Custom theme configuration for Tailwind CSS v4
+*/
+@theme {
+
+    /*
+    * Primary 
+    */
+    --color-primary-50: #F4F4FD;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #4154f1;
+    --color-primary: #4154f1;
+    --color-primary-600: #4154f1;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
+    --color-primary-950: #172554;
+
+    /*
+    * Secondary
+    */
+    --color-secondary-50: #f8fafc;
+    --color-secondary-100: #f1f5f9;
+    --color-secondary-200: #e2e8f0;
+    --color-secondary-300: #cbd5e1;
+    --color-secondary-400: #94a3b8;
+    --color-secondary-500: #64748b;
+    --color-secondary: #64748b;
+    --color-secondary-600: #475569;
+    --color-secondary-700: #334155;
+    --color-secondary-800: #1e293b;
+    --color-secondary-900: #0f172a;
+    --color-secondary-950: #020617;
+
+    /*
+    * Success
+    */
+    --color-success-light: #d4edda;
+    --color-success-dark: #155724;
+
+    /*
+    * Danger
+    */
+    --color-danger-light: #f8d7da;
+    --color-danger-dark: #721c24;
+
+    /*
+    * Warning
+    */
+    --color-warning-light: #fff3cd;
+    --color-warning-dark: #856404;
+
+
+    --color-base: #f5f5f5
+}
+
+/*
+* Tailwind CSS plugins for v4
+*/
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/aspect-ratio";
+
+
+/*
+* Buttons
+*/
+@layer components {
+    .btn {
+        @apply px-4 py-2 font-semibold rounded-md;
+    }
+
+    .btn:focus {
+        @apply outline-none ring-2 ring-offset-2;
+    }
+
+    .btn:hover {
+        @apply cursor-pointer;
+    }
+
+    .btn:disabled {
+        @apply opacity-50 cursor-not-allowed;
+    }
+
+    /* Button variants */
+    .btn-primary {
+        @apply bg-primary text-white border-[var(--color-primary-600)] ring-[var(--color-primary-500)];
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        @apply bg-[var(--color-primary-700)] border-[var(--color-primary-700)] text-white;
+    }
+
+    /* Reset primary button hover text color to override generic link hover */
+    .btn-primary:hover:not(:disabled) {
+        @apply text-white;
+    }
+
+    .btn-secondary {
+        @apply bg-[var(--color-secondary-100)] text-[var(--color-secondary-900)] border-[var(--color-secondary-300)] ring-[var(--color-secondary-500)];
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        @apply bg-[var(--color-secondary-200)] border-[var(--color-secondary-400)];
+    }
+
+    .btn-success {
+        @apply bg-success-light text-white border-success-light ring-success-light;
+    }
+
+    .btn-success:hover:not(:disabled) {
+        @apply bg-success-dark border-success-dark;
+    }
+
+    .btn-danger {
+        @apply bg-danger-light text-white border-danger-light ring-danger-light;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+        @apply bg-danger-dark border-danger-dark;
+    }
+
+    .btn-warning {
+        @apply bg-warning-light text-white border-warning-light ring-amber-300;
+    }
+
+    .btn-warning:hover:not(:disabled) {
+        @apply bg-amber-700 border-amber-700;
+    }
+
+    .btn-info {
+        @apply bg-blue-500 text-white border-blue-500 ring-blue-400;
+    }
+
+    .btn-info:hover:not(:disabled) {
+        @apply bg-blue-700 border-blue-700;
+    }
+
+    .btn-light {
+        @apply bg-gray-100 text-[var(--color-primary-950)] border-gray-300 ring-gray-500;
+    }
+
+    .btn-light:hover:not(:disabled) {
+        @apply bg-gray-200 border-gray-400;
+    }
+
+    .btn-dark {
+        @apply bg-gray-800 text-white border-gray-800 ring-gray-600;
+    }
+
+    .btn-dark:hover:not(:disabled) {
+        @apply bg-gray-900 border-gray-900;
+    }
+
+    /* Outline button variants */
+    .btn-outline-primary {
+        @apply bg-transparent text-[var(--color-primary-600)] border-[var(--color-primary-600)] ring-[var(--color-primary-500)];
+    }
+
+    .btn-outline-primary:hover:not(:disabled) {
+        @apply bg-[var(--color-primary-600)] text-white;
+    }
+
+    .btn-outline-secondary {
+        @apply bg-transparent text-[var(--color-secondary-600)] border-[var(--color-secondary-600)] ring-[var(--color-secondary-500)];
+    }
+
+    .btn-outline-secondary:hover:not(:disabled) {
+        @apply bg-[var(--color-secondary-600)] text-white;
+    }
+
+    .btn-outline-success {
+        @apply bg-transparent text-success-light border-success-light ring-success-light;
+    }
+
+    .btn-outline-success:hover:not(:disabled) {
+        @apply bg-success-light text-white;
+    }
+
+    .btn-outline-danger {
+        @apply bg-transparent text-danger-light border-danger-light ring-danger-light;
+    }
+
+    .btn-outline-danger:hover:not(:disabled) {
+        @apply bg-danger-light text-white;
+    }
+
+    /* Button sizes */
+    .btn-xs {
+        @apply text-xs leading-4;
+    }
+
+    .btn-sm {
+        @apply px-3 py-1.5 text-[0.75rem] leading-4;
+    }
+
+    .btn-lg {
+        @apply px-6 py-3 text-base leading-6;
+    }
+
+    .btn-xl {
+        @apply px-8 py-4 text-lg leading-7;
+    }
+
+    .btn-block {
+        @apply w-full;
+    }
+}
+
+/*
+* Table
+*/
+@layer components {
+    /* ===== TABLE UTILITIES ===== */
+    .table {
+        @apply w-full text-sm leading-5 text-left text-gray-500 border-collapse;
+    }
+
+    .table thead th {
+        @apply px-4 py-3 text-xs leading-4 font-medium text-gray-700 uppercase tracking-wider bg-base border-b border-gray-200;
+    }
+
+    .table tbody td {
+        @apply px-4 py-3 border-b border-gray-200;
+    }
+
+    .table tbody tr:last-child td {
+        @apply last:border-b-0;
+    }
+
+    .table-striped tbody tr:nth-child(odd) {
+        @apply bg-gray-50;
+    }
+
+    .table-hover tbody tr:hover {
+        @apply bg-gray-50;
+    }
+
+    .table-bordered {
+        @apply border border-gray-300;
+    }
+
+    .table-bordered th,
+    .table-bordered td {
+        @apply border border-gray-300;
+    }
+
+    .table-borderless th,
+    .table-borderless td,
+    .table-borderless thead th {
+        @apply border-0;
+    }
+
+    .table-sm th,
+    .table-sm td {
+        @apply px-3 py-1.5 text-xs leading-4;
+    }
+
+    .table-lg th,
+    .table-lg td {
+        @apply px-6 py-6 text-base leading-6;
+    }
+
+    /* Table color themes */
+    .table-primary {
+        @apply bg-primary-50;
+    }
+
+    .table-primary th {
+        @apply bg-primary-100 text-primary-900;
+    }
+
+    .table-secondary {
+        @apply bg-secondary-50;
+    }
+
+    .table-secondary th {
+        @apply bg-secondary-100 text-secondary-900;
+    }
+
+    .table-success {
+        @apply bg-green-50;
+    }
+
+    .table-success th {
+        @apply bg-green-100 text-green-800;
+    }
+
+    .table-danger {
+        @apply bg-red-50;
+    }
+
+    .table-danger th {
+        @apply bg-red-100 text-red-800;
+    }
+
+    .table-warning {
+        @apply bg-amber-50;
+    }
+
+    .table-warning th {
+        @apply bg-amber-100 text-amber-800;
+    }
+
+    .table-info {
+        @apply bg-blue-50;
+    }
+
+    .table-info th {
+        @apply bg-blue-100 text-blue-800;
+    }
+
+    .table-light {
+        @apply bg-gray-50;
+    }
+
+    .table-light th {
+        @apply bg-gray-100 text-gray-900;
+    }
+
+    .table-dark {
+        @apply bg-gray-800 text-white;
+    }
+
+    .table-dark th {
+        @apply bg-gray-900 text-white border-gray-600;
+    }
+
+    .table-dark td {
+        @apply border-gray-600;
+    }
+
+    .table-dark.table-striped tbody tr:nth-child(odd) {
+        @apply bg-gray-600;
+    }
+
+    .table-dark.table-hover tbody tr:hover {
+        @apply bg-gray-600;
+    }
+
+    /* Table responsive wrappers */
+    .table-responsive,
+    .table-responsive-sm,
+    .table-responsive-md,
+    .table-responsive-lg,
+    .table-responsive-xl {
+        @apply overflow-x-auto;
+    }
+
+    /* Row context classes */
+    .table-primary-row {
+        @apply bg-primary-50;
+    }
+
+    .table-secondary-row {
+        @apply bg-secondary-50;
+    }
+
+    .table-success-row {
+        @apply bg-green-50;
+    }
+
+    .table-danger-row {
+        @apply bg-red-50;
+    }
+
+    .table-warning-row {
+        @apply bg-amber-50;
+    }
+
+    .table-info-row {
+        @apply bg-blue-50;
+    }
+
+    .table-light-row {
+        @apply bg-gray-50;
+    }
+
+    .table-dark-row {
+        @apply bg-gray-800 text-white;
+    }
+
+    /* Table utility classes */
+    .table-actions {
+        @apply w-24 text-center;
+    }
+
+    .table-actions-wide {
+        @apply w-32 text-center;
+    }
+}
+
+@layer components {
+  .card {
+    @apply border border-gray-50 shadow rounded p-4
+  }
+}
+
+/*
+* Text
+*/
+@layer utilities {
+  .text-muted {
+    @apply text-gray-400
+  }
+}
+
+/*
+* Others
+*/
+@layer utilities {
+    /*Default utilities*/
+    a:hover {
+        cursor: pointer;
+    }
+
+    /*Page title*/
+    .pagetitle {
+        background-color: var(--color-primary-950);
+    }
+
+    .card-title {
+      @apply text-primary-900 font-semibold mb-2
+    }
+}
+
+/*
+* Inputs
+*/
+@layer utilities {
+    /*Default utilities*/
+    .input {
+      @apply px-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-1 focus:ring-primary focus:border-primary
+    }
+
+    /* Input size variants */
+    .input-sm {
+      @apply px-2 py-1 text-xs
+    }
+
+    .input-lg {
+      @apply px-4 py-3 
+    }
+}
+
+@layer components {
+  .select {
+    @apply appearance-none bg-no-repeat bg-right;
+    @apply border border-gray-200 rounded-md;
+    @apply px-3 py-2 text-sm;
+    @apply focus:ring-1 focus:ring-primary focus:border-primary;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+
+  .select-sm {
+    @apply px-2 py-1 text-xs;
+    padding-right: 2.5rem;
+    background-position: right 0.25rem center;
+  }
+
+  .select-lg {
+    @apply px-4 py-3 text-base;
+    padding-right: 3rem;
+    background-position: right 0.5rem center;
+  }
+}
+
+
+/*--------------------------------------------------------------
+# Custom
+--------------------------------------------------------------*/
+.timesheet-entry {
+  padding: 2px;
+}
+
+.timesheet-entry:hover {
+  border: 1px solid;
+  border-radius: 1;
+}
+
+
+.filter-section .bi-plus-lg {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex;
+}
+
+.filter-section .filter-item {
+  background-color:rgb(235, 235, 235);
+  padding: 8px;
+  padding-left: 15px;
+  padding-right: 15px;
+  border-radius: 10px;
+  margin: 10px;
+}
+
+.filter-section .filter-item:hover {
+  background-color:rgb(238, 238, 238);
+}
+
+.dropdown-menu.filter-dropdown-menu {
+  padding: 10px;
+  width: 30vw;
+}
+
+@media (max-width: 576px) {
+  .dropdown-menu.filter-dropdown-menu {
+    width: 100vw;
+  }
+}
+
+
+.pointer {
+  cursor: pointer;
+}
+
+.pointer:hover {
+  color: var(--primary-hover);
+}
+
+.copy-icon {
+  cursor: pointer; /* Changes the cursor to indicate the icon is clickable */
+  margin-left: 5px; /* Adds a little space between the text and the icon */
+  position: relative;
+  size: 2;
+}
+
+.copy-icon:hover {
+  color: #b5d2fd;
+}
+
+.list-view-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+
+
+.label-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: start;
+  color: white;
+}
+
+.label-span {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  padding: 7px;
+  background-color: var(--primary);
+  cursor: pointer;
+}
+
+.label-span:hover {
+  background-color: #6776f4;
+}
+
+/* 
+Dashboard
+*/
+
+.draggable {
+  cursor: move;
+}
+
+.drag-over {
+  background-color: #e3ebfc;
+  border: 1px dashed var(--dark);
+  padding: 10px;
+  margin: 10px;
+}
+
+.dropzone-container {
+  background-color: var(--main-light);
+}
+
+.dropzone-row {
+  background-color: #edf3ff;
+  border: 1px dashed #b5b5b5;
+  padding: 20px;
+  margin: 20px;
+}
+
+.dropzone-row.dropzone-row-add-col {
+  position:absolute;
+  top: 0;
+}
+
+.dropzone-col.dragover {
+  background-color: #6e7685;
+  border: 1px dashed var(--dark);
+  z-index: 1000;
+
+}
+
+.save-layout-div {
+  position: fixed;
+  bottom: 15px; /* Distance from the bottom */
+  right: 60px;  /* Distance from the right */
+  z-index: 1000; /* Ensure it appears above other elements */
+  background-color: transparent;
+}
+
+.href {
+  cursor: pointer;
+  color : var(--primary);
+}
+
+.file-breadcrumb-item {
+  color: var(--dark);
+  font-size:x-large;
+  font-weight: bold;
+}
+
+.checkmark {
+  color: var(--main-dark);
+  font-size: 20px;
+  margin-left: 5px;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+
+.htmx-indicator{
+  display:none;
+  width: 20px;
+  height: 20px;
+}
+.htmx-request .htmx-indicator{
+  display:inline;
+  justify-content:center;
+  align-items:center;
+}
+.htmx-request.htmx-indicator{
+  display:inline;
+}
+
+/* 
+  CSS for content layout
+*/
+.content-layout-row {
+  background-color: #edf3ff;
+  border: 1px dashed #b5b5b5;
+  padding: 10px;
+  margin: 10px;
+}
+
+.content-layout-column {
+  background-color: #c9dafc;
+  border: 1px solid #b5b5b5;
+  padding: 5px;
+  margin: 5px;
+}
+
+.content-layout-column.dragover {
+  background-color: #6e7685;
+  border: 1px dashed var(--dark);
+}
+
+.content-layout-column.draggable {
+  cursor: move;
+}
+
+.content-layout-item {
+  background-color: #bed3fd;
+  border: 1px solid #b5b5b5;
+  padding: 5px;
+  margin: 5px;
+}
+
+
+.is-loading {
+  background: #eee;
+  background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+  border-radius: 5px;
+  background-size: 200% 100%;
+  -webkit-animation: 1.5s shine linear infinite;
+          animation: 1.5s shine linear infinite;
+  z-index: 1000;
+}
+
+@-webkit-keyframes shine {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+@keyframes shine {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+/* 
+  Alert messages
+*/
+/* Wrapper to hold all messages */
+.messages-wrapper {
+  position: fixed;
+  bottom: 40px; /* Distance from the bottom */
+  right: 60px;  /* Distance from the right */
+  z-index: 1100; /* Ensure it appears above other elements */
+  display: flex;
+  flex-direction: column; /* Stack messages vertically */
+  gap: 10px; /* Space between messages */
+}
+
+/* Common styles for all message containers */
+.message-container {
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 400px; /* Optional: Set a minimum width */
+  max-width: 600px; /* Optional: Set a maximum width */
+  opacity: 1; /* Initial opacity */
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out; /* Transition for fade-out and slight upward movement */
+}
+
+/* Specific styles for error messages */
+.alert-message-error {
+  background-color: #f8d7da; /* Light red background */
+  color: #721c24;           /* Dark red text */
+}
+
+/* Specific styles for success messages */
+.alert-message-success {
+  background-color: #d4edda; /* Light green background */
+  color: #155724;           /* Dark green text */
+}
+
+/* Styles for the inner message content */
+.alert-message {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.alert-message-info {
+  background-color: #cce5ff; /* Light blue background */
+  color: #004085;           /* Dark blue text */
+}
+
+.alert-message-warning {
+  background-color: #fff3cd; /* Light yellow background */
+  color: #856404;           /* Dark yellow text */
+}
+
+.alert-icon {
+  padding-right: 5px;
+  height: 24px;
+}
+
+.alert-close {
+  cursor: pointer;
+  height: 20px;
+}
+
+.fade-out {
+  opacity: 0;
+  transform: translateY(-20px); /* Optional: Move the message slightly upwards */
+}
+
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+}
+
+/* 
+  LLM CSS
+*/
+.assistant-bubble {
+  background-color: white;
+  color: black;
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 75%;
+  word-wrap: break-word;
+  border: var(--primary) 2px solid;
+}
+.user-bubble {
+  background-color: var(--primary);
+  color: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 75%;
+  word-wrap: break-word;
+}
+
+/* 
+  Signature css
+*/
+
+.signature-canvas {
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  width: 100%;
+  height: 200px;
+  touch-action: none; 
+}
+
+.initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: gray;
+  color: white;
+}
+
+/* 
+  Context menu
+*/
+
+.context-menu {
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 5px;
+}
+
+/*
+  Legend
+*/
+
+.form-legend {
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--main-dark);
+  font-weight: bold;
+  font-family: var(--font-sans);
+}
+
+/* Full callendar */
+
+.fc .fc-button-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%; /* Makes it circular */
+}
+
+
+.full-screen {
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1050; /* Ensure it's above other elements */
+}
+
+.underline {
+  text-decoration: underline;
+}
+
+/* Meta text */
+.text-meta {
+  font-size: 12px;
+  color: #6c757d;
+}

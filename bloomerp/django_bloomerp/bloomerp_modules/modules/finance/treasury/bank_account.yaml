@@ -1,0 +1,5 @@
+name: Bank account
+id: bank_account
+description: Stores bank account information
+fields: []
+name_plural: Bank accounts

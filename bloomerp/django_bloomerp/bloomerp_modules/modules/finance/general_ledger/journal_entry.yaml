@@ -1,0 +1,153 @@
+id: journal_entry
+name: Journal Entry
+description: Individual journal entry containing multiple line items
+name_plural: Journal Entries
+fields:
+  - id: journal
+    name: Journal
+    description: The journal this entry belongs to
+    type: foreign_key
+    options:
+      to: "bloomerp_modules.Journal"
+      on_delete: call(django.db.models.CASCADE)
+      
+  - id: entry_number
+    name: Entry Number
+    description: Sequential number within the journal
+    type: string
+    options:
+      max_length: 20
+      
+  - id: reference_number
+    name: Reference Number
+    description: External reference number (invoice, receipt, etc.)
+    type: string
+    options:
+      max_length: 50
+      "null": true
+      blank: true
+      
+  - id: entry_date
+    name: Entry Date
+    description: Date of the journal entry
+    type: date
+    
+  - id: posting_date
+    name: Posting Date
+    description: Date when entry was posted to ledger
+    type: date
+    options:
+      "null": true
+      blank: true
+      
+  - id: description
+    name: Description
+    description: Description of the transaction
+    type: text
+    
+  - id: total_debit
+    name: Total Debit
+    description: Total debit amount for this entry
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: total_credit
+    name: Total Credit
+    description: Total credit amount for this entry
+    type: decimal
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+      
+  - id: status
+    name: Status
+    description: Status of the journal entry
+    type: string
+    options:
+      max_length: 20
+      choices:
+        DRAFT: "Draft"
+        PENDING: "Pending Approval"
+        APPROVED: "Approved"
+        POSTED: "Posted"
+        CANCELLED: "Cancelled"
+      default: "DRAFT"
+      
+  - id: approved_by
+    name: Approved By
+    description: User who approved this entry
+    type: foreign_key
+    options:
+      to: "bloomerp.User"
+      "null": true
+      blank: true
+      on_delete: "call(django.db.models.SET_NULL)"
+      related_name: "approved_journal_entries"
+      
+  - id: approved_date
+    name: Approved Date
+    description: Date when entry was approved
+    type: datetime
+    options:
+      "null": true
+      blank: true
+      
+  - id: posted_by
+    name: Posted By
+    description: User who posted this entry
+    type: foreign_key
+    options:
+      to: "bloomerp.User"
+      "null": true
+      blank: true
+      on_delete: "call(django.db.models.SET_NULL)"
+      related_name: "posted_journal_entries"
+      
+  - id: posted_date
+    name: Posted Date
+    description: Date when entry was posted
+    type: datetime
+    options:
+      "null": true
+      blank: true
+      
+  - id: reversed_by
+    name: Reversed By
+    description: Reference to the entry that reverses this one
+    type: foreign_key
+    options:
+      to: "self"
+      "null": true
+      blank: true
+      on_delete: "call(django.db.models.SET_NULL)"
+      related_name: "reversed_entries"
+      
+  - id: source_document_type
+    name: Source Document Type
+    description: Type of source document
+    type: string
+    options:
+      max_length: 50
+      "null": true
+      blank: true
+      choices:
+        INVOICE: "Invoice"
+        RECEIPT: "Receipt"
+        PAYMENT: "Payment"
+        ADJUSTMENT: "Adjustment"
+        TRANSFER: "Transfer"
+        OTHER: "Other"
+        
+  - id: source_document_id
+    name: Source Document ID
+    description: ID of the source document
+    type: string
+    options:
+      max_length: 50
+      "null": true
+      blank: true
+
