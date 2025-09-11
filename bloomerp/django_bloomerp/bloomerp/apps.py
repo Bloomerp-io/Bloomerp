@@ -8,6 +8,7 @@ class BloomerpConfig(AppConfig):
         
         # import bloomerp.signals
         from bloomerp.utils.config import BloomerpConfigChecker
+        from shared_utils.registries.route_registry import router
         checker = BloomerpConfigChecker()
         checker.check()
         

@@ -1,4 +1,4 @@
-from bloomerp.utils.router import route
+from shared_utils.router.component_router import route
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpRequest
 from django.views.decorators.http import require_POST

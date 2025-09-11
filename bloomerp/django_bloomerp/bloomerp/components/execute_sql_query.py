@@ -1,4 +1,4 @@
-from bloomerp.utils.router import route
+from shared_utils.router.component_router import route
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.utils.sql import SqlQueryExecutor # For some reason if I import utils.sql, the router doesn't work

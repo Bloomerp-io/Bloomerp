@@ -5,7 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Model
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import Link, Workspace
-from bloomerp.utils.router import BloomerpRouter
+from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.mixins import HtmxMixin
 from django.shortcuts import get_object_or_404
 
@@ -29,9 +29,6 @@ class BloomerpHomeView(HtmxMixin, LoginRequiredMixin, View):
         # Create a workspace for the user if it doesn't exist
         workspace = Workspace.objects.filter(user=request.user, content_type=None).first()
 
-        if not workspace:
-            workspace = Workspace.create_default_workspace(request.user)
-        
         context['workspace'] = workspace
         
         return render(request, self.template_name, context)

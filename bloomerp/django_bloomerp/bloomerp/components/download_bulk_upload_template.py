@@ -1,5 +1,5 @@
 import io
-from bloomerp.utils.router import route
+from shared_utils.router.component_router import route
 from django.shortcuts import render
 from django.http import FileResponse, HttpRequest, HttpResponse
 from django.contrib.contenttypes.models import ContentType

@@ -6,7 +6,7 @@ from django.shortcuts import redirect
 from django.contrib import messages
 from bloomerp.utils.document_templates import DocumentController
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.utils.router import BloomerpRouter
+from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.core import BloomerpBaseDetailView
 from django.views.generic.edit import UpdateView
 from bloomerp.utils.models import get_detail_base_view_url

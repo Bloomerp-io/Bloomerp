@@ -31,7 +31,7 @@ from bloomerp.views.mixins import (
     HtmxMixin
 )
 
-from bloomerp.utils.router import BloomerpRouter, _get_name_or_slug
+from shared_utils.router.view_router import BloomerpRouter, _get_name_or_slug
 from django.forms.models import modelform_factory
 from bloomerp.forms.core import BloomerpModelForm
 from django import forms

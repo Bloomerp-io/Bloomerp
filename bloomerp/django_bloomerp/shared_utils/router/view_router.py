@@ -1,6 +1,3 @@
-import os
-import importlib.util
-import inspect
 from django.urls import path
 from django.db.models import Model
 from functools import wraps
@@ -10,8 +7,12 @@ from bloomerp.models import Link
 from typing import List, Callable
 import re
 import traceback
+from importlib import import_module
+from enum import Enum
 
+# ------------------
 # Helper functions
+# ------------------
 def _get_name_or_slug(obj, slug=False):
     """
     Returns the name of the class or function.
@@ -79,7 +80,6 @@ def _create_absoulte_path_for_model(model: Model, route_type: str, appended_url:
         p = model_name_plural_slug(model) + '/<int_or_uuid:pk>/' + appended_url + '/'
     return p
 
-
 def _create_relative_path(model:Model, route_type:str, name:str):
     """
     Create a relative path for a route based on the model, route type, and name.
@@ -91,90 +91,15 @@ def _create_relative_path(model:Model, route_type:str, name:str):
     else:
         return _underline(name)
 
-# Route decorator
-def route(path=None):
-    def decorator(func):
-        if path is None:
-            # Build default path using function name and parameters
-            sig = inspect.signature(func)
-            parts = [func.__name__]
 
-            for name, param in sig.parameters.items():
-                if name == 'request':
-                    continue  # Skip 'request' parameter
-                param_type = 'str'  # Default type
-                if param.annotation == int:
-                    param_type = 'int'
-                elif param.annotation == str:
-                    param_type = 'str'
-                # Add other types as needed
-                parts.append(f'<{param_type}:{name}>')
-            func.route = '/' + '/'.join(parts) + '/'
+class RouteType(Enum):
+    APP = "app"
+    LIST = "list"
+    DETAIL = "detail"
 
-        else:
-            func.route = path
-        return func
-    return decorator
-
-class RouteFinder:
-    '''Class used to find routes in a given directory. Used primarily for creating components.'''
-
-    def __init__(
-            self, 
-            directory: str, 
-            url_route_prefix: str = None,
-            url_name_prefix: str = None
-            ) -> None:
-        '''Initialize the RouteFinder object.
-        
-        Args:
-            directory (str): The directory to search for routes.
-            prefix (str): The prefix to add to the url routes.
-            url_name_prefix (str): The prefix to add to the url names.
-        '''
-        self.directory = directory
-        self.urlpatterns = []
-        self.prefix = url_route_prefix
-        if not url_name_prefix:
-            self.url_name_prefix = ''
-        else:
-            self.url_name_prefix = url_name_prefix + '_'
-
-
-    def find_python_files(self):
-        """Find all Python files in the specified directory."""
-        py_files = []
-        for root, _, files in os.walk(self.directory):
-            for file in files:
-                if file.endswith(".py") and file != os.path.basename(__file__):
-                    py_files.append(os.path.join(root, file))
-        return py_files
-
-    def load_module(self, filepath):
-        """Load a module from a given file path."""
-        module_name = os.path.splitext(os.path.basename(filepath))[0]
-        spec = importlib.util.spec_from_file_location(module_name, filepath)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def find_routes_in_module(self, module):
-        """Look for functions with a 'route' attribute in a module."""
-        for name, obj in inspect.getmembers(module):
-            if inspect.isfunction(obj) and hasattr(obj, 'route'):
-                self.urlpatterns.append(path(self.prefix + obj.route, obj, name=self.url_name_prefix + obj.__name__))
-
-    def generate_urlpatterns(self):
-        """Scan the directory, find routes, and populate urlpatterns."""
-        py_files = self.find_python_files()
-        for py_file in py_files:
-            try:
-                module = self.load_module(py_file)
-                self.find_routes_in_module(module)
-            except Exception as e:
-                print(f"Error loading module {py_file}: {e}")
-        return self.urlpatterns
-
+# ------------------
+# Helper functions
+# ------------------
 class BloomerpRoute:
     '''
     Class used to store information about a route in the router.
@@ -262,6 +187,7 @@ class BloomerpRoute:
         Set the view for the route.
         """
         self.view = view
+
 
 class BloomerpRouter:
     def __init__(self):
@@ -562,6 +488,7 @@ class BloomerpRouter:
         """
         return [route for route in self.routes if (route.model == model or route.model == '__all__')]
 
+
     def get_detail_view_routes_for_model(self, model) -> List[BloomerpRoute]:
         """
         Get all detail view routes registered for a specific model.
@@ -573,6 +500,7 @@ class BloomerpRouter:
                 routes.append(route)
 
         return routes
+
     
     def get_list_view_routes_for_model(self, model):
         """
@@ -585,11 +513,13 @@ class BloomerpRouter:
                 routes.append(route)
         return routes
 
+
     def get_app_routes(self) -> List[BloomerpRoute]:
         """
         Get all app-level routes registered in the router.
         """
         return [route for route in self.routes if route.route_type == 'app']
+
 
     def _create_relative_path(self, model, route_type, name):
         """
@@ -601,6 +531,7 @@ class BloomerpRouter:
             return model_name_plural_underline(model) + '_detail_' + _underline(name)
         else:
             return _underline(name)
+
     
 class BloomerpRouterHandler:
     '''
@@ -675,7 +606,7 @@ class BloomerpRouterHandler:
                     routes.append(route.path)
         return routes
 
-from importlib import import_module
+
 def _get_routers_from_settings() -> List[BloomerpRouter]:
     """
     Helper function to get the router objects based on the ones given in the settings.

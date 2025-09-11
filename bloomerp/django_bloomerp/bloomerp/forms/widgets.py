@@ -34,7 +34,6 @@ class WidgetForm1(forms.Form):
 
 class WidgetForm2(forms.Form):
     output_type = forms.ChoiceField(
-        choices=Widget.OUTPUT_TYPE_CHOICES,
         help_text=_('The type of output to display for the widget')
         )
     

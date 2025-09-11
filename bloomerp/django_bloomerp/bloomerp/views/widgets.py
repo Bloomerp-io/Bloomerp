@@ -3,7 +3,7 @@ from formtools.wizard.views import SessionWizardView
 from django.shortcuts import redirect
 from bloomerp.forms.widgets import WidgetForm1, WidgetForm2, WidgetForm3
 from bloomerp.models import Widget, SqlQuery, ApplicationField
-from bloomerp.utils.router import BloomerpRouter
+from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.mixins import HtmxMixin, BloomerpModelFormViewMixin, BloomerpModelContextMixin
 from bloomerp.views.core import BloomerpBaseDetailView
 from django.views.generic.edit import CreateView, UpdateView

@@ -83,3 +83,4 @@ build/
 
 # Keep setup.py out for now
 setup.py
+bloomerp/django_bloomerp/db.sqlite3

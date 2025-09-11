@@ -5,9 +5,6 @@
 from django.urls import include, path,  register_converter
 from django.contrib.auth import views as auth_views
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.components import datatable, todos
-from bloomerp.components.document_templates import generate_document_template
-from bloomerp.components.llm import llm_executor, ai_conversations
 from bloomerp.views.document_templates import router as document_template_router
 from django.db.models import Model
 from bloomerp.utils.models import ( 
@@ -18,7 +15,9 @@ from bloomerp.utils.api import generate_serializer, generate_model_viewset_class
 from bloomerp.views.api import BloomerpModelViewSet
 from bloomerp.utils.urls import IntOrUUIDConverter
 from rest_framework.routers import DefaultRouter
-from bloomerp.utils.router import _get_routers_from_settings, RouteFinder, BloomerpRouterHandler
+from shared_utils.router.view_router import _get_routers_from_settings, BloomerpRouterHandler
+from shared_utils.router.component_router import ComponentRouteFinder
+from shared_utils.registries.route_registry import router
 
 # Register the custom URL converter
 register_converter(IntOrUUIDConverter, 'int_or_uuid') # Register the custom URL converter
@@ -177,6 +176,9 @@ urlpatterns += [
     path('api/', include(drf_router.urls)),
 ]
 
+
+urlpatterns.extend(router.create_url_patterns())
+
 # ---------------------------------
 # Route decorator
 # ---------------------------------
@@ -185,7 +187,7 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 components_dir = os.path.join(current_dir, 'components')
 
-route_finder = RouteFinder(directory=components_dir, url_route_prefix='components/', url_name_prefix='components')
+route_finder = ComponentRouteFinder(directory=components_dir, url_route_prefix='components/', url_name_prefix='components')
 urlpatterns += route_finder.generate_urlpatterns()
 
 

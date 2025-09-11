@@ -35,7 +35,8 @@ class DocumentTemplateHeader(BloomerpModel):
     
     def __str__(self):
         return self.name
-    
+
+
 # ---------------------------------
 # Document Template Free Variable Model
 # ---------------------------------

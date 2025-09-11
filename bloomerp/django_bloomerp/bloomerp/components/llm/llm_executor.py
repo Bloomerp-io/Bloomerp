@@ -1,4 +1,4 @@
-from bloomerp.utils.router import route
+from shared_utils.router.component_router import route
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest, StreamingHttpResponse
 from bloomerp.utils.llm import BloomerpLangChain

@@ -1,4 +1,4 @@
-from bloomerp.utils.router import route
+from shared_utils.router.component_router import route
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import get_object_or_404
@@ -6,6 +6,7 @@ from bloomerp.models import Widget
 import plotly.express as px
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from bloomerp.services.permission_services import has_access_to_object
 
 @login_required
 @route('workspace_widget')

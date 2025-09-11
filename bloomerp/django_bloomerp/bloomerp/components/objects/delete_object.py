@@ -1,4 +1,4 @@
-from bloomerp.utils.router import route
+from shared_utils.router.component_router import route
 from django.http import HttpRequest, HttpResponse
 from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import get_object_or_404

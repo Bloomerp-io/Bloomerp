@@ -18,8 +18,8 @@ class ChartType(Enum):
 class OptionField:
     key : str
     label : str
-    description : str | None = None
     field_type : Field
+    description : str | None = None
 
 @dataclass
 class ShelveTypeImplementation:

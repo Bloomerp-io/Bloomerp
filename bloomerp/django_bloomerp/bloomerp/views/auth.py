@@ -13,7 +13,7 @@ from bloomerp.views.mixins import HtmxMixin
 from bloomerp.models import (UserDetailViewPreference,ApplicationField)
 from bloomerp.utils.models import model_name_plural_underline
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from bloomerp.utils.router import BloomerpRouter
+from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.mixins import HtmxMixin, BloomerpModelContextMixin
 from bloomerp.views.mixins import BloomerpModelFormViewMixin
 from bloomerp.views.core import BloomerpBaseDetailView

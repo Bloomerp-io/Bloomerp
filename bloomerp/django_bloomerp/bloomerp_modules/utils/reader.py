@@ -4,7 +4,7 @@ import yaml
 from enum import Enum
 from django.db import models
 from typing import Optional, Dict, Any, Callable
-from bloomerp_modules.datatypes.modules import (
+from shared_datatypes.modules import (
     BaseConfig, FieldConfig, ModelConfig, SubModuleConfig, ModuleConfig
 )
 
