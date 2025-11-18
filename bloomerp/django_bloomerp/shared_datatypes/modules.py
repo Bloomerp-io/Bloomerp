@@ -23,6 +23,7 @@ class ModelConfig(BaseConfig):
     name_plural: Optional[str] = None
     fields: list[FieldConfig] = Field(default_factory=list)
     custom_permissions: Optional[PermissionConfig] = Field(default_factory=list)
+    string_representation: Optional[str] = None
 
 
 class SubModuleConfig(BaseConfig):

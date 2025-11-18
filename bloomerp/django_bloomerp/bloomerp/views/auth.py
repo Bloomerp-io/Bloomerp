@@ -22,9 +22,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.contrib.auth import update_session_auth_hash
 from django.forms import modelformset_factory
 from bloomerp.forms.auth import UserDetailViewPreferenceForm
-import time
-
-router = BloomerpRouter()
+from registries.route_registry import router
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -47,7 +45,7 @@ class ProfileMixin:
 
 
 
-@router.bloomerp_route(
+@router.register(
     path="my-profile/",
     models=User,
     route_type="list",
@@ -76,7 +74,7 @@ class BloomerpProfileView(BloomerpModelFormViewMixin, ProfileMixin, HtmxMixin, B
     
     
 
-@router.bloomerp_route(
+@router.register(
     path="my-profile/reset-password/",
     models=User,
     route_type="list",
@@ -105,7 +103,7 @@ class BloomerpProfilePasswordResetView(ProfileMixin, BloomerpBaseDetailView, For
         return super().form_invalid(form)
     
 
-@router.bloomerp_route(
+@router.register(
     path="my-profile/list-view-preference/",
     models=User,
     route_type="list",
@@ -163,7 +161,7 @@ class UserListViewPreferenceView(ProfileMixin, BloomerpBaseDetailView):
 # USER DETAIL VIEW PREFERENCE VIEW
 # ---------------------------
 from django.views.generic.edit import FormView
-@router.bloomerp_route(
+@router.register(
     path="my-profile/detail-view-preferences/",
     models=User,
     route_type="list",
@@ -261,7 +259,7 @@ class UserDetailViewPreferenceView(ProfileMixin, BloomerpBaseDetailView):
 # ---------------------------
 from bloomerp.forms.auth import BloomerpUserCreationForm
 from django.contrib.messages.views import SuccessMessageMixin
-@router.bloomerp_route(
+@router.register(
     path="create",
     name="Create user",
     url_name="add",
@@ -307,7 +305,7 @@ class UserCreateView(
 # ADMIN RESET PASSWORD VIEW
 # ---------------------------
 from django.contrib.auth.mixins import UserPassesTestMixin
-@router.bloomerp_route(
+@router.register(
     path='reset-password/',
     models=[User],
     route_type='detail',

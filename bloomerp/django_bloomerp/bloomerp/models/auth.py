@@ -233,25 +233,35 @@ class UserListViewPreference(models.Model):
     def generate_default_for_user(cls, user: AbstractBloomerpUser, content_type: ContentType) -> QuerySet[Self]:
         '''
         Method that generates default list view preference for a user.
+        
+        Optimized to use bulk_create instead of loop with get_or_create,
+        reducing N queries to 2 queries (1 fetch + 1 bulk insert).
         '''
-        application_fields = ApplicationField.objects.filter(content_type=content_type)
-        
-        # Exclude some application fields
-        application_fields = application_fields.exclude(
-            field_type__in=['ManyToManyField', 'OneToManyField']
+        application_fields = (
+            ApplicationField.objects
+            .filter(content_type=content_type)
+            .exclude(
+                field_type__in=['ManyToManyField', 'OneToManyField']
+            )
+            .exclude(
+                field__in=['id', 'created_by', 'updated_by', 'datetime_created', 'datetime_updated']
+            )[:5]  # Limit in database, not Python
         )
-
-        # Exclude some more fields
-        application_fields = application_fields.exclude(
-            field__in=['id', 'created_by', 'updated_by', 'datetime_created', 'datetime_updated']
-        )
         
-        # Only take the first 5 fields
-        for application_field in application_fields[:5]:
-            preference, created = UserListViewPreference.objects.get_or_create(
+        # Bulk create all preferences at once (single INSERT with multiple rows)
+        preferences_to_create = [
+            UserListViewPreference(
                 user=user,
                 application_field=application_field
             )
+            for application_field in application_fields
+        ]
+        
+        # Use ignore_conflicts to handle race conditions where preferences might already exist
+        UserListViewPreference.objects.bulk_create(
+            preferences_to_create,
+            ignore_conflicts=True
+        )
             
         return UserListViewPreference.objects.filter(user=user, application_field__content_type=content_type)
 

@@ -1,3 +1,6 @@
+"""
+Utility functions for filtering through Django models using django-filters.
+"""
 import django_filters
 from django.db.models import (
     ForeignKey, 
@@ -20,6 +23,7 @@ from django_filters import DateFilter
 
 from typing import Type
 from django.db.models import Model
+from django.db.models.query import QuerySet
 
 def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.FilterSet]:
     """
@@ -151,3 +155,9 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
     })
 
     return filterset_class
+
+def filter_model(model: Type[Model], filters: dict) -> QuerySet:
+    """Applies the given filters to the model's queryset using a dynamically created FilterSet."""
+    FilterSet = dynamic_filterset_factory(model)
+    filterset = FilterSet(filters, queryset=model.objects.all())
+    

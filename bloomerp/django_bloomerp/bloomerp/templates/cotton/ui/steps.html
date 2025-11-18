@@ -1,11 +1,11 @@
 {% comment %}
-Bloomerp steps component. 
-Renders a step-by-step progress indicator.
+The stepper component visually represents a multi-step process, indicating the current step and progress through the steps.
 
 Parameters:
-- steps: A list of strings, where each string is the title of a step.
-- current_step: A 1-based integer indicating the current active step.
-- class: Optional additional CSS classes for the container.
+- class (str): Additional CSS classes for the container.
+- current_step (int): The current active step in the process (1-indexed).
+- steps (list): A list of step titles.
+
 {% endcomment %}
 
 <div class="w-full px-8 {{ class }}">

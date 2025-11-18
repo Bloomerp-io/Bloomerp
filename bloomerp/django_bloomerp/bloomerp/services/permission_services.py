@@ -13,7 +13,23 @@ from bloomerp.models import AbstractBloomerpUser
 from enum import Enum
 from bloomerp.models.auth import User
 from bloomerp.constants.permissions import BasePermission
+from django.db.models.query import QuerySet
+from enum import Enum
+from bloomerp.models import ApplicationField
+from django.contrib.contenttypes.models import ContentType
 
+# --------------------------
+# Permission Definitions
+# --------------------------
+class BasePermissions(Enum):
+    READ = "read"
+    WRITE = "write"
+    DELETE = "delete"
+    UPDATE = "update"
+    
+# --------------------------
+# Service Functions
+# --------------------------
 def has_object_permission(user:User, object:Model, permission:BasePermission) -> bool:
     # TODO : Implement this function 
     return True
@@ -28,3 +44,9 @@ def has_access_to_object(user: AbstractBloomerpUser, obj: Model) -> bool:
     if hasattr(obj, "user"):
         return obj.user == user
     return True
+
+
+def get_queryset_for_user(user: AbstractBloomerpUser, queryset:QuerySet[Model], permission: BasePermissions=BasePermissions.READ) -> QuerySet[Model]:
+    """Filters a queryset based on the user's permissions."""
+    return queryset
+

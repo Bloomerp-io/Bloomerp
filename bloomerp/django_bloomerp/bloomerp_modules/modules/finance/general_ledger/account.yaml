@@ -2,6 +2,8 @@ id: account
 name: Account
 description: General ledger account
 name_plural: Accounts
+string_representation: "{account_code} - {account_name}"
+has_avatar: false
 fields:
   - id: account_code
     name: Account Code

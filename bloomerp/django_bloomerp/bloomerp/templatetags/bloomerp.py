@@ -1,7 +1,7 @@
 from django import template
 from django.db.models.manager import Manager
 from django.db.models import Model
-from bloomerp.utils.models import model_name_plural_underline, get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url
+from bloomerp.utils.models import get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url
 from django.urls import reverse 
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import Link, Widget
@@ -14,8 +14,9 @@ from django.db.models import QuerySet
 from bloomerp.utils.encryption import BloomerpEncryptionSuite
 from django.conf import settings
 from django.core.signing import dumps, loads
-
-
+from bloomerp.models import File
+import uuid
+from django.template.loader import render_to_string
 
 register = template.Library()
 
@@ -74,6 +75,7 @@ def model_name_plural_from_content_type(content_type:ContentType):
     '''
     return content_type.model_class()._meta.verbose_name_plural
 
+
 @register.filter
 def length(obj) -> int:
     '''
@@ -85,6 +87,7 @@ def length(obj) -> int:
     '''
     return len(obj)
 
+
 @register.filter
 def percentage(value, arg):
     try:
@@ -92,6 +95,7 @@ def percentage(value, arg):
         return value*100
     except (ValueError, ZeroDivisionError):
         return 
+   
     
 @register.filter
 def get_link_by_id(id:int):
@@ -115,6 +119,7 @@ def get_link_by_id(id:int):
     except:
         return 
     
+    
 @register.filter
 def get_widget_by_id(id:int):
     '''
@@ -136,7 +141,8 @@ def get_widget_by_id(id:int):
         return Widget.objects.get(pk=id)
     except:
         return 
-    
+
+
 @register.inclusion_tag('snippets/workspace_item.html')
 def workspace_item(item:dict):
     '''
@@ -172,6 +178,7 @@ def render_link(link_id:int):
     except:
         return mark_safe("<p>Link not found</p>")
 
+
 @register.inclusion_tag('components/bookmark.html')
 def render_bookmark(object:Model, user:AbstractBloomerpUser, size:int, target:str):
     '''
@@ -194,7 +201,7 @@ def render_bookmark(object:Model, user:AbstractBloomerpUser, size:int, target:st
         'size': size
     }
 
-from bloomerp.models import File
+
 @register.simple_tag(name='field_value')
 def field_value(object:Model, application_field:ApplicationField, user:AbstractBloomerpUser, datatable_item:bool=False):
     '''
@@ -327,9 +334,6 @@ def field_value(object:Model, application_field:ApplicationField, user:AbstractB
 
             value = mark_safe(f'<span class="badge badge-pill" style="background-color: {color}">{value}</span>')
             
-            
-
-
         OTHER_FIELDS = ['AutoField', 'BigAutoField', 'BooleanField', 'CharField', 'TextField', 'IntegerField', 'DecimalField']
         if application_field.field_type in OTHER_FIELDS:
             FILTER_VALUE = f'{application_field.field}={value}'
@@ -413,8 +417,6 @@ def avatar(object:Model, avatar_attribute:str='avatar', size:int=30, class_name=
     }
 
 
-import uuid
-from django.template.loader import render_to_string
 @register.inclusion_tag('snippets/datatable_and_filter.html')
 def datatable(
     content_type_id:int,
@@ -547,3 +549,29 @@ def get_nested_attribute(obj, attribute_path: str):
         return obj
     except AttributeError:
         return None
+    
+    
+@register.inclusion_tag('inclusion_tags/data_table_value.html')
+def render_data_table_value(
+    object: Model,
+    application_field: ApplicationField,
+    user: AbstractBloomerpUser
+):
+    """Renders a data table value
+
+    Args:
+        object (Model): the object
+        application_field (ApplicationField): the application field
+        user (AbstractBloomerpUser): the user object
+        
+    Example usage:
+    {% render_data_table_value object application_field user %}
+    """
+    # Get the value of the field
+    value = getattr(object, application_field.field, None)
+    
+    return {
+        "value": value,
+        "object": object,
+    }
+    

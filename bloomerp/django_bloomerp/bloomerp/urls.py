@@ -17,7 +17,7 @@ from bloomerp.utils.urls import IntOrUUIDConverter
 from rest_framework.routers import DefaultRouter
 from shared_utils.router.view_router import _get_routers_from_settings, BloomerpRouterHandler
 from shared_utils.router.component_router import ComponentRouteFinder
-from shared_utils.registries.route_registry import router
+from registries.route_registry import router
 
 # Register the custom URL converter
 register_converter(IntOrUUIDConverter, 'int_or_uuid') # Register the custom URL converter
@@ -91,56 +91,21 @@ urlpatterns = [
     path('logout/',auth_views.LogoutView.as_view(next_page=reverse_lazy('login')), name='logout'),
 ]
 
-# ---------------------------------
-# App level routes
-# ---------------------------------
-app_level_routes = custom_router_handler.get_app_routes()
-for route in app_level_routes:
-    urlpatterns.append(route.create_urlpattern())
-
 
 # ---------------------------------
-# Model related URL patterns
+# API URL patterns / Admin pannel
 # ---------------------------------
 content_types = ContentType.objects.all()
 
-
 for content_type in content_types:
     if content_type.model_class():
-        # Detail view patterns
-        detail_view_patterns = []
-        
-        # Initialize some variables
         model : Model = content_type.model_class()
-        base_model_route = get_base_model_route(model, include_slash=False) # Example: CustomerInvoice -> customer-invoices
-        model_name_underline = model_name_plural_underline(model)
-        model_name_plural = model._meta.verbose_name_plural
-        model_name = model._meta.verbose_name
-
         
-        # ---------------------------------
-        # Custom routes
-        # ---------------------------------
-        custom_detail_view_routes = custom_router_handler.get_detail_view_routes_for_model(model)
-        custom_list_view_routes = custom_router_handler.get_list_view_routes_for_model(model)
-            
-        for route in custom_detail_view_routes:
-            # create the URL pattern
-            urlpatterns.append(route.create_urlpattern())
-
-
-        for route in custom_list_view_routes:
-            # create the URL pattern
-            urlpatterns.append(route.create_urlpattern())
-            
-
-        # ---------------------------------
-        # Rest framework URL patterns
-        # ---------------------------------
-        # Generate the serializer class
+        if not model:
+            continue
+        
         serializer_class = generate_serializer(model)
-
-        # Generate the viewset class
+        
         ApiViewSet = generate_model_viewset_class(
             model=model,
             serializer=serializer_class,
@@ -148,7 +113,6 @@ for content_type in content_types:
         )
 
         try:
-
             drf_router.register(
                 prefix = model_name_plural_underline(model), 
                 viewset = ApiViewSet, 
@@ -167,15 +131,9 @@ for content_type in content_types:
         except AlreadyRegistered:
             pass
 
-
-# ---------------------------------
-# API URL patterns
-# ---------------------------------
-
 urlpatterns += [
     path('api/', include(drf_router.urls)),
 ]
-
 
 urlpatterns.extend(router.create_url_patterns())
 

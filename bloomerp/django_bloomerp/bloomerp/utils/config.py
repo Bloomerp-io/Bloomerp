@@ -69,7 +69,7 @@ class BloomerpConfigChecker:
         print(f'{Fore.BLUE}Checking Bloomerp configuration{Style.RESET_ALL}')
         print('---------------------------------')
         checks = [
-            self._check_open_ai_key,
+            #self._check_open_ai_key,
             self._check_login_url,
             self._check_auto_link_generator
         ]

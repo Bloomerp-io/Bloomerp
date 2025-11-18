@@ -2,6 +2,7 @@ name: Employee
 id: employee
 description: Employee record
 name_plural: Employees
+string_representation: "{first_name} {last_name}"
 fields:
   - id: first_name
     name: First Name

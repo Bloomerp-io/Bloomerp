@@ -36,15 +36,15 @@ from django.forms.models import modelform_factory
 from bloomerp.forms.core import BloomerpModelForm
 from django import forms
 from django.contrib.auth import get_user_model
+from registries.route_registry import router
+
 User = get_user_model()
 
-
-router = BloomerpRouter()
 
 # ---------------------------------
 # Bloomerp List View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="list",
     name="{model} list",
     url_name="list",
@@ -91,7 +91,7 @@ class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
 # ---------------------------------
 # Bloomerp Detail Overview View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="",
     name="Overview",
     url_name="overview",
@@ -108,7 +108,7 @@ class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView
 
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
-
+        
         content_type = ContentType.objects.get_for_model(self.model)
 
         queryset = UserDetailViewPreference.objects.filter(
@@ -152,7 +152,7 @@ class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView
 # ---------------------------------
 # Bloomerp Create View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="create",
     name="Create {model}",
     url_name="add",
@@ -195,7 +195,7 @@ class BloomerpCreateView(
 # ---------------------------------
 # Bloomerp Update View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="update",
     name="Update",
     url_name="update",
@@ -270,139 +270,136 @@ class BloomerpUpdateView(
 # ---------------------------------
 # Bloomerp many-to-many detail view
 # ---------------------------------
-from django.db.models.fields.reverse_related import ManyToManyRel, ManyToOneRel
-from bloomerp.models import Comment
-def get_view_parameters(model:Model):
-    params_list = []
-    model_name = model._meta.verbose_name
+# from django.db.models.fields.reverse_related import ManyToManyRel, ManyToOneRel
+# from bloomerp.models import Comment
+# def get_view_parameters(model:Model):
+#     params_list = []
+#     model_name = model._meta.verbose_name
 
-    fields = model._meta.get_fields()
+#     fields = model._meta.get_fields()
 
-    if model in [File, Comment]:
-        return False
+#     if model in [File, Comment]:
+#         return False
 
-    for field in fields:
-        # Skip fields that 
-        if field.name in ['created_by','updated_by']:
-            continue
+#     for field in fields:
+#         # Skip fields that 
+#         if field.name in ['created_by','updated_by']:
+#             continue
 
-        if field.get_internal_type() == 'ManyToManyField':
-            if field.related_model in [Comment, File]:
-                continue
+#         if field.get_internal_type() == 'ManyToManyField':
+#             if field.related_model in [Comment, File]:
+#                 continue
 
-            if type(field) == ManyToManyRel:
-                params_dict = {
-                    'path' : f'{_get_name_or_slug(field.related_model, slug=True)}',
-                    'name' : f'{field.related_model._meta.verbose_name_plural.capitalize()}',
-                    'url_name' : f'{_get_name_or_slug(field.related_model)}_relationship',
-                    'model' : model,
-                    'route_type' : 'detail',
-                    'description' : f'{field.related_model._meta.verbose_name_plural.capitalize()} relationship for {model_name}',
-                    'args': {
-                        'related_model':field.related_model,
-                        'related_model_attribute' : field.name,
-                        'reversed':True,
-                        'related_model_field' : field.remote_field.name
-                    }
-                }
+#             if type(field) == ManyToManyRel:
+#                 params_dict = {
+#                     'path' : f'{_get_name_or_slug(field.related_model, slug=True)}',
+#                     'name' : f'{field.related_model._meta.verbose_name_plural.capitalize()}',
+#                     'url_name' : f'{_get_name_or_slug(field.related_model)}_relationship',
+#                     'model' : model,
+#                     'route_type' : 'detail',
+#                     'description' : f'{field.related_model._meta.verbose_name_plural.capitalize()} relationship for {model_name}',
+#                     'args': {
+#                         'related_model':field.related_model,
+#                         'related_model_attribute' : field.name,
+#                         'reversed':True,
+#                         'related_model_field' : field.remote_field.name
+#                     }
+#                 }
                 
-            else:
-                if field.related_model in [Comment, File]:
-                    continue
+#             else:
+#                 if field.related_model in [Comment, File]:
+#                     continue
 
-                params_dict = {
-                    'path' : f'{field.name}/',
-                    'name' : f'{field.verbose_name.capitalize()}',
-                    'url_name' : field.name + '_relationship',
-                    'description' : f'{field.verbose_name.capitalize()} relationship for {model_name}',
-                    'model' : model,
-                    'route_type' : 'detail',
-                    'args' : {
-                        'related_model':field.related_model,
-                        'related_model_attribute':True,
-                        'reversed':False,
-                        'related_model_field':field.remote_field.name
-                        }
-                }
+#                 params_dict = {
+#                     'path' : f'{field.name}/',
+#                     'name' : f'{field.verbose_name.capitalize()}',
+#                     'url_name' : field.name + '_relationship',
+#                     'description' : f'{field.verbose_name.capitalize()} relationship for {model_name}',
+#                     'model' : model,
+#                     'route_type' : 'detail',
+#                     'args' : {
+#                         'related_model':field.related_model,
+#                         'related_model_attribute':True,
+#                         'reversed':False,
+#                         'related_model_field':field.remote_field.name
+#                         }
+#                 }
 
-            params_list.append(params_dict)
+#             params_list.append(params_dict)
 
-        elif type(field) == ManyToOneRel:
-            if field.related_model in [Comment, File]:
-                return False
+#         elif type(field) == ManyToOneRel:
+#             if field.related_model in [Comment, File]:
+#                 return False
 
-            params_dict = {
-                'path' : f'{_get_name_or_slug(field.related_model, slug=True)}',
-                'name' : f'{field.name.capitalize().replace('_',' ')}',
-                'url_name' : f'{_get_name_or_slug(field.related_model)}_relationship',
-                'model' : model,
-                'route_type' : 'detail',
-                'description' : f'{field.name.capitalize().replace('_',' ')} relationship for {model_name}',
-                'args': {
-                    'related_model':field.related_model,
-                    'related_model_attribute' : field.name,
-                    'reversed':False,
-                    'related_model_field' : field.remote_field.name
-                }
-            }
+#             params_dict = {
+#                 'path' : f'{_get_name_or_slug(field.related_model, slug=True)}',
+#                 'name' : f'{field.name.capitalize().replace('_',' ')}',
+#                 'url_name' : f'{_get_name_or_slug(field.related_model)}_relationship',
+#                 'model' : model,
+#                 'route_type' : 'detail',
+#                 'description' : f'{field.name.capitalize().replace('_',' ')} relationship for {model_name}',
+#                 'args': {
+#                     'related_model':field.related_model,
+#                     'related_model_attribute' : field.name,
+#                     'reversed':False,
+#                     'related_model_field' : field.remote_field.name
+#                 }
+#             }
         
-            params_list.append(params_dict)
+#             params_list.append(params_dict)
 
-    return params_list
+#     return params_list
 
 
-@router.bloomerp_route(from_func=get_view_parameters)
-class BloomerpDetailM2MView(
-        PermissionRequiredMixin,
-        BloomerpBaseDetailView
-        ):
-    template_name : str = "detail_views/bloomerp_detail_m2m_view.html"
-    model : Model = None
-    related_model : Model = None
-    related_model_attribute : str = None
-    reversed : bool = None
-    related_model_field : str = None
+# @router.register(from_func=get_view_parameters)
+# class BloomerpDetailM2MView(PermissionRequiredMixin, BloomerpBaseDetailView):
+#     template_name : str = "detail_views/bloomerp_detail_m2m_view.html"
+#     model : Model = None
+#     related_model : Model = None
+#     related_model_attribute : str = None
+#     reversed : bool = None
+#     related_model_field : str = None
 
-    def get_permission_required(self):
-        foreign_view_permission = f"{self.related_model._meta.app_label}.view_{self.related_model._meta.model_name}"
-        model_view_permission = (
-            f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"
-        )
-        return [foreign_view_permission, model_view_permission]
+#     def get_permission_required(self):
+#         foreign_view_permission = f"{self.related_model._meta.app_label}.view_{self.related_model._meta.model_name}"
+#         model_view_permission = (
+#             f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"
+#         )
+#         return [foreign_view_permission, model_view_permission]
 
-    def get_context_data(self, **kwargs: Any) -> dict:
-        context = super().get_context_data(**kwargs)
+#     def get_context_data(self, **kwargs: Any) -> dict:
+#         context = super().get_context_data(**kwargs)
         
-        # Construct initial query
-        initial_query = f'{self.related_model_field}={self.get_object().pk}'        
+#         # Construct initial query
+#         initial_query = f'{self.related_model_field}={self.get_object().pk}'        
 
-        # Get application fields for the foreign model
-        application_fields = ApplicationField.get_for_model(self.related_model)
-        if self.reversed == False:
-            # Create form
-            Form = modelform_factory(model=self.related_model, fields='__all__', form=BloomerpModelForm)
+#         # Get application fields for the foreign model
+#         application_fields = ApplicationField.get_for_model(self.related_model)
+#         if self.reversed == False:
+#             # Create form
+#             Form = modelform_factory(model=self.related_model, fields='__all__', form=BloomerpModelForm)
             
-            form = Form(model=self.related_model, user=self.request.user, initial={self.related_model_field:self.get_object().pk})
+#             form = Form(model=self.related_model, user=self.request.user, initial={self.related_model_field:self.get_object().pk})
 
-            context['form'] = form
+#             context['form'] = form
 
-        # Set content_type_id 
-        context['foreign_content_type_id'] = ContentType.objects.get_for_model(self.related_model).pk
-        context['foreign_model_attribute'] = self.related_model_attribute
-        context['object'] = self.object
-        context['application_fields'] = application_fields
-        context['initial_query'] = initial_query
-        context['reversed'] = self.reversed
-        context['related_model'] = self.related_model
-        context['related_model_name_singular'] = self.related_model._meta.verbose_name
-        context['related_model_name_plural'] = self.related_model._meta.verbose_name_plural
-        return context
+#         # Set content_type_id 
+#         context['foreign_content_type_id'] = ContentType.objects.get_for_model(self.related_model).pk
+#         context['foreign_model_attribute'] = self.related_model_attribute
+#         context['object'] = self.object
+#         context['application_fields'] = application_fields
+#         context['initial_query'] = initial_query
+#         context['reversed'] = self.reversed
+#         context['related_model'] = self.related_model
+#         context['related_model_name_singular'] = self.related_model._meta.verbose_name
+#         context['related_model_name_plural'] = self.related_model._meta.verbose_name_plural
+#         return context
 
 
 # ---------------------------------
 # Bloomerp Detail File View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="files",
     name="Files",
     url_name="files",
@@ -428,7 +425,7 @@ class BloomerpDetailFileListView(PermissionRequiredMixin, BloomerpBaseDetailView
 # ---------------------------------
 # Bloomerp Bulk Upload View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="bulk-upload",
     name="Bulk Upload {model}",
     url_name="bulk_upload",
@@ -465,7 +462,7 @@ class BloomerpBulkUploadView(PermissionRequiredMixin, HtmxMixin, View):
 # ---------------------------------
 # Bloomerp File List View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="list",
     name="Files",
     url_name="list",
@@ -498,7 +495,7 @@ class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, View):
 # Bloomerp Detail Comments View
 # ---------------------------------
 from bloomerp.models import Comment
-@router.bloomerp_route(
+@router.register(
     path="comments",
     name="Comments",
     url_name="{model}_detail_comments",
@@ -526,7 +523,7 @@ class BloomerpDetailCommentsView(PermissionRequiredMixin, BloomerpBaseDetailView
 # ---------------------------------
 # Bloomerp Bookmarks View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     path="user-bookmarks",
     name="Bookmarks for user",
     url_name="user_bookmarks",

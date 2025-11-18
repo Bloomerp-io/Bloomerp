@@ -153,7 +153,6 @@ def _convert_string_to_callable(field_opts: dict) -> dict:
 def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleConfig, module_config: ModuleConfig) -> type[Model]:
     """Create a Django model class from Pydantic configuration objects."""
     attrs = {}
-    
     # Process each field configuration
     for field_config in model_config.fields:
         field_class, default_opts = FieldTypeMapping.get_field_class_and_defaults(field_config.type)
@@ -202,6 +201,20 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
     
     # Create class name from model name (remove spaces and special chars)
     model_class_name = ''.join(word.capitalize() for word in model_config.name.replace('-', ' ').replace('_', ' ').split())
+    
+    # Add __str__ method if string_representation is provided
+    if model_config.string_representation:
+        def __str__(self):
+            try:
+                return model_config.string_representation.format(**{field.id: getattr(self, field.id) for field in model_config.fields})
+            except Exception as e:
+                return f"<{model_class_name} (error in __str__: {e})>"
+        attrs['__str__'] = __str__
+        
+    # Add has_avatar attribute if specified
+    if hasattr(model_config, 'has_avatar'):
+        if model_config.has_avatar is False:
+            attrs['avatar'] = None
     
     # Create and return the model class
     return type(model_class_name, (BloomerpModel,), attrs)
@@ -262,7 +275,9 @@ def scan_modules_directory() -> list[ModuleConfig]:
                         'enabled': model_data.get('enabled', True),
                         'fields': model_data.get('fields', []),
                         'name_plural': model_data.get('name_plural'),
-                        'custom_permissions': model_data.get('custom_permissions')
+                        'custom_permissions': model_data.get('custom_permissions'),
+                        'string_representation': model_data.get('string_representation'),
+                        'has_avatar': model_data.get('has_avatar', True)
                     }
                     
                     # Create ModelConfig from cleaned YAML data using Pydantic

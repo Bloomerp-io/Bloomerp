@@ -10,11 +10,11 @@ from bloomerp.utils.models import (
     )
 from django.contrib.postgres.fields import JSONField
 from django.db.models import JSONField as DefaultJSONField
-from bloomerp.widgets.foreign_key_widget import ForeignKeyWidget
 from bloomerp.widgets.code_editor_widget import AceEditorWidget
 from bloomerp.widgets.multiple_model_select_widget import MultipleModelSelect
 from django.forms.widgets import DateInput, DateTimeInput
 from bloomerp.forms.layouts import BloomerpModelformHelper
+from bloomerp.utils.field_widgets.foreign_key_widget import ForeignKeyWidget
 
 # ---------------------------------
 # Bloomerp Bulk Upload Form
@@ -77,7 +77,7 @@ class BloomerpModelForm(forms.ModelForm):
         # Get all of the foreign key fields for the model
         self.foreign_key_fields = get_foreign_key_fields_for_model(self.model)
 
-
+        
         # ---------------------------------
         # FOREIGN KEY FIELDS
         # ---------------------------------
