@@ -1,0 +1,37 @@
+name: Location
+id: location
+description: Storage Location
+name_plural: Locations
+string_representation: "{code}"
+fields:
+  - id: warehouse
+    name: Warehouse
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.warehouse
+      on_delete: CASCADE
+  - id: code
+    name: Code
+    type: string
+    options:
+      max_length: 20
+  - id: name
+    name: Name
+    type: string
+    options:
+      max_length: 100
+  - id: location_type
+    name: Location Type
+    type: choice
+    options:
+      choices:
+        - ["stock", "Stock"]
+        - ["input", "Input"]
+        - ["output", "Output"]
+        - ["scrap", "Scrap"]
+        - ["production", "Production"]
+  - id: is_active
+    name: Is Active
+    type: boolean
+    options:
+      default: true

@@ -1,0 +1,74 @@
+name: Manufacturing Order Component
+id: manufacturing_order_component
+description: Components reserved/consumed for the MO
+name_plural: Manufacturing Order Components
+string_representation: "{manufacturing_order} - {component}"
+fields:
+  - id: manufacturing_order
+    name: Manufacturing Order
+    type: foreign_key
+    options:
+      to: manufacturing.shop_floor.manufacturing_order
+      on_delete: CASCADE
+  - id: component
+    name: Component
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.product
+      on_delete: PROTECT
+  - id: location_source
+    name: Source Location
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.location
+      on_delete: PROTECT
+      related_name: "source_manufacturing_order_components"
+  - id: location_destination
+    name: Destination Location
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.location
+      on_delete: PROTECT
+      related_name: "destination_manufacturing_order_components"
+  - id: quantity_required
+    name: Quantity Required
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+  - id: quantity_issued
+    name: Quantity Issued
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+      default: 0
+  - id: uom
+    name: Unit of Measure
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.unit_of_measure
+      on_delete: PROTECT
+  - id: lot_number
+    name: Lot Number
+    type: string
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: serial_number
+    name: Serial Number
+    type: string
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: choice
+    options:
+      choices:
+        - ["planned", "Planned"]
+        - ["partially_issued", "Partially Issued"]
+        - ["fully_issued", "Fully Issued"]
+      default: "planned"

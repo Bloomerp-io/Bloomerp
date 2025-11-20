@@ -1,0 +1,56 @@
+name: Planned Order
+id: planned_order
+description: Output of MRP
+name_plural: Planned Orders
+string_representation: "{product} - {due_date}"
+fields:
+  - id: mrp_run
+    name: MRP Run
+    type: foreign_key
+    options:
+      to: manufacturing.production_planning.mrp_run
+      on_delete: CASCADE
+  - id: product
+    name: Product
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.product
+      on_delete: PROTECT
+  - id: order_type
+    name: Order Type
+    type: choice
+    options:
+      choices:
+        - ["manufacturing", "Manufacturing"]
+        - ["purchase", "Purchase"]
+  - id: quantity
+    name: Quantity
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 2
+  - id: due_date
+    name: Due Date
+    type: date
+  - id: suggested_start_date
+    name: Suggested Start Date
+    type: date
+    options:
+      null: true
+      blank: true
+  - id: source_document
+    name: Source Document
+    type: string
+    options:
+      max_length: 100
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: choice
+    options:
+      choices:
+        - ["planned", "Planned"]
+        - ["converted", "Converted"]
+        - ["cancelled", "Cancelled"]
+      default: "planned"

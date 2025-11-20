@@ -1,0 +1,45 @@
+name: Routing Operation
+id: routing_operation
+description: Steps in the routing
+name_plural: Routing Operations
+string_representation: "{routing} - {operation}"
+fields:
+  - id: routing
+    name: Routing
+    type: foreign_key
+    options:
+      to: manufacturing.bom_routings.routing
+      on_delete: CASCADE
+  - id: operation
+    name: Operation
+    type: foreign_key
+    options:
+      to: manufacturing.bom_routings.operation
+      on_delete: PROTECT
+  - id: sequence
+    name: Sequence
+    type: integer
+    options:
+      default: 0
+  - id: queue_time_minutes
+    name: Queue Time (Minutes)
+    type: integer
+    options:
+      default: 0
+  - id: setup_time_minutes
+    name: Setup Time (Minutes)
+    type: integer
+    options:
+      default: 0
+  - id: run_time_minutes_per_unit
+    name: Run Time (Minutes/Unit)
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 2
+      default: 0
+  - id: move_time_minutes
+    name: Move Time (Minutes)
+    type: integer
+    options:
+      default: 0

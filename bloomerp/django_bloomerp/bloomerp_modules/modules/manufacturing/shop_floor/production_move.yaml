@@ -1,0 +1,71 @@
+name: Production Move
+id: production_move
+description: Individual stock movements for production
+name_plural: Production Moves
+string_representation: "{product} - {move_type}"
+fields:
+  - id: manufacturing_order
+    name: Manufacturing Order
+    type: foreign_key
+    options:
+      to: manufacturing.shop_floor.manufacturing_order
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: product
+    name: Product
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.product
+      on_delete: PROTECT
+  - id: quantity
+    name: Quantity
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+  - id: uom
+    name: Unit of Measure
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.unit_of_measure
+      on_delete: PROTECT
+  - id: location_from
+    name: From Location
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.location
+      on_delete: PROTECT
+      related_name: "from_production_moves"
+  - id: location_to
+    name: To Location
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.location
+      on_delete: PROTECT
+      related_name: "to_production_moves"
+  - id: move_type
+    name: Move Type
+    type: choice
+    options:
+      choices:
+        - ["component_issue", "Component Issue"]
+        - ["finished_good_receipt", "Finished Good Receipt"]
+        - ["scrap", "Scrap"]
+  - id: lot_number
+    name: Lot Number
+    type: string
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: serial_number
+    name: Serial Number
+    type: string
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: move_date
+    name: Move Date
+    type: datetime

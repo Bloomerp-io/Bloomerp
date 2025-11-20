@@ -1,0 +1,32 @@
+name: MRP Run
+id: mrp_run
+description: A run of the MRP engine
+name_plural: MRP Runs
+string_representation: "{run_date}"
+fields:
+  - id: run_date
+    name: Run Date
+    type: datetime
+  - id: description
+    name: Description
+    type: string
+    options:
+      max_length: 200
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: choice
+    options:
+      choices:
+        - ["draft", "Draft"]
+        - ["running", "Running"]
+        - ["completed", "Completed"]
+        - ["failed", "Failed"]
+      default: "draft"
+  - id: parameters_json
+    name: Parameters
+    type: json
+    options:
+      null: true
+      blank: true

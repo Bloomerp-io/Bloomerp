@@ -1,0 +1,58 @@
+name: Work Center
+id: work_center
+description: Where the operation is performed
+name_plural: Work Centers
+string_representation: "{name}"
+fields:
+  - id: name
+    name: Name
+    type: string
+    options:
+      max_length: 100
+  - id: code
+    name: Code
+    type: string
+    options:
+      max_length: 20
+      unique: true
+  - id: work_center_type
+    name: Work Center Type
+    type: choice
+    options:
+      choices:
+        - ["machine", "Machine"]
+        - ["labor", "Labor"]
+        - ["cell", "Cell"]
+  - id: capacity_units
+    name: Capacity Units
+    type: integer
+    options:
+      default: 1
+  - id: calendar
+    name: Calendar
+    type: foreign_key
+    options:
+      to: manufacturing.bom_routings.work_center_calendar
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: hourly_rate
+    name: Hourly Rate
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 2
+      default: 0
+  - id: oee_target_percent
+    name: OEE Target Percent
+    type: decimal
+    options:
+      max_digits: 5
+      decimal_places: 2
+      null: true
+      blank: true
+  - id: is_active
+    name: Is Active
+    type: boolean
+    options:
+      default: true

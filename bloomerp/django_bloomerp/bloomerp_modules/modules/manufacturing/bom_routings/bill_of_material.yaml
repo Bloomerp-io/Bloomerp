@@ -1,0 +1,63 @@
+name: Bill of Material
+id: bill_of_material
+description: Bill of Material Header
+name_plural: Bills of Material
+string_representation: "{product} {version}"
+fields:
+  - id: product
+    name: Product
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.product
+      on_delete: PROTECT
+  - id: code
+    name: Code
+    type: string
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: version
+    name: Version
+    type: string
+    options:
+      max_length: 20
+      default: "1.0"
+  - id: is_active
+    name: Is Active
+    type: boolean
+    options:
+      default: true
+  - id: valid_from
+    name: Valid From
+    type: date
+    options:
+      null: true
+      blank: true
+  - id: valid_to
+    name: Valid To
+    type: date
+    options:
+      null: true
+      blank: true
+  - id: quantity
+    name: Quantity
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 2
+      default: 1
+  - id: routing
+    name: Routing
+    type: foreign_key
+    options:
+      to: manufacturing.bom_routings.routing
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: notes
+    name: Notes
+    type: text
+    options:
+      null: true
+      blank: true

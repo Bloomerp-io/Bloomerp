@@ -1,0 +1,47 @@
+name: Bill of Material Line
+id: bill_of_material_line
+description: Components of the BOM
+name_plural: Bill of Material Lines
+string_representation: "{bom} - {component}"
+fields:
+  - id: bom
+    name: Bill of Material
+    type: foreign_key
+    options:
+      to: manufacturing.bom_routings.bill_of_material
+      on_delete: CASCADE
+  - id: component
+    name: Component
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.product
+      on_delete: PROTECT
+  - id: quantity
+    name: Quantity
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+  - id: uom
+    name: Unit of Measure
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.unit_of_measure
+      on_delete: PROTECT
+  - id: scrap_factor_percent
+    name: Scrap Factor (%)
+    type: decimal
+    options:
+      max_digits: 5
+      decimal_places: 2
+      default: 0
+  - id: is_phantom
+    name: Is Phantom
+    type: boolean
+    options:
+      default: false
+  - id: sequence
+    name: Sequence
+    type: integer
+    options:
+      default: 0

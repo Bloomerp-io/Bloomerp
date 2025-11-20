@@ -18,6 +18,7 @@ class FieldTypeMapping:
         "slug": (models.SlugField, {"max_length": 50}),
         "email": (models.EmailField, {"max_length": 254}),
         "url": (models.URLField, {"max_length": 200}),
+        "choice": (models.CharField, {"max_length": 50}),
         
         # Number Fields
         "integer": (models.IntegerField, {}),
@@ -132,6 +133,11 @@ def _convert_string_to_callable(field_opts: dict) -> dict:
     updated_opts = {}
     
     for field, value in field_opts.items():
+        if field == 'on_delete' and isinstance(value, str):
+            if hasattr(models, value):
+                updated_opts[field] = getattr(models, value)
+                continue
+
         if isinstance(value, str):
             # Handle call(...) pattern - execute the callable
             if value.startswith("call(") and value.endswith(")"):
@@ -150,7 +156,12 @@ def _convert_string_to_callable(field_opts: dict) -> dict:
     return updated_opts
 
 
-def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleConfig, module_config: ModuleConfig) -> type[Model]:
+def get_model_class_name(model_name: str) -> str:
+    """Generate class name from model name."""
+    return ''.join(word.capitalize() for word in model_name.replace('-', ' ').replace('_', ' ').split())
+
+
+def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleConfig, module_config: ModuleConfig, model_lookup: Dict[str, str] = None) -> type[Model]:
     """Create a Django model class from Pydantic configuration objects."""
     attrs = {}
     # Process each field configuration
@@ -173,7 +184,19 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
         
         # Apply any custom options from the field config
         if field_config.options:
-            field_opts.update(field_config.options)
+            for key, value in field_config.options.items():
+                # Handle YAML null key (parsed as None)
+                if key is None:
+                    field_opts['null'] = value
+                else:
+                    field_opts[key] = value
+        
+        # Handle 'to' in options for relationships
+        if 'to' in field_opts and isinstance(field_opts['to'], str):
+            to_ref = field_opts['to']
+            # Check if it matches our reference format
+            if model_lookup and to_ref in model_lookup:
+                field_opts['to'] = f"bloomerp_modules.{model_lookup[to_ref]}"
         
         # Convert string values to callables where needed
         field_opts = _convert_string_to_callable(field_opts)
@@ -200,7 +223,7 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
     attrs['__module__'] = 'bloomerp_modules.models'
     
     # Create class name from model name (remove spaces and special chars)
-    model_class_name = ''.join(word.capitalize() for word in model_config.name.replace('-', ' ').replace('_', ' ').split())
+    model_class_name = get_model_class_name(model_config.name)
     
     # Add __str__ method if string_representation is provided
     if model_config.string_representation:
@@ -321,18 +344,27 @@ def load_all_models_from_modules() -> dict[str, type[Model]]:
     modules = scan_modules_directory()
     models = {}
     
+    # Build lookup map for model references
+    model_lookup = {}
+    for module in modules:
+        for sub_module in module.sub_modules:
+            for model_config in sub_module.models:
+                ref = f"{module.id}.{sub_module.id}.{model_config.id}"
+                class_name = get_model_class_name(model_config.name)
+                model_lookup[ref] = class_name
+    
     for module in modules:
         for sub_module in module.sub_modules:
             for model_config in sub_module.models:
                 model_class = create_model_from_config(
                     model_config, 
                     sub_module, 
-                    module
+                    module,
+                    model_lookup
                 )
                 # Use a unique key to avoid conflicts
                 model_key = f"{module.id}_{sub_module.id}_{model_config.id}"
                 models[model_key] = model_class
-    
     return models
 
 

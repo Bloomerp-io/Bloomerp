@@ -1,0 +1,52 @@
+name: Quality Inspection Result
+id: quality_inspection_result
+description: Result per test
+name_plural: Quality Inspection Results
+string_representation: "{inspection} - {test_name}"
+fields:
+  - id: inspection
+    name: Inspection
+    type: foreign_key
+    options:
+      to: manufacturing.quality_management.quality_inspection
+      on_delete: CASCADE
+  - id: test_name
+    name: Test Name
+    type: string
+    options:
+      max_length: 100
+  - id: test_type
+    name: Test Type
+    type: choice
+    options:
+      choices:
+        - ["attribute", "Attribute"]
+        - ["measurement", "Measurement"]
+  - id: value_text
+    name: Value Text
+    type: string
+    options:
+      max_length: 100
+      null: true
+      blank: true
+  - id: value_numeric
+    name: Value Numeric
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+      null: true
+      blank: true
+  - id: result
+    name: Result
+    type: choice
+    options:
+      choices:
+        - ["pass", "Pass"]
+        - ["fail", "Fail"]
+  - id: notes
+    name: Notes
+    type: text
+    options:
+      null: true
+      blank: true

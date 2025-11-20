@@ -1,0 +1,60 @@
+name: Equipment
+id: equipment
+description: Machines or tools that need maintenance
+name_plural: Equipment
+string_representation: "{name}"
+fields:
+  - id: name
+    name: Name
+    type: string
+    options:
+      max_length: 100
+  - id: code
+    name: Code
+    type: string
+    options:
+      max_length: 50
+      unique: true
+  - id: work_center
+    name: Work Center
+    type: foreign_key
+    options:
+      to: manufacturing.bom_routings.work_center
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: serial_number
+    name: Serial Number
+    type: string
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: purchase_date
+    name: Purchase Date
+    type: date
+    options:
+      null: true
+      blank: true
+  - id: manufacturer
+    name: Manufacturer
+    type: string
+    options:
+      max_length: 100
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: choice
+    options:
+      choices:
+        - ["active", "Active"]
+        - ["inactive", "Inactive"]
+        - ["scrapped", "Scrapped"]
+      default: "active"
+  - id: notes
+    name: Notes
+    type: text
+    options:
+      null: true
+      blank: true

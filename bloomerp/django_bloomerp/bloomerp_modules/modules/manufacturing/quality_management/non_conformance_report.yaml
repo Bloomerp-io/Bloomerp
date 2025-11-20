@@ -1,0 +1,70 @@
+name: Non Conformance Report
+id: non_conformance_report
+description: Tracks failures / deviations
+name_plural: Non Conformance Reports
+string_representation: "{number}"
+fields:
+  - id: number
+    name: Number
+    type: string
+    options:
+      max_length: 50
+      unique: true
+  - id: product
+    name: Product
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.product
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: lot_number
+    name: Lot Number
+    type: string
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: source_inspection
+    name: Source Inspection
+    type: foreign_key
+    options:
+      to: manufacturing.quality_management.quality_inspection
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: date_reported
+    name: Date Reported
+    type: datetime
+  - id: reported_by
+    name: Reported By
+    type: foreign_key
+    options:
+      to: hrm.employees.employee
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: description
+    name: Description
+    type: text
+  - id: root_cause
+    name: Root Cause
+    type: text
+    options:
+      null: true
+      blank: true
+  - id: corrective_action
+    name: Corrective Action
+    type: text
+    options:
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: choice
+    options:
+      choices:
+        - ["open", "Open"]
+        - ["in_analysis", "In Analysis"]
+        - ["closed", "Closed"]
+      default: "open"

@@ -1,0 +1,35 @@
+name: Sales Forecast
+id: sales_forecast
+description: High-level demand for MPS
+name_plural: Sales Forecasts
+string_representation: "{product} - {forecast_date}"
+fields:
+  - id: product
+    name: Product
+    type: foreign_key
+    options:
+      to: manufacturing.master_data.product
+      on_delete: PROTECT
+  - id: forecast_date
+    name: Forecast Date
+    type: date
+  - id: quantity
+    name: Quantity
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 2
+  - id: source
+    name: Source
+    type: choice
+    options:
+      choices:
+        - ["manual", "Manual"]
+        - ["system", "System"]
+        - ["ai", "AI"]
+  - id: notes
+    name: Notes
+    type: text
+    options:
+      null: true
+      blank: true

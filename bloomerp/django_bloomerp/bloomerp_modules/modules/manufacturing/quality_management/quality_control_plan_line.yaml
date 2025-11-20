@@ -1,0 +1,59 @@
+name: Quality Control Plan Line
+id: quality_control_plan_line
+description: Defines individual tests
+name_plural: Quality Control Plan Lines
+string_representation: "{control_plan} - {test_name}"
+fields:
+  - id: control_plan
+    name: Control Plan
+    type: foreign_key
+    options:
+      to: manufacturing.quality_management.quality_control_plan
+      on_delete: CASCADE
+  - id: test_name
+    name: Test Name
+    type: string
+    options:
+      max_length: 100
+  - id: test_type
+    name: Test Type
+    type: choice
+    options:
+      choices:
+        - ["attribute", "Attribute"]
+        - ["measurement", "Measurement"]
+  - id: target_value
+    name: Target Value
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+      null: true
+      blank: true
+  - id: tolerance_minus
+    name: Tolerance Minus
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+      null: true
+      blank: true
+  - id: tolerance_plus
+    name: Tolerance Plus
+    type: decimal
+    options:
+      max_digits: 10
+      decimal_places: 5
+      null: true
+      blank: true
+  - id: sample_size
+    name: Sample Size
+    type: integer
+    options:
+      null: true
+      blank: true
+  - id: sequence
+    name: Sequence
+    type: integer
+    options:
+      default: 0
