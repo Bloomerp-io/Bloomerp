@@ -43,9 +43,10 @@
 		{% include 'snippets/todo_modal.html' %}
 		<!--End Todo-->
 
-		<!--Simple datatable-->
-		<script src="{% static 'bloomerp/vendor/simple-datatables/simple-datatables.js' %}"></script>
+		<!-- TypeScript Bundle (Vite) - Includes datatable module -->
+		{% include 'snippets/vite_bundle.html' %}
 
+		<!-- Legacy JavaScript files (to be migrated to TypeScript) -->
 		<!-- Template Main JS File -->
 		<script src="{% static 'bloomerp/js/main.js' %}"></script>
 
@@ -55,8 +56,8 @@
 		<!--Bloomerp forms-->
 		<script src="{% static 'bloomerp/js/bloomerpForms.js' %}"></script>
 
-		<!--Bloomerp datatable-->
-		<script src="{% static 'bloomerp/js/datatable.js' %}"></script>
+		<!-- Datatable now handled by TypeScript bundle above -->
+		<!-- <script src="{% static 'bloomerp/js/datatable.js' %}"></script> -->
 
 		<!--LLM-->
 		<script src="{% static 'bloomerp/js/llm.js' %}"></script>

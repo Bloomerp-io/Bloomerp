@@ -1,7 +1,10 @@
 {% load bloomerp %}
 
 
-<div id="data-table-container">
+<div 
+    id="data-table-container"
+    data-content-type-id="{{ content_type_id }}"
+    >
     <!--Search inputs-->
     <div class="mb-2 justify-between flex items-center">
         <div class="flex space-x-2">
@@ -18,28 +21,35 @@
             />
         </div>
 
-        <div class="flex">
+        <div class="flex gap-2 items-center">
             <c-icons.filter size="24"/>
+
         </div>
     </div>
 
-    <div class="overflow-auto rounded-lg">
-        <table class="table-auto table-hover table w-full">
+    <div class="overflow-auto rounded-lg border-l border-r border-gray-200">
+        <table id="data-table-{{ content_type_id }}" class="table-auto table-hover table w-full border-collapse outline-none" data-datatable>
             <thead>
-                <tr>
+                <tr >
                     {% for field in fields %}
-                    <th>{{ field.field }}</th>
+                    <th >{{ field.field }}</th>
                     {% endfor %}
-                    <th>Actions</th>
+                    <th >Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for object in queryset %}
-                <tr>
+                <tr
+                    hx-get="{{ object.get_absolute_url }}"
+                    hx-target="#main-content"
+                    hx-swap="innerHTML"
+                    hx-trigger="click"
+                    hx-push-url="true"
+                >
                     {% for field in fields %}
                         {% render_data_table_value object field request.user %}
                     {% endfor %}
-                    <td>
+                    <td >
                         <button class="btn btn-sm btn-secondary">Edit</button>
                         <button class="btn btn-sm btn-danger">Delete</button>
                     </td>
@@ -50,93 +60,28 @@
     </div>
 
     <!-- Context Menu Dropdown -->
-    <div id="cell-context-menu" class="hidden fixed bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[160px]">
+    <div id="data-table-{{ content_type_id }}-context-menu" class="hidden fixed bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[160px]">
         <ul class="py-1">
             <li>
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm" onclick="handleCellAction('copy')">
-                    Copy Cell
+                <button id="data-table-{{ content_type_id }}-context-menu-copy-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                    <i class="bi bi-clipboard"></i> Copy Cell
+                </button>
+            </li>
+            <li id="data-table-{{ content_type_id }}-context-menu-filter-value-list-item">
+                <button id="data-table-{{ content_type_id }}-context-menu-filter-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                    <i class="bi bi-filter"></i> Filter by Value
                 </button>
             </li>
             <li>
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm" onclick="handleCellAction('edit')">
-                    Edit Cell
-                </button>
-            </li>
-            <li>
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm" onclick="handleCellAction('filter')">
-                    Filter by Value
+                <button id="data-table-{{ content_type_id }}-context-menu-edit-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                    <i class="bi bi-pencil"></i> Edit Cell
                 </button>
             </li>
             <li class="border-t border-gray-200">
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600" onclick="handleCellAction('delete')">
-                    Delete Row
+                <button id="data-table-{{ content_type_id }}-context-menu-delete-row" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600">
+                    <i class="bi bi-trash"></i> Delete Row
                 </button>
             </li>
         </ul>
     </div>
-
-    <script>
-        let currentCell = null;
-        const contextMenu = document.getElementById('cell-context-menu');
-
-        // Handle right-click on cells
-        document.addEventListener('contextmenu', function(e) {
-            const cell = e.target.closest('[data-dropdown="cell-menu"]');
-            
-            if (cell) {
-                e.preventDefault();
-                currentCell = cell;
-                
-                // Position the context menu
-                contextMenu.style.left = e.pageX + 'px';
-                contextMenu.style.top = e.pageY + 'px';
-                contextMenu.classList.remove('hidden');
-            }
-        });
-
-        // Hide context menu on regular click
-        document.addEventListener('click', function(e) {
-            if (!contextMenu.contains(e.target)) {
-                contextMenu.classList.add('hidden');
-            }
-        });
-
-        // Handle context menu actions
-        function handleCellAction(action) {
-            if (!currentCell) return;
-            
-            const row = currentCell.getAttribute('data-row');
-            const column = currentCell.getAttribute('data-column');
-            const value = currentCell.getAttribute('data-value');
-            
-            console.log(`Action: ${action}`);
-            console.log(`Row: ${row}, Column: ${column}, Value: ${value}`);
-            
-            // Placeholder actions
-            switch(action) {
-                case 'copy':
-                    navigator.clipboard.writeText(value);
-                    alert(`Copied: ${value}`);
-                    break;
-                case 'edit':
-                    alert(`Edit cell at Row ${row}, Column ${column}`);
-                    break;
-                case 'filter':
-                    alert(`Filter by: ${value}`);
-                    break;
-                case 'delete':
-                    alert(`Delete Row ${row}`);
-                    break;
-            }
-            
-            contextMenu.classList.add('hidden');
-        }
-
-        // Close menu on escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                contextMenu.classList.add('hidden');
-            }
-        });
-    </script>
 </div>

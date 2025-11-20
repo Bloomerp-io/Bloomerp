@@ -242,11 +242,11 @@
     }
 
     .table tbody td {
-        @apply px-4 py-3 border-b border-gray-200;
+        @apply px-2 py-2 border-b border-gray-200;
     }
 
     .table tbody tr:last-child td {
-        @apply last:border-b-0;
+        @apply border-b;
     }
 
     .table-striped tbody tr:nth-child(odd) {
