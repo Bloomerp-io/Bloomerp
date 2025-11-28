@@ -1,45 +1,279 @@
 {% comment %}
 calendar
 
-A Calendar component to display a queryset in a calendar view.
+A Calendar component to display a queryset in a calendar view with Apple-style simplicity.
 
 Parameters:
+- content_type_id (int): The content type ID for the model being displayed.
 - queryset (QuerySet): The Django queryset containing the records to be displayed.
-- date_start_field (str): the field representing the start date field
-- date_end_field (str, optional): the field representing the end date field
-- visible_fields (QuerySet[ApplicationField]): list of ApplicationField to show in the event tooltip
-- url_field (str, optional): the field representing the URL for each event
-- view_type (str): The type of calendar view to display. Options are 'month' or 'week'. Default is 'month'.
-- onclick_event (function, optional): A callback function to be executed when an event is clicked.
-- onprevious_event (function, optional): A callback function to be executed when the previous button is clicked.
-- onnext_event (function, optional): A callback function to be executed when the next button
+- preference (UserListViewPreference): The user's view preferences.
+- calendar_start_field (ApplicationField): The field representing the start date.
+- calendar_end_field (ApplicationField, optional): The field representing the end date.
+- calendar_view_mode (CalendarViewMode): The calendar view mode (DAY, WEEK, MONTH).
+- calendar_events_by_date (dict): Events grouped by date.
+- calendar_current_date (date): The current date being displayed.
+- calendar_page_offset (int): The page offset for navigation.
+- calendar_weeks (list): For month view, list of weeks with day data.
+- calendar_days (list): For week view, list of days.
+- calendar_hours (list): For day/week view, list of hours.
 {% endcomment %}
 
+{% load bloomerp %}
+
 <div 
-    calendar 
-    class="flex flex-col h-full bg-white rounded-lg border border-gray-200"
-    data-view-type="{{ view_type }}"
-    data-onclick-event="{{ onclick_event }}"
-    >
-
-    <div class="flex">
-        <div>
-            <button calendar-prev class="p-2 hover:bg-gray-100 rounded-l-lg">
-                <c-icons.arrow_left size="16" class="" />
-            </button>
-
-            <button calendar-today class="p-2 hover:bg-gray-100">
-                Today
-            </button>
-
-            <button calendar-next class="p-2 hover:bg-gray-100 rounded-r-lg">
-                <c-icons.arrow_right size="16" class="" />
-            </button>
-
+    data-calendar
+    class="flex flex-col h-full bg-white rounded-lg border border-gray-200 overflow-hidden"
+    data-content-type-id="{{ content_type_id }}"
+    data-view-mode="{{ calendar_view_mode|default:'month' }}"
+    data-page-offset="{{ calendar_page_offset|default:0 }}"
+    data-url="{% url 'components_data_view' content_type_id=content_type_id %}"
+>
+    {% if not calendar_start_field %}
+        <!-- Empty state: no start field selected -->
+        <div class="flex-1 flex items-center justify-center text-gray-400">
+            <div class="text-center">
+                <c-icons.calendar size="48" class="mx-auto mb-2 opacity-50"/>
+                <p class="text-lg font-medium mb-1">No date field selected</p>
+                <p class="text-sm">Please select a start field in the display options</p>
+            </div>
         </div>
-    </div>
+    {% else %}
+        <!-- Calendar Header -->
+        <div class="calendar-header flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <!-- Navigation -->
+            <div class="flex items-center gap-1">
+                <button 
+                    type="button"
+                    data-calendar-nav="prev"
+                    class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Previous"
+                >
+                    <c-icons.chevron_left size="16" class="text-gray-600" />
+                </button>
+                <button 
+                    type="button"
+                    data-calendar-nav="today"
+                    class="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                    Today
+                </button>
+                <button 
+                    type="button"
+                    data-calendar-nav="next"
+                    class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Next"
+                >
+                    <c-icons.chevron_right size="16" class="text-gray-600" />
+                </button>
+            </div>
 
+            <!-- Current Date Title -->
+            <div class="text-lg font-semibold text-gray-900">
+                {% if calendar_view_mode == 'day' %}
+                    {{ calendar_current_date|date:"l, F j, Y" }}
+                {% elif calendar_view_mode == 'week' %}
+                    {{ calendar_date_range.start|date:"M j" }} – {{ calendar_date_range.end|date:"M j, Y" }}
+                {% else %}
+                    {{ calendar_current_date|date:"F Y" }}
+                {% endif %}
+            </div>
+
+            <!-- Spacer for balance -->
+            <div class="w-32"></div>
+        </div>
+
+        <!-- Calendar Body -->
+        <div class="calendar-body flex-1 overflow-auto">
+            {% if calendar_view_mode == 'month' %}
+                <!-- Month View -->
+                <div class="h-full flex flex-col">
+                    <!-- Day Headers -->
+                    <div class="grid grid-cols-7 border-b border-gray-200">
+                        {% for day_name in "Mon,Tue,Wed,Thu,Fri,Sat,Sun"|make_list_by_comma %}
+                            <div class="py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                {{ day_name }}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Calendar Grid -->
+                    <div class="flex-1 grid grid-cols-7 auto-rows-fr" data-calendar-grid>
+                        {% for week in calendar_weeks %}
+                            {% for day in week %}
+                                <div 
+                                    class="calendar-cell calendar-day min-h-[80px] p-1 border-b border-r border-gray-100 
+                                           {% if not day.is_current_month %}bg-gray-50 text-gray-400{% endif %}
+                                           {% if day.is_today %}bg-blue-50{% endif %}"
+                                    data-calendar-cell
+                                    data-date="{{ day.date|date:'Y-m-d' }}"
+                                    tabindex="-1"
+                                >
+                                    <!-- Day Number -->
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm {% if day.is_today %}font-bold text-blue-600{% else %}text-gray-700{% endif %}">
+                                            {{ day.date.day }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Events for this day -->
+                                    <div class="space-y-0.5 overflow-y-auto max-h-[60px]">
+                                        {% with events=calendar_events_by_date|get_item:day.date %}
+                                            {% for event in events %}
+                                                <a 
+                                                    href="{{ event.object.get_absolute_url }}"
+                                                    class="calendar-event block text-xs px-1.5 py-0.5 rounded truncate
+                                                           bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                                                    title="{{ event.object }}"
+                                                    data-context-menu-trigger
+                                                    data-object-id="{{ event.object.pk }}"
+                                                >
+                                                    {% if event.time %}
+                                                        <span class="font-medium">{{ event.time|time:"H:i" }}</span>
+                                                    {% endif %}
+                                                    {{ event.object }}
+                                                </a>
+                                            {% endfor %}
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+            {% elif calendar_view_mode == 'week' %}
+                <!-- Week View -->
+                <div class="h-full flex flex-col">
+                    <!-- Day Headers -->
+                    <div class="grid grid-cols-8 border-b border-gray-200 sticky top-0 bg-white z-10">
+                        <div class="w-16"></div>
+                        {% for day in calendar_days %}
+                            <div class="py-2 text-center border-l border-gray-100">
+                                <div class="text-xs font-medium text-gray-500 uppercase">
+                                    {{ day|date:"D" }}
+                                </div>
+                                <div class="text-lg {% if day == calendar_today %}text-blue-600 font-bold{% else %}text-gray-900{% endif %}">
+                                    {{ day.day }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Time Grid -->
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="grid grid-cols-8 min-h-[1200px]" data-calendar-grid>
+                            <!-- Time Labels Column -->
+                            <div class="w-16">
+                                {% for hour in calendar_hours %}
+                                    <div class="h-12 text-xs text-gray-500 text-right pr-2 pt-0.5">
+                                        {{ hour }}:00
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Day Columns -->
+                            {% for day in calendar_days %}
+                                <div 
+                                    class="border-l border-gray-100 relative"
+                                    data-date="{{ day|date:'Y-m-d' }}"
+                                >
+                                    <!-- Hour Slots -->
+                                    {% for hour in calendar_hours %}
+                                        <div 
+                                            class="calendar-cell h-12 border-b border-gray-50 hover:bg-gray-50"
+                                            data-calendar-cell
+                                            data-hour="{{ hour }}"
+                                            data-date="{{ day|date:'Y-m-d' }}"
+                                            tabindex="-1"
+                                        ></div>
+                                    {% endfor %}
+
+                                    <!-- Events for this day -->
+                                    {% with events=calendar_events_by_date|get_item:day %}
+                                        {% for event in events %}
+                                            <a 
+                                                href="{{ event.object.get_absolute_url }}"
+                                                class="calendar-event absolute left-0.5 right-0.5 px-1 py-0.5 text-xs
+                                                       bg-blue-100 text-blue-800 rounded border border-blue-200
+                                                       hover:bg-blue-200 transition-colors truncate"
+                                                style="{% if event.time %}top: {{ event.time.hour|add:event.time.minute|divisibleby:60 }}rem;{% endif %}"
+                                                title="{{ event.object }}"
+                                                data-context-menu-trigger
+                                                data-object-id="{{ event.object.pk }}"
+                                            >
+                                                {% if event.time %}
+                                                    <span class="font-medium">{{ event.time|time:"H:i" }}</span>
+                                                {% endif %}
+                                                {{ event.object }}
+                                            </a>
+                                        {% endfor %}
+                                    {% endwith %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+            {% elif calendar_view_mode == 'day' %}
+                <!-- Day View -->
+                <div class="h-full flex flex-col overflow-y-auto">
+                    <div class="flex-1 min-h-[1200px]" data-calendar-grid>
+                        {% for hour in calendar_hours %}
+                            <div class="flex h-12 border-b border-gray-50">
+                                <!-- Time Label -->
+                                <div class="w-16 flex-shrink-0 text-xs text-gray-500 text-right pr-2 pt-0.5">
+                                    {{ hour }}:00
+                                </div>
+                                
+                                <!-- Hour Slot -->
+                                <div 
+                                    class="calendar-cell flex-1 border-l border-gray-100 relative px-1 hover:bg-gray-50"
+                                    data-calendar-cell
+                                    data-hour="{{ hour }}"
+                                    tabindex="-1"
+                                >
+                                    <!-- Events at this hour -->
+                                    {% with events=calendar_events_by_date|get_item:calendar_current_date %}
+                                        {% for event in events %}
+                                            {% if event.time.hour == hour %}
+                                                <a 
+                                                    href="{{ event.object.get_absolute_url }}"
+                                                    class="calendar-event inline-block px-2 py-1 text-sm
+                                                           bg-blue-100 text-blue-800 rounded border border-blue-200
+                                                           hover:bg-blue-200 transition-colors mr-1 mb-1"
+                                                    title="{{ event.object }}"
+                                                    data-context-menu-trigger
+                                                    data-object-id="{{ event.object.pk }}"
+                                                >
+                                                    <span class="font-medium">{{ event.time|time:"H:i" }}</span>
+                                                    {{ event.object }}
+                                                </a>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endwith %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
 </div>
 
+<style>
+/* Calendar Apple-style minimalist styling */
+.calendar-day:hover {
+    background-color: rgb(249 250 251); /* gray-50 */
+}
 
+.calendar-event {
+    cursor: pointer;
+}
+
+/* Smooth transitions */
+[data-calendar] {
+    transition: opacity 0.2s ease;
+}
+</style>
 

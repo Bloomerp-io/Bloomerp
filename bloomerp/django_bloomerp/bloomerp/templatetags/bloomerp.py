@@ -604,3 +604,30 @@ def get_icon(name, size=16, **kwargs):
         return mark_safe(render_to_string(f"cotton/icons/{name}.html", {'size': size, **kwargs}))
     except template.TemplateDoesNotExist:
         return ""
+
+
+@register.filter
+def make_list_by_comma(value: str):
+    """
+    Splits a string by comma into a list.
+    
+    Example usage:
+    {{ "Mon,Tue,Wed"|make_list_by_comma }}
+    """
+    return value.split(',')
+
+
+@register.filter
+def get_item(dictionary, key):
+    """
+    Gets an item from a dictionary by key. Works with date keys.
+    
+    Example usage:
+    {{ my_dict|get_item:my_key }}
+    """
+    if dictionary is None:
+        return None
+    try:
+        return dictionary.get(key, [])
+    except (AttributeError, TypeError):
+        return []

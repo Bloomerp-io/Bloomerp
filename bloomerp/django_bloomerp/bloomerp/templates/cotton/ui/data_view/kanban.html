@@ -53,6 +53,7 @@ Parameters:
                     class="kanban-card bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
                     draggable="true"
                     data-kanban-card
+                    data-context-menu-trigger
                     data-object-id="{{ object.pk }}"
                     hx-get="{{ object.get_absolute_url }}"
                     hx-target="#main-content"

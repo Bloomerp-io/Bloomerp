@@ -6,7 +6,7 @@
     <button
         hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
         hx-vals='{"view_type": "{{ view_type.value }}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
-        hx-target="#data-table-data-section"
+        hx-target="#data-view-{{ content_type_id }}"
         hx-swap="outerHTML"
         class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md shadow text-sm font-medium {% if preference.view_type == view_type.value %}bg-white text-primary-600 ring-1 ring-primary-500{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
         {% get_icon name=view_type.icon size="16" %}
@@ -62,13 +62,22 @@
         {% endfor %}
     </c-ui.data_view.options.select>
     {% elif preference.view_type == 'calendar' %}
-    <c-ui.data_view.options.select label="Date field" icon="calendar" icon_size="16" input_name="calendar_date_field">
+    <c-ui.data_view.options.select label="Date field" icon="calendar" icon_size="16" input_name="calendar_start_field">
+        <option value="">Select a date field</option>
         {% for field, is_visible in fields.accessible_fields %}
-        {% if field.field_type in "DateField DateTimeField" %}
+        {% if field.field_type == "DateField" or field.field_type == "DateTimeField" %}
         <option value="{{ field.id }}"
-            {% if preference.calendar_date_field_id == field.id %}selected{% endif %}
+            {% if preference.calendar_start_field_id == field.id %}selected{% endif %}
         >{{ field.title }}</option>
         {% endif %}
+        {% endfor %}
+    </c-ui.data_view.options.select>
+    
+    <c-ui.data_view.options.select label="View mode" icon="calendar" icon_size="16" input_name="calendar_view_mode">
+        {% for view_mode in calendar_view_modes %}
+        <option value="{{ view_mode.value }}"
+            {% if preference.calendar_view_mode == view_mode.value %}selected{% endif %}
+        >{{ view_mode.label }}</option>
         {% endfor %}
     </c-ui.data_view.options.select>
     {% endif %}

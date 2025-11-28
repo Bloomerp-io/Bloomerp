@@ -15,24 +15,28 @@ from bloomerp.models.user_list_view_preference import UserListViewPreference
 from bloomerp.models.user_list_view_preference import ViewType
 from bloomerp.models.user_list_view_preference import PageType
 from bloomerp.models.user_list_view_preference import PageSize
+from bloomerp.models.user_list_view_preference import CalendarViewMode
 from bloomerp.models import ApplicationField
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from collections import defaultdict
 from django.db.models import QuerySet
+from datetime import date, datetime, timedelta
 import uuid
 
 
 # -----------------------------------
 # Helper functions for different view types
 # -----------------------------------
-def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset:QuerySet) -> dict:
+def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset:QuerySet, request:HttpRequest) -> dict:
     """Returns the extra context for a particular view type.
 
     Args:
-        view_type (ViewType): the view type
+        preference (UserListViewPreference): the user's view preference
+        queryset (QuerySet): the queryset to process
+        request (HttpRequest): the request object for query params
 
     Returns:
-        dict: _description_
+        dict: extra context for the view type
     """
     context = {}
     
@@ -50,11 +54,175 @@ def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset
             context["kanban_group_by_field"] = kanban_group_by_field
             
         case ViewType.CALENDAR:
-            pass
+            context.update(_build_calendar_context(preference, queryset, request))
         case _:
             pass
     
     return context
+
+
+def _build_calendar_context(preference: UserListViewPreference, queryset: QuerySet, request: HttpRequest) -> dict:
+    """
+    Builds the calendar context from a queryset based on calendar preferences.
+    
+    Args:
+        preference: The user's list view preference
+        queryset: The Django queryset to display
+        request: The HTTP request for query parameters
+        
+    Returns:
+        dict: Calendar context including events grouped by date
+    """
+    today = date.today()
+    
+    context = {
+        'calendar_start_field': preference.calendar_start_field,
+        'calendar_end_field': preference.calendar_end_field,
+        'calendar_view_mode': preference.calendar_view_mode,
+        'calendar_view_modes': CalendarViewMode,
+        'calendar_events': [],
+        'calendar_date_range': None,
+        'calendar_current_date': None,
+        'calendar_today': today,
+    }
+    
+    # If no start field is set, return empty context
+    if not preference.calendar_start_field:
+        return context
+    
+    field_name = preference.calendar_start_field.field
+    view_mode = preference.calendar_view_mode
+    
+    # Get page offset from request (0 = current period, -1 = previous, 1 = next)
+    try:
+        page_offset = int(request.GET.get('calendar_page', 0))
+    except ValueError:
+        page_offset = 0
+    
+    # Calculate the date range based on view mode and page offset
+    if view_mode == CalendarViewMode.DAY:
+        current_date = today + timedelta(days=page_offset)
+        start_date = current_date
+        end_date = current_date
+        # Generate list of hours for day view
+        hours = list(range(0, 24))
+        context['calendar_hours'] = hours
+        
+    elif view_mode == CalendarViewMode.WEEK:
+        # Start of current week (Monday)
+        week_start = today - timedelta(days=today.weekday())
+        current_date = week_start + timedelta(weeks=page_offset)
+        start_date = current_date
+        end_date = start_date + timedelta(days=6)
+        # Generate list of days for week view
+        days = [start_date + timedelta(days=i) for i in range(7)]
+        context['calendar_days'] = days
+        # Generate hours for week view
+        context['calendar_hours'] = list(range(0, 24))
+        
+    elif view_mode == CalendarViewMode.MONTH:
+        # Start of current month
+        first_of_month = today.replace(day=1)
+        # Add/subtract months
+        month_offset = page_offset
+        year = first_of_month.year + (first_of_month.month - 1 + month_offset) // 12
+        month = (first_of_month.month - 1 + month_offset) % 12 + 1
+        current_date = date(year, month, 1)
+        start_date = current_date
+        # End of month
+        if month == 12:
+            end_date = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = date(year, month + 1, 1) - timedelta(days=1)
+        # Generate calendar grid (including days from prev/next month to fill weeks)
+        calendar_weeks = _build_month_calendar_grid(start_date, end_date)
+        context['calendar_weeks'] = calendar_weeks
+    else:
+        current_date = today
+        start_date = today
+        end_date = today
+    
+    context['calendar_current_date'] = current_date
+    context['calendar_page_offset'] = page_offset
+    context['calendar_date_range'] = {
+        'start': start_date,
+        'end': end_date,
+    }
+    
+    # Filter queryset to events within the date range
+    filter_kwargs = {
+        f'{field_name}__gte': start_date,
+        f'{field_name}__lte': end_date + timedelta(days=1),  # Include end date fully
+    }
+    
+    try:
+        filtered_queryset = queryset.filter(**filter_kwargs)
+    except Exception:
+        # Field might not support filtering this way
+        filtered_queryset = queryset
+    
+    # Group events by date
+    events_by_date = defaultdict(list)
+    for obj in filtered_queryset:
+        event_date_value = getattr(obj, field_name, None)
+        if event_date_value:
+            # Handle both date and datetime
+            if isinstance(event_date_value, datetime):
+                event_date = event_date_value.date()
+                event_time = event_date_value.time()
+            else:
+                event_date = event_date_value
+                event_time = None
+            
+            events_by_date[event_date].append({
+                'object': obj,
+                'date': event_date,
+                'time': event_time,
+                'datetime': event_date_value,
+            })
+    
+    context['calendar_events_by_date'] = dict(events_by_date)
+    context['calendar_events'] = list(filtered_queryset)
+    
+    return context
+
+
+def _build_month_calendar_grid(start_date: date, end_date: date) -> list:
+    """
+    Builds a calendar grid for month view, including padding days from adjacent months.
+    
+    Args:
+        start_date: First day of the month
+        end_date: Last day of the month
+        
+    Returns:
+        list: List of weeks, each week is a list of date objects
+    """
+    weeks = []
+    
+    # Find the Monday of the week containing the first day
+    first_day_weekday = start_date.weekday()  # Monday = 0
+    grid_start = start_date - timedelta(days=first_day_weekday)
+    
+    # Find the Sunday of the week containing the last day
+    last_day_weekday = end_date.weekday()
+    grid_end = end_date + timedelta(days=(6 - last_day_weekday))
+    
+    # Build weeks
+    current_day = grid_start
+    while current_day <= grid_end:
+        week = []
+        for _ in range(7):
+            week.append({
+                'date': current_day,
+                'is_current_month': start_date <= current_day <= end_date,
+                'is_today': current_day == date.today(),
+            })
+            current_day += timedelta(days=1)
+        weeks.append(week)
+    
+    return weeks
+    
     
 def _build_kanban_groups(queryset, group_by_field: ApplicationField) -> list:
     """
@@ -209,9 +377,10 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'view_types': ViewType,
         'page_types': PageType,
         'page_sizes': PageSize,
+        'calendar_view_modes': CalendarViewMode,
         'render_id': str(uuid.uuid4()),
     }
-    context.update(_get_extra_context_for_view_type(preference, queryset))
+    context.update(_get_extra_context_for_view_type(preference, queryset, request))
     
     return render(request, 'components/objects/dataview.html', context)
     
@@ -268,6 +437,15 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
     if "kanban_group_by" in request.POST:
         kanban_group_by = request.POST["kanban_group_by"]
         preference.kanban_group_by_field_id = int(kanban_group_by) if kanban_group_by != "no_grouping" else None
+
+    if "calendar_start_field" in request.POST:
+        calendar_start_field = request.POST["calendar_start_field"]
+        preference.calendar_start_field_id = int(calendar_start_field) if calendar_start_field else None
+    
+    if "calendar_view_mode" in request.POST:
+        calendar_view_mode = request.POST["calendar_view_mode"]
+        if calendar_view_mode in [mode.value for mode in CalendarViewMode]:
+            preference.calendar_view_mode = calendar_view_mode
 
     # Handle field visibility toggle
     if "toggle_field_id" in request.POST:

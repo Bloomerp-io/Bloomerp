@@ -25,12 +25,18 @@ class PageType(models.TextChoices):
     PAGINATION = 'pagination', 'Pagination'
     INFINITE_SCROLL = 'infinite_scroll', 'Infinite Scroll'
 
-    
+
 class PageSize(models.IntegerChoices):
     SIZE_10 = 10, '10'
     SIZE_25 = 25, '25'
     SIZE_50 = 50, '50'
     SIZE_100 = 100, '100'
+
+
+class CalendarViewMode(models.TextChoices):
+    DAY = 'day', 'Day'
+    WEEK = 'week', 'Week'
+    MONTH = 'month', 'Month'
 
 
 def get_default_display_fields() -> dict:
@@ -85,6 +91,29 @@ class UserListViewPreference(models.Model):
         null=True, 
         blank=True,
         related_name='kanban_preferences'
+    )
+    
+    # Calendar preferences
+    calendar_start_field = models.ForeignKey(
+        to=ApplicationField, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='calendar_start_preferences',
+        help_text='Start date field for calendar events.'
+    )
+    calendar_end_field = models.ForeignKey(
+        to=ApplicationField, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='calendar_end_preferences',
+        help_text='Optional end date field for calendar events.'
+    )
+    calendar_view_mode = models.CharField(
+        max_length=20, 
+        choices=CalendarViewMode.choices, 
+        default=CalendarViewMode.WEEK
     )
     
     # Visible field IDs per view type (list of ApplicationField IDs in order)
