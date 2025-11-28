@@ -1,0 +1,205 @@
+{% load bloomerp %}
+
+{% if request.htmx.target == 'data-table-data-section' %}
+<div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
+    <c-ui.data_view.display_options 
+        :content_type_id="content_type_id"
+        :view_types="view_types"
+        :preference="preference"
+        :fields="fields"
+        :page_types="page_types"
+        :page_sizes="page_sizes"
+        :accessible_fields="accessible_fields"
+    />
+</div>
+{% endif %}
+
+{% if not request.htmx.target == 'data-table-data-section' %}
+<div 
+    id="data-view-{{ content_type_id }}"
+    data-dataview
+    data-view-type="{{ preference.view_type }}"
+    data-content-type-id="{{ content_type_id }}"
+    class="h-full flex flex-col"
+    >
+    <!--Search inputs-->
+    <div class="mb-2 justify-between flex items-center">
+        <div class="flex space-x-2">
+            <input
+                type="text"
+                name="q"
+                placeholder="Search..."
+                class="input input-bordered"
+                hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
+                hx-trigger="keyup changed delay:500ms"
+                hx-target="#data-table-data-section"
+                hx-swap="outerHTML"
+                hx-animation-target="#data-table-body-{{ content_type_id }}"
+            />
+        </div>
+
+        <div class="flex gap-2 items-center">
+            <!--Filter-->
+            <c-ui.tooltip position="bottom" text="Filter">
+                <c-ui.dropdown.body 
+                    trigger_text="Display"
+                    trigger_class="border-0 hover:cursor-pointer hover:bg-none text-primary-900 hover:text-primary p-0"
+                    trigger_icon="filter"
+                    width="w-128"
+                    >
+                    
+                </c-ui.dropdown.body>
+            </c-ui.tooltip>
+
+            
+            <!--Display options-->
+            <c-ui.tooltip position="bottom" text="Display options">
+                <c-ui.dropdown.body 
+                    trigger_text="Display"
+                    trigger_class="border-0 hover:cursor-pointer hover:bg-none hover:text-primary p-0 text-primary-900"
+                    trigger_icon="three_dots"
+                    width="w-80"
+                    >
+                    
+                    <div class="p-2" id="data-table-display-options-{{ content_type_id }}">
+                        <c-ui.data_view.display_options 
+                            :content_type_id="content_type_id"
+                            :view_types="view_types"
+                            :preference="preference"
+                            :fields="fields"
+                            :page_types="page_types"
+                            :page_sizes="page_sizes"
+                            :accessible_fields="accessible_fields"
+                            :csrf_token="csrf_token"
+                        />
+                    </div>
+                    
+                </c-ui.dropdown.body>
+            </c-ui.tooltip>
+            
+            <!--Add button-->
+            <c-ui.tooltip position="bottom" text="Add object">
+                <button 
+                    class="inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 px-3 py-2 text-base cursor-hover:cursor-pointer hover:cursor-pointer"
+                    hx-push-url="false"
+                    onclick="openModal('create-object-modal')"
+                    hx-get="{% url 'components_create_object' content_type_id=content_type_id %}"
+                    hx-target="#create-object-modal-modal-body"
+                    hx-swap="innerHTML"
+                >
+                    <c-icons.plus size="24"/>
+                </button>
+            </c-ui.tooltip>
+
+            <!--Split view-->
+            <c-ui.tooltip position="bottom" text="Toggle Split View">
+                <button 
+                    class="inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 px-3 py-2 text-base cursor-hover:cursor-pointer hover:cursor-pointer {% if preference.split_view_enabled %}bg-gray-100 text-primary-600{% endif %}"
+                    hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
+                    hx-vals='{"split_view_enabled": "{% if preference.split_view_enabled %}false{% else %}true{% endif %}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                    hx-target="#data-table-data-section"
+                    hx-swap="outerHTML"
+                >
+                    <c-icons.sidebar_right size="24"/>
+                </button>
+            </c-ui.tooltip>
+        </div>
+    </div>
+{% endif %}
+
+    <!--Table section-->
+    <div id="data-table-data-section" class="h-full">
+        {% if preference.split_view_enabled %}
+        <div class="flex h-[calc(100vh-200px)]">
+            <div class="w-1/2 resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane">
+                {% if preference.view_type == 'table' %}
+                    <c-ui.data_view.table 
+                        :content_type_id="content_type_id" 
+                        :fields="fields.visible_fields" 
+                        :queryset="queryset"
+                        :preference="preference"
+                    />
+                {% elif preference.view_type == 'kanban' %}
+                    <c-ui.data_view.kanban 
+                        :content_type_id="content_type_id" 
+                        :fields="fields.visible_fields" 
+                        :queryset="queryset"
+                        :preference="preference"
+                        :kanban_groups="kanban_groups"
+                        :kanban_group_by_field="kanban_group_by_field"
+                    />
+                {% elif preference.view_type == 'calendar' %}
+                    <c-ui.data_view.calendar />
+                {% endif %}
+            </div>
+            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane">
+                <div class="flex items-center justify-center h-full text-gray-400">
+                    <div class="text-center">
+                        <c-icons.sidebar_right size="48" class="mx-auto mb-2 opacity-50"/>
+                        <p>Select an item to view details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+            {% if preference.view_type == 'table' %}
+                <c-ui.data_view.table 
+                    :content_type_id="content_type_id" 
+                    :fields="fields.visible_fields" 
+                    :queryset="queryset"
+                    :preference="preference"
+                />
+            {% elif preference.view_type == 'kanban' %}
+                <c-ui.data_view.kanban 
+                    :content_type_id="content_type_id" 
+                    :fields="fields.visible_fields"
+                    :kanban_groups="kanban_groups"
+                    :kanban_group_by_field="kanban_group_by_field"
+                />
+            {% elif preference.view_type == 'calendar' %}
+                <c-ui.data_view.calendar 
+                    view_type="week"
+                />
+            {% endif %}
+        {% endif %}
+    </div>
+
+{% if not request.htmx.target == 'data-table-data-section' %}
+    <!-- Context Menu Dropdown -->
+    <div id="data-table-{{ content_type_id }}-context-menu" class="hidden fixed bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[160px]">
+        <ul class="py-1">
+            <li>
+                <button id="data-table-{{ content_type_id }}-context-menu-copy-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                    <i class="bi bi-clipboard"></i> Copy Cell
+                </button>
+            </li>
+            <li id="data-table-{{ content_type_id }}-context-menu-filter-value-list-item">
+                <button id="data-table-{{ content_type_id }}-context-menu-filter-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                    <i class="bi bi-filter"></i> Filter by Value
+                </button>
+            </li>
+            <li>
+                <button id="data-table-{{ content_type_id }}-context-menu-edit-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                    <i class="bi bi-pencil"></i> Edit Cell
+                </button>
+            </li>
+            <li class="border-t border-gray-200">
+                <button id="data-table-{{ content_type_id }}-context-menu-delete-row" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600">
+                    <i class="bi bi-trash"></i> Delete Row
+                </button>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+
+
+
+
+
+
+
+
+
+

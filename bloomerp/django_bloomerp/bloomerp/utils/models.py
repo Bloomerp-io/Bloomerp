@@ -1,6 +1,7 @@
 from django.db.models import Model
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.models.core import ApplicationField, BloomerpModel
+from bloomerp.models import ApplicationField
+
 from django.db.models.query import QuerySet
 from django.db.models import Q, Model, CharField, TextField
 from django.apps import apps

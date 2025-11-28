@@ -38,15 +38,4 @@ fields:
     validators:
       - bloomerp_modules.validators.date_validators.is_before_today
 
-  - id: cpf
-    name: CPF
-    description: Brazilian individual taxpayer registry identification
-    type: string
-    options:
-      max_length: 14
-      unique: true
-      "null": true
-      blank: true
-    validators:
-      - bloomerp_modules.validators.cpf_validator.validate_cpf
 

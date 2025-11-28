@@ -9,8 +9,8 @@ from django.forms import ValidationError
 from django.utils.translation import gettext as _
 from django.urls import reverse, NoReverseMatch
 from typing import Self
-from bloomerp.models.workspaces import Widget
-from bloomerp.models.core import BloomerpModel, ApplicationField
+from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.mixins import (
     AbsoluteUrlModelMixin,
     TimestampedModelMixin,
@@ -99,7 +99,7 @@ class AbstractBloomerpUser(AbstractUser, StringSearchModelMixin, AbsoluteUrlMode
         Get the list view preference for the provided model.
         """
         content_type = ContentType.objects.get_for_model(model)
-        return UserListViewPreference.objects.filter(user=self, application_field__content_type=content_type)
+        return UserListViewField.objects.filter(user=self, application_field__content_type=content_type)
 
     @property
     def accessible_content_types(self) -> QuerySet:
@@ -213,9 +213,7 @@ class UserDetailViewPreference(
 # ---------------------------------
 # User List View Preference Model
 # ---------------------------------
-class UserListViewPreference(models.Model):
-    allow_string_search = False
-    
+class UserListViewField(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name = 'list_view_preference')
     application_field = models.ForeignKey(ApplicationField, on_delete=models.CASCADE)
 
@@ -250,7 +248,7 @@ class UserListViewPreference(models.Model):
         
         # Bulk create all preferences at once (single INSERT with multiple rows)
         preferences_to_create = [
-            UserListViewPreference(
+            UserListViewField(
                 user=user,
                 application_field=application_field
             )
@@ -258,12 +256,12 @@ class UserListViewPreference(models.Model):
         ]
         
         # Use ignore_conflicts to handle race conditions where preferences might already exist
-        UserListViewPreference.objects.bulk_create(
+        UserListViewField.objects.bulk_create(
             preferences_to_create,
             ignore_conflicts=True
         )
             
-        return UserListViewPreference.objects.filter(user=user, application_field__content_type=content_type)
+        return UserListViewField.objects.filter(user=user, application_field__content_type=content_type)
 
 # ---------------------------------
 # Bookmark Model
@@ -746,6 +744,7 @@ class UserDetailViewTab(
 # Workspace Model
 # ---------------------------------
 def get_default_workspace():
+    from bloomerp.models.workspaces import Widget
     links = Link.objects.all()
     widgets = Widget.objects.all()
 

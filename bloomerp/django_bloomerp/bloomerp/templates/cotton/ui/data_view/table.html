@@ -1,0 +1,45 @@
+{% comment %}
+table
+
+A table
+
+Parameters:
+- content_type_id (): 
+
+{% endcomment %}
+
+
+
+{% load bloomerp %}
+
+<div class="overflow-auto rounded-lg border-l border-r border-gray-200">
+    <table id="data-table-{{ content_type_id }}" class="table-auto table-hover table w-full border-collapse outline-none" data-datatable>
+        <thead>
+            <tr >
+                {% for field in fields %}
+                <th >{{ field.field | title }}</th>
+                {% endfor %}
+                <th >Actions</th>
+            </tr>
+        </thead>
+        <tbody id="data-table-body-{{ content_type_id }}">
+            {% for object in queryset %}
+            <tr
+                hx-get="{{ object.get_absolute_url }}"
+                hx-target="{% if preference.split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
+                hx-swap="innerHTML"
+                hx-trigger="click"
+                hx-push-url="{% if preference.split_view_enabled %}false{% else %}true{% endif %}"
+            >
+                {% for field in fields %}
+                    {% render_dataview_value object field request.user %}
+                {% endfor %}
+                <td >
+                    <button class="btn btn-sm btn-secondary">Edit</button>
+                    <button class="btn btn-sm btn-danger">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

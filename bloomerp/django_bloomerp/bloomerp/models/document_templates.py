@@ -1,9 +1,10 @@
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.models.core import BloomerpModel, ApplicationField
+from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.fields import CodeField, TextEditorField, BloomerpFileField, StatusField
 from django.utils.translation import gettext_lazy as _
-from bloomerp.models import FileFolder
+from bloomerp.models.file_folder import FileFolder
 from django.contrib.auth import get_user_model
 from django.conf import settings
 

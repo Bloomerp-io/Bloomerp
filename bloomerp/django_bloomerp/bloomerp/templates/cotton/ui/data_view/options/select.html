@@ -1,0 +1,27 @@
+{% comment %}
+A option field to select from.
+
+Args:
+- content_type_id: int
+- fields: list
+- queryset: QuerySet
+{% endcomment %}
+
+{% load bloomerp %}
+
+<div class="flex items-center justify-between">
+    <div class="flex items-center gap-2 text-sm text-gray-600">
+        {% get_icon name=icon size=icon_size %}
+        <span>{{ label }}</span>
+    </div>
+    <select 
+        class="select select-sm w-40 bg-gray-50 border-gray-200"
+        hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
+        hx-target="#data-table-data-section"
+        hx-swap="outerHTML"
+        name="{{ input_name }}"
+        hx-include="[name='csrfmiddlewaretoken']"
+        >
+        {{ slot }}
+    </select>
+</div>

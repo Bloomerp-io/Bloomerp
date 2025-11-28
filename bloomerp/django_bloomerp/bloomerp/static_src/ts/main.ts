@@ -12,17 +12,27 @@
  * - htmx:afterSettle: Fired after HTMX settles animations
  */
 
-import { initAllDataTables, DataTable } from './modules/datatable';
-import type { DataTableConfig } from './types/bloomerp';
+import { initAllDataViews, DataView } from './modules/dataview';
+import { Sidebar } from './modules/sidebar';
+import type { DataViewConfig } from './types/bloomerp';
+import { insertSkeleton } from './utils/animations';
+
 
 /**
  * Application State
  */
 class BloomerpApp {
-    private dataTables: Map<string, DataTable> = new Map();
+    private dataViews: Map<string, DataView> = new Map();
+    public sidebar: Sidebar | undefined;
     private initialized: boolean = false;
 
     constructor() {
+        // Singleton pattern to prevent double initialization
+        if ((window as any).BloomerpAppInstance) {
+            return (window as any).BloomerpAppInstance;
+        }
+        (window as any).BloomerpAppInstance = this;
+
         this.setupHtmxEventListeners();
         this.init();
     }
@@ -51,18 +61,26 @@ class BloomerpApp {
      * Initialize all components on the page
      */
     private initializeComponents(): void {
-        this.initDataTables();
+        this.initDataViews();
+        this.initSidebar();
         // Add more component initializations here as needed
         // this.initForms();
         // this.initModals();
     }
 
     /**
-     * Initialize datatables
+     * Initialize sidebar
      */
-    private initDataTables(): void {
-        this.dataTables = initAllDataTables();
-        console.log(`Initialized ${this.dataTables.size} datatable(s)`);
+    private initSidebar(): void {
+        this.sidebar = new Sidebar();
+    }
+
+    /**
+     * Initialize dataviews
+     */
+    private initDataViews(): void {
+        this.dataViews = initAllDataViews();
+        console.log(`Initialized ${this.dataViews.size} dataview(s)`);
     }
 
     /**
@@ -70,23 +88,42 @@ class BloomerpApp {
      */
     private setupHtmxEventListeners(): void {
         // Listen for when HTMX loads new content
-        document.body.addEventListener('htmx:load', (event) => {
+        document.body.addEventListener('htmx:load', (event: CustomEvent) => {
             this.onHtmxLoad(event as CustomEvent);
         });
 
         // Listen for after HTMX swaps content
-        document.body.addEventListener('htmx:afterSwap', (event) => {
+        document.body.addEventListener('htmx:afterSwap', (event: CustomEvent) => {
             this.onHtmxAfterSwap(event as CustomEvent);
         });
 
         // Listen for after HTMX settles (animations complete)
-        document.body.addEventListener('htmx:afterSettle', (event) => {
+        document.body.addEventListener('htmx:afterSettle', (event: CustomEvent) => {
             this.onHtmxAfterSettle(event as CustomEvent);
         });
 
         // Listen for HTMX errors
-        document.body.addEventListener('htmx:responseError', (event) => {
+        document.body.addEventListener('htmx:responseError', (event: CustomEvent) => {
             this.onHtmxError(event as CustomEvent);
+        });
+
+        document.body.addEventListener('htmx:beforeRequest', (event: CustomEvent) => {
+            const triggeringElement = event.detail?.elt as HTMLElement;
+            let target = event.detail?.target as HTMLElement;
+
+            // Check for animation target override via hx-animation-target attribute
+            const animationTargetSelector = triggeringElement?.getAttribute('hx-animation-target');
+            if (animationTargetSelector) {
+                const overrideTarget = document.querySelector(animationTargetSelector) as HTMLElement;
+                if (overrideTarget) {
+                    target = overrideTarget;
+                }
+            }
+            
+            // Insert skeleton loader before request
+            if (target) {
+                insertSkeleton(target);
+            }
         });
 
         console.log('HTMX event listeners registered');
@@ -101,8 +138,8 @@ class BloomerpApp {
 
         if (!target) return;
 
-        // Reinitialize datatables in the loaded content
-        this.reinitializeDataTablesInElement(target);
+        // Reinitialize dataviews in the loaded content
+        this.reinitializeDataViewsInElement(target);
     }
 
     /**
@@ -115,9 +152,6 @@ class BloomerpApp {
         if (!target) return;
 
         console.log('HTMX content swapped man', target);
-
-        // Reinitialize components in swapped content
-        this.reinitializeDataTablesInElement(target);
     }
 
     /**
@@ -142,42 +176,61 @@ class BloomerpApp {
     }
 
     /**
-     * Reinitialize datatables within a specific element
+     * Reinitialize dataviews within a specific element
      */
-    private reinitializeDataTablesInElement(element: HTMLElement): void {
-        console.log('Hello');
-        const tables = element.querySelectorAll('[data-datatable]');
+    private reinitializeDataViewsInElement(element: HTMLElement): void {
+        // Check if the element itself is a dataview or contains dataviews
+        const views = element.querySelectorAll('[data-dataview]');
+        
+        // Also check if the element is inside a dataview (e.g. partial update)
+        const parentView = element.closest('[data-dataview]');
+        
+        const allViews = new Set<Element>();
+        views.forEach(v => allViews.add(v));
+        if (parentView) allViews.add(parentView);
 
-        tables.forEach(table => {
-            if (table.id) {
-                const existingTable = this.dataTables.get(table.id);
-
-                if (existingTable) {
-                    // Reinitialize existing datatable
-                    existingTable.reinitialize();
-                } else {
-                    // Create new datatable instance
-                    const newTable = new DataTable({ tableId: table.id });
-                    this.dataTables.set(table.id, newTable);
+        allViews.forEach(view => {
+            if (view.id) {
+                // Debounce reinitialization to prevent multiple calls for the same view
+                // (e.g. when multiple elements inside the view are swapped via OOB)
+                if ((view as any)._reinitTimeout) {
+                    clearTimeout((view as any)._reinitTimeout);
                 }
+
+                (view as any)._reinitTimeout = setTimeout(() => {
+                    const existingView = this.dataViews.get(view.id);
+
+                    console.log(`Initializing: ${view.id}`);
+
+                    if (existingView) {
+                        // Reinitialize existing dataview
+                        existingView.reinitialize();
+                    } else {
+                        // Create new dataview instance
+                        const newView = new DataView({ containerId: view.id });
+                        this.dataViews.set(view.id, newView);
+                    }
+                    
+                    delete (view as any)._reinitTimeout;
+                }, 10); // Short debounce
             }
         });
     }
 
     /**
-     * Get a specific datatable instance
+     * Get a specific dataview instance
      */
-    public getDataTable(tableId: string): DataTable | undefined {
-        return this.dataTables.get(tableId);
+    public getDataView(viewId: string): DataView | undefined {
+        return this.dataViews.get(viewId);
     }
 
     /**
-     * Create a new datatable programmatically
+     * Create a new dataview programmatically
      */
-    public createDataTable(config: DataTableConfig): DataTable {
-        const dataTable = new DataTable(config);
-        this.dataTables.set(config.tableId, dataTable);
-        return dataTable;
+    public createDataView(config: DataViewConfig): DataView {
+        const dataView = new DataView(config);
+        this.dataViews.set(config.containerId, dataView);
+        return dataView;
     }
 }
 

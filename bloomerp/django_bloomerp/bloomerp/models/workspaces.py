@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from bloomerp.models.core import BloomerpModel
+from bloomerp.models.base_bloomerp_model import BloomerpModel
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.fields import CodeField
 from bloomerp.models.mixins import UserStampedModelMixin

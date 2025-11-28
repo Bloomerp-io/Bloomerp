@@ -1,6 +1,5 @@
 from django.db import models
 import ast
-from bloomerp.models.core import File
 from django.core.exceptions import ValidationError
 import os
 
@@ -35,7 +34,7 @@ class BloomerpFileField(models.ForeignKey):
         defaults.update(kwargs)
         return super().formfield(**defaults)
         
-    def validate_file_extension(self, file_instance:File):
+    def validate_file_extension(self, file_instance: "File"):
         """
         Validate the file extension of the file associated with the foreign key.
         """
@@ -55,6 +54,8 @@ class BloomerpFileField(models.ForeignKey):
         """
         Perform the validation on the foreign key reference and ensure the file type is allowed.
         """
+        from bloomerp.models.file import File
+        
         # Call the parent clean method to validate the ForeignKey relationship
         value = super().clean(value, model_instance)
 

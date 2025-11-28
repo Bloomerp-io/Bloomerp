@@ -1,0 +1,45 @@
+{% comment %}
+calendar
+
+A Calendar component to display a queryset in a calendar view.
+
+Parameters:
+- queryset (QuerySet): The Django queryset containing the records to be displayed.
+- date_start_field (str): the field representing the start date field
+- date_end_field (str, optional): the field representing the end date field
+- visible_fields (QuerySet[ApplicationField]): list of ApplicationField to show in the event tooltip
+- url_field (str, optional): the field representing the URL for each event
+- view_type (str): The type of calendar view to display. Options are 'month' or 'week'. Default is 'month'.
+- onclick_event (function, optional): A callback function to be executed when an event is clicked.
+- onprevious_event (function, optional): A callback function to be executed when the previous button is clicked.
+- onnext_event (function, optional): A callback function to be executed when the next button
+{% endcomment %}
+
+<div 
+    calendar 
+    class="flex flex-col h-full bg-white rounded-lg border border-gray-200"
+    data-view-type="{{ view_type }}"
+    data-onclick-event="{{ onclick_event }}"
+    >
+
+    <div class="flex">
+        <div>
+            <button calendar-prev class="p-2 hover:bg-gray-100 rounded-l-lg">
+                <c-icons.arrow_left size="16" class="" />
+            </button>
+
+            <button calendar-today class="p-2 hover:bg-gray-100">
+                Today
+            </button>
+
+            <button calendar-next class="p-2 hover:bg-gray-100 rounded-r-lg">
+                <c-icons.arrow_right size="16" class="" />
+            </button>
+
+        </div>
+    </div>
+
+</div>
+
+
+

@@ -1,0 +1,32 @@
+<td 
+    class="cursor-context-menu" 
+    allow-context-menu
+    data-dropdown="cell-menu"
+    data-column="1"
+    data-value="{{ value }}"
+    data-object-id="{{ object.pk }}"
+    data-editable="{{ editable }}"
+    data-input-type=""
+    >
+    {% if is_field_type.foreign_key %}
+        {% if value.get_absolute_url %}
+        <a 
+            href="{{ value.get_absolute_url }}"
+            hx-swap="innerHTML"
+            hx-trigger="click"
+            hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID }}"
+            class="text-primary"
+            >{{ value }}</a>
+        {% else %}
+            {{ value }}
+        {% endif %}
+    {% elif is_field_type.boolean %}
+        {% if value %}
+            <span class="badge bg-success">Yes</span>
+        {% else %}
+            <span class="badge bg-danger">No</span>
+        {% endif %}
+    {% else %}
+        {{ value }}
+    {% endif %}
+</td>

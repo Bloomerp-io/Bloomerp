@@ -1,5 +1,5 @@
 from django.db.models import Model
-from bloomerp.models.core import BloomerpModel
+from bloomerp.models.base_bloomerp_model import BloomerpModel
 import yaml
 from enum import Enum
 from django.db import models

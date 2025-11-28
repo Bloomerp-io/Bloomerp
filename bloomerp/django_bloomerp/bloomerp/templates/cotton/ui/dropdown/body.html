@@ -9,6 +9,7 @@ Parameters:
 - position : dropdown position - "left", "right", or "center" (default: "right")
 - direction : dropdown direction - "up" or "down" (default: "down")
 - size : dropdown size - "sm", "md", "lg" (default: "md")
+- width : custom width class for the dropdown menu (e.g. "w-80"). Overrides size.
 - disabled : whether the dropdown is disabled (default: False)
 - icon : whether to show the arrow indicator icon (default: True; ignored when trigger_icon is set)
 {% endcomment %}
@@ -82,7 +83,9 @@ Parameters:
             {% else %}
                 mt-2
             {% endif %}
-            {% if size == 'sm' %}
+            {% if width %}
+                {{ width }}
+            {% elif size == 'sm' %}
                 w-48
             {% elif size == 'lg' %}
                 w-72

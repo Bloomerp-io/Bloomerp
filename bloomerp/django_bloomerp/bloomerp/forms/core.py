@@ -1,4 +1,4 @@
-from bloomerp.models import ApplicationField, AbstractBloomerpUser, File, UserDetailViewTab, Link, UserListViewPreference, UserDetailViewPreference
+from bloomerp.models import ApplicationField, AbstractBloomerpUser, File, UserDetailViewTab, Link, UserListViewField, UserDetailViewPreference
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.forms.models import modelform_factory
@@ -343,7 +343,7 @@ class ListViewFieldsSelectForm(forms.Form):
         
         
         # Get the links that the user has access to
-        application_fields = UserListViewPreference.objects.filter(user=user, application_field__in=qs).values_list('application_field_id', flat=True)
+        application_fields = UserListViewField.objects.filter(user=user, application_field__in=qs).values_list('application_field_id', flat=True)
         
         self.fields['fields'] = ApplicationFieldModelChoiceField(
             queryset=qs,
@@ -364,8 +364,8 @@ class ListViewFieldsSelectForm(forms.Form):
         content_type = ContentType.objects.get(pk=content_type_id)
         fields = self.cleaned_data.get('fields')
 
-        # Get existing UserListViewPreference objects for the user and content type
-        existing_preferences = UserListViewPreference.objects.filter(user=self.user, application_field__content_type=content_type)
+        # Get existing UserListViewField objects for the user and content type
+        existing_preferences = UserListViewField.objects.filter(user=self.user, application_field__content_type=content_type)
 
         # Determine which fields need to be added and which need to be removed
         existing_field_ids = set(existing_preferences.values_list('application_field_id', flat=True))
@@ -376,10 +376,10 @@ class ListViewFieldsSelectForm(forms.Form):
         # Fields to remove
         fields_to_remove = existing_field_ids - selected_field_ids
 
-        # Add new UserListViewPreference objects
+        # Add new UserListViewField objects
         for field_id in fields_to_add:
-            UserListViewPreference.objects.create(user=self.user, application_field_id=field_id)
+            UserListViewField.objects.create(user=self.user, application_field_id=field_id)
 
-        # Remove UserListViewPreference objects
-        UserListViewPreference.objects.filter(user=self.user, application_field_id__in=fields_to_remove).delete()
+        # Remove UserListViewField objects
+        UserListViewField.objects.filter(user=self.user, application_field_id__in=fields_to_remove).delete()
 

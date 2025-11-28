@@ -2,13 +2,14 @@
  * Type definitions for Bloomerp application
  */
 
-export interface DataTableConfig {
-  tableId: string;
+export interface DataViewConfig {
+  containerId: string;
+  viewType?: string;
   url?: string;
   enableContextMenu?: boolean;
 }
 
-export interface DataTableCell extends HTMLTableCellElement {
+export interface DataViewContextTrigger extends HTMLElement {
   dataset: {
     dropdown?: string;
     column?: string;

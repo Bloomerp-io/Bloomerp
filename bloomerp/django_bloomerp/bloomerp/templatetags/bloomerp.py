@@ -7,16 +7,15 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import Link, Widget
 from django.utils.safestring import mark_safe
 import uuid
-from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField, UserListViewPreference
+from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField, UserListViewField
 from django.db.models.functions import Cast
 from django.db.models import DateTimeField, F
 from django.db.models import QuerySet
-from bloomerp.utils.encryption import BloomerpEncryptionSuite
-from django.conf import settings
 from django.core.signing import dumps, loads
 from bloomerp.models import File
 import uuid
 from django.template.loader import render_to_string
+from bloomerp.models import FieldType
 
 register = template.Library()
 
@@ -95,6 +94,21 @@ def percentage(value, arg):
         return value*100
     except (ValueError, ZeroDivisionError):
         return 
+
+
+@register.filter
+def getattr_filter(obj, attr):
+    '''
+    Returns the attribute of an object by name.
+    
+    Example usage:
+    {{ object|getattr:"field_name" }}
+    '''
+    try:
+        return getattr(obj, attr, None)
+    except (AttributeError, TypeError):
+        return None
+
    
     
 @register.filter
@@ -551,8 +565,8 @@ def get_nested_attribute(obj, attribute_path: str):
         return None
     
     
-@register.inclusion_tag('inclusion_tags/data_table_value.html')
-def render_data_table_value(
+@register.inclusion_tag('inclusion_tags/dataview_value.html')
+def render_dataview_value(
     object: Model,
     application_field: ApplicationField,
     user: AbstractBloomerpUser
@@ -565,7 +579,7 @@ def render_data_table_value(
         user (AbstractBloomerpUser): the user object
         
     Example usage:
-    {% render_data_table_value object application_field user %}
+    {% render_dataview_value object application_field user %}
     """
     # Get the value of the field
     value = getattr(object, application_field.field, None)
@@ -573,5 +587,19 @@ def render_data_table_value(
     return {
         "value": value,
         "object": object,
+        "is_field_type": FieldType.template_context(application_field.field_type),
     }
+
+
+@register.simple_tag
+def get_icon(name, size=16, **kwargs):
+    """
+    Renders an icon from the cotton/icons folder.
     
+    Example usage:
+    {% get_icon name="list" size="16" %}
+    """
+    try:
+        return mark_safe(render_to_string(f"cotton/icons/{name}.html", {'size': size, **kwargs}))
+    except template.TemplateDoesNotExist:
+        return ""

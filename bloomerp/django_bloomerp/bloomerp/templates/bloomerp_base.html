@@ -19,8 +19,7 @@
 		<!-- End Sidebar-->		
 		 
 		<!--Main -->
-		<main id="main" class="transition-all duration-300 ease-in-out px-8 py-6 px-2 mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200 me-2"
-			:class="Alpine.store('sidebar').isOpen ? 'lg:ml-64' : 'ml-2'">
+		<main id="main" class="transition-all duration-300 ease-in-out px-8 py-6 px-2 mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200 me-2 lg:ml-64">
 			<div id="main-content" hx-history-elt>
 				{% block main %}
 					{% if include_main_content %}
@@ -46,9 +45,10 @@
 		<!-- TypeScript Bundle (Vite) - Includes datatable module -->
 		{% include 'snippets/vite_bundle.html' %}
 
+		<!--Modals-->
+		<c-ui.modal id="create-object-modal" title="Create object"/>
+
 		<!-- Legacy JavaScript files (to be migrated to TypeScript) -->
-		<!-- Template Main JS File -->
-		<script src="{% static 'bloomerp/js/main.js' %}"></script>
 
 		<!--Bloomerp messages-->
 		<script src="{% static 'bloomerp/js/messages.js' %}"></script>
