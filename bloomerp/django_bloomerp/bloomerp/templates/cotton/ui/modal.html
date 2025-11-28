@@ -51,21 +51,25 @@ Parameters:
             {% if closable|default:True %}
             
             <div class="flex space-x-2">
-                <button 
-                    type="button" 
-                    onclick="toggleModalFullscreen('{{ id }}')"
-                    class="hover:cursor-pointer"
-                    title="Toggle fullscreen">
-                    <c-icons.fullscreen size="28"/>
-                </button>
+                <c-ui.tooltip text="Toggle fullscreen" title="" position="bottom">
+                    <button 
+                        type="button" 
+                        onclick="toggleModalFullscreen('{{ id }}')"
+                        class="hover:cursor-pointer"
+                        title="Toggle fullscreen">
+                        <c-icons.fullscreen size="24"/>
+                    </button>
+                </c-ui.tooltip>
 
                 <!--Close button-->
-                <button 
-                    type="button"
-                    class="hover:cursor-pointer"
-                    onclick="closeModal('{{ id }}')">
-                    <c-icons.close size="28"/>
-                </button>
+                <c-ui.tooltip text="Close" title="" position="bottom">
+                    <button 
+                        type="button"
+                        class="hover:cursor-pointer"
+                        onclick="closeModal('{{ id }}')">
+                        <c-icons.close size="24"/>
+                    </button>
+                </c-ui.tooltip>
             </div>
             {% endif %}
         </div>

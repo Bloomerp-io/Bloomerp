@@ -67,7 +67,7 @@ Parameters:
                     
                     <!-- Card Fields -->
                     <div class="space-y-1">
-                        {% for field in fields|slice:":3" %}
+                        {% for field in fields %}
                         <div class="flex items-center text-xs text-gray-600">
                             <span class="text-gray-400 mr-1 truncate w-20">{{ field.field|title }}:</span>
                             <span class="truncate flex-1">

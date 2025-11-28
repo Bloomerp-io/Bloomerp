@@ -179,6 +179,11 @@ class BloomerpApp {
      * Reinitialize dataviews within a specific element
      */
     private reinitializeDataViewsInElement(element: HTMLElement): void {
+        // Skip if the element is inside a context menu (context menus load dynamically but shouldn't trigger reinitialization)
+        if (element.closest('[id$="-context-menu"]')) {
+            return;
+        }
+        
         // Check if the element itself is a dataview or contains dataviews
         const views = element.querySelectorAll('[data-dataview]');
         

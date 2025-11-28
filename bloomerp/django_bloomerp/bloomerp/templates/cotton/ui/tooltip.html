@@ -1,59 +1,62 @@
 {% comment %}
-Tooltip component that can be wrapped around any other html div
+tooltip
+
+A tooltip
 
 Parameters:
-- text (str) : the tooltip text
-- position (str) : "top", "bottom", "left", or "right"
-- title (str, optional) : Shows a title if given
-- slot : the inner
+- title (string): The title of the tooltip
+- text (string): The text content of the tooltip
+- position (string): The position of the tooltip (top, bottom, left, right)
+
+Slots:
+- default: The content that triggers the tooltip
 {% endcomment %}
 
-<div class="relative group">
+<div class="relative inline-block group">
     {% if position == "top" %}
-        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-0.5 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 whitespace-nowrap pointer-events-none shadow-sm">
             {% if title %}
                 <div class="font-semibold mb-1">{{ title }}</div>
             {% endif %}
             <div>{{ text }}</div>
-            <!-- tip -->
-            <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-white rotate-45 border border-gray-200"></div>
+            <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-white rotate-45 border-b border-r border-gray-200"></div>
         </div>
     {% elif position == "bottom" %}
-        <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-0.5 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 whitespace-nowrap pointer-events-none shadow-sm">
             {% if title %}
-                <div class="font-semibold mb-1">{{ title }}</div>
+                <div class="font-semibold mb-1">
+                    <c-blocktrans>{{ title }}</c-blocktrans>
+                </div>
             {% endif %}
-            <div>{{ text }}</div>
-            <!-- tip -->
-            <div class="absolute left-1/2 top-0 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rotate-45 border border-gray-200"></div>
+            <div>
+                <c-blocktrans>{{ text }}</c-blocktrans>
+            </div>
+            <div class="absolute left-1/2 top-0 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rotate-45 border-t border-l border-gray-200"></div>
         </div>
     {% elif position == "left" %}
-        <div class="absolute right-full top-1/2 transform -translate-y-1/2 mr-0.5 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div class="absolute right-full top-1/2 transform -translate-y-1/2 mr-1 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 whitespace-nowrap pointer-events-none shadow-sm">
             {% if title %}
-                <div class="font-semibold mb-1">{{ title }}</div>
+                <div class="font-semibold mb-1"><c-blocktrans>{{ title }}</c-blocktrans></div>
             {% endif %}
-            <div>{{ text }}</div>
-            <!-- tip -->
-            <div class="absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rotate-45 border border-gray-200"></div>
+            <div><c-blocktrans>{{ text }}</c-blocktrans></div>
+            <div class="absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rotate-45 border-t border-r border-gray-200"></div>
         </div>
     {% elif position == "right" %}
-        <div class="absolute left-full top-1/2 transform -translate-y-1/2 ml-0.5 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div class="absolute left-full top-1/2 transform -translate-y-1/2 ml-1 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 whitespace-nowrap pointer-events-none shadow-sm">
             {% if title %}
-                <div class="font-semibold mb-1">{{ title }}</div>
+                <div class="font-semibold mb-1"><c-blocktrans>{{ title }}</c-blocktrans></div>
             {% endif %}
-            <div>{{ text }}</div>
-            <!-- tip -->
-            <div class="absolute left-0 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rotate-45 border border-gray-200"></div>
+            <div><c-blocktrans>{{ text }}</c-blocktrans></div>
+            <div class="absolute left-0 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rotate-45 border-b border-l border-gray-200"></div>
         </div>
     {% else %}
         <!-- fallback to top -->
-        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-0.5 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-3 py-1 bg-white text-gray-800 text-xs rounded-md border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 whitespace-nowrap pointer-events-none shadow-sm">
             {% if title %}
-                <div class="font-semibold mb-1">{{ title }}</div>
+                <div class="font-semibold mb-1"><c-blocktrans>{{ title }}</c-blocktrans></div>
             {% endif %}
-            <div>{{ text }}</div>
-            <!-- tip -->
-            <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-white rotate-45 border border-gray-200"></div>
+            <div><c-blocktrans>{{ text }}</c-blocktrans></div>
+            <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-white rotate-45 border-b border-r border-gray-200"></div>
         </div>
     {% endif %}
 

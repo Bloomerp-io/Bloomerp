@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.http import HttpRequest
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.services.permission_services import get_queryset_for_user
+from bloomerp.services.permission_services import has_access_to_field
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.user_services import get_accessible_fields_for_user
 from bloomerp.services.user_services import get_user_list_view_preference
@@ -18,6 +19,7 @@ from bloomerp.models import ApplicationField
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from collections import defaultdict
 from django.db.models import QuerySet
+import uuid
 
 
 # -----------------------------------
@@ -207,10 +209,11 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'view_types': ViewType,
         'page_types': PageType,
         'page_sizes': PageSize,
+        'render_id': str(uuid.uuid4()),
     }
     context.update(_get_extra_context_for_view_type(preference, queryset))
     
-    return render(request, 'components/objects/data_view.html', context)
+    return render(request, 'components/objects/dataview.html', context)
     
 
 @router.register(
@@ -279,3 +282,66 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
         preference.save()
     
     return data_view(request, content_type_id, {})
+
+
+@router.register(
+    path="components/data_view_edit_field/<int:content_type_id>/<int:application_field_id>/",
+    name="components_data_view_inline",
+)
+def dataview_edit_field(request: HttpRequest, application_field_id:int) -> HttpResponse:
+    """Renders the inline edit component for a dataview field.
+
+    Args:
+        request (HttpRequest): The request object.
+        application_field_id (int): The application field ID to edit.
+
+    Returns:
+        HttpResponse: The rendered inline edit component.
+    """
+    application_field = get_object_or_404(ApplicationField, id=application_field_id)
+    
+    if not has_access_to_field(request.user, application_field):
+        # TODO: Handle pass response
+        pass
+    
+    return HttpResponse("<input value='Hello world'>")
+    
+
+@router.register(
+    path="components/dataview_context_menu/<str:view_type>/",
+    name="components_dataview_context_menu",
+)
+def dataview_context_menu(request: HttpRequest, view_type:str) -> HttpResponse:
+    """Renders the context menu for a particular application field and view type.
+
+    Args:
+        request (HttpRequest): the request object
+        view_type (str): the view type
+        application_field_id (int): the application field id
+
+    Returns:
+        HttpResponse: HTML containing the value
+    """
+    # Set application field as None
+    if request.GET.get('application_field_id'):
+        application_field = get_object_or_404(ApplicationField, id=request.GET.get('application_field_id'))
+        field_type = application_field.get_field_type_enum().template_context(application_field.field_type)
+    else:
+        application_field = None
+        field_type = None
+    
+    match ViewType(view_type):
+        case ViewType.TABLE:
+            pass
+            
+    return render(
+        request,
+        "components/objects/dataview_context_menu.html",
+        {
+            "view_type" : view_type,
+            "application_field": application_field,
+            "field_type": field_type,
+        }
+    )
+    
+    

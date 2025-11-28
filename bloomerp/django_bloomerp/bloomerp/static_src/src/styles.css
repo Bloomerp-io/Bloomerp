@@ -430,6 +430,11 @@
     .table-actions-wide {
         @apply w-32 text-center;
     }
+
+    /* Cell selection for keyboard navigation */
+    .table tbody td.cell-selected {
+        @apply ring-2 ring-primary ring-inset bg-primary-50;
+    }
 }
 
 @layer components {

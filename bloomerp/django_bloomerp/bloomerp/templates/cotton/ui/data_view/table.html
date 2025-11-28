@@ -11,6 +11,7 @@ Parameters:
 
 
 {% load bloomerp %}
+{% load i18n %}
 
 <div class="overflow-auto rounded-lg border-l border-r border-gray-200">
     <table id="data-table-{{ content_type_id }}" class="table-auto table-hover table w-full border-collapse outline-none" data-datatable>
@@ -19,7 +20,7 @@ Parameters:
                 {% for field in fields %}
                 <th >{{ field.field | title }}</th>
                 {% endfor %}
-                <th >Actions</th>
+                <th class="w-32">{% trans "Actions" %}</th>
             </tr>
         </thead>
         <tbody id="data-table-body-{{ content_type_id }}">
@@ -28,15 +29,15 @@ Parameters:
                 hx-get="{{ object.get_absolute_url }}"
                 hx-target="{% if preference.split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
                 hx-swap="innerHTML"
-                hx-trigger="click"
+                hx-trigger="click[!event.target.closest('[data-no-row-click]') && !event.target.closest('button')]"
                 hx-push-url="{% if preference.split_view_enabled %}false{% else %}true{% endif %}"
+                class="cursor-pointer"
             >
                 {% for field in fields %}
                     {% render_dataview_value object field request.user %}
                 {% endfor %}
-                <td >
-                    <button class="btn btn-sm btn-secondary">Edit</button>
-                    <button class="btn btn-sm btn-danger">Delete</button>
+                <td class="w-32" data-no-row-click>
+                    <c-ui.data_view.actions :object="object"/>
                 </td>
             </tr>
             {% endfor %}

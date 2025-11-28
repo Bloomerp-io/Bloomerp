@@ -15,9 +15,8 @@ export interface DataViewContextTrigger extends HTMLElement {
     column?: string;
     value?: string;
     objectId?: string;
-    editable?: string;
-    inputType?: string;
     contextMenuFilterValue?: string;
+    applicationFieldId?:string;
   };
 }
 

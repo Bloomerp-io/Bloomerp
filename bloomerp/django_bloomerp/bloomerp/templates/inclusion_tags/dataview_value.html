@@ -5,22 +5,23 @@
     data-column="1"
     data-value="{{ value }}"
     data-object-id="{{ object.pk }}"
-    data-editable="{{ editable }}"
-    data-input-type=""
+    data-application-field-id="{{ application_field_id }}"
     >
     {% if is_field_type.foreign_key %}
         {% if value.get_absolute_url %}
         <a 
-            href="{{ value.get_absolute_url }}"
+            hx-get="{{ value.get_absolute_url }}"
             hx-swap="innerHTML"
             hx-trigger="click"
             hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID }}"
+            hx-push-url="true"
             class="text-primary"
+            data-no-row-click
             >{{ value }}</a>
         {% else %}
             {{ value }}
         {% endif %}
-    {% elif is_field_type.boolean %}
+    {% elif is_field_type.boolean_field %}
         {% if value %}
             <span class="badge bg-success">Yes</span>
         {% else %}

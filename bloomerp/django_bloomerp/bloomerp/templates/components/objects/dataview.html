@@ -20,6 +20,7 @@
     data-dataview
     data-view-type="{{ preference.view_type }}"
     data-content-type-id="{{ content_type_id }}"
+    data-render-id="{{ render_id }}"
     class="h-full flex flex-col"
     >
     <!--Search inputs-->
@@ -90,19 +91,6 @@
                     <c-icons.plus size="24"/>
                 </button>
             </c-ui.tooltip>
-
-            <!--Split view-->
-            <c-ui.tooltip position="bottom" text="Toggle Split View">
-                <button 
-                    class="inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 px-3 py-2 text-base cursor-hover:cursor-pointer hover:cursor-pointer {% if preference.split_view_enabled %}bg-gray-100 text-primary-600{% endif %}"
-                    hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
-                    hx-vals='{"split_view_enabled": "{% if preference.split_view_enabled %}false{% else %}true{% endif %}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
-                    hx-target="#data-table-data-section"
-                    hx-swap="outerHTML"
-                >
-                    <c-icons.sidebar_right size="24"/>
-                </button>
-            </c-ui.tooltip>
         </div>
     </div>
 {% endif %}
@@ -168,30 +156,18 @@
     <!-- Context Menu Dropdown -->
     <div id="data-table-{{ content_type_id }}-context-menu" class="hidden fixed bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[160px]">
         <ul class="py-1">
-            <li>
-                <button id="data-table-{{ content_type_id }}-context-menu-copy-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                    <i class="bi bi-clipboard"></i> Copy Cell
-                </button>
-            </li>
-            <li id="data-table-{{ content_type_id }}-context-menu-filter-value-list-item">
-                <button id="data-table-{{ content_type_id }}-context-menu-filter-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                    <i class="bi bi-filter"></i> Filter by Value
-                </button>
-            </li>
-            <li>
-                <button id="data-table-{{ content_type_id }}-context-menu-edit-value" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                    <i class="bi bi-pencil"></i> Edit Cell
-                </button>
-            </li>
-            <li class="border-t border-gray-200">
-                <button id="data-table-{{ content_type_id }}-context-menu-delete-row" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600">
-                    <i class="bi bi-trash"></i> Delete Row
-                </button>
-            </li>
+            
         </ul>
     </div>
+    
+    <!--Modals-->
+    <c-ui.modal id="edit_object_modal" header_class="" title="Edit object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
+    <c-ui.modal id="delete-object-modal" header_class="" title="Delete object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
+
+
 </div>
 {% endif %}
+
 
 
 

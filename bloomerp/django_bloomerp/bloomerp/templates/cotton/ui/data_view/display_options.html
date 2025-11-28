@@ -15,9 +15,30 @@
     {% endfor %}
 </div>
 
-{% if preference.view_type == 'table' %}
-<!-- Grouping & Ordering -->
+
 <div class="space-y-3 mb-4">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+            <span>Split view</span>
+        </div>
+        <button 
+            class="relative inline-flex w-40 justify-center px-2 py-1 rounded-lg transition-all duration-200 {% if preference.split_view_enabled %}bg-primary-100 text-primary-600 ring-1 ring-primary-500{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700{% endif %}"
+            hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
+            hx-vals='{"split_view_enabled": "{% if preference.split_view_enabled %}false{% else %}true{% endif %}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
+            hx-target="#data-view-{{ content_type_id }}"
+            hx-swap="outerHTML"
+            title="{% if preference.split_view_enabled %}Disable split view{% else %}Enable split view{% endif %}"
+        >
+            {% if preference.split_view_enabled %}
+            <c-icons.sidebar_right_selected size="16"/>
+            {% else %}
+            <c-icons.sidebar_right size="16"/>
+            {% endif %}
+        </button>
+    </div>
+
+
+    {% if preference.view_type == 'table' %}
     <c-ui.data_view.options.select label="Grouping" icon="lines_horizontal" icon_size="16" input_name="table_group_by">
         <option value="no_grouping">No grouping</option>
         {% for field in fields.visible_fields %}
@@ -30,10 +51,8 @@
         <option value="{{ page_size.value }}" {% if preference.page_size == page_size.value %}selected{% endif %}>{{ page_size.label }}</option>
         {% endfor %}
     </c-ui.data_view.options.select>
-</div>
 
-{% elif preference.view_type == 'kanban' %}
-<div class="space-y-3 mb-4">
+    {% elif preference.view_type == 'kanban' %}
     <c-ui.data_view.options.select label="Group by" icon="lines_horizontal" icon_size="16" input_name="kanban_group_by">
         <option value="no_grouping">No grouping</option>
         {% for field, is_visible in fields.accessible_fields %}
@@ -42,10 +61,7 @@
         >{{ field.title }}</option>
         {% endfor %}
     </c-ui.data_view.options.select>
-</div>
-
-{% elif preference.view_type == 'calendar' %}
-<div class="space-y-3 mb-4">
+    {% elif preference.view_type == 'calendar' %}
     <c-ui.data_view.options.select label="Date field" icon="calendar" icon_size="16" input_name="calendar_date_field">
         {% for field, is_visible in fields.accessible_fields %}
         {% if field.field_type in "DateField DateTimeField" %}
@@ -55,8 +71,9 @@
         {% endif %}
         {% endfor %}
     </c-ui.data_view.options.select>
+    {% endif %}
 </div>
-{% endif %}
+
 
 <hr class="border-gray-200 my-4">
 
@@ -88,6 +105,11 @@
 </div>
 
 <hr class="border-gray-200 my-4">
+
+
+
+<hr class="border-gray-200 my-4">
+
 
 <!-- Footer -->
 <div class="flex justify-start items-center">

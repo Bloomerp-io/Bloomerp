@@ -50,3 +50,10 @@ def get_queryset_for_user(user: AbstractBloomerpUser, queryset:QuerySet[Model], 
     """Filters a queryset based on the user's permissions."""
     return queryset
 
+
+def has_access_to_field(user: AbstractBloomerpUser, field: ApplicationField) -> bool:
+    """Checks if the user has access to a specific field."""
+    # TODO: Placeholder function that checks if a user has access to a application field.
+    
+    return True
+    
