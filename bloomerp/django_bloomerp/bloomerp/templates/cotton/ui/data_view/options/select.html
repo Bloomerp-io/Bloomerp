@@ -15,7 +15,7 @@ Args:
         <span>{{ label }}</span>
     </div>
     <select 
-        class="select select-sm w-40 bg-gray-50 border-gray-200"
+        class="select select-sm w-40 bg-base border-0"
         hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
         hx-target="#data-table-data-section"
         hx-swap="outerHTML"

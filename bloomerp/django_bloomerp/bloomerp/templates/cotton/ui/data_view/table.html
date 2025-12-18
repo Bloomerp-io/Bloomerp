@@ -14,7 +14,9 @@ Parameters:
 {% load i18n %}
 
 <div class="overflow-auto rounded-lg border-l border-r border-gray-200">
-    <table id="data-table-{{ content_type_id }}" class="table-auto table-hover table w-full border-collapse outline-none" data-datatable>
+    <table id="data-table-{{ content_type_id }}" class="table-auto table-hover table w-full border-collapse outline-none"
+        bloomerp-component="datatable"
+        >
         <thead>
             <tr >
                 {% for field in fields %}
@@ -24,6 +26,7 @@ Parameters:
             </tr>
         </thead>
         <tbody id="data-table-body-{{ content_type_id }}">
+            {% if queryset %}
             {% for object in queryset %}
             <tr
                 hx-get="{{ object.get_absolute_url }}"
@@ -34,13 +37,20 @@ Parameters:
                 class="cursor-pointer"
             >
                 {% for field in fields %}
-                    {% render_dataview_value object field request.user %}
+                    {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 %}
                 {% endfor %}
                 <td class="w-32" data-no-row-click>
                     <c-ui.data_view.actions :object="object"/>
                 </td>
             </tr>
             {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="{{ fields|length|add:1 }}" class="text-center text-gray-500 py-6">
+                    <c-blocktrans>No records found.</c-blocktrans>
+                </td>
+            </tr>
+            {% endif %}
         </tbody>
     </table>
 </div>

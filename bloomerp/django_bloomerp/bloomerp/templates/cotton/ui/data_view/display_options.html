@@ -1,14 +1,14 @@
 {% load bloomerp %}
 
 <!-- View Switcher -->
-<div class="bg-gray-100 p-2 rounded-lg flex mb-4 overflow-x-scroll no-scrollbar gap-2">
+<div class="bg-base p-2 rounded-lg flex mb-4 overflow-x-scroll no-scrollbar gap-2">
     {% for view_type in view_types %}
     <button
         hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
         hx-vals='{"view_type": "{{ view_type.value }}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
         hx-target="#data-view-{{ content_type_id }}"
         hx-swap="outerHTML"
-        class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md shadow text-sm font-medium {% if preference.view_type == view_type.value %}bg-white text-primary-600 ring-1 ring-primary-500{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+        class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md shadow text-sm font-medium {% if preference.view_type == view_type.value %}bg-white text-light ring-1 ring-primary-500{% else %}text-light hover:text-gray-700 hover:bg-gray-50{% endif %}">
         {% get_icon name=view_type.icon size="16" %}
         {{ view_type.label }}
     </button>
@@ -22,7 +22,7 @@
             <span>Split view</span>
         </div>
         <button 
-            class="relative inline-flex w-40 justify-center px-2 py-1 rounded-lg transition-all duration-200 {% if preference.split_view_enabled %}bg-primary-100 text-primary-600 ring-1 ring-primary-500{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700{% endif %}"
+            class="relative inline-flex w-40 justify-center px-2 py-1 rounded-lg transition-all duration-200 {% if preference.split_view_enabled %}bg-primary-100 text-primary-600 ring-1 ring-primary-500{% else %}bg-base text-light hover:bg-gray-200 hover:text-gray-700{% endif %}"
             hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
             hx-vals='{"split_view_enabled": "{% if preference.split_view_enabled %}false{% else %}true{% endif %}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
             hx-target="#data-view-{{ content_type_id }}"
@@ -89,7 +89,7 @@
 <!-- Field Visibility Options -->
 <div class="mb-4">
     <h3 class="text-sm font-medium text-gray-900 mb-2">Visible fields</h3>
-    <p class="text-xs text-gray-500 mb-3">Click to toggle field visibility for the current view.</p>
+    <p class="text-xs text-light mb-3">Click to toggle field visibility for the current view.</p>
     
     <div class="flex flex-wrap gap-2">
         {% for field, is_visible in fields.accessible_fields %}
@@ -98,7 +98,7 @@
             hx-vals='{"toggle_field_id": "{{ field.id }}", "toggle_view_type": "{{ preference.view_type }}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
             hx-target="#data-table-data-section"
             hx-swap="outerHTML"
-            class="px-3 py-1 text-xs border rounded-md transition-colors {% if is_visible %}bg-primary-100 border-primary-500 text-primary-700 hover:bg-primary-200{% else %}border-gray-300 bg-white text-gray-700 hover:bg-gray-50{% endif %}"
+            class="px-3 py-1 text-xs border rounded-md transition-colors {% if is_visible %}bg-primary-100 border-primary-500 text-primary-700 hover:bg-primary-200{% else %}border-base bg-white text-gray-700 hover:bg-base{% endif %}"
         >
             {% if is_visible %}
             <span class="inline-flex items-center gap-1">
@@ -113,16 +113,3 @@
     </div>
 </div>
 
-<hr class="border-gray-200 my-4">
-
-
-
-<hr class="border-gray-200 my-4">
-
-
-<!-- Footer -->
-<div class="flex justify-start items-center">
-    <button class="text-sm text-gray-600 hover:text-gray-900 font-medium">
-        Reset to defaults
-    </button>
-</div>

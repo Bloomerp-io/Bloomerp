@@ -95,20 +95,37 @@ export class CalendarView extends BaseView {
     }
     
     /**
-     * Setup context menu handlers on calendar events
+     * Setup context menu handlers on calendar events and cells
      */
     private setupEventContextMenu(): void {
         if (!this.calendarElement) return;
         
-        // Right-click on events
+        // Right-click on events or cells
         this.calendarElement.addEventListener('contextmenu', (e) => {
             const target = e.target as HTMLElement;
-            const eventEl = target.closest('.calendar-event') as HTMLElement;
             
+            // First, try to find an event
+            const eventEl = target.closest('.calendar-event') as HTMLElement;
             if (eventEl) {
                 e.preventDefault();
                 e.stopPropagation();
                 this.onContextMenuRequest(eventEl, false);
+                return;
+            }
+            
+            // Otherwise, try to find a cell (trigger context menu even on empty cells)
+            const cellEl = target.closest('[data-calendar-cell]') as HTMLElement;
+            if (cellEl) {
+                e.preventDefault();
+                e.stopPropagation();
+                // Check if there are events in the cell, use the first one as trigger
+                const eventsInCell = cellEl.querySelectorAll('.calendar-event');
+                if (eventsInCell.length > 0) {
+                    this.onContextMenuRequest(eventsInCell[0] as HTMLElement, false);
+                } else {
+                    // No events, but still trigger context menu on the cell itself
+                    this.onContextMenuRequest(cellEl, false);
+                }
             }
         }, { signal: this.abortController.signal });
     }
@@ -292,17 +309,21 @@ export class CalendarView extends BaseView {
     }
     
     /**
-     * Open context menu on the currently selected cell's first event
+     * Open context menu on the currently selected cell's first event or the cell itself
      */
     openContextMenuOnSelected(): void {
-        // Check for events in the selected cell
+        // Check for selected cell
         if (this.selectedCellIndex >= 0 && this.selectedCellIndex < this.cells.length) {
             const cell = this.cells[this.selectedCellIndex];
             const eventsInCell = cell.querySelectorAll('.calendar-event');
             
             if (eventsInCell.length > 0) {
+                // Use the first event as trigger
                 const firstEvent = eventsInCell[0] as HTMLElement;
                 this.onContextMenuRequest(firstEvent, true);
+            } else {
+                // No events, use the cell itself as trigger
+                this.onContextMenuRequest(cell, true);
             }
         }
     }
@@ -324,53 +345,81 @@ export class CalendarView extends BaseView {
             return;
         }
         
-        this.clearHighlight();
-        
         const numCells = this.cells.length;
         let newIndex = this.selectedCellIndex;
         let shouldNavigatePeriod = false;
         let periodDirection: 'prev' | 'next' = 'next';
         
         if (this.viewMode === 'month') {
-            // Month view: standard grid navigation (7 columns)
-            const cols = this.gridCols;
+            // Month view: grid navigation (7 columns, cells in row-major order)
+            // Layout: [row0col0, row0col1, ..., row0col6, row1col0, row1col1, ...]
+            const cols = this.gridCols; // 7 days
             const currentRow = Math.floor(this.selectedCellIndex / cols);
             const currentCol = this.selectedCellIndex % cols;
             const totalRows = Math.ceil(numCells / cols);
             
             switch (direction) {
+                case 'down':
+                    // Move down to the cell below (same column, next row)
+                    if (this.selectedCellIndex + cols < numCells) {
+                        // There's a cell below
+                        newIndex = this.selectedCellIndex + cols;
+                    } else if (currentCol < cols - 1) {
+                        // At last row, move to first cell of next column
+                        newIndex = currentCol + 1;
+                    } else {
+                        // At last row, last column - go to next period
+                        shouldNavigatePeriod = true;
+                        periodDirection = 'next';
+                    }
+                    break;
                 case 'up':
+                    // Move up to the cell above (same column, previous row)
                     if (currentRow > 0) {
                         newIndex = this.selectedCellIndex - cols;
-                    }
-                    break;
-                case 'down':
-                    if (currentRow < totalRows - 1 && this.selectedCellIndex + cols < numCells) {
-                        newIndex = this.selectedCellIndex + cols;
-                    }
-                    break;
-                case 'left':
-                    if (this.selectedCellIndex > 0) {
-                        newIndex = this.selectedCellIndex - 1;
+                    } else if (currentCol > 0) {
+                        // At first row, move to last cell of previous column
+                        // Find the last valid row in the previous column
+                        const prevCol = currentCol - 1;
+                        let lastRowIdx = totalRows - 1;
+                        let targetIndex = lastRowIdx * cols + prevCol;
+                        // Make sure we don't exceed numCells
+                        while (targetIndex >= numCells && lastRowIdx > 0) {
+                            lastRowIdx--;
+                            targetIndex = lastRowIdx * cols + prevCol;
+                        }
+                        newIndex = targetIndex;
                     } else {
-                        // At the start, go to previous period
+                        // At first row, first column - go to previous period
                         shouldNavigatePeriod = true;
                         periodDirection = 'prev';
                     }
                     break;
                 case 'right':
-                    if (this.selectedCellIndex < numCells - 1) {
+                    // Move right to next cell
+                    if (currentCol < cols - 1) {
                         newIndex = this.selectedCellIndex + 1;
                     } else {
-                        // At the end, go to next period
+                        // At last column, go to next period
                         shouldNavigatePeriod = true;
                         periodDirection = 'next';
+                    }
+                    break;
+                case 'left':
+                    // Move left to previous cell
+                    if (currentCol > 0) {
+                        newIndex = this.selectedCellIndex - 1;
+                    } else {
+                        // At first column, go to previous period
+                        shouldNavigatePeriod = true;
+                        periodDirection = 'prev';
                     }
                     break;
             }
         } else if (this.viewMode === 'week') {
             // Week view: 7 columns (days) x 24 rows (hours)
-            // Cells are ordered by column (day) then row (hour)
+            // Cells are in DOM order: each day column has 24 hour slots
+            // So the layout is: [day0hour0, day0hour1, ..., day0hour23, day1hour0, ...]
             const cols = 7;
             const rows = 24;
             const currentCol = Math.floor(this.selectedCellIndex / rows);
@@ -378,29 +427,47 @@ export class CalendarView extends BaseView {
             
             switch (direction) {
                 case 'up':
+                    // Move up by one hour within the same day
                     if (currentRow > 0) {
                         newIndex = currentCol * rows + (currentRow - 1);
+                    } else if (currentCol > 0) {
+                        // At top of column (hour 0), wrap to bottom of previous column (hour 23)
+                        newIndex = (currentCol - 1) * rows + (rows - 1);
+                    } else {
+                        // At first column and first row, go to previous week
+                        shouldNavigatePeriod = true;
+                        periodDirection = 'prev';
                     }
                     break;
                 case 'down':
+                    // Move down by one hour within the same day
                     if (currentRow < rows - 1) {
                         newIndex = currentCol * rows + (currentRow + 1);
+                    } else if (currentCol < cols - 1) {
+                        // At bottom of column (hour 23), wrap to top of next column (hour 0)
+                        newIndex = (currentCol + 1) * rows;
+                    } else {
+                        // At last column and last row, go to next week
+                        shouldNavigatePeriod = true;
+                        periodDirection = 'next';
                     }
                     break;
                 case 'left':
+                    // Move to previous day at the same hour
                     if (currentCol > 0) {
                         newIndex = (currentCol - 1) * rows + currentRow;
                     } else {
-                        // At the start of week, go to previous week
+                        // At the start of week (Monday), go to previous week (Sunday, same hour)
                         shouldNavigatePeriod = true;
                         periodDirection = 'prev';
                     }
                     break;
                 case 'right':
+                    // Move to next day at the same hour
                     if (currentCol < cols - 1) {
                         newIndex = (currentCol + 1) * rows + currentRow;
                     } else {
-                        // At the end of week, go to next week
+                        // At the end of week (Sunday), go to next week (Monday, same hour)
                         shouldNavigatePeriod = true;
                         periodDirection = 'next';
                     }
@@ -453,9 +520,12 @@ export class CalendarView extends BaseView {
      * Highlight the currently selected cell
      */
     private highlightSelectedCell(): void {
+        // Always clear existing highlights first to prevent duplicates
+        this.clearHighlight();
+        
         if (this.selectedCellIndex >= 0 && this.selectedCellIndex < this.cells.length) {
             const cell = this.cells[this.selectedCellIndex];
-            cell.classList.add('ring-2', 'ring-primary-500', 'ring-inset', 'bg-primary-50');
+            cell.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1', 'bg-blue-50', 'z-10');
             cell.setAttribute('aria-selected', 'true');
             cell.focus();
         }
@@ -465,12 +535,24 @@ export class CalendarView extends BaseView {
      * Clear highlight from all cells and events
      */
     private clearHighlight(): void {
+        // Clear from all cells in the calendar, not just tracked cells
+        if (this.calendarElement) {
+            this.calendarElement.querySelectorAll('[data-calendar-cell]').forEach(cell => {
+                cell.classList.remove('ring-2', 'ring-blue-500', 'ring-primary-500', 'ring-inset', 'ring-offset-1', 'bg-blue-50', 'bg-primary-50', 'z-10');
+                cell.removeAttribute('aria-selected');
+            });
+            this.calendarElement.querySelectorAll('.calendar-event').forEach(event => {
+                event.classList.remove('ring-2', 'ring-blue-500', 'ring-primary-500', 'ring-offset-1');
+                event.removeAttribute('aria-selected');
+            });
+        }
+        // Also clear from tracked elements
         this.cells.forEach(cell => {
-            cell.classList.remove('ring-2', 'ring-primary-500', 'ring-inset', 'bg-primary-50');
+            cell.classList.remove('ring-2', 'ring-blue-500', 'ring-primary-500', 'ring-inset', 'ring-offset-1', 'bg-blue-50', 'bg-primary-50', 'z-10');
             cell.removeAttribute('aria-selected');
         });
         this.events.forEach(event => {
-            event.classList.remove('ring-2', 'ring-primary-500', 'ring-offset-1');
+            event.classList.remove('ring-2', 'ring-blue-500', 'ring-primary-500', 'ring-offset-1');
             event.removeAttribute('aria-selected');
         });
     }

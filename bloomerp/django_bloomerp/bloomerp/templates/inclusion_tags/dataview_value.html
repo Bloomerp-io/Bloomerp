@@ -1,11 +1,14 @@
 <td 
     class="cursor-context-menu" 
-    allow-context-menu
     data-dropdown="cell-menu"
-    data-column="1"
+    data-column-index="{{ column_index }}"
+    data-row-index="{{ row_index }}"
     data-value="{{ value }}"
+    
     data-object-id="{{ object.pk }}"
     data-application-field-id="{{ application_field_id }}"
+
+    bloomerp-component="datatable-cell"
     >
     {% if is_field_type.foreign_key %}
         {% if value.get_absolute_url %}

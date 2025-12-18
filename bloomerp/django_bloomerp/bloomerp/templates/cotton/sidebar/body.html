@@ -9,6 +9,7 @@
   <aside
     id="sidebar"
     class="fixed left-0 top-14 h-[calc(100vh-2rem)] w-64 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 overflow-y-auto bg-base"
+    bloomerp-component="sidebar"
   >
     <nav class="px-4 py-6 pb-8">
         <!-- Personal workspaces section -->
@@ -34,13 +35,5 @@
   ></div>
 </div>
 
-<!-- Global toggle function for backward compatibility with buttons calling toggleSidebar() -->
-<script>
-    function toggleSidebar() {
-        if (window.BloomerpApp && window.BloomerpApp.sidebar) {
-            window.BloomerpApp.sidebar.toggle();
-        }
-    }
-</script>
 
 

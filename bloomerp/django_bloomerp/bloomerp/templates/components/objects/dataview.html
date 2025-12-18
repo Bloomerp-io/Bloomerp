@@ -23,6 +23,7 @@
     data-content-type-id="{{ content_type_id }}"
     data-render-id="{{ render_id }}"
     class="h-full flex flex-col"
+    bloomerp-component="dataview"
     >
     <!--Search inputs-->
     <div class="mb-2 justify-between flex items-center">
@@ -163,9 +164,8 @@
     </div>
     
     <!--Modals-->
-    <c-ui.modal id="edit_object_modal" header_class="" title="Edit object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
+    <c-ui.modal id="edit-object-modal" header_class="" title="Edit object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
     <c-ui.modal id="delete-object-modal" header_class="" title="Delete object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
-
 
 </div>
 {% endif %}

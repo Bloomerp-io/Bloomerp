@@ -581,7 +581,7 @@ export class DataView {
      */
     private filterByCurrentTrigger(): void {
         if (!this.currentTrigger) return;
-
+        
         const filterValue = this.currentTrigger.dataset.contextMenuFilterValue;
         if (!filterValue) return;
 
@@ -590,7 +590,7 @@ export class DataView {
             this.hideContextMenu();
             return;
         }
-
+        
         this.applyFilter(filterValue);
         this.currentTrigger.classList.add('filtered');
         this.hideContextMenu();
@@ -631,7 +631,7 @@ export class DataView {
         }
 
         // Fetch the inline edit component
-        const editUrl = `/components/data_view_edit_field/${this.contentTypeId}/${applicationFieldId}/?object_id=${objectId}`;
+        const editUrl = `/components/dataview_edit_field/${applicationFieldId}/${objectId}/`;
         
         htmx.ajax(
             'get',
@@ -717,7 +717,53 @@ export class DataView {
                 target: '#data-table-data-section',
                 swap: 'outerHTML'
             }
-        );
+        ).then(() => {
+            // Reinitialize the calendar view after HTMX swap
+            this.reinitializeCalendarView();
+        });
+    }
+    
+    /**
+     * Reinitialize the calendar view after HTMX swap of the data section
+     * This is needed because the calendar is inside the data section and the swap
+     * doesn't trigger a full dataview reinitialization.
+     */
+    private reinitializeCalendarView(): void {
+        if (!this.container || !this.contentTypeId || !this.abortController) return;
+        
+        // Only do this for calendar views
+        if (this.viewType !== 'calendar') return;
+        
+        // Cleanup the old calendar view
+        if (this.activeView) {
+            this.activeView.cleanup();
+        }
+        
+        // Create a new calendar view with the same config
+        const viewConfig: ViewConfig = {
+            container: this.container,
+            contentTypeId: this.contentTypeId,
+            abortController: this.abortController,
+            onContextMenuRequest: (element, openedViaKeyboard) => {
+                this.openContextMenuOnElement(element, openedViaKeyboard);
+            },
+            onMessage: (message, type) => {
+                this.showMessage(message, type);
+            }
+        };
+        
+        const calendarView = new CalendarView(viewConfig);
+        calendarView.setNavigationCallback((pageOffset) => {
+            this.navigateCalendar(pageOffset);
+        });
+        this.activeView = calendarView;
+        this.activeView.initialize();
+        
+        // Re-setup keyboard navigation on the new calendar element
+        this.setupKeyboardNavigation();
+        
+        // Re-enter navigation mode if it was active
+        this.activeView.enterNavigationMode();
     }
 
     /**
@@ -837,10 +883,15 @@ export class DataView {
             }
 
             // Enter navigation mode on ENTER_NAVIGATION key press
-            if (e.key === NAVIGATION_KEYS.ENTER_NAVIGATION && document.activeElement !== currentNavigable) {
-                e.preventDefault();
-                currentNavigable.focus();
-                this.activeView?.enterNavigationMode();
+            // Only if we're not already focused on the navigable element or one of its children
+            // This prevents re-entering navigation mode when already navigating
+            if (e.key === NAVIGATION_KEYS.ENTER_NAVIGATION) {
+                const isInsideNavigable = currentNavigable.contains(document.activeElement);
+                if (!isInsideNavigable && document.activeElement !== currentNavigable) {
+                    e.preventDefault();
+                    currentNavigable.focus();
+                    this.activeView?.enterNavigationMode();
+                }
             }
         }, { signal: this.abortController.signal });
     }
