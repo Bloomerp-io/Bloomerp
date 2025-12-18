@@ -8,13 +8,13 @@
 import 'htmx.org';
 
 
-import { registerComponent, setupComponentAutoInit } from './components/BaseComponent';
+import { registerComponent, setupComponentAutoInit } from './components/data_view_components/BaseComponent';
 import { Sidebar } from './components/Sidebar';
-import { DataTable } from './components/DataTable'
-import { DataTableCell } from './components/DataTableCell'
+import { DataTable } from './components/data_view_components/DataTable'
+import { DataTableCell } from './components/data_view_components/DataTable'
 import { DataView } from './components/DataView';
-import { KanbanBoard } from './components/KanbanBoard';
-import { KanbanCard } from './components/KanbanCard';
+import { KanbanBoard } from './components/data_view_components/KanbanBoard';
+import { KanbanCard } from './components/data_view_components/KanbanBoard';
 
 // Register components here
 registerComponent('sidebar', Sidebar);

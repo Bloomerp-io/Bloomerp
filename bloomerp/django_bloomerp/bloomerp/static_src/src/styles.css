@@ -21,6 +21,11 @@
 */
 @theme {
 
+  /*
+  * Typography
+  */
+  --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
     /*
     * Primary 
     */
@@ -72,7 +77,22 @@
     --color-warning-dark: #856404;
 
 
-    --color-base: #f5f5f5
+    --color-base: #f4f2f0;
+    --color-light: #686765;
+}
+
+/*
+* Base typography
+*/
+@layer base {
+  html,
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+  }
 }
 
 /*
@@ -429,6 +449,11 @@
 
     .table-actions-wide {
         @apply w-32 text-center;
+    }
+
+    /* Selection highlight for keyboard navigation (global) */
+    .cell-selected {
+      @apply ring-2 ring-primary ring-inset bg-primary-50;
     }
 
     /* Cell selection for keyboard navigation */

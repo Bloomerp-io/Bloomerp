@@ -1,7 +1,7 @@
 import htmx from "htmx.org";
 
 // The query selector attribute
-const componentIdentifier = 'bloomerp-component'
+export const componentIdentifier = 'bloomerp-component'
 
 class BaseComponent {
     public element: HTMLElement | null = null;
