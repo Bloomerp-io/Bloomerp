@@ -1,9 +1,26 @@
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import BaseComponent, { componentIdentifier, getComponent } from "../BaseComponent";
 import { getContextMenu, type ContextMenuItem } from "../../utils/contextMenu";
+import type { DataViewContainer } from "./DataViewContainer";
 
 export abstract class BaseDataViewComponent extends BaseComponent {
     protected abortController: AbortController | null = null;
+
+    // Get the corresponding dataview (lazy-loaded)
+    private _dataViewContainer: DataViewContainer | null = null;
+    
+    public get dataViewContainer(): DataViewContainer | null {
+        if (this._dataViewContainer) return this._dataViewContainer;
+        
+        if (!this.element) return null;
+        
+        const contentTypeId = this.element.getAttribute('data-content-type-id');
+        const element = document.getElementById(`data-view-${contentTypeId}`);
+        if (!element) return null;
+        
+        this._dataViewContainer = getComponent(element) as DataViewContainer;
+        return this._dataViewContainer;
+    }
 
     // Selected cell is the current cell
     public currentCell: BaseDataViewCell | null = null;

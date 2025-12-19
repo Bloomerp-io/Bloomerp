@@ -11,7 +11,7 @@ import { registerComponent, setupComponentAutoInit } from './components/BaseComp
 import { Sidebar } from './components/Sidebar';
 import { DataTable } from './components/data_view_components/DataTable'
 import { DataTableCell } from './components/data_view_components/DataTable'
-import { DataView } from './components/DataView';
+import { DataViewContainer } from './components/data_view_components/DataViewContainer';
 import { KanbanBoard } from './components/data_view_components/KanbanBoard';
 import { KanbanCard } from './components/data_view_components/KanbanBoard';
 
@@ -19,7 +19,7 @@ import { KanbanCard } from './components/data_view_components/KanbanBoard';
 registerComponent('sidebar', Sidebar);
 
 // Dataview component
-registerComponent('dataview', DataView);
+registerComponent('dataview-container', DataViewContainer);
 
 // Datatable
 registerComponent('datatable', DataTable);

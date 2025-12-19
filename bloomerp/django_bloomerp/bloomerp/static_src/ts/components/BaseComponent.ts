@@ -69,10 +69,10 @@ export function initComponents(container: Document | HTMLElement = document): vo
             return;
         }
 
-        // Check if already initialized to prevent double initialization
-        if (element.hasAttribute('data-component-initialized')) {
-            return;
-        }
+        // Avoid double initialization based on the actual instance registry.
+        // IMPORTANT: `data-component-initialized` can be stale when HTML is
+        // restored from history (HTMX history cache / browser bfcache).
+        if (componentInstanceRegistry.get(element)) return;
 
         try {
             // Instantiate the component
@@ -114,7 +114,19 @@ export function setupComponentAutoInit(): void {
 
             initComponents(container);
         });
+
+        // When navigating back/forward with HTMX history, the DOM can be restored
+        // without an afterSwap on the right container. Re-scan the document.
+        document.body.addEventListener('htmx:historyRestore', () => {
+            initComponents(document);
+        });
     }
+
+    // When the browser restores a page from the back-forward cache (bfcache),
+    // DOMContentLoaded won't fire again. Re-init components on pageshow.
+    window.addEventListener('pageshow', () => {
+        initComponents(document);
+    });
 }
 
 /**

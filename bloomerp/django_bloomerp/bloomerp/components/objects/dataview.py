@@ -356,6 +356,9 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     if query:
         queryset = string_search_on_queryset(queryset, query)
 
+    # The model
+    queryset = filter_model(Model, request.GET, queryset)
+    
     # Apply pagination
     page_size = preference.page_size
     paginator = Paginator(queryset, page_size)
@@ -366,6 +369,7 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
+    
     
     # Add extra context based on view type
     context = {
@@ -492,41 +496,5 @@ def dataview_edit_field(request: HttpRequest, application_field_id:int, object_i
     return HttpResponse("<input value='Hello world'>")
     
 
-@router.register(
-    path="components/dataview_context_menu/<str:view_type>/",
-    name="components_dataview_context_menu",
-)
-def dataview_context_menu(request: HttpRequest, view_type:str) -> HttpResponse:
-    """Renders the context menu for a particular application field and view type.
-
-    Args:
-        request (HttpRequest): the request object
-        view_type (str): the view type
-        application_field_id (int): the application field id
-
-    Returns:
-        HttpResponse: HTML containing the value
-    """
-    # Set application field as None
-    if request.GET.get('application_field_id'):
-        application_field = get_object_or_404(ApplicationField, id=request.GET.get('application_field_id'))
-        field_type = application_field.get_field_type_enum().template_context(application_field.field_type)
-    else:
-        application_field = None
-        field_type = None
-    
-    match ViewType(view_type):
-        case ViewType.TABLE:
-            pass
-            
-    return render(
-        request,
-        "components/objects/dataview_context_menu.html",
-        {
-            "view_type" : view_type,
-            "application_field": application_field,
-            "field_type": field_type,
-        }
-    )
     
     

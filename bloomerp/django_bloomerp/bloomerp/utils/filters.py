@@ -21,7 +21,7 @@ from django.db.models import (
 from bloomerp.models.fields import StatusField
 from django_filters import DateFilter
 
-from typing import Type
+from typing import Type, Optional
 from django.db.models import Model
 from django.db.models.query import QuerySet
 
@@ -156,8 +156,21 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
 
     return filterset_class
 
-def filter_model(model: Type[Model], filters: dict) -> QuerySet:
-    """Applies the given filters to the model's queryset using a dynamically created FilterSet."""
+def filter_model(model: Type[Model], filters: dict, queryset:Optional[QuerySet]=None) -> QuerySet:
+    """Filters a model based on the given queryparameters
+
+    Args:
+        model (Type[Model]): the model class
+        filters (dict): the filters
+        queryset (Optional[QuerySet], optional): The starting queryset. Defaults to None.
+
+    Returns:
+        QuerySet: the filtered queryset
+    """
     FilterSet = dynamic_filterset_factory(model)
-    filterset = FilterSet(filters, queryset=model.objects.all())
-    
+    qs = queryset if queryset is not None else model.objects.all()
+    filterset = FilterSet(
+        data=filters, 
+        queryset=qs
+        )
+    return filterset.queryset

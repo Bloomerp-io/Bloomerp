@@ -569,7 +569,10 @@ def get_nested_attribute(obj, attribute_path: str):
 def render_dataview_value(
     object: Model,
     application_field: ApplicationField,
-    user: AbstractBloomerpUser
+    user: AbstractBloomerpUser,
+    row_index:int=0,
+    column_index:int=0,
+    url:str=None,
 ):
     """Renders a data table value
 
@@ -588,7 +591,10 @@ def render_dataview_value(
         "value": value,
         "object": object,
         "is_field_type": FieldType.template_context(application_field.field_type),
-        "application_field_id" : application_field.id
+        "application_field_id" : application_field.id,
+        "row_index" : row_index,
+        "column_index" : column_index,
+        "url" : url
     }
 
 

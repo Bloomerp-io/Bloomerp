@@ -93,9 +93,13 @@ query_type="object_bloom_ai" args=llm_args %}
 		}
 	})
 
-	document.getElementById(url).classList.add('active');
+	var active = document.getElementById(url);
+	if (active) {
+		active.classList.add('active');
+	}
 
 	function setActiveTab(element) {
+		if (!element) return;
 		var tabs = document.querySelectorAll('.nav-link');
 		tabs.forEach(tab => {
 			tab.classList.remove('active');

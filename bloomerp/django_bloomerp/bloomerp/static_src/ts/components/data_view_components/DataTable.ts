@@ -6,6 +6,7 @@ import type { ContextMenuItem } from "../../utils/contextMenu";
 export class DataTableCell extends BaseDataViewCell {
     public columnIndex: number = -1;
     public rowIndex: number = -1;
+    
 
     public initialize(): void {
         super.initialize();
@@ -28,10 +29,14 @@ export class DataTable extends BaseDataViewComponent {
     protected cellClass = DataTableCell;
     public currentCell: DataTableCell | null = null;
 
-    public override constructContextMenu(): ContextMenuItem[] {
+    public initialize(): void {
+        super.initialize()
+    }
+
+    public constructContextMenu(): ContextMenuItem[] {
         const copyLabel = this.hasMultipleSelection() ? 'Copy Values' : 'Copy';
 
-        let contextMenu = [
+        let contextMenu: ContextMenuItem[] = [
             {
                 label: copyLabel,
                 icon: 'fa-solid fa-copy',
@@ -53,10 +58,10 @@ export class DataTable extends BaseDataViewComponent {
                 },
             },
             {
-                label: 'Filter',
-                icon: 'fa-solid fa-arrow-right',
+                label: 'Filter on value',
+                icon: 'fa-solid fa-filter',
                 onClick: async () => {
-                    this.currentCell.rowIndex
+                    this.dataViewContainer?.filter({})
                 },
             },
         ]);

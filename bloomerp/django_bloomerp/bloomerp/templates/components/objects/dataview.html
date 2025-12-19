@@ -18,12 +18,13 @@
 {% if not request.htmx.target == 'data-table-data-section' %}
 <div 
     id="data-view-{{ content_type_id }}"
-    data-dataview
     data-view-type="{{ preference.view_type }}"
     data-content-type-id="{{ content_type_id }}"
     data-render-id="{{ render_id }}"
+    data-url="{{ request.get_full_path }}"
+    data-base-url="{{ request.path }}"
     class="h-full flex flex-col"
-    bloomerp-component="dataview"
+    bloomerp-component="dataview-container"
     >
     <!--Search inputs-->
     <div class="mb-2 justify-between flex items-center">
