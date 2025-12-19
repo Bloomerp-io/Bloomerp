@@ -21,12 +21,13 @@ Parameters:
 {% load bloomerp %}
 
 <div 
-    data-calendar
     class="flex flex-col h-full bg-white rounded-lg border border-gray-200 overflow-hidden"
     data-content-type-id="{{ content_type_id }}"
     data-view-mode="{{ calendar_view_mode|default:'month' }}"
     data-page-offset="{{ calendar_page_offset|default:0 }}"
     data-url="{% url 'components_data_view' content_type_id=content_type_id %}"
+
+    bloomerp-component="calendar"
 >
     {% if not calendar_start_field %}
         <!-- Empty state: no start field selected -->
@@ -261,19 +262,4 @@ Parameters:
     {% endif %}
 </div>
 
-<style>
-/* Calendar Apple-style minimalist styling */
-.calendar-day:hover {
-    background-color: rgb(249 250 251); /* gray-50 */
-}
-
-.calendar-event {
-    cursor: pointer;
-}
-
-/* Smooth transitions */
-[data-calendar] {
-    transition: opacity 0.2s ease;
-}
-</style>
 

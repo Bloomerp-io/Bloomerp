@@ -4,11 +4,13 @@
   "description": "Bloomerp Django static assets with TypeScript and Vite bundling",
   "type": "module",
   "scripts": {
+    "postinstall": "node ./scripts/copy-fontawesome.mjs",
     "start": "npm run dev",
     "dev": "concurrently \"npm run dev:css\" \"npm run dev:js\"",
     "dev:css": "cross-env NODE_ENV=development tailwindcss --postcss -i ./src/styles.css -o ../static/css/dist/styles.css -w",
     "dev:js": "vite",
-    "build": "npm run build:clean && npm run build:tailwind && npm run build:js",
+    "build:fontawesome": "node ./scripts/copy-fontawesome.mjs",
+    "build": "npm run build:fontawesome && npm run build:clean && npm run build:tailwind && npm run build:js",
     "build:clean": "rimraf ../static/css/dist ../static/bloomerp/js/dist",
     "build:tailwind": "cross-env NODE_ENV=production tailwindcss --postcss -i ./src/styles.css -o ../static/css/dist/styles.css --minify",
     "build:js": "tsc && vite build",
@@ -21,6 +23,7 @@
   "license": "MIT",
   "devDependencies": {
     "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/cli": "^4.0.0",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.10.1",
@@ -32,11 +35,12 @@
     "postcss-simple-vars": "^7.0.1",
     "rimraf": "^6.0.1",
     "tailwindcss": "^4.0.0",
-    "@tailwindcss/cli": "^4.0.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.1"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "alpinejs": "^3.15.3",
     "htmx.org": "^2.0.3"
   }
 }

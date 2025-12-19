@@ -451,15 +451,7 @@
         @apply w-32 text-center;
     }
 
-    /* Selection highlight for keyboard navigation (global) */
-    .cell-selected {
-      @apply ring-2 ring-primary ring-inset bg-primary-50;
-    }
-
-    /* Cell selection for keyboard navigation */
-    .table tbody td.cell-selected {
-        @apply ring-2 ring-primary ring-inset bg-primary-50;
-    }
+    /* (moved to @layer utilities) */
 }
 
 @layer components {
@@ -474,6 +466,24 @@
 @layer utilities {
   .text-muted {
     @apply text-gray-400
+  }
+}
+
+/*
+* Excel-like selection model
+* - .cell-focused: active cell (border/ring)
+* - .cell-selected: selection range (background)
+*
+* Defined in @layer utilities so it overrides per-element utility classes
+* like bg-white on Kanban cards.
+*/
+@layer utilities {
+  .cell-focused {
+    @apply ring-2 ring-primary ring-inset;
+  }
+
+  .cell-selected {
+    @apply bg-primary-50;
   }
 }
 

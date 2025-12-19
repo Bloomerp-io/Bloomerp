@@ -463,10 +463,10 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
 
 
 @router.register(
-    path="components/data_view_edit_field/<int:content_type_id>/<int:application_field_id>/",
-    name="components_data_view_inline",
+    path="components/dataview_edit_field/<int:application_field_id>/<str:object_id>/",
+    name="components_dataview_inline",
 )
-def dataview_edit_field(request: HttpRequest, application_field_id:int) -> HttpResponse:
+def dataview_edit_field(request: HttpRequest, application_field_id:int, object_id: str) -> HttpResponse:
     """Renders the inline edit component for a dataview field.
 
     Args:
@@ -481,6 +481,13 @@ def dataview_edit_field(request: HttpRequest, application_field_id:int) -> HttpR
     if not has_access_to_field(request.user, application_field):
         # TODO: Handle pass response
         pass
+    
+    # Steps:
+    # Validate whether the application field is editable
+    # 1. Get the model and object
+    # 2. Get the field type based on the application field
+    # 3. Render the appropriate based on the field type
+    # 4. Make sure the rendered component has an onchange that saves the value via an API call
     
     return HttpResponse("<input value='Hello world'>")
     

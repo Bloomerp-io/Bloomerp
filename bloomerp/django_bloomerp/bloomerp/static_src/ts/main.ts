@@ -7,8 +7,7 @@
  */
 import 'htmx.org';
 
-
-import { registerComponent, setupComponentAutoInit } from './components/data_view_components/BaseComponent';
+import { registerComponent, setupComponentAutoInit } from './components/BaseComponent';
 import { Sidebar } from './components/Sidebar';
 import { DataTable } from './components/data_view_components/DataTable'
 import { DataTableCell } from './components/data_view_components/DataTable'

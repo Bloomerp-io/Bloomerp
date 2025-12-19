@@ -1,7 +1,7 @@
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
-import { getComponent } from "./BaseComponent";
+import { getComponent } from "../BaseComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
-import { getContextMenu } from "../../utils/contextMenu";
+import type { ContextMenuItem } from "../../utils/contextMenu";
 
 export class DataTableCell extends BaseDataViewCell {
     public columnIndex: number = -1;
@@ -22,153 +22,92 @@ export class DataTableCell extends BaseDataViewCell {
 
     }
 
-    /**
-     * Happens on rightclick of the cell
-     */
-    public override rightClick(event: MouseEvent | PointerEvent): void {
-        if (!this.element) return;
-
-        const mouseEvent = event as MouseEvent;
-
-        // Prefer the existing per-dataview menu container if present.
-        const tableEl = this.element.closest('table[id^="data-table-"]') as HTMLElement | null;
-        const contentTypeId = tableEl?.id?.startsWith('data-table-')
-            ? tableEl.id.replace('data-table-', '')
-            : null;
-        const menuId = contentTypeId ? `data-table-${contentTypeId}-context-menu` : 'bloomerp-context-menu';
-
-        const menu = getContextMenu(menuId);
-        const value = this.element.getAttribute('data-value') ?? this.element.textContent ?? '';
-
-        menu.show(mouseEvent, this.element, [
-            {
-                label: 'Copy value',
-                disabled: value.length === 0,
-                onClick: async () => {
-                    try {
-                        await navigator.clipboard.writeText(value);
-                    } catch {
-                        // Best-effort fallback
-                        const textarea = document.createElement('textarea');
-                        textarea.value = value;
-                        textarea.style.position = 'fixed';
-                        textarea.style.left = '-9999px';
-                        document.body.appendChild(textarea);
-                        textarea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textarea);
-                    }
-                },
-            },
-        ]);
-    }
-
-    /**
-     * Happens on clicking a cell
-     */
-    public click() {
-        
-    }
 }
 
 export class DataTable extends BaseDataViewComponent {
     protected cellClass = DataTableCell;
-    
-    public initialize(): void {
-        if (!this.element) return;
+    public currentCell: DataTableCell | null = null;
 
-        // Make table focusable for keyboard navigation
-        this.element.setAttribute('tabindex', '0');
+    public override constructContextMenu(): ContextMenuItem[] {
+        const copyLabel = this.hasMultipleSelection() ? 'Copy Values' : 'Copy';
 
-        this.setupEventListeners();
-    }
-
-    public destroy(): void {
-        super.destroy();
-    }
-
-    public setupEventListeners(): void {
-        if (!this.element) return;
-
-        const abortController = this.ensureAbortController();
-
-        // Only ArrowUp/ArrowDown/ArrowLeft/ArrowRight are migrated in this step
-        this.element.addEventListener(
-            'keydown',
-            (event: KeyboardEvent) => this.handleKeyDown(event),
-            { signal: abortController.signal }
-        );
-
-        // Right-click delegation: ensures context menu behavior works even if cell components
-        // are not yet instantiated (e.g. right-click before any getComponent call).
-        this.element.addEventListener(
-            'contextmenu',
-            (event: MouseEvent) => {
-                const anyEvent = event as unknown as { _bloomerpCellHandled?: boolean };
-                if (anyEvent._bloomerpCellHandled) return;
-
-                const target = event.target as HTMLElement | null;
-                const cellEl = target?.closest('td[bloomerp-component="datatable-cell"]') as HTMLElement | null;
-                if (!cellEl) return;
-
-                anyEvent._bloomerpCellHandled = true;
-                event.preventDefault();
-
-                const cell = getComponent(cellEl) as DataTableCell | null;
-                if (!cell) return;
-                this.focus(cell);
-                cell.rightClick(event);
+        let contextMenu = [
+            {
+                label: copyLabel,
+                icon: 'fa-solid fa-copy',
+                onClick: async () => {
+                    await this.copyToClipboard();
+                },
             },
-            { signal: abortController.signal, capture: true }
-        );
+        ]
+
+        // If there is a multiple selection, return
+        if (this.hasMultipleSelection()) {return contextMenu}
+
+        contextMenu = contextMenu.concat([
+            {
+                label: 'Navigate',
+                icon: 'fa-solid fa-arrow-right',
+                onClick: async () => {
+                    this.currentCell.click()
+                },
+            },
+            {
+                label: 'Filter',
+                icon: 'fa-solid fa-arrow-right',
+                onClick: async () => {
+                    this.currentCell.rowIndex
+                },
+            },
+        ]);
+
+        return contextMenu;
     }
-    
-    public keydown(): void {
-        this.moveCurrentCell(1, 0);
+
+    moveCellDown(): BaseDataViewCell {
+        return this.moveCurrentCell(1, 0)
     }
 
-    public keyup(): void {
-        this.moveCurrentCell(-1, 0);
+    moveCellUp(): BaseDataViewCell {
+        return this.moveCurrentCell(-1, 0)
     }
 
-    public keyright(): void {
-        this.moveCurrentCell(0, 1);
+    moveCellLeft(): BaseDataViewCell {
+        return this.moveCurrentCell(0, -1)
     }
 
-    public keyleft(): void {
-        this.moveCurrentCell(0, -1);
+    moveCellRight(): BaseDataViewCell {
+        return this.moveCurrentCell(0, 1)
     }
 
-    private moveCurrentCell(rowDelta: number, colDelta: number): void {
-        if (!this.element) return;
 
-        // If we don't have a current cell yet, initialize to first available cell.
-        if (!this.currentCell) {
-            const firstCellEl = this.element.querySelector(
-                'tbody td[bloomerp-component="datatable-cell"]'
-            ) as HTMLElement | null;
+    private moveCurrentCell(rowDelta: number, colDelta: number): DataTableCell {
+        // Always return a valid cell so keyboard navigation can't "lose" focus.
+        const current = this.currentCell as DataTableCell | null;
+        if (!this.element || !current) return current as DataTableCell;
 
-            const firstCell = firstCellEl ? (getComponent(firstCellEl) as DataTableCell | null) : null;
-            this.focus(firstCell);
-            return;
-        }
+        const currentElRaw = current.element;
+        if (!currentElRaw) return current;
 
-        const currentEl = this.currentCell.element;
-        if (!currentEl) return;
+        // Defensive: if something causes the component element to be a descendant,
+        // normalize to the owning <td>.
+        const currentEl =
+            (currentElRaw.closest('td[bloomerp-component="datatable-cell"]') as HTMLElement | null) ??
+            currentElRaw;
 
         const currentRow = currentEl.closest('tr') as HTMLElement | null;
         const tbody = currentRow?.parentElement as HTMLElement | null;
-        if (!currentRow || !tbody) return;
+        if (!currentRow || !tbody) return current;
 
         const rows = Array.from(tbody.querySelectorAll('tr')) as HTMLElement[];
         const rowIndex = rows.indexOf(currentRow);
-        if (rowIndex === -1) return;
+        if (rowIndex === -1) return current;
 
         const currentRowCells = Array.from(
             currentRow.querySelectorAll('td[bloomerp-component="datatable-cell"]')
         ) as HTMLElement[];
         const colIndex = currentRowCells.indexOf(currentEl);
-        if (colIndex === -1) return;
+        if (colIndex === -1) return current;
 
         let nextRowIndex = rowIndex + rowDelta;
         if (nextRowIndex < 0) nextRowIndex = 0;
@@ -178,7 +117,7 @@ export class DataTable extends BaseDataViewComponent {
         const targetRowCells = Array.from(
             targetRow.querySelectorAll('td[bloomerp-component="datatable-cell"]')
         ) as HTMLElement[];
-        if (targetRowCells.length === 0) return;
+        if (targetRowCells.length === 0) return current;
 
         let nextColIndex = colIndex + colDelta;
         if (nextColIndex < 0) nextColIndex = 0;
@@ -186,94 +125,110 @@ export class DataTable extends BaseDataViewComponent {
 
         const nextCellEl = targetRowCells[nextColIndex] ?? null;
         const nextCell = nextCellEl ? (getComponent(nextCellEl) as DataTableCell | null) : null;
-        if (!nextCell) return;
+        if (!nextCell) return current;
 
-        this.focus(nextCell);
+        return nextCell
     }
 
-    public override cmndUp(): void {
-        this.focus(this.getFirstVerticalCell());
-    }
+    /**
+     * Copies multiple values to the clipboard that can
+     * be easily pasted into excel for example
+     */
+    private async copyToClipboard(): Promise<void> {
+        const copyText = async (text: string): Promise<void> => {
+            if (!text) return;
 
-    public override cmndDown(): void {
-        this.focus(this.getLastVerticalCell());
-    }
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                }
+            } catch {
+                // fall back
+            }
 
-    public override cmndLeft(): void {
-        this.focus(this.getFirstHorizontalCell());
-    }
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', 'true');
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        };
 
-    public override cmndRight(): void {
-        this.focus(this.getLastHorizontalCell());
-    }
+        const getValue = (el: HTMLElement): string => {
+            return (el.getAttribute('data-value') ?? el.textContent ?? '').trim();
+        };
 
-    private getFirstVerticalCell(): DataTableCell | null {
-        return this.getCellAtEdge('first', 'vertical');
-    }
+        // Multi-selection: copy as TSV ordered by row/col.
+        if (this.hasMultipleSelection()) {
+            if (!this.element) return;
 
-    private getLastVerticalCell(): DataTableCell | null {
-        return this.getCellAtEdge('last', 'vertical');
-    }
+            const selectedEls = Array.from(
+                this.element.querySelectorAll<HTMLElement>(
+                    'td[bloomerp-component="datatable-cell"].cell-selected'
+                )
+            );
 
-    private getFirstHorizontalCell(): DataTableCell | null {
-        return this.getCellAtEdge('first', 'horizontal');
-    }
+            const entries: Array<{ row: number; col: number; value: string }> = [];
+            for (const el of selectedEls) {
+                const rowRaw = el.getAttribute('data-row-index');
+                const colRaw = el.getAttribute('data-column-index');
+                const row = rowRaw != null ? Number(rowRaw) : NaN;
+                const col = colRaw != null ? Number(colRaw) : NaN;
+                if (!Number.isFinite(row) || !Number.isFinite(col)) continue;
+                entries.push({ row, col, value: getValue(el) });
+            }
 
-    private getLastHorizontalCell(): DataTableCell | null {
-        return this.getCellAtEdge('last', 'horizontal');
-    }
+            // Fallback if we can't read selection coords.
+            if (entries.length === 0) {
+                const el = this.currentCell?.element;
+                if (el) await copyText(getValue(el));
+                return;
+            }
 
-    private getCellAtEdge(
-        which: 'first' | 'last',
-        axis: 'vertical' | 'horizontal'
-    ): DataTableCell | null {
-        if (!this.element) return null;
+            entries.sort((a, b) => (a.row - b.row) || (a.col - b.col));
 
-        const currentEl = this.currentCell?.element;
-        if (!currentEl) {
-            const firstCellEl = this.element.querySelector(
-                'tbody td[bloomerp-component="datatable-cell"]'
-            ) as HTMLElement | null;
-            return firstCellEl ? (getComponent(firstCellEl) as DataTableCell | null) : null;
+            const byRow = new Map<number, Array<{ col: number; value: string }>>();
+            for (const e of entries) {
+                const row = byRow.get(e.row) ?? [];
+                row.push({ col: e.col, value: e.value });
+                byRow.set(e.row, row);
+            }
+
+            const rowKeys = Array.from(byRow.keys()).sort((a, b) => a - b);
+            const lines: string[] = [];
+
+            for (const r of rowKeys) {
+                const cells = byRow.get(r) ?? [];
+                cells.sort((a, b) => a.col - b.col);
+
+                // Insert blanks for gaps (keeps column alignment for Excel).
+                const cols = cells.map((c) => c.col);
+                const minCol = Math.min(...cols);
+                const maxCol = Math.max(...cols);
+                const values: string[] = [];
+                const lookup = new Map<number, string>(cells.map((c) => [c.col, c.value]));
+                for (let c = minCol; c <= maxCol; c++) {
+                    values.push(lookup.get(c) ?? '');
+                }
+
+                lines.push(values.join('\t'));
+            }
+
+            await copyText(lines.join('\n'));
+            return;
         }
 
-        const currentRow = currentEl.closest('tr') as HTMLElement | null;
-        const tbody = currentRow?.parentElement as HTMLElement | null;
-        if (!currentRow || !tbody) return null;
-
-        const rows = Array.from(tbody.querySelectorAll('tr')) as HTMLElement[];
-        const rowIndex = rows.indexOf(currentRow);
-        if (rowIndex === -1) return null;
-
-        const currentRowCells = Array.from(
-            currentRow.querySelectorAll('td[bloomerp-component="datatable-cell"]')
-        ) as HTMLElement[];
-        const colIndex = currentRowCells.indexOf(currentEl);
-        if (colIndex === -1) return null;
-
-        const targetRowIndex =
-            axis === 'vertical'
-                ? which === 'first'
-                    ? 0
-                    : rows.length - 1
-                : rowIndex;
-
-        const targetRow = rows[targetRowIndex] ?? null;
-        if (!targetRow) return null;
-
-        const targetRowCells = Array.from(
-            targetRow.querySelectorAll('td[bloomerp-component="datatable-cell"]')
-        ) as HTMLElement[];
-        if (targetRowCells.length === 0) return null;
-
-        const targetColIndex =
-            axis === 'horizontal'
-                ? which === 'first'
-                    ? 0
-                    : targetRowCells.length - 1
-                : Math.min(colIndex, targetRowCells.length - 1);
-
-        const targetEl = targetRowCells[targetColIndex] ?? null;
-        return targetEl ? (getComponent(targetEl) as DataTableCell | null) : null;
+        // Single cell: copy current cell value.
+        const el = this.currentCell?.element;
+        if (!el) return;
+        await copyText(getValue(el));
     }
+
 }
+

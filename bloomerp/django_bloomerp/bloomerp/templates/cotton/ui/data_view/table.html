@@ -13,12 +13,17 @@ Parameters:
 {% load bloomerp %}
 {% load i18n %}
 
-<div class="overflow-auto rounded-lg border-l border-r border-gray-200">
-    <table id="data-table-{{ content_type_id }}" class="table-auto table-hover table w-full border-collapse outline-none"
-        bloomerp-component="datatable"
+<div 
+    class="overflow-auto rounded-lg border-l border-r border-gray-200"
+    bloomerp-component="datatable"
+    data-content-type-id="{{ content_type_id }}"
+    >
+    <table 
+        id="data-table-{{ content_type_id }}" 
+        class="table-auto table-hover table w-full border-collapse outline-none"
         >
         <thead>
-            <tr >
+            <tr>
                 {% for field in fields %}
                 <th >{{ field.field | title }}</th>
                 {% endfor %}
@@ -29,15 +34,10 @@ Parameters:
             {% if queryset %}
             {% for object in queryset %}
             <tr
-                hx-get="{{ object.get_absolute_url }}"
-                hx-target="{% if preference.split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
-                hx-swap="innerHTML"
-                hx-trigger="click[!event.target.closest('[data-no-row-click]') && !event.target.closest('button')]"
-                hx-push-url="{% if preference.split_view_enabled %}false{% else %}true{% endif %}"
                 class="cursor-pointer"
             >
                 {% for field in fields %}
-                    {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 %}
+                    {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url %}
                 {% endfor %}
                 <td class="w-32" data-no-row-click>
                     <c-ui.data_view.actions :object="object"/>

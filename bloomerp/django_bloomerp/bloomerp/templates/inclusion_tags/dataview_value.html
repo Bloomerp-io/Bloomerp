@@ -8,6 +8,8 @@
     data-object-id="{{ object.pk }}"
     data-application-field-id="{{ application_field_id }}"
 
+    data-detail-url="{{ url }}"
+
     bloomerp-component="datatable-cell"
     >
     {% if is_field_type.foreign_key %}
@@ -16,7 +18,7 @@
             hx-get="{{ value.get_absolute_url }}"
             hx-swap="innerHTML"
             hx-trigger="click"
-            hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID }}"
+            hx-target="#main-content"
             hx-push-url="true"
             class="text-primary"
             data-no-row-click

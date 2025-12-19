@@ -1,4 +1,4 @@
-import BaseComponent from "./data_view_components/BaseComponent";
+import BaseComponent from "./BaseComponent";
 
 export class DataView extends BaseComponent {
     public initialize(): void {

@@ -9,14 +9,17 @@ class ViewType(models.TextChoices):
     TABLE = 'table', 'Table'
     KANBAN = 'kanban', 'Kanban'
     CALENDAR = 'calendar', 'Calendar'
+    GANT = 'gant', 'Gant'
+    PIVOT_TABLE = 'pivot_table', 'Pivot'
 
     @property
     def icon(self):
         icons = {
             'table': 'list',
             'kanban': 'kanban',
-            'split': 'sidebar_right',
             'calendar': 'calendar',
+            'gant' : 'gant',
+            'pivot_table' : 'pivot_table',
         }
         return icons.get(self.value, 'list')
 
@@ -199,4 +202,17 @@ class UserListViewPreference(models.Model):
     
     
     
+OPTIONS = {
+    ViewType.TABLE: {
+        ""
+    },
+    
+    ViewType.CALENDAR : {
+        "time_range" : {
+            "type" : "select",
+            "values" : ["day", "week", "year", "month"]
+        },
+    },
+    
+}
 

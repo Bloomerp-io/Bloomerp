@@ -1,11 +1,21 @@
-import BaseComponent from "./BaseComponent";
+import BaseComponent from "../BaseComponent";
+import htmx from "htmx.org";
 
 export abstract class BaseDataViewCell extends BaseComponent {
-
+    private detailUrl : string;
+    
     public initialize(): void {
-        
-        // Handle the right click
-        this.handleRightClick()
+
+        // Get detail url
+        this.detailUrl = this.element.dataset.detailUrl;
+
+        // Handle the right click (only when implemented by subclass)
+        if (this.rightClick !== BaseDataViewCell.prototype.rightClick) {
+            this.handleRightClick();
+        }
+
+        // Handle click event
+        this.setupEventListeners();
     }
 
     public destroy(): void {
@@ -18,7 +28,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
      */
     highlight(): void {
         if (!this.element) return;
-        this.element.classList.add('cell-selected');
+        this.element.classList.add('cell-focused');
     }
 
     /**
@@ -26,10 +36,29 @@ export abstract class BaseDataViewCell extends BaseComponent {
      */
     unhighlight(): void {
         if (!this.element) return;
+        this.element.classList.remove('cell-focused');
+    }
+
+    /**
+     * Marks this cell as part of the current selection range.
+     */
+    select(): void {
+        if (!this.element) return;
+        this.element.classList.add('cell-selected');
+    }
+
+    /**
+     * Removes this cell from the current selection range.
+     */
+    unselect(): void {
+        if (!this.element) return;
         this.element.classList.remove('cell-selected');
     }
 
-    abstract rightClick(event: MouseEvent | PointerEvent): void;
+    // Default no-op; subclasses can override to enable right-click menus.
+    public rightClick(event: MouseEvent | PointerEvent): void {
+        void event;
+    }
 
     private onContextMenu = (event: MouseEvent): void => {
         // Treat right-click (and keyboard context-menu) as a component action.
@@ -48,4 +77,41 @@ export abstract class BaseDataViewCell extends BaseComponent {
         this.element.addEventListener('contextmenu', this.onContextMenu, true);
     }
 
+    /**
+     * Click functionality:
+     * a standard onClick will be provided that can be
+     * overwritten.
+     */
+    public click() : void {
+        if (this.detailUrl) {
+            htmx.ajax(
+                'get',
+                this.detailUrl,
+                {
+                    target: "#main-content",
+                    push: "true"
+                }
+        )
+        }
+    }
+
+
+    private setupEventListeners() : void {
+        if (!this.element) return;
+
+        // Click event
+        this.element.addEventListener('click', (event)=>{
+            this.click()
+        })
+    }
+
+    /**
+     * Overwritable code that lets you construct
+     * the context menu for a particular cell.
+     */
+    constructContextMenu():void {
+
+    }
+
+    
 }

@@ -2,7 +2,7 @@ name: Product
 id: product
 description: Product record
 name_plural: Products
-string_representation: "{name}"
+string_representation: "{code} {name}"
 fields:
   - id: code
     name: Code
