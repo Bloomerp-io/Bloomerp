@@ -594,7 +594,8 @@ def render_dataview_value(
         "application_field_id" : application_field.id,
         "row_index" : row_index,
         "column_index" : column_index,
-        "url" : url
+        "url" : url,
+        "application_field" : application_field
     }
 
 

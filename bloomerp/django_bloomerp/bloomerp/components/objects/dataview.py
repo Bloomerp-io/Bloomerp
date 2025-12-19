@@ -55,6 +55,14 @@ def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset
             
         case ViewType.CALENDAR:
             context.update(_build_calendar_context(preference, queryset, request))
+        
+        case ViewType.GANT:
+            context.update(
+                {
+                    
+                }
+            )
+        
         case _:
             pass
     
@@ -315,6 +323,8 @@ def _build_kanban_groups(queryset, group_by_field: ApplicationField) -> list:
                 })
     
     return groups
+
+
 
 
 # -----------------------------------

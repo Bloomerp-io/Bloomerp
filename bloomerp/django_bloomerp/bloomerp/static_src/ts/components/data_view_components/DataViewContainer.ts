@@ -15,16 +15,32 @@ export class DataViewContainer extends BaseComponent {
     /**
      * Filter's the current data view
      */
-    filter(args:Record<any, any>, resetParameters:boolean=false) : void {
-        let url = resetParameters?this.baseUrl:this.fullPath;
+    filter(
+        args: Record<string, string | number | boolean | null | undefined> = {},
+        resetParameters: boolean = false
+    ): void {
+        console.log('Filtering')
+        const base = resetParameters ? this.baseUrl : this.fullPath ?? this.baseUrl;
+        console.log(base)
+        if (!base) return;
 
-        htmx.ajax(
-            'get',
-            url,
-            {
-                target:this.target,
-                swap:'innerHTML',
-            }
-        )
+        const baseUrl = new URL(base, window.location.origin);
+
+        if (!resetParameters && this.fullPath) {
+            const currentUrl = new URL(this.fullPath, window.location.origin);
+            currentUrl.searchParams.forEach((value, key) => baseUrl.searchParams.set(key, value));
+        }
+
+        Object.entries(args).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') return;
+            baseUrl.searchParams.set(key, String(value));
+        });
+
+        this.fullPath = baseUrl.toString();
+
+        htmx.ajax('get', this.fullPath, {
+            target: this.target,
+            swap: 'innerHTML',
+        });
     }
 }

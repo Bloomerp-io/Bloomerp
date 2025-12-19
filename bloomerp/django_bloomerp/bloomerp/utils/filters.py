@@ -169,8 +169,9 @@ def filter_model(model: Type[Model], filters: dict, queryset:Optional[QuerySet]=
     """
     FilterSet = dynamic_filterset_factory(model)
     qs = queryset if queryset is not None else model.objects.all()
+    
     filterset = FilterSet(
-        data=filters, 
+        data=filters,
         queryset=qs
-        )
-    return filterset.queryset
+    )
+    return filterset.qs

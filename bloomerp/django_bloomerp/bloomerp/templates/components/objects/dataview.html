@@ -152,6 +152,11 @@
                 <c-ui.data_view.calendar 
                     view_type="week"
                 />
+            {% elif preference.view_type == 'gant' %}
+                <c-ui.data_view.gant_chart
+                    :queryset="queryset"
+                    :content_type_id="content_type_id"    
+                />
             {% endif %}
         {% endif %}
     </div>

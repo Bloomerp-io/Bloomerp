@@ -6,7 +6,9 @@ import type { ContextMenuItem } from "../../utils/contextMenu";
 export class DataTableCell extends BaseDataViewCell {
     public columnIndex: number = -1;
     public rowIndex: number = -1;
-    
+    public applicationFieldName: string;
+    public filterable: boolean = true;
+    public value: string;
 
     public initialize(): void {
         super.initialize();
@@ -21,6 +23,9 @@ export class DataTableCell extends BaseDataViewCell {
         const rowIndex = rowAttr ? Number.parseInt(rowAttr, 10) : NaN;
         this.rowIndex = Number.isFinite(rowIndex) ? rowIndex : -1;
 
+        // Initialize other stuff
+        this.applicationFieldName = this.element.getAttribute('data-application-field-name') ?? '';
+        this.value = this.element.getAttribute('data-value') ?? '';
     }
 
 }
@@ -61,7 +66,10 @@ export class DataTable extends BaseDataViewComponent {
                 label: 'Filter on value',
                 icon: 'fa-solid fa-filter',
                 onClick: async () => {
-                    this.dataViewContainer?.filter({})
+                    if (!this.currentCell?.applicationFieldName) return;
+                    this.dataViewContainer?.filter({
+                        [this.currentCell.applicationFieldName]: this.currentCell.value,
+                    });
                 },
             },
         ]);
