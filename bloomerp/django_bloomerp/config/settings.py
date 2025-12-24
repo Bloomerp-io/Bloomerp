@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'bloomerp_modules'
+    'bloomerp_modules',
 ]
 
 INSTALLED_APPS += BLOOMERP_APPS
