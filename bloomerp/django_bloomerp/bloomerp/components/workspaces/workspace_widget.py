@@ -2,7 +2,7 @@ from shared_utils.router.component_router import route
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import get_object_or_404
-from bloomerp.models import Widget
+from bloomerp.models.workspaces import Widget
 import plotly.express as px
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache

@@ -12,14 +12,11 @@ from django.views.generic.list import ListView
 from django.views.generic import View
 from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.models import (
-    ApplicationField,
-    File,
-    Widget,
-    SqlQuery,
-    UserDetailViewPreference,
-    Bookmark
-)
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.files import File
+from bloomerp.models.workspaces import Widget, SqlQuery
+from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
+from bloomerp.models.users import Bookmark
 from bloomerp.forms.core import BloomerpDownloadBulkUploadTemplateForm
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
@@ -494,7 +491,7 @@ class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, View):
 # ---------------------------------
 # Bloomerp Detail Comments View
 # ---------------------------------
-from bloomerp.models import Comment
+from bloomerp.models.communication import Comment
 @router.register(
     path="comments",
     name="Comments",

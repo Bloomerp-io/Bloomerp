@@ -1,5 +1,5 @@
 from django.db import models
-from bloomerp.django_bloomerp.bloomerp.models.file_folder import BloomerpModel
+from bloomerp.models.files.file_folder import BloomerpModel
 # Test models required in test cases
 # 1. Normal model with most of the fields
 # 2. Foreign key relation ship

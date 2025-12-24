@@ -3,6 +3,7 @@ from django.db.models import Q, Value, F
 from django.db.models.functions import Concat
 from django.urls import reverse
 from django.core.exceptions import ValidationError
+from django.conf import settings
 
 class StringSearchModelMixin(models.Model):
     """
@@ -47,6 +48,7 @@ class StringSearchModelMixin(models.Model):
 
         # Filter the queryset by the query in any of the string fields
         return queryset.filter(query_filter)
+
     
 class TimestampedModelMixin(models.Model):
     """
@@ -57,6 +59,7 @@ class TimestampedModelMixin(models.Model):
 
     class Meta:
         abstract = True
+
 
 class AbsoluteUrlModelMixin(models.Model):
     """
@@ -70,6 +73,7 @@ class AbsoluteUrlModelMixin(models.Model):
         Returns the absolute URL of the model instance.
         """
         return reverse(f'{self._meta.verbose_name_plural.replace(' ','_')}_detail_overview'.lower(), kwargs={'pk': self.pk})
+
     
 class ContentLayoutModelMixin(models.Model):
     """
@@ -178,6 +182,7 @@ class ContentLayoutModelMixin(models.Model):
             self.content_layout = self.generate_layout()
             super().save(update_fields=['content_layout'])
 
+
 class AvatarModelMixin(models.Model):
     """
     A mixin for models that need to have an avatar.
@@ -188,14 +193,10 @@ class AvatarModelMixin(models.Model):
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
 
 
-# ---------------------------------
-# User Stamped Model Mixin
-# ---------------------------------
 class UserStampedModelMixin(models.Model):
     """
     A mixin for models that need to be stamped with the user that created or updated them.
     """
-    from django.conf import settings
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name='%(class)s_created', null=True)
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name='%(class)s_updated', null=True)
 

@@ -1,4 +1,6 @@
-from bloomerp.models import DocumentTemplate, FileFolder, File, AbstractBloomerpUser
+from bloomerp.models.document_templates import DocumentTemplate
+from bloomerp.models.files import FileFolder, File
+from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.utils.pdf import generate_pdf
 from django.db.models import Model
 from django.core.files.base import ContentFile

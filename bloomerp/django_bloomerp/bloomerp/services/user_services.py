@@ -1,12 +1,12 @@
 """
 All rights reserved. 
 """
-from bloomerp.models import UserListViewField
+from bloomerp.models.auth import UserListViewField
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.models import AbstractBloomerpUser
+from bloomerp.models.users.user import AbstractBloomerpUser
 from django.db.models.query import QuerySet
-from bloomerp.models import ApplicationField
-from bloomerp.models import UserListViewPreference
+from bloomerp.models.application_field import ApplicationField
 from django.core.cache import cache
 from dataclasses import dataclass
 

@@ -1,5 +1,5 @@
 from django import forms
-from bloomerp.models import DocumentTemplate, DocumentTemplateFreeVariable
+from bloomerp.models.document_templates import DocumentTemplate, DocumentTemplateFreeVariable
 from django.apps import apps
 from bloomerp.widgets.foreign_key_widget import ForeignKeyWidget
 

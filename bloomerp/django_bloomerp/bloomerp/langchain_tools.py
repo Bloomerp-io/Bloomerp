@@ -1,6 +1,8 @@
 from langchain_core.tools import tool, StructuredTool, BaseTool
 from bloomerp.utils.sql import SqlQueryExecutor
-from bloomerp.models import ApplicationField, AbstractBloomerpUser, Link
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.models.auth import Link
     
 
 class BaseBloomerpTool(BaseTool):

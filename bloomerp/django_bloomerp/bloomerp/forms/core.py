@@ -1,4 +1,8 @@
-from bloomerp.models import ApplicationField, AbstractBloomerpUser, File, UserDetailViewTab, Link, UserListViewField, UserDetailViewPreference
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.models.files import File
+from bloomerp.models.auth import UserDetailViewTab, Link, UserListViewField
+from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.forms.models import modelform_factory

@@ -2,7 +2,8 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from formtools.wizard.views import SessionWizardView
 from django.shortcuts import redirect
 from bloomerp.forms.widgets import WidgetForm1, WidgetForm2, WidgetForm3
-from bloomerp.models import Widget, SqlQuery, ApplicationField
+from bloomerp.models.workspaces import Widget, SqlQuery
+from bloomerp.models.application_field import ApplicationField
 from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.mixins import HtmxMixin, BloomerpModelFormViewMixin, BloomerpModelContextMixin
 from bloomerp.views.core import BloomerpBaseDetailView

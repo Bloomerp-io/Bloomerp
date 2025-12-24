@@ -5,7 +5,8 @@ from django.http import HttpResponse, HttpRequest
 from bloomerp.utils.filters import dynamic_filterset_factory
 from bloomerp.utils.models import string_search_on_qs
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.models import AbstractBloomerpUser, UserListViewField
+from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.models.auth import UserListViewField
 from bloomerp.utils.models import model_name_plural_underline
 from bloomerp.utils.model_io import BloomerpModelIO
 from bloomerp.models import ApplicationField

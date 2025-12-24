@@ -1,5 +1,5 @@
 from django.forms.widgets import Widget, ClearableFileInput
-from bloomerp.django_bloomerp.bloomerp.models.file_folder import File
+from bloomerp.models.files import File
 import uuid
 
 

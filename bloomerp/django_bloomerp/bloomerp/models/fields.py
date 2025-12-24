@@ -54,7 +54,7 @@ class BloomerpFileField(models.ForeignKey):
         """
         Perform the validation on the foreign key reference and ensure the file type is allowed.
         """
-        from bloomerp.models.file import File
+        from bloomerp.models.files.file import File
         
         # Call the parent clean method to validate the ForeignKey relationship
         value = super().clean(value, model_instance)

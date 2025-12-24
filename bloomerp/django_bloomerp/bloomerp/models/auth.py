@@ -1,10 +1,6 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.db.models import Q, QuerySet, F, Value
-from django.db.models.functions import Concat
-from django.contrib.auth.models import Permission
+from django.db.models import QuerySet
 from django.forms import ValidationError
 from django.utils.translation import gettext as _
 from django.urls import reverse, NoReverseMatch
@@ -13,206 +9,11 @@ from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.mixins import (
     AbsoluteUrlModelMixin,
-    TimestampedModelMixin,
     StringSearchModelMixin,
-    UserStampedModelMixin
 )
-from bloomerp.utils.models import get_detail_view_url
 from django.conf import settings
+from bloomerp.models.users.user import AbstractBloomerpUser
 
-# ---------------------------------
-# Abstract Bloomerp User Model
-# ---------------------------------
-class AbstractBloomerpUser(AbstractUser, StringSearchModelMixin, AbsoluteUrlModelMixin):
-    class Meta:
-        abstract = True
-
-    # String search mixin fields
-    string_search_fields = ['first_name+last_name', 'username']
-    allow_string_search = True
-
-    avatar = models.ImageField(null=True, blank=True, upload_to="users/", help_text=_("The user's avatar"))
-
-    # ------------------------------------------------
-    # User Preferences
-    # ------------------------------------------------
-    FILE_VIEW_PREFERENCE_CHOICES = [
-        ("card", "Card View"),
-        ("list", "List View"),
-    ]
-
-    DATE_VIEW_PREFERENCE_CHOICES = [
-        ("d-m-Y", "Day-Month-Year (15-08-2000)"),
-        ("m-d-Y", "Month-Day-Year (08-15-2000)"),
-        ("Y-m-d", "Year-Month-Day (2000-08-15)"),
-    ]
-
-    DATETIME_VIEW_PREFERENCE_CHOICES = [
-        ("d-m-Y H:i", "Day-Month-Year Hour:Minute (15-08-2000 12:30)"),
-        ("m-d-Y H:i", "Month-Day-Year Hour:Minute (08-15-2000 12:30)"),
-        ("Y-m-d H:i", "Year-Month-Day Hour:Minute (2000-08-15 12:30)"),
-    ]
-
-    file_view_preference = models.CharField(
-        max_length=20, default="card", choices=FILE_VIEW_PREFERENCE_CHOICES
-    )
-
-    date_view_preference = models.CharField(
-        max_length=20, default="d-m-Y", choices=DATE_VIEW_PREFERENCE_CHOICES, help_text=_("The date format to be used in the application")
-    )
-
-    datetime_view_preference = models.CharField(
-        max_length=20, default="d-m-Y H:i", choices=DATETIME_VIEW_PREFERENCE_CHOICES, help_text=_("The datetime format to be used in the application")
-    )
-
-    
-    def __str__(self):
-        return self.username
-
-    def get_content_types_for_user(self, permission_types:list[str]=["view"]) -> QuerySet[ContentType]:
-        """
-        Get all content types the user has permissions for based on the provided permission types.
-        Permission types are the prefixes of the permission codenames, e.g. 'view', 'add', 'change', 'delete'.
-        """
-        if self.is_superuser:
-            return ContentType.objects.all()
-
-        # Build the query for filtering permissions based on the provided types
-        permission_filters = Q()
-        for perm_type in permission_types:
-            permission_filters |= Q(codename__startswith=perm_type + "_")
-
-        # Get all permissions for the user, including those via groups
-        user_permissions = self.user_permissions.filter(
-            permission_filters
-        ) | Permission.objects.filter(permission_filters, group__user=self)
-
-        # Get the content types for all permissions the user has
-        content_types = ContentType.objects.filter(
-            permission__in=user_permissions
-        ).distinct()
-
-        return content_types
-
-    def get_list_view_preference_for_model(self, model) -> QuerySet:
-        """
-        Get the list view preference for the provided model.
-        """
-        content_type = ContentType.objects.get_for_model(model)
-        return UserListViewField.objects.filter(user=self, application_field__content_type=content_type)
-
-    @property
-    def accessible_content_types(self) -> QuerySet:
-        '''
-        Property that returns all content types the user has view access to.
-        '''
-        return self.get_content_types_for_user(permission_types=["view"])
-
-    def latest_bookmarks(self) -> QuerySet:
-        '''
-        Property that returns the latest bookmarks for the user.
-        '''
-        return Bookmark.objects.filter(user=self).order_by('-datetime_created')[:5]
-
-    def workspaces(self) -> QuerySet:
-        '''
-        Method that returns the workspaces for the user.
-        '''
-        return Workspace.objects.filter(user=self, content_type=None)
-
-
-class User(AbstractBloomerpUser):
-    class Meta(BloomerpModel.Meta):
-        db_table = "auth_user"
-        swappable = "AUTH_USER_MODEL"
-
-
-
-# ---------------------------------
-# User Detail View Preference Model
-# ---------------------------------
-from django.db.models import BooleanField, Case, When, Subquery, OuterRef
-class UserDetailViewPreference(
-    models.Model,
-    ):
-    POSITION_CHOICES = [
-        ('LEFT','Left'), ('CENTER','Center'),('RIGHT','Right')
-    ]
-
-    allow_string_search = False
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name = 'detail_view_preference')
-    application_field = models.ForeignKey(ApplicationField, on_delete=models.CASCADE)
-    position = models.CharField(max_length=10, choices=POSITION_CHOICES)
-
-    class Meta(BloomerpModel.Meta):
-        managed = True
-        db_table = 'bloomerp_user_detail_view_preference'
-        unique_together = ('user', 'application_field')
-
-    def get_application_fields_info(content_type_id, user):
-        
-        is_used_subquery = Subquery(
-            UserDetailViewPreference.objects.filter(
-                user=user,
-                application_field=OuterRef('pk')
-            ).values('application_field').annotate(is_used=Case(
-                When(pk=OuterRef('pk'), then=True),
-                default=True,
-                output_field=BooleanField()
-            )).values('is_used')[:1]
-        )
-
-        position = UserDetailViewPreference.objects.filter(
-            user=user,
-            application_field=OuterRef('pk')
-        ).values('position')[:1]
-
-        application_fields_info = ApplicationField.objects.filter(
-            content_type_id=content_type_id
-        ).annotate(
-            is_used=is_used_subquery,
-            position=position
-        ).values(
-            'field',
-            'id',
-            'is_used',  
-            'position'
-        )
-
-        return list(application_fields_info)
-
-
-    @classmethod
-    def generate_default_for_user(cls, user: AbstractBloomerpUser, content_type: ContentType) -> QuerySet[Self]:
-        '''
-        Method that generates default detail view preference for a user.
-        '''
-        application_fields = ApplicationField.objects.filter(content_type=content_type)
-        
-        # Exclude some application fields
-        application_fields = application_fields.exclude(
-            field_type__in=['ManyToManyField', 'OneToManyField']
-        )
-
-        # Exclude some more fields
-        application_fields = application_fields.exclude(
-            field='id'
-        )
-        
-        
-        for application_field in application_fields:
-            preference, created = UserDetailViewPreference.objects.get_or_create(
-                user=user,
-                application_field=application_field,
-                position='LEFT'
-            )
-            
-        return UserDetailViewPreference.objects.filter(user=user, application_field__content_type=content_type)
-
-# ---------------------------------
-# User List View Preference Model
-# ---------------------------------
 class UserListViewField(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name = 'list_view_preference')
     application_field = models.ForeignKey(ApplicationField, on_delete=models.CASCADE)
@@ -263,59 +64,6 @@ class UserListViewField(models.Model):
             
         return UserListViewField.objects.filter(user=user, application_field__content_type=content_type)
 
-# ---------------------------------
-# Bookmark Model
-# ---------------------------------
-class Bookmark(models.Model):
-    class Meta(BloomerpModel.Meta):
-        managed = True
-        db_table = "bloomerp_bookmark"
-    
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    object : models.Model = GenericForeignKey("content_type", "object_id")
-
-    datetime_created = models.DateTimeField(auto_now_add=True)
-
-    allow_string_search = False
-
-    def __str__(self) -> str:
-        return f"Bookmark for {self.content_type} with ID {self.object_id}"
-
-    def get_absolute_url(self):
-        try:
-            return self.object.get_absolute_url()
-        except:
-            model = self.object._meta.model
-            detail_view_url = get_detail_view_url(model)
-            return reverse(detail_view_url, args=[self.object.pk])
-            
-# ---------------------------------
-# Bloomerp Comment Model
-# ---------------------------------
-class Comment(
-    TimestampedModelMixin,
-    UserStampedModelMixin,
-    models.Model,
-):
-    class Meta(BloomerpModel.Meta):
-        managed = True
-        db_table = 'bloomerp_comment'
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.CharField(max_length=36) # In order to support both UUID and integer primary keys
-    content_object = GenericForeignKey("content_type", "object_id")
-    content = models.TextField()
-
-    allow_string_search = False
-
-    def __str__(self):
-        return f"{self.content} - {self.created_by} - {self.datetime_created}"
-
-# ---------------------------------
-# Bloomerp Todo Model
-# ---------------------------------
 
 class Link(
     AbsoluteUrlModelMixin,
@@ -610,6 +358,7 @@ class Link(
         except:
             return False
 
+
 class UserDetailViewTab(
     AbsoluteUrlModelMixin,
 
@@ -665,9 +414,7 @@ class UserDetailViewTab(
 
         return super().clean()
 
-# ---------------------------------
-# Workspace Model
-# ---------------------------------
+
 def get_default_workspace():
     from bloomerp.models.workspaces import Widget
     links = Link.objects.all()
@@ -714,42 +461,3 @@ def get_default_workspace():
         ]
     }
 
-# ---------------------------------
-# AI Conversation Model
-# ---------------------------------
-import uuid
-class AIConversation(BloomerpModel):
-    class Meta:
-        managed = True
-        db_table = "bloomerp_ai_conversation"
-        verbose_name = "AI conversation"
-        verbose_name_plural = "AI conversations"
-
-    CONVERSATION_TYPES = [
-        ('sql', 'SQL'), 
-        ('document_template', 'Document Template Generator'), 
-        ('tiny_mce_content', 'TinyMCE Content Generator'), 
-        ('bloom_ai', 'Bloom AI'),
-        ('code', 'Code Generator'),
-        ('object_bloom_ai', 'Object Bloom AI')
-    ]
-
-    avatar = None
-    title = models.CharField(max_length=255, default='AI Conversation')
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    conversation_history = models.JSONField(null=True, blank=True)
-    conversation_type = models.CharField(max_length=20, choices=CONVERSATION_TYPES, default='bloom_ai')
-    auto_named = models.BooleanField(default=False, help_text="Whether the conversation has been auto-named")
-    args = models.JSONField(null=True, blank=True, help_text="Extra arguments for the conversation")
-
-    allow_string_search = False
-    string_search_fields = ['title']
-
-    @property
-    def number_of_messages(self):
-        return len(self.conversation_history)
-    
-    def __str__(self):
-        return self.title
-    

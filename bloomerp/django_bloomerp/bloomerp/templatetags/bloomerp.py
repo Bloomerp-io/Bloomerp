@@ -4,7 +4,8 @@ from django.db.models import Model
 from bloomerp.utils.models import get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url
 from django.urls import reverse 
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.models import Link, Widget
+from bloomerp.models.auth import Link
+from bloomerp.models.workspaces import Widget
 from django.utils.safestring import mark_safe
 import uuid
 from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField, UserListViewField

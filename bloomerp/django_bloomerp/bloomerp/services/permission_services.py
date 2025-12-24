@@ -9,9 +9,8 @@ Functions:
 
 """Services regarding permissions"""
 from django.db.models import Model
-from bloomerp.models import AbstractBloomerpUser
+from bloomerp.models.users.user import AbstractBloomerpUser, User
 from enum import Enum
-from bloomerp.models.auth import User
 from bloomerp.constants.permissions import BasePermission
 from django.db.models.query import QuerySet
 from enum import Enum

@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from bloomerp.models import Widget
+from bloomerp.models.workspaces import Widget
 from django.views import View
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin

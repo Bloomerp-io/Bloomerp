@@ -1,6 +1,7 @@
 from django.views.generic import DetailView
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from bloomerp.models import DocumentTemplate, File, DocumentTemplateFreeVariable, DocumentTemplateStyling, DocumentTemplateHeader
+from bloomerp.models.document_templates import DocumentTemplate, DocumentTemplateFreeVariable, DocumentTemplateStyling, DocumentTemplateHeader
+from bloomerp.models.files import File
 from bloomerp.forms.document_templates import FreeVariableForm, GenerateDocumentForm
 from django.shortcuts import redirect
 from django.contrib import messages

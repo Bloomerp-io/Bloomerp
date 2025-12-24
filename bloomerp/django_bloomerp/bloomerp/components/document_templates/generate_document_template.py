@@ -2,7 +2,8 @@ from shared_utils.router.component_router import route
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.utils.document_templates import DocumentController
-from bloomerp.models import DocumentTemplate, File
+from bloomerp.models.document_templates import DocumentTemplate
+from bloomerp.models.files import File
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
