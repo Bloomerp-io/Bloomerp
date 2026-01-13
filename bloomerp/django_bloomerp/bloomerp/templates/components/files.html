@@ -42,8 +42,8 @@ Variables:
                 class="dropdown-menu dropdown-menu-start"
                 aria-labelledby="triggerId"
                 >   
-                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('upload_file_modal')">Upload file</a>
-                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('create_folder_modal')">Create new folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" bloomerp-open-modal='upload_file_modal'>Upload file</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" bloomerp-open-modal='create_folder_modal'>Create new folder</a>
             </div>
         {% endif %}
 
@@ -74,11 +74,11 @@ Variables:
                 class="dropdown-menu dropdown-menu-start"
                 aria-labelledby="triggerId"
                 >   
-                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('upload_file_modal')">Upload file</a>
-                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('create_folder_modal')">Create new folder</a>
-                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('rename_folder_modal')">Rename folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" bloomerp-open-modal='upload_file_modal'>Upload file</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" bloomerp-open-modal='create_folder_modal'>Create new folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" bloomerp-open-modal='rename_folder_modal'>Rename folder</a>
                     <a class="dropdown-item hover:cursor-pointer" href="#">Download</a>
-                    <a class="dropdown-item hover:cursor-pointer" href="#" onclick="openModal('delete_folder_modal')">Delete folder</a>
+                    <a class="dropdown-item hover:cursor-pointer" href="#" bloomerp-open-modal='delete_folder_modal'>Delete folder</a>
             </div>
         {% endif %}
         <!-- End current folder -->
@@ -238,7 +238,7 @@ Variables:
                             <a href="#" draggable="false">
                                 <img src="{% static 'bloomerp/icons/edit.svg' %}" alt="Edit" width="20" height="20">
                             </a>
-                            <a href="#" onclick="openModal('delete_file_modal'); setupDeleteFileModal('{{ file.pk }}');" draggable="false">
+                            <a href="#" bloomerp-open-modal='delete_file_modal'); setupDeleteFileModal('{{ file.pk }}');" draggable="false">
                                 <img src="{% static 'bloomerp/icons/delete.svg' %}" alt="Delete" width="20" height="20">
                             </a>
                         </div>
@@ -274,7 +274,7 @@ Variables:
                 >Share</a>
                 <a class="dropdown-item hover:cursor-pointer"
                     href="#"
-                    onclick="openModal('bulk_delete_modal')"
+                    bloomerp-open-modal='bulk_delete_modal'
                 >Delete</a>
                 <a class="dropdown-item hover:cursor-pointer"
                     data-bs-toggle="modal"

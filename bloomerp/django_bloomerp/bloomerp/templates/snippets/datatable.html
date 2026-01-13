@@ -76,7 +76,7 @@ ListViewPreference model.
 
 
                     {% if user_can_change %}
-                    <a href="#" onclick="openModal('updateObject')"
+                    <a href="#" bloomerp-open-modal='updateObject'
                         hx-get="{% url 'components_object_model_form' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
                         hx-target="#updateObject-modal-body" hx-trigger="click">
                         <img src="{% static 'bloomerp/icons/edit.svg' %}" alt="Edit" width="20" height="20">
@@ -84,7 +84,7 @@ ListViewPreference model.
                     {% endif %}
 
                     {% if user_can_delete %}
-                    <a href="#" onclick="openModal('deleteModal')"
+                    <a href="#" bloomerp-open-modal='deleteModal'
                         hx-get="{% url 'components_delete_object' %}?content_type_id={{content_type_id}}&object_id={{object.id}}"
                         hx-target="#deleteModalInputs" hx-swap="innerHTML" hx-trigger="click">
                         <img src="{% static 'bloomerp/icons/delete.svg' %}" alt="Delete" style="fill:red" width="20"
@@ -171,10 +171,10 @@ ListViewPreference model.
         direction="up"
         >
         {% if user_can_bulk_change %}
-        <c-ui.dropdown.item text="Update" onclick="openModal('bulkUpdateModal')"/>
+        <c-ui.dropdown.item text="Update" bloomerp-open-modal='bulkUpdateModal'/>
         {% endif %}
         {% if user_can_bulk_delete %}
-        <c-ui.dropdown.item text="Delete" onclick="openModal('bulkDeleteModal')" danger="True"/>
+        <c-ui.dropdown.item text="Delete" bloomerp-open-modal='bulkDeleteModal' danger="True"/>
         {% endif %}
     </c-ui.dropdown.body>
 </div>

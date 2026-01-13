@@ -6,7 +6,7 @@
 
         <!--Comments-->
         <c-ui.tooltip text="Comment" position="bottom">
-            <a class="hover:cursor-pointer" id="dropdownCommentsMenu" onclick="openModal('commentsModal')">
+            <a class="hover:cursor-pointer" id="dropdownCommentsMenu" bloomerp-open-modal='commentsModal'>
                 <c-icons.chat/>
             </a>
         </c-ui.tooltip>
@@ -23,7 +23,7 @@
 
         <!--Todos-->
         <c-ui.tooltip text="Load todo's" position="bottom">
-            <a class="hover:cursor-pointer" onclick="openModal('todoModal')"
+            <a class="hover:cursor-pointer" bloomerp-open-modal='todoModal'
                 hx-get="{% url 'components_todos' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
                 hx-trigger="click" hx-target="#todo-container" hx-swap="innerHTML">
                 <c-icons.todo/>
@@ -48,7 +48,7 @@
             >
             <c-ui.dropdown.item text="Settings"/>
             {% if not disable_tab_select %}
-            <c-ui.dropdown.item text="Update tabs" onclick="openModal('updateTabsModal')"/>
+            <c-ui.dropdown.item text="Update tabs" bloomerp-open-modal='updateTabsModal'/>
             {% endif %}
         </c-ui.dropdown.body>
     </c-ui.tooltip>

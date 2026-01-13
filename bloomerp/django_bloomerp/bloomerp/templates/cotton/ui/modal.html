@@ -17,10 +17,10 @@ Parameters:
 
 <!-- Modal backdrop -->
 <div 
-    id="{{ id }}-backdrop" 
+    id="{{ id }}" 
     class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 transition-opacity duration-200 ease-out"
-    
-    {% if backdrop_click_close|default:True %}onclick="closeModal('{{ id }}')"{% endif %}
+    bloomerp-component="modal"
+    data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
 >
     <!-- Modal container -->
     <div 
@@ -54,7 +54,7 @@ Parameters:
                 <c-ui.tooltip text="Toggle fullscreen" title="" position="bottom">
                     <button 
                         type="button" 
-                        onclick="toggleModalFullscreen('{{ id }}')"
+                        bloomerp-full-screen-modal="{{ id }}"
                         class="hover:cursor-pointer"
                         title="Toggle fullscreen">
                         <c-icons.fullscreen size="24"/>
@@ -66,7 +66,7 @@ Parameters:
                     <button 
                         type="button"
                         class="hover:cursor-pointer"
-                        onclick="closeModal('{{ id }}')">
+                        bloomerp-close-modal="{{ id }}">
                         <c-icons.close size="24"/>
                     </button>
                 </c-ui.tooltip>

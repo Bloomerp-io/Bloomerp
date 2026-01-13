@@ -27,6 +27,15 @@ class BaseComponent {
     public destroy(): void {
         // Override this method if needed
     }
+
+    /**
+     * Called after HTMX swaps new content into the DOM
+     * Override this method if your component needs to react to dynamic content updates
+     * This is useful for re-binding event listeners, updating references, etc.
+     */
+    public onAfterSwap(): void {
+        // Override this method if needed
+    }
 }
 
 // Registry to store all component classes
@@ -81,6 +90,9 @@ export function initComponents(container: Document | HTMLElement = document): vo
             // Store instance for lookups (e.g. getComponent)
             componentInstanceRegistry.set(element, instance);
             
+            // Also expose on element for backwards compatibility
+            (element as any).__bloomerp_component = instance;
+            
             // Mark as initialized
             element.setAttribute('data-component-initialized', 'true');
         } catch (error) {
@@ -113,6 +125,16 @@ export function setupComponentAutoInit(): void {
             const container: Document | HTMLElement = target && target.isConnected ? target : document;
 
             initComponents(container);
+
+            // Call onAfterSwap on all component instances in the swapped container
+            // This allows components to react to dynamically loaded content
+            const instances = (container instanceof Document ? document : container).querySelectorAll<HTMLElement>(`[${componentIdentifier}][data-component-initialized="true"]`);
+            instances.forEach((el) => {
+                const instance = getComponent(el);
+                if (instance) {
+                    instance.onAfterSwap();
+                }
+            });
         });
 
         // When navigating back/forward with HTMX history, the DOM can be restored
@@ -151,6 +173,7 @@ export function getComponent(element:HTMLElement) : BaseComponent | null {
     try {
         const instance = new ComponentClass(element);
         componentInstanceRegistry.set(element, instance);
+        (element as any).__bloomerp_component = instance;
         element.setAttribute('data-component-initialized', 'true');
         return instance;
     } catch (error) {

@@ -87,7 +87,7 @@
                 <button 
                     class="inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 px-3 py-2 text-base cursor-hover:cursor-pointer hover:cursor-pointer"
                     hx-push-url="false"
-                    onclick="openModal('create-object-modal')"
+                    bloomerp-open-modal="create-object-modal"
                     hx-get="{% url 'components_create_object' content_type_id=content_type_id %}"
                     hx-target="#create-object-modal-modal-body"
                     hx-swap="innerHTML"
@@ -151,11 +151,6 @@
             {% elif preference.view_type == 'calendar' %}
                 <c-ui.data_view.calendar 
                     view_type="week"
-                />
-            {% elif preference.view_type == 'gant' %}
-                <c-ui.data_view.gant_chart
-                    :queryset="queryset"
-                    :content_type_id="content_type_id"    
                 />
             {% endif %}
         {% endif %}
