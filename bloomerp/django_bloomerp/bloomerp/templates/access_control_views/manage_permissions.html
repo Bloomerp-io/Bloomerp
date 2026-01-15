@@ -1,0 +1,365 @@
+<div 
+	bloomerp-component="permissions-table"
+	data-content-type-id="{{ content_type_id }}"
+>	
+	<c-ui.text.title class="">
+		Manage Access Control
+	</c-ui.text.title>
+
+	<!--Global permissions-->
+	<div class="mb-4">
+		<c-ui.text.subtitle>
+			Global Access Control
+		</c-ui.text.subtitle>
+
+		<c-ui.text.muted class="mb-4">
+			Global permissions decide whether users can access certain pages. 
+			For example: in order to access a list view, a user will need the 'Can View'
+			permission. 
+		</c-ui.text.muted>
+
+		<select class="select w-48">
+			<option disabled selected value="">
+				<c-blocktrans>Select permission</c-blocktrans>
+			</option>
+			{% for perm in permissions %}
+				<option value="{{ perm.id }}">{{ perm.name }}</option>
+			{% endfor %}
+		</select>
+
+	</div>
+
+
+	<!--Fields-->
+	<div class="mb-4">
+		<c-ui.text.subtitle>
+			Field Based Access Control
+		</c-ui.text.subtitle>
+
+		<c-ui.text.muted class="mb-4">
+			Field permissions gives you further granularity.
+		</c-ui.text.muted>
+
+		<div class="flex flex-wrap gap-2">
+			{% for field in application_fields %}
+				<span 
+					class="px-3 py-1 text-xs border rounded-md transition-all cursor-move border-base bg-white text-gray-700 hover:bg-base hover:shadow-md" 
+					draggable="true"
+					data-field-draggable
+					data-field-id="{{ field.id }}"
+					data-field-name="{{ field.field }}">
+					{{ field.title }}
+				</span>
+			{% endfor %}
+				<span
+					class="px-3 py-1 text-xs border rounded-md transition-all cursor-move border-base bg-white text-gray-700 hover:bg-base hover:shadow-md"
+					draggable="true"
+					data-field-draggable
+					data-field-id="__all__"
+					data-field-name="__all__"
+					>
+					<c-blocktrans>All</c-blocktrans>
+				</span>
+		</div>
+	</div>
+
+	<!--Table preview-->
+	<div class="overflow-x-auto mb-4">
+		<table class="w-full border-collapse">
+			<thead>
+				<tr>
+					<th class="border border-gray-300 bg-gray-100 p-2 w-32">
+						
+					</th>
+					<th class="border border-gray-300 p-2" colspan="3">
+						<div class="text-center font-semibold">
+							<c-blocktrans>Field Policy (Columns)</c-blocktrans>
+						</div>
+					</th>
+				</tr>
+				<tr>
+					<th class="border border-gray-300 p-2 w-32">
+						<div class="font-semibold">
+							<c-blocktrans>Row Policy</c-blocktrans>
+						</div>
+					</th>
+					<th class="border border-gray-300 bg-white p-2">
+						<div 
+							class="min-h-[60px] p-2 border-2 border-dashed border-gray-300 rounded-md transition-all"
+							data-drop-zone="column"
+							data-drop-index="0">
+							<div class="text-xs text-gray-500 text-center">
+								<c-blocktrans>Drop fields here</c-blocktrans>
+							</div>
+						</div>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td class="border border-gray-300 bg-white p-2">
+						<div 
+							class="min-h-[60px] p-2 border-2 border-dashed border-gray-300 rounded-md transition-all"
+							data-drop-zone="row"
+							data-drop-index="0">
+							<div class="text-xs text-gray-500">
+								<c-blocktrans>Drop fields here</c-blocktrans>
+							</div>
+						</div>
+					</td>
+					<td class="border border-gray-300 bg-gray-50 p-2">
+						<div class="min-h-[60px] text-xs text-gray-400 flex items-center justify-center">
+							--table-preview--
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+
+	<!--Permissions Section-->
+	<div class="mb-4">
+		<c-ui.text.subtitle>
+			Policy Permissions
+		</c-ui.text.subtitle>
+
+		<c-ui.text.muted class="mb-4">
+			Select which actions are allowed by this policy. For example, if you select 'View' and 'Change', 
+			users assigned to this policy can view and modify records matching the row policy, but cannot delete them.
+		</c-ui.text.muted>
+
+		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 border rounded-lg bg-gray-50">
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="view" class="checkbox">
+				<span class="text-sm">View</span>
+			</label>
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="add" class="checkbox">
+				<span class="text-sm">Add</span>
+			</label>
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="change" class="checkbox">
+				<span class="text-sm">Change</span>
+			</label>
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="delete" class="checkbox">
+				<span class="text-sm">Delete</span>
+			</label>
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="bulk_add" class="checkbox">
+				<span class="text-sm">Bulk Add</span>
+			</label>
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="bulk_change" class="checkbox">
+				<span class="text-sm">Bulk Change</span>
+			</label>
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="bulk_delete" class="checkbox">
+				<span class="text-sm">Bulk Delete</span>
+			</label>
+			<label class="flex items-center gap-2 cursor-pointer">
+				<input type="checkbox" name="permissions" value="export" class="checkbox">
+				<span class="text-sm">Export</span>
+			</label>
+		</div>
+	</div>
+
+	<!--Assignment Section-->
+	<div class="mb-4">
+		<c-ui.text.subtitle>
+			Assign Policy
+		</c-ui.text.subtitle>
+
+		<c-ui.text.muted class="mb-4">
+			Select which users and groups this policy applies to. Users can belong to multiple policies.
+		</c-ui.text.muted>
+
+		<div class="grid md:grid-cols-2 grid-cols-1 gap-4">
+			<div class="flex flex-col">
+				<c-ui.text.label>
+					Users
+				</c-ui.text.label>
+				<select multiple class="select w-full" name="users" size="6">
+					<option value="">-- Select Users --</option>
+					<option value="1">Alice Johnson (alice@example.com)</option>
+					<option value="2">Bob Smith (bob@example.com)</option>
+					<option value="3">Charlie Brown (charlie@example.com)</option>
+					<option value="4">Diana Prince (diana@example.com)</option>
+					<option value="5">Eve Wilson (eve@example.com)</option>
+				</select>
+				<p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+			</div>
+
+			<div class="flex flex-col">
+				<c-ui.text.label>
+					Groups
+				</c-ui.text.label>
+				<select multiple class="select w-full" name="groups" size="6">
+					<option value="">-- Select Groups --</option>
+					<option value="1">Finance Department</option>
+					<option value="2">Sales Team</option>
+					<option value="3">Account Managers</option>
+					<option value="4">Regional Managers</option>
+					<option value="5">Administrators</option>
+				</select>
+				<p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+			</div>
+		</div>
+	</div>
+
+	<!--Settings Section-->
+	<div class="mb-4">
+		<c-ui.text.subtitle>
+			Policy Details
+		</c-ui.text.subtitle>
+
+		<c-ui.text.muted class="mb-4">
+			Give this policy a name and description for easy identification and documentation.
+		</c-ui.text.muted>
+
+		<div class="grid md:grid-cols-2 grid-cols-1 gap-4">
+			<div class="flex flex-col col-span-1">
+				<c-ui.text.label>
+					Policy Name
+				</c-ui.text.label>
+				<input class="input" type="text" placeholder="e.g., European Account Manager Policy">
+			</div>
+
+			<div class="flex flex-col col-span-1">
+				<c-ui.text.label>
+					Description
+				</c-ui.text.label>
+				<textarea class="input" placeholder="e.g., Allows European account managers to view and edit customer records in EU countries..."></textarea>
+			</div>
+		</div>
+	</div>
+
+	<!--Summary Section (optional preview)-->
+	<div class="mb-6 p-4 border rounded-lg bg-blue-50">
+		<c-ui.text.label class="mb-2">
+			Policy Summary
+		</c-ui.text.label>
+		<ul class="text-sm space-y-1 opacity-70">
+			<li>✓ <strong>Row Policy:</strong> Users in Finance department OR created by user</li>
+			<li>✓ <strong>Field Policy:</strong> Can view: All fields | Can edit: Department only</li>
+			<li>✓ <strong>Permissions:</strong> View, Change, Export</li>
+			<li>✓ <strong>Assigned to:</strong> 3 users, 2 groups</li>
+		</ul>
+	</div>
+
+	<!--Action Buttons-->
+	<div class="mb-6 flex gap-2">
+		<button class="btn btn-primary">
+			<c-blocktrans>Save Policy</c-blocktrans>
+		</button>
+		<button class="btn btn-secondary">
+			<c-blocktrans>Reset</c-blocktrans>
+		</button>
+		<button class="btn btn-ghost">
+			<c-blocktrans>Cancel</c-blocktrans>
+		</button>
+	</div>
+	
+	<!--Row policy permissions modal-->
+	<c-ui.modal id="row-policy-modal" title="Add Row Policy">
+		<div class="px-4 py-2">
+			<c-ui.text.muted class="mb-2">
+					Define the conditions for the row policy by selecting fields, operators, and values.
+			</c-ui.text.muted>
+
+			<!--Select action section-->
+			<div class="my-2 flex flex-col">
+				<c-ui.text.label>
+					Action
+				</c-ui.text.label>
+
+				<select class="select w-48">
+					<option disabled selected value="">
+						<c-blocktrans>Select permission</c-blocktrans>
+					</option>
+					{% for perm in permissions %}
+						<option value="{{ perm.id }}">{{ perm.name }}</option>
+					{% endfor %}
+						<option value="__all__">
+							<c-blocktrans>All</c-blocktrans>
+						</option>
+				</select>
+			</div>
+			<!--End select action section-->
+
+			<!--Query section-->
+			<div class="my-2">
+				<c-ui.text.label>
+					Query
+				</c-ui.text.label>
+				<div id="permissions-modal-filter-target" class="mt-2"></div>
+			</div>
+			<!--End query section-->
+
+			
+			<div class="mt-4">
+				<button 
+					class="btn btn-primary"
+					id="add-row-policy-btn"
+					>
+					<c-blocktrans>Add Condition</c-blocktrans>
+				</button>
+				<button 
+					class="btn btn-neutral"
+					id="add-row-policy-btn"
+					>
+					<c-blocktrans>Reset</c-blocktrans>
+				</button>
+			</div>
+		</div>
+	</c-ui.modal>
+	<!--End Row policy permissions modal-->
+
+	<!--Field policy permissions modal-->
+	<c-ui.modal id="field-policy-modal" title="Add Field Policy">
+		<div class="px-4 py-2">
+			<c-ui.text.muted>
+				Field policies provide granular control over which actions users can perform on specific fields. Select the action you want to restrict or allow for the chosen fields.
+				Example: Allow users to view but not edit the "Email" field.
+			</c-ui.text.muted>
+
+			<!--Select action section-->
+			<div class="my-2 flex flex-col">
+				<c-ui.text.label>Action</c-ui.text.label>
+				<select class="select w-48">
+					<option disabled selected value="">
+						<c-blocktrans>Select Action</c-blocktrans>
+					</option>
+						{% for permission in permissions %}
+						<option value="{{ permission.id }}">{{ permission.name }}</option>
+						{% endfor %}
+						<option value="__all__">
+							<c-blocktrans>All</c-blocktrans>
+						</option>
+				</select>
+			</div>
+			<!--End select action section-->
+			
+			<!--Buttons-->
+			<div class="mt-4 gap-2">
+				<button 
+					class="btn btn-primary"
+					id="add-row-policy-btn"
+					>
+					<c-blocktrans>Add Field Policy</c-blocktrans>
+				</button>
+				<button 
+					class="btn btn-neutral"
+					id="add-row-policy-btn"
+					>
+					<c-blocktrans>Reset</c-blocktrans>
+				</button>
+			</div>
+			<!--End buttons-->
+		</div>
+	</c-ui.modal>
+	<!--End Field policy permissions modal-->
+</div>
+
+
+

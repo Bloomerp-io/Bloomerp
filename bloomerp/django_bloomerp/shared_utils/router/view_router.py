@@ -232,7 +232,6 @@ class BloomerpRouter:
         """
         def decorator(view):
             from django.contrib.contenttypes.models import ContentType
-            from bloomerp.models import Widget
             from django.apps import apps
             nonlocal path, models, route_type, name, description, override, exclude_models, url_name, from_func, self, args
 
