@@ -93,7 +93,11 @@ class Todo(BloomerpModel):
         choices=TodoStatus.choices,
         default=TodoStatus.BACKLOG
         )
-    
+    labels = models.ManyToManyField(
+        'bloomerp.TodoLabel',
+        blank=True,
+        help_text=_("Labels assigned to the todo")
+        )
 
     # For if the todo is related to a model
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)

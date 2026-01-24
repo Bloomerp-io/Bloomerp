@@ -2,139 +2,145 @@
 {% load crispy_forms_field %}
 
 <!--Buttons-->
-<div class="d-md-flex d-block justify-between gap-2">
-    <div class="gap-2">
-        <button 
-            hx-get="{% url 'components_todos' %}?filter=all{% if content_type_id and object_id %}&content_type_id={{ content_type_id }}&object_id={{ object_id }}{% endif %}"
-            hx-target="#todo-container"
-            hx-swap="innerHTML"
-            hx-trigger="click"
-            class="btn btn-sm border hover:cursor-pointer">
-            <span>Refresh</span>
-            <img
-                src="{% static 'bloomerp/icons/refresh.svg' %}"
-                width="20"
-                height="20"
-                class="hover:cursor-pointer"
-            >
+<div class="flex justify-between">
+    <button 
+        class="btn btn-sm btn-primary flex items-center gap-1"
+        hx-get="{% url 'components_project_management_create_todo' %}"
+        hx-target="#create-todo-modal-body"
+        bloomerp-open-modal="create-todo-modal"
+        >
+        <c-icons.add size="16" class="text-white"/>
+        <span>New</span>
+    </button>
+    
+
+    <div class="flex gap-2">
+        <button class="btn btn-sm btn-secondary">
+            All
         </button>
-
-        <button 
-            class="btn btn-sm border hover:cursor-pointer"
-            data-bs-toggle="collapse" 
-            data-bs-target="#new-todo"
-            >
-            <span>New todo</span>
-            <img 
-                src="{% static 'bloomerp/icons/add.svg' %}" 
-                width="20" 
-                height="20"
-                >
+        <button class="btn btn-sm btn-secondary">
+            Active
         </button>
-
-        <button 
-            class="btn btn-sm border hover:cursor-pointer"
-            onclick="toggleFullScreenModal('todoModalDialog')"
-            >
-            <span>Full screen</span>
-            <i class="bi bi-arrows-fullscreen hover:cursor-pointer"></i>
+        <button class="btn btn-sm btn-secondary">
+            Created by me
         </button>
-    </div>
-
-    <div class="flex gap-2 mt-sm-0 mt-2">
-        <a 
-            class="hover:cursor-pointer {{ filter_class_dict.all }}"
-            hx-get="{% url 'components_todos' %}?filter=all{% if content_type_id and object_id %}&content_type_id={{ content_type_id }}&object_id={{ object_id }}{% endif %}"
-            hx-target="#todo-container"
-            hx-swap="innerHTML"
-            hx-trigger="click"
-            >all</a>
-
-        <a 
-            class="hover:cursor-pointer {{ filter_class_dict.uncompleted }}"
-            hx-get="{% url 'components_todos' %}?filter=uncompleted{% if content_type_id and object_id %}&content_type_id={{ content_type_id }}&object_id={{ object_id }}{% endif %}"
-            hx-target="#todo-container"
-            hx-swap="innerHTML"
-            hx-trigger="click"
-            >uncompleted</a>
-        
-        
-        <a
-            class="hover:cursor-pointer {{ filter_class_dict.completed }}"
-            hx-get="{% url 'components_todos' %}?filter=completed{% if content_type_id and object_id %}&content_type_id={{ content_type_id }}&object_id={{ object_id }}&completed=True{% endif %}"
-            hx-target="#todo-container"
-            hx-swap="innerHTML"
-            hx-trigger="click"
-        >completed</a>
+        <button class="btn btn-sm btn-secondary">
+            Assigned to me
+        </button>
+        <button class="btn btn-sm btn-secondary">
+            <c-icons.three_dots size="18" class="text-black" />
+        </button>
     </div>
 </div>
 <!--End Buttons-->
 
-<!--New todo form-->
-<form 
-    id="new-todo" 
-    class="collapse mb-2"
-    hx-post="{% url 'components_todos' %}?filter=all{% if content_type_id and object_id %}&content_type_id={{ content_type_id }}&object_id={{ object_id }}{% endif %}"
-    hx-target="#todo-container"
-    hx-swap="innerHTML"
-    >
-    {% csrf_token %}
+<!--List-->
 
-    <!-- Hidden fields -->
-    <div class="hidden">
-        {{ form.object_id }}
-        {{ form.content_type }}
-        {{ form.requested_by }}
+<div class="mt-4 rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div class="flex items-center justify-between px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+            <span class="w-4"></span>
+            <span class="w-16">Key</span>
+            <span>Title</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <span class="w-28 text-right">Status</span>
+            <span class="w-28 text-right">Assignee</span>
+            <span class="w-20 text-right">Priority</span>
+            <span class="w-20 text-right">Due</span>
+        </div>
     </div>
-    <!-- End Hidden fields -->
 
-    <p class="card-title">Add new to-do</p>
-    <div class="row align-items-top">
-
-        <div class="col-md-8">
-            {% crispy_field form.title 'class' 'form-control mb-2' 'placeholder' 'title' %}
-            {% crispy_field form.content 'class' 'form-control' 'placeholder' 'Description' %}
+    <div class="divide-y divide-gray-100">
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1783</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Remove multi-zone AZ for dev kubernetes</span>
+                    <span class="text-[11px] rounded-full bg-purple-100 text-purple-700 px-2 py-0.5">User Story</span>
+                    <span class="text-[11px] rounded-full bg-gray-100 text-gray-600 px-2 py-0.5">#1121</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Active</span>
+                <span class="w-28 text-right">Alex Kim</span>
+                <span class="w-20 text-right">High</span>
+                <span class="w-20 text-right">Jan 16</span>
+            </div>
         </div>
 
-        <div class="col-md-4 mt-2 mt-md-0">
-            {% crispy_field form.priority 'class' 'form-control form-control-sm' 'placeholder' 'Priority' %}
-            {% crispy_field form.required_by 'class' 'form-control form-control-sm mt-2' 'placeholder' 'Priority' %}
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1782</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Vendor Balance Detail KPI View</span>
+                    <span class="text-[11px] rounded-full bg-blue-100 text-blue-700 px-2 py-0.5">Analytics</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Backlog</span>
+                <span class="w-28 text-right">Priya Shah</span>
+                <span class="w-20 text-right">Medium</span>
+                <span class="w-20 text-right">Jan 18</span>
+            </div>
+        </div>
 
-            <div class="d-block mt-2">
-                <div class="form-check">
-                    <input 
-                        class="form-check-input form-check-input-lg" 
-                        type="checkbox" 
-                        value="checked" 
-                        checked id=""
-                        data-bs-toggle="collapse" 
-                        data-bs-target="#assignTo"
-                        >
-                    <label 
-                        class="form-check-label">
-                        Assigned to me
-                    </label>
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1779</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Transaction Detail by Account Statement View</span>
+                    <span class="text-[11px] rounded-full bg-green-100 text-green-700 px-2 py-0.5">Reporting</span>
                 </div>
-            
-                <div class="collapse mt-2" id="assignTo">
-                    {% crispy_field form.assigned_to 'class' 'form-control form-control-sm' 'placeholder' 'Assign to' %}
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">In Review</span>
+                <span class="w-28 text-right">Jordan Lee</span>
+                <span class="w-20 text-right">High</span>
+                <span class="w-20 text-right">Jan 20</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1776</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Taxable Sales Detail KPI View</span>
+                    <span class="text-[11px] rounded-full bg-orange-100 text-orange-700 px-2 py-0.5">Finance</span>
                 </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Active</span>
+                <span class="w-28 text-right">Morgan Li</span>
+                <span class="w-20 text-right">Urgent</span>
+                <span class="w-20 text-right">Jan 21</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1768</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Sales by Customer Detail KPI View</span>
+                    <span class="text-[11px] rounded-full bg-slate-100 text-slate-700 px-2 py-0.5">Dashboard</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Completed</span>
+                <span class="w-28 text-right">You</span>
+                <span class="w-20 text-right">Low</span>
+                <span class="w-20 text-right">Jan 12</span>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="flex justify-content-start mt-2">
-        <button type="submit" class="btn btn-primary btn-sm">Add todo</button>
-    </div>
-</form>
-<!--End New todo form-->
-
-<p class="card-title">My todo's {% if object %}for {{ object }}{% endif %}</p>
-{% include 'components/snippets/todo_list.html' with todos=my_todos %}
-
-<p class="card-title">Assigned todo's {% if object %}for {{ object }}{% endif %}</p>
-{% include 'components/snippets/todo_list.html' with todos=assigned_todos %}
-
+<c-ui.modal id="create-todo-modal" title="Create todo" size="lg"/>
 
 
 

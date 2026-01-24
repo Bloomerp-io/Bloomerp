@@ -2,12 +2,13 @@ from shared_utils.router.component_router import route
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models.fields import TextEditorField
-from bloomerp.widgets.foreign_key_widget import ForeignKeyWidget
+from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
 from bloomerp.widgets.multiple_model_select_widget import MultipleModelSelect
 from bloomerp.widgets.text_editor import RichTextEditorWidget
 from django.forms.fields import CharField
 from django.forms.widgets import Textarea
-from bloomerp.models import Link, Widget
+from bloomerp.models.auth import Link
+from bloomerp.models.workspaces import Widget
 import uuid
 from django.contrib.auth.decorators import login_required
 
@@ -33,7 +34,7 @@ def create_workspace_item(request: HttpRequest) -> HttpResponse:
             field_html = field.widget.render(name='header', value='', attrs={'class': 'form-control'})
             return HttpResponse(field_html)
         elif item_type == 'link':
-            field = ForeignKeyWidget(model=Link)
+            field = ForeignFieldWidget(model=Link)
             field_html = field.render(name='link', value=None, attrs={})
             return HttpResponse(field_html)
         elif item_type == 'link_list':
@@ -41,7 +42,7 @@ def create_workspace_item(request: HttpRequest) -> HttpResponse:
             field_html = field.render(name='link_list', value=None, attrs={})
             return HttpResponse(field_html)
         elif item_type == 'widget':
-            field = ForeignKeyWidget(model=Widget)
+            field = ForeignFieldWidget(model=Widget)
             field_html = field.render(name='widget', value=None, attrs={})
             return HttpResponse(field_html)
     elif action == 'get_snippet':

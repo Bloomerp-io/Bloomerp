@@ -1,0 +1,36 @@
+<div class="mb-2">
+    <input type="text" class="border-0 p-2 w-full ring-0 text-xl font-medium" placeholder="Todo title">
+</div>
+<c-ui.inputs.text_editor placeholder="Write a description of your todo"/>
+
+<div class="flex mt-4 justify-between">
+    <div class="flex space-x-2">
+        <select class="input input-sm">
+            {% for choice in status_choices %}
+            <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+            {% endfor %}
+        </select>
+        <select class="input input-sm w-24">
+            {% for choice in priority_choices %}
+            <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+            {% endfor %}
+        </select>
+        <select class="input input-sm w-24">
+            {% for choice in effort_choices %}
+            <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+            {% endfor %}
+        </select>
+        <button class="input input-sm">
+            Assignee
+        </button>
+        <button class="input input-sm">
+            Label
+        </button>
+
+    </div>
+
+    <div class="flex space-x-2">
+        <button class="btn btn-sm btn-primary btn-outline">Create more</button>
+        <button class="btn btn-sm btn-primary">Create issue</button>
+    </div>
+</div>

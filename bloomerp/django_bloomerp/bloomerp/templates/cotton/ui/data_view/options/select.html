@@ -17,7 +17,7 @@ Args:
     <select 
         class="select select-sm w-40 bg-base border-0"
         hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
-        hx-target="#data-table-data-section"
+        hx-target="#data-view-data-section"
         hx-swap="outerHTML"
         name="{{ input_name }}"
         hx-include="[name='csrfmiddlewaretoken']"

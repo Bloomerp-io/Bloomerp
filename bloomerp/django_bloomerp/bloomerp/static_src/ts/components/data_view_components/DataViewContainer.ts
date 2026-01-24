@@ -1,9 +1,9 @@
 import htmx from "htmx.org";
-import BaseComponent from "../BaseComponent";
-import { HtmxAjaxHelperContext } from "htmx.org";
+import BaseComponent, { getComponent, componentIdentifier } from "../BaseComponent";
+import { BaseDataViewComponent } from "./BaseDataViewComponent";
 
 export class DataViewContainer extends BaseComponent {
-    private target:string = '#data-table-data-section'
+    private target:string = '#data-view-data-section'
     private baseUrl:string|null;
     private fullPath:string|null; // Includes query parameters
 
@@ -19,9 +19,7 @@ export class DataViewContainer extends BaseComponent {
         args: Record<string, string | number | boolean | null | undefined> = {},
         resetParameters: boolean = false
     ): void {
-        console.log('Filtering')
         const base = resetParameters ? this.baseUrl : this.fullPath ?? this.baseUrl;
-        console.log(base)
         if (!base) return;
 
         const baseUrl = new URL(base, window.location.origin);
@@ -43,4 +41,23 @@ export class DataViewContainer extends BaseComponent {
             swap: 'innerHTML',
         });
     }
+
+    
+    public getDataViewComponent() : BaseDataViewComponent {
+        if (!this.element) throw new Error('DataViewContainer element not found');
+
+        const candidates = Array.from(
+            this.element.querySelectorAll<HTMLElement>(`[${componentIdentifier}]`)
+        );
+
+        for (const el of candidates) {
+            const comp = getComponent(el);
+            if (!comp) continue;
+            if (comp instanceof BaseDataViewComponent) return comp as BaseDataViewComponent;
+        }
+
+        throw new Error('No DataView component found inside DataViewContainer');
+    }
+
+
 }

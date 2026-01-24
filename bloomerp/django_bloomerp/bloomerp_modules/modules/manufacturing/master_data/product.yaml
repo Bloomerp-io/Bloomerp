@@ -100,6 +100,13 @@ fields:
       decimal_places: 2
       null: true
       blank: true
-
+field_layout:
+  - title: "Details"
+    columns: 2
+    items:
+      - code
+      - name
+      - description
+      - sales_price
 
 

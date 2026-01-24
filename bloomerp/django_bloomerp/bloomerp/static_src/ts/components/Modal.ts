@@ -53,7 +53,7 @@ export class Modal extends BaseComponent {
         
         // Cache element references for container and body (children of backdrop)
         this.containerElement = this.backdropElement.querySelector(`#${this.modalId}-container`) as HTMLElement | null;
-        this.modalBodyElement = this.backdropElement.querySelector(`#${this.modalId}-modal-body`) as HTMLElement | null;
+        this.modalBodyElement = this.backdropElement.querySelector(`#${this.modalId}-body`) as HTMLElement | null;
 
         if (!this.containerElement || !this.modalBodyElement) {
             console.warn(`Modal structure not found for ID: ${this.modalId}`, {
@@ -68,13 +68,15 @@ export class Modal extends BaseComponent {
         this.setupBackdropClickHandler();
         this.setupEscapeKeyHandler();
         this.setupTabKeyHandler();
+        this.setupTriggerButtons();
     }
 
     /**
-     * Called after HTMX swaps new content
-     * With event delegation, no need to re-bind - listeners work automatically
+     * Setup event listeners for trigger buttons (open, close, fullscreen)
      */
-    public onAfterSwap(): void {
+    private setupTriggerButtons(): void {
+        if (!this.element) return;
+
         let openTriggers = document.querySelectorAll(`[${OPEN_MODAL_ATTRIBUTE}="${this.element.id}"]`);
         
         openTriggers.forEach((trigger)=>{
@@ -98,7 +100,14 @@ export class Modal extends BaseComponent {
                 this.toggleFullscreen() 
             })
         })
+    }
 
+    /**
+     * Called after HTMX swaps new content
+     */
+    public onAfterSwap(): void {
+        // Re-setup trigger buttons after content swap
+        this.setupTriggerButtons();
     }
 
     private setupBackdropClickHandler(): void {
@@ -244,7 +253,7 @@ export class Modal extends BaseComponent {
         }
         
         const container = this.containerElement || (this.modalId ? document.getElementById(`${this.modalId}-container`) : null);
-        const modalBody = this.modalBodyElement || (this.modalId ? document.getElementById(`${this.modalId}-modal-body`) : null);
+        const modalBody = this.modalBodyElement || (this.modalId ? document.getElementById(`${this.modalId}-body`) : null);
         
         if (!container || !modalBody) {
             console.warn(`Modal elements not found for fullscreen toggle: ${this.modalId}`);
@@ -259,7 +268,7 @@ export class Modal extends BaseComponent {
     }
 
     private enterFullscreen(container: HTMLElement, modalBody: HTMLElement): void {
-        // Store original size in data attribute for reliable restoration
+        // Store original size and body classes in data attributes for reliable restoration
         const sizeClasses = ['max-w-sm', 'max-w-2xl', 'max-w-4xl', 'max-w-6xl'];
         let currentSize = 'md';
 
@@ -274,28 +283,31 @@ export class Modal extends BaseComponent {
             }
         }
 
-        // Store in both instance property and data attribute for reliability
+        // Store original size and body classes
         this.originalSize = currentSize;
         container.setAttribute('data-original-size', currentSize);
+        
+        // Store original modal body classes for restoration
+        const bodyClasses = Array.from(modalBody.classList).join(' ');
+        container.setAttribute('data-original-body-classes', bodyClasses);
 
-        // Remove all size classes
+        // Remove all size classes from container
         sizeClasses.forEach((sizeClass) => {
             container.classList.remove(sizeClass);
         });
 
-        // Set fullscreen
-        container.classList.add('max-w-full', 'w-full', 'h-full', 'rounded-none');
+        // Set fullscreen on container - make it flex column for proper layout
+        container.classList.add('max-w-full', 'w-full', 'h-full', 'rounded-none', 'flex', 'flex-col');
 
-        // Update modal body - keep overflow-y-auto for scrolling
-        modalBody.classList.remove('max-h-96');
-        modalBody.classList.add('flex-1', 'overflow-y-auto');
+        // Update modal body - remove max-h constraint and make it flex-1 to fill space
+        modalBody.className = 'flex-1 overflow-y-auto p-6';
 
         this.isFullscreen = true;
     }
 
     private exitFullscreen(container: HTMLElement, modalBody: HTMLElement): void {
-        // Remove fullscreen classes
-        container.classList.remove('max-w-full', 'w-full', 'h-full', 'rounded-none');
+        // Remove fullscreen classes from container
+        container.classList.remove('max-w-full', 'w-full', 'h-full', 'rounded-none', 'flex', 'flex-col');
 
         // Get original size from data attribute (more reliable) or instance property
         const storedSize = container.getAttribute('data-original-size') || this.originalSize;
@@ -310,9 +322,14 @@ export class Modal extends BaseComponent {
         const sizeClass = sizeClassMap[storedSize] || 'max-w-2xl';
         container.classList.add(sizeClass);
 
-        // Update modal body max height - keep overflow-y-auto for scrolling
-        modalBody.classList.remove('flex-1');
-        modalBody.classList.add('max-h-96', 'overflow-y-auto');
+        // Restore original modal body classes
+        const originalBodyClasses = container.getAttribute('data-original-body-classes');
+        if (originalBodyClasses) {
+            modalBody.className = originalBodyClasses;
+        } else {
+            // Fallback to default classes
+            modalBody.className = 'max-h-96 overflow-y-auto p-6';
+        }
 
         this.isFullscreen = false;
     }
@@ -332,6 +349,10 @@ export class Modal extends BaseComponent {
         if (this.tabKeyHandler) {
             document.removeEventListener('keydown', this.tabKeyHandler);
         }
+    }
+
+    public getBodyElement(): HTMLElement | null {
+        return this.modalBodyElement;
     }
 }
 

@@ -15,16 +15,15 @@ from bloomerp.utils.models import (
 from django.contrib.postgres.fields import JSONField
 from django.db.models import JSONField as DefaultJSONField
 from bloomerp.widgets.code_editor_widget import AceEditorWidget
-from bloomerp.widgets.multiple_model_select_widget import MultipleModelSelect
 from django.forms.widgets import DateInput, DateTimeInput
 from bloomerp.forms.layouts import BloomerpModelformHelper
-from bloomerp.utils.field_widgets.foreign_key_widget import ForeignKeyWidget
+from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
+from bloomerp.models import UserDetailViewPreference
 
 # ---------------------------------
 # Bloomerp Bulk Upload Form
 # ---------------------------------
 class BulkUploadForm(forms.Form):
-
     def __init__(self, *args, **kwargs):
         super(BulkUploadForm, self).__init__(*args, **kwargs)
         for name, field in self.fields.items():
@@ -63,8 +62,6 @@ class BloomerpModelForm(forms.ModelForm):
             hide_default_fields: whether to hide the default fields (created_by, updated_by)
         
         '''
-
-
         # Set the model instance to the form instance
         self.model = model
         self._meta.model = model
@@ -91,7 +88,9 @@ class BloomerpModelForm(forms.ModelForm):
             if field.field in self.fields:
                 related_model = field.meta['related_model']
                 model = ContentType.objects.get(pk=related_model).model_class()
-                self.fields[field.field].widget = ForeignKeyWidget(model=model)
+                self.fields[field.field].widget = ForeignFieldWidget(model=model, attrs={
+                    'class' : 'input'
+                })
         
         # ---------------------------------
         # MANY TO MANY FIELDS
@@ -100,7 +99,7 @@ class BloomerpModelForm(forms.ModelForm):
         for field in self._meta.model._meta.many_to_many:
             if field.name in self.fields:
                 related_model = field.remote_field.model
-                self.fields[field.name].widget = MultipleModelSelect(model=related_model)
+                self.fields[field.name].widget = ForeignFieldWidget(model=related_model, is_m2m=True)
     
         # ---------------------------------
         # FILE FIELDS
@@ -138,20 +137,14 @@ class BloomerpModelForm(forms.ModelForm):
             if 'updated_by' in self.fields:
                 del self.fields['updated_by']
 
-        
         if self.model and apply_helper:
-            helper = BloomerpModelformHelper(self.model)
+            helper = BloomerpModelformHelper([])
 
             if helper.is_defined() and self.model:
                 self.helper = helper
 
                 
     def save(self, commit=True):
-        '''
-        Saves the form instance to the database
-
-        '''
-
         instance = super(BloomerpModelForm, self).save(commit=False)
 
         # Check if the instance is new by checking if it has no primary key

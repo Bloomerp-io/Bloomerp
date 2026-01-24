@@ -1,7 +1,7 @@
 from django import forms
 from bloomerp.models.document_templates import DocumentTemplate, DocumentTemplateFreeVariable
 from django.apps import apps
-from bloomerp.widgets.foreign_key_widget import ForeignKeyWidget
+from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
 
 # ---------------------------------
 # Free Variable Form
@@ -97,7 +97,7 @@ class GenerateDocumentForm(FreeVariableForm):
         if document_template.model_variable:
             related_model = document_template.model_variable.model_class()
             field = forms.ModelChoiceField(
-                queryset=related_model.objects.all(), widget=ForeignKeyWidget(related_model))
+                queryset=related_model.objects.all(), widget=ForeignFieldWidget(related_model))
             self.fields['generate_document_for'] = field
 
             self.fields['generate_document_for'].label = f'Generate document for {related_model._meta.verbose_name}'

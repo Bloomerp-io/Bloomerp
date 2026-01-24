@@ -18,7 +18,7 @@ Parameters:
 <!-- Modal backdrop -->
 <div 
     id="{{ id }}" 
-    class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 transition-opacity duration-200 ease-out"
+    class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 transition-opacity duration-200 ease-out rounded-lg"
     bloomerp-component="modal"
     data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
 >
@@ -82,12 +82,12 @@ Parameters:
             {% else %}
                 max-h-96 overflow-y-auto
             {% endif %}
-            p-6 {{ body_class }}
-        " id="{{ id }}-modal-body">
+            p-3 {{ body_class }}
+        " id="{{ id }}-body">
             {{ slot }}
         </div>        {% if show_footer|default:False %}
         <!-- Modal footer -->
-        <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 {{ footer_class }}">
+        <div class="flex items-center justify-end space-x-3 p-3 border-t border-gray-200 {{ footer_class }}">
             {{ footer_slot }}
         </div>
         {% endif %}

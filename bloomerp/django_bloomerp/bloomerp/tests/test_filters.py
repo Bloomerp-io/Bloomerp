@@ -1,27 +1,31 @@
 from bloomerp.utils.filters import dynamic_filterset_factory
-from django.db import models
 from django.test import TestCase
-from django.test.utils import isolate_apps
-from bloomerp_tests.models import Parent, Child
+from django.test.utils import override_settings
+from django.conf import settings
 
 
+@override_settings(
+    INSTALLED_APPS=[*settings.INSTALLED_APPS, "bloomerp_tests"],
+    MIGRATION_MODULES={"bloomerp_tests": None},
+)
 class EmployeeFilterTestCase(TestCase):
-    def setUp(self):
-        # Create the models that will be used in the tests
-        self.Parent = Parent
-        self.Child = Child
+    @classmethod
+    def setUpTestData(cls):
+        from bloomerp_tests.models import Parent, Child
 
-        # Create test data that will be used across all tests
-        self.parent_1 = Parent.objects.create(name="Foo", age=30, is_active=True)
-        self.parent_2 = Parent.objects.create(name="Bar", age=40, is_active=False)
+        cls.Parent = Parent
+        cls.Child = Child
 
-        self.child_1 = Child.objects.create(name="John", age=10, parent=self.parent_1, date="2021-01-01")
-        self.child_2 = Child.objects.create(name="Jane", age=20, parent=self.parent_2, date="2021-01-02")
-        self.child_3 = Child.objects.create(name="Jack", age=30, parent=self.parent_1, date="2021-01-03")
+        cls.parent_1 = Parent.objects.create(name="Foo", age=30, is_active=True)
+        cls.parent_2 = Parent.objects.create(name="Bar", age=40, is_active=False)
 
-        # Create the filters that will be used in the tests
-        self.ParentFilter = dynamic_filterset_factory(self.Parent)
-        self.ChildFilter = dynamic_filterset_factory(self.Child)
+        cls.child_1 = Child.objects.create(name="John", age=10, parent=cls.parent_1, date="2021-01-01")
+        cls.child_2 = Child.objects.create(name="Jane", age=20, parent=cls.parent_2, date="2021-01-02")
+        cls.child_3 = Child.objects.create(name="Jack", age=30, parent=cls.parent_1, date="2021-01-03")
+
+        cls.ParentFilter = dynamic_filterset_factory(cls.Parent)
+        cls.ChildFilter = dynamic_filterset_factory(cls.Child)
+
 
     def test_char_field_equals(self):
         # 1. char field filter with exact lookup

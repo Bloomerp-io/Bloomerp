@@ -4,11 +4,7 @@ from django.views import View
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Model
-from django.contrib.contenttypes.models import ContentType
-from bloomerp.models import Link, Workspace
-from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.mixins import HtmxMixin
-from django.shortcuts import get_object_or_404
 from registries.route_registry import router
 
 
@@ -30,6 +26,7 @@ class BloomerpHomeView(HtmxMixin, LoginRequiredMixin, TemplateView):
         # Create a workspace for the user if it doesn't exist
         return context
 
+
 @router.register(
     path='workspace/<int:workspace_id>/',
     name='View Workspace',
@@ -41,8 +38,7 @@ class WorkspaceView(HtmxMixin, LoginRequiredMixin, View):
     template_name = 'workspace_views/bloomerp_workspace_view.html'
 
     def get(self, request, *args, **kwargs):
-        context = self.get_context_data()
-        
+        context = self.get_context_data()        
         return render(request, self.template_name, context)
     
 

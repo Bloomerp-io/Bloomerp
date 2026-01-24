@@ -38,7 +38,7 @@ dependencies = [
     "distro==1.9.0",
     "Django==5.1.1",
     "django-browser-reload==1.18.0",
-    "django-cotton==2.1.2",
+    "django-cotton==2.6.1",
     "django-crispy-forms==2.3",
     "django-extensions==3.2.3",
     "django-filter==24.3",

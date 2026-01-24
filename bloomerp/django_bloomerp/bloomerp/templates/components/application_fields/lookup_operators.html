@@ -1,0 +1,9 @@
+<select class="select w-full">
+    <option disabled selected value="">
+        <c-blocktrans>Select operator</c-blocktrans>
+    </option>
+    {% for lookup in lookups %}
+        <option value="{{ lookup.value.id }}">{{ lookup.value.display_name }}</option>
+    {% endfor %}
+</select>
+

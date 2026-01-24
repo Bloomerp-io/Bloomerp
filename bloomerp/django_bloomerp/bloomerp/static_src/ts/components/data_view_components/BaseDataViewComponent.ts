@@ -250,6 +250,14 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         return cells;
     }
 
+    /**
+     * Public wrapper for retrieving all cell components within this dataview.
+     * Useful for external callers that need to inspect or operate on cells.
+     */
+    public getCells(): BaseDataViewCell[] {
+        return this.getAllCells();
+    }
+
     private getCellCoords(cell: BaseDataViewCell): { row: number; col: number } | null {
         const el = cell.element;
         if (!el) return null;

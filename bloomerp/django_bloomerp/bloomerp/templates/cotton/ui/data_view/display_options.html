@@ -96,7 +96,7 @@
         <button 
             hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
             hx-vals='{"toggle_field_id": "{{ field.id }}", "toggle_view_type": "{{ preference.view_type }}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
-            hx-target="#data-table-data-section"
+            hx-target="#data-view-data-section"
             hx-swap="outerHTML"
             class="px-3 py-1 text-xs border rounded-md transition-colors {% if is_visible %}bg-primary-100 border-primary-500 text-primary-700 hover:bg-primary-200{% else %}border-base bg-white text-gray-700 hover:bg-base{% endif %}"
         >

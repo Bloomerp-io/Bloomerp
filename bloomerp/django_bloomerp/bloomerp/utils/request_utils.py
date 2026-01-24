@@ -6,7 +6,7 @@ from django.shortcuts import render
 from django.db.models import Model
 from django.contrib.contenttypes.models import ContentType
 
-def render_blank_form(request : HttpRequest, form:Form, hidden_args:dict) -> HttpResponse:
+def render_blank_form(request : HttpRequest, form:Form, hidden_args:dict, url:str) -> HttpResponse:
     """Renders a blank form
     """
     return render(
@@ -15,6 +15,7 @@ def render_blank_form(request : HttpRequest, form:Form, hidden_args:dict) -> Htt
         context={
             "form":form,
             "hidden_args":hidden_args,
+            "url":url,
         }
     )
     

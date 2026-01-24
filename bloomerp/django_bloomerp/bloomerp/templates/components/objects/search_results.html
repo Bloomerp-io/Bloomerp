@@ -1,0 +1,10 @@
+{% load cotton %}
+
+{% for object in objects %}
+    <c-ui.dropdown.item 
+        text="{{ object }}" 
+        onclick="{% if type == 'fk' %}setForeignKeyValue('{{ object.pk }}', '{{ object | escapejs }}', '{{ field_name | escapejs }}'){% else %}setM2MValue('{{ object.pk }}', '{{ object | escapejs }}', '{{ field_name | escapejs }}'){% endif %}; open = false;"
+    />
+{% empty %}
+    <c-ui.dropdown.item text="No results found" disabled="True" />
+{% endfor %}

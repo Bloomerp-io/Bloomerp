@@ -11,6 +11,7 @@ import logging
 from typing import Optional
 from datetime import datetime
 from django.views import View
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +305,7 @@ class BloomerpRouteRegistry:
     def register(
         self, 
         path: str = None,
-        route_type: str = 'app',
+        route_type: Literal['app', 'list', 'detail'] = 'app',
         models: Union[Model, List[Model], str, None] = None,
         exclude_models:Union[Model, List[Model], str, None] = None,
         name: Optional[str] = None,

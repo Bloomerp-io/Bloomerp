@@ -34,6 +34,7 @@ from bloomerp.forms.core import BloomerpModelForm
 from django import forms
 from django.contrib.auth import get_user_model
 from registries.route_registry import router
+from bloomerp.services.detail_view_services import get_default_layout
 
 User = get_user_model()
 
@@ -79,15 +80,14 @@ class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
         context["exclude_header"] = self.exclude_header
-
         if self.tabs:
             context["tabs"] = self.tabs
-
         return context
 
 # ---------------------------------
 # Bloomerp Detail Overview View
 # ---------------------------------
+from bloomerp.services.detail_view_services import create_default_detail_view_preference
 @router.register(
     path="",
     name="Overview",
@@ -104,47 +104,30 @@ class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView
         return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
 
     def get_context_data(self, **kwargs: Any) -> dict:
-        context = super().get_context_data(**kwargs)
-        
+        context = super().get_context_data(**kwargs)        
         content_type = ContentType.objects.get_for_model(self.model)
 
-        queryset = UserDetailViewPreference.objects.filter(
-            user=self.request.user, application_field__content_type=content_type
-        )
-
+        # Get the detail view preference
+        preference = self._get_or_create_detail_view_preference(content_type, self.request.user)
+        
         # Add content type id to context
-        context["view_type"] = "DETAIL"
         context["content_type_id"] = content_type.pk
-        if not queryset:
-            queryset = UserDetailViewPreference.generate_default_for_user(
-                user = self.request.user,
-                content_type = content_type
-            )
-            
-        left_column = queryset.filter(position="LEFT")
-        center_column = queryset.filter(position="CENTER")
-        right_column = queryset.filter(position="RIGHT")
-
-        # Do some processing
-        i = 0
-        if left_column:
-            i += 1
-        if center_column:
-            i += 1
-        if right_column:
-            i += 1
-
-        if i == 0:
-            col_span = 12
-        else:
-            col_span = 12 / i
-
-        context["col_span"] = int(col_span)
-        context["left_column"] = left_column
-        context["right_column"] = right_column
-        context["center_column"] = center_column
-
+        context["sections"] = preference.field_layout
+        
         return context
+    
+    def _get_or_create_detail_view_preference(self, content_type, user) -> UserDetailViewPreference:
+        qs = UserDetailViewPreference.objects.filter(
+           content_type=content_type,
+           user=user,  
+        )
+        if qs.exists():
+            return qs.first()
+        return create_default_detail_view_preference(content_type, user)
+        
+    
+    
+    
 
 # ---------------------------------
 # Bloomerp Create View

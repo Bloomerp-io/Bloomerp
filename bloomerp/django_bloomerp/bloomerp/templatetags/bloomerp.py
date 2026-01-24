@@ -16,7 +16,7 @@ from django.core.signing import dumps, loads
 from bloomerp.models import File
 import uuid
 from django.template.loader import render_to_string
-from bloomerp.models import FieldType
+from bloomerp.field_types import FieldType
 
 register = template.Library()
 

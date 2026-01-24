@@ -1,0 +1,58 @@
+/* Permissions Table Drag & Drop Styles */
+
+/* Drop zone available (when dragging starts) */
+[data-drop-zone].drop-zone-available {
+    border-color: rgb(59 130 246 / 0.5);
+    background-color: rgb(239 246 255);
+}
+
+/* Drop zone active (when hovering over) */
+[data-drop-zone].drop-zone-active {
+    border-color: rgb(59 130 246);
+    background-color: rgb(219 234 254);
+    border-width: 3px;
+    transform: scale(1.02);
+}
+
+/* Field draggable hover state */
+[data-field-draggable]:hover {
+    cursor: grab;
+}
+
+[data-field-draggable]:active {
+    cursor: grabbing;
+}
+
+/* Animation for dropped field badges */
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Row policy drop zone specific styles */
+[data-drop-zone="row"].drop-zone-available {
+    border-color: rgb(34 197 94 / 0.5);
+    background-color: rgb(240 253 244);
+}
+
+[data-drop-zone="row"].drop-zone-active {
+    border-color: rgb(34 197 94);
+    background-color: rgb(220 252 231);
+}
+
+/* Column policy drop zone specific styles */
+[data-drop-zone="column"].drop-zone-available {
+    border-color: rgb(59 130 246 / 0.5);
+    background-color: rgb(239 246 255);
+}
+
+[data-drop-zone="column"].drop-zone-active {
+    border-color: rgb(59 130 246);
+    background-color: rgb(219 234 254);
+}

@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.models.access_control.row_policy import RowPolicy
+from bloomerp.models.access_control import RowPolicy
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.mixins import TimestampedModelMixin, UserStampedModelMixin
 
@@ -12,6 +12,11 @@ class Policy(
     """
     Represents an access control policy, which combines row-level and field-level policies.
     """
+    class Meta:
+        db_table = "bloomerp_access_control_policy"
+        verbose_name = _("Access Control Policy")
+        verbose_name_plural = _("Access Control Policies")
+    
     name = models.CharField(
             max_length=255,
             help_text=_("The name of the access control policy.")

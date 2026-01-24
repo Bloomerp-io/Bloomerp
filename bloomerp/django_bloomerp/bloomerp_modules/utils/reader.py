@@ -239,6 +239,10 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
         if model_config.has_avatar is False:
             attrs['avatar'] = None
     
+    # Field layout
+    if hasattr(model_config, 'field_layout'):
+        attrs["field_layout"] = model_config.field_layout
+    
     # Create and return the model class
     return type(model_class_name, (BloomerpModel,), attrs)
 
@@ -300,7 +304,9 @@ def scan_modules_directory() -> list[ModuleConfig]:
                         'name_plural': model_data.get('name_plural'),
                         'custom_permissions': model_data.get('custom_permissions'),
                         'string_representation': model_data.get('string_representation'),
-                        'has_avatar': model_data.get('has_avatar', True)
+                        'has_avatar': model_data.get('has_avatar', True),
+                        'field_layout':model_data.get('field_layout')
+                        
                     }
                     
                     # Create ModelConfig from cleaned YAML data using Pydantic

@@ -8,15 +8,21 @@ class FieldPolicy(models.Model):
     
     Example of a JSON rule:
     ```python
-    # 1: the application_field_id
-    # 123, 124, 125: the permission id's
+    # 1: the application_field_id -> CODE
+    # 123, 124, 125: the permission id's -> can_view, can_change, can_delete
     
     {
-        1 : [123, 124, 125]
+        1 : ["can_view", "can_change", "can_delete"],
+        2 : ["can_view"],
+        3 : ["can_view", "can_change"]
     }
     ```
-    
     """
+    class Meta:
+        db_table = "bloomerp_access_control_field_policy"
+        verbose_name = _("Access Control Field Policy")
+        verbose_name_plural = _("Access Control Field Policies")
+    
     content_type = models.ForeignKey(
         to=ContentType,
         on_delete=models.CASCADE,
@@ -26,11 +32,6 @@ class FieldPolicy(models.Model):
             max_length=255,
             help_text=_("The name of the field-level access control policy.")
         )
-    
-    description = models.TextField(
-        blank=True,
-        help_text=_("A description of the field-level access control policy.")
-    )
     
     rule = models.JSONField(
         help_text=_("A JSON representation of the field-level access control rules.")

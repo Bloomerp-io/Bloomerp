@@ -1,57 +1,38 @@
 from crispy_forms.helper import FormHelper
 from bloomerp.models import BloomerpModel
-from crispy_forms.layout import Layout, Fieldset, Submit, Div, HTML
+from crispy_forms.layout import Layout, Fieldset, Submit, Div, HTML, Field
 from uuid import uuid4
+from bloomerp.models import LayoutSection
 
 class BloomerpModelformHelper(FormHelper):
     layout_defined: bool = False
 
-    def __init__(self, model: BloomerpModel, *args, **kwargs):
+    def __init__(self, layout:list[LayoutSection], *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        # Disable the form tag
         self.form_tag = False
-
-        if not model:
-            self.layout_defined = False
-            return
-
-        content = '''<h3 class="dropdown-toggle form-legend pointer" onclick="document.getElementById('{id}').classList.toggle('hidden')">{title}{asterix}</h3>'''
-
-        fieldsets = []
-
-        if hasattr(model, 'form_layout') and model.form_layout:
-            layout = model._get_form_layout()
-            if not layout:
-                self.layout_defined = False
-                return
-
-
-            for title, item in layout.items():
-                id = uuid4()
-
-                field_list = item['fields']
-                required = item['required']
-
-                css_class = '' if required else ''
-                asterix = '*' if required else ''
-
-                _content = content.format(title=title, id=id, asterix=asterix)
-
-                fieldsets.append(
-                    Div(
-                        HTML(_content),
-                        Fieldset(None, *field_list, css_id=id, css_class=css_class)
-                    )
+        
+        # Get the field names            
+        rows = []
+        for section in layout:
+            fields = [Field(field_name) for field_name in section.items]
+            
+            if section.title:
+                rows.append(
+                    Div(HTML(f"<h1 class='block text-primary-900 font-bold mb-2'>{section.title}</h1>"))
                 )
-
-            self.layout = Layout(
-                *fieldsets
-            )
-
-            self.layout_defined = True
-        else:
-            self.layout_defined = False
-
+            
+            rows.append(Div(
+                Div(
+                    *fields,
+                    css_class=f"grid grid-cols-1 md:grid-cols-{section.columns} gap-2"
+                    )
+            ))
+        
+        self.layout = Layout(*rows)
+        self.layout_defined = True
+    
     def is_defined(self) -> bool:
         return self.layout_defined
 

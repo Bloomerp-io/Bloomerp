@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404, render
+from bloomerp.components.application_fields.filters import filters_init
 from registries.route_registry import router
 from django.http import HttpResponse
 from django.http import HttpRequest
@@ -10,12 +11,12 @@ from bloomerp.services.user_services import get_accessible_fields_for_user
 from bloomerp.services.user_services import get_user_list_view_preference
 from bloomerp.services.user_services import toggle_field_visibility
 from bloomerp.services.object_services import string_search_on_queryset
-from bloomerp.utils.filters import filter_model
-from bloomerp.models.user_list_view_preference import UserListViewPreference
-from bloomerp.models.user_list_view_preference import ViewType
-from bloomerp.models.user_list_view_preference import PageType
-from bloomerp.models.user_list_view_preference import PageSize
-from bloomerp.models.user_list_view_preference import CalendarViewMode
+from bloomerp.utils.filters import dynamic_filterset_factory, filter_model
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.models.users.user_list_view_preference import ViewType
+from bloomerp.models.users.user_list_view_preference import PageType
+from bloomerp.models.users.user_list_view_preference import PageSize
+from bloomerp.models.users.user_list_view_preference import CalendarViewMode
 from bloomerp.models import ApplicationField
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from collections import defaultdict
@@ -325,8 +326,6 @@ def _build_kanban_groups(queryset, group_by_field: ApplicationField) -> list:
     return groups
 
 
-
-
 # -----------------------------------
 # Components
 # -----------------------------------
@@ -393,6 +392,8 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'page_sizes': PageSize,
         'calendar_view_modes': CalendarViewMode,
         'render_id': str(uuid.uuid4()),
+        'application_fields' : ApplicationField.get_for_model(Model),
+        'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
     }
     context.update(_get_extra_context_for_view_type(preference, queryset, request))
     

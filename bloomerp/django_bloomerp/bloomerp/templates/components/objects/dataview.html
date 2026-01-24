@@ -1,6 +1,7 @@
 {% load bloomerp %}
+{% load crispy_forms_tags %}
 
-{% if request.htmx.target == 'data-table-data-section' %}
+{% if request.htmx.target == 'data-view-data-section' %}
 <div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
     <c-ui.data_view.display_options 
         :content_type_id="content_type_id"
@@ -15,7 +16,7 @@
 </div>
 {% endif %}
 
-{% if not request.htmx.target == 'data-table-data-section' %}
+{% if not request.htmx.target == 'data-view-data-section' %}
 <div 
     id="data-view-{{ content_type_id }}"
     data-view-type="{{ preference.view_type }}"
@@ -35,8 +36,8 @@
                 placeholder="Search..."
                 class="input input-bordered"
                 hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
-                hx-trigger="keyup changed delay:500ms"
-                hx-target="#data-table-data-section"
+                hx-trigger="keyup changed delay:200ms"
+                hx-target="#data-view-data-section"
                 hx-swap="outerHTML"
                 hx-animation-target="#data-table-body-{{ content_type_id }}"
             />
@@ -51,7 +52,24 @@
                     trigger_icon="filter"
                     width="w-128"
                     >
-                    
+                        <div class="p-3">
+                            <form hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
+                                  hx-target="#data-view-data-section"
+                                  hx-swap="outerHTML"
+                                  hx-animation-target="#data-table-body-{{ content_type_id }}"
+                                  >
+                                    <div class="mb-4">
+                                        <c-ui.text.subtitle class="">
+                                            Filter
+                                        </c-ui.text.subtitle>
+                                        
+                                        {{ filter_section|safe }}
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        Apply Filters
+                                    </button>
+                            </form>
+                        </div>
                 </c-ui.dropdown.body>
             </c-ui.tooltip>
 
@@ -89,7 +107,7 @@
                     hx-push-url="false"
                     bloomerp-open-modal="create-object-modal"
                     hx-get="{% url 'components_create_object' content_type_id=content_type_id %}"
-                    hx-target="#create-object-modal-modal-body"
+                    hx-target="#create-object-modal-body"
                     hx-swap="innerHTML"
                 >
                     <c-icons.plus size="24"/>
@@ -100,7 +118,7 @@
 {% endif %}
 
     <!--Table section-->
-    <div id="data-table-data-section" class="h-full">
+    <div id="data-view-data-section" class="h-full">
         {% if preference.split_view_enabled %}
         <div class="flex h-[calc(100vh-200px)]">
             <div class="w-1/2 resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane">
@@ -156,7 +174,7 @@
         {% endif %}
     </div>
 
-{% if not request.htmx.target == 'data-table-data-section' %}
+{% if not request.htmx.target == 'data-view-data-section' %}
     <!-- Context Menu Dropdown -->
     <div id="data-table-{{ content_type_id }}-context-menu" class="hidden fixed bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[160px]">
         <ul class="py-1">

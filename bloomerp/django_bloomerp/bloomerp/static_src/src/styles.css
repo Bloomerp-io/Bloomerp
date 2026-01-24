@@ -76,6 +76,9 @@
     --color-warning-light: #fff3cd;
     --color-warning-dark: #856404;
 
+    /*
+    * Neutral
+    */
 
     --color-base: #f4f2f0;
     --color-light: #686765;
@@ -944,6 +947,24 @@ Dashboard
   border: 1px solid #ccc;
   border-radius: 5px;
   padding: 5px;
+}
+
+/*
+  Text editor placeholder
+*/
+
+[data-text-editor-body] {
+  position: relative;
+}
+
+[data-text-editor-body][data-placeholder][data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: pre-wrap;
 }
 
 /*

@@ -10,7 +10,8 @@ from bloomerp.forms.core import ListViewFieldsSelectForm
 from django.contrib.contenttypes.models import ContentType
 from django.core.paginator import Paginator
 from bloomerp.views.mixins import HtmxMixin
-from bloomerp.models import (UserDetailViewPreference,ApplicationField)
+from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.utils.models import model_name_plural_underline
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from shared_utils.router.view_router import BloomerpRouter

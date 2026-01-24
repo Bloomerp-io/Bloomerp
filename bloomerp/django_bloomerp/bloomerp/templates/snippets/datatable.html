@@ -78,7 +78,7 @@ ListViewPreference model.
                     {% if user_can_change %}
                     <a href="#" bloomerp-open-modal='updateObject'
                         hx-get="{% url 'components_object_model_form' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
-                        hx-target="#updateObject-modal-body" hx-trigger="click">
+                        hx-target="#updateObject-body" hx-trigger="click">
                         <img src="{% static 'bloomerp/icons/edit.svg' %}" alt="Edit" width="20" height="20">
                     </a>
                     {% endif %}

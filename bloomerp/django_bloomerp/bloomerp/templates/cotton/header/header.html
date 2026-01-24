@@ -40,10 +40,10 @@
             <ul class="flex items-center space-x-4 mb-0">
                 <li>
                     <a 
-                        onclick="openModal('todoModal')"
+                        bloomerp-open-modal="todo-modal"
                         class="relative text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-hover:cursor-pointer" 
                         hx-get="{% url 'components_todos' %}"
-                        hx-target="#todo-container"
+                        hx-target="#todo-modal-body"
                         hx-swap="innerHTML"
                         hx-trigger="click"
                         href="#">
@@ -55,7 +55,7 @@
                 <!--AI-->
                 <li>
                     <a 
-                        onclick="openModal('modal_bloom_ai')"
+                        bloomerp-open-modal="modal_bloom_ai"
                         class="flex items-center text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors cursor-hover:cursor-pointer" 
                         href="#">
                         <c-icons.ai size="24"/>

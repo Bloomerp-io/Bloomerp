@@ -1,7 +1,5 @@
 from django.forms.widgets import Widget, ClearableFileInput
 from bloomerp.models.files import File
-import uuid
-
 
 class BloomerpFileFieldWidget(Widget):
     template_name = 'widgets/bloomerp_file_field_widget.html'
@@ -81,8 +79,6 @@ class BloomerpFileFieldWidget(Widget):
             file_obj.save()
             return file_obj.pk
         
-
-    # Pass-through methods to ClearableFileInput (you can omit these if already implemented)
     def format_value(self, value):
         return self.file_input.format_value(value)
 

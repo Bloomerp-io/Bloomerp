@@ -3,6 +3,7 @@ from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.forms.core import BloomerpModelForm
 from bloomerp.models import Todo, AbstractBloomerpUser
+from bloomerp.models.project_management.todo import TodoStatus
 from django.forms import modelform_factory
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
@@ -45,10 +46,10 @@ def todos(request: HttpRequest) -> HttpResponse:
             todo_id = request.POST.get('completed_todo_id')
             completed_todo = Todo.objects.get(pk=todo_id)
             if completed_todo.is_completed:
-                completed_todo.is_completed = False
+                completed_todo.status = TodoStatus.BACKLOG
                 completed_todo.datetime_completed = None
             else:
-                completed_todo.is_completed = True
+                completed_todo.status = TodoStatus.COMPLETED
                 completed_todo.datetime_completed = timezone.now()
             completed_todo.save()
 
@@ -68,9 +69,9 @@ def todos(request: HttpRequest) -> HttpResponse:
 
     # Apply filter on todos
     if filter == 'completed':
-        todos = todos.filter(is_completed=True)
+        todos = todos.filter(status=TodoStatus.COMPLETED)
     elif filter == 'uncompleted':
-        todos = todos.filter(is_completed=False)
+        todos = todos.exclude(status=TodoStatus.COMPLETED)
 
     assigned_todos = todos.exclude(assigned_to=request.user)
     my_todos = todos.filter(assigned_to=request.user)
@@ -96,7 +97,7 @@ def filter_todos(user: AbstractBloomerpUser, content_type_id: int, object_id: in
     if content_type_id and object_id:
         my_todos = my_todos.filter(content_type=content_type_id, object_id=object_id)
     
-    return my_todos.order_by('is_completed', '-priority')
+    return my_todos.order_by('status', '-priority')
 
 
 def initialize_form(user, content_type_id=None, object_id=None, data=None):

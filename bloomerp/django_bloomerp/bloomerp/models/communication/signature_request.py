@@ -1,6 +1,7 @@
 from django.db import models
+from bloomerp.model_fields.file_field import BloomerpFileField
 from bloomerp.models.base_bloomerp_model import BloomerpModel
-from bloomerp.models.fields import BloomerpFileField, StatusField
+from bloomerp.models.fields import StatusField
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 

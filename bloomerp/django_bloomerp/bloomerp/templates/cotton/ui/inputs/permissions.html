@@ -1,0 +1,26 @@
+<div 
+    class="grid md:grid-cols-3 grid-cols-1 gap-3"
+    bloomerp-component="permission-checkboxes"
+    id="{{ id }}"
+    data-name="{{ name }}"
+    >
+    {% for perm in permissions %}
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+                type="checkbox" 
+                class="checkbox rounded"
+                name="{{ name }}"
+                value="{{ perm.codename }}"
+                >
+            <span class="text-sm text-gray-800 font-medium">{{ perm.name }}</span>
+        </label>
+    {% endfor %}
+    <label class="flex items-center gap-2 cursor-pointer col-span-3">
+        <input 
+            type="checkbox" 
+            class="checkbox rounded"
+            name="{{ name }}"
+            value="__all__">
+        <span class="text-gray-800 font-medium text-sm"><c-blocktrans>All Permissions</c-blocktrans></span>
+    </label>
+</div>

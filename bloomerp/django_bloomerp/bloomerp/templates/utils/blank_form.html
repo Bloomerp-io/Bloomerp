@@ -1,10 +1,28 @@
 {% load crispy_forms_tags %}
 
-{% if form %}
-{{ form | crispy }}
-{% endif %}
-{% if hidden_args %}
-{% for key, value in hidden_args.items %}
-<input type="hidden" name="{{key}}" value="{{value}}">
-{% endfor %}
-{% endif %}
+<form 
+    method="post" 
+    action="{{ url }}" 
+    hx-post="{{ url }}" 
+    hx-target="this" 
+    hx-swap="outerHTML">
+    {% csrf_token %}
+    {% if form %}
+    {{ form | crispy }}
+    {% endif %}
+    {% if hidden_args %}
+    {% for key, value in hidden_args.items %}
+    <input type="hidden" name="{{key}}" value="{{value}}">
+    {% endfor %}
+    {% endif %}
+
+    <div class="mt-4 flex justify-end gap-2">
+        <button 
+            type="submit" 
+            class="btn btn-primary"
+            >
+            <c-blocktrans>Create</c-blocktrans>
+        </button>
+    </div>
+
+</form>

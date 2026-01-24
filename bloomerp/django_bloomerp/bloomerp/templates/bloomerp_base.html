@@ -19,8 +19,8 @@
 		<!-- End Sidebar-->		
 		 
 		<!--Main -->
-		<main id="main" class="transition-all duration-300 ease-in-out px-8 py-6 px-2 mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200 me-2">
-			<div id="main-content" hx-history-elt>
+		<main id="main" class="transition-all duration-300 ease-in-out mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200 me-2">
+			<div id="main-content" hx-history-elt class="px-6 py-8">
 				{% block main %}
 					{% if include_main_content %}
 						{% include include_main_content %}
@@ -47,6 +47,9 @@
 
 		<!--Modals-->
 		<c-ui.modal id="create-object-modal" title="Create object"/>
+		<c-ui.modal id="todo-modal" title="Todo's" size="lg"></c-ui.modal>
+		<c-ui.modal id="advanced-query-modal" title="Advanced query"/>
+
 
 		<!-- Legacy JavaScript files (to be migrated to TypeScript) -->
 
@@ -56,20 +59,11 @@
 		<!--Bloomerp forms-->
 		<script src="{% static 'bloomerp/js/bloomerpForms.js' %}"></script>
 
-		<!-- Datatable now handled by TypeScript bundle above -->
-		<!-- <script src="{% static 'bloomerp/js/datatable.js' %}"></script> -->
-
 		<!--LLM-->
 		<script src="{% static 'bloomerp/js/llm.js' %}"></script>
 
 		<!--Hotkeys-->
 		<script src="{% static 'bloomerp/js/hotkeys.js' %}"></script>
-
-		<!--Modals-->
-		<script src="{% static 'bloomerp/js/modals.js' %}"></script>
-		
-		<!--Editor JS-->
-		
 
 		{% block scripts %}
 		

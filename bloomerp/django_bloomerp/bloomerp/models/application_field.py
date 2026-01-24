@@ -146,5 +146,13 @@ class ApplicationField(models.Model):
             content_type_id=content_type_id
         )
 
+    def get_model(self) -> models.Model:
+        """Returns the model class for this application field."""
+        return self.content_type.model_class()
     
+    def get_related_model(self) -> Optional[models.Model]:
+        """Returns the related model class for this application field, if any."""
+        if self.related_model:
+            return self.related_model.model_class()
+        return None
     

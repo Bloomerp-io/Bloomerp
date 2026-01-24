@@ -3,7 +3,12 @@ import htmx from "htmx.org";
 
 export abstract class BaseDataViewCell extends BaseComponent {
     private detailUrl : string;
-    
+    // Optional runtime click override. When set, `click()` will call this
+    // instead of performing the default navigation behaviour.
+    public onClickOverride: ((cell: BaseDataViewCell) => void) | null = null;
+    public objectString: string | null = null;
+    public objectId: string | null = null;
+
     public initialize(): void {
 
         // Get detail url
@@ -13,6 +18,10 @@ export abstract class BaseDataViewCell extends BaseComponent {
         if (this.rightClick !== BaseDataViewCell.prototype.rightClick) {
             this.handleRightClick();
         }
+
+        // Setup object string
+        this.objectString = this.element.dataset.objectString || null;
+        this.objectId = this.element.dataset.objectId || null;
 
         // Handle click event
         this.setupEventListeners();
@@ -83,6 +92,16 @@ export abstract class BaseDataViewCell extends BaseComponent {
      * overwritten.
      */
     public click() : void {
+        // If an override is provided, prefer that (useful for selection UIs).
+        if (this.onClickOverride) {
+            try {
+                this.onClickOverride(this);
+            } catch (err) {
+                console.error('onClickOverride error', err);
+            }
+            return;
+        }
+
         if (this.detailUrl) {
             htmx.ajax(
                 'get',
@@ -91,10 +110,9 @@ export abstract class BaseDataViewCell extends BaseComponent {
                     target: "#main-content",
                     push: "true"
                 }
-        )
+            );
         }
     }
-
 
     private setupEventListeners() : void {
         if (!this.element) return;

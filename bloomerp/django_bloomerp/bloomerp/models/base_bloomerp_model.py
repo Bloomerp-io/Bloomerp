@@ -1,6 +1,15 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 from bloomerp.models import mixins
+from pydantic import BaseModel
+from pydantic import Field
+from typing import Optional
+
+class LayoutSection(BaseModel):
+    columns:int
+    items:list[str|int] = Field(default_factory=list)
+    title:Optional[str] = None
+
 
 class BloomerpModel(
     mixins.TimestampedModelMixin,
@@ -10,9 +19,6 @@ class BloomerpModel(
     mixins.AvatarModelMixin,
     models.Model,
 ):
-    '''
-    Base model for all Bloomerp models.
-    '''
     class Meta:
         abstract = True
         default_permissions = ('add', 'change', 'delete', 'view', 'bulk_change', 'bulk_delete', 'bulk_add', 'export')
@@ -20,8 +26,8 @@ class BloomerpModel(
     files = GenericRelation("bloomerp.File")
     comments = GenericRelation("bloomerp.Comment")
 
-
-    form_layout : dict = None
+    field_layout:Optional[list[LayoutSection]] = None
+    form_layout:dict = None # DEPR 
 
     @classmethod
     def _validate_form_layout(cls) -> tuple[bool, list[str]]:
@@ -66,3 +72,5 @@ class BloomerpModel(
             }
 
         return enhanced_layout
+    
+    

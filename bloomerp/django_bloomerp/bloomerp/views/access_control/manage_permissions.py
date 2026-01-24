@@ -31,7 +31,7 @@ class ManageAccessControlForModelView(HtmxMixin, TemplateView):
             field_type__in=[FieldType.ONE_TO_MANY_FIELD.id, FieldType.PROPERTY.id]
         )
         context["content_type_id"] = ContentType.objects.get_for_model(self.model).id
-        
+        print(context["content_type_id"])
         context["permissions"] = Permission.objects.filter(content_type__id=ContentType.objects.get_for_model(self.model).id)        
         return context
     

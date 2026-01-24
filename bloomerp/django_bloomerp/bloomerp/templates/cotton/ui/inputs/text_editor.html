@@ -1,0 +1,8 @@
+<div 
+    bloomerp-component="text-editor" 
+    class="rounded-lg p-2 border border-gray-300" 
+    data-placeholder="{{ placeholder|default:'' }}"
+    >
+    <div data-text-editor-body="true" class="min-h-[120px] outline-none whitespace-pre-wrap break-words" contenteditable="true" role="textbox" aria-multiline="true" tabindex="0">{{ slot }}</div>
+    <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value|default:'' }}">
+</div>

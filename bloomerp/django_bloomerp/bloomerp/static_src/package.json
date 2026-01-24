@@ -41,6 +41,8 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "alpinejs": "^3.15.3",
+    "grapesjs": "^0.22.14",
+    "grapesjs-preset-webpage": "^1.0.3",
     "htmx.org": "^2.0.3"
   }
 }

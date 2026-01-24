@@ -699,7 +699,7 @@ requires-dist = [
     { name = "distro", specifier = "==1.9.0" },
     { name = "django", specifier = "==5.1.1" },
     { name = "django-browser-reload", specifier = "==1.18.0" },
-    { name = "django-cotton", specifier = "==2.1.2" },
+    { name = "django-cotton", specifier = "==2.6.1" },
     { name = "django-crispy-forms", specifier = "==2.3" },
     { name = "django-extensions", specifier = "==3.2.3" },
     { name = "django-filter", specifier = "==24.3" },
@@ -865,14 +865,14 @@ wheels = [
 
 [[package]]
 name = "django-cotton"
-version = "2.1.2"
+version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/4e/e8be2accc5e10c899f4d22e6f64686b93733c5ac42524275e627cbf7314f/django_cotton-2.1.2.tar.gz", hash = "sha256:ad467f725239bf43004dad87dfc70f95c08d96efde4166d4bfb815e7cb72c56f", size = 23063, upload-time = "2025-05-11T21:43:58.505Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/c1/0df4b01255626897f5e74bdcef407ba88753ca92898c912caf2f9e73ba33/django_cotton-2.6.1.tar.gz", hash = "sha256:bedfa4561e2505fca5b88396acb9bdfaea85167eeef11813676fedab45906088", size = 31147, upload-time = "2026-01-13T12:06:00.142Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/2b/1285d050801ee92bfe408574954d26aaacbf67e1eb68946a78024fd3d0b8/django_cotton-2.1.2-py3-none-any.whl", hash = "sha256:8492cb7cfe881455a1b9dfaaaec2d1943494a1d3d2e2066ac7da6ce31afceef3", size = 22053, upload-time = "2025-05-11T21:43:56.978Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/d2/dea85f1931de0b2da4746f6ad669c7da1f5c8569bee144fe6620c8d98d61/django_cotton-2.6.1-py3-none-any.whl", hash = "sha256:775dda0336c08d33a6daf10557eb261746b1b8e5f260b669cc6b37115571cb08", size = 30563, upload-time = "2026-01-13T12:05:59.162Z" },
 ]
 
 [[package]]

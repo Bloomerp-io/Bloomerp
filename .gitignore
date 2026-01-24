@@ -81,6 +81,13 @@ build/
 *.min.js
 *.min.css
 
+# TypeScript/Vite build outputs
+bloomerp/django_bloomerp/bloomerp/static/bloomerp/js/dist/
+bloomerp/django_bloomerp/bloomerp/static/css/dist/
+*.tsbuildinfo
+
 # Keep setup.py out for now
 setup.py
+bloomerp/django_bloomerp/db.sqlite3
+bloomerp/django_bloomerp/db.sqlite3
 bloomerp/django_bloomerp/db.sqlite3

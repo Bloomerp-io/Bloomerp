@@ -24,7 +24,8 @@ class HtmxMixin:
     htmx_detail_target = 'detail-content'
     htmx_main_target = 'main-content'
     is_detail_view = False
-
+    include_padding = True
+    
     def get_context_data(self, **kwargs:Any) -> dict:
         try:
             context = super().get_context_data(**kwargs)
@@ -54,6 +55,8 @@ class HtmxMixin:
                     # In this case, we are dealing with a detail view
                     context['include_detail_content'] = self.template_name
                     self.template_name = self.base_detail_template
+                    
+        context['include_padding'] = self.include_padding
         return context
     
 class BloomerpModelFormViewMixin(ModelFormMixin):

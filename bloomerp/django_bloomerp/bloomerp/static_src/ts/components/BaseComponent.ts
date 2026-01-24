@@ -9,7 +9,7 @@ class BaseComponent {
     constructor(element?: HTMLElement) {
         if (element) {
             this.element = element;
-            this.initialize();
+            // DO NOT call this.initialize() here - call it after instantiation
         }
     }
 
@@ -95,6 +95,9 @@ export function initComponents(container: Document | HTMLElement = document): vo
             
             // Mark as initialized
             element.setAttribute('data-component-initialized', 'true');
+
+            // Call initialize AFTER construction (after fields are initialized)
+            instance.initialize();
         } catch (error) {
             console.error(`Error initializing component ${componentId}:`, error);
         }
@@ -175,6 +178,7 @@ export function getComponent(element:HTMLElement) : BaseComponent | null {
         componentInstanceRegistry.set(element, instance);
         (element as any).__bloomerp_component = instance;
         element.setAttribute('data-component-initialized', 'true');
+        instance.initialize();
         return instance;
     } catch (error) {
         console.error(`Error lazily initializing component ${componentId}:`, error);

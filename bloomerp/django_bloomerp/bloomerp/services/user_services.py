@@ -9,7 +9,7 @@ from django.db.models.query import QuerySet
 from bloomerp.models.application_field import ApplicationField
 from django.core.cache import cache
 from dataclasses import dataclass
-
+from bloomerp.models import UserDetailViewPreference
 
 @dataclass
 class DataViewFields:
@@ -98,19 +98,6 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
     )
 
 
-def create_default_list_view_preference(user: AbstractBloomerpUser, content_type: ContentType) -> QuerySet[UserListViewField]:
-    """Creates a default list view preference for a user and model based on the model's fields.
-    
-    Args:
-        user (AbstractBloomerpUser): The user for whom to create the preference.
-        content_type (ContentType): The content type for which to create the preference.
-    Returns:
-        UserListViewField: The created list view preference.
-    """
-    # Create default preference
-    return UserListViewField.generate_default_for_user(user, content_type)
-
-
 def clear_user_list_view_preference_cache(user: AbstractBloomerpUser, content_type: ContentType) -> None:
     """Clears the cached list view preference for a user and content type.
     
@@ -140,7 +127,6 @@ def get_user_list_view_preference(user: AbstractBloomerpUser, content_type: Cont
         user=user,
         content_type=content_type
     )
-    
     return preference
 
 
@@ -172,3 +158,8 @@ def toggle_field_visibility(
     preference.save(update_fields=['display_fields'])
     
     return is_visible, preference
+
+
+def create_default_detail_view_preference(user:AbstractBloomerpUser) -> UserDetailViewPreference:
+    
+    return
