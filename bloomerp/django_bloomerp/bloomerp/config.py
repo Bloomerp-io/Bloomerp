@@ -16,5 +16,5 @@ BLOOMERP_MIDDLEWARE = [
     "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
-BLOOMERP_USER_MODEL = "bloomerp.User"
+BLOOMERP_USER_MODEL = "bloomerp.user"
 

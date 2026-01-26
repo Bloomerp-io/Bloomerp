@@ -210,3 +210,7 @@ class UserStampedModelMixin(models.Model):
     
     class Meta:
         abstract = True
+        
+        
+class SkipApiCreationMixin:
+    skip_api_creation: bool = True

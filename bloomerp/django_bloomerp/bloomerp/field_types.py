@@ -46,7 +46,7 @@ class LookupDefinition:
     
     def render(self, application_field) -> str:
         if not self.render_func:
-            return """<input type="text" class="input">"""
+            return f"""<input type=\"text\" class=\"input\" name=\"{application_field.field}\">"""
 
         return self.render_func(application_field)
         

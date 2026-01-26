@@ -8,14 +8,12 @@ Parameters:
 
 {% endcomment %}
 
-
-
 {% load bloomerp %}
 {% load i18n %}
 
 <div 
     class="overflow-auto rounded-lg border-l border-r border-gray-200"
-    bloomerp-component="datatable"
+    bloomerp-component="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
     data-content-type-id="{{ content_type_id }}"
     >
     <table 

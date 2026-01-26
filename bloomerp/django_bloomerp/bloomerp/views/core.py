@@ -63,6 +63,9 @@ class BloomerpListView(PermissionRequiredMixin, BloomerpModelContextMixin, HtmxM
         else:
             return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
         
+    def has_permission(self):
+        return True
+        
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
         context["title"] = self.model._meta.verbose_name.capitalize() + " list"

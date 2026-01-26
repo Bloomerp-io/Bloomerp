@@ -25,3 +25,5 @@ class RowPolicyRule(models.Model):
             related_name="row_policy_rules",            
         )
     
+    
+    

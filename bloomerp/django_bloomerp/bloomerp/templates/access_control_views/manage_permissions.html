@@ -68,12 +68,12 @@
 						
 					</th>
 					<th class="border border-gray-300 p-2" colspan="3">
-						<input class="input" placeholder="Field Policy">
+						<input class="input" placeholder="Field Policy" id="field-policy-name-input">
 					</th>
 				</tr>
 				<tr>
 					<th class="border border-gray-300 p-2 w-32">
-						<input class="input" placeholder="Row Policy">
+						<input class="input" placeholder="Row Policy" id="row-policy-name-input">
 					</th>
 					<th class="border border-gray-300 bg-white p-2">
 						<div 
@@ -125,14 +125,14 @@
 				<c-ui.text.label>
 					Policy Name
 				</c-ui.text.label>
-				<input class="input" type="text" placeholder="e.g., European Account Manager Policy">
+				<input class="input" type="text" id="policy-name-input" placeholder="e.g., European Account Manager Policy">
 			</div>
 
 			<div class="flex flex-col col-span-1">
 				<c-ui.text.label>
 					Description
 				</c-ui.text.label>
-				<textarea class="input" placeholder="e.g., Allows European account managers to view and edit customer records in EU countries..."></textarea>
+				<textarea class="input" id="policy-description-input" placeholder="e.g., Allows European account managers to view and edit customer records in EU countries..."></textarea>
 			</div>
 		</div>
 	</div>
@@ -140,11 +140,8 @@
 
 	<!--Action Buttons-->
 	<div class="mb-6 flex gap-2">
-		<button class="btn btn-primary">
+		<button class="btn btn-primary" id="save-policy-btn">
 			<c-blocktrans>Save Policy</c-blocktrans>
-		</button>
-		<button class="btn btn-secondary">
-			<c-blocktrans>Reset</c-blocktrans>
 		</button>
 	</div>
 	
@@ -186,12 +183,6 @@
 					>
 					<c-blocktrans>Add Condition</c-blocktrans>
 				</button>
-				<button 
-					class="btn btn-neutral"
-					id="add-row-policy-btn"
-					>
-					<c-blocktrans>Reset</c-blocktrans>
-				</button>
 			</div>
 		</div>
 	</c-ui.modal>
@@ -223,12 +214,6 @@
 					id="add-field-policy-btn"
 					>
 					<c-blocktrans>Add Field Policy</c-blocktrans>
-				</button>
-				<button 
-					class="btn btn-neutral"
-					id="add-row-policy-btn"
-					>
-					<c-blocktrans>Reset</c-blocktrans>
 				</button>
 			</div>
 			<!--End buttons-->

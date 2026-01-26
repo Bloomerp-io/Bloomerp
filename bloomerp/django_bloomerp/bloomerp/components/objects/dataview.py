@@ -4,10 +4,9 @@ from registries.route_registry import router
 from django.http import HttpResponse
 from django.http import HttpRequest
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.services.permission_services import get_queryset_for_user
-from bloomerp.services.permission_services import has_access_to_field
+from bloomerp.services.permission_services import UserPermissionManager
+from bloomerp.services.permission_services import create_permission_str
 from bloomerp.services.user_services import get_data_view_fields
-from bloomerp.services.user_services import get_accessible_fields_for_user
 from bloomerp.services.user_services import get_user_list_view_preference
 from bloomerp.services.user_services import toggle_field_visibility
 from bloomerp.services.object_services import string_search_on_queryset
@@ -352,14 +351,18 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     except ContentType.DoesNotExist:
         return HttpResponse("Content Type not found.", status=404)
     
+    # Manager
+    permission_manager = UserPermissionManager(request.user)
+    
     # Get the base queryset
-    queryset = get_queryset_for_user(request.user, Model.objects.all())
+    queryset = permission_manager.get_queryset(Model, create_permission_str(Model, "view"))
     
     # Get the user's list view preference
     preference = get_user_list_view_preference(request.user, content_type)
     
     # Get fields for the user (visible + accessible)
     data_view_fields = get_data_view_fields(preference)
+    print(data_view_fields)
     
     # Apply string search if query is present
     if query:
@@ -392,7 +395,6 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'page_sizes': PageSize,
         'calendar_view_modes': CalendarViewMode,
         'render_id': str(uuid.uuid4()),
-        'application_fields' : ApplicationField.get_for_model(Model),
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
     }
     context.update(_get_extra_context_for_view_type(preference, queryset, request))

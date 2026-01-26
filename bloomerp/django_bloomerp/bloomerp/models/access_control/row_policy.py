@@ -25,6 +25,9 @@ class RowPolicy(models.Model):
         default="",
         help_text=_("The name of the row-level access control policy.")
         )
+    
+    def __str__(self):
+        return f"{self.name} ({self.content_type.app_label}.{self.content_type.model})"
 
 
 

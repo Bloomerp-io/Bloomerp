@@ -6,7 +6,6 @@ from bloomerp.models.workspaces import Widget
 import plotly.express as px
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from bloomerp.services.permission_services import has_access_to_object
 
 @login_required
 @route('workspace_widget')

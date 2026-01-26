@@ -1,7 +1,6 @@
 """
 All rights reserved. 
 """
-from bloomerp.models.auth import UserListViewField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.users.user import AbstractBloomerpUser
@@ -10,6 +9,7 @@ from bloomerp.models.application_field import ApplicationField
 from django.core.cache import cache
 from dataclasses import dataclass
 from bloomerp.models import UserDetailViewPreference
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 
 @dataclass
 class DataViewFields:
@@ -24,38 +24,6 @@ class DataViewFields:
     accessible_fields: list[tuple]
 
 
-def get_accessible_fields_for_user(user: AbstractBloomerpUser, content_type: ContentType) -> QuerySet[ApplicationField]:
-    """Gets the fields of a model that a user has permission to view.
-    
-    This returns ALL fields the user can potentially see (based on field-level permissions).
-    These fields are shown in the display options UI for toggling visibility.
-    
-    Args:
-        user (AbstractBloomerpUser): The user for whom to get accessible fields.
-        content_type (ContentType): The content type of the model.
-    Returns:
-        QuerySet[ApplicationField]: The fields the user can access.
-    """
-    # Get all fields for this content type, excluding system fields and unsupported types
-    all_fields = ApplicationField.objects.filter(
-        content_type=content_type
-    ).exclude(
-        field_type__in=['ManyToManyField', 'OneToManyField', 'GenericRelation', 'GenericForeignKey']
-    ).exclude(
-        field__in=['id', 'created_by', 'updated_by', 'datetime_created', 'datetime_updated']
-    ).order_by('field')
-    
-    # TODO: Implement field-level permission checks here.
-    # For now, return all fields. In the future, filter based on FieldPermission model.
-    # Example future implementation:
-    # hidden_field_ids = FieldPermission.objects.filter(
-    #     application_field__content_type=content_type,
-    #     permission='hidden'
-    # ).filter(Q(user=user) | Q(group__in=user.groups.all())).values_list('application_field_id', flat=True)
-    # return all_fields.exclude(id__in=hidden_field_ids)
-    
-    return all_fields
-
 
 def get_data_view_fields(preference: UserListViewPreference, view_type: str = None) -> DataViewFields:
     """Gets the visible and accessible fields for a user's list view preference.
@@ -69,7 +37,16 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
     view_type = view_type or preference.view_type
     
     # Get all accessible fields for this user and content type
-    accessible_fields_qs = get_accessible_fields_for_user(preference.user, preference.content_type)
+    manager = UserPermissionManager(preference.user)
+    permission_str = create_permission_str(preference.content_type.model_class(), "view")
+    print(permission_str)
+    print(preference.content_type)
+    accessible_fields_qs = manager.get_accessible_fields(
+        preference.content_type,
+        permission_str
+    )
+    
+    print(accessible_fields_qs)
     
     # Get the visible field IDs for this view type
     visible_field_ids = preference.get_visible_field_ids(view_type)
@@ -150,10 +127,6 @@ def toggle_field_visibility(
     view_type = view_type or preference.view_type
     
     # Verify the field exists and is accessible
-    accessible_fields = get_accessible_fields_for_user(user, content_type)
-    if not accessible_fields.filter(id=field_id).exists():
-        raise ValueError(f"Field {field_id} is not accessible for this user")
-    
     is_visible = preference.toggle_field(view_type, field_id)
     preference.save(update_fields=['display_fields'])
     

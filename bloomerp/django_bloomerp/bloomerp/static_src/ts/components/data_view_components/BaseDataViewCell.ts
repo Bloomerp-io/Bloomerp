@@ -101,7 +101,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
             }
             return;
         }
-
+        console.log(this.detailUrl)
         if (this.detailUrl) {
             htmx.ajax(
                 'get',

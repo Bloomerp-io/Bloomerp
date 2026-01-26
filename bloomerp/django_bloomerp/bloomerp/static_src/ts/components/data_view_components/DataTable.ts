@@ -59,7 +59,6 @@ export class DataTable extends BaseDataViewComponent {
                 label: 'Navigate',
                 icon: 'fa-solid fa-arrow-right',
                 onClick: async () => {
-                    console.log('Click')
                     this.currentCell.click()
                 },
             },

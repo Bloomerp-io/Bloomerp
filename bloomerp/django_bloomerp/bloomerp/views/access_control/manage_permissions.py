@@ -7,13 +7,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
 from django.contrib.auth.models import Permission
 
-@router.register(
-    path='access-control',
-    route_type='app',
-)
-class ManageAccessControlView(HtmxMixin, TemplateView):
-    template_name = "access_control_views/manage_permissions.html"
-    
 
 @router.register(
     path='access-control',
@@ -31,7 +24,6 @@ class ManageAccessControlForModelView(HtmxMixin, TemplateView):
             field_type__in=[FieldType.ONE_TO_MANY_FIELD.id, FieldType.PROPERTY.id]
         )
         context["content_type_id"] = ContentType.objects.get_for_model(self.model).id
-        print(context["content_type_id"])
         context["permissions"] = Permission.objects.filter(content_type__id=ContentType.objects.get_for_model(self.model).id)        
         return context
     

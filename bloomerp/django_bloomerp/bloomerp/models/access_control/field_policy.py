@@ -37,6 +37,9 @@ class FieldPolicy(models.Model):
         help_text=_("A JSON representation of the field-level access control rules.")
     )
     
+    def __str__(self):
+        return f"{self.name} ({self.content_type.app_label}.{self.content_type.model})"
+    
     
 
 

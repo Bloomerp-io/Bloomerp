@@ -3,6 +3,7 @@ import FilterContainer from "./Filters";
 import PermissionCheckboxes from "./inputs/PermissionCheckboxes";
 import { Modal } from "./Modal";
 import htmx from "htmx.org";
+import { getCsrfToken } from "../utils/cookies";
 
 interface FieldData {
     id: string;
@@ -21,11 +22,18 @@ export class PermissionsTable extends BaseComponent {
     private columnDropZones: NodeListOf<HTMLElement> | null = null;
     private currentDraggedField: FieldData | null = null;
     private draggedElement: HTMLElement | null = null;
+    private currentDroppedField: FieldData | null = null;
+    private currentDroppedApplicationFieldId: string | null = null;
     private contentTypeId: string;
     private addRowPolicyBtn: HTMLElement | null = null;
 
-    // 
     private rowPolicyFilter: FilterContainer | null = null;
+
+    // Inputs
+    private rowPolicyNameInput: HTMLInputElement | null = null;
+    private fieldPolicyNameInput: HTMLInputElement | null = null;
+    private policyNameInput: HTMLInputElement | null = null;
+    private policyDescriptionInput: HTMLTextAreaElement | null = null;
 
     // Permission checkboxes
     private globalPermissionComp : PermissionCheckboxes;
@@ -35,6 +43,18 @@ export class PermissionsTable extends BaseComponent {
     // Modals
     private rowPolicyModal: Modal | null = null;
     private fieldPolicyModal: Modal | null = null;
+
+    // Save button
+    private saveBtn: HTMLElement | null = null;
+
+    // Event handlers
+    private fieldRemovedHandler: ((event: Event) => void) | null = null;
+
+    // State 
+    private rowPolicyRules: Array<{ rule: Record<string, any>; permissions: string[] }> = [];
+    private fieldPolicies: Record<string, string[]> = {};
+    private globalPermissions: Array<any> = [];
+
 
 
     public initialize(): void {
@@ -48,9 +68,14 @@ export class PermissionsTable extends BaseComponent {
 
         // Add Row Policy Button
         this.addRowPolicyBtn = this.element.querySelector('#add-row-policy-btn');
-
         this.addRowPolicyBtn.addEventListener('click', ()=>{
             this.addRowPolicy()
+        })
+
+        // Add Field Policy Button
+        const addFieldPolicyBtn = this.element.querySelector('#add-field-policy-btn');
+        addFieldPolicyBtn?.addEventListener('click', ()=>{
+            this.addFieldPolicy()
         })
 
         // Initialize PermissionCheckboxes components
@@ -61,8 +86,31 @@ export class PermissionsTable extends BaseComponent {
         // Initialize Modals
         this.rowPolicyModal = getComponent(document.getElementById('row-policy-modal')) as Modal;
         this.fieldPolicyModal = getComponent(document.getElementById('field-policy-modal')) as Modal;
+
+        // Save button
+        this.saveBtn = this.element.querySelector('#save-policy-btn');
+        if (this.saveBtn) {
+            this.saveBtn.addEventListener('click', () => {
+                this.save();
+            });
+        }
+
+        // Handle field removals to keep state in sync
+        this.fieldRemovedHandler = (event: Event) => this.handleFieldRemoved(event as CustomEvent);
+        this.element.addEventListener('permissions-field-removed', this.fieldRemovedHandler);
+
+        // Inputs
+        this.rowPolicyNameInput = this.element.querySelector('#row-policy-name-input') as HTMLInputElement;
+        this.fieldPolicyNameInput = this.element.querySelector('#field-policy-name-input') as HTMLInputElement;
+        this.policyNameInput = this.element.querySelector('#policy-name-input') as HTMLInputElement;
+        this.policyDescriptionInput = this.element.querySelector('#policy-description-input') as HTMLTextAreaElement;
     }
 
+    /*
+    --------------------------------
+    Drag and Drop Functionality
+    --------------------------------
+    */
     private setupDraggableFields(): void {
         if (!this.element) return;
 
@@ -182,6 +230,10 @@ export class PermissionsTable extends BaseComponent {
 
         this.element?.dispatchEvent(dropEvent);
 
+        // Store the dropped field so addRowPolicy/addFieldPolicy can access it later
+        this.currentDroppedField = this.currentDraggedField;
+        this.currentDroppedApplicationFieldId = this.currentDraggedField?.id || null;
+
         // Visual feedback: clone the field into the drop zone
         this.addFieldToDropZone(target, this.currentDraggedField, dropZoneType);
 
@@ -281,11 +333,25 @@ export class PermissionsTable extends BaseComponent {
             zone.removeEventListener('dragleave', this.handleDragLeave.bind(this));
             zone.removeEventListener('drop', this.handleDrop.bind(this));
         });
+
+        if (this.fieldRemovedHandler && this.element) {
+            this.element.removeEventListener('permissions-field-removed', this.fieldRemovedHandler);
+        }
+    }
+
+    private handleFieldRemoved(event: CustomEvent): void {
+        const detail = event.detail || {};
+        const dropZoneType = detail.dropZoneType as 'row' | 'column' | undefined;
+        const fieldId = detail.field?.id as string | undefined;
+
+        if (dropZoneType === 'column' && fieldId) {
+            delete this.fieldPolicies[fieldId];
+        }
     }
 
     /**
      * The scope of the permission checkboxes
-     * @param scope 
+     * @param scope the scope
      */
     public getPermissionValues(scope:PermissionScope) {
         switch (scope) {
@@ -305,17 +371,136 @@ export class PermissionsTable extends BaseComponent {
      */
     private addRowPolicy() : void {
         // Get permissions
-        let permissions = this.getPermissionValues(PermissionScope.ROW)        
+        let permissions = this.getPermissionValues(PermissionScope.ROW);
+
+        if (permissions.length === 0) {
+            alert("Please select at least one permission for the row policy.");
+            return;
+        }
 
         // Get filters
-        let filters = this.rowPolicyFilter.getFilters()
+        const filters = this.rowPolicyFilter?.getFilters() || [];
+        if (filters.length === 0) {
+            alert("Please add at least one condition for the row policy.");
+            return;
+        }
 
-        console.log("Adding Row Policy with permissions:", permissions, "and filters:", filters)
+        filters.forEach((filter) => {
+            const rule = {
+                field: filter.field,
+                operator: filter.operator,
+                value: filter.value,
+                application_field_id: filter.applicationFieldId || this.currentDroppedApplicationFieldId
+            };
+
+            this.rowPolicyRules.push({
+                permissions: permissions,
+                rule: rule
+            });
+        });
+
 
         // Reset checkboxes
         this.rowPermissionComp.reset();
 
         // Close modal
         this.rowPolicyModal?.close();
+    }
+
+    /**
+     * Adds a field 
+     */
+    private addFieldPolicy() : void {
+        // Get permissions
+        let permissions = this.getPermissionValues(PermissionScope.FIELD);
+
+        if (permissions.length === 0) {
+            alert("Please select at least one permission for the field policy.");
+            return;
+        }
+
+        const applicationFieldId = this.currentDroppedApplicationFieldId;
+        if (!applicationFieldId) {
+            alert("Please drop a field before adding a field policy.");
+            return;
+        }
+
+        this.fieldPolicies[applicationFieldId] = permissions;
+
+        // Reset checkboxes
+        this.fieldPermissionComp.reset();
+
+        // Close modal
+        this.fieldPolicyModal?.close();
+    }
+
+    /**
+     * Constructs the row policy object from state
+     */
+    private getRowPolicy() : Record<string, any> {
+        return {
+            name: this.rowPolicyNameInput?.value || 'Row Policy',
+            rules: this.rowPolicyRules
+        }
+    }
+
+    /**
+     * Contructs the field policy object from the state
+     */
+    private getFieldPolicy() : Record<string, any> {
+        return {
+            name: this.fieldPolicyNameInput?.value || 'Field Policy',
+            rules: this.fieldPolicies
+        }
+    }
+
+
+    /**
+     * Saves the permission using the state
+     */
+    private async save() : Promise<void> {
+        const name = this.policyNameInput?.value?.trim() || `Permissions for ContentType ${this.contentTypeId}`;
+        const description = this.policyDescriptionInput?.value?.trim() || '';
+        const globalPermissions = this.getPermissionValues(PermissionScope.GLOBAL);
+        const payload = {
+            name: name,
+            description: description,
+            content_type_id: this.contentTypeId,
+            global_permissions: globalPermissions,
+            row_policy: this.getRowPolicy(),
+            field_policy: this.getFieldPolicy(),
+        };
+
+        const csrfToken = getCsrfToken();
+
+        console.log("Saving policy with payload:", payload);
+
+        try {
+            const response = await fetch('/api/access_control_policies/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {})
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                let errorMessage = 'Failed to create policy.';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData?.detail || JSON.stringify(errorData);
+                } catch {
+                    // ignore json parse errors
+                }
+                alert(errorMessage);
+                return;
+            }
+
+            alert('Policy created successfully.');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to create policy. Please try again.');
+        }
     }
 }

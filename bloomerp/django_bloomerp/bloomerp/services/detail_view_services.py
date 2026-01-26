@@ -1,6 +1,5 @@
 from bloomerp.models import ApplicationField
 from bloomerp.models.base_bloomerp_model import LayoutSection
-from bloomerp.services.permission_services import has_access_to_field
 from django.db.models import Model
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models import AbstractBloomerpUser

@@ -5,6 +5,9 @@
 from django.urls import include, path,  register_converter
 from django.contrib.auth import views as auth_views
 from django.contrib.contenttypes.models import ContentType
+from zmq import has
+from bloomerp.models.access_control.policy import Policy
+from bloomerp.views.api.access_control import PolicyViewSet
 from bloomerp.views.document_templates import router as document_template_router
 from django.db.models import Model
 from bloomerp.utils.models import ( 
@@ -12,7 +15,7 @@ from bloomerp.utils.models import (
     get_base_model_route,
     )
 from bloomerp.utils.api import generate_serializer, generate_model_viewset_class
-from bloomerp.views.api import BloomerpModelViewSet
+from bloomerp.views.api_views import BloomerpModelViewSet
 from bloomerp.utils.urls import IntOrUUIDConverter
 from rest_framework.routers import DefaultRouter
 from shared_utils.router.view_router import _get_routers_from_settings, BloomerpRouterHandler
@@ -104,6 +107,9 @@ for content_type in content_types:
         if not model:
             continue
         
+        
+            
+        
         serializer_class = generate_serializer(model)
         
         ApiViewSet = generate_model_viewset_class(
@@ -113,11 +119,13 @@ for content_type in content_types:
         )
 
         try:
-            drf_router.register(
-                prefix = model_name_plural_underline(model), 
-                viewset = ApiViewSet, 
-                basename=model_name_plural_underline(model)
-                )
+            if hasattr(model, 'skip_api_creation') and not model.skip_api_creation:
+                
+                drf_router.register(
+                    prefix = model_name_plural_underline(model), 
+                    viewset = ApiViewSet, 
+                    basename=model_name_plural_underline(model)
+                    )
         except:
             pass
 
@@ -130,6 +138,12 @@ for content_type in content_types:
             admin.site.register(model)
         except AlreadyRegistered:
             pass
+
+drf_router.register(
+    prefix = model_name_plural_underline(Policy),
+    viewset = PolicyViewSet,
+    basename=model_name_plural_underline(Policy)
+)
 
 urlpatterns += [
     path('api/', include(drf_router.urls)),
