@@ -26,6 +26,43 @@ import uuid
 # -----------------------------------
 # Helper functions for different view types
 # -----------------------------------
+def _build_pagination_range(page_obj, window: int = 2) -> list[int | None]:
+    """Build a pagination range with ellipses for UI rendering."""
+    paginator = page_obj.paginator
+    total_pages = paginator.num_pages
+    current_page = page_obj.number
+
+    if total_pages <= 1:
+        return [1]
+
+    pages: list[int | None] = []
+
+    def add_page(page_number: int) -> None:
+        pages.append(page_number)
+
+    def add_ellipsis() -> None:
+        if pages and pages[-1] is not None:
+            pages.append(None)
+
+    add_page(1)
+
+    start = max(2, current_page - window)
+    end = min(total_pages - 1, current_page + window)
+
+    if start > 2:
+        add_ellipsis()
+
+    for page_number in range(start, end + 1):
+        add_page(page_number)
+
+    if end < total_pages - 1:
+        add_ellipsis()
+
+    add_page(total_pages)
+
+    return pages
+
+
 def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset:QuerySet, request:HttpRequest) -> dict:
     """Returns the extra context for a particular view type.
 
@@ -382,6 +419,9 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     
     
     # Add extra context based on view type
+    page_querystring = request.GET.copy()
+    page_querystring.pop('page', None)
+
     context = {
         'content_type_id': content_type_id,
         'queryset': page_obj,
@@ -394,6 +434,8 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'calendar_view_modes': CalendarViewMode,
         'render_id': str(uuid.uuid4()),
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
+        'page_querystring': page_querystring.urlencode(),
+        'pagination_pages': _build_pagination_range(page_obj),
     }
     context.update(_get_extra_context_for_view_type(preference, queryset, request))
     
