@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models import File, FileFolder, AbstractBloomerpUser
@@ -8,8 +8,8 @@ from django.forms.models import modelform_factory
 from bloomerp.utils.filters import dynamic_filterset_factory
 from django.contrib.auth.decorators import login_required
 
+@router.route(path='components/files/', name='components_files')
 @login_required
-@route('files')
 def files(request: HttpRequest) -> HttpResponse:
     '''
     Component for rendering a list of files and folders.

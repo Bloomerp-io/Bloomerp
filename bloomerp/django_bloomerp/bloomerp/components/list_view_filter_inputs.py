@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models import ApplicationField
@@ -7,8 +7,8 @@ from django.forms.models import modelform_factory
 import uuid
 from django.contrib.auth.decorators import login_required
 
+@router.route(path='components/list_view_filter_inputs/', name='components_list_view_filter_inputs')
 @login_required
-@route('list_view_filter_inputs')
 def list_view_filter_inputs(request:HttpRequest) -> HttpResponse:
     '''
     Returns the list view filter inputs:

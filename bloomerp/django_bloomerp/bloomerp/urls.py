@@ -19,7 +19,6 @@ from bloomerp.views.api_views import BloomerpModelViewSet
 from bloomerp.utils.urls import IntOrUUIDConverter
 from rest_framework.routers import DefaultRouter
 from shared_utils.router.view_router import _get_routers_from_settings, BloomerpRouterHandler
-from shared_utils.router.component_router import ComponentRouteFinder
 from registries.route_registry import router
 
 # Register the custom URL converter
@@ -150,17 +149,6 @@ urlpatterns += [
 ]
 
 urlpatterns.extend(router.create_url_patterns())
-
-# ---------------------------------
-# Route decorator
-# ---------------------------------
-# Get current dir
-import os
-current_dir = os.path.dirname(os.path.abspath(__file__))
-components_dir = os.path.join(current_dir, 'components')
-
-route_finder = ComponentRouteFinder(directory=components_dir, url_route_prefix='components/', url_name_prefix='components')
-urlpatterns += route_finder.generate_urlpatterns()
 
 
 # ---------------------------------

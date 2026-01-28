@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.forms.core import BloomerpModelForm
@@ -9,8 +9,8 @@ from django.contrib import messages
 from bloomerp.models import File
 from django.shortcuts import get_object_or_404
 
+@router.route(path='components/bulk_update_objects/', name='components_bulk_update_objects')
 @login_required
-@route('bulk_update_objects')
 def bulk_update_objects(request:HttpRequest) -> HttpResponse:
     # Get the content type id and form prefix from the query parameters
     content_type_id = request.GET.get('content_type_id')

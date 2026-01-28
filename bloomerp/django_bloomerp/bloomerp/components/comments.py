@@ -1,10 +1,10 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models import Comment
 from django.contrib.contenttypes.models import ContentType
 
-@route('comments')
+@router.route(path='components/comments/', name='components_comments')
 def comments(request:HttpRequest) -> HttpResponse:
     # I know this is not the best way, but fuck it (chatGPT wrote that the fuck it part guys :)
     delete_comment_id = request.GET.get('delete_comment_id', None)
