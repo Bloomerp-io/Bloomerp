@@ -1,5 +1,5 @@
 from django.db import models
-from bloomerp.models.fields import TextEditorField
+from bloomerp.model_fields.text_editor_field import TextEditorField
 from bloomerp.models import BloomerpModel
 from django.conf import settings
 from django.utils.translation import gettext as _

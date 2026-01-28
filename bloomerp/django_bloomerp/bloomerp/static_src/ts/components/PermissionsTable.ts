@@ -53,9 +53,6 @@ export class PermissionsTable extends BaseComponent {
     // State 
     private rowPolicyRules: Array<{ rule: Record<string, any>; permissions: string[] }> = [];
     private fieldPolicies: Record<string, string[]> = {};
-    private globalPermissions: Array<any> = [];
-
-
 
     public initialize(): void {
         if (!this.element) return;

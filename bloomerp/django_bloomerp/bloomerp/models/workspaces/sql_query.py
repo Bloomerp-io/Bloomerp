@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from bloomerp.models.base_bloomerp_model import BloomerpModel
-from bloomerp.models.fields import CodeField
+from bloomerp.model_fields.code_field import CodeField
 from django.utils.translation import gettext_lazy as _
 from bloomerp.utils.sql import SqlQueryExecutor
 

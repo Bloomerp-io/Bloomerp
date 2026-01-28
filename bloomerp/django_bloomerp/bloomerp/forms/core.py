@@ -1,7 +1,6 @@
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.models.files import File
-from bloomerp.models.auth import UserDetailViewTab, Link, UserListViewField
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from django import forms
 from django.contrib.contenttypes.models import ContentType
@@ -14,7 +13,7 @@ from bloomerp.utils.models import (
     )
 from django.contrib.postgres.fields import JSONField
 from django.db.models import JSONField as DefaultJSONField
-from bloomerp.widgets.code_editor_widget import AceEditorWidget
+from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from django.forms.widgets import DateInput, DateTimeInput
 from bloomerp.forms.layouts import BloomerpModelformHelper
 from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
@@ -68,7 +67,7 @@ class BloomerpModelForm(forms.ModelForm):
         self.user = user
 
         super(BloomerpModelForm, self).__init__(*args, **kwargs)
-
+        
         # Set the instance to the form instance
         instance:Model = kwargs.get('instance')
         if instance:
@@ -125,8 +124,8 @@ class BloomerpModelForm(forms.ModelForm):
             model_field = self._meta.model._meta.get_field(field_name)
             
             if isinstance(model_field, (JSONField, DefaultJSONField)):
-                # Apply the AceEditorWidget for JSON fields
-                self.fields[field_name].widget = AceEditorWidget(language='json')
+                # Apply the CodeEditorWidget for JSON fields
+                self.fields[field_name].widget = CodeEditorWidget(language='json')
 
         # ---------------------------------
         # Hide created_by and updated_by fields
@@ -142,8 +141,7 @@ class BloomerpModelForm(forms.ModelForm):
 
             if helper.is_defined() and self.model:
                 self.helper = helper
-
-                
+        
     def save(self, commit=True):
         instance = super(BloomerpModelForm, self).save(commit=False)
 
@@ -329,6 +327,7 @@ class ApplicationFieldModelChoiceField(forms.ModelMultipleChoiceField):
         # Customize the label here, e.g., add additional details
         string = obj.field
         return string.replace('_', ' ').capitalize()
+
 
 class ListViewFieldsSelectForm(forms.Form):
     def __init__(self, content_type:ContentType, user:AbstractBloomerpUser, *args, **kwargs):

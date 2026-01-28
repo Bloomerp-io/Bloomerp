@@ -526,6 +526,11 @@
     .input-lg {
       @apply px-4 py-3 
     }
+
+    .input:disabled {
+      @apply bg-gray-100 cursor-not-allowed
+    }
+
 }
 
 @layer components {

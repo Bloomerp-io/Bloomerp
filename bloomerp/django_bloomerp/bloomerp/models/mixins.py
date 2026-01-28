@@ -191,7 +191,6 @@ class AvatarModelMixin(models.Model):
     """
     class Meta:
         abstract = True
-
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
 
 

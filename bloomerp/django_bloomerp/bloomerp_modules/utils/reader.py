@@ -1,5 +1,4 @@
 from django.db.models import Model
-from bloomerp.models.base_bloomerp_model import BloomerpModel
 import yaml
 from enum import Enum
 from django.db import models
@@ -239,11 +238,21 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
         if model_config.has_avatar is False:
             attrs['avatar'] = None
     
-    # Field layout
-    if hasattr(model_config, 'field_layout'):
-        attrs["field_layout"] = model_config.field_layout
+    # Field layout - model_config.field_layout should now be a FieldLayout object.
+    if getattr(model_config, 'field_layout', None):
+        # Allow older list-based configs as a fallback
+        if isinstance(model_config.field_layout, list):
+            try:
+                from bloomerp.models.base_bloomerp_model import FieldLayout
+
+                attrs["field_layout"] = FieldLayout(sections=model_config.field_layout)
+            except Exception:
+                attrs["field_layout"] = model_config.field_layout
+        else:
+            attrs["field_layout"] = model_config.field_layout
     
-    # Create and return the model class
+    # Create and return the model class. Import BloomerpModel lazily to avoid circular imports.
+    from bloomerp.models.base_bloomerp_model import BloomerpModel
     return type(model_class_name, (BloomerpModel,), attrs)
 
 

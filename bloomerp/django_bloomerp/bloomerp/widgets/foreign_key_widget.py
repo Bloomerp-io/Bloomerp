@@ -1,30 +1,58 @@
-from django import forms
-from django.forms.models import modelform_factory
+import json
+
+from django.forms import widgets
 from django.db.models import Model
 from django.contrib.contenttypes.models import ContentType
-import random
 
-class ForeignFieldWidget(forms.Widget):
+class ForeignFieldWidget(widgets.Widget):
     template_name = 'widgets/foreign_field_widget.html'
-
-    def __init__(self, model: Model, *args, **kwargs):
-        self.model = model
-        self.is_m2m = kwargs.pop('is_m2m', False)
-        super().__init__(*args, **kwargs)
+    is_m2m: bool = False
     
-    def get_context(self, name, value, attrs):
-        from bloomerp.models import ApplicationField
+    def __init__(self, attrs=None):
+        self.is_m2m = attrs.pop('is_m2m', False) if attrs else False
+        super().__init__(attrs)
+    
+    def get_context(self, name, value:Model, attrs):
         context = super().get_context(name, value, attrs)
         
         # Add the content type ID to the context        
-        context['content_type_id'] = ContentType.objects.get_for_model(self.model).id
+        context['content_type_id'] = ContentType.objects.get_for_model(value._meta.model).id
 
-        # Get the object that is currently selected
-        if context['widget']['value']:
-            context['selected_object'] = self.model.objects.get(pk=context['widget']['value'])
 
         # Check if an invalid entry was made
-        if attrs.get('aria-invalid', 'false') == 'true':
+        if (attrs or {}).get('aria-invalid', 'false') == 'true':
             context['invalid'] = True
-            
+        
+        # Set selected value(s)
+        selected_ids = []
+        selected_labels = []
+
+        if value is not None:
+            if self.is_m2m:
+                if hasattr(value, 'all'):
+                    items = list(value.all())
+                elif isinstance(value, (list, tuple, set)):
+                    items = list(value)
+                else:
+                    items = [value]
+
+                for item in items:
+                    if isinstance(item, Model):
+                        selected_ids.append(item.pk)
+                        selected_labels.append(str(item))
+                    else:
+                        selected_ids.append(item)
+                        selected_labels.append(str(item))
+            else:
+                if isinstance(value, Model):
+                    selected_ids = [value.pk]
+                    selected_labels = [str(value)]
+                else:
+                    selected_ids = [value]
+                    selected_labels = [str(value)]
+
+        context['selected_value'] = selected_ids[0] if selected_ids else ''
+        context['selected_ids_json'] = json.dumps([str(v) for v in selected_ids])
+        context['selected_labels_json'] = json.dumps([str(v) for v in selected_labels])
+        
         return context

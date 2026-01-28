@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.fields import TextEditorField
+from bloomerp.model_fields.text_editor_field import TextEditorField
 from django.utils.translation import gettext_lazy as _
 from bloomerp.models.files.file_folder import FileFolder
 from django.conf import settings

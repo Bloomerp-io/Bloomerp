@@ -145,5 +145,3 @@ class Policy(
         return User.objects.filter(models.Q(pk__in=direct_user_ids) | models.Q(groups__in=group_qs)).distinct()
     
     
-    def remove_user(self):
-        pass

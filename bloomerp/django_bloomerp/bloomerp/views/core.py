@@ -15,7 +15,6 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.files import File
 from bloomerp.models.workspaces import Widget, SqlQuery
-from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.models.users import Bookmark
 from bloomerp.forms.core import BloomerpDownloadBulkUploadTemplateForm
 from django.contrib import messages
@@ -90,47 +89,6 @@ class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
 # ---------------------------------
 # Bloomerp Detail Overview View
 # ---------------------------------
-from bloomerp.services.detail_view_services import create_default_detail_view_preference
-@router.register(
-    path="",
-    name="Overview",
-    url_name="overview",
-    description="Overview of object from {model} model",
-    route_type="detail",
-    models = "__all__",
-)
-class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView):
-    template_name = "detail_views/bloomerp_detail_overview_view.html"
-    settings = None
-    
-    def get_permission_required(self):
-        return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
-
-    def get_context_data(self, **kwargs: Any) -> dict:
-        context = super().get_context_data(**kwargs)        
-        content_type = ContentType.objects.get_for_model(self.model)
-
-        # Get the detail view preference
-        preference = self._get_or_create_detail_view_preference(content_type, self.request.user)
-        
-        # Add content type id to context
-        context["content_type_id"] = content_type.pk
-        context["sections"] = preference.field_layout
-        
-        return context
-    
-    def _get_or_create_detail_view_preference(self, content_type, user) -> UserDetailViewPreference:
-        qs = UserDetailViewPreference.objects.filter(
-           content_type=content_type,
-           user=user,  
-        )
-        if qs.exists():
-            return qs.first()
-        return create_default_detail_view_preference(content_type, user)
-        
-    
-    
-    
 
 # ---------------------------------
 # Bloomerp Create View

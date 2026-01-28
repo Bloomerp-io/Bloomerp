@@ -4,11 +4,10 @@ from django.db.models import Model
 from bloomerp.utils.models import get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url
 from django.urls import reverse 
 from django.contrib.contenttypes.models import ContentType
-from bloomerp.models.auth import Link
 from bloomerp.models.workspaces import Widget
 from django.utils.safestring import mark_safe
 import uuid
-from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField, UserListViewField
+from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField
 from django.db.models.functions import Cast
 from django.db.models import DateTimeField, F
 from django.db.models import QuerySet
@@ -217,161 +216,6 @@ def render_bookmark(object:Model, user:AbstractBloomerpUser, size:int, target:st
     }
 
 
-@register.simple_tag(name='field_value')
-def field_value(object:Model, application_field:ApplicationField, user:AbstractBloomerpUser, datatable_item:bool=False):
-    '''
-    Returns the formatted html value of a field in an object.
-    Marks it as safe.
-
-    Example usage:
-    {% field_value object application_field user %}
-    '''
-    DEFAULT_NONE_VALUE = ''
-    FILTER_VALUE = ''
-    FILTERABLE = False
-
-    try:
-        # ------------------------------
-        # GETTING THE VALUE OF THE FIELD
-        # ------------------------------
-        if application_field.field_type != 'OneToManyField':
-            value = getattr(object, application_field.field)
-            
-            if value is None:
-                value = DEFAULT_NONE_VALUE
-
-        # ------------------------------
-        # FORMATTING BASED ON FIELD TYPE
-        # ------------------------------
-        if application_field.field_type == 'ForeignKey':
-            # Get the value of the field
-            try:
-                FILTER_VALUE = f'{application_field.field}={value.pk}' 
-                FILTERABLE = True
-
-                abosulte_url = value.get_absolute_url()
-                value = mark_safe(f'<a href="{abosulte_url}">{value}</a>')
-            except AttributeError:
-                pass
-                        
-        elif application_field.field_type == 'DateField':
-            # Get the date preferences of the user
-            # Can be
-            # ("d-m-Y", "Day-Month-Year (15-08-2000)"),
-            # ("m-d-Y", "Month-Day-Year (08-15-2000)"),
-            # ("Y-m-d", "Year-Month-Day (2000-08-15)"),
-            preference = user.date_view_preference
-
-            FILTER_VALUE = f'{application_field.field}={value.strftime("%Y-%m-%d")}'
-            FILTERABLE = True
-
-            # Format the date
-            if preference == "d-m-Y":
-                value = value.strftime("%d-%m-%Y")
-            elif preference == "m-d-Y":
-                value = value.strftime("%m-%d-%Y")
-            elif preference == "Y-m-d":
-                value = value.strftime("%Y-%m-%d")
-            else:
-                value = value.strftime("%d-%m-%Y")
-
-        elif application_field.field_type == 'DateTimeField':
-            # Get the datetime preferences of the user
-            # Can be 
-            # ("d-m-Y H:i", "Day-Month-Year Hour:Minute (15-08-2000 12:30)"),
-            # ("m-d-Y H:i", "Month-Day-Year Hour:Minute (08-15-2000 12:30)"),
-            # ("Y-m-d H:i", "Year-Month-Day Hour:Minute (2000-08-15 12:30)"),
-            preference = user.date_view_preference
-
-            FILTER_VALUE = f'{application_field.field}={value.strftime("%Y-%m-%d %H:%M")}'
-            FILTERABLE = True
-
-            # Format the date
-            if preference == "d-m-Y H:i":
-                value = value.strftime("%d-%m-%Y %H:%M")
-            elif preference == "m-d-Y H:i":
-                value = value.strftime("%m-%d-%Y %H:%M")
-            elif preference == "Y-m-d H:i":
-                value = value.strftime("%Y-%m-%d %H:%M")
-            else:
-                value = value.strftime("%d-%m-%Y %H:%M")
-
-        elif application_field.field_type == 'BloomerpFileField':
-            # Get the value of the field
-            file:File = getattr(object, application_field.field)
-            if file:
-                value = mark_safe(f'<a href="{file.file.url}" target="_blank">{file.name}</a>')
-            else:
-                value = DEFAULT_NONE_VALUE
-
-        elif application_field.field_type == 'ManyToManyField':
-            # Get the value of the field
-            qs = value.all()
-
-            if not qs:
-                value = DEFAULT_NONE_VALUE
-            else:
-                resp = DEFAULT_NONE_VALUE
-                for item in qs[:2]:
-                    resp += item.__str__() + ', '
-                value = resp + '...'
-        
-        elif application_field.field_type == 'OneToManyField':
-            # Get the value of the field
-            try:
-                value = getattr(object, f'{application_field.field}_set')
-            except:
-                value = getattr(object, application_field.field)
-
-            qs = value.all()
-
-            if not qs:
-                value = DEFAULT_NONE_VALUE
-            else:
-                resp = ''
-                for item in qs[:2]:
-                    resp += item.__str__() + ', '
-                value = resp + '...'    
-        
-        elif application_field.field_type == 'StatusField':
-            # Get the value of the field
-            filter_value : str = getattr(object, application_field.field)
-            FILTER_VALUE = f'{application_field.field}={filter_value}'
-            FILTERABLE = True
-
-            # Get color
-            color_dict : dict = application_field.meta.get('colors')
-
-            if color_dict:
-                color = color_dict.get(filter_value, 'gray')
-            else:
-                color = 'gray'
-
-            value = mark_safe(f'<span class="badge badge-pill" style="background-color: {color}">{value}</span>')
-            
-        OTHER_FIELDS = ['AutoField', 'BigAutoField', 'BooleanField', 'CharField', 'TextField', 'IntegerField', 'DecimalField']
-        if application_field.field_type in OTHER_FIELDS:
-            FILTER_VALUE = f'{application_field.field}={value}'
-            FILTERABLE = True
-
-        
-        # ------------------------------
-        # RETURNING THE VALUE
-        # ------------------------------
-        if datatable_item:
-            if FILTERABLE:
-                return mark_safe(f'<td context-menu-filter-value="{FILTER_VALUE}" allow-context-menu={True}>{value}</td>')
-            else:
-                return mark_safe(f'<td allow-context-menu={True}>{value}</td>')
-        else:
-            return value
-
-    except Exception as e:
-        if datatable_item:
-            return mark_safe(f'<td allow-context-menu={False}>{DEFAULT_NONE_VALUE}</td>')
-        else:
-            return DEFAULT_NONE_VALUE
-
 
 @register.inclusion_tag('snippets/breadcrumb.html')
 def breadcrumb(title:str=None, model:Model = None, object:Model=None):
@@ -524,26 +368,6 @@ def detail_view_url(object:Model):
         return reverse(get_detail_view_url(model), kwargs={'pk': object.pk})
 
 
-@register.inclusion_tag("snippets/calendar.html")
-def calendar(queryset: QuerySet, start_date_field: str, end_date_field: str = None, id=None):
-    if not id:
-        id = str(uuid.uuid4())
-
-    parse = 'Y-m-d'
-    queryset = queryset.annotate(date_start=Cast(F(start_date_field), output_field=DateTimeField()))
-    if end_date_field:
-        queryset = queryset.annotate(date_end=Cast(F(end_date_field), output_field=DateTimeField()))
-
-
-    return {
-        "queryset": queryset,
-        "start_date_field": start_date_field,
-        "end_date_field": end_date_field,
-        "id": id,
-        "parse":parse
-    }
-
-
 @register.filter
 def get_nested_attribute(obj, attribute_path: str):
     """Get a nested attribute from an object.
@@ -599,6 +423,51 @@ def render_dataview_value(
         "application_field" : application_field
     }
 
+@register.inclusion_tag('inclusion_tags/detail_view_value.html')
+def render_detail_view_value(
+        object: Model, 
+        application_field: ApplicationField, 
+        user: AbstractBloomerpUser,
+        can_view:bool=False,
+        can_edit:bool=False
+        ):
+    """Renders a detail view value
+
+    Args:
+        object (Model): the object
+        application_field (ApplicationField): the application field
+        user (AbstractBloomerpUser): the user
+
+    Returns:
+        html: the rendered html
+    """
+    value = getattr(object, application_field.field, None)
+    
+    # Get the field type enum
+    field_type = application_field.get_field_type_enum().value
+    WidgetCls = field_type.get_widget_cls()
+    default_args = field_type.widget_attrs or {}
+    attrs = {
+        "class" : "input w-full",
+    }
+    attrs.update(default_args)
+    
+    if not can_edit:
+        attrs["readonly"] = "readonly"
+    
+    input = WidgetCls().render(
+            name=application_field.field,
+            value=value,
+            attrs=attrs
+        )
+    
+    return {
+        "value": value,
+        "object": object,
+        "application_field": application_field,
+        "input": input,
+    }
+    
 
 @register.simple_tag
 def get_icon(name, size=16, **kwargs):

@@ -1,9 +1,6 @@
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.query import QuerySet
-from bloomerp.models.base_bloomerp_model import BloomerpModel
-from enum import Enum
-from dataclasses import dataclass
 from typing import Optional
 from django.utils.translation import gettext_lazy as _
 from bloomerp.field_types import FieldType
@@ -17,7 +14,7 @@ class ApplicationField(models.Model):
     about fields, such as their type, related model (if any),
     and other useful information.
     """
-    class Meta(BloomerpModel.Meta):
+    class Meta:
         managed = True
         db_table = "bloomerp_application_field"
 
@@ -77,7 +74,7 @@ class ApplicationField(models.Model):
         return FieldType.from_id(self.field_type)
 
 
-    def get_for_model(model:models.Model) -> QuerySet:
+    def get_for_model(model:models.Model) -> QuerySet['ApplicationField']:
         """Returns application fields for a specific model"""
         return ApplicationField.objects.filter(
             content_type=ContentType.objects.get_for_model(model)
@@ -155,4 +152,7 @@ class ApplicationField(models.Model):
         if self.related_model:
             return self.related_model.model_class()
         return None
+    
+    
+
     

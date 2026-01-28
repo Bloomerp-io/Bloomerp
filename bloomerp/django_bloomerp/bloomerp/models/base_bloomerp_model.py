@@ -1,14 +1,16 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
-from bloomerp.models import mixins
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 from typing import Optional
+from bloomerp.models import mixins
 
 class LayoutSection(BaseModel):
-    columns:int
-    items:list[str|int] = Field(default_factory=list)
-    title:Optional[str] = None
+    columns: int
+    items: list[str | int] = Field(default_factory=list)
+    title: Optional[str] = None
+    
+class FieldLayout(BaseModel):
+    sections: list[LayoutSection] = Field(default_factory=list)
 
 
 class BloomerpModel(
@@ -21,12 +23,21 @@ class BloomerpModel(
 ):
     class Meta:
         abstract = True
-        default_permissions = ('add', 'change', 'delete', 'view', 'bulk_change', 'bulk_delete', 'bulk_add', 'export')
+        default_permissions = (
+            'add', 
+            'change', 
+            'delete', 
+            'view', 
+            'bulk_change', 
+            'bulk_delete', 
+            'bulk_add', 
+            'export'
+        )
     
     files = GenericRelation("bloomerp.File")
     comments = GenericRelation("bloomerp.Comment")
 
-    field_layout:Optional[list[LayoutSection]] = None
+    field_layout:Optional[FieldLayout] = None
     form_layout:dict = None # DEPR 
 
     @classmethod
@@ -72,5 +83,7 @@ class BloomerpModel(
             }
 
         return enhanced_layout
-    
+
+
+
     

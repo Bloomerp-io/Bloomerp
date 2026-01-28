@@ -22,6 +22,9 @@ import WebsiteBuilder from './components/WebsiteBuilder';
 import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
 import ForeignFieldWidget from './components/widgets/ForeignFieldWidget';
+import UiMessage from './components/UiMessage';
+import ObjectDetailViewContainer from './components/detail_view_components/ObjectDetailViewContainer';
+import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -59,6 +62,12 @@ registerComponent('dropdown-input', DropdownInput);
 // Form widgets
 registerComponent('foreign-field-widget', ForeignFieldWidget);
 
+// Messages
+registerComponent('ui-message', UiMessage);
+
+// Detail view
+registerComponent('object-detail-view-container', ObjectDetailViewContainer);
+registerComponent('detail-view-value', DetailViewCell);
 
 // Auto init comonents
 setupComponentAutoInit();

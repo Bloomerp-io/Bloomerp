@@ -1,28 +1,48 @@
 {% load bloomerp %}
 {% load static %}
 
-{% if no_preferences%}
+{% if no_preferences %}
     <p>You currently have no list view preferences set for this model. You can your view preferences
         <a hx-get="{% url 'users_my_profile_detail_view_preference' %}?content_type_id={{content_type_id}}&return_to={{request.path}}"
-            hx-target="#main-content" hx-swap="innerHTML" hx-trigger="click" hx-push-url="true">here.</a>
+            hx-target="#main-content" 
+            hx-swap="innerHTML" 
+            hx-trigger="click" 
+            hx-push-url="true">here.</a>
     </p>
 {% endif %}
 
-{% if sections %}
-    {% for section in sections %}
-    <div>
-        {% if section.title %}
-        <p class="text-primary-900 font-bold my-2">{{ section.title }}</p>
-        {% endif %}
+<div 
+    bloomerp-component="object-detail-view-container"
+    data-content-type-id="{{ content_type_id }}"
+    >
+{% if layout %}
+    {% for section in layout.sections %}
+        {% if section.items %}
+            <div 
+                data-section="{{ section.title }}"
+                data-section-columns="{{ section.columns }}"
+                >
+                {% if section.title %}
+                <c-ui.text.subtitle class="mt-4">
+                    {{ section.title }}
+                </c-ui.text.subtitle>
+                {% endif %}
 
-        <div class="grid grid-cols-1 md:grid-cols-{{ section.columns }} gap-2">
-            {% for item in section.items %}
-                <div>{{ item }}</div>
-            {% endfor %}
-        </div>
-    </div>
+                <div 
+                    class="grid grid-cols-1 md:grid-cols-{{ section.columns }} gap-x-16 gap-y-6"
+                    data-columns="{{ section.columns }}"
+                    >
+                    {% for item in section.items %}
+                        {% if item.can_view %}
+                            <div data-section-id="{{forloop.counter0}}">{% render_detail_view_value object item.application_field request.user item.can_view item.can_edit %}</div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
     {% endfor %}
 {% endif %}
+</div>
 
 
 

@@ -1,15 +1,15 @@
 """
 All rights reserved. 
 """
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.users.user import AbstractBloomerpUser
-from django.db.models.query import QuerySet
-from bloomerp.models.application_field import ApplicationField
 from django.core.cache import cache
 from dataclasses import dataclass
 from bloomerp.models import UserDetailViewPreference
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.field_types import FieldType
 
 @dataclass
 class DataViewFields:
@@ -20,9 +20,8 @@ class DataViewFields:
         accessible_fields: List of tuples (ApplicationField, is_visible) for all fields 
                           the user can access. Used in display options UI.
     """
-    visible_fields: list
+    visible_fields: list[ApplicationField]
     accessible_fields: list[tuple]
-
 
 
 def get_data_view_fields(preference: UserListViewPreference, view_type: str = None) -> DataViewFields:
@@ -39,14 +38,16 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
     # Get all accessible fields for this user and content type
     manager = UserPermissionManager(preference.user)
     permission_str = create_permission_str(preference.content_type.model_class(), "view")
-    print(permission_str)
-    print(preference.content_type)
+    
     accessible_fields_qs = manager.get_accessible_fields(
         preference.content_type,
         permission_str
+    ).exclude(
+        field_type__in=[
+            FieldType.ONE_TO_MANY_FIELD.value.id,
+            FieldType.MANY_TO_MANY_FIELD.value.id
+        ]
     )
-    
-    print(accessible_fields_qs)
     
     # Get the visible field IDs for this view type
     visible_field_ids = preference.get_visible_field_ids(view_type)

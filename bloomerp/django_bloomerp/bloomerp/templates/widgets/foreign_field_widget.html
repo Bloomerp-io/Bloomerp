@@ -3,21 +3,28 @@
     data-is-m2m="{{ widget.is_m2m|yesno:'true,false' }}"
     data-content-type-id="{{ content_type_id }}"
     data-field-name="{{ widget.name }}"
-    
+    data-value="{{ selected_value }}"
+    data-selected-ids='{{ selected_ids_json }}'
+    data-selected-labels='{{ selected_labels_json }}'
+    data-disabled="{{ widget.attrs.disabled|yesno:'true,false' }}"
     class="relative"
     >
-    <input 
-        type="text" 
-        class="{{ widget.attrs.class }}"
-    >
-    <div class="foreign-field-selected mt-2" aria-live="polite"></div>
+    <div class="relative">
+        <input 
+            type="text" 
+            class="{{ widget.attrs.class }}"
+            {% if widget.attrs.disabled %} disabled {% endif %}
+        >
 
-    <div class="foreign-field-dropdown hidden absolute left-0 right-0 top-full mt-1 z-50">
-        <ul class="foreign-field-results bg-white border border-gray-200 max-h-52 overflow-auto rounded-t-md shadow-lg list-none m-0 p-0 text-sm"></ul>
+        <div class="foreign-field-dropdown hidden absolute left-0 right-0 top-full mt-1 z-50">
+            <ul class="foreign-field-results bg-white border border-gray-200 max-h-52 overflow-auto rounded-t-md shadow-lg list-none m-0 p-0 text-sm"></ul>
 
-        <div class="bg-white border border-t-0 border-gray-200 rounded-b-md shadow-lg">
-            <div data-action="create-new" class="px-3 py-2 text-sm text-primary cursor-pointer hover:bg-gray-50">Create new</div>
-            <div data-action="advanced-query" class="px-3 py-2 text-sm text-primary cursor-pointer hover:bg-gray-50 border-t border-gray-100">Advanced query</div>
+            <div class="bg-white border border-t-0 border-gray-200 rounded-b-md shadow-lg">
+                <div data-action="create-new" tabindex="0" class="px-3 py-2 text-sm text-primary cursor-pointer hover:bg-gray-50">Create new</div>
+                <div data-action="advanced-query" tabindex="0" class="px-3 py-2 text-sm text-primary cursor-pointer hover:bg-gray-50 border-t border-gray-100">Advanced query</div>
+            </div>
         </div>
     </div>
+
+    <div class="foreign-field-selected mt-2" aria-live="polite"></div>
 </div>

@@ -7,22 +7,23 @@ from django.utils.translation import gettext as _
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.mixins import (
     AbsoluteUrlModelMixin,
+    AvatarModelMixin,
     StringSearchModelMixin,
 )
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from bloomerp.models.auth import UserListViewField
 
-class AbstractBloomerpUser(AbstractUser, StringSearchModelMixin, AbsoluteUrlModelMixin):
+class AbstractBloomerpUser(
+    AbstractUser, 
+    StringSearchModelMixin, 
+    AbsoluteUrlModelMixin,
+    AvatarModelMixin
+    ):
     class Meta:
         abstract = True
 
     # String search mixin fields
     string_search_fields = ['first_name+last_name', 'username']
     allow_string_search = True
-
-    avatar = models.ImageField(null=True, blank=True, upload_to="users/", help_text=_("The user's avatar"))
 
     # ------------------------------------------------
     # User Preferences

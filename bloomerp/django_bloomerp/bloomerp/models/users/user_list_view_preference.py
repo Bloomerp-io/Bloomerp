@@ -201,17 +201,5 @@ class UserListViewPreference(models.Model):
         return ApplicationField.objects.filter(pk__in=field_ids).order_by(ordering)
     
     
-OPTIONS = {
-    ViewType.TABLE: {
-        ""
-    },
-    
-    ViewType.CALENDAR : {
-        "time_range" : {
-            "type" : "select",
-            "values" : ["day", "week", "year", "month"]
-        },
-    },
-    
-}
+
 

@@ -1,13 +1,17 @@
 from django import forms
 
-class RichTextEditorWidget(forms.Textarea):
-    template_name = 'widgets/tiny_mce_text_editor_widget.html'
+class BloomerpTextEditorWidget(forms.Textarea):
+    template_name = 'cotton/ui/inputs/text_editor.html'
 
     def get_context(self, name, value, attrs):
         attrs = attrs or {}
         attrs.setdefault('id', 'id_%s' % name)
         context = super().get_context(name, value, attrs)
-        context['widget'].update({
-            'editor_id': attrs['id'],
+        widget_context = context.get('widget', {})
+        new_context = {**widget_context.get('attrs', {})}
+        new_context.update({
+            'name': widget_context.get('name'),
+            'value': widget_context.get('value'),
+            'disabled': widget_context.get('attrs', {}).get('disabled', False),
         })
-        return context
+        return new_context

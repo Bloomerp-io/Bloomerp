@@ -15,10 +15,9 @@ from django.db.models import (
     BigAutoField,
     AutoField,
     DecimalField,
-    ManyToManyField,
     Field
 )
-from bloomerp.models.fields import StatusField
+from bloomerp.model_fields.status_field import StatusField
 from django_filters import DateFilter
 
 from typing import Type, Optional

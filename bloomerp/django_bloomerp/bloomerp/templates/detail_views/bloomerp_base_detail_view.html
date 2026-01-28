@@ -4,11 +4,11 @@
 
 <!--Pagetitle-->
 <div class="flex justify-between items-center">
+	{% breadcrumb object=object model=model %}
+
 	<div>
 		{% include "detail_views/snippets/card_header.html" with content_type_id=content_type_id object=object %}
 	</div>
-
-	{% breadcrumb object=object model=model %}
 </div>
 <!--End Pagetitle-->
 
@@ -55,9 +55,9 @@
 <!--Content-->
 <div id="detail-view-content">
 	{% block content %}
-	{% if include_detail_content %}
-	{% include include_detail_content %}
-	{% endif %}
+		{% if include_detail_content %}
+			{% include include_detail_content %}
+		{% endif %}
 	{% endblock content %}
 </div>
 <!--End Content-->
@@ -76,30 +76,3 @@
 	</form>
 </c-ui.modal>
 <!--End Update tabs modal-->
-
-<!--Updating tabs-->
-<script>
-	var url_list = window.location.href.split('/')
-	var url = "/";
-
-	url_list.slice(3).map(function (x) {
-		if (x != "") {
-			url += x + '/'
-		}
-	})
-
-	var active = document.getElementById(url);
-	if (active) {
-		active.classList.add('active');
-	}
-
-	function setActiveTab(element) {
-		if (!element) return;
-		var tabs = document.querySelectorAll('.nav-link');
-		tabs.forEach(tab => {
-			tab.classList.remove('active');
-		});
-		element.classList.add('active');
-	}
-</script>
-<!--End Updating tabs-->

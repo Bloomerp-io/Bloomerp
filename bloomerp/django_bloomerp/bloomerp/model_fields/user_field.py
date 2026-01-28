@@ -11,6 +11,8 @@ class UserField(models.ForeignKey):
     instead of this UserField.
     """
     def __init__(self, *args, **kwargs):
-        kwargs['to'] = settings.AUTH_USER_MODEL
+        # Avoid calling get_user_model() during app/model import.
+        # Using the swappable model label keeps Django startup/migrations safe.
+        kwargs.setdefault('to', settings.AUTH_USER_MODEL)
         super().__init__(*args, **kwargs)
     

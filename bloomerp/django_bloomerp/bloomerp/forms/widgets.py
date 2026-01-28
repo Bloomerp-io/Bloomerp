@@ -3,13 +3,13 @@ from django.forms import ModelChoiceField
 from bloomerp.models.workspaces import Widget, SqlQuery
 from django.core.exceptions import ValidationError
 from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
-from bloomerp.widgets.text_editor import RichTextEditorWidget
+from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from django.utils.translation import gettext as _
 
 class WidgetForm1(forms.Form):
     query = ModelChoiceField(
         queryset=SqlQuery.objects.all(),
-        widget=ForeignFieldWidget(model=SqlQuery),
+        widget=ForeignFieldWidget(attrs={'model': SqlQuery}),
         help_text=_('The sql query (data) to use for the query')
         
         )
@@ -18,7 +18,7 @@ class WidgetForm1(forms.Form):
         help_text=_('The name given to the widget')
         )
     description = forms.CharField(
-        widget=RichTextEditorWidget(),
+        widget=BloomerpTextEditorWidget(),
         required=False,
         help_text=_('The description of the widget. Will be displayed in the widget if provided')
         )

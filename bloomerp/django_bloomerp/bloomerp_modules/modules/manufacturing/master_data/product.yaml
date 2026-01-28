@@ -101,12 +101,25 @@ fields:
       null: true
       blank: true
 field_layout:
-  - title: "Details"
-    columns: 2
-    items:
-      - code
-      - name
-      - description
-      - sales_price
+  sections:
+    - title: "Details"
+      columns: 2
+      items:
+        - code
+        - name
+        - description
+        - sales_price
+    - title: "Inventory"
+      columns: 2
+      items:
+        - lead_time_days
+        - safety_stock_quantity
+        - reorder_point_quantity
+        - standard_lot_size
+        - tracking_method
+    - title: "Costing"
+      columns: 1
+      items:
+        - standard_cost
 
 

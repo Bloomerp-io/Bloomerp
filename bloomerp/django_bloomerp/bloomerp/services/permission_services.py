@@ -22,6 +22,8 @@ from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from django.contrib.contenttypes.models import ContentType
 from typing import Type
+from django.db.models import Q
+from bloomerp.field_types import Lookup
     
 # --------------------------
 # Service Functions
@@ -87,7 +89,53 @@ class UserPermissionManager:
         pass
     
     def has_field_permission(self, field: ApplicationField, permission_str:str) -> bool:
-        pass
+        """Check whether the user has the given permission for a specific field.
+
+        Args:
+            field (ApplicationField): the application field to check
+            permission_str (str): the permission string to check for
+
+        Returns:
+            bool: True if the user has the permission on the field, False otherwise
+        """
+        if not field:
+            return False
+
+        # Superusers always have field access
+        if getattr(self.user, "is_superuser", False):
+            return True
+
+        permission_value = str(permission_str)
+
+        policies = self.get_field_policies().filter(content_type=field.content_type)
+        if not policies.exists():
+            return False
+
+        for policy in policies:
+            rules = policy.rule or {}
+            if not isinstance(rules, dict):
+                continue
+
+            # Check __all__ wildcard
+            wildcard_perms = rules.get("__all__")
+            if isinstance(wildcard_perms, list) and permission_value in wildcard_perms:
+                return True
+
+            # Check for explicit field id match. Keys may be strings or ints.
+            for field_id, permissions in rules.items():
+                if field_id == "__all__":
+                    continue
+                if not isinstance(permissions, list):
+                    continue
+
+                try:
+                    if str(field_id) == str(field.id) and permission_value in permissions:
+                        return True
+                except Exception:
+                    # Defensive: skip malformed keys
+                    continue
+
+        return False
     
     def get_accessible_fields(self, model_or_content_type: models.Model | ContentType, permission_str:str) -> QuerySet[ApplicationField]:
         """Returns the application fields with a certain permission.
@@ -102,10 +150,12 @@ class UserPermissionManager:
         if not model_or_content_type:
             return ApplicationField.objects.none()
 
-        if isinstance(model_or_content_type, models.Model):
+        if isinstance(model_or_content_type, ContentType):
+            content_type = model_or_content_type
+        elif isinstance(model_or_content_type, models.Model):
             content_type = ContentType.objects.get_for_model(model_or_content_type)
         else:
-            content_type = model_or_content_type    
+            content_type = model_or_content_type
         
         # Return all fields if user is superuser
         if self.user.is_superuser:
@@ -144,7 +194,7 @@ class UserPermissionManager:
             id__in=allowed_field_ids
         )
         
-    def has_access_to_object(self, object:models.Model) -> bool:
+    def has_access_to_object(self, object:models.Model, permission_str:str) -> bool:
         """Returns a boolean that checks whether a user has access to a particular object
 
         Args:
@@ -153,8 +203,9 @@ class UserPermissionManager:
         Returns:
             bool: whether the user has access to the object
         """
-        
-        return True
+        return self.get_queryset(object._meta.model, permission_str).filter(
+            id=object.id
+        ).exists()
     
     def get_queryset(self, model_or_content_type:Type[models.Model]|ContentType, permission_str:str) -> QuerySet[models.Model]:
         """Returns the queryset for a particular model that the user has access to
@@ -166,10 +217,93 @@ class UserPermissionManager:
             QuerySet[models.Model]: _description_
         """
         if isinstance(model_or_content_type, ContentType):
-            model = model_or_content_type.model_class()
+            content_type = model_or_content_type
+            model = content_type.model_class()
         elif issubclass(model_or_content_type, models.Model):
             model = model_or_content_type
+            content_type = ContentType.objects.get_for_model(model)
         else:
-            raise TypeError(f"Wrong type")
+            raise TypeError("model_or_content_type must be a Django model class or a ContentType")
+
+        if model is None:
+            return models.QuerySet(model=None).none()  # defensive; should not happen
+
+        if not self.user:
+            return model.objects.none()
+
+        # Superusers always see the full queryset
+        if getattr(self.user, "is_superuser", False):
+            return model.objects.all()
+
+        permission_value = str(permission_str)
+
+        # Find row policies applicable to this content type
+        row_policies = self.get_row_policies().filter(content_type=content_type)
+        if not row_policies.exists():
+            return model.objects.none()
+
+        combined_q = Q()
+        has_any_rule = False
+
+        for row_policy in row_policies:
+            for rule_obj in row_policy.rules.all():
+                # Only consider rules that grant the requested permission
+                perms = getattr(rule_obj, "permissions", None)
+                if perms is None:
+                    continue
+
+                if permission_value not in {p.codename for p in perms.all()}:
+                    continue
+
+                rule_dict = getattr(rule_obj, "rule", None) or {}
+                if not isinstance(rule_dict, dict):
+                    continue
+
+                application_field_id = rule_dict.get("application_field_id")
+                operator_id = rule_dict.get("operator")
+                value = rule_dict.get("value")
+
+                if not application_field_id or not operator_id:
+                    continue
+
+                application_field = ApplicationField.objects.filter(id=application_field_id).first()
+                if not application_field:
+                    continue
+                if application_field.content_type_id != content_type.id:
+                    continue
+
+                field_name = application_field.field
+                lookup_enum = application_field.get_field_type_enum().get_lookup_by_id(str(operator_id))
+
+                # Special-case: equals current user
+                if lookup_enum == Lookup.EQUALS_USER or str(value) == "$user":
+                    combined_q |= Q(**{field_name: self.user})
+                    has_any_rule = True
+                    continue
+
+                if not lookup_enum:
+                    continue
+
+                django_lookup = (lookup_enum.value.django_representation or "").strip()
+
+                # Basic normalization for common lookups
+                if lookup_enum == Lookup.IN and isinstance(value, str):
+                    # Allow comma-separated lists
+                    value = [v.strip() for v in value.split(",") if v.strip()]
+
+                filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
+
+                try:
+                    combined_q |= Q(**{filter_key: value})
+                    has_any_rule = True
+                except Exception:
+                    # Defensive: ignore malformed rules
+                    continue
+
+        if not has_any_rule:
+            return model.objects.none()
+
+        return model.objects.filter(combined_q).distinct()
+    
+    
         
-        return model.objects.all()

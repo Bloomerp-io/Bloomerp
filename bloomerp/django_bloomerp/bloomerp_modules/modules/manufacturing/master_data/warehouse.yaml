@@ -28,14 +28,15 @@ fields:
       default: false
 
 field_layout:
-  - title: Details
-    columns: 2
-    items:
-      - code
-      - name
-      - is_default
-  
-  - title: Contact details
-    columns: 2
-    items:
-      - address
+  sections:
+    - title: Details
+      columns: 2
+      items:
+        - code
+        - name
+        - is_default
+
+    - title: Contact details
+      columns: 2
+      items:
+        - address

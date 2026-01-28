@@ -2,6 +2,7 @@ import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { getComponent } from "../BaseComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import type { ContextMenuItem } from "../../utils/contextMenu";
+import htmx from "htmx.org";
 
 export class DataTableCell extends BaseDataViewCell {
     public columnIndex: number = -1;
@@ -9,6 +10,7 @@ export class DataTableCell extends BaseDataViewCell {
     public applicationFieldName: string;
     public filterable: boolean = true;
     public value: string;
+    public applicationFieldId : string | null = null;
 
     public initialize(): void {
         super.initialize();
@@ -26,6 +28,8 @@ export class DataTableCell extends BaseDataViewCell {
         // Initialize other stuff
         this.applicationFieldName = this.element.getAttribute('data-application-field-name') ?? '';
         this.value = this.element.getAttribute('data-value') ?? '';
+
+        this.applicationFieldId = this.element.dataset.applicationFieldId;
     }
 
 }
@@ -72,6 +76,24 @@ export class DataTable extends BaseDataViewComponent {
                     });
                 },
             },
+            {
+                label: 'Edit Cell',
+                icon: 'fa-solid fa-edit',
+                onClick: async () => {
+                    if (!this.currentCell) return;
+                    
+                    htmx.ajax(
+                        'get', 
+                        `/components/dataview_edit_field/${this.currentCell.applicationFieldId}/${this.currentCell.objectId}/`, 
+                        {
+                            target: this.currentCell.element,
+                            swap: 'innerHTML',
+                            push: 'false',
+                        }
+                    )
+
+                },
+            }
         ]);
 
         return contextMenu;

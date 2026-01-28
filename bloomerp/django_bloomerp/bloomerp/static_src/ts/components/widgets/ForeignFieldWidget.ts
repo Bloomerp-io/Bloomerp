@@ -13,6 +13,7 @@ export default class ForeignFieldWidget extends BaseComponent {
     private isM2M: boolean = false;
     private contentTypeId: string | null = null;
     private fieldName: string | null = null;
+    private isDisabled: boolean = false;
     private outsideClickHandler: (e: MouseEvent) => void;
     private boundOnInput: any = null;
     private boundOnResultClick: any = null;
@@ -21,8 +22,9 @@ export default class ForeignFieldWidget extends BaseComponent {
     private boundOnKeyDown: any = null;
     private currentIndex: number = -1;
     private boundOnFocus: any = null;
+    private boundOnFocusOut: any = null;
 
-
+    // 
     private createControlEl: HTMLElement | null = null;
     private advancedControlEl: HTMLElement | null = null;
 
@@ -38,18 +40,23 @@ export default class ForeignFieldWidget extends BaseComponent {
         this.isM2M = this.element.dataset.isM2m === 'true';
         this.contentTypeId = this.element.dataset.contentTypeId || null;
         this.fieldName = this.element.dataset.fieldName || null;
+        this.isDisabled = this.element.dataset.disabled === 'true';
 
         if (!this.input || !this.resultsList || !this.selectedContainer || !this.fieldName || !this.contentTypeId) {
             return;
         }
 
+        this.applyInitialSelections();
+
         this.boundOnInput = this.onInput.bind(this);
         this.boundOnResultClick = this.onResultClick.bind(this);
         this.boundOnFocus = this.onFocus.bind(this);
+        this.boundOnFocusOut = this.onFocusOut.bind(this);
         this.boundOnKeyDown = this.onKeyDown.bind(this);
         this.input.addEventListener('input', this.boundOnInput);
         this.input.addEventListener('focus', this.boundOnFocus);
         this.input.addEventListener('keydown', this.boundOnKeyDown);
+        this.element.addEventListener('focusout', this.boundOnFocusOut);
         this.resultsList.addEventListener('click', this.boundOnResultClick);
 
         // wire create / advanced controls inside dropdown (if present)
@@ -75,6 +82,7 @@ export default class ForeignFieldWidget extends BaseComponent {
         if (this.resultsList && this.boundOnResultClick) this.resultsList.removeEventListener('click', this.boundOnResultClick);
         if (this.createControlEl && this.boundCreateClick) this.createControlEl.removeEventListener('click', this.boundCreateClick);
         if (this.advancedControlEl && this.boundAdvancedClick) this.advancedControlEl.removeEventListener('click', this.boundAdvancedClick);
+        if (this.boundOnFocusOut) this.element.removeEventListener('focusout', this.boundOnFocusOut);
         document.removeEventListener('click', this.outsideClickHandler);
         if (this.debounceTimer) window.clearTimeout(this.debounceTimer);
     }
@@ -84,6 +92,43 @@ export default class ForeignFieldWidget extends BaseComponent {
         const q = this.input.value.trim();
         // Fetch initial results (empty query will return first 10)
         this.fetchResults(q);
+    }
+
+    private onFocusOut(e: FocusEvent): void {
+        const nextTarget = e.relatedTarget as HTMLElement | null;
+        if (nextTarget && this.element.contains(nextTarget)) return;
+        this.hideDropdown();
+    }
+
+    private applyInitialSelections(): void {
+        const ids = this.parseDataArray(this.element.dataset.selectedIds);
+        if (!ids.length) return;
+
+        const labels = this.parseDataArray(this.element.dataset.selectedLabels);
+        const labelFallback = (index: number) => labels[index] ?? ids[index] ?? '';
+
+        if (this.isM2M) {
+            ids.forEach((id, index) => {
+                if (!id) return;
+                this.selectObject(id, labelFallback(index));
+            });
+        } else {
+            this.selectObject(ids[0], labelFallback(0));
+        }
+    }
+
+    private parseDataArray(value?: string): string[] {
+        if (!value) return [];
+        try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) return parsed.map((item) => String(item));
+        } catch {
+            // fall back to CSV parsing
+        }
+        return value
+            .split(',')
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0);
     }
 
     // Click handlers
@@ -230,6 +275,7 @@ export default class ForeignFieldWidget extends BaseComponent {
             const li = document.createElement('li');
             li.textContent = 'No results';
             li.className = 'px-3 py-2 text-sm text-gray-500';
+            li.tabIndex = 0;
             this.resultsList.appendChild(li);
             this.showDropdown();
             return;
@@ -241,6 +287,7 @@ export default class ForeignFieldWidget extends BaseComponent {
             li.dataset.label = obj.string_representation;
             li.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm';
             li.textContent = obj.string_representation;
+            li.tabIndex = 0;
             this.resultsList.appendChild(li);
         }
         this.showDropdown();
@@ -297,18 +344,24 @@ export default class ForeignFieldWidget extends BaseComponent {
 
     private createBadge(id: string, label: string): HTMLElement {
         const span = document.createElement('span');
-        span.className = 'foreign-field-badge bg-primary text-sm text-white px-3 py-1 rounded-full cursor-pointer inline-block mr-2 mt-2';
+        span.className = 'foreign-field-badge bg-primary text-xs text-white px-2 py-1 rounded-full cursor-pointer inline-block mr-2 ';
         span.dataset.id = id;
         span.setAttribute('role', 'button');
         span.textContent = label + ' ×';
-        span.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            this.removeSelection(id);
-        });
+        if (this.isDisabled) {
+            span.setAttribute('aria-disabled', 'true');
+            span.classList.add('cursor-not-allowed', 'opacity-60');
+        } else {
+            span.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                this.removeSelection(id);
+            });
+        }
         return span;
     }
 
     private removeSelection(id: string) {
+        if (this.isDisabled) return;
         if (!this.fieldName) return;
         // remove badge
         const badge = this.selectedContainer && this.selectedContainer.querySelector(`[data-id="${id}"]`);
@@ -334,7 +387,4 @@ export default class ForeignFieldWidget extends BaseComponent {
     private hideDropdown() {
         if (this.dropdown) this.dropdown.classList.add('hidden');
     }
-
-    
-
 }

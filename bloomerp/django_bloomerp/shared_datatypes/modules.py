@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from typing import Any
-from bloomerp.models.base_bloomerp_model import LayoutSection
+from bloomerp.models.base_bloomerp_model import FieldLayout
 
 class PermissionConfig(BaseModel):
     id:str
@@ -26,7 +26,7 @@ class ModelConfig(BaseConfig):
     fields: list[FieldConfig] = Field(default_factory=list)
     custom_permissions: Optional[PermissionConfig] = Field(default_factory=list)
     string_representation: Optional[str] = None
-    field_layout:Optional[list[LayoutSection]]=Field(default_factory=list)
+    field_layout: Optional[FieldLayout] = Field(default_factory=FieldLayout)
     
 
 class SubModuleConfig(BaseConfig):

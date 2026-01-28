@@ -1,9 +1,11 @@
 from django.core.management.base import BaseCommand
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
+from pydantic import Field
 from bloomerp.models import ApplicationField
 from django.db import models
 from django import db
+from bloomerp.field_types import FieldType
 
 class Command(BaseCommand):
     help = 'Sync properties with @property decorator and fields in a Django model to ApplicationField'
@@ -19,6 +21,7 @@ class Command(BaseCommand):
         for Model in model_list:
             current_field_names = []  # To track existing field names in the model
             Model : models.Model
+            
             try:
                 if hasattr(Model, '_meta'):
                     #----------------------------------------------
@@ -66,11 +69,17 @@ class Command(BaseCommand):
                                 db_column = None
                                 db_table = None
                                 db_field_type = None
+                                
                                     
                             #----------------------------------------------
                             # Processing many-to-many fields and ForeignKeys
                             #----------------------------------------------
-                            if field_type in ['ForeignKey', 'ManyToManyField','BloomerpFileField']:
+                            if field_type in [
+                                FieldType.FOREIGN_KEY.id,
+                                FieldType.MANY_TO_MANY_FIELD.id,
+                                FieldType.BLOOMERP_FILE_FIELD.id,
+                                FieldType.USER_FIELD.id
+                            ]:
                                 meta['related_model'] = ContentType.objects.get_for_model(field.related_model).pk
 
                             #----------------------------------------------
@@ -90,7 +99,7 @@ class Command(BaseCommand):
                             #----------------------------------------------
                             # Processing status field
                             #----------------------------------------------
-                            if field_type == 'StatusField':
+                            if field_type == FieldType.STATUS_FIELD.id:
                                 try:
                                     meta['choices'] = field.choices
                                     meta['colored_choices'] = field.colored_choices
@@ -142,7 +151,7 @@ class Command(BaseCommand):
                         
                         
 
-                        ApplicationField.objects.update_or_create(
+                        obj = ApplicationField.objects.update_or_create(
                             content_type_id=content_type_id,
                             field=field_name,
                             defaults={
@@ -153,7 +162,7 @@ class Command(BaseCommand):
                                 'db_table' : db_table,
                                 'db_field_type' : db_field_type
                             })
-
+                        
                     # Delete stale ApplicationField entries
                     stale_entries = ApplicationField.objects.filter(
                         content_type_id=content_type_id

@@ -1,7 +1,8 @@
 
 from django.test import TestCase, RequestFactory
 from django.contrib.auth.models import User
-from bloomerp.views.core import BloomerpListView, BloomerpDetailOverviewView
+from bloomerp.views.core import BloomerpListView
+from bloomerp.views.detail.overview import BloomerpDetailOverviewView
 
 class BloomerpViewsTests(TestCase):
     def setUp(self):

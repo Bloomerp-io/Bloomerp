@@ -3,7 +3,6 @@ from django.db.models import Model
 from functools import wraps
 from django.conf import settings
 from bloomerp.utils.models import model_name_plural_slug, model_name_plural_underline, get_base_model_route
-from bloomerp.models import Link
 from typing import List, Callable
 import re
 import traceback
@@ -314,7 +313,7 @@ class BloomerpRouter:
                 for ContentType in ContentTypes:
                     model = ContentType.model_class()
                     model_name = model._meta.verbose_name.title()
-
+                    
                     # Check if the model is in the exclude list
                     if model in exclude_models:
                         continue

@@ -23,7 +23,6 @@ from django.db.models import QuerySet
 from datetime import date, datetime, timedelta
 import uuid
 
-
 # -----------------------------------
 # Helper functions for different view types
 # -----------------------------------
@@ -362,7 +361,6 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     
     # Get fields for the user (visible + accessible)
     data_view_fields = get_data_view_fields(preference)
-    print(data_view_fields)
     
     # Apply string search if query is present
     if query:
@@ -469,6 +467,14 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
         try:
             field_id = int(request.POST["toggle_field_id"])
             view_type = request.POST.get("toggle_view_type", preference.view_type)
+            permission_manager = UserPermissionManager(request.user)
+            
+            if not permission_manager.has_field_permission(
+                ApplicationField.objects.get(id=field_id),
+                create_permission_str(content_type.model_class(), "view")
+            ):
+                return HttpResponse("Permission denied", status=403)
+            
             is_visible, preference = toggle_field_visibility(user, content_type, field_id, view_type)
         except (ValueError, ApplicationField.DoesNotExist) as e:
             return HttpResponse(f"Invalid field: {e}", status=400)
@@ -493,20 +499,31 @@ def dataview_edit_field(request: HttpRequest, application_field_id:int, object_i
     Returns:
         HttpResponse: The rendered inline edit component.
     """
+    # Retrieve the objects
     application_field = get_object_or_404(ApplicationField, id=application_field_id)
+    model = application_field.get_model()
+    object = get_object_or_404(application_field.get_model(), id=object_id)
+    permission_str = f"change_{model._meta.model_name}"
     
-    if not has_access_to_field(request.user, application_field):
-        # TODO: Handle pass response
-        pass
+    manager = UserPermissionManager(request.user)
+    if not manager.has_access_to_object(object, permission_str):
+        return HttpResponse(status=405)
     
-    # Steps:
-    # Validate whether the application field is editable
-    # 1. Get the model and object
-    # 2. Get the field type based on the application field
-    # 3. Render the appropriate based on the field type
-    # 4. Make sure the rendered component has an onchange that saves the value via an API call
+    if not manager.has_field_permission(application_field, permission_str):
+        return HttpResponse(status=405)
     
-    return HttpResponse("<input value='Hello world'>")
+    
+    widget = application_field.get_field_type_enum().get_widget()
+    
+    return HttpResponse(
+        widget().render(
+            name=application_field.field,
+            value=getattr(object, application_field.field),
+            attrs={
+                "application_field" : application_field,
+                "class" : "w-full input input-sm",
+            }
+    ))
     
 
     

@@ -1,10 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
-
-import ast
-
-
 class CodeField(models.TextField):
     '''
     A custom model field to store code snippets with syntax highlighting.
@@ -26,11 +22,11 @@ class CodeField(models.TextField):
         Specifies the default form field and widget to use with this model field.
         """
         from django import forms
-        from bloomerp.widgets.code_editor_widget import AceEditorWidget  # Import your custom widget
+        from bloomerp.widgets.code_editor_widget import CodeEditorWidget  # Import your custom widget
 
         defaults = {
             'form_class': forms.CharField,
-            'widget': AceEditorWidget(language=self.language),
+            'widget': CodeEditorWidget(language=self.language),
         }
         defaults.update(kwargs)
         return super().formfield(**defaults)

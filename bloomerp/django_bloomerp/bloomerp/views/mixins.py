@@ -1,8 +1,8 @@
-from bloomerp.forms.core import BloomerpModelForm, DetailLinksSelectForm
+from bloomerp.forms.core import BloomerpModelForm
 from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.forms.models import modelform_factory
-from bloomerp.models import ApplicationField, UserDetailViewTab, Link
+from bloomerp.models import ApplicationField
 from django.views.generic import DetailView, UpdateView
 from bloomerp.utils.models import (
     get_create_view_url,
@@ -15,6 +15,7 @@ from bloomerp.utils.models import (
 from django.contrib.contenttypes.models import ContentType
 from typing import Any
 from django.views.generic.edit import ModelFormMixin
+from bloomerp.models import BloomerpModel
 
 
 class HtmxMixin:
@@ -55,10 +56,10 @@ class HtmxMixin:
                     # In this case, we are dealing with a detail view
                     context['include_detail_content'] = self.template_name
                     self.template_name = self.base_detail_template
-                    
-        context['include_padding'] = self.include_padding
+        
         return context
     
+
 class BloomerpModelFormViewMixin(ModelFormMixin):
     '''
     A mixin that provides a form view for a model.
@@ -127,7 +128,7 @@ class BloomerpModelFormViewMixin(ModelFormMixin):
             exclude=self.exclude
         )
 
-from bloomerp.models import BloomerpModel
+
 class BloomerpModelContextMixin:
     '''
     A mixin that provides context data whenever rendering a model view.
@@ -156,17 +157,7 @@ class BloomerpModelContextMixin:
 
         # init content type
         content_type = ContentType.objects.get_for_model(self.model)
-
         self.view_content_type = content_type
-        
-        # Detail view routes
-        detail_view_tabs = UserDetailViewTab.get_detail_view_tabs(content_type=content_type, user=self.request.user)
-        if not detail_view_tabs:
-            detail_view_tabs = UserDetailViewTab.generate_default_for_user(content_type=content_type, user=self.request.user)
-
-        context['detail_view_tabs'] = detail_view_tabs
-        context['detail_links_form'] = DetailLinksSelectForm(content_type=content_type, user=self.request.user)
-
 
         # User context data
         context["user"] = self.request.user

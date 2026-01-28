@@ -120,7 +120,7 @@
     <!--Table section-->
     <div id="data-view-data-section" class="h-full">
         {% if preference.split_view_enabled %}
-        <div class="flex h-[calc(100vh-200px)]">
+        <div class="flex h-[calc(100vh-200px)] rounded-lg">
             <div class="w-1/2 resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane">
                 {% if preference.view_type == 'table' %}
                     <c-ui.data_view.table 

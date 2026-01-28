@@ -1,13 +1,14 @@
 from dataclasses import dataclass, field as dataclass_field
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, Type
 from colorama import Fore
 from django.db import models
 from enum import Enum
-from django.forms import CharField
+from django.forms import CharField, Widget
 import django_filters
 from bloomerp.model_fields.user_field import UserField
 from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
-
+from django import forms
+from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 
 def render_foreign_key_field(application_field:"ApplicationField") -> str:
     return ForeignFieldWidget(model=application_field.get_related_model()).render(
@@ -27,6 +28,15 @@ def render_foreign_key_in(application_field:"ApplicationField") -> str:
         }
     )
     
+def render_equals_current_user(application_field:"ApplicationField") -> str:
+    return forms.CharField.widget_cls().render(
+        name=application_field.field,
+        value="$user",
+        attrs={
+            "class" : "input w-full",
+            "disabled" : True
+        }
+    )
 
 
 @dataclass
@@ -134,7 +144,8 @@ class Lookup(Enum):
     EQUALS_USER = LookupDefinition(
         id="equals_user",
         display_name="Equals Current User",
-        django_representation="exact",
+        django_representation="",
+        render_func=render_equals_current_user
     )
     
     FOREIGN_EQUALS = LookupDefinition(
@@ -161,6 +172,18 @@ class FieldTypeDefinition:
     django_field_class: Optional[type[models.Field]] = None
     description: Optional[str] = None
     lookups: list[Lookup] = dataclass_field(default_factory=list)
+    widget_cls:Optional[Widget|Callable] = None
+    widget_attrs: dict = dataclass_field(default_factory=dict)
+    
+    def get_widget_cls(self) -> Type[Widget]:
+        """Returns the widget_cls for the field type."""
+        if self.widget_cls:
+            return self.widget_cls
+        
+        if self.django_field_class and hasattr(self.django_field_class, "widget_cls") and self.django_field_class.widget_cls:
+            return self.django_field_class.widget
+        
+        return forms.widgets.TextInput
 
 
 TEXT_LOOKUPS = [
@@ -247,14 +270,16 @@ class FieldType(Enum):
         id="CharField",
         display_name="Char Field",
         django_field_class=models.CharField,
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        widget_cls=forms.widgets.TextInput
     )
     
     TEXT_FIELD = FieldTypeDefinition(
         id="TextField",
         display_name="Text Field",
         django_field_class=models.TextField,
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        widget_cls=BloomerpTextEditorWidget
     )
     
     EMAIL_FIELD = FieldTypeDefinition(
@@ -394,6 +419,10 @@ class FieldType(Enum):
             Lookup.FOREIGN_EQUALS,
             Lookup.FOREIGN_IN,
         ],
+        widget_cls=ForeignFieldWidget,
+        widget_attrs={
+            "is_m2m": False
+        }
     )
     
     ONE_TO_ONE_FIELD = FieldTypeDefinition(
@@ -416,11 +445,15 @@ class FieldType(Enum):
             Lookup.IS_NULL,
             Lookup.IN,
         ],
+        widget_cls=ForeignFieldWidget,
+        widget_attrs={
+            "is_m2m": True
+        }
     )
     
     ONE_TO_MANY_FIELD = FieldTypeDefinition(
         id="OneToManyField",
-        display_name="One To Many Field"
+        display_name="One To Many Field",
     )
     
     USER_FIELD = FieldTypeDefinition(
@@ -429,7 +462,6 @@ class FieldType(Enum):
         django_field_class=UserField,
         lookups=[
             Lookup.IS_NULL,
-            Lookup.FOREIGN_IN,
             Lookup.EQUALS_USER,
             Lookup.FOREIGN_EQUALS
         ],
@@ -442,11 +474,11 @@ class FieldType(Enum):
         django_field_class=models.UUIDField,
         lookups=[Lookup.EQUALS, Lookup.IN, Lookup.IS_NULL]
     )
+    
     BINARY_FIELD = FieldTypeDefinition(
         id="BinaryField",
         display_name="Binary Field",
         django_field_class=models.BinaryField,
-        
     )
     IP_ADDRESS_FIELD = FieldTypeDefinition(
         id="IPAddressField",
@@ -471,7 +503,10 @@ class FieldType(Enum):
     ARRAY_FIELD = FieldTypeDefinition(
         id="ArrayField",
         display_name="Array Field",
-        lookups=[Lookup.CONTAINS, Lookup.IS_NULL]
+        lookups=[
+            Lookup.CONTAINS, 
+            Lookup.IS_NULL
+            ]
     )
     
     HSTORE_FIELD = FieldTypeDefinition(
@@ -501,7 +536,6 @@ class FieldType(Enum):
     BLOOMERP_FILE_FIELD = FieldTypeDefinition(
         id="BloomerpFileField",
         display_name="Bloomerp File Field",
-        
     )
 
     @property
@@ -613,5 +647,23 @@ class FieldType(Enum):
             if lookup.value.id == lookup_id:
                 return lookup
         return None
+    
+    def get_widget_cls(self) -> Optional[Type[Widget]]:
+        """Returns the widget_cls for the field class
+
+        Returns:
+            Widget: the Django widget_cls object
+        """
+        if self.value.widget_cls:
+            return self.value.widget_cls
         
+        if (
+            self.value.django_field_class 
+            and hasattr(self.value.django_field_class, "widget_cls") 
+            and self.value.django_field_class.widget_cls):
+            return self.value.django_field_class.widget_cls
+        
+        return forms.widgets.TextInput
+        
+            
 

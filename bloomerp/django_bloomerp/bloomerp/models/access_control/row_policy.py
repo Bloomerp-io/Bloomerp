@@ -28,6 +28,20 @@ class RowPolicy(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.content_type.app_label}.{self.content_type.model})"
+    
+    def validate_rule(self):
+        """
+        Validates the rule defined for this RowPolicy.
+        Raises ValidationError if the rule is invalid.
+        """
+        # Placeholder for actual rule validation logic
+        if False:  # Replace with actual validation condition
+            raise ValidationError(_("The rule defined for this RowPolicy is invalid."))
+        
+        pass
 
+    def clean(self):
+        self.validate_rule()
+        super().clean()
 
 
