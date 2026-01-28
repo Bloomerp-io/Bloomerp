@@ -10,13 +10,14 @@ class ForeignFieldWidget(widgets.Widget):
     
     def __init__(self, attrs=None):
         self.is_m2m = attrs.pop('is_m2m', False) if attrs else False
+        self.model = attrs.pop('model', None) if attrs else None
         super().__init__(attrs)
     
     def get_context(self, name, value:Model, attrs):
         context = super().get_context(name, value, attrs)
         
         # Add the content type ID to the context        
-        context['content_type_id'] = ContentType.objects.get_for_model(value._meta.model).id
+        context['content_type_id'] = ContentType.objects.get_for_model(self.model or value._meta.model).id
 
 
         # Check if an invalid entry was made
