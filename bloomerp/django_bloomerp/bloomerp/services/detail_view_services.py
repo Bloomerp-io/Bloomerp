@@ -23,8 +23,7 @@ def get_default_layout(content_type:ContentType, user:AbstractBloomerpUser) -> F
         content_type=content_type,
     )
     
-    # TODO
-    # 2. Check which fields the user has access to
+    # TODO: Apply field permissions here in future -> use UserPermissionManager
     
     # Get the model
     model = content_type.model_class()
