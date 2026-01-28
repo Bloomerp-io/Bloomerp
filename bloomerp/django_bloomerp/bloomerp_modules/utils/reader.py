@@ -1,69 +1,21 @@
 from django.db.models import Model
 import yaml
-from enum import Enum
 from django.db import models
 from typing import Optional, Dict, Any, Callable
 from shared_datatypes.modules import (
     BaseConfig, FieldConfig, ModelConfig, SubModuleConfig, ModuleConfig
 )
+from bloomerp.field_types import FieldType, FieldTypeDefinition
 
-class FieldTypeMapping:
-    """Mapping of field type names to Django field classes and their defaults."""
-    
-    FIELD_MAPPING = {
-        # Text Fields
-        "string": (models.CharField, {"max_length": 100}),
-        "text": (models.TextField, {}),
-        "slug": (models.SlugField, {"max_length": 50}),
-        "email": (models.EmailField, {"max_length": 254}),
-        "url": (models.URLField, {"max_length": 200}),
-        "choice": (models.CharField, {"max_length": 50}),
-        
-        # Number Fields
-        "integer": (models.IntegerField, {}),
-        "big_integer": (models.BigIntegerField, {}),
-        "small_integer": (models.SmallIntegerField, {}),
-        "positive_integer": (models.PositiveIntegerField, {}),
-        "positive_small_integer": (models.PositiveSmallIntegerField, {}),
-        "float": (models.FloatField, {}),
-        "decimal": (models.DecimalField, {"max_digits": 10, "decimal_places": 2}),
-        
-        # Boolean Fields
-        "boolean": (models.BooleanField, {"default": False}),
-        "null_boolean": (models.BooleanField, {"null": True, "blank": True}),
-        
-        # Date/Time Fields
-        "date": (models.DateField, {}),
-        "datetime": (models.DateTimeField, {}),
-        "time": (models.TimeField, {}),
-        "duration": (models.DurationField, {}),
-        
-        # File Fields
-        "file": (models.FileField, {"upload_to": "uploads/"}),
-        "image": (models.ImageField, {"upload_to": "images/"}),
-        
-        # JSON and Binary
-        "json": (models.JSONField, {"default": dict}),
-        "binary": (models.BinaryField, {}),
-        
-        # UUID
-        "uuid": (models.UUIDField, {}),
-        
-        # IP Address
-        "ip_address": (models.GenericIPAddressField, {}),
-        
-        # Relationship Fields
-        "foreign_key": (models.ForeignKey, {"on_delete": models.CASCADE}),
-        "many_to_many": (models.ManyToManyField, {}),
-        "one_to_one": (models.OneToOneField, {"on_delete": models.CASCADE}),
-    }
-    
-    @classmethod
-    def get_field_class_and_defaults(cls, field_type: str) -> tuple:
-        """Get Django field class and default options for a field type."""
-        if field_type not in cls.FIELD_MAPPING:
-            raise ValueError(f"Unknown field type: {field_type}")
-        return cls.FIELD_MAPPING[field_type]
+
+def _get_field_type_definition(field_type: str) -> FieldTypeDefinition:
+    """Get field type definition for a field type."""
+    field_definition = FieldType.from_id(field_type).value
+    if not field_definition.allow_in_model:
+        raise ValueError(f"Field type '{field_type}' is not allowed for model creation.")
+    if field_definition.django_field_class is None:
+        raise ValueError(f"Field type '{field_type}' has no Django field class mapping.")
+    return field_definition
 
 
 def _get_validator_functions(field_config:FieldConfig) -> list[Callable]:
@@ -165,7 +117,9 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
     attrs = {}
     # Process each field configuration
     for field_config in model_config.fields:
-        field_class, default_opts = FieldTypeMapping.get_field_class_and_defaults(field_config.type)
+        field_definition = _get_field_type_definition(field_config.type)
+        field_class = field_definition.django_field_class
+        default_opts = dict(field_definition.default_field_args)
         
         # Get validator functions
         validator_functions = _get_validator_functions(field_config)
@@ -455,5 +409,3 @@ def load_models_from_yaml(yaml_file_path: str) -> dict[str, type[Model]]:
             models[model_config.name] = model_class
     
     return models
-
-

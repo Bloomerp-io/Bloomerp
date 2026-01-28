@@ -6,43 +6,43 @@ string_representation: "{manufacturing_order} - {total_cost}"
 fields:
   - id: manufacturing_order
     name: Manufacturing Order
-    type: one_to_one
+    type: OneToOneField
     options:
       to: manufacturing.shop_floor.manufacturing_order
       on_delete: CASCADE
   - id: material_cost
     name: Material Cost
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
   - id: labor_cost
     name: Labor Cost
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
   - id: overhead_cost
     name: Overhead Cost
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
   - id: total_cost
     name: Total Cost
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
   - id: cost_per_unit
     name: Cost Per Unit
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
   - id: valuation_method
     name: Valuation Method
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["standard", "Standard"]
@@ -50,4 +50,4 @@ fields:
         - ["average", "Average"]
   - id: calculated_at
     name: Calculated At
-    type: datetime
+    type: DateTimeField

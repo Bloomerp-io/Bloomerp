@@ -6,17 +6,17 @@ string_representation: "{run_date}"
 fields:
   - id: run_date
     name: Run Date
-    type: datetime
+    type: DateTimeField
   - id: description
     name: Description
-    type: string
+    type: CharField
     options:
       max_length: 200
       null: true
       blank: true
   - id: status
     name: Status
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["draft", "Draft"]
@@ -26,7 +26,7 @@ fields:
       default: "draft"
   - id: parameters_json
     name: Parameters
-    type: json
+    type: JSONField
     options:
       null: true
       blank: true

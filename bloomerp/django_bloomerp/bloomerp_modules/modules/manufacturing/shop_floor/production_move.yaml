@@ -6,7 +6,7 @@ string_representation: "{product} - {move_type}"
 fields:
   - id: manufacturing_order
     name: Manufacturing Order
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.shop_floor.manufacturing_order
       null: true
@@ -14,39 +14,39 @@ fields:
       on_delete: SET_NULL
   - id: product
     name: Product
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.product
       on_delete: PROTECT
   - id: quantity
     name: Quantity
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 5
   - id: uom
     name: Unit of Measure
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.unit_of_measure
       on_delete: PROTECT
   - id: location_from
     name: From Location
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.location
       on_delete: PROTECT
       related_name: "from_production_moves"
   - id: location_to
     name: To Location
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.location
       on_delete: PROTECT
       related_name: "to_production_moves"
   - id: move_type
     name: Move Type
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["component_issue", "Component Issue"]
@@ -54,18 +54,18 @@ fields:
         - ["scrap", "Scrap"]
   - id: lot_number
     name: Lot Number
-    type: string
+    type: CharField
     options:
       max_length: 50
       null: true
       blank: true
   - id: serial_number
     name: Serial Number
-    type: string
+    type: CharField
     options:
       max_length: 50
       null: true
       blank: true
   - id: move_date
     name: Move Date
-    type: datetime
+    type: DateTimeField

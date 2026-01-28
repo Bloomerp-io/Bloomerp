@@ -6,18 +6,18 @@ string_representation: "{name}"
 fields:
   - id: name
     name: Name
-    type: string
+    type: CharField
     options:
       max_length: 100
   - id: code
     name: Code
-    type: string
+    type: CharField
     options:
       max_length: 20
       unique: true
   - id: work_center_type
     name: Work Center Type
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["machine", "Machine"]
@@ -25,12 +25,12 @@ fields:
         - ["cell", "Cell"]
   - id: capacity_units
     name: Capacity Units
-    type: integer
+    type: IntegerField
     options:
       default: 1
   - id: calendar
     name: Calendar
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.bom_routings.work_center_calendar
       null: true
@@ -38,14 +38,14 @@ fields:
       on_delete: SET_NULL
   - id: hourly_rate
     name: Hourly Rate
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
       default: 0
   - id: oee_target_percent
     name: OEE Target Percent
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 5
       decimal_places: 2
@@ -53,6 +53,6 @@ fields:
       blank: true
   - id: is_active
     name: Is Active
-    type: boolean
+    type: BooleanField
     options:
       default: true

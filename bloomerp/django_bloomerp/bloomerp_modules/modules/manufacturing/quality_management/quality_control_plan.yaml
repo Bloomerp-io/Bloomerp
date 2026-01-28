@@ -6,12 +6,12 @@ string_representation: "{name}"
 fields:
   - id: name
     name: Name
-    type: string
+    type: CharField
     options:
       max_length: 100
   - id: product
     name: Product
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.product
       null: true
@@ -19,7 +19,7 @@ fields:
       on_delete: SET_NULL
   - id: operation
     name: Operation
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.bom_routings.operation
       null: true
@@ -27,6 +27,6 @@ fields:
       on_delete: SET_NULL
   - id: is_active
     name: Is Active
-    type: boolean
+    type: BooleanField
     options:
       default: true
