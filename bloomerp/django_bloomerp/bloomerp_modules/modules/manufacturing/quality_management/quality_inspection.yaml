@@ -6,35 +6,35 @@ string_representation: "{product} - {inspection_date}"
 fields:
   - id: reference_type
     name: Reference Type
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["manufacturing_order", "Manufacturing Order"]
         - ["goods_receipt", "Goods Receipt"]
   - id: reference_id
     name: Reference ID
-    type: string
+    type: CharField
     options:
       max_length: 50
   - id: product
     name: Product
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.product
       on_delete: PROTECT
   - id: lot_number
     name: Lot Number
-    type: string
+    type: CharField
     options:
       max_length: 50
       null: true
       blank: true
   - id: inspection_date
     name: Inspection Date
-    type: datetime
+    type: DateTimeField
   - id: inspector
     name: Inspector
-    type: foreign_key
+    type: ForeignKey
     options:
       to: hrm.employees.employee
       null: true
@@ -42,7 +42,7 @@ fields:
       on_delete: SET_NULL
   - id: status
     name: Status
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["pending", "Pending"]
@@ -52,7 +52,7 @@ fields:
       default: "pending"
   - id: notes
     name: Notes
-    type: text
+    type: TextField
     options:
       null: true
       blank: true

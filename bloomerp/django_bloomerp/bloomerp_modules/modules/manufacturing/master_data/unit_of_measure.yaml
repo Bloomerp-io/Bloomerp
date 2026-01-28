@@ -6,22 +6,22 @@ string_representation: "{symbol}"
 fields:
   - id: name
     name: Name
-    type: string
+    type: CharField
     options:
       max_length: 100
   - id: symbol
     name: Symbol
-    type: string
+    type: CharField
     options:
       max_length: 20
   - id: category
     name: Category
-    type: string
+    type: CharField
     options:
       max_length: 50
   - id: ratio_to_base
     name: Ratio to Base
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 5

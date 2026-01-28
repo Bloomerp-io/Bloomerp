@@ -6,7 +6,7 @@ fields:
   - id: budget_code
     name: Budget Code
     description: Unique code for the budget
-    type: string
+    type: CharField
     options:
       max_length: 20
       unique: true
@@ -14,14 +14,14 @@ fields:
   - id: budget_name
     name: Budget Name
     description: Name of the budget
-    type: string
+    type: CharField
     options:
       max_length: 100
       
   - id: account
     name: Account
     description: Account this budget applies to
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp_modules.Account"
       on_delete: call(django.db.models.CASCADE)
@@ -29,7 +29,7 @@ fields:
   - id: fiscal_period
     name: Fiscal Period
     description: Fiscal period for this budget
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp_modules.FiscalPeriod"
       on_delete: call(django.db.models.CASCADE)
@@ -37,7 +37,7 @@ fields:
   - id: budget_type
     name: Budget Type
     description: Type of budget
-    type: string
+    type: CharField
     options:
       max_length: 20
       choices:
@@ -50,7 +50,7 @@ fields:
   - id: budgeted_amount
     name: Budgeted Amount
     description: Budgeted amount for this account and period
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -59,7 +59,7 @@ fields:
   - id: actual_amount
     name: Actual Amount
     description: Actual amount spent/received
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -68,7 +68,7 @@ fields:
   - id: variance_amount
     name: Variance Amount
     description: Variance between budget and actual
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -77,7 +77,7 @@ fields:
   - id: variance_percentage
     name: Variance Percentage
     description: Variance as percentage of budget
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 5
       decimal_places: 2
@@ -86,7 +86,7 @@ fields:
   - id: status
     name: Status
     description: Status of the budget
-    type: string
+    type: CharField
     options:
       max_length: 20
       choices:
@@ -99,7 +99,7 @@ fields:
   - id: notes
     name: Notes
     description: Additional notes about this budget
-    type: text
+    type: TextField
     options:
       "null": true
       blank: true

@@ -6,22 +6,22 @@ string_representation: "{product} - {forecast_date}"
 fields:
   - id: product
     name: Product
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.product
       on_delete: PROTECT
   - id: forecast_date
     name: Forecast Date
-    type: date
+    type: DateField
   - id: quantity
     name: Quantity
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
   - id: source
     name: Source
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["manual", "Manual"]
@@ -29,7 +29,7 @@ fields:
         - ["ai", "AI"]
   - id: notes
     name: Notes
-    type: text
+    type: TextField
     options:
       null: true
       blank: true

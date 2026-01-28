@@ -174,6 +174,8 @@ class FieldTypeDefinition:
     lookups: list[Lookup] = dataclass_field(default_factory=list)
     widget_cls:Optional[Widget|Callable] = None
     widget_attrs: dict = dataclass_field(default_factory=dict)
+    default_field_args: dict = dataclass_field(default_factory=dict)
+    allow_in_model: bool = True
     
     def get_widget_cls(self) -> Type[Widget]:
         """Returns the widget_cls for the field type."""
@@ -241,7 +243,8 @@ class FieldType(Enum):
     # Basic Fields
     PROPERTY = FieldTypeDefinition(
         id="Property",
-        display_name="Property"
+        display_name="Property",
+        allow_in_model=False,
     )
     
     AUTO_FIELD = FieldTypeDefinition(
@@ -271,7 +274,20 @@ class FieldType(Enum):
         display_name="Char Field",
         django_field_class=models.CharField,
         lookups=TEXT_LOOKUPS,
-        widget_cls=forms.widgets.TextInput
+        widget_cls=forms.widgets.TextInput,
+        default_field_args={
+            "max_length": 100,
+        },
+    )
+    
+    CHOICE_FIELD = FieldTypeDefinition(
+        id="ChoiceField",
+        display_name="Choice Field",
+        django_field_class=models.CharField,
+        lookups=TEXT_LOOKUPS,
+        default_field_args={
+            "max_length": 50,
+        },
     )
     
     TEXT_FIELD = FieldTypeDefinition(
@@ -286,21 +302,30 @@ class FieldType(Enum):
         id="EmailField",
         display_name="Email Field",
         django_field_class=models.EmailField,
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        default_field_args={
+            "max_length": 254,
+        },
     )
     
     URL_FIELD = FieldTypeDefinition(
         id="URLField",
         display_name="URL Field",
         django_field_class=models.URLField,
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        default_field_args={
+            "max_length": 200,
+        },
     )
     
     SLUG_FIELD = FieldTypeDefinition(
         id="SlugField",
         display_name="Slug Field",
         django_field_class=models.SlugField,
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        default_field_args={
+            "max_length": 50,
+        },
     )
     
     # Numeric Fields
@@ -322,7 +347,11 @@ class FieldType(Enum):
         id="DecimalField",
         display_name="Decimal Field",
         django_field_class=models.DecimalField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        default_field_args={
+            "max_digits": 10,
+            "decimal_places": 2,
+        },
     )
     
     POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
@@ -358,13 +387,21 @@ class FieldType(Enum):
         id="BooleanField",
         display_name="Boolean Field",
         django_field_class=models.BooleanField,
-        lookups=BOOLEAN_LOOKUPS
+        lookups=BOOLEAN_LOOKUPS,
+        default_field_args={
+            "default": False,
+        },
     )
     
     NULL_BOOLEAN_FIELD = FieldTypeDefinition(
         id="NullBooleanField",
         display_name="Null Boolean Field",
-        lookups=BOOLEAN_LOOKUPS
+        django_field_class=models.BooleanField,
+        lookups=BOOLEAN_LOOKUPS,
+        default_field_args={
+            "null": True,
+            "blank": True,
+        },
     )
     
     # Date/Time Fields  
@@ -401,12 +438,18 @@ class FieldType(Enum):
         id="FileField",
         display_name="File Field",
         django_field_class=models.FileField,
+        default_field_args={
+            "upload_to": "uploads/",
+        },
     )
     
     IMAGE_FIELD = FieldTypeDefinition(
         id="ImageField",
         display_name="Image Field",
         django_field_class=models.ImageField,
+        default_field_args={
+            "upload_to": "images/",
+        },
         
     )
     
@@ -422,7 +465,10 @@ class FieldType(Enum):
         widget_cls=ForeignFieldWidget,
         widget_attrs={
             "is_m2m": False
-        }
+        },
+        default_field_args={
+            "on_delete": models.CASCADE,
+        },
     )
     
     ONE_TO_ONE_FIELD = FieldTypeDefinition(
@@ -434,6 +480,9 @@ class FieldType(Enum):
             Lookup.EQUALS,
             Lookup.IN,
         ],
+        default_field_args={
+            "on_delete": models.CASCADE,
+        },
     )
     
     MANY_TO_MANY_FIELD = FieldTypeDefinition(
@@ -454,6 +503,7 @@ class FieldType(Enum):
     ONE_TO_MANY_FIELD = FieldTypeDefinition(
         id="OneToManyField",
         display_name="One To Many Field",
+        allow_in_model=False,
     )
     
     USER_FIELD = FieldTypeDefinition(
@@ -483,6 +533,7 @@ class FieldType(Enum):
     IP_ADDRESS_FIELD = FieldTypeDefinition(
         id="IPAddressField",
         display_name="IP Address Field",
+        django_field_class=models.GenericIPAddressField,
         lookups=TEXT_LOOKUPS
     )
     
@@ -497,6 +548,9 @@ class FieldType(Enum):
         id="JSONField",
         display_name="JSON Field",
         django_field_class=models.JSONField,
+        default_field_args={
+            "default": dict,
+        },
         
     )
     
@@ -506,12 +560,14 @@ class FieldType(Enum):
         lookups=[
             Lookup.CONTAINS, 
             Lookup.IS_NULL
-            ]
+            ],
+        allow_in_model=False,
     )
     
     HSTORE_FIELD = FieldTypeDefinition(
         id="HStoreField",
         display_name="HStore Field",
+        allow_in_model=False,
         
     )
     
@@ -519,11 +575,13 @@ class FieldType(Enum):
     GENERIC_RELATION = FieldTypeDefinition(
         id="GenericRelation",
         display_name="Generic Relation",
+        allow_in_model=False,
         
     )
     GENERIC_FOREIGN_KEY = FieldTypeDefinition(
         id="GenericForeignKey",
         display_name="Generic Foreign Key",
+        allow_in_model=False,
         
     )
     
@@ -531,11 +589,13 @@ class FieldType(Enum):
     STATUS_FIELD = FieldTypeDefinition(
         id="StatusField",
         display_name="Status Field",
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        allow_in_model=False,
     )
     BLOOMERP_FILE_FIELD = FieldTypeDefinition(
         id="BloomerpFileField",
         display_name="Bloomerp File Field",
+        allow_in_model=False,
     )
 
     @property
@@ -666,4 +726,3 @@ class FieldType(Enum):
         return forms.widgets.TextInput
         
             
-

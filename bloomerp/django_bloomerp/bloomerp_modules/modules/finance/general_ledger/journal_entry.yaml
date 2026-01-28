@@ -6,7 +6,7 @@ fields:
   - id: journal
     name: Journal
     description: The journal this entry belongs to
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp_modules.Journal"
       on_delete: call(django.db.models.CASCADE)
@@ -14,14 +14,14 @@ fields:
   - id: entry_number
     name: Entry Number
     description: Sequential number within the journal
-    type: string
+    type: CharField
     options:
       max_length: 20
       
   - id: reference_number
     name: Reference Number
     description: External reference number (invoice, receipt, etc.)
-    type: string
+    type: CharField
     options:
       max_length: 50
       "null": true
@@ -30,12 +30,12 @@ fields:
   - id: entry_date
     name: Entry Date
     description: Date of the journal entry
-    type: date
+    type: DateField
     
   - id: posting_date
     name: Posting Date
     description: Date when entry was posted to ledger
-    type: date
+    type: DateField
     options:
       "null": true
       blank: true
@@ -43,12 +43,12 @@ fields:
   - id: description
     name: Description
     description: Description of the transaction
-    type: text
+    type: TextField
     
   - id: total_debit
     name: Total Debit
     description: Total debit amount for this entry
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -57,7 +57,7 @@ fields:
   - id: total_credit
     name: Total Credit
     description: Total credit amount for this entry
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -66,7 +66,7 @@ fields:
   - id: status
     name: Status
     description: Status of the journal entry
-    type: string
+    type: CharField
     options:
       max_length: 20
       choices:
@@ -80,7 +80,7 @@ fields:
   - id: approved_by
     name: Approved By
     description: User who approved this entry
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp.User"
       "null": true
@@ -91,7 +91,7 @@ fields:
   - id: approved_date
     name: Approved Date
     description: Date when entry was approved
-    type: datetime
+    type: DateTimeField
     options:
       "null": true
       blank: true
@@ -99,7 +99,7 @@ fields:
   - id: posted_by
     name: Posted By
     description: User who posted this entry
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp.User"
       "null": true
@@ -110,7 +110,7 @@ fields:
   - id: posted_date
     name: Posted Date
     description: Date when entry was posted
-    type: datetime
+    type: DateTimeField
     options:
       "null": true
       blank: true
@@ -118,7 +118,7 @@ fields:
   - id: reversed_by
     name: Reversed By
     description: Reference to the entry that reverses this one
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "self"
       "null": true
@@ -129,7 +129,7 @@ fields:
   - id: source_document_type
     name: Source Document Type
     description: Type of source document
-    type: string
+    type: CharField
     options:
       max_length: 50
       "null": true
@@ -145,7 +145,7 @@ fields:
   - id: source_document_id
     name: Source Document ID
     description: ID of the source document
-    type: string
+    type: CharField
     options:
       max_length: 50
       "null": true

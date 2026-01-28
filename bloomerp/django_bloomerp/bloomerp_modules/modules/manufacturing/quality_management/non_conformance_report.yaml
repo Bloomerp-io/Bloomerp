@@ -6,13 +6,13 @@ string_representation: "{number}"
 fields:
   - id: number
     name: Number
-    type: string
+    type: CharField
     options:
       max_length: 50
       unique: true
   - id: product
     name: Product
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.product
       null: true
@@ -20,14 +20,14 @@ fields:
       on_delete: SET_NULL
   - id: lot_number
     name: Lot Number
-    type: string
+    type: CharField
     options:
       max_length: 50
       null: true
       blank: true
   - id: source_inspection
     name: Source Inspection
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.quality_management.quality_inspection
       null: true
@@ -35,10 +35,10 @@ fields:
       on_delete: SET_NULL
   - id: date_reported
     name: Date Reported
-    type: datetime
+    type: DateTimeField
   - id: reported_by
     name: Reported By
-    type: foreign_key
+    type: ForeignKey
     options:
       to: hrm.employees.employee
       null: true
@@ -46,22 +46,22 @@ fields:
       on_delete: SET_NULL
   - id: description
     name: Description
-    type: text
+    type: TextField
   - id: root_cause
     name: Root Cause
-    type: text
+    type: TextField
     options:
       null: true
       blank: true
   - id: corrective_action
     name: Corrective Action
-    type: text
+    type: TextField
     options:
       null: true
       blank: true
   - id: status
     name: Status
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["open", "Open"]

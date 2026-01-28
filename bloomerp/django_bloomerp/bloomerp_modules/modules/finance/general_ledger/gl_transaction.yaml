@@ -6,7 +6,7 @@ fields:
   - id: journal_entry_line
     name: Journal Entry Line
     description: Source journal entry line for this transaction
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp_modules.JournalEntryLine"
       on_delete: "call(django.db.models.CASCADE)"
@@ -14,7 +14,7 @@ fields:
   - id: account
     name: Account
     description: General ledger account
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp_modules.Account"
       on_delete: "call(django.db.models.PROTECT)"
@@ -22,7 +22,7 @@ fields:
   - id: fiscal_period
     name: Fiscal Period
     description: Fiscal period when transaction was posted
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp_modules.FiscalPeriod"
       on_delete: "call(django.db.models.PROTECT)"
@@ -30,22 +30,22 @@ fields:
   - id: transaction_date
     name: Transaction Date
     description: Date of the transaction
-    type: date
+    type: DateField
     
   - id: posting_date
     name: Posting Date
     description: Date when transaction was posted
-    type: date
+    type: DateField
     
   - id: description
     name: Description
     description: Description of the transaction
-    type: text
+    type: TextField
     
   - id: debit_amount
     name: Debit Amount
     description: Debit amount
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -54,7 +54,7 @@ fields:
   - id: credit_amount
     name: Credit Amount
     description: Credit amount
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -63,7 +63,7 @@ fields:
   - id: running_balance
     name: Running Balance
     description: Running balance after this transaction
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 15
       decimal_places: 2
@@ -72,7 +72,7 @@ fields:
   - id: reference_number
     name: Reference Number
     description: External reference number
-    type: string
+    type: CharField
     options:
       max_length: 50
       "null": true
@@ -81,7 +81,7 @@ fields:
   - id: cost_center
     name: Cost Center
     description: Cost center for tracking
-    type: string
+    type: CharField
     options:
       max_length: 20
       "null": true
@@ -90,7 +90,7 @@ fields:
   - id: project_code
     name: Project Code
     description: Project code for tracking
-    type: string
+    type: CharField
     options:
       max_length: 20
       "null": true
@@ -99,7 +99,7 @@ fields:
   - id: department
     name: Department
     description: Department for tracking
-    type: string
+    type: CharField
     options:
       max_length: 50
       "null": true

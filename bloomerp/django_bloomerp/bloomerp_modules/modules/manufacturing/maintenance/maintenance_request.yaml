@@ -6,22 +6,22 @@ string_representation: "{number}"
 fields:
   - id: number
     name: Number
-    type: string
+    type: CharField
     options:
       max_length: 50
       unique: true
   - id: equipment
     name: Equipment
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.maintenance.equipment
       on_delete: PROTECT
   - id: request_date
     name: Request Date
-    type: datetime
+    type: DateTimeField
   - id: requested_by
     name: Requested By
-    type: foreign_key
+    type: ForeignKey
     options:
       to: hrm.employees.employee
       null: true
@@ -29,7 +29,7 @@ fields:
       on_delete: SET_NULL
   - id: priority
     name: Priority
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["low", "Low"]
@@ -39,10 +39,10 @@ fields:
       default: "normal"
   - id: description
     name: Description
-    type: text
+    type: TextField
   - id: status
     name: Status
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["open", "Open"]
@@ -52,13 +52,13 @@ fields:
       default: "open"
   - id: cause
     name: Cause
-    type: text
+    type: TextField
     options:
       null: true
       blank: true
   - id: solution
     name: Solution
-    type: text
+    type: TextField
     options:
       null: true
       blank: true

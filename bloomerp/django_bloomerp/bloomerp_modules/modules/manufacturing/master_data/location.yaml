@@ -6,23 +6,23 @@ string_representation: "{code}"
 fields:
   - id: warehouse
     name: Warehouse
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.warehouse
       on_delete: CASCADE
   - id: code
     name: Code
-    type: string
+    type: CharField
     options:
       max_length: 20
   - id: name
     name: Name
-    type: string
+    type: CharField
     options:
       max_length: 100
   - id: location_type
     name: Location Type
-    type: choice
+    type: ChoiceField
     options:
       choices:
         - ["stock", "Stock"]
@@ -32,6 +32,6 @@ fields:
         - ["production", "Production"]
   - id: is_active
     name: Is Active
-    type: boolean
+    type: BooleanField
     options:
       default: true
