@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.urls import reverse
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
@@ -13,8 +13,8 @@ from bloomerp.models import ApplicationField
 from django.contrib.auth.decorators import login_required
 
 
+@router.route(path='components/data_table/', name='components_data_table')
 @login_required
-@route('data_table')
 def data_table(request:HttpRequest) -> HttpResponse:
     """
     Component for rendering a data table.

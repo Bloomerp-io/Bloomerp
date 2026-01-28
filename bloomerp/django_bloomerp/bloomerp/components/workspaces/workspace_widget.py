@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import get_object_or_404
@@ -7,8 +7,8 @@ import plotly.express as px
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 
+@router.route(path='components/workspace_widget/', name='components_workspace_widget')
 @login_required
-@route('workspace_widget')
 def workspace_widget(request:HttpRequest) -> HttpResponse:
     '''
     Component to render a widget in the workspace.

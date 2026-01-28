@@ -1,12 +1,12 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpRequest
 from bloomerp.forms.core import DetailLinksSelectForm
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.decorators import login_required
 
+@router.route(path='components/detail_view_links/', name='components_detail_view_links')
 @login_required
-@route('detail_view_links')
 def detail_view_links(request:HttpRequest) -> HttpResponse:
     '''Add component to select detail links for a user'''
 

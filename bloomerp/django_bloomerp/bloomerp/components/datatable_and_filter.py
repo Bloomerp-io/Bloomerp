@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.utils.requests import parse_bool_parameter
@@ -7,8 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
 
+@router.route(path='components/datatable_and_filter/', name='components_datatable_and_filter')
 @login_required
-@route('datatable_and_filter')
 def datatable_and_filter(request:HttpRequest) -> HttpResponse:
     content_type_id = request.GET.get('content_type_id', None)
     include_actions = parse_bool_parameter(request.GET.get('include_actions'), True)

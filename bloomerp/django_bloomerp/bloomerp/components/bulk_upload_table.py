@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.core.files import File
@@ -11,8 +11,8 @@ from django.views.decorators.http import require_POST
 
 
 @require_POST
+@router.route(path='components/bulk_upload_table/', name='components_bulk_upload_table')
 @login_required
-@route('bulk_upload_table')
 def bulk_upload_table(request:HttpRequest) -> HttpResponse:
     '''
     Component that allows for bulk uploading of data into a model.

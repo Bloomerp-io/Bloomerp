@@ -238,6 +238,9 @@ class BloomerpRouteRegistry:
         self._auto_imported = False
         self.dirs = dirs or []
 
+    def route(self, *args, **kwargs):
+        return self.register(*args, **kwargs)
+
     def _auto_import_views(self):
         """
         Automatically import all Python files in the directories specified in self.dirs

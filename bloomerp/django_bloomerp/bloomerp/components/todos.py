@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.forms.core import BloomerpModelForm
@@ -9,8 +9,8 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.decorators import login_required
 
+@router.route(path='components/todos/', name='components_todos')
 @login_required
-@route('todos')
 def todos(request: HttpRequest) -> HttpResponse:
     """
     Todo component that renders a form to create a new todo item.

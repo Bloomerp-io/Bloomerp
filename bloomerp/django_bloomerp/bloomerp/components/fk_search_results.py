@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.contrib.contenttypes.models import ContentType
@@ -6,8 +6,8 @@ from bloomerp.models import BloomerpModel
 from bloomerp.utils.models import string_search
 from django.contrib.auth.decorators import login_required
 
+@router.route(path='components/fk_search_results/', name='components_fk_search_results')
 @login_required
-@route('fk_search_results')
 def fk_search_results(request:HttpRequest) -> HttpResponse:
     '''
     Component that returns search results for a given query.

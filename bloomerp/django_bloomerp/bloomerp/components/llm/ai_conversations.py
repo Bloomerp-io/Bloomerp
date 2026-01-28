@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.contrib.auth.decorators import login_required
@@ -7,8 +7,8 @@ import uuid
 from bloomerp.utils.requests import parse_bool_parameter
 from django.utils import timezone
 
+@router.route(path='components/ai_conversations/', name='components_ai_conversations')
 @login_required
-@route('ai_conversations')
 def ai_conversations(request:HttpRequest) -> HttpResponse:
     '''Component that renders ai conversation or a single conversation.
 

@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models import Bookmark, AbstractBloomerpUser
@@ -6,8 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 
 @csrf_exempt
+@router.route(path='components/bookmark/', name='components_bookmark')
 @login_required
-@route('bookmark')
 def bookmark(request:HttpRequest) -> HttpResponse:
     # Get variables
     user:AbstractBloomerpUser = request.user

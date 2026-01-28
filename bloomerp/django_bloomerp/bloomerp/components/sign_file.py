@@ -1,4 +1,4 @@
-from shared_utils.router.component_router import route
+from registries.route_registry import router
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpRequest
 from django.views.decorators.http import require_POST
@@ -12,7 +12,7 @@ from django.utils.safestring import mark_safe
 
 @login_required
 @require_POST
-@route('sign_file')
+@router.route(path='components/sign_file/', name='components_sign_file')
 def sign_file(request:HttpRequest) -> HttpResponse:
     '''
     Post data to sign a file.
