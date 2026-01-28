@@ -309,49 +309,57 @@ class BloomerpRouter:
                         temp_routes.append(route)
 
             elif models == '__all__':
-                ContentTypes = ContentType.objects.all()
+                try:
+                    ContentTypes = list(ContentType.objects.all())
+                except Exception:
+                    # Database might not be ready yet (e.g., during initial migrations)
+                    ContentTypes = []
                 for ContentType in ContentTypes:
-                    model = ContentType.model_class()
-                    model_name = model._meta.verbose_name.title()
-                    
-                    # Check if the model is in the exclude list
-                    if model in exclude_models:
+                    try:
+                        model = ContentType.model_class()
+                        model_name = model._meta.verbose_name.title()
+                        
+                        # Check if the model is in the exclude list
+                        if model in exclude_models:
+                            continue
+                        
+                        # Create the relative path for the model
+                        if not url_name:
+                            relative_path = _create_relative_path(model, route_type, name)
+                        else:
+                            relative_path = _create_relative_path(model, route_type, url_name)
+
+                        # Create the absolute path for the model
+                        p = _create_absoulte_path_for_model(model, route_type, path)
+                        
+                        # Update description and name for the model
+                        try:
+                            route_name = name.format(model=model_name)
+                        except:
+                            route_name = name + ' ' + model_name
+                        
+
+                        try:
+                            desc = description.format(model=model_name)
+                        except:
+                            desc = description + ' ' + model_name
+
+                        # Append the route information to the router's list
+                        route = BloomerpRoute(
+                            model=model,
+                            route_type=route_type,
+                            path=p,
+                            view = None, # This will be set later
+                            route_name=route_name,
+                            description=desc,
+                            override=override,
+                            relative_path=relative_path,
+                            args=args
+                        )
+                        temp_routes.append(route)
+                    except Exception as e:
+                        print(f"Error creating route for model {model}: {e}")
                         continue
-                    
-                    # Create the relative path for the model
-                    if not url_name:
-                        relative_path = _create_relative_path(model, route_type, name)
-                    else:
-                        relative_path = _create_relative_path(model, route_type, url_name)
-
-                    # Create the absolute path for the model
-                    p = _create_absoulte_path_for_model(model, route_type, path)
-                    
-                    # Update description and name for the model
-                    try:
-                        route_name = name.format(model=model_name)
-                    except:
-                        route_name = name + ' ' + model_name
-                    
-
-                    try:
-                        desc = description.format(model=model_name)
-                    except:
-                        desc = description + ' ' + model_name
-
-                    # Append the route information to the router's list
-                    route = BloomerpRoute(
-                        model=model,
-                        route_type=route_type,
-                        path=p,
-                        view = None, # This will be set later
-                        route_name=route_name,
-                        description=desc,
-                        override=override,
-                        relative_path=relative_path,
-                        args=args
-                    )
-                    temp_routes.append(route)
             elif type(models) == list:
                 for model in models:
                     model_name = model._meta.verbose_name.title()

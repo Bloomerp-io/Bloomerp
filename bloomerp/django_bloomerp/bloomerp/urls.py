@@ -98,7 +98,11 @@ urlpatterns = [
 # ---------------------------------
 # API URL patterns / Admin pannel
 # ---------------------------------
-content_types = ContentType.objects.all()
+try:
+    content_types = list(ContentType.objects.all())
+except Exception:
+    # Database might not be ready yet (e.g., during initial migrations)
+    content_types = []
 
 for content_type in content_types:
     if content_type.model_class():
