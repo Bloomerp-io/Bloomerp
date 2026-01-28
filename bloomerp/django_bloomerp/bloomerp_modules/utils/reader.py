@@ -1,9 +1,10 @@
+from pyexpat import model
 from django.db.models import Model
 import yaml
 from django.db import models
 from typing import Optional, Dict, Any, Callable
 from shared_datatypes.modules import (
-    BaseConfig, FieldConfig, ModelConfig, SubModuleConfig, ModuleConfig
+    FieldConfig, ModelConfig, SubModuleConfig, ModuleConfig
 )
 from bloomerp.field_types import FieldType, FieldTypeDefinition
 
@@ -325,15 +326,19 @@ def load_all_models_from_modules() -> dict[str, type[Model]]:
     for module in modules:
         for sub_module in module.sub_modules:
             for model_config in sub_module.models:
-                model_class = create_model_from_config(
-                    model_config, 
-                    sub_module, 
-                    module,
-                    model_lookup
-                )
-                # Use a unique key to avoid conflicts
-                model_key = f"{module.id}_{sub_module.id}_{model_config.id}"
-                models[model_key] = model_class
+                try:
+                    model_class = create_model_from_config(
+                        model_config, 
+                        sub_module, 
+                        module,
+                        model_lookup
+                    )
+                    # Use a unique key to avoid conflicts
+                    model_key = f"{module.id}_{sub_module.id}_{model_config.id}"
+                    models[model_key] = model_class
+                except Exception as e:
+                    print(f"Error creating model '{model_config.name}' from module '{module.id}': {e}")
+                    continue
     return models
 
 
@@ -394,18 +399,4 @@ def parse_yaml_config(yaml_file_path: str) -> ModuleConfig:
     )
 
 
-def load_models_from_yaml(yaml_file_path: str) -> dict[str, type[Model]]:
-    """Load all models from YAML configuration file."""
-    module_config = parse_yaml_config(yaml_file_path)
-    models = {}
-    
-    for sub_module in module_config.sub_modules:
-        for model_config in sub_module.models:
-            model_class = create_model_from_config(
-                model_config, 
-                sub_module, 
-                module_config
-            )
-            models[model_config.name] = model_class
-    
-    return models
+
