@@ -498,6 +498,9 @@ export abstract class BaseDataViewComponent extends BaseComponent {
 
                 // Alt/option + arrow key
                 if (event.altKey) {
+                    if (this.handleAltArrow(event)) {
+                        return;
+                    }
                     switch (event.key) {
                         case 'ArrowDown':
                             event.preventDefault();
@@ -510,6 +513,10 @@ export abstract class BaseDataViewComponent extends BaseComponent {
             },
             { signal: abortController.signal },
         )
+    }
+
+    protected handleAltArrow(_event: KeyboardEvent): boolean {
+        return false;
     }
 
     /**
