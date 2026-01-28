@@ -89,5 +89,4 @@ bloomerp/django_bloomerp/bloomerp/static/css/dist/
 # Keep setup.py out for now
 setup.py
 bloomerp/django_bloomerp/db.sqlite3
-bloomerp/django_bloomerp/db.sqlite3
-bloomerp/django_bloomerp/db.sqlite3
+

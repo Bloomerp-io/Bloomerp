@@ -110,10 +110,7 @@ for content_type in content_types:
         
         if not model:
             continue
-        
-        
             
-        
         serializer_class = generate_serializer(model)
         
         ApiViewSet = generate_model_viewset_class(
