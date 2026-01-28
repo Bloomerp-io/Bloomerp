@@ -6,13 +6,13 @@ fields:
   - id : employee
     name : employee
     description : Link to employee
-    type : foreign_key
+    type : ForeignKey
     options :
       to : employee
   - id : start_date
     name : start date
     description : Start date of the contract.
-    type : date
+    type : DateField
     options :
       "null" : true
       blank : true
@@ -20,7 +20,7 @@ fields:
   - id : end_date
     name : End date
     description : End date of the contract.
-    type : date
+    type : DateField
     options :
       "null" : true
       blank : true

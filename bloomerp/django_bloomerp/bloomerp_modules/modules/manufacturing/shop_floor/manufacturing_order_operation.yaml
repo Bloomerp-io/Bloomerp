@@ -6,30 +6,30 @@ string_representation: "{manufacturing_order} - {operation}"
 fields:
   - id: manufacturing_order
     name: Manufacturing Order
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.shop_floor.manufacturing_order
       on_delete: CASCADE
   - id: operation
     name: Operation
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.bom_routings.operation
       on_delete: PROTECT
   - id: work_center
     name: Work Center
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.bom_routings.work_center
       on_delete: PROTECT
   - id: sequence
     name: Sequence
-    type: integer
+    type: IntegerField
     options:
       default: 0
   - id: status
     name: Status
-    type: choice
+    type: CharField
     options:
       choices:
         - ["pending", "Pending"]
@@ -39,41 +39,41 @@ fields:
       default: "pending"
   - id: planned_start_time
     name: Planned Start Time
-    type: datetime
+    type: DateTimeField
     options:
       null: true
       blank: true
   - id: planned_end_time
     name: Planned End Time
-    type: datetime
+    type: DateTimeField
     options:
       null: true
       blank: true
   - id: actual_start_time
     name: Actual Start Time
-    type: datetime
+    type: DateTimeField
     options:
       null: true
       blank: true
   - id: actual_end_time
     name: Actual End Time
-    type: datetime
+    type: DateTimeField
     options:
       null: true
       blank: true
   - id: setup_time_minutes_actual
     name: Actual Setup Time (Minutes)
-    type: integer
+    type: IntegerField
     options:
       default: 0
   - id: run_time_minutes_actual
     name: Actual Run Time (Minutes)
-    type: integer
+    type: IntegerField
     options:
       default: 0
   - id: notes
     name: Notes
-    type: text
+    type: TextField
     options:
       null: true
       blank: true

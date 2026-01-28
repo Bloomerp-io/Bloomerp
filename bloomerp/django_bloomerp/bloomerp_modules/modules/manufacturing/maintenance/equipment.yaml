@@ -6,18 +6,18 @@ string_representation: "{name}"
 fields:
   - id: name
     name: Name
-    type: string
+    type: CharField
     options:
       max_length: 100
   - id: code
     name: Code
-    type: string
+    type: CharField
     options:
       max_length: 50
       unique: true
   - id: work_center
     name: Work Center
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.bom_routings.work_center
       null: true
@@ -25,27 +25,27 @@ fields:
       on_delete: SET_NULL
   - id: serial_number
     name: Serial Number
-    type: string
+    type: CharField
     options:
       max_length: 50
       null: true
       blank: true
   - id: purchase_date
     name: Purchase Date
-    type: date
+    type: DateField
     options:
       null: true
       blank: true
   - id: manufacturer
     name: Manufacturer
-    type: string
+    type: CharField
     options:
       max_length: 100
       null: true
       blank: true
   - id: status
     name: Status
-    type: choice
+    type: CharField
     options:
       choices:
         - ["active", "Active"]
@@ -54,7 +54,7 @@ fields:
       default: "active"
   - id: notes
     name: Notes
-    type: text
+    type: TextField
     options:
       null: true
       blank: true

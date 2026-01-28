@@ -8,7 +8,7 @@ fields:
   - id: account_code
     name: Account Code
     description: Unique account code or number
-    type: string
+    type: CharField
     options:
       max_length: 20
       unique: true
@@ -16,14 +16,14 @@ fields:
   - id: account_name
     name: Account Name
     description: Name of the account
-    type: string
+    type: CharField
     options:
       max_length: 200
       
   - id: account_type
     name: Account Type
     description: Type of account (Asset, Liability, Equity, Revenue, Expense)
-    type: string
+    type: CharField
     options:
       max_length: 20
       choices:
@@ -36,7 +36,7 @@ fields:
   - id: account_subtype
     name: Account Subtype
     description: Detailed account classification
-    type: string
+    type: CharField
     options:
       max_length: 50
       "null": true
@@ -57,7 +57,7 @@ fields:
   - id: parent_account
     name: Parent Account
     description: Parent account for hierarchical structure
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "self"
       "null": true
@@ -67,21 +67,21 @@ fields:
   - id: is_active
     name: Is Active
     description: Whether the account is active
-    type: boolean
+    type: BooleanField
     options:
       default: true
       
   - id: is_system_account
     name: Is System Account
     description: Whether this is a system-controlled account
-    type: boolean
+    type: BooleanField
     options:
       default: false
       
   - id: description
     name: Description
     description: Detailed description of the account
-    type: text
+    type: TextField
     options:
       "null": true
       blank: true
@@ -89,7 +89,7 @@ fields:
   - id: normal_balance
     name: Normal Balance
     description: Normal balance side for this account type
-    type: string
+    type: CharField
     options:
       max_length: 10
       choices:
@@ -100,7 +100,7 @@ fields:
   - id: bank_account
     name: Bank acount
     description: Bank account associated to this account
-    type: foreign_key
+    type: ForeignKey
     options:
       to: "bloomerp_modules.BankAccount"
       "null": true

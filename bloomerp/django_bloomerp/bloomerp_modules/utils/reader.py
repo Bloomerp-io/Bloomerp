@@ -1,8 +1,8 @@
 from django.db.models import Model
 import yaml
-from enum import Enum
 from django.db import models
 from typing import Optional, Dict, Any, Callable
+from bloomerp.field_types import FieldType
 from shared_datatypes.modules import (
     BaseConfig, FieldConfig, ModelConfig, SubModuleConfig, ModuleConfig
 )
@@ -10,60 +10,66 @@ from shared_datatypes.modules import (
 class FieldTypeMapping:
     """Mapping of field type names to Django field classes and their defaults."""
     
-    FIELD_MAPPING = {
+    FIELD_DEFAULTS = {
         # Text Fields
-        "string": (models.CharField, {"max_length": 100}),
-        "text": (models.TextField, {}),
-        "slug": (models.SlugField, {"max_length": 50}),
-        "email": (models.EmailField, {"max_length": 254}),
-        "url": (models.URLField, {"max_length": 200}),
-        "choice": (models.CharField, {"max_length": 50}),
-        
+        FieldType.CHAR_FIELD: {"max_length": 100},
+        FieldType.TEXT_FIELD: {},
+        FieldType.SLUG_FIELD: {"max_length": 50},
+        FieldType.EMAIL_FIELD: {"max_length": 254},
+        FieldType.URL_FIELD: {"max_length": 200},
+
         # Number Fields
-        "integer": (models.IntegerField, {}),
-        "big_integer": (models.BigIntegerField, {}),
-        "small_integer": (models.SmallIntegerField, {}),
-        "positive_integer": (models.PositiveIntegerField, {}),
-        "positive_small_integer": (models.PositiveSmallIntegerField, {}),
-        "float": (models.FloatField, {}),
-        "decimal": (models.DecimalField, {"max_digits": 10, "decimal_places": 2}),
-        
+        FieldType.INTEGER_FIELD: {},
+        FieldType.BIG_INTEGER_FIELD: {},
+        FieldType.SMALL_INTEGER_FIELD: {},
+        FieldType.POSITIVE_INTEGER_FIELD: {},
+        FieldType.POSITIVE_SMALL_INTEGER_FIELD: {},
+        FieldType.FLOAT_FIELD: {},
+        FieldType.DECIMAL_FIELD: {"max_digits": 10, "decimal_places": 2},
+
         # Boolean Fields
-        "boolean": (models.BooleanField, {"default": False}),
-        "null_boolean": (models.BooleanField, {"null": True, "blank": True}),
-        
+        FieldType.BOOLEAN_FIELD: {"default": False},
+
         # Date/Time Fields
-        "date": (models.DateField, {}),
-        "datetime": (models.DateTimeField, {}),
-        "time": (models.TimeField, {}),
-        "duration": (models.DurationField, {}),
-        
+        FieldType.DATE_FIELD: {},
+        FieldType.DATE_TIME_FIELD: {},
+        FieldType.TIME_FIELD: {},
+        FieldType.DURATION_FIELD: {},
+
         # File Fields
-        "file": (models.FileField, {"upload_to": "uploads/"}),
-        "image": (models.ImageField, {"upload_to": "images/"}),
-        
+        FieldType.FILE_FIELD: {"upload_to": "uploads/"},
+        FieldType.IMAGE_FIELD: {"upload_to": "images/"},
+
         # JSON and Binary
-        "json": (models.JSONField, {"default": dict}),
-        "binary": (models.BinaryField, {}),
-        
+        FieldType.JSON_FIELD: {"default": dict},
+        FieldType.BINARY_FIELD: {},
+
         # UUID
-        "uuid": (models.UUIDField, {}),
-        
+        FieldType.UUID_FIELD: {},
+
         # IP Address
-        "ip_address": (models.GenericIPAddressField, {}),
-        
+        FieldType.GENERIC_IP_ADDRESS_FIELD: {},
+
         # Relationship Fields
-        "foreign_key": (models.ForeignKey, {"on_delete": models.CASCADE}),
-        "many_to_many": (models.ManyToManyField, {}),
-        "one_to_one": (models.OneToOneField, {"on_delete": models.CASCADE}),
+        FieldType.FOREIGN_KEY: {"on_delete": models.CASCADE},
+        FieldType.MANY_TO_MANY_FIELD: {},
+        FieldType.ONE_TO_ONE_FIELD: {"on_delete": models.CASCADE},
     }
     
     @classmethod
     def get_field_class_and_defaults(cls, field_type: str) -> tuple:
         """Get Django field class and default options for a field type."""
-        if field_type not in cls.FIELD_MAPPING:
-            raise ValueError(f"Unknown field type: {field_type}")
-        return cls.FIELD_MAPPING[field_type]
+        try:
+            field_type_enum = FieldType.from_id(field_type)
+        except ValueError as exc:
+            raise ValueError(f"Unknown field type: {field_type}") from exc
+
+        if not field_type_enum.django_field_class:
+            raise ValueError(
+                f"Field type {field_type_enum.id} does not map to a Django field class."
+            )
+
+        return field_type_enum.django_field_class, dict(cls.FIELD_DEFAULTS.get(field_type_enum, {}))
 
 
 def _get_validator_functions(field_config:FieldConfig) -> list[Callable]:
@@ -455,5 +461,4 @@ def load_models_from_yaml(yaml_file_path: str) -> dict[str, type[Model]]:
             models[model_config.name] = model_class
     
     return models
-
 

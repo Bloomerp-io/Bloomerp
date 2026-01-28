@@ -7,14 +7,14 @@ fields:
   - id: first_name
     name: First Name
     description: First name of the employee
-    type: string
+    type: CharField
     options:
       max_length: 100
     
   - id: last_name
     name: Last Name
     description: Last name of the employee
-    type: string
+    type: CharField
     options:
       max_length: 100
       "null": true
@@ -23,7 +23,7 @@ fields:
   - id: middle_name
     name: Middle Name
     description: Middle name of the employee
-    type: string
+    type: CharField
     options:
       max_length: 100
       "null": true
@@ -31,7 +31,7 @@ fields:
 
   - id: date_of_birth
     name: Date of birth
-    type: date
+    type: DateField
     options:
       "null": true
       blank: true

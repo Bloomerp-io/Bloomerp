@@ -6,25 +6,25 @@ string_representation: "{code} {name}"
 fields:
   - id: code
     name: Code
-    type: string
+    type: CharField
     options:
       max_length: 50
       unique: true
   - id: name
     name: Name
     description: Name of the product
-    type: string
+    type: CharField
     options:
       max_length: 100
   - id: description
     name: Description
-    type: text
+    type: TextField
     options:
       null: true
       blank: true
   - id: type
     name: Type
-    type: choice
+    type: CharField
     options:
       choices:
         - ["manufactured", "Manufactured"]
@@ -32,13 +32,13 @@ fields:
         - ["service", "Service"]
   - id: uom
     name: Unit of Measure
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.unit_of_measure
       on_delete: PROTECT
   - id: default_warehouse
     name: Default Warehouse
-    type: foreign_key
+    type: ForeignKey
     options:
       to: manufacturing.master_data.warehouse
       null: true
@@ -46,31 +46,31 @@ fields:
       on_delete: SET_NULL
   - id: is_active
     name: Is Active
-    type: boolean
+    type: BooleanField
     options:
       default: true
   - id: lead_time_days
     name: Lead Time (Days)
-    type: integer
+    type: IntegerField
     options:
       default: 0
   - id: safety_stock_quantity
     name: Safety Stock Quantity
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
       default: 0
   - id: reorder_point_quantity
     name: Reorder Point Quantity
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
       default: 0
   - id: standard_lot_size
     name: Standard Lot Size
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
@@ -78,7 +78,7 @@ fields:
       blank: true
   - id: tracking_method
     name: Tracking Method
-    type: choice
+    type: CharField
     options:
       choices:
         - ["none", "None"]
@@ -87,14 +87,14 @@ fields:
       default: "none"
   - id: standard_cost
     name: Standard Cost
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
       default: 0
   - id: sales_price
     name: Sales Price
-    type: decimal
+    type: DecimalField
     options:
       max_digits: 10
       decimal_places: 2
