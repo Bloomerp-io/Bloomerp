@@ -1,0 +1,48 @@
+{% comment %}
+table
+
+A table
+
+Parameters:
+- content_type_id (): 
+
+{% endcomment %}
+
+{% load bloomerp %}
+{% load i18n %}
+
+<div 
+    class="rounded-lg border-l border-r border-gray-200"
+    >
+    <table 
+        id="data-table-{{ content_type_id }}" 
+        class="table-auto table-hover table w-full border-collapse outline-none"
+        >
+        <thead>
+            <tr>
+                {% for field in fields %}
+                    <th >{{ field | title }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody id="data-table-body-{{ content_type_id }}">
+            {% for obj in related_objects %}
+            <tr
+                class="cursor-pointer"
+            >
+                {% for field in fields %}
+                <td class="w-32" data-no-row-click>
+                    {{ obj }}
+                </td>
+                {% endfor %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{{ fields|length }}" class="text-center text-gray-500">
+                    No related objects found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
