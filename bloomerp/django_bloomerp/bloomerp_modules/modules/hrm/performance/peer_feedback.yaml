@@ -1,0 +1,52 @@
+name: Peer Feedback
+id: peer_feedback
+description: Peer feedback for an employee
+name_plural: Peer Feedback
+string_representation: "{employee}"
+fields:
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: CASCADE
+  - id: performance_cycle
+    name: Performance Cycle
+    type: ForeignKey
+    options:
+      to: hrm.performance.performance_cycle
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: reviewer
+    name: Reviewer
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: rating
+    name: Rating
+    type: IntegerField
+    options:
+      null: true
+      blank: true
+  - id: feedback
+    name: Feedback
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Feedback"
+      columns: 2
+      items:
+        - employee
+        - performance_cycle
+        - reviewer
+        - rating
+    - title: "Details"
+      columns: 1
+      items:
+        - feedback

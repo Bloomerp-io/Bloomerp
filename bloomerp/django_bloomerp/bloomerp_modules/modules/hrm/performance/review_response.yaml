@@ -1,0 +1,42 @@
+name: Review Response
+id: review_response
+description: Response to a review question
+name_plural: Review Responses
+string_representation: "{performance_review}"
+fields:
+  - id: performance_review
+    name: Performance Review
+    type: ForeignKey
+    options:
+      to: hrm.performance.performance_review
+      on_delete: CASCADE
+  - id: question
+    name: Question
+    type: ForeignKey
+    options:
+      to: hrm.performance.review_question
+      on_delete: CASCADE
+  - id: rating
+    name: Rating
+    type: IntegerField
+    options:
+      null: true
+      blank: true
+  - id: response_text
+    name: Response
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Response"
+      columns: 2
+      items:
+        - performance_review
+        - question
+        - rating
+    - title: "Text"
+      columns: 1
+      items:
+        - response_text

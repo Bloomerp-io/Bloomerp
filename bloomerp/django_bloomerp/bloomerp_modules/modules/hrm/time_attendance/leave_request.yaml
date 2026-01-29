@@ -1,0 +1,62 @@
+name: Leave Request
+id: leave_request
+description: Employee leave request
+name_plural: Leave Requests
+string_representation: "{employee} - {start_date}"
+fields:
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: CASCADE
+  - id: leave_type
+    name: Leave Type
+    type: ForeignKey
+    options:
+      to: hrm.time_attendance.leave_type
+      on_delete: CASCADE
+  - id: start_date
+    name: Start Date
+    type: DateField
+  - id: end_date
+    name: End Date
+    type: DateField
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["requested", "Requested"]
+        - ["approved", "Approved"]
+        - ["rejected", "Rejected"]
+        - ["cancelled", "Cancelled"]
+      default: "requested"
+  - id: reason
+    name: Reason
+    type: TextField
+    options:
+      null: true
+      blank: true
+  - id: approved_by
+    name: Approved By
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+field_layout:
+  sections:
+    - title: "Request"
+      columns: 2
+      items:
+        - employee
+        - leave_type
+        - start_date
+        - end_date
+        - status
+        - approved_by
+    - title: "Reason"
+      columns: 1
+      items:
+        - reason

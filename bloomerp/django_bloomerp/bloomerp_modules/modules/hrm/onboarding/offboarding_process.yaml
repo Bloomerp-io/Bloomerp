@@ -1,0 +1,62 @@
+name: Offboarding Process
+id: offboarding_process
+description: Offboarding workflow
+name_plural: Offboarding Processes
+string_representation: "{employee}"
+fields:
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: CASCADE
+  - id: start_date
+    name: Start Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: end_date
+    name: End Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["planned", "Planned"]
+        - ["in_progress", "In Progress"]
+        - ["completed", "Completed"]
+        - ["cancelled", "Cancelled"]
+      default: "planned"
+  - id: exit_reason
+    name: Exit Reason
+    type: ForeignKey
+    options:
+      to: hrm.onboarding.exit_reason
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Process"
+      columns: 2
+      items:
+        - employee
+        - status
+        - start_date
+        - end_date
+        - exit_reason
+    - title: "Notes"
+      columns: 1
+      items:
+        - notes

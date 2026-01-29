@@ -1,0 +1,41 @@
+name: Review Question
+id: review_question
+description: Question for performance reviews
+name_plural: Review Questions
+string_representation: "{question_text}"
+fields:
+  - id: performance_cycle
+    name: Performance Cycle
+    type: ForeignKey
+    options:
+      to: hrm.performance.performance_cycle
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: question_text
+    name: Question
+    type: TextField
+  - id: category
+    name: Category
+    type: CharField
+    options:
+      max_length: 120
+      null: true
+      blank: true
+  - id: is_active
+    name: Is Active
+    type: BooleanField
+    options:
+      default: true
+field_layout:
+  sections:
+    - title: "Question"
+      columns: 2
+      items:
+        - performance_cycle
+        - category
+        - is_active
+    - title: "Text"
+      columns: 1
+      items:
+        - question_text

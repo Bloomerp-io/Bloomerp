@@ -1,0 +1,58 @@
+name: Onboarding Task Assignment
+id: onboarding_task_assignment
+description: Task assigned to an onboarding process
+name_plural: Onboarding Task Assignments
+string_representation: "{onboarding_process} - {onboarding_task}"
+fields:
+  - id: onboarding_process
+    name: Onboarding Process
+    type: ForeignKey
+    options:
+      to: hrm.onboarding.onboarding_process
+      on_delete: CASCADE
+  - id: onboarding_task
+    name: Onboarding Task
+    type: ForeignKey
+    options:
+      to: hrm.onboarding.onboarding_task
+      on_delete: CASCADE
+  - id: assignee
+    name: Assignee
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: due_date
+    name: Due Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["pending", "Pending"]
+        - ["in_progress", "In Progress"]
+        - ["completed", "Completed"]
+        - ["blocked", "Blocked"]
+      default: "pending"
+  - id: completed_at
+    name: Completed At
+    type: DateTimeField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Assignment"
+      columns: 2
+      items:
+        - onboarding_process
+        - onboarding_task
+        - assignee
+        - status
+        - due_date
+        - completed_at

@@ -1,0 +1,54 @@
+name: Onboarding Process
+id: onboarding_process
+description: Onboarding workflow for a new employee
+name_plural: Onboarding Processes
+string_representation: "{employee}"
+fields:
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: CASCADE
+  - id: start_date
+    name: Start Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["planned", "Planned"]
+        - ["in_progress", "In Progress"]
+        - ["completed", "Completed"]
+        - ["cancelled", "Cancelled"]
+      default: "planned"
+  - id: owner
+    name: Owner
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Process"
+      columns: 2
+      items:
+        - employee
+        - status
+        - start_date
+        - owner
+    - title: "Notes"
+      columns: 1
+      items:
+        - notes

@@ -1,0 +1,72 @@
+name: Interview
+id: interview
+description: Interview session
+name_plural: Interviews
+string_representation: "{application}"
+fields:
+  - id: application
+    name: Application
+    type: ForeignKey
+    options:
+      to: hrm.recruitment.application
+      on_delete: CASCADE
+  - id: scheduled_at
+    name: Scheduled At
+    type: DateTimeField
+    options:
+      null: true
+      blank: true
+  - id: interview_type
+    name: Interview Type
+    type: ChoiceField
+    options:
+      choices:
+        - ["phone", "Phone"]
+        - ["video", "Video"]
+        - ["onsite", "On-site"]
+      null: true
+      blank: true
+  - id: location
+    name: Location
+    type: CharField
+    options:
+      max_length: 200
+      null: true
+      blank: true
+  - id: interviewer
+    name: Interviewer
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["scheduled", "Scheduled"]
+        - ["completed", "Completed"]
+        - ["cancelled", "Cancelled"]
+      default: "scheduled"
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Interview Details"
+      columns: 2
+      items:
+        - application
+        - status
+        - scheduled_at
+        - interview_type
+        - location
+        - interviewer
+    - title: "Notes"
+      columns: 1
+      items:
+        - notes

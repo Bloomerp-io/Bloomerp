@@ -1,0 +1,43 @@
+name: Opportunity Stage
+id: opportunity_stage
+description: Sales pipeline stage definition
+name_plural: Opportunity Stages
+string_representation: "{stage_name}"
+fields:
+  - id: stage_name
+    name: Stage Name
+    type: CharField
+    options:
+      max_length: 120
+  - id: sequence
+    name: Sequence
+    type: IntegerField
+    options:
+      default: 0
+  - id: probability
+    name: Probability (%)
+    type: DecimalField
+    options:
+      max_digits: 5
+      decimal_places: 2
+      default: 0
+  - id: is_won
+    name: Is Won Stage
+    type: BooleanField
+    options:
+      default: false
+  - id: is_lost
+    name: Is Lost Stage
+    type: BooleanField
+    options:
+      default: false
+field_layout:
+  sections:
+    - title: "Stage Details"
+      columns: 2
+      items:
+        - stage_name
+        - sequence
+        - probability
+        - is_won
+        - is_lost

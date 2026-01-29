@@ -1,0 +1,40 @@
+name: Leave Balance
+id: leave_balance
+description: Leave balance per employee
+name_plural: Leave Balances
+string_representation: "{employee}"
+fields:
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: CASCADE
+  - id: leave_type
+    name: Leave Type
+    type: ForeignKey
+    options:
+      to: hrm.time_attendance.leave_type
+      on_delete: CASCADE
+  - id: balance
+    name: Balance
+    type: DecimalField
+    options:
+      max_digits: 6
+      decimal_places: 2
+      default: 0
+  - id: as_of_date
+    name: As Of Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Balance"
+      columns: 2
+      items:
+        - employee
+        - leave_type
+        - balance
+        - as_of_date

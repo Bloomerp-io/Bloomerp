@@ -1,0 +1,49 @@
+name: Job Title
+id: job_title
+description: Job title catalog
+name_plural: Job Titles
+string_representation: "{title}"
+fields:
+  - id: title
+    name: Title
+    type: CharField
+    options:
+      max_length: 150
+  - id: code
+    name: Code
+    type: CharField
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: level
+    name: Level
+    type: CharField
+    options:
+      max_length: 50
+      null: true
+      blank: true
+  - id: description
+    name: Description
+    type: TextField
+    options:
+      null: true
+      blank: true
+  - id: is_active
+    name: Is Active
+    type: BooleanField
+    options:
+      default: true
+field_layout:
+  sections:
+    - title: "Details"
+      columns: 2
+      items:
+        - title
+        - code
+        - level
+        - is_active
+    - title: "Description"
+      columns: 1
+      items:
+        - description
