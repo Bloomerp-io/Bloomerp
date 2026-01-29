@@ -1,0 +1,77 @@
+name: Person
+id: person
+description: Person record used across HR lifecycle
+name_plural: People
+string_representation: "{first_name} {last_name}"
+fields:
+  - id: first_name
+    name: First Name
+    type: CharField
+    options:
+      max_length: 100
+  - id: last_name
+    name: Last Name
+    type: CharField
+    options:
+      max_length: 100
+  - id: middle_name
+    name: Middle Name
+    type: CharField
+    options:
+      max_length: 100
+      null: true
+      blank: true
+  - id: email
+    name: Email
+    type: EmailField
+    options:
+      null: true
+      blank: true
+  - id: phone
+    name: Phone
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: date_of_birth
+    name: Date of Birth
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: person_type
+    name: Person Type
+    type: ChoiceField
+    options:
+      choices:
+        - ["employee", "Employee"]
+        - ["candidate", "Candidate"]
+        - ["contractor", "Contractor"]
+        - ["alumni", "Alumni"]
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["active", "Active"]
+        - ["inactive", "Inactive"]
+      default: "active"
+field_layout:
+  sections:
+    - title: "Personal Details"
+      columns: 2
+      items:
+        - first_name
+        - last_name
+        - middle_name
+        - date_of_birth
+        - person_type
+        - status
+    - title: "Contact"
+      columns: 2
+      items:
+        - email
+        - phone

@@ -1,5 +1,80 @@
-name: Bank account
+name: Bank Account
 id: bank_account
 description: Stores bank account information
-fields: []
-name_plural: Bank accounts
+name_plural: Bank Accounts
+string_representation: "{bank_name} - {account_number}"
+fields:
+  - id: bank_name
+    name: Bank Name
+    type: CharField
+    options:
+      max_length: 150
+  - id: account_name
+    name: Account Name
+    type: CharField
+    options:
+      max_length: 150
+  - id: account_number
+    name: Account Number
+    type: CharField
+    options:
+      max_length: 50
+  - id: account_type
+    name: Account Type
+    type: ChoiceField
+    options:
+      choices:
+        - ["checking", "Checking"]
+        - ["savings", "Savings"]
+        - ["credit", "Credit"]
+  - id: currency
+    name: Currency
+    type: CharField
+    options:
+      max_length: 10
+  - id: iban
+    name: IBAN
+    type: CharField
+    options:
+      max_length: 34
+      null: true
+      blank: true
+  - id: swift_code
+    name: SWIFT Code
+    type: CharField
+    options:
+      max_length: 20
+      null: true
+      blank: true
+  - id: branch
+    name: Branch
+    type: CharField
+    options:
+      max_length: 120
+      null: true
+      blank: true
+  - id: is_active
+    name: Is Active
+    type: BooleanField
+    options:
+      default: true
+field_layout:
+  sections:
+    - title: "Account Details"
+      columns: 2
+      items:
+        - bank_name
+        - account_name
+        - account_number
+        - account_type
+        - currency
+    - title: "Identifiers"
+      columns: 2
+      items:
+        - iban
+        - swift_code
+        - branch
+    - title: "Status"
+      columns: 1
+      items:
+        - is_active

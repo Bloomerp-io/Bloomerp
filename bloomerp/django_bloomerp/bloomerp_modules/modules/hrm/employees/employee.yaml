@@ -37,7 +37,118 @@ fields:
       blank: true
     validators:
       - bloomerp_modules.validators.date_validators.is_before_today
-  
-  
+  - id: email
+    name: Work Email
+    description: Primary work email address
+    type: EmailField
+    options:
+      null: true
+      blank: true
+  - id: phone
+    name: Phone Number
+    description: Primary contact phone
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: job_title
+    name: Job Title
+    description: Employee role or title
+    type: ForeignKey
+    options:
+      to: hrm.core_people.job_title
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: department
+    name: Department
+    description: Department or team name
+    type: ForeignKey
+    options:
+      to: hrm.core_people.department
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: team
+    name: Team
+    description: Assigned team
+    type: ForeignKey
+    options:
+      to: hrm.core_people.team
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: office_location
+    name: Office Location
+    description: Primary office location
+    type: ForeignKey
+    options:
+      to: hrm.core_people.office_location
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: cost_center
+    name: Cost Center
+    description: Cost center for employee expenses
+    type: ForeignKey
+    options:
+      to: hrm.core_people.hr_cost_center
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: employment_type
+    name: Employment Type
+    description: Type of employment
+    type: ChoiceField
+    options:
+      choices:
+        - ["full_time", "Full Time"]
+        - ["part_time", "Part Time"]
+        - ["contractor", "Contractor"]
+        - ["intern", "Intern"]
+      null: true
+      blank: true
+  - id: hire_date
+    name: Hire Date
+    description: Date employment started
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: status
+    name: Employment Status
+    description: Current employment status
+    type: ChoiceField
+    options:
+      choices:
+        - ["active", "Active"]
+        - ["leave", "On Leave"]
+        - ["terminated", "Terminated"]
+      default: "active"
 
-
+field_layout:
+  sections:
+    - title: "Personal Details"
+      columns: 2
+      items:
+        - first_name
+        - middle_name
+        - last_name
+        - date_of_birth
+    - title: "Job Details"
+      columns: 2
+      items:
+        - job_title
+        - department
+        - team
+        - office_location
+        - cost_center
+        - employment_type
+        - hire_date
+        - status
+    - title: "Contact"
+      columns: 2
+      items:
+        - email
+        - phone

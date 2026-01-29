@@ -1,0 +1,130 @@
+name: Lead
+id: lead
+description: Potential customer inquiry or prospect
+name_plural: Leads
+string_representation: "{lead_name}"
+fields:
+  - id: lead_name
+    name: Lead Name
+    type: CharField
+    options:
+      max_length: 200
+  - id: company_name
+    name: Company Name
+    type: CharField
+    options:
+      max_length: 200
+      null: true
+      blank: true
+  - id: account
+    name: Account
+    type: ForeignKey
+    options:
+      to: crm.core.crm_account
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: contact
+    name: Contact
+    type: ForeignKey
+    options:
+      to: crm.core.contact
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["new", "New"]
+        - ["contacted", "Contacted"]
+        - ["qualified", "Qualified"]
+        - ["unqualified", "Unqualified"]
+        - ["converted", "Converted"]
+  - id: lead_source
+    name: Lead Source
+    type: ChoiceField
+    options:
+      choices:
+        - ["web", "Web"]
+        - ["email", "Email"]
+        - ["phone", "Phone"]
+        - ["referral", "Referral"]
+        - ["event", "Event"]
+        - ["partner", "Partner"]
+  - id: priority
+    name: Priority
+    type: ChoiceField
+    options:
+      choices:
+        - ["low", "Low"]
+        - ["medium", "Medium"]
+        - ["high", "High"]
+  - id: email
+    name: Email
+    type: EmailField
+    options:
+      null: true
+      blank: true
+  - id: phone
+    name: Phone
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: estimated_value
+    name: Estimated Value
+    type: DecimalField
+    options:
+      max_digits: 12
+      decimal_places: 2
+      null: true
+      blank: true
+  - id: expected_close_date
+    name: Expected Close Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: assigned_to
+    name: Assigned To
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Lead Details"
+      columns: 2
+      items:
+        - lead_name
+        - status
+        - company_name
+        - lead_source
+        - priority
+        - assigned_to
+    - title: "Contact"
+      columns: 2
+      items:
+        - account
+        - contact
+        - email
+        - phone
+    - title: "Forecast"
+      columns: 2
+      items:
+        - estimated_value
+        - expected_close_date
+    - title: "Notes"
+      columns: 1
+      items:
+        - notes

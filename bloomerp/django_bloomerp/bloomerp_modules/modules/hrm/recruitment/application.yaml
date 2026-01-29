@@ -1,0 +1,62 @@
+name: Application
+id: application
+description: Candidate application for a job opening
+name_plural: Applications
+string_representation: "{candidate} - {job_opening}"
+fields:
+  - id: candidate
+    name: Candidate
+    type: ForeignKey
+    options:
+      to: hrm.recruitment.candidate
+      on_delete: CASCADE
+  - id: job_opening
+    name: Job Opening
+    type: ForeignKey
+    options:
+      to: hrm.recruitment.job_opening
+      on_delete: CASCADE
+  - id: applied_date
+    name: Applied Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["received", "Received"]
+        - ["screening", "Screening"]
+        - ["interview", "Interview"]
+        - ["offer", "Offer"]
+        - ["hired", "Hired"]
+        - ["rejected", "Rejected"]
+      default: "received"
+  - id: resume_link
+    name: Resume Link
+    type: URLField
+    options:
+      null: true
+      blank: true
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Application"
+      columns: 2
+      items:
+        - candidate
+        - job_opening
+        - applied_date
+        - status
+        - resume_link
+    - title: "Notes"
+      columns: 1
+      items:
+        - notes

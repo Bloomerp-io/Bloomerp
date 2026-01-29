@@ -1,0 +1,85 @@
+name: Job Opening
+id: job_opening
+description: Approved job opening
+name_plural: Job Openings
+string_representation: "{title}"
+fields:
+  - id: title
+    name: Title
+    type: CharField
+    options:
+      max_length: 200
+  - id: job_title
+    name: Job Title
+    type: ForeignKey
+    options:
+      to: hrm.core_people.job_title
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: department
+    name: Department
+    type: ForeignKey
+    options:
+      to: hrm.core_people.department
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: location
+    name: Office Location
+    type: ForeignKey
+    options:
+      to: hrm.core_people.office_location
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: openings_count
+    name: Openings Count
+    type: IntegerField
+    options:
+      default: 1
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["draft", "Draft"]
+        - ["open", "Open"]
+        - ["on_hold", "On Hold"]
+        - ["closed", "Closed"]
+      default: "draft"
+  - id: posted_date
+    name: Posted Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: closing_date
+    name: Closing Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: description
+    name: Description
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  sections:
+    - title: "Opening Details"
+      columns: 2
+      items:
+        - title
+        - status
+        - job_title
+        - department
+        - location
+        - openings_count
+        - posted_date
+        - closing_date
+    - title: "Description"
+      columns: 1
+      items:
+        - description

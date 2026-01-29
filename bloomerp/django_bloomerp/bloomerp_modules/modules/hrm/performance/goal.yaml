@@ -1,0 +1,61 @@
+name: Goal
+id: goal
+description: Employee goal
+name_plural: Goals
+string_representation: "{title}"
+fields:
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: CASCADE
+  - id: performance_cycle
+    name: Performance Cycle
+    type: ForeignKey
+    options:
+      to: hrm.performance.performance_cycle
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: title
+    name: Title
+    type: CharField
+    options:
+      max_length: 200
+  - id: description
+    name: Description
+    type: TextField
+    options:
+      null: true
+      blank: true
+  - id: target_date
+    name: Target Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["not_started", "Not Started"]
+        - ["in_progress", "In Progress"]
+        - ["completed", "Completed"]
+        - ["blocked", "Blocked"]
+      default: "not_started"
+field_layout:
+  sections:
+    - title: "Goal"
+      columns: 2
+      items:
+        - employee
+        - performance_cycle
+        - title
+        - status
+        - target_date
+    - title: "Description"
+      columns: 1
+      items:
+        - description
