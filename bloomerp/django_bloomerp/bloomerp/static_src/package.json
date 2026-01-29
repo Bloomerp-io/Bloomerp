@@ -40,10 +40,16 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "@lexical/html": "^0.18.0",
+    "@lexical/link": "^0.18.0",
+    "@lexical/list": "^0.18.0",
+    "@lexical/rich-text": "^0.18.0",
+    "@lexical/selection": "^0.18.0",
     "ace-builds": "^1.32.9",
     "alpinejs": "^3.15.3",
     "grapesjs": "^0.22.14",
     "grapesjs-preset-webpage": "^1.0.3",
-    "htmx.org": "^2.0.3"
+    "htmx.org": "^2.0.3",
+    "lexical": "^0.18.0"
   }
 }

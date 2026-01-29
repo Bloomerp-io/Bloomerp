@@ -1,9 +1,10 @@
 <div 
     bloomerp-component="text-editor" 
-    class="rounded-lg p-2 {% if has_border|default:True %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}" 
+    class="relative rounded-lg p-2 {% if has_border|default:True %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}" 
     data-placeholder="{{ placeholder|default:'' }}"
     data-disabled="{{ disabled|yesno:'true,false' }}"
+    data-styling="{{ styling|default:'prose max-w-none' }}"
     >
-    <div data-text-editor-body="true" class="min-h-[120px] outline-none whitespace-pre-wrap break-words" contenteditable="{% if disabled %}false{% else %}true{% endif %}" role="textbox" aria-multiline="true" tabindex="{% if disabled %}-1{% else %}0{% endif %}">{{ slot|default:value|default:'' }}</div>
+    <div data-text-editor-body="true" class="min-h-[120px] outline-none whitespace-pre-wrap break-words"></div>
     <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value|default:'' }}">
 </div>
