@@ -20,10 +20,8 @@ import {
     $createListNode,
     $isListItemNode,
     $isListNode,
-    INDENT_LIST_COMMAND,
     ListItemNode,
     ListNode,
-    OUTDENT_LIST_COMMAND,
     INSERT_UNORDERED_LIST_COMMAND,
     REMOVE_LIST_COMMAND,
 } from "@lexical/list";
@@ -55,7 +53,7 @@ const SLASH_COMMANDS: CommandDefinition[] = [
         label: 'Heading 1',
         icon: 'fa-solid fa-heading',
         keywords: ['h1', 'heading'],
-        onSelect: (editor) => {
+        onSelect: (editor: LexicalEditor) => {
             editor.update(() => {
                 const heading = $createHeadingNode('h1');
                 heading.append($createTextNode(''));
@@ -244,7 +242,6 @@ export default class TextEditor extends BaseComponent {
     public destroy(): void {
     }
     
-
     public initState(value: string) : void {
         // Get the input
         
@@ -271,8 +268,7 @@ export default class TextEditor extends BaseComponent {
             KEY_DOWN_COMMAND,
             (event) => {
                 if (event.key !== '/') return false;
-                if (!this.isTriggerAtStart('/')) return false;
-
+                
                 queueMicrotask(() => {
                     this.activateCommandMenu('slash');
                 });
@@ -289,12 +285,10 @@ export default class TextEditor extends BaseComponent {
     private registerMentionCommand() : void {
         if (!this.editor || !this.editorBody) return;
         
-
         this.editor.registerCommand(
             KEY_DOWN_COMMAND,
             (event) => {
                 if (event.key !== '@') return false;
-                if (!this.isTriggerAtStart('@')) return false;
 
                 queueMicrotask(() => {
                     this.activateCommandMenu('mention');
@@ -332,7 +326,12 @@ export default class TextEditor extends BaseComponent {
                     if (isInList) {
                         event.preventDefault();
                         event.stopPropagation();
-                        this.editor.dispatchCommand(INDENT_LIST_COMMAND, undefined);
+                        this.editor.update(() => {
+                            const listItem = this.getCurrentListItem();
+                            if (!listItem) return;
+                            const currentIndent = listItem.getIndent();
+                            listItem.setIndent(currentIndent + 1);
+                        });
                         return true;
                     }
                 }
@@ -343,7 +342,14 @@ export default class TextEditor extends BaseComponent {
                         event.preventDefault();
                         event.stopPropagation();
                         if (listInfo.depth > 1) {
-                            this.editor.dispatchCommand(OUTDENT_LIST_COMMAND, undefined);
+                            this.editor.update(() => {
+                                const listItem = this.getCurrentListItem();
+                                if (!listItem) return;
+                                const currentIndent = listItem.getIndent();
+                                if (currentIndent > 0) {
+                                    listItem.setIndent(currentIndent - 1);
+                                }
+                            });
                         } else {
                             this.editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
                         }
@@ -417,10 +423,16 @@ export default class TextEditor extends BaseComponent {
     }
 
     private activateCommandMenu(type: CommandMenuType): void {
-        if (!this.editor || !this.editorBody) return;
+        if (!this.editor || !this.editorBody) {
+            console.warn('Editor or editor body not initialized');
+            return; 
+        };
 
+        
         this.commandMenuState.type = type;
-        this.refreshCommandMenu();
+        setTimeout(() => {
+            this.refreshCommandMenu();
+        }, 0);
     }
 
     private deactivateCommandMenu(): void {
@@ -436,11 +448,14 @@ export default class TextEditor extends BaseComponent {
 
     private refreshCommandMenu(): void {
         if (!this.editor || !this.commandMenuState.type) return;
+        console.log('Refreshing command menu for type:', this.commandMenuState.type);
+
 
         const triggerChar = this.commandMenuState.type === 'slash' ? '/' : '@';
         const info = this.getTriggerInfo(triggerChar);
 
         if (!info) {
+            console.warn('No trigger info found, deactivating menu');
             this.deactivateCommandMenu();
             return;
         }
@@ -450,21 +465,23 @@ export default class TextEditor extends BaseComponent {
         this.commandMenuState.query = info.query;
         this.commandMenuState.requestId += 1;
         const requestId = this.commandMenuState.requestId;
-
+        
         const position = this.getMenuPosition();
-        if (!position) return;
+        if (!position) {
+            return;
+        }
 
         if (this.commandMenuState.type === 'slash') {
             const items = this.getSlashMenuItems(info.query);
             this.showMenuAt(position, items);
             return;
+        } else if (this.commandMenuState.type === 'mention') {
+                void this.getMentionMenuItems(info.query).then((items) => {
+                if (this.commandMenuState.requestId !== requestId) return;
+                if (!this.commandMenuState.type) return;
+                this.showMenuAt(position, items);
+            });
         }
-
-        void this.getMentionMenuItems(info.query).then((items) => {
-            if (this.commandMenuState.requestId !== requestId) return;
-            if (!this.commandMenuState.type) return;
-            this.showMenuAt(position, items);
-        });
     }
 
     private getTriggerInfo(trigger: '/' | '@'): { nodeKey: string; triggerOffset: number; query: string } | null {
@@ -602,12 +619,20 @@ export default class TextEditor extends BaseComponent {
         node.select(newOffset, newOffset);
     }
 
-    private static insertBlockNode(node: ListNode | HeadingNode | ReturnType<typeof $createParagraphNode>): void {
+    public static insertBlockNode(node: ListNode | HeadingNode | ReturnType<typeof $createParagraphNode>): void {
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
         const anchorNode = selection.anchor.getNode();
         const topLevel = anchorNode.getTopLevelElementOrThrow();
-        topLevel.insertAfter(node);
+        
+        // If current block is empty, replace it instead of inserting after
+        const isEmpty = topLevel.getTextContent().trim() === '';
+        if (isEmpty) {
+            topLevel.replace(node);
+        } else {
+            topLevel.insertAfter(node);
+        }
+        
         if ($isListNode(node)) {
             const firstItem = node.getFirstChild();
             if ($isListItemNode(firstItem)) {
@@ -677,6 +702,21 @@ export default class TextEditor extends BaseComponent {
         });
 
         return info;
+    }
+
+    private getCurrentListItem(): ListItemNode | null {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return null;
+
+        let current = selection.anchor.getNode();
+        while (current) {
+            if ($isListItemNode(current)) {
+                return current;
+            }
+            current = current.getParent();
+        }
+
+        return null;
     }
 
     private shouldConvertDashToList(): boolean {
