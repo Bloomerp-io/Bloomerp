@@ -23,6 +23,7 @@ interface ElementStylingDefintion {
     className: string;
     icon?: string; // FontAwesome icon class
     onClick?: (editor: LexicalEditor) => void;
+    
 }
 
 const ElementStyling: Record<string, ElementStylingDefintion> = {
