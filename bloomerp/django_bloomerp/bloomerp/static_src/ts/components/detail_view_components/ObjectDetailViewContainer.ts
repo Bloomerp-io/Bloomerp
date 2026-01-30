@@ -94,6 +94,35 @@ export default class ObjectDetailViewContainer extends BaseComponent {
 		const key = event.key;
 		const isMeta = event.metaKey || event.ctrlKey;
 		const isAlt = event.altKey;
+		const isShift = event.shiftKey;
+
+		// Shift+Arrow triggers navigation
+		if (isShift && this.isArrowKey(key)) {
+			event.preventDefault();
+
+			const allItems = this.getAllItems();
+			if (allItems.length === 0) return;
+
+			if (!this.currentItem || !allItems.includes(this.currentItem)) {
+				this.currentItem = allItems[0];
+			}
+
+			let next: DetailViewCell | null = null;
+
+			if (isMeta) {
+				// Cmd+Shift+arrow: move to edge within section
+				next = this.getEdgeItem(key);
+			} else {
+				// Shift+arrow: move one step
+				next = this.findNextItem(key);
+			}
+
+			if (!next) return;
+
+			this.focusItem(next);
+			this.currentItem = next;
+			return;
+		}
 
 		// Option+Down triggers context menu
 		if (isAlt && key === 'ArrowDown') {
@@ -101,31 +130,6 @@ export default class ObjectDetailViewContainer extends BaseComponent {
 			this.openContextMenu();
 			return;
 		}
-
-		if (!this.isArrowKey(key)) return;
-
-		const allItems = this.getAllItems();
-		if (allItems.length === 0) return;
-
-		if (!this.currentItem || !allItems.includes(this.currentItem)) {
-			this.currentItem = allItems[0];
-		}
-
-		let next: DetailViewCell | null = null;
-
-		if (isMeta) {
-			// Cmd+arrow: move to edge within section
-			next = this.getEdgeItem(key);
-		} else {
-			// Regular arrow: move one step
-			next = this.findNextItem(key);
-		}
-
-		if (!next) return;
-
-		event.preventDefault();
-		this.focusItem(next);
-		this.currentItem = next;
 	}
 
 	private isArrowKey(key: string): boolean {
