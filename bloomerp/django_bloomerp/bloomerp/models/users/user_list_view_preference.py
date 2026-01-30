@@ -8,6 +8,7 @@ from django.db.models import Case, When
 class ViewType(models.TextChoices):
     TABLE = 'table', 'Table'
     KANBAN = 'kanban', 'Kanban'
+    CARD = 'card', 'Card'
     CALENDAR = 'calendar', 'Calendar'
     GANT = 'gant', 'Gant'
     PIVOT_TABLE = 'pivot_table', 'Pivot'
@@ -17,6 +18,7 @@ class ViewType(models.TextChoices):
         icons = {
             'table': 'list',
             'kanban': 'kanban',
+            'card': 'page_type',
             'calendar': 'calendar',
             'gant' : 'gant',
             'pivot_table' : 'pivot_table',
@@ -201,5 +203,4 @@ class UserListViewPreference(models.Model):
         return ApplicationField.objects.filter(pk__in=field_ids).order_by(ordering)
     
     
-
 

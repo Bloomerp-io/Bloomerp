@@ -15,6 +15,8 @@ import { DataTableCell } from './components/data_view_components/DataTable'
 import { DataViewContainer } from './components/data_view_components/DataViewContainer';
 import { KanbanBoard } from './components/data_view_components/KanbanBoard';
 import { KanbanCard } from './components/data_view_components/KanbanBoard';
+import { CardView } from './components/data_view_components/CardView';
+import { CardViewCard } from './components/data_view_components/CardView';
 import { PermissionsTable } from './components/PermissionsTable';
 import FilterContainer from './components/Filters';
 import TextEditor from './components/inputs/TextEditor';
@@ -41,6 +43,10 @@ registerComponent('datatable-cell', DataTableCell);
 // Kanban
 registerComponent('kanban-board', KanbanBoard);
 registerComponent('kanban-card', KanbanCard);
+
+// Card view
+registerComponent('card-view', CardView);
+registerComponent('card-view-card', CardViewCard);
 
 // Permissions table
 registerComponent('permissions-table', PermissionsTable)
