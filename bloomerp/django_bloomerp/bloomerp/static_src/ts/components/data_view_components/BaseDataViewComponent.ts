@@ -116,6 +116,8 @@ export abstract class BaseDataViewComponent extends BaseComponent {
             if (component && component instanceof this.cellClass) {
                 this.focus(component);
                 this.collapseSelectionToActive();
+                // Give the dataview element actual DOM focus so it can capture keyboard events
+                this.element.focus();
                 return;
             }
         }

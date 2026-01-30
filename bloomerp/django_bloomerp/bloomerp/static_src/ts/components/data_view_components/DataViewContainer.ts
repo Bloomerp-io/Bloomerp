@@ -89,11 +89,13 @@ export class DataViewContainer extends BaseComponent {
     }
 
     public setupKeydownListeners(): void {
-        if (!this.isFocusOnSearchInput()) return;
+        if (!this.searchInput) return;
 
-        document.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (event.key === 'ArrowDown') {
+        this.searchInput.addEventListener('keydown', (event: KeyboardEvent) => {
+
+            if (event.key === 'ArrowDown' && this.isFocusOnSearchInput()) {
                 event.preventDefault();
+                this.unfocusSearchInput();
                 const dataView = this.getDataViewComponent();
                 dataView.initFocus();
             }
