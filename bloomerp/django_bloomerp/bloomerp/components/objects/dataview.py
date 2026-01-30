@@ -90,6 +90,9 @@ def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset
             context["kanban_groups"] = kanban_groups
             context["kanban_group_by_field"] = kanban_group_by_field
             
+        case ViewType.CARD:
+            pass
+
         case ViewType.CALENDAR:
             context.update(_build_calendar_context(preference, queryset, request))
         

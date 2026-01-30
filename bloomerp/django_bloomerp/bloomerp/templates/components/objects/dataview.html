@@ -138,6 +138,12 @@
                         :kanban_groups="kanban_groups"
                         :kanban_group_by_field="kanban_group_by_field"
                     />
+                {% elif preference.view_type == 'card' %}
+                    <c-ui.data_view.card
+                        :content_type_id="content_type_id"
+                        :fields="fields.visible_fields"
+                        :queryset="queryset"
+                    />
                 {% elif preference.view_type == 'calendar' %}
                     <c-ui.data_view.calendar />
                 {% endif %}
@@ -165,6 +171,12 @@
                     :fields="fields.visible_fields"
                     :kanban_groups="kanban_groups"
                     :kanban_group_by_field="kanban_group_by_field"
+                />
+            {% elif preference.view_type == 'card' %}
+                <c-ui.data_view.card
+                    :content_type_id="content_type_id"
+                    :fields="fields.visible_fields"
+                    :queryset="queryset"
                 />
             {% elif preference.view_type == 'calendar' %}
                 <c-ui.data_view.calendar 
@@ -263,7 +275,6 @@
 
 </div>
 {% endif %}
-
 
 
 
