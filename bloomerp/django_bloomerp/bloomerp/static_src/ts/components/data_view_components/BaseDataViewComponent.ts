@@ -53,9 +53,6 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         }
 
         this.eventListeners(abortController);
-
-        // Initialize focus to first cell
-        this.element.focus();
     }
 
     /**
@@ -107,7 +104,7 @@ export abstract class BaseDataViewComponent extends BaseComponent {
     /**
      * Initializes focus onto the data view component.
      */
-    protected initFocus(): void {
+    public initFocus(): void {
         if (!this.element) return;
 
         // Find the first child component element within this dataview

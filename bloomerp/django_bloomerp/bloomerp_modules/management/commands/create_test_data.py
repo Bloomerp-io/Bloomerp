@@ -6,6 +6,39 @@ from decimal import Decimal
 from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.contrib.auth.hashers import make_password
+
+FIRST_NAMES = [
+    "Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie", "Cameron",
+    "Drew", "Avery", "Quinn", "Peyton", "Reese", "Skyler", "Dakota", "Emerson",
+    "Harper", "Charlie", "Finley", "Rowan", "Sawyer", "Emery", "Blake", "Quincy",
+    "Sage", "Tatum", "Kendall", "Logan", "Micah", "Phoenix", "River", "Shawn",
+    "Sydney", "Teagan", "Valentine", "Winter", "Zion", "Arden", "Briar", "Cypress",
+    "Peter", "Floor", "Sanne", "Daan", "Lotte", "Jeroen", "Femke", "Thijs", "Roos",
+    "Maud", "Koen", "Nina", "Sven", "Lisa", "Jelle", "Tessa", "Wout",
+    "Yara", "Lars", "Noah", "Sophie", "Emma", "Lucas", "Mila", "Levi", "Julia",
+    "Finn", "Anna", "Daan", "Sara", "Sem", "Eva", "Luuk", "Lina", "Mees",
+    "Noud", "Evi", "Thijs", "Lotte", "Ben", "Zoë", "Mats", "Fleur", "Sam",
+    "Liv", "Tijn", "Lieke", "Jayden", "Nora", "Jesse", "Yfke", "Julian", "Fay",
+    "Adam", "Luna", "Levi", "Isa", "Thomas", "Puck", "Lucas", "Nova", "Dylan",
+    "Lana", "Mason", "Fiene", "Ethan", "Jade", "Logan", "Saar", "Caleb", "Livia",
+]
+
+LAST_NAMES = [
+    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller",
+    "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez",
+    "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin",
+    "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark",
+    "Ramirez", "Lewis", "Robinson", "Walker", "Young", "Allen", "King",
+    "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores", "Green", "Adams",
+    "Janssens", "Bakker", "Visser", "Smit", "Meijer", "De Jong", "Mulder",
+    "Vos", "Peters", "Dijkstra", "Kuipers", "Bos", "Kramer", "Brouwer",
+    "Veenstra", "Schouten", "Dekker", "Hendriks", "Van Dijk", "Van Den Berg",
+    "Van Leeuwen", "Bosch", "Vermeulen", "Kok", "Vos", "Hermans", "Wouters",
+    "Peeters", "Maes", "Goossens", "Claes", "Jacobs", "Mertens", "Lemmens",
+    "Al Shamrani", "Al-Qahtani", "Al-Farsi", "Al-Mansoori", "Al-Harbi",
+    "Al-Zahrani", "Al-Shehri", "Al-Rashid", "Al-Naimi", "Al-Khalifa",
+]
 
 
 class Command(BaseCommand):
@@ -25,6 +58,7 @@ class Command(BaseCommand):
         self._create_hrm_data(force)
         self._create_finance_data(force)
         self._create_crm_data(force)
+        self._create_user_data(force)
 
         self.stdout.write(self.style.SUCCESS("Test data creation complete."))
 
@@ -362,58 +396,37 @@ class Command(BaseCommand):
 
         employees = []
         if employee_model and self._should_create(employee_model, force):
+            import random
+            records = []
+            
+            email_extensions = ["bloomerp.test", "example.com", "testmail.com", "mailtest.org"]
+            
+            for i in range(10000):
+                first_name = random.choice(FIRST_NAMES)
+                last_name = random.choice(LAST_NAMES)
+                email = f"{first_name.lower()}.{last_name.lower()}@{random.choice(email_extensions)}"
+                
+                record = {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "middle_name": random.choice([None, "A.", "B.", "C.", "D.", "E."]),
+                    "date_of_birth": date(random.randint(1980, 2005), random.randint(1, 12), random.randint(1, 28)),
+                    "email": email,
+                    "phone": f"+1-555-{random.randint(1000, 9999)}",
+                    "job_title": random.choice(job_titles) if job_titles else None,
+                    "department": random.choice(departments) if departments else None,
+                    "team": random.choice(teams) if teams else None,
+                    "office_location": random.choice(office_locations) if office_locations else None,
+                    "cost_center": random.choice(cost_centers) if cost_centers else None,
+                    "employment_type": random.choice(["full_time", "part_time", "contractor", "intern"]),
+                    "hire_date": date.today() - timedelta(days=random.randint(30, 365 * 10)),
+                    "status": "active",
+                    }
+                records.append(record)
+                
             employees = self._create_records(
                 employee_model,
-                [
-                    {
-                        "first_name": "Avery",
-                        "last_name": "Nguyen",
-                        "middle_name": "L.",
-                        "date_of_birth": date(1990, 5, 12),
-                        "email": "avery.nguyen@bloomerp.test",
-                        "phone": "+1-555-1001",
-                        "job_title": job_titles[0] if job_titles else None,
-                        "department": departments[0] if departments else None,
-                        "team": teams[0] if teams else None,
-                        "office_location": office_locations[0] if office_locations else None,
-                        "cost_center": cost_centers[0] if cost_centers else None,
-                        "employment_type": "full_time",
-                        "hire_date": date(2020, 3, 15),
-                        "status": "active",
-                    },
-                    {
-                        "first_name": "Jordan",
-                        "last_name": "Patel",
-                        "middle_name": None,
-                        "date_of_birth": date(1986, 11, 3),
-                        "email": "jordan.patel@bloomerp.test",
-                        "phone": "+1-555-1002",
-                        "job_title": job_titles[1] if len(job_titles) > 1 else None,
-                        "department": departments[1] if len(departments) > 1 else None,
-                        "team": teams[1] if len(teams) > 1 else None,
-                        "office_location": office_locations[0] if office_locations else None,
-                        "cost_center": cost_centers[1] if len(cost_centers) > 1 else None,
-                        "employment_type": "part_time",
-                        "hire_date": date(2019, 7, 1),
-                        "status": "leave",
-                    },
-                    {
-                        "first_name": "Casey",
-                        "last_name": "Johnson",
-                        "middle_name": "R.",
-                        "date_of_birth": date(1994, 2, 21),
-                        "email": "casey.johnson@bloomerp.test",
-                        "phone": "+1-555-1003",
-                        "job_title": job_titles[2] if len(job_titles) > 2 else None,
-                        "department": departments[2] if len(departments) > 2 else None,
-                        "team": teams[0] if teams else None,
-                        "office_location": office_locations[1] if len(office_locations) > 1 else None,
-                        "cost_center": cost_centers[2] if len(cost_centers) > 2 else None,
-                        "employment_type": "contractor",
-                        "hire_date": date(2023, 1, 10),
-                        "status": "active",
-                    },
-                ],
+                records,
                 ["first_name", "last_name"],
             )
         elif employee_model:
@@ -1163,3 +1176,35 @@ class Command(BaseCommand):
                 ],
                 ["subject", "account"],
             )
+
+    def _create_user_data(self, force: bool) -> None:
+        from bloomerp.models import User
+        user_model = User
+        if not self._should_create(user_model, force):
+            self.stdout.write("Skipping User data (already exists).")
+            return
+
+        self._create_records(
+            user_model,
+            [
+                {
+                    "username": "admin",
+                    "first_name": "System",
+                    "last_name": "Administrator",
+                    "email": "admin@example.com",
+                    "is_staff": True,
+                    "is_superuser": True,
+                    "password" : make_password("testpass123"),
+                },
+                {
+                    "username": "jdoe",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "email": "jdoe@example.com",
+                    "is_staff": False,
+                    "is_superuser": False,
+                    "password" : make_password("testpass123"),
+                },
+            ],
+            ["username"],
+        )

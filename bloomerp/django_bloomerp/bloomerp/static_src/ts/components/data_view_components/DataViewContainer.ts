@@ -6,10 +6,19 @@ export class DataViewContainer extends BaseComponent {
     private target:string = '#data-view-data-section'
     private baseUrl:string|null;
     private fullPath:string|null; // Includes query parameters
+    private searchInput:HTMLInputElement|null = null;
+    private contentTypeId:string|null = null;
 
     public initialize(): void {
         this.baseUrl = this.element?.dataset.baseUrl;
         this.fullPath = this.element?.dataset.url;
+        this.contentTypeId = this.element?.dataset.contentTypeId ?? null;
+        this.searchInput = this.element?.querySelector(`#data-view-search-input-${this.contentTypeId}`) ?? null;
+
+        this.focusSearchInput();
+
+        // Focus on search input
+        this.setupKeydownListeners();
     }
 
     /**
@@ -60,4 +69,34 @@ export class DataViewContainer extends BaseComponent {
     }
 
 
+    public focusSearchInput(): void {
+        if (this.searchInput) {
+            this.searchInput.focus();
+        }
+    }
+
+    public unfocusSearchInput(): void {
+        if (this.searchInput) {
+            this.searchInput.blur();
+        }
+    }
+
+    public isFocusOnSearchInput(): boolean {
+        if (this.searchInput) {
+            return document.activeElement === this.searchInput;
+        }
+        return false;
+    }
+
+    public setupKeydownListeners(): void {
+        if (!this.isFocusOnSearchInput()) return;
+
+        document.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                const dataView = this.getDataViewComponent();
+                dataView.initFocus();
+            }
+        });
+    }
 }

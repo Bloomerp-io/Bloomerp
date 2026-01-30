@@ -208,7 +208,7 @@
                     <button
                         class="btn btn-sm join-item"
                         {% if not page_obj.has_previous %}disabled{% endif %}
-                        hx-get="{{ request.path }}{% if page_querystring %}?{{ page_querystring }}&page={{ page_obj.previous_page_number }}{% else %}?page={{ page_obj.previous_page_number }}{% endif %}"
+                        {% if page_obj.has_previous %}hx-get="{{ request.path }}{% if page_querystring %}?{{ page_querystring }}&page={{ page_obj.previous_page_number }}{% else %}?page={{ page_obj.previous_page_number }}{% endif %}"{% endif %}
                         hx-target="#data-view-data-section"
                         hx-swap="innerHTML"
                     >
@@ -237,7 +237,7 @@
                     <button
                         class="btn btn-sm join-item"
                         {% if not page_obj.has_next %}disabled{% endif %}
-                        hx-get="{{ request.path }}{% if page_querystring %}?{{ page_querystring }}&page={{ page_obj.next_page_number }}{% else %}?page={{ page_obj.next_page_number }}{% endif %}"
+                        {% if page_obj.has_next %}hx-get="{{ request.path }}{% if page_querystring %}?{{ page_querystring }}&page={{ page_obj.next_page_number }}{% else %}?page={{ page_obj.next_page_number }}{% endif %}"{% endif %}
                         hx-target="#data-view-data-section"
                         hx-swap="innerHTML"
                     >
