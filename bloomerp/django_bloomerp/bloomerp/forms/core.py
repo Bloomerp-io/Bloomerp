@@ -99,7 +99,9 @@ class BloomerpModelForm(forms.ModelForm):
         for field in self._meta.model._meta.many_to_many:
             if field.name in self.fields:
                 related_model = field.remote_field.model
-                self.fields[field.name].widget = ForeignFieldWidget(model=related_model, is_m2m=True)
+                self.fields[field.name].widget = ForeignFieldWidget(
+                    attrs={"model": related_model, "is_m2m": True}
+                    )
     
         # ---------------------------------
         # FILE FIELDS

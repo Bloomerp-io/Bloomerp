@@ -2,8 +2,10 @@
 
 {% breadcrumb model=model title="Files" %}
 
-<h1 class="card-title">View files</h1>
-
-{% include "snippets/files_snippet.html" %}
-
-
+<div
+	hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
+	hx-trigger="load"
+	hx-target="this"
+	hx-swap="outerHTML"
+>
+</div>

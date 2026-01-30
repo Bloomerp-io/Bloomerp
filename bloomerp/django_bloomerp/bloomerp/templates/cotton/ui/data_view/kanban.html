@@ -18,7 +18,7 @@ Parameters:
 
 <div 
     id="kanban-board-{{ content_type_id }}" 
-    class="kanban-board flex gap-4 overflow-x-auto pb-4 h-full min-h-[400px]"
+    class="kanban-board flex gap-4 overflow-x-auto pb-4 h-full min-h-[400px] focus:outline-none focus:border-0 focus:ring-0"
     data-content-type-id="{{ content_type_id }}"
     data-group-by-field="{{ kanban_group_by_field.field|default:'' }}"
     data-group-by-field-id="{{ kanban_group_by_field.id|default:'' }}"

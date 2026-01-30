@@ -53,6 +53,9 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         }
 
         this.eventListeners(abortController);
+
+        // Initialize focus to first cell
+        this.element.focus();
     }
 
     /**

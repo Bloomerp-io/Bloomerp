@@ -37,6 +37,7 @@ class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, View):
             content_type=ContentType.objects.get_for_model(self.model),
             field__in=fields,
         )
+        context["content_type_id"] = ContentType.objects.get_for_model(self.model).id
         return context
 
     def get_permission_required(self):
