@@ -12,7 +12,7 @@ Parameters:
 {% load i18n %}
 
 <div 
-    class="rounded-lg border-l border-r border-gray-200 focus:outline-none focus:border-0 focus:ring-0"
+    class="rounded-lg border-l border-r border-gray-200 focus:outline-none focus:ring-0"
     bloomerp-component="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
     data-content-type-id="{{ content_type_id }}"
     >
@@ -23,7 +23,7 @@ Parameters:
         <thead>
             <tr>
                 {% for field in fields %}
-                <th >{{ field.field | title }}</th>
+                <th >{{ field.title }}</th>
                 {% endfor %}
                 <th class="w-32">{% trans "Actions" %}</th>
             </tr>

@@ -446,7 +446,7 @@ def render_detail_view_value(
     # Get the field type enum
     field_type = application_field.get_field_type_enum().value
     WidgetCls = field_type.get_widget_cls()
-    default_args = field_type.widget_attrs or {}
+    default_args = field_type.default_widget_args or {}
     attrs = {
         "class" : "input w-full",
     }

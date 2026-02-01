@@ -19,6 +19,7 @@ class TestUserPermissionManager(TransactionTestCase):
         # 1. Create isolated test model (NOT bloomerp data), but we register the
         # model under the real "bloomerp" app so AUTH_USER_MODEL relations
         # resolve normally and Django can flush tables between tests.
+        
         cls.CustomerModel = create_test_models(
             app_label="bloomerp",
             model_defs={
@@ -35,6 +36,7 @@ class TestUserPermissionManager(TransactionTestCase):
     def setUp(self):
         super().setUp()
         save_application_fields.Command().handle()
+        
         
         # 1. Create users
         self.admin_user = User.objects.create(

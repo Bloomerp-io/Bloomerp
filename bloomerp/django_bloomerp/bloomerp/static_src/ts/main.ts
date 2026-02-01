@@ -6,6 +6,7 @@
  * and initializes modules as needed.
  */
 import 'htmx.org';
+import 'drawflow/dist/drawflow.min.css';
 
 import { registerComponent, setupComponentAutoInit } from './components/BaseComponent';
 import { Modal } from './components/Modal';
@@ -28,6 +29,7 @@ import CodeEditorWidget from './components/widgets/CodeEditorWidget';
 import UiMessage from './components/UiMessage';
 import ObjectDetailViewContainer from './components/detail_view_components/ObjectDetailViewContainer';
 import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
+import Workflow from './components/workflows/Workflow';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -76,6 +78,9 @@ registerComponent('ui-message', UiMessage);
 // Detail view
 registerComponent('object-detail-view-container', ObjectDetailViewContainer);
 registerComponent('detail-view-value', DetailViewCell);
+
+// Workflow
+registerComponent('workflow', Workflow);
 
 // Auto init comonents
 setupComponentAutoInit();

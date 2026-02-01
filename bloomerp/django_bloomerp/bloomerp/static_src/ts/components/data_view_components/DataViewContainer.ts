@@ -100,5 +100,15 @@ export class DataViewContainer extends BaseComponent {
                 dataView.initFocus();
             }
         });
+
+        this.element?.addEventListener('keydown', (event: KeyboardEvent) => {
+
+            if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+                event.preventDefault();
+                this.focusSearchInput();
+
+                this.getDataViewComponent().clearSelection();
+            }
+        });
     }
 }

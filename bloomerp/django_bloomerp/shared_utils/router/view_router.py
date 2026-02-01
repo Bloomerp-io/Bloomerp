@@ -358,7 +358,7 @@ class BloomerpRouter:
                         )
                         temp_routes.append(route)
                     except Exception as e:
-                        print(f"Error creating route for model {model}: {e}")
+                        print(f"Error creating route for model {model} (content type: {ContentType}): {e}")
                         continue
             elif type(models) == list:
                 for model in models:

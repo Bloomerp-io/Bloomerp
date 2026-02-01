@@ -14,7 +14,7 @@ def _get_field_type_definition(field_type: str) -> FieldTypeDefinition:
     field_definition = FieldType.from_id(field_type).value
     if not field_definition.allow_in_model:
         raise ValueError(f"Field type '{field_type}' is not allowed for model creation.")
-    if field_definition.django_field_class is None:
+    if field_definition.model_field_cls is None:
         raise ValueError(f"Field type '{field_type}' has no Django field class mapping.")
     return field_definition
 
@@ -119,8 +119,8 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
     # Process each field configuration
     for field_config in model_config.fields:
         field_definition = _get_field_type_definition(field_config.type)
-        field_class = field_definition.django_field_class
-        default_opts = dict(field_definition.default_field_args)
+        field_class = field_definition.model_field_cls
+        default_opts = dict(field_definition.default_model_field_args)
         
         # Get validator functions
         validator_functions = _get_validator_functions(field_config)
@@ -163,8 +163,8 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
         verbose_name = model_config.name
         db_table = f"{module_config.id}_{sub_module.id}_{model_config.id}"
         
-        if model_config.description:
-            db_table_comment = model_config.description
+        # if model_config.description:
+        #     db_table_comment = model_config.description
             
         if model_config.name_plural:
             verbose_name_plural = model_config.name_plural

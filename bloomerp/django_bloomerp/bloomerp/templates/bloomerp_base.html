@@ -38,11 +38,16 @@
 		<c-ui.modal id="todo-modal" title="Todo's" size="lg"></c-ui.modal>
 		<c-ui.modal id="advanced-query-modal" title="Advanced query"/>
 		
+		<!--Messages -->
+		<div id="bloomerp-messages"></div>
+
 		<!--Bloomerp forms-->
 		<script src="{% static 'bloomerp/js/bloomerpForms.js' %}"></script>
 
 		<!--LLM-->
 		<script src="{% static 'bloomerp/js/llm.js' %}"></script>
+
+		<c-ui.modal id="bloomerp-general-use-modal"/>
 
 		{% block scripts %}
 		

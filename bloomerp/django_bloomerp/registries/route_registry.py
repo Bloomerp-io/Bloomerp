@@ -5,11 +5,8 @@ from typing import List, Callable, Union
 from enum import Enum
 import os
 import importlib
-import glob
-import re
 import logging
 from typing import Optional
-from datetime import datetime
 from django.views import View
 from typing import Literal
 
@@ -223,7 +220,6 @@ def _generate_description(name: Optional[str]=None, model: Optional[Model]=None,
     raise Exception("Unable to generate name with provided arguments")
 
 
-
 # ------------------------
 # Route registry
 # ------------------------
@@ -283,6 +279,7 @@ class BloomerpRouteRegistry:
                                 except Exception as e:
                                     # Log unexpected errors but continue
                                     logger.warning(f"Unexpected error importing {module_name}: {e}")
+                                    
                     
                     # Also check for direct file (e.g., views.py, components.py)
                     direct_file = os.path.join(app_path, f'{dir_name}.py')
@@ -298,7 +295,6 @@ class BloomerpRouteRegistry:
                         
             self._auto_imported = True
             logger.info(f"Auto-import completed. Registered {len(self.routes)} routes.")
-            
             
         except Exception as e:
             # If anything goes wrong, log it but continue - better to have some routes than none

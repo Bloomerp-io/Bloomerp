@@ -1036,3 +1036,148 @@ Dashboard
         scrollbar-width: none;  /* Firefox */
     }
 }
+
+/*
+* DrawFlow Workflow Styles
+*/
+@layer components {
+    /* Canvas background with dotted grid */
+    #drawflow {
+        background-color: #f8f9fa;
+        background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+
+    /* DrawFlow Node Styling - Card-like appearance */
+    .drawflow .drawflow-node {
+        @apply border border-gray-200 rounded-lg shadow-sm min-w-[200px] p-0;
+        background: white !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.5rem !important;
+        width: auto !important;
+        min-height: 40px !important;
+        display: block !important;
+        color: #000 !important;
+        padding: 0 !important;
+        transition: box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .drawflow .drawflow-node:hover {
+        @apply shadow-md border-gray-300;
+        border-color: #d1d5db !important;
+    }
+
+    .drawflow .drawflow-node.selected {
+        @apply border-gray-400 shadow-md;
+        border-color: #9ca3af !important;
+    }
+
+    /* Node Content Styling */
+    .node-content {
+        @apply w-full;
+    }
+
+    .node-header {
+        @apply px-4 py-3 font-semibold text-sm text-gray-900 border-b border-gray-200 bg-gray-50 rounded-t-lg;
+        background-color: #f9fafb !important;
+        color: #111827 !important;
+        cursor: move;
+    }
+
+    /* Remove colored backgrounds from headers */
+    .node-header.bg-green-500,
+    .node-header.bg-blue-500,
+    .node-header.bg-yellow-500,
+    .node-header.bg-red-500,
+    .node-header.bg-purple-500 {
+        @apply bg-gray-50 text-gray-900;
+    }
+
+    .node-body {
+        @apply px-4 py-3;
+    }
+
+    .node-body p {
+        @apply mb-2 text-gray-500 text-sm;
+    }
+
+    .node-input, 
+    .node-select {
+        @apply w-full px-2 py-2 border border-gray-300 rounded-md text-sm bg-white;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .node-input:focus, 
+    .node-select:focus {
+        @apply outline-none border-gray-400;
+        box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.1);
+    }
+
+    /* Connection Points - Gray theme */
+    .drawflow .drawflow-node .input,
+    .drawflow .drawflow-node .output {
+        width: 14px !important;
+        height: 14px !important;
+        background: #9ca3af !important;
+        border: 2px solid white !important;
+        border-radius: 50% !important;
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        transition: all 0.2s;
+        z-index: 10 !important;
+    }
+
+    .drawflow .drawflow-node .input:hover,
+    .drawflow .drawflow-node .output:hover {
+        background: #6b7280 !important;
+        transform: translateY(-50%) scale(1.2) !important;
+    }
+
+    .drawflow .drawflow-node .input {
+        left: -1rem !important;
+        radius: 50% !important;
+    }
+
+    .drawflow .drawflow-node .output {
+        right: -7px !important;
+    }
+
+    /* Multiple inputs/outputs positioning */
+    .drawflow .drawflow-node .input_1,
+    .drawflow .drawflow-node .output_1 {
+        top: 50% !important;
+    }
+
+    .drawflow .drawflow-node .input_2 {
+        top: 30% !important;
+    }
+
+    .drawflow .drawflow-node .output_2 {
+        top: 70% !important;
+    }
+
+    /* Connection Lines - Subtle gray */
+    .drawflow .connection .main-path {
+        stroke: #9ca3af !important;
+        stroke-width: 2px !important;
+        fill: none !important;
+    }
+
+    .drawflow .connection .main-path:hover {
+        stroke: #6b7280 !important;
+        stroke-width: 3px !important;
+    }
+
+    .drawflow .connection .point {
+        stroke: #9ca3af !important;
+        stroke-width: 2 !important;
+        fill: white !important;
+    }
+
+    .drawflow .connection .point:hover {
+        fill: #9ca3af !important;
+    }
+
+    /* Delete Button */
+}

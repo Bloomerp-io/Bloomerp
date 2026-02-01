@@ -3,6 +3,9 @@ import { getComponent } from "../BaseComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import type { ContextMenuItem } from "../../utils/contextMenu";
 import htmx from "htmx.org";
+import showMessage from "@/utils/messages";
+import { MessageType } from "../UiMessage";
+import getGeneralModal from "@/utils/modals";
 
 export class DataTableCell extends BaseDataViewCell {
     public columnIndex: number = -1;
@@ -51,6 +54,7 @@ export class DataTable extends BaseDataViewComponent {
                 icon: 'fa-solid fa-copy',
                 onClick: async () => {
                     await this.copyToClipboard();
+                    showMessage('Items copied to clipboard', MessageType.INFO, 5)
                 },
             },
         ]
@@ -74,7 +78,30 @@ export class DataTable extends BaseDataViewComponent {
                     this.dataViewContainer?.filter({
                         [this.currentCell.applicationFieldName]: this.currentCell.value,
                     });
+                    showMessage(`Filtered on ${this.currentCell.applicationFieldId} equals ${this.currentCell.value}`)
                 },
+            },
+            {
+                label: 'Update Object',
+                icon: 'fa-solid fa-arrow-up-right-from-square',
+                onClick: async () => {
+                    const objectId = this.currentCell?.objectId;
+                    let modal = getGeneralModal();
+                    modal.setTitle('Update Object');
+                    htmx.ajax(
+                        'get',
+                        `/components/update-object/${this.contentTypeId}/${objectId}/`,
+                        {
+                            target: modal.getBodyElement(),
+                            swap: 'innerHTML',
+                            push: 'false',
+                        }
+                    ).then(() => {
+                        modal.open();
+                    }).catch((error) => {
+                        console.error('Error loading update object form:', error);
+                    });
+                }
             },
             {
                 label: 'Edit Cell',
@@ -90,7 +117,33 @@ export class DataTable extends BaseDataViewComponent {
                             swap: 'innerHTML',
                             push: 'false',
                         }
-                    )
+                    ).then(() => {
+                        // After the HTML is swapped into the cell, focus the first
+                        // input/textarea/select we can find and select its contents.
+                        const el = this.currentCell?.element as HTMLElement | undefined | null;
+                        const focusInput = () => {
+                            if (!el) return;
+                            const input = el.querySelector('input, textarea, select') as (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null);
+                            if (!input) return;
+                            try {
+                                input.focus();
+                                // Select text for inputs/textareas where supported
+                                if ((input as HTMLInputElement).select) {
+                                    try { (input as HTMLInputElement).select(); } catch {}
+                                }
+                            } catch (err) {
+                                // ignore focus errors
+                            }
+                        };
+
+                        // HTMX promise generally resolves after swap, but use a
+                        // microtask fallback to ensure DOM is updated in all cases.
+                        requestAnimationFrame(() => {
+                            focusInput();
+                        });
+                    }).catch((error) => {
+                        console.error('Error loading edit form:', error);
+                    });
 
                 },
             }

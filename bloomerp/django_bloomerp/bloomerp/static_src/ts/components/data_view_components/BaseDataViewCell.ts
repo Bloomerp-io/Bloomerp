@@ -62,6 +62,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
     unselect(): void {
         if (!this.element) return;
         this.element.classList.remove('cell-selected');
+        this.element.classList.remove('cell-focused');
     }
 
     // Default no-op; subclasses can override to enable right-click menus.
@@ -91,7 +92,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
      * a standard onClick will be provided that can be
      * overwritten.
      */
-    public click() : void {
+    public click(target:string|HTMLElement="#main-content") : void {
         // If an override is provided, prefer that (useful for selection UIs).
         if (this.onClickOverride) {
             try {
@@ -101,13 +102,13 @@ export abstract class BaseDataViewCell extends BaseComponent {
             }
             return;
         }
-        console.log(this.detailUrl)
+        
         if (this.detailUrl) {
             htmx.ajax(
                 'get',
                 this.detailUrl,
                 {
-                    target: "#main-content",
+                    target: target,
                     push: "true"
                 }
             );

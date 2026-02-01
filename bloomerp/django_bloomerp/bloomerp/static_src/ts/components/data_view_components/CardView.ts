@@ -1,6 +1,7 @@
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { componentIdentifier, getComponent } from "../BaseComponent";
+import { ContextMenuItem } from "@/utils/contextMenu";
 
 export class CardViewCard extends BaseDataViewCell {
     public initialize(): void {
@@ -164,4 +165,17 @@ export class CardView extends BaseDataViewComponent {
         const nextCol = Math.min(position.col, row.length - 1);
         return row[nextCol] ?? current;
     }
+
+    public constructContextMenu(): ContextMenuItem[] {
+            let contextMenu: ContextMenuItem[] = [
+                {
+                    label: 'Navigate',
+                    icon: 'fa-solid fa-arrow-right',
+                    onClick: async () => {
+                        this.currentCell.click()
+                    },
+                },
+            ]
+            return contextMenu;
+        }
 }

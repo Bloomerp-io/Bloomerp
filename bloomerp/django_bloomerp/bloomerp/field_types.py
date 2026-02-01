@@ -60,6 +60,7 @@ class LookupDefinition:
 
         return self.render_func(application_field)
         
+
 class Lookup(Enum):
     EQUALS = LookupDefinition(
         id="equals",
@@ -163,18 +164,29 @@ class Lookup(Enum):
     )
     
     
+models.CharField    
 
 @dataclass(frozen=True)
 class FieldTypeDefinition:
     """Definition of a field type with its metadata."""
     id: str  # Internal ID used for lookup (e.g., "ForeignKey")
     display_name: str  # Human-readable name
-    django_field_class: Optional[type[models.Field]] = None
     description: Optional[str] = None
-    lookups: list[Lookup] = dataclass_field(default_factory=list)
+    
+    # Django model field
+    model_field_cls: Optional[type[models.Field]] = None
+    default_model_field_args: dict = dataclass_field(default_factory=dict)
+    
+    # Additional form field
+    form_field_cls : Optional[type[forms.Field]] = None
+    default_form_field_args: dict = dataclass_field(default_factory=dict)
+    
+    # Widget class or callable that returns a widget class
     widget_cls:Optional[Widget|Callable] = None
-    widget_attrs: dict = dataclass_field(default_factory=dict)
-    default_field_args: dict = dataclass_field(default_factory=dict)
+    default_widget_args: dict = dataclass_field(default_factory=dict)
+    
+    
+    lookups: list[Lookup] = dataclass_field(default_factory=list)
     allow_in_model: bool = True
     
     def get_widget_cls(self) -> Type[Widget]:
@@ -182,11 +194,20 @@ class FieldTypeDefinition:
         if self.widget_cls:
             return self.widget_cls
         
-        if self.django_field_class and hasattr(self.django_field_class, "widget_cls") and self.django_field_class.widget_cls:
-            return self.django_field_class.widget
+        if self.model_field_cls and hasattr(self.model_field_cls, "widget_cls") and self.model_field_cls.widget_cls:
+            return self.model_field_cls.widget
         
         return forms.widgets.TextInput
 
+    def get_form_field_cls(self) -> Type[forms.Field]:
+        """Returns the form_field_cls for the field type."""
+        if self.form_field_cls:
+            return self.form_field_cls
+        
+        if self.model_field_cls and hasattr(self.model_field_cls, "form_field_cls") and self.model_field_cls.form_field_cls:
+            return self.model_field_cls.form_field_cls
+        
+        return forms.CharField
 
 TEXT_LOOKUPS = [
     Lookup.EQUALS,
@@ -237,7 +258,7 @@ class FieldType(Enum):
         # Access properties
         field_type.id           # "ForeignKey"
         field_type.display_name # "Foreign Key"
-        field_type.django_field_class  # models.ForeignKey
+        field_type.model_field_cls  # models.ForeignKey
     """
     
     # Basic Fields
@@ -250,21 +271,21 @@ class FieldType(Enum):
     AUTO_FIELD = FieldTypeDefinition(
         id="AutoField",
         display_name="Auto Field",
-        django_field_class=models.AutoField,
+        model_field_cls=models.AutoField,
         lookups=NUMERIC_LOOKUPS,
     )
     
     BIG_AUTO_FIELD = FieldTypeDefinition(
         id="BigAutoField",
         display_name="Big Auto Field",
-        django_field_class=models.BigAutoField,
+        model_field_cls=models.BigAutoField,
         lookups=NUMERIC_LOOKUPS,
     )
     
     SMALL_AUTO_FIELD = FieldTypeDefinition(
         id="SmallAutoField",
         display_name="Small Auto Field",
-        django_field_class=models.SmallAutoField,
+        model_field_cls=models.SmallAutoField,
         lookups=NUMERIC_LOOKUPS,
     )
     
@@ -272,20 +293,20 @@ class FieldType(Enum):
     CHAR_FIELD = FieldTypeDefinition(
         id="CharField",
         display_name="Char Field",
-        django_field_class=models.CharField,
-        lookups=TEXT_LOOKUPS,
+        model_field_cls=models.CharField,
         widget_cls=forms.widgets.TextInput,
-        default_field_args={
+        default_model_field_args={
             "max_length": 100,
         },
+        lookups=TEXT_LOOKUPS,
     )
     
     CHOICE_FIELD = FieldTypeDefinition(
         id="ChoiceField",
         display_name="Choice Field",
-        django_field_class=models.CharField,
+        model_field_cls=models.CharField,
         lookups=TEXT_LOOKUPS,
-        default_field_args={
+        default_model_field_args={
             "max_length": 50,
         },
     )
@@ -293,7 +314,7 @@ class FieldType(Enum):
     TEXT_FIELD = FieldTypeDefinition(
         id="TextField",
         display_name="Text Field",
-        django_field_class=models.TextField,
+        model_field_cls=models.TextField,
         lookups=TEXT_LOOKUPS,
         widget_cls=BloomerpTextEditorWidget
     )
@@ -301,9 +322,9 @@ class FieldType(Enum):
     EMAIL_FIELD = FieldTypeDefinition(
         id="EmailField",
         display_name="Email Field",
-        django_field_class=models.EmailField,
+        model_field_cls=models.EmailField,
         lookups=TEXT_LOOKUPS,
-        default_field_args={
+        default_model_field_args={
             "max_length": 254,
         },
     )
@@ -311,9 +332,9 @@ class FieldType(Enum):
     URL_FIELD = FieldTypeDefinition(
         id="URLField",
         display_name="URL Field",
-        django_field_class=models.URLField,
+        model_field_cls=models.URLField,
         lookups=TEXT_LOOKUPS,
-        default_field_args={
+        default_model_field_args={
             "max_length": 200,
         },
     )
@@ -321,9 +342,9 @@ class FieldType(Enum):
     SLUG_FIELD = FieldTypeDefinition(
         id="SlugField",
         display_name="Slug Field",
-        django_field_class=models.SlugField,
+        model_field_cls=models.SlugField,
         lookups=TEXT_LOOKUPS,
-        default_field_args={
+        default_model_field_args={
             "max_length": 50,
         },
     )
@@ -332,23 +353,23 @@ class FieldType(Enum):
     INTEGER_FIELD = FieldTypeDefinition(
         id="IntegerField",
         display_name="Integer Field",
-        django_field_class=models.IntegerField,
+        model_field_cls=models.IntegerField,
         lookups=NUMERIC_LOOKUPS
     )
     
     FLOAT_FIELD = FieldTypeDefinition(
         id="FloatField",
         display_name="Float Field",
-        django_field_class=models.FloatField,
+        model_field_cls=models.FloatField,
         lookups=NUMERIC_LOOKUPS
     )
     
     DECIMAL_FIELD = FieldTypeDefinition(
         id="DecimalField",
         display_name="Decimal Field",
-        django_field_class=models.DecimalField,
+        model_field_cls=models.DecimalField,
         lookups=NUMERIC_LOOKUPS,
-        default_field_args={
+        default_model_field_args={
             "max_digits": 10,
             "decimal_places": 2,
         },
@@ -357,28 +378,28 @@ class FieldType(Enum):
     POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
         id="PositiveIntegerField",
         display_name="Positive Integer Field",
-        django_field_class=models.PositiveIntegerField,
+        model_field_cls=models.PositiveIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
     
     POSITIVE_SMALL_INTEGER_FIELD = FieldTypeDefinition(
         id="PositiveSmallIntegerField",
         display_name="Positive Small Integer Field",
-        django_field_class=models.PositiveSmallIntegerField,
+        model_field_cls=models.PositiveSmallIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
     
     BIG_INTEGER_FIELD = FieldTypeDefinition(
         id="BigIntegerField",
         display_name="Big Integer Field",
-        django_field_class=models.BigIntegerField,
+        model_field_cls=models.BigIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
     
     SMALL_INTEGER_FIELD = FieldTypeDefinition(
         id="SmallIntegerField",
         display_name="Small Integer Field",
-        django_field_class=models.SmallIntegerField,
+        model_field_cls=models.SmallIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
     
@@ -386,9 +407,9 @@ class FieldType(Enum):
     BOOLEAN_FIELD = FieldTypeDefinition(
         id="BooleanField",
         display_name="Boolean Field",
-        django_field_class=models.BooleanField,
+        model_field_cls=models.BooleanField,
         lookups=BOOLEAN_LOOKUPS,
-        default_field_args={
+        default_model_field_args={
             "default": False,
         },
     )
@@ -396,9 +417,9 @@ class FieldType(Enum):
     NULL_BOOLEAN_FIELD = FieldTypeDefinition(
         id="NullBooleanField",
         display_name="Null Boolean Field",
-        django_field_class=models.BooleanField,
+        model_field_cls=models.BooleanField,
         lookups=BOOLEAN_LOOKUPS,
-        default_field_args={
+        default_model_field_args={
             "null": True,
             "blank": True,
         },
@@ -408,28 +429,28 @@ class FieldType(Enum):
     DATE_FIELD = FieldTypeDefinition(
         id="DateField",
         display_name="Date Field",
-        django_field_class=models.DateField,
+        model_field_cls=models.DateField,
         lookups=DATE_LOOKUPS,
     )
     
     DATE_TIME_FIELD = FieldTypeDefinition(
         id="DateTimeField",
         display_name="DateTime Field",
-        django_field_class=models.DateTimeField,
+        model_field_cls=models.DateTimeField,
         lookups=DATE_LOOKUPS,
     )
     
     TIME_FIELD = FieldTypeDefinition(
         id="TimeField",
         display_name="Time Field",
-        django_field_class=models.TimeField,
+        model_field_cls=models.TimeField,
         lookups=DATE_LOOKUPS
     )
     
     DURATION_FIELD = FieldTypeDefinition(
         id="DurationField",
         display_name="Duration Field",
-        django_field_class=models.DurationField,
+        model_field_cls=models.DurationField,
         lookups=NUMERIC_LOOKUPS
     )
     
@@ -437,8 +458,8 @@ class FieldType(Enum):
     FILE_FIELD = FieldTypeDefinition(
         id="FileField",
         display_name="File Field",
-        django_field_class=models.FileField,
-        default_field_args={
+        model_field_cls=models.FileField,
+        default_model_field_args={
             "upload_to": "uploads/",
         },
     )
@@ -446,27 +467,27 @@ class FieldType(Enum):
     IMAGE_FIELD = FieldTypeDefinition(
         id="ImageField",
         display_name="Image Field",
-        django_field_class=models.ImageField,
-        default_field_args={
+        model_field_cls=models.ImageField,
+        default_model_field_args={
             "upload_to": "images/",
         },
-        
     )
     
     # Relationship Fields
     FOREIGN_KEY = FieldTypeDefinition(
         id="ForeignKey",
         display_name="Foreign Key",
-        django_field_class=models.ForeignKey,
+        model_field_cls=models.ForeignKey,
         lookups=[
             Lookup.FOREIGN_EQUALS,
             Lookup.FOREIGN_IN,
         ],
+        form_field_cls=forms.ModelChoiceField,
         widget_cls=ForeignFieldWidget,
-        widget_attrs={
+        default_widget_args={
             "is_m2m": False
         },
-        default_field_args={
+        default_model_field_args={
             "on_delete": models.CASCADE,
         },
     )
@@ -474,13 +495,13 @@ class FieldType(Enum):
     ONE_TO_ONE_FIELD = FieldTypeDefinition(
         id="OneToOneField",
         display_name="One To One Field",
-        django_field_class=models.OneToOneField,
+        model_field_cls=models.OneToOneField,
         lookups=[
             Lookup.IS_NULL,
             Lookup.EQUALS,
             Lookup.IN,
         ],
-        default_field_args={
+        default_model_field_args={
             "on_delete": models.CASCADE,
         },
     )
@@ -488,14 +509,14 @@ class FieldType(Enum):
     MANY_TO_MANY_FIELD = FieldTypeDefinition(
         id="ManyToManyField",
         display_name="Many To Many Field",
-        django_field_class=models.ManyToManyField,
+        model_field_cls=models.ManyToManyField,
         lookups=[
             Lookup.EQUALS,
             Lookup.IS_NULL,
             Lookup.IN,
         ],
         widget_cls=ForeignFieldWidget,
-        widget_attrs={
+        default_widget_args={
             "is_m2m": True
         }
     )
@@ -509,7 +530,7 @@ class FieldType(Enum):
     USER_FIELD = FieldTypeDefinition(
         id="UserField",
         display_name="User Field",
-        django_field_class=UserField,
+        model_field_cls=UserField,
         lookups=[
             Lookup.IS_NULL,
             Lookup.EQUALS_USER,
@@ -521,34 +542,34 @@ class FieldType(Enum):
     UUID_FIELD = FieldTypeDefinition(
         id="UUIDField",
         display_name="UUID Field",
-        django_field_class=models.UUIDField,
+        model_field_cls=models.UUIDField,
         lookups=[Lookup.EQUALS, Lookup.IN, Lookup.IS_NULL]
     )
     
     BINARY_FIELD = FieldTypeDefinition(
         id="BinaryField",
         display_name="Binary Field",
-        django_field_class=models.BinaryField,
+        model_field_cls=models.BinaryField,
     )
     IP_ADDRESS_FIELD = FieldTypeDefinition(
         id="IPAddressField",
         display_name="IP Address Field",
-        django_field_class=models.GenericIPAddressField,
+        model_field_cls=models.GenericIPAddressField,
         lookups=TEXT_LOOKUPS
     )
     
     GENERIC_IP_ADDRESS_FIELD = FieldTypeDefinition(
         id="GenericIPAddressField",
         display_name="Generic IP Address Field",
-        django_field_class=models.GenericIPAddressField,
+        model_field_cls=models.GenericIPAddressField,
         lookups=TEXT_LOOKUPS
     )
     
     JSON_FIELD = FieldTypeDefinition(
         id="JSONField",
         display_name="JSON Field",
-        django_field_class=models.JSONField,
-        default_field_args={
+        model_field_cls=models.JSONField,
+        default_model_field_args={
             "default": dict,
         },
         
@@ -609,9 +630,9 @@ class FieldType(Enum):
         return self.value.display_name
     
     @property
-    def django_field_class(self) -> Optional[type[models.Field]]:
+    def model_field_cls(self) -> Optional[type[models.Field]]:
         """Returns the Django field class, if applicable."""
-        return self.value.django_field_class
+        return self.value.model_field_cls
     
     @property
     def lookups(self) -> list[Lookup]:
@@ -642,17 +663,17 @@ class FieldType(Enum):
         raise ValueError(f"Unknown field type: {field_id}")
     
     @classmethod
-    def from_django_field_class(cls, django_field_class: type[models.Field]) -> Optional["FieldType"]:
+    def from_model_field_cls(cls, model_field_cls: type[models.Field]) -> Optional["FieldType"]:
         """Get a FieldType by its Django field class.
         
         Args:
-            django_field_class: The Django field class (e.g., models.ForeignKey)
+            model_field_cls: The Django field class (e.g., models.ForeignKey)
             
         Returns:
             The matching FieldType enum member, or None if not found
         """
         for member in cls:
-            if member.value.django_field_class == django_field_class:
+            if member.value.model_field_cls == model_field_cls:
                 return member
         return None
     
@@ -718,10 +739,10 @@ class FieldType(Enum):
             return self.value.widget_cls
         
         if (
-            self.value.django_field_class 
-            and hasattr(self.value.django_field_class, "widget_cls") 
-            and self.value.django_field_class.widget_cls):
-            return self.value.django_field_class.widget_cls
+            self.value.model_field_cls 
+            and hasattr(self.value.model_field_cls, "widget_cls") 
+            and self.value.model_field_cls.widget_cls):
+            return self.value.model_field_cls.widget_cls
         
         return forms.widgets.TextInput
         

@@ -42,6 +42,12 @@ export abstract class BaseDataViewComponent extends BaseComponent {
     abstract moveCellRight(): BaseDataViewCell;
     abstract moveCellLeft(): BaseDataViewCell;
 
+    // Split view enabled
+    private splitViewEnabled: boolean = false;
+
+    // Content type id
+    public contentTypeId: string | null = null;
+
     public initialize(): void {
         if (!this.element) return;
 
@@ -53,6 +59,10 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         }
 
         this.eventListeners(abortController);
+
+        this.splitViewEnabled = this.element.dataset.splitViewEnabled === 'True';
+
+        this.contentTypeId = this.element.dataset.contentTypeId || null;
     }
 
     /**
@@ -143,7 +153,7 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         }
     }
 
-    protected clearSelection(): void {
+    public clearSelection(): void {
         for (const cell of this.selectedCells) {
             cell.unselect();
         }
@@ -388,7 +398,15 @@ export abstract class BaseDataViewComponent extends BaseComponent {
 
                         case 'Enter':
                             event.preventDefault();
-                            this.currentCell.click();
+                            let target;
+
+                            if (this.splitViewEnabled) {
+                                let target = document.getElementById('data-table-detail-pane');
+                            } else {
+                                target = "#main-content";
+                            }
+
+                            this.currentCell.click(target);
                             return
                     }
                 }

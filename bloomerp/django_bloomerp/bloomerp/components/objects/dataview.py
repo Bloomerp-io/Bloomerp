@@ -1,5 +1,7 @@
+from django.forms import modelform_factory
 from django.shortcuts import get_object_or_404, render
 from bloomerp.components.application_fields.filters import filters_init
+from bloomerp.utils.requests import render_message
 from registries.route_registry import router
 from django.http import HttpResponse
 from django.http import HttpRequest
@@ -11,7 +13,7 @@ from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.user_services import get_user_list_view_preference
 from bloomerp.services.user_services import toggle_field_visibility
 from bloomerp.services.object_services import string_search_on_queryset
-from bloomerp.utils.filters import dynamic_filterset_factory, filter_model
+from bloomerp.utils.filters import filter_model
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.models.users.user_list_view_preference import ViewType
 from bloomerp.models.users.user_list_view_preference import PageType
@@ -533,7 +535,7 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
 
 @router.register(
     path="components/dataview_edit_field/<int:application_field_id>/<str:object_id>/",
-    name="components_dataview_inline",
+    name="components_dataview_edit_field",
 )
 def dataview_edit_field(request: HttpRequest, application_field_id:int, object_id: str) -> HttpResponse:
     """Renders the inline edit component for a dataview field.
@@ -558,18 +560,34 @@ def dataview_edit_field(request: HttpRequest, application_field_id:int, object_i
     if not manager.has_field_permission(application_field, permission_str):
         return HttpResponse(status=405)
     
+    if request.method == "GET":
+        WidgetCls = application_field.get_field_type_enum().get_widget_cls()
+        
+        return HttpResponse(
+            WidgetCls().render(
+                name=application_field.field,
+                value=getattr(object, application_field.field),
+                attrs={
+                    "application_field" : application_field,
+                    "class" : "border-0 w-full bg-transparent input-sm",
+                }
+        ))
+    elif request.method == "POST":
+        FormCls = modelform_factory(
+            model,
+            fields=[application_field.field],
+        )
+        form = FormCls(request.POST, instance=object)
+        if form.is_valid():
+            print("Form is valid")
+            form.save()
+            return render_message(request, "Field updated successfully", "success")
+        else:
+            pass
+            
+            
+        
     
-    widget = application_field.get_field_type_enum().get_widget()
-    
-    return HttpResponse(
-        widget().render(
-            name=application_field.field,
-            value=getattr(object, application_field.field),
-            attrs={
-                "application_field" : application_field,
-                "class" : "w-full input input-sm",
-            }
-    ))
 
 
 @router.register(

@@ -11,3 +11,4 @@ from .project_management import *
 from .communication import *
 from .llm import *
 from .access_control import *
+from .automation import *

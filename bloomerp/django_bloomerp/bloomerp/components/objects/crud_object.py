@@ -1,3 +1,4 @@
+from bloomerp.forms.model_form import bloomerp_modelform_factory
 from registries.route_registry import router
 from django.http import HttpResponse
 from django.http import HttpRequest
@@ -5,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import get_object_or_404
 from django.forms.models import modelform_factory
 from bloomerp.forms.core import BloomerpModelForm
-from bloomerp.utils.request_utils import render_blank_form
+from bloomerp.utils.requests import render_blank_form
 
 @router.register(
     path="components/create-object/<int:content_type_id>/",
@@ -87,3 +88,14 @@ def update_object(request:HttpRequest, content_type_id:int, object_id:str|int) -
     Returns:
         HttpResponse: the response object
     """
+    content_type = ContentType.objects.get(id=content_type_id)
+    ModelCls = content_type.model_class()
+    
+    FormCls = bloomerp_modelform_factory(ModelCls, "__all__")
+    
+    return render_blank_form(
+        request,
+        FormCls(),
+        {},
+        ""
+    )

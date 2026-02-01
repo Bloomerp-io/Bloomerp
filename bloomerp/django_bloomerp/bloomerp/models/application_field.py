@@ -1,7 +1,8 @@
+from django import forms
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.query import QuerySet
-from typing import Optional
+from typing import Optional, Type
 from django.utils.translation import gettext_lazy as _
 from bloomerp.field_types import FieldType
 
@@ -79,7 +80,19 @@ class ApplicationField(models.Model):
         return ApplicationField.objects.filter(
             content_type=ContentType.objects.get_for_model(model)
         )
+        
+    @staticmethod
+    def get_by_field(model:models.Model, field_name:str) -> Optional['ApplicationField']:
+        """Returns an application field for a specific model and field name"""
+        try:
+            return ApplicationField.objects.get(
+                content_type=ContentType.objects.get_for_model(model),
+                field=field_name
+            )
+        except ApplicationField.DoesNotExist:
+            return None
 
+    
     @property
     def title(self):
         return self.field.replace("_", " ").title()
@@ -153,6 +166,62 @@ class ApplicationField(models.Model):
             return self.related_model.model_class()
         return None
     
-    
+    def get_form_field(self) -> forms.Field:
+        """Returns the form field object for this application field
 
+        Returns:
+            forms.Field: the form field object
+        """
+        ModelCls = self.get_model()
+        model_field : models.Field = ModelCls._meta.get_field(self.field)
+        
+        field_type = self.get_field_type_enum().value
+        
+        # If a custom form field class is defined, use it
+        if field_type.form_field_cls:
+            # Get the form field with custom class, but let Django handle kwargs
+            form_field = model_field.formfield(form_class=field_type.form_field_cls)
+        else:
+            # Use Django's default formfield conversion
+            form_field = model_field.formfield()
+        
+        if form_field is None:
+            return None
+            
+        # Override widget if a custom one is defined
+        if field_type.widget_cls:
+            form_field.widget = self.get_widget()
+        
+        return form_field
+    
+    def get_form_field_cls(self) -> Type[forms.Field]:
+        """Returns the form class for this application field
+
+        Returns:
+            Type[forms.Field]: the form class for this model
+        """
+        field_type = self.get_field_type_enum().value
+        return field_type.form_field_cls
+           
+    def get_widget(self) -> forms.Widget:
+        """Retursn the widget for this application field
+
+        Returns:
+            forms.Widget: the widget object
+        """
+        field_type = self.get_field_type_enum().value
+        default_attrs = field_type.default_widget_args
+        
+        attrs = {}
+        attrs.update(default_attrs)
+        
+        # For foreign key fields, pass the related model
+        related_model = self.get_related_model()
+        if related_model:
+            attrs['model'] = related_model
+        
+        return field_type.get_widget_cls()(
+            attrs=attrs
+        )
+        
     

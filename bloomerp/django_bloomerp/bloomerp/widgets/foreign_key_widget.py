@@ -16,8 +16,13 @@ class ForeignFieldWidget(widgets.Widget):
     def get_context(self, name, value:Model, attrs):
         context = super().get_context(name, value, attrs)
         
-        # Add the content type ID to the context        
-        context['content_type_id'] = ContentType.objects.get_for_model(self.model or value._meta.model).id
+        # Add the content type ID to the context
+        if self.model:
+            context['content_type_id'] = ContentType.objects.get_for_model(self.model).id
+        elif value and hasattr(value, '_meta'):
+            context['content_type_id'] = ContentType.objects.get_for_model(value._meta.model).id
+        else:
+            raise ValueError("ForeignFieldWidget requires either 'model' to be set or a value with _meta attribute")
 
 
         # Check if an invalid entry was made

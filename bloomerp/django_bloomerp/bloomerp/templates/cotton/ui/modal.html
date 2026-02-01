@@ -45,7 +45,7 @@ Parameters:
         {% if show_header|default:True %}
         <!-- Modal header -->
         <div class="flex items-center justify-between p-3 border-b border-gray-200 {{ header_class }}">
-            <h3 class="text-lg font-semibold text-primary-900">
+            <h3 class="text-lg font-semibold text-primary-900" id="{{ id }}-title">
                 {{ title|default:"Modal" }}
             </h3>
             {% if closable|default:True %}

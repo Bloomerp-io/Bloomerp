@@ -6,14 +6,13 @@ from bloomerp.models import ApplicationField
 from django.db import models
 from django import db
 from bloomerp.field_types import FieldType
+from django.utils.encoding import force_str
 
 class Command(BaseCommand):
     help = 'Sync properties with @property decorator and fields in a Django model to ApplicationField'
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Starting to sync ApplicationField model'))
-
-        num = 0
 
         # Get all models in the project
         model_list = apps.get_models()
@@ -24,6 +23,29 @@ class Command(BaseCommand):
             
             try:
                 if hasattr(Model, '_meta'):
+                    def serialize_choices(choices):
+                        """Convert choice labels (including lazy proxies) to plain strings.
+
+                        Handles choices of form (value, label) and colored choices
+                        of form (value, label, color).
+                        """
+                        serialized = []
+                        try:
+                            for c in choices:
+                                if not isinstance(c, (list, tuple)):
+                                    serialized.append(c)
+                                    continue
+                                if len(c) == 2:
+                                    serialized.append((c[0], force_str(c[1])))
+                                elif len(c) == 3:
+                                    serialized.append((c[0], force_str(c[1]), c[2]))
+                                else:
+                                    # Fallback: convert all elements after the first to strings when possible
+                                    new = [c[0]] + [force_str(x) if isinstance(x, str) or hasattr(x, '__unicode__') or hasattr(x, '__str__') else x for x in c[1:]]
+                                    serialized.append(tuple(new))
+                        except Exception:
+                            return choices
+                        return serialized
                     #----------------------------------------------
                     # Processing properties with @property decorator
                     #----------------------------------------------
@@ -33,7 +55,6 @@ class Command(BaseCommand):
                         if isinstance(getattr(Model, attr), property)
                     ]
                     
-
                     #----------------------------------------------
                     # Processing fields in the model
                     #----------------------------------------------
@@ -101,10 +122,10 @@ class Command(BaseCommand):
                             #----------------------------------------------
                             if field_type == FieldType.STATUS_FIELD.id:
                                 try:
-                                    meta['choices'] = field.choices
-                                    meta['colored_choices'] = field.colored_choices
-                                    meta['colors'] = {choice[0]: choice[2] for choice in field.colored_choices}
-                                except:
+                                    meta['choices'] = serialize_choices(getattr(field, 'choices', []))
+                                    meta['colored_choices'] = serialize_choices(getattr(field, 'colored_choices', []))
+                                    meta['colors'] = {choice[0]: choice[2] for choice in meta.get('colored_choices', []) if len(choice) > 2}
+                                except Exception:
                                     pass
 
                             #----------------------------------------------
@@ -113,7 +134,7 @@ class Command(BaseCommand):
                             if field_type == 'CharField':
                                 # Check if field has choices
                                 if hasattr(field, 'flatchoices'):
-                                    meta['choices'] = field.flatchoices
+                                    meta['choices'] = serialize_choices(getattr(field, 'flatchoices', []))
 
 
                             field_info = {
@@ -149,19 +170,22 @@ class Command(BaseCommand):
                         else:
                             related_model = None
                         
-                        
-
-                        obj = ApplicationField.objects.update_or_create(
-                            content_type_id=content_type_id,
-                            field=field_name,
-                            defaults={
-                                'field_type': field_type,
-                                'meta': meta,
-                                'related_model': related_model,
-                                'db_column' : db_column,
-                                'db_table' : db_table,
-                                'db_field_type' : db_field_type
-                            })
+                        try:
+                            ApplicationField.objects.update_or_create(
+                                content_type_id=content_type_id,
+                                field=field_name,
+                                defaults={
+                                    'field_type': field_type,
+                                    'meta': meta,
+                                    'related_model': related_model,
+                                    'db_column' : db_column,
+                                    'db_table' : db_table,
+                                    'db_field_type' : db_field_type
+                                })
+                        except Exception as e:
+                            print("Meta", meta)
+                            print("Field Type", field_type)
+                            self.stderr.write(self.style.ERROR(f"Error saving ApplicationField for {Model.__name__}.{field_name}: {e}"))
                         
                     # Delete stale ApplicationField entries
                     stale_entries = ApplicationField.objects.filter(

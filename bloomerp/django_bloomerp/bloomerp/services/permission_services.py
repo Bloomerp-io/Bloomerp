@@ -12,7 +12,6 @@ from django.db import models
 from django.db.models import Model
 from bloomerp.models.users.user import AbstractBloomerpUser, User
 from enum import Enum
-from bloomerp.constants.permissions import BasePermission
 from django.db.models.query import QuerySet
 from enum import Enum
 from bloomerp.models import ApplicationField

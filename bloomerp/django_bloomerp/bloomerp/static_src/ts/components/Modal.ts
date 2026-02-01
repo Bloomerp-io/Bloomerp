@@ -354,5 +354,14 @@ export class Modal extends BaseComponent {
     public getBodyElement(): HTMLElement | null {
         return this.modalBodyElement;
     }
+
+    public setTitle(title: string): void {
+        if (!this.element) return;
+
+        const titleElement = this.element.querySelector(`#${this.element.id}-title`) as HTMLElement | null;
+        if (titleElement) {
+            titleElement.textContent = title;
+        }
+    }
 }
 
