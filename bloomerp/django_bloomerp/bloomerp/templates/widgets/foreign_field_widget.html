@@ -13,6 +13,7 @@
         <input 
             type="text" 
             class="{{ widget.attrs.class }}"
+            value="{% if not widget.is_m2m %}{{ selected_label }}{% endif %}"
             {% if widget.attrs.disabled %} disabled {% endif %}
         >
 

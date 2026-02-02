@@ -187,7 +187,7 @@ class ApplicationField(models.Model):
         
         if form_field is None:
             return None
-            
+        
         # Override widget if a custom one is defined
         if field_type.widget_cls:
             form_field.widget = self.get_widget()
@@ -212,7 +212,9 @@ class ApplicationField(models.Model):
         field_type = self.get_field_type_enum().value
         default_attrs = field_type.default_widget_args
         
-        attrs = {}
+        attrs = {
+            "application_field" : self
+        }
         attrs.update(default_attrs)
         
         # For foreign key fields, pass the related model

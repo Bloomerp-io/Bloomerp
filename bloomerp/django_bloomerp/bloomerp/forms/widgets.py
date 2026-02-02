@@ -2,7 +2,7 @@ from django import forms
 from django.forms import ModelChoiceField
 from bloomerp.models.workspaces import Widget, SqlQuery
 from django.core.exceptions import ValidationError
-from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from django.utils.translation import gettext as _
 

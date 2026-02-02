@@ -276,63 +276,6 @@ def avatar(object:Model, avatar_attribute:str='avatar', size:int=30, class_name=
     }
 
 
-@register.inclusion_tag('snippets/datatable_and_filter.html')
-def datatable(
-    content_type_id:int,
-    user:AbstractBloomerpUser,
-    include_actions:bool=True,
-    initial_query:str='',
-    request=None,
-    datatable_id=None,
-    bypass_view_permission=False
-):
-    '''
-    Returns a data table for a model.
-
-    Example usage:
-    {% datatable content_type_id user include_actions initial_query request datatable_id bypass_view_permission %}
-    '''
-    # Get the model from the content_type_id
-    content_type = ContentType.objects.get(pk=content_type_id)
-    model = content_type.model_class()
-
-    # Get the application fields
-    application_fields = ApplicationField.objects.filter(content_type=content_type)
-
-    # Create random id for the datatable target
-    if not datatable_id:
-        datatable_id = 'datatable-' + str(uuid.uuid4())
-    else:
-        datatable_id = 'datatable-' + str(datatable_id)
-
-    if bypass_view_permission:
-        if not initial_query:
-            raise ValueError('Initial query must be set if bypass_view_permission is True')
-
-        bypass_view_permission_value = dumps({
-            'initial_query' : initial_query,
-            'content_type_id': content_type_id,
-            'user_id' : user.pk
-        })
-
-    # Add the bypass_view_permission_value to the initial_query
-    if initial_query and bypass_view_permission:
-        initial_query += f'&data_table_bypass_view_permission={bypass_view_permission_value}'
-    elif bypass_view_permission and not initial_query:
-        initial_query = f'data_table_bypass_view_permission={bypass_view_permission_value}'
-
-
-    return {
-        'model': model,
-        'application_fields': application_fields,
-        'content_type_id': content_type_id,
-        'datatable_id': datatable_id,
-        'include_actions': include_actions,
-        'initial_query': initial_query,
-        'request': request,
-    }
-
-
 @register.simple_tag(takes_context=True)
 def generate_uuid(context):
     '''
@@ -423,6 +366,7 @@ def render_dataview_value(
         "application_field" : application_field
     }
 
+
 @register.inclusion_tag('inclusion_tags/detail_view_value.html')
 def render_detail_view_value(
         object: Model, 
@@ -444,18 +388,15 @@ def render_detail_view_value(
     value = getattr(object, application_field.field, None)
     
     # Get the field type enum
-    field_type = application_field.get_field_type_enum().value
-    WidgetCls = field_type.get_widget_cls()
-    default_args = field_type.default_widget_args or {}
+    widget = application_field.get_widget()
     attrs = {
         "class" : "input w-full",
     }
-    attrs.update(default_args)
     
     if not can_edit:
         attrs["readonly"] = "readonly"
     
-    input = WidgetCls().render(
+    input = widget.render(
             name=application_field.field,
             value=value,
             attrs=attrs

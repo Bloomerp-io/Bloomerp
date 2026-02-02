@@ -9,6 +9,7 @@ from bloomerp.utils.models import model_name_plural_underline, get_detail_view_u
 from bloomerp.views.mixins import BloomerpModelFormViewMixin, HtmxMixin
 from registries.route_registry import router
 
+
 User = get_user_model()
 
 

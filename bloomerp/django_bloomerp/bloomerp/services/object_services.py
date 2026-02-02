@@ -5,6 +5,8 @@ from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.db.models import CharField, TextField
 
+from bloomerp.models import User
+
 def string_search_on_queryset(queryset: QuerySet, query: str):
     """
     Function to search in all string fields of a QuerySet.
@@ -37,3 +39,16 @@ def string_search_on_queryset(queryset: QuerySet, query: str):
 
     # Filter the queryset by the query in any of the string fields
     return queryset.filter(query_filter)
+
+
+class UserCrudManager:
+    def __init__(self, user:User):
+        self.user = user
+        
+    def create_form(self, model_or_content_type):
+        pass
+    
+    def save_form(self, form):
+        pass
+    
+    

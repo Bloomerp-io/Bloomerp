@@ -2,7 +2,7 @@ from registries.route_registry import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models.fields import TextEditorField
-from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from django.forms.fields import CharField
 from django.forms.widgets import Textarea

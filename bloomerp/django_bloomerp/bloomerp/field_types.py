@@ -6,7 +6,7 @@ from enum import Enum
 from django.forms import CharField, Widget
 import django_filters
 from bloomerp.model_fields.user_field import UserField
-from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django import forms
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 
@@ -431,6 +431,10 @@ class FieldType(Enum):
         display_name="Date Field",
         model_field_cls=models.DateField,
         lookups=DATE_LOOKUPS,
+        widget_cls=forms.widgets.DateInput,
+        default_widget_args={
+            "type" : "date"
+        }
     )
     
     DATE_TIME_FIELD = FieldTypeDefinition(
@@ -438,13 +442,15 @@ class FieldType(Enum):
         display_name="DateTime Field",
         model_field_cls=models.DateTimeField,
         lookups=DATE_LOOKUPS,
+        widget_cls=forms.widgets.DateTimeInput
     )
     
     TIME_FIELD = FieldTypeDefinition(
         id="TimeField",
         display_name="Time Field",
         model_field_cls=models.TimeField,
-        lookups=DATE_LOOKUPS
+        lookups=DATE_LOOKUPS,
+        widget_cls=forms.widgets.TimeInput
     )
     
     DURATION_FIELD = FieldTypeDefinition(
@@ -454,7 +460,6 @@ class FieldType(Enum):
         lookups=NUMERIC_LOOKUPS
     )
     
-    # File Fields
     FILE_FIELD = FieldTypeDefinition(
         id="FileField",
         display_name="File Field",
@@ -473,7 +478,6 @@ class FieldType(Enum):
         },
     )
     
-    # Relationship Fields
     FOREIGN_KEY = FieldTypeDefinition(
         id="ForeignKey",
         display_name="Foreign Key",
@@ -531,6 +535,10 @@ class FieldType(Enum):
         id="UserField",
         display_name="User Field",
         model_field_cls=UserField,
+        widget_cls=ForeignFieldWidget,
+        default_widget_args={
+            "is_m2m" : False
+        },
         lookups=[
             Lookup.IS_NULL,
             Lookup.EQUALS_USER,
@@ -603,7 +611,6 @@ class FieldType(Enum):
         id="GenericForeignKey",
         display_name="Generic Foreign Key",
         allow_in_model=False,
-        
     )
     
     # Custom Bloomerp Fields
@@ -613,6 +620,7 @@ class FieldType(Enum):
         lookups=TEXT_LOOKUPS,
         allow_in_model=False,
     )
+    
     BLOOMERP_FILE_FIELD = FieldTypeDefinition(
         id="BloomerpFileField",
         display_name="Bloomerp File Field",

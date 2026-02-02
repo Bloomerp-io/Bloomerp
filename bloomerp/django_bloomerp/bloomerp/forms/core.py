@@ -16,7 +16,7 @@ from django.db.models import JSONField as DefaultJSONField
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from django.forms.widgets import DateInput, DateTimeInput
 from bloomerp.forms.layouts import BloomerpModelformHelper
-from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.models import UserDetailViewPreference
 
 # ---------------------------------

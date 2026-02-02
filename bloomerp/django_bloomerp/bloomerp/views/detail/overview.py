@@ -32,7 +32,6 @@ class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView
 
         # Add content type id to context
         layout = self.resolve_layout(preference, content_type)
-        print(layout)
         context["content_type_id"] = content_type.pk
         context["layout"] = layout
         return context

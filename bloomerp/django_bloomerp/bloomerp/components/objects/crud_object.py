@@ -88,14 +88,19 @@ def update_object(request:HttpRequest, content_type_id:int, object_id:str|int) -
     Returns:
         HttpResponse: the response object
     """
+    # TODO : Integrate permissions using permissions services
     content_type = ContentType.objects.get(id=content_type_id)
     ModelCls = content_type.model_class()
-    
+    object = get_object_or_404(ModelCls, id=object_id)
     FormCls = bloomerp_modelform_factory(ModelCls, "__all__")
     
-    return render_blank_form(
-        request,
-        FormCls(),
-        {},
-        ""
-    )
+    if request.method == "GET":    
+    
+        return render_blank_form(
+            request,
+            FormCls(instance=object),
+            {},
+            ""
+        )
+    elif request.method == "POST":
+        form = FormCls(instance=object, data=request.POST, files=request.FILES)

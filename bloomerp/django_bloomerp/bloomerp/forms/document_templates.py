@@ -1,7 +1,7 @@
 from django import forms
 from bloomerp.models.document_templates import DocumentTemplate, DocumentTemplateFreeVariable
 from django.apps import apps
-from bloomerp.widgets.foreign_key_widget import ForeignFieldWidget
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
 # ---------------------------------
 # Free Variable Form

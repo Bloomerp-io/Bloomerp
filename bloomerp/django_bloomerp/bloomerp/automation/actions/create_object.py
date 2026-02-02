@@ -1,18 +1,27 @@
 from django.forms import modelform_factory
-from .base import BaseExecutor
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+from ..base_executor import BaseExecutor
 from django.contrib.contenttypes.models import ContentType
-from dataclasses import dataclass
+from django import forms
 
-
-class ConfigParams:
-    content_type_id:int|str
+class ConfigParamsForm(forms.Form):
+    content_type_id = forms.IntegerField(
+        widget=ForeignFieldWidget(
+            {
+                "is_m2m" : False,
+                "application_field" : ApplicationField.objects.filter(field="content_type").first()
+            }            
+        )
+    )
     
 
-class CreateRecordExecutor(BaseExecutor):
+class CreateObjectExecutor(BaseExecutor):
+    config_form = ConfigParamsForm
+    
     def execute(self, input_data: dict) -> dict:
         # Get the content type id
-        params : dict = self.config.get("parameters", {})
-        content_type_id = params.get("content_type_id")
+        content_type_id = self.config.get("content_type_id")
         
         # Get the content type ID
         content_type = ContentType.objects.get(id=content_type_id)

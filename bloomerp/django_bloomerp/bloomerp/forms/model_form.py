@@ -7,7 +7,7 @@ from bloomerp.field_types import FieldType
 def bloomerp_modelform_factory(
     model_cls: Type[Model],
     fields: list[str] | str = "__all__"    
-) -> forms.ModelForm:
+) -> Type[forms.ModelForm]:
     """Creates a Bloomerp ModelForm for the given model class and fields."""
     application_fields = ApplicationField.get_for_model(model_cls)
     
@@ -30,7 +30,6 @@ def bloomerp_modelform_factory(
         try:
             form_fields[application_field.field] = application_field.get_form_field()
         except Exception as e:
-            print(application_field, e)
             continue
         
     MetaCls = type("Meta", (), {"model":model_cls, "fields":fields})

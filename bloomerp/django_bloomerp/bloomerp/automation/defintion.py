@@ -3,8 +3,9 @@ from typing import Type
 from typing import Optional
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
-from bloomerp.automation.executors.base import BaseExecutor
-from bloomerp.automation.executors.create_record import CreateRecordExecutor
+from bloomerp.automation.base_executor import BaseExecutor
+from bloomerp.automation.actions.create_object import CreateObjectExecutor
+from bloomerp.automation.actions.send_email import SendEmailExecutor
 from bloomerp.automation.triggers.human_trigger import HumanTrigger
 
 @dataclass
@@ -30,16 +31,22 @@ class WorkflowNodeType(Enum):
         description=_("The trigger for a workflow"),
         types=[
             NodeSubTypeDefinition(
-                id="ON_RECORD_CREATE",
-                name="On Record Create",
-                description="Triggered when a new record is created",
+                id="ON_OBJECT_CREATE",
+                name="On Object Create",
+                description="Triggered when a new object is created",
                 executor_cls=None  # Placeholder for actual function
             ),
             NodeSubTypeDefinition(
-                id="ON_RECORD_UPDATE",
-                name="On Record Update",
-                description="Triggered when a record is updated",
+                id="ON_OBJECT_UPDATE",
+                name="On Object Update",
+                description="Triggered when an object is updated",
                 executor_cls=None  # Placeholder for actual function
+            ),
+            NodeSubTypeDefinition(
+                id="ON_OBJECT_DELETE",
+                name="On Object Deletion",
+                description="Triggered when an object is deleted",
+                executor_cls=None
             ),
             NodeSubTypeDefinition(
                 id="ON_SCHEDULE",
@@ -71,26 +78,32 @@ class WorkflowNodeType(Enum):
                 id="SEND_EMAIL",
                 name="Send Email",
                 description="Sends an email to specified recipients",
-                executor_cls=None  # Placeholder for actual function
+                executor_cls=SendEmailExecutor
             ),
             NodeSubTypeDefinition(
-                id="CREATE_RECORD",
-                name="Create Record",
-                description="Creates a new record in the database",
-                executor_cls=CreateRecordExecutor
+                id="CREATE_OBJECT",
+                name="Create Object",
+                description="Creates a new object in the database",
+                executor_cls=CreateObjectExecutor
             ),
             NodeSubTypeDefinition(
-                id="UPDATE_RECORD",
-                name="Update Record",
-                description="Updates an existing record in the database",
-                executor_cls=None  # Placeholder for actual function
+                id="UPDATE_OBJECT",
+                name="Update Object",
+                description="Updates an existing object in the database",
+                executor_cls=None
+            ),
+            NodeSubTypeDefinition(
+                id="DELETE_OBJECT",
+                name="Update Object",
+                description="Delete an existing object in the database",
+                executor_cls=None
             ),
             NodeSubTypeDefinition(
                 id="CALL_API",
                 name="Call API",
                 description="Makes an external API call",
                 executor_cls=None  # Placeholder for actual function
-            )
+            ),
         ]
     )
 

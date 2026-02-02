@@ -16,7 +16,7 @@ from django.contrib.contenttypes.models import ContentType
 from typing import Any
 from django.views.generic.edit import ModelFormMixin
 from bloomerp.models import BloomerpModel
-
+from bloomerp.forms.model_form import bloomerp_modelform_factory
 
 class HtmxMixin:
     '''Updates the template name based on the request.htmx attribute.'''
@@ -75,10 +75,10 @@ class BloomerpModelFormViewMixin(ModelFormMixin):
     exclude = []
     form_class = BloomerpModelForm
 
+    # TODO: this needs to be changed becauauas
+    
     def get_form_kwargs(self) -> dict:
         kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.request.user
-        kwargs["model"] = self.model
         return kwargs
     
     def form_valid(self, form: BloomerpModelForm) -> HttpResponse:
@@ -121,11 +121,9 @@ class BloomerpModelFormViewMixin(ModelFormMixin):
         return form
 
     def get_form_class(self) -> BloomerpModelForm:
-        return modelform_factory(
-            model=self.model,
-            fields=self.fields,
-            form=BloomerpModelForm,
-            exclude=self.exclude
+        return bloomerp_modelform_factory(
+            model_cls=self.model,
+            fields="__all__",
         )
 
 
