@@ -341,6 +341,7 @@ def render_dataview_value(
     row_index:int=0,
     column_index:int=0,
     url:str=None,
+    split_view_enabled: bool = False,
 ):
     """Renders a data table value
 
@@ -363,7 +364,8 @@ def render_dataview_value(
         "row_index" : row_index,
         "column_index" : column_index,
         "url" : url,
-        "application_field" : application_field
+        "application_field" : application_field,
+        "split_view_enabled": split_view_enabled,
     }
 
 

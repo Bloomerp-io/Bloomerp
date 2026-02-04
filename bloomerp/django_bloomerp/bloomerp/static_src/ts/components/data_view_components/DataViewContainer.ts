@@ -1,6 +1,7 @@
 import htmx from "htmx.org";
 import BaseComponent, { getComponent, componentIdentifier } from "../BaseComponent";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
+import { getLocalStorageValue, setLocalStorageValue } from "@/utils/localStorage";
 
 export class DataViewContainer extends BaseComponent {
     private target:string = '#data-view-data-section'
@@ -8,17 +9,21 @@ export class DataViewContainer extends BaseComponent {
     private fullPath:string|null; // Includes query parameters
     private searchInput:HTMLInputElement|null = null;
     private contentTypeId:string|null = null;
+    private splitViewEnabled:boolean = false;
 
     public initialize(): void {
         this.baseUrl = this.element?.dataset.baseUrl;
         this.fullPath = this.element?.dataset.url;
         this.contentTypeId = this.element?.dataset.contentTypeId ?? null;
         this.searchInput = this.element?.querySelector(`#data-view-search-input-${this.contentTypeId}`) ?? null;
+        this.splitViewEnabled = this.element?.dataset.splitViewEnabled === 'True';
 
         this.focusSearchInput();
 
         // Focus on search input
         this.setupKeydownListeners();
+
+        this.setupSplitViewResize();
     }
 
     /**
@@ -109,6 +114,59 @@ export class DataViewContainer extends BaseComponent {
 
                 this.getDataViewComponent().clearSelection();
             }
+        });
+    }
+
+    private setupSplitViewResize(): void {
+        if (!this.splitViewEnabled || !this.element) return;
+
+        const container = this.element.querySelector<HTMLElement>('[data-split-view-container]');
+        const listPane = this.element.querySelector<HTMLElement>('[data-split-view-list-pane]');
+        const divider = this.element.querySelector<HTMLElement>('[data-split-view-divider]');
+
+        if (!container || !listPane || !divider) return;
+
+        const storageKey = `bloomerp_dataview_split_width_${this.contentTypeId ?? "default"}`;
+        const minWidth = 260;
+
+        const clampWidth = (width: number): number => {
+            const maxWidth = Math.max(minWidth, container.clientWidth - minWidth);
+            return Math.min(Math.max(width, minWidth), maxWidth);
+        };
+
+        const applyWidth = (width: number, store: boolean = false): void => {
+            const clamped = clampWidth(width);
+            listPane.style.width = `${clamped}px`;
+            listPane.style.flexBasis = `${clamped}px`;
+            if (store) {
+                setLocalStorageValue(storageKey, clamped);
+            }
+        };
+
+        const storedWidth = getLocalStorageValue<number | null>(storageKey, null);
+        if (storedWidth !== null) {
+            applyWidth(storedWidth);
+        }
+
+        divider.addEventListener("pointerdown", (event: PointerEvent) => {
+            event.preventDefault();
+            const startX = event.clientX;
+            const startWidth = listPane.getBoundingClientRect().width;
+
+            const onMove = (moveEvent: PointerEvent): void => {
+                const delta = moveEvent.clientX - startX;
+                applyWidth(startWidth + delta);
+            };
+
+            const onUp = (): void => {
+                document.removeEventListener("pointermove", onMove);
+                document.removeEventListener("pointerup", onUp);
+                const finalWidth = listPane.getBoundingClientRect().width;
+                setLocalStorageValue(storageKey, clampWidth(finalWidth));
+            };
+
+            document.addEventListener("pointermove", onMove);
+            document.addEventListener("pointerup", onUp);
         });
     }
 }

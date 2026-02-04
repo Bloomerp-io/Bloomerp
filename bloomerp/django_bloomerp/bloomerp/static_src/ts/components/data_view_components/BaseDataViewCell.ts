@@ -92,7 +92,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
      * a standard onClick will be provided that can be
      * overwritten.
      */
-    public click(target:string|HTMLElement="#main-content") : void {
+    public click(target?: string | HTMLElement): void {
         // If an override is provided, prefer that (useful for selection UIs).
         if (this.onClickOverride) {
             try {
@@ -104,12 +104,14 @@ export abstract class BaseDataViewCell extends BaseComponent {
         }
         
         if (this.detailUrl) {
+            const resolvedTarget = target ?? this.resolveDefaultTarget();
+            const shouldPush = this.shouldPushUrl(resolvedTarget);
             htmx.ajax(
                 'get',
                 this.detailUrl,
                 {
-                    target: target,
-                    push: "true"
+                    target: resolvedTarget,
+                    push: shouldPush ? "true" : "false"
                 }
             );
         }
@@ -122,6 +124,33 @@ export abstract class BaseDataViewCell extends BaseComponent {
         this.element.addEventListener('click', (event)=>{
             this.click()
         })
+    }
+
+    private resolveDefaultTarget(): string | HTMLElement {
+        if (!this.element) return "#main-content";
+
+        const container = this.element.closest<HTMLElement>('[data-split-view-enabled]');
+        const splitViewEnabled = container?.dataset.splitViewEnabled === "True";
+        if (!splitViewEnabled || !container) return "#main-content";
+
+        const detailPane = container.querySelector<HTMLElement>('[data-split-view-detail-pane]');
+        return detailPane ?? "#main-content";
+    }
+
+    private shouldPushUrl(target: string | HTMLElement): boolean {
+        if (typeof target === "string") {
+            return target === "#main-content";
+        }
+
+        const detailPane = target.closest<HTMLElement>('[data-split-view-detail-pane]');
+        if (detailPane) return false;
+
+        const mainContent = document.getElementById("main-content");
+        if (mainContent && (target === mainContent || mainContent.contains(target))) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

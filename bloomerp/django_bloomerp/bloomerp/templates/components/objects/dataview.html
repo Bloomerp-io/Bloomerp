@@ -122,8 +122,8 @@
     <!--Table section-->
     <div id="data-view-data-section" class="h-full">
         {% if preference.split_view_enabled %}
-        <div class="flex h-[calc(100vh-200px)] rounded-lg">
-            <div class="w-1/2 resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane">
+        <div class="flex h-[calc(100vh-200px)] rounded-lg" data-split-view-container>
+            <div class="flex-none resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane" data-split-view-list-pane>
                 {% if preference.view_type == 'table' %}
                     <c-ui.data_view.table 
                         :content_type_id="content_type_id" 
@@ -150,7 +150,8 @@
                     <c-ui.data_view.calendar />
                 {% endif %}
             </div>
-            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane">
+            <div class="w-1 cursor-col-resize bg-gray-200 hover:bg-gray-300 transition-colors" data-split-view-divider></div>
+            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane" data-split-view-detail-pane>
                 <div class="flex items-center justify-center h-full text-gray-400">
                     <div class="text-center">
                         <c-icons.sidebar_right size="48" class="mx-auto mb-2 opacity-50"/>
@@ -277,7 +278,6 @@
 
 </div>
 {% endif %}
-
 
 
 

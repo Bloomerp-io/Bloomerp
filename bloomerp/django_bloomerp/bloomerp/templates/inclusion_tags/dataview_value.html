@@ -20,7 +20,7 @@
             hx-get="{{ value.get_absolute_url }}"
             hx-swap="innerHTML"
             hx-trigger="click"
-            hx-target="#main-content"
+            hx-target="{% if split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
             hx-push-url="true"
             class="text-primary"
             data-no-row-click

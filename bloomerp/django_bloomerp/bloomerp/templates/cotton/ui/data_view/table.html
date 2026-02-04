@@ -35,7 +35,7 @@ Parameters:
                 class="cursor-pointer"
             >
                 {% for field in fields %}
-                    {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url %}
+                    {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
                 {% endfor %}
                 <td class="w-32" data-no-row-click>
                     <c-ui.data_view.actions :object="object"/>

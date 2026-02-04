@@ -398,15 +398,7 @@ export abstract class BaseDataViewComponent extends BaseComponent {
 
                         case 'Enter':
                             event.preventDefault();
-                            let target;
-
-                            if (this.splitViewEnabled) {
-                                let target = document.getElementById('data-table-detail-pane');
-                            } else {
-                                target = "#main-content";
-                            }
-
-                            this.currentCell.click(target);
+                            this.currentCell.click();
                             return
                     }
                 }
