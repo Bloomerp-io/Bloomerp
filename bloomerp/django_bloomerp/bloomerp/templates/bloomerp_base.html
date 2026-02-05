@@ -20,7 +20,7 @@
 		 
 		<!--Main -->
 		<main id="main" class="transition-all duration-300 ease-in-out mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200 me-2">
-			<div id="main-content" hx-history-elt class="px-6 py-6">
+			<div id="main-content" hx-history-elt class="px-6 py-6 h-full overflow-y-auto">
 				{% block main %}
 					{% if include_main_content %}
 						{% include include_main_content %}
@@ -40,12 +40,6 @@
 		
 		<!--Messages -->
 		<div id="bloomerp-messages"></div>
-
-		<!--Bloomerp forms-->
-		<script src="{% static 'bloomerp/js/bloomerpForms.js' %}"></script>
-
-		<!--LLM-->
-		<script src="{% static 'bloomerp/js/llm.js' %}"></script>
 
 		<c-ui.modal id="bloomerp-general-use-modal"/>
 

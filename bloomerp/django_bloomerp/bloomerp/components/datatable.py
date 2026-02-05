@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.urls import reverse
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
@@ -12,7 +12,7 @@ from bloomerp.models import ApplicationField
 from django.contrib.auth.decorators import login_required
 from django.core.signing import dumps, loads
 
-@router.route(path='components/datatable/', name='components_datatable')
+@router.register(path='components/datatable/', name='components_datatable')
 @login_required
 def datatable(request:HttpRequest) -> HttpResponse:
     """

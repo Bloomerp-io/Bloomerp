@@ -1,8 +1,8 @@
 from django.test import TestCase
-from registries.route_registry import _auto_generate_url_name
-from registries.route_registry import _generate_path
-from registries.route_registry import _generate_name
-from registries.route_registry import RouteType
+from bloomerp.router import _auto_generate_url_name
+from bloomerp.router import _generate_path
+from bloomerp.router import _generate_name
+from bloomerp.router import RouteType
 
 
 class TestRoute(TestCase):

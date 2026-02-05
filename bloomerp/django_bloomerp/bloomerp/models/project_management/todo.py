@@ -31,6 +31,7 @@ class TodoStatus(models.TextChoices):
     CANCELLED = ('cancelled', 'Cancelled')
     DUPLICATE = ('duplicate', 'Duplicate')
 
+
 class Todo(BloomerpModel):
     """
     The todo model is for Bloomerp's internal project management module.
@@ -143,3 +144,5 @@ class Todo(BloomerpModel):
             raise ValidationError(errors)
 
         return super().clean()
+
+    

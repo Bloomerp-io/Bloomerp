@@ -2,7 +2,7 @@ from django.forms import modelform_factory
 from django.shortcuts import get_object_or_404, render
 from bloomerp.components.application_fields.filters import filters_init
 from bloomerp.utils.requests import render_message
-from registries.route_registry import router
+from bloomerp.router import router
 from django.http import HttpResponse
 from django.http import HttpRequest
 from django.http import JsonResponse

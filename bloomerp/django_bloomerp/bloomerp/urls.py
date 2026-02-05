@@ -18,8 +18,7 @@ from bloomerp.utils.api import generate_serializer, generate_model_viewset_class
 from bloomerp.views.api_views import BloomerpModelViewSet
 from bloomerp.utils.urls import IntOrUUIDConverter
 from rest_framework.routers import DefaultRouter
-from shared_utils.router.view_router import _get_routers_from_settings, BloomerpRouterHandler
-from registries.route_registry import router
+from bloomerp.router import router
 
 # Register the custom URL converter
 register_converter(IntOrUUIDConverter, 'int_or_uuid') # Register the custom URL converter
@@ -29,25 +28,6 @@ drf_router = DefaultRouter()
 from django.conf import settings
 BASE_URL = settings.BLOOMERP_SETTINGS.get('BASE_URL', '')
 
-# Custom routers
-from bloomerp.views.workspace import router as dashboard_router
-from bloomerp.views.core import router as core_router
-from bloomerp.views.widgets import router as widget_router
-from bloomerp.views.auth import router as auth_router
-from django.apps import apps
-custom_routers = _get_routers_from_settings()
-
-
-custom_routers.append(document_template_router)
-custom_routers.append(dashboard_router)
-custom_routers.append(core_router)
-custom_routers.append(widget_router)
-custom_routers.append(auth_router)
-
-custom_router_handler = BloomerpRouterHandler(custom_routers)
-
-if settings.BLOOMERP_SETTINGS.get('AUTO_GENERATE_LINKS', False):
-    custom_router_handler.generate_links()
 
 # ---------------------------------
 # START GENERATION OF URL PATTERNS

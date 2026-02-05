@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.utils.document_templates import DocumentController
@@ -11,7 +11,7 @@ from bloomerp.forms.document_templates import GenerateDocumentForm
 import base64
 from bloomerp.utils.requests import parse_bool_parameter
 
-@router.route(path='components/generate_document_template/', name='components_generate_document_template')
+@router.register(path='components/generate_document_template/', name='components_generate_document_template')
 @login_required
 def generate_document_template(request:HttpRequest) -> HttpResponse:
     '''

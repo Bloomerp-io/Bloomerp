@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand
 import os
 import yaml
 from pathlib import Path
-from shared_datatypes.modules import ModuleConfig, SubModuleConfig, ModelConfig, FieldConfig
+from bloomerp.modules.definition import ModelConfig, ModuleConfig, SubModuleConfig
+from bloomerp.modules.definition import FieldConfig
 from bloomerp_modules.utils.dynamic_config_builder import DynamicConfigBuilder
 
 

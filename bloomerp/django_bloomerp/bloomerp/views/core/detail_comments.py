@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from bloomerp.models.communication import Comment
 from .base_detail import BloomerpBaseDetailView
-from registries.route_registry import router
+from bloomerp.router import router
 
 
 @router.register(

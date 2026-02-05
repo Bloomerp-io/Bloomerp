@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.views.decorators.http import require_POST
@@ -7,7 +7,7 @@ from bloomerp.models import Workspace
 
 @login_required
 @require_POST
-@router.route(path='components/reset_workspace/', name='components_reset_workspace')
+@router.register(path='components/reset_workspace/', name='components_reset_workspace')
 def reset_workspace(request:HttpRequest) -> HttpResponse:
     '''Component that resets a workspace to it's default state.
     

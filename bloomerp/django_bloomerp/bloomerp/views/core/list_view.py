@@ -4,7 +4,7 @@ from django.views.generic.list import ListView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from bloomerp.models.files import File
 from bloomerp.views.mixins import BloomerpModelContextMixin, HtmxMixin
-from registries.route_registry import router
+from bloomerp.router import router
 
 
 @router.register(

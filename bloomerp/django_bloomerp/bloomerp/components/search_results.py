@@ -2,12 +2,12 @@ from django.apps import apps
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from bloomerp.models import AbstractBloomerpUser
-from registries.route_registry import router
+from bloomerp.router import router
 from bloomerp.models import Link
 from bloomerp.utils.models import search_content_types_by_query, search_objects_by_content_types
 from django.contrib.auth.decorators import login_required
 
-@router.route(path='components/search_results/', name='components_search_results')
+@router.register(path='components/search_results/', name='components_search_results')
 @login_required
 def search_results(request: HttpRequest) -> HttpResponse:
     '''

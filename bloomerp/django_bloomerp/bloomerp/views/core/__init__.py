@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from .base_detail import BloomerpBaseDetailView
 from .list_view import BloomerpListView
 from .create_view import BloomerpCreateView

@@ -1,8 +1,8 @@
 from django.shortcuts import render
-from registries.route_registry import router
+from bloomerp.router import router
 from bloomerp.automation.defintion import WorkflowNodeType
 
-@router.route(
+@router.register(
     path='components/test_cotton_component/', 
     name='components_test_cotton_component'
     )

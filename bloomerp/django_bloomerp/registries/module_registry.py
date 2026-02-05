@@ -1,4 +1,4 @@
-from shared_datatypes.modules import ModuleConfig
+from bloomerp.modules.definition import ModuleConfig
 from typing import Dict, List, Optional
 import logging
 

@@ -4,20 +4,18 @@ from django.shortcuts import redirect
 from bloomerp.forms.widgets import WidgetForm1, WidgetForm2, WidgetForm3
 from bloomerp.models.workspaces import Widget, SqlQuery
 from bloomerp.models.application_field import ApplicationField
-from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.mixins import HtmxMixin, BloomerpModelFormViewMixin, BloomerpModelContextMixin
 from bloomerp.views.core import BloomerpBaseDetailView
 from django.views.generic.edit import CreateView, UpdateView
 from django.views.generic.detail import DetailView
 from bloomerp.components.workspaces.workspace_widget import workspace_widget
+from bloomerp.router import router
 
-
-router = BloomerpRouter()
 
 # ---------------------------------
 # Sql Query Create View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     models = SqlQuery,
     path='create',
     name= 'Create Sql Query',
@@ -40,7 +38,7 @@ class SqlQueryCreateView(PermissionRequiredMixin, HtmxMixin, BloomerpModelFormVi
 # ---------------------------------
 # Sql Query Editor View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
     models = SqlQuery,
     path='editor',
     name= 'Sql Query Editor',
@@ -75,7 +73,7 @@ class SqlQueryEditorView(PermissionRequiredMixin, BloomerpModelContextMixin, Htm
 # ---------------------------------
 # Widget Create Wizard View
 # ---------------------------------
-@router.bloomerp_route(
+@router.register(
         models=Widget,
         path='create',
         name='Create Widget',
@@ -141,7 +139,7 @@ class WidgetCreateWizardView(PermissionRequiredMixin, HtmxMixin, SessionWizardVi
         return redirect(widget.get_absolute_url())  # Redirect to a new URL
 
 
-@router.bloomerp_route(
+@router.register(
     models=Widget,
     path='preview',
     name='Preview Widget',
@@ -165,7 +163,7 @@ class WidgetPreviewView(BloomerpModelContextMixin, HtmxMixin, DetailView):
         return workspace_widget(request)
 
 
-@router.bloomerp_route(
+@router.register(
     models=Widget,
     path='update/',
     name='Update',

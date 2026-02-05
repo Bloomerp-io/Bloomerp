@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import get_object_or_404
@@ -7,7 +7,7 @@ import plotly.express as px
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 
-@router.route(path='components/workspace_widget/', name='components_workspace_widget')
+@router.register(path='components/workspace_widget/', name='components_workspace_widget')
 @login_required
 def workspace_widget(request:HttpRequest) -> HttpResponse:
     '''

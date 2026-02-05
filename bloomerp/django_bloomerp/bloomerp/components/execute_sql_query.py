@@ -1,10 +1,10 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.utils.sql import SqlQueryExecutor # For some reason if I import utils.sql, the router doesn't work
 from django.contrib.auth.decorators import login_required
 
-@router.route(path='components/execute_sql_query/', name='components_execute_sql_query')
+@router.register(path='components/execute_sql_query/', name='components_execute_sql_query')
 @login_required
 def execute_sql_query(request:HttpRequest) -> HttpResponse:
     '''

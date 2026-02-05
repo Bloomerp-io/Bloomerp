@@ -1,6 +1,6 @@
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
-from registries.route_registry import router
+from bloomerp.router import router
 
 @router.register(
     path='components/project-management/todos/',

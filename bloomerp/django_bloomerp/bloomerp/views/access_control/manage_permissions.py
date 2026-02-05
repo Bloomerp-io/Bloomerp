@@ -1,6 +1,6 @@
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.field_types import FieldType
-from registries.route_registry import router
+from bloomerp.router import router
 from django.views.generic import TemplateView
 from bloomerp.views.mixins import HtmxMixin
 from django.contrib.contenttypes.models import ContentType

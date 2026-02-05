@@ -1,7 +1,7 @@
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from bloomerp.models.project_management.todo import TodoEffort, TodoPriority, TodoStatus
-from registries.route_registry import router
+from bloomerp.router import router
 
 @router.register(
     path='components/project-management/create-todo/',

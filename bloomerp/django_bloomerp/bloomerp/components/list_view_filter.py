@@ -1,11 +1,11 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models import ApplicationField
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 
-@router.route(path='components/list_view_filter/', name='components_list_view_filter')
+@router.register(path='components/list_view_filter/', name='components_list_view_filter')
 @login_required
 def list_view_filter(request:HttpRequest) -> HttpResponse:
     '''

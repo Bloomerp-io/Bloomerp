@@ -2,7 +2,7 @@
 {% load crispy_forms_tags %}
 
 {% if request.htmx.target == 'data-view-data-section' %}
-<div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
+<div id="data-tableß-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
     <c-ui.data_view.display_options 
         :content_type_id="content_type_id"
         :view_types="view_types"
@@ -24,7 +24,7 @@
     data-render-id="{{ render_id }}"
     data-url="{{ request.get_full_path }}"
     data-base-url="{{ request.path }}"
-    class="h-full flex flex-col"
+    class="flex flex-col"
     bloomerp-component="dataview-container"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
     >
@@ -125,7 +125,7 @@
         <div class="flex h-[calc(100vh-200px)] rounded-lg" data-split-view-container>
             <div class="flex-none resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane" data-split-view-list-pane>
                 {% if preference.view_type == 'table' %}
-                    <c-ui.data_view.table 
+                <c-ui.data_view.table 
                         :content_type_id="content_type_id" 
                         :fields="fields.visible_fields" 
                         :queryset="queryset"

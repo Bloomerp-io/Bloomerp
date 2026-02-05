@@ -1,12 +1,13 @@
 from django.shortcuts import render
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.workspaces import Widget
 from django.views import View
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Model
 from bloomerp.views.mixins import HtmxMixin
-from registries.route_registry import router
-
+from bloomerp.router import router
+from django.contrib.contenttypes.models import ContentType
 
 @router.register(
     path="/",
@@ -22,7 +23,8 @@ class BloomerpHomeView(HtmxMixin, LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         widget_list = Widget.objects.all()
         context['widget_list'] = widget_list
-
+        context["queryset"] = ContentType.objects.all()
+        context["fields"] = ApplicationField.get_for_model(ContentType).filter(field="name")
         # Create a workspace for the user if it doesn't exist
         return context
 

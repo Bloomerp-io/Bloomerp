@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.http import HttpResponse, HttpRequest, StreamingHttpResponse
 from bloomerp.utils.llm import BloomerpLangChain
 from bloomerp.models import ApplicationField, DocumentTemplate, AIConversation, AbstractBloomerpUser
@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.contenttypes.models import ContentType
 
 @require_POST
-@router.route(path='components/llm_executor/', name='components_llm_executor')
+@router.register(path='components/llm_executor/', name='components_llm_executor')
 @login_required
 def llm_executor(request:HttpRequest) -> HttpResponse:
     '''

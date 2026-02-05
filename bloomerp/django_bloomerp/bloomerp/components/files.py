@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models import File, FileFolder, AbstractBloomerpUser
@@ -8,7 +8,7 @@ from django.forms.models import modelform_factory
 from bloomerp.utils.filters import dynamic_filterset_factory
 from django.contrib.auth.decorators import login_required
 
-@router.route(path='components/files/', name='components_files')
+@router.register(path='components/files/', name='components_files')
 @login_required
 def files(request: HttpRequest) -> HttpResponse:
     '''

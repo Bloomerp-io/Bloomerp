@@ -1,5 +1,5 @@
 import io
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import FileResponse, HttpRequest, HttpResponse
 from django.contrib.contenttypes.models import ContentType
@@ -7,7 +7,7 @@ from bloomerp.utils.model_io import BloomerpModelIO
 from bloomerp.forms.core import BloomerpDownloadBulkUploadTemplateForm
 from django.contrib.auth.decorators import login_required
 
-@router.route(path='components/download_bulk_upload_template/', name='components_download_bulk_upload_template')
+@router.register(path='components/download_bulk_upload_template/', name='components_download_bulk_upload_template')
 @login_required
 def download_bulk_upload_template(request: HttpRequest) -> FileResponse:
     '''Save the bulk upload template for a model as a CSV or Excel file.'''

@@ -3,7 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.files import File
 from .base_detail import BloomerpBaseDetailView
-from registries.route_registry import router
+from bloomerp.router import router
 
 
 @router.register(

@@ -23,7 +23,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.contrib.auth import update_session_auth_hash
 from django.forms import modelformset_factory
 from bloomerp.forms.auth import UserDetailViewPreferenceForm
-from registries.route_registry import router
+from bloomerp.router import router
 
 from django.contrib.auth import get_user_model
 User = get_user_model()

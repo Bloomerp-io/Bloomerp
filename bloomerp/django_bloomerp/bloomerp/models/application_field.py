@@ -226,4 +226,3 @@ class ApplicationField(models.Model):
             attrs=attrs
         )
         
-    

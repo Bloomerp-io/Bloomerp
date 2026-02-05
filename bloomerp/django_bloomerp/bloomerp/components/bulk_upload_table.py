@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from django.core.files import File
@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 
 
 @require_POST
-@router.route(path='components/bulk_upload_table/', name='components_bulk_upload_table')
+@router.register(path='components/bulk_upload_table/', name='components_bulk_upload_table')
 @login_required
 def bulk_upload_table(request:HttpRequest) -> HttpResponse:
     '''

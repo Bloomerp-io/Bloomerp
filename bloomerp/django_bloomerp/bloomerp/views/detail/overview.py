@@ -2,7 +2,7 @@ from bloomerp.models.users.user_detail_view_preference import UserDetailViewPref
 from bloomerp.services.detail_view_services import create_default_detail_view_preference
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.views.core import BloomerpBaseDetailView
-from registries.route_registry import router
+from bloomerp.router import router
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from typing import Any

@@ -7,7 +7,7 @@ from django.shortcuts import render
 from bloomerp.field_types import FieldType, Lookup
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.utils.form_fields import render_single_field
-from registries.route_registry import router
+from bloomerp.router import router
 
 @router.register(
     path='components/filters/<int:content_type_id>/init/',

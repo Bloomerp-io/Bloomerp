@@ -1,4 +1,4 @@
-from registries.route_registry import router
+from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from bloomerp.models.fields import TextEditorField
@@ -12,7 +12,7 @@ import uuid
 from django.contrib.auth.decorators import login_required
 
 
-@router.route(path='components/create_workspace_item/', name='components_create_workspace_item')
+@router.register(path='components/create_workspace_item/', name='components_create_workspace_item')
 @login_required
 def create_workspace_item(request: HttpRequest) -> HttpResponse:
     # Some permissions check (can user create dashboard item?)

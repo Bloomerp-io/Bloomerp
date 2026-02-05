@@ -1,5 +1,5 @@
 from bloomerp.forms.model_form import bloomerp_modelform_factory
-from registries.route_registry import router
+from bloomerp.router import router
 from django.http import HttpResponse
 from django.http import HttpRequest
 from django.contrib.contenttypes.models import ContentType

@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.users import Bookmark
 from bloomerp.views.mixins import HtmxMixin
-from registries.route_registry import router
+from bloomerp.router import router
 
 
 @router.register(

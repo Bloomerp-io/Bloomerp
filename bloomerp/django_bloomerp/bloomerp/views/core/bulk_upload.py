@@ -6,7 +6,7 @@ from bloomerp.forms.core import BloomerpDownloadBulkUploadTemplateForm
 from bloomerp.models.files import File
 from bloomerp.utils.models import model_name_plural_underline
 from bloomerp.views.mixins import HtmxMixin
-from registries.route_registry import router
+from bloomerp.router import router
 
 
 @router.register(

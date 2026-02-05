@@ -1,5 +1,5 @@
 from bloomerp.models.access_control.row_policy import RowPolicyChoice
-from registries.route_registry import router
+from bloomerp.router import router
 from django.views.generic import TemplateView
 from bloomerp.views.mixins import HtmxMixin
 from django.db.models import Model

@@ -35,6 +35,8 @@
     --color-blue-600: oklch(54.6% 0.245 262.881);
     --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-blue-800: oklch(42.4% 0.199 265.638);
+    --color-indigo-50: oklch(96.2% 0.018 272.314);
+    --color-indigo-600: oklch(51.1% 0.262 276.966);
     --color-purple-100: oklch(94.6% 0.033 307.174);
     --color-purple-700: oklch(49.6% 0.265 301.924);
     --color-slate-100: oklch(96.8% 0.007 247.896);
@@ -92,7 +94,6 @@
     --color-primary-50: #F4F4FD;
     --color-primary-100: #dbeafe;
     --color-primary-200: #bfdbfe;
-    --color-primary-300: #93c5fd;
     --color-primary-500: #4154f1;
     --color-primary: #4154f1;
     --color-primary-600: #4154f1;
@@ -432,6 +433,9 @@
   }
   .my-4 {
     margin-block: calc(var(--spacing) * 4);
+  }
+  .my-auto {
+    margin-block: auto;
   }
   .ms-2 {
     margin-inline-start: calc(var(--spacing) * 2);
@@ -989,6 +993,9 @@
   .h-28 {
     height: calc(var(--spacing) * 28);
   }
+  .h-32 {
+    height: calc(var(--spacing) * 32);
+  }
   .h-72 {
     height: calc(var(--spacing) * 72);
   }
@@ -1397,6 +1404,9 @@
   .gap-6 {
     gap: calc(var(--spacing) * 6);
   }
+  .gap-8 {
+    gap: calc(var(--spacing) * 8);
+  }
   .space-y-0\.5 {
     :where(& > :not(:last-child)) {
       --tw-space-y-reverse: 0;
@@ -1615,9 +1625,6 @@
   .border-primary-200 {
     border-color: var(--color-primary-200);
   }
-  .border-primary-300 {
-    border-color: var(--color-primary-300);
-  }
   .border-primary-500 {
     border-color: var(--color-primary-500);
   }
@@ -1656,9 +1663,6 @@
   }
   .bg-gray-200 {
     background-color: var(--color-gray-200);
-  }
-  .bg-gray-300 {
-    background-color: var(--color-gray-300);
   }
   .bg-gray-900\/50 {
     background-color: color-mix(in srgb, oklch(21% 0.034 264.665) 50%, transparent);
@@ -1713,6 +1717,18 @@
   }
   .bg-white {
     background-color: var(--color-white);
+  }
+  .bg-gradient-to-br {
+    --tw-gradient-position: to bottom right in oklab;
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+  .from-indigo-50 {
+    --tw-gradient-from: var(--color-indigo-50);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+  .to-white {
+    --tw-gradient-to: var(--color-white);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
   .fill-current {
     fill: currentcolor;
@@ -1779,9 +1795,6 @@
   }
   .py-6 {
     padding-block: calc(var(--spacing) * 6);
-  }
-  .py-8 {
-    padding-block: calc(var(--spacing) * 8);
   }
   .ps-1 {
     padding-inline-start: calc(var(--spacing) * 1);
@@ -1931,11 +1944,11 @@
   .text-gray-900 {
     color: var(--color-gray-900);
   }
-  .text-green-500 {
-    color: var(--color-green-500);
-  }
   .text-green-700 {
     color: var(--color-green-700);
+  }
+  .text-indigo-600 {
+    color: var(--color-indigo-600);
   }
   .text-light {
     color: var(--color-light);
@@ -2156,6 +2169,14 @@
       --tw-ring-color: var(--color-primary);
     }
   }
+  .hover\:-translate-y-1 {
+    &:hover {
+      @media (hover: hover) {
+        --tw-translate-y: calc(var(--spacing) * -1);
+        translate: var(--tw-translate-x) var(--tw-translate-y);
+      }
+    }
+  }
   .hover\:cursor-pointer {
     &:hover {
       @media (hover: hover) {
@@ -2205,24 +2226,10 @@
       }
     }
   }
-  .hover\:bg-gray-400 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-gray-400);
-      }
-    }
-  }
   .hover\:bg-green-700 {
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-green-700);
-      }
-    }
-  }
-  .hover\:bg-primary-50 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-primary-50);
       }
     }
   }
@@ -2453,6 +2460,11 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+  .sm\:grid-cols-3 {
+    @media (width >= 40rem) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
   .sm\:flex-row {
     @media (width >= 40rem) {
       flex-direction: row;
@@ -2589,6 +2601,11 @@
   .lg\:grid-cols-2 {
     @media (width >= 64rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .lg\:grid-cols-4 {
+    @media (width >= 64rem) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
   .lg\:p-8 {
@@ -3849,6 +3866,48 @@
   inherits: false;
   initial-value: solid;
 }
+@property --tw-gradient-position {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-gradient-from {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-via {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-to {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-stops {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-gradient-via-stops {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-gradient-from-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --tw-gradient-via-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --tw-gradient-to-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
 @property --tw-leading {
   syntax: "*";
   inherits: false;
@@ -4015,6 +4074,15 @@
       --tw-space-x-reverse: 0;
       --tw-divide-y-reverse: 0;
       --tw-border-style: solid;
+      --tw-gradient-position: initial;
+      --tw-gradient-from: #0000;
+      --tw-gradient-via: #0000;
+      --tw-gradient-to: #0000;
+      --tw-gradient-stops: initial;
+      --tw-gradient-via-stops: initial;
+      --tw-gradient-from-position: 0%;
+      --tw-gradient-via-position: 50%;
+      --tw-gradient-to-position: 100%;
       --tw-leading: initial;
       --tw-font-weight: initial;
       --tw-tracking: initial;

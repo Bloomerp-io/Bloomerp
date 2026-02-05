@@ -8,7 +8,7 @@ from bloomerp.forms.core import BloomerpModelForm
 from bloomerp.views.mixins import HtmxMixin
 from shared_utils.router.view_router import _get_name_or_slug
 from .base_detail import BloomerpBaseDetailView
-from registries.route_registry import router
+from bloomerp.router import router
 
 # ---------------------------------
 # Bloomerp many-to-many detail view

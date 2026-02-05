@@ -7,16 +7,14 @@ from django.shortcuts import redirect
 from django.contrib import messages
 from bloomerp.utils.document_templates import DocumentController
 from django.contrib.contenttypes.models import ContentType
-from shared_utils.router.view_router import BloomerpRouter
 from bloomerp.views.core import BloomerpBaseDetailView
 from django.views.generic.edit import UpdateView
 from bloomerp.utils.models import get_detail_base_view_url
-
+from bloomerp.router import router
 
 # ---------------------------------
 # Bloomerp Detail Document Template List View
 # ---------------------------------
-router = BloomerpRouter()
 
 EXCLUDE_MODELS = [
     DocumentTemplate,
@@ -26,7 +24,7 @@ EXCLUDE_MODELS = [
 ]
 
 
-@router.bloomerp_route(
+@router.register(
     path="document-templates", 
     name="Document Templates",
     url_name="document_templates_list",
@@ -60,7 +58,7 @@ class BloomerpDetailDocumentTemplateListView(PermissionRequiredMixin, BloomerpBa
 # Bloomerp Detail Document Template Generate View
 # ---------------------------------
 
-@router.bloomerp_route(
+@router.register(
     path="document-templates/<int:template_id>/", 
     name="Document Template generate for {model}",
     route_type="detail",
@@ -131,7 +129,7 @@ class BloomerpDetailDocumentTemplateGenerateView(PermissionRequiredMixin, Bloome
 
 
 
-@router.bloomerp_route(
+@router.register(
     models = DocumentTemplate, 
     path="editor",
     route_type="detail", 
@@ -152,7 +150,7 @@ class BloomerpDocumentTemplateEditorView(PermissionRequiredMixin, BloomerpBaseDe
     def get_permission_required(self):
         return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
 
-@router.bloomerp_route(
+@router.register(
     models = DocumentTemplate, 
     path="generate-document",
     route_type="detail", 
@@ -175,7 +173,7 @@ class BloomerpDocumentTemplateGenerateView(PermissionRequiredMixin, BloomerpBase
     def get_permission_required(self):
         return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
 
-@router.bloomerp_route(
+@router.register(
     models = DocumentTemplate, 
     path="generated-documents",
     route_type="detail", 

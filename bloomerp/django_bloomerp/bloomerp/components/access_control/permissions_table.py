@@ -1,7 +1,7 @@
 from django.http import HttpRequest
 from django.shortcuts import render
 from bloomerp.models.access_control import field_policy
-from registries.route_registry import router
+from bloomerp.router import router
 from rest_framework import serializers
 
 @router.register(

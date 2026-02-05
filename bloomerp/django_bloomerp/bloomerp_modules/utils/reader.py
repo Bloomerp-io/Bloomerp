@@ -3,8 +3,9 @@ from django.db.models import Model
 import yaml
 from django.db import models
 from typing import Optional, Dict, Any, Callable
-from shared_datatypes.modules import (
-    FieldConfig, ModelConfig, SubModuleConfig, ModuleConfig
+from bloomerp.modules.definition import ModelConfig, ModuleConfig, SubModuleConfig
+from bloomerp.modules.definition import (
+    FieldConfig
 )
 from bloomerp.field_types import FieldType, FieldTypeDefinition
 

@@ -7,7 +7,7 @@ from bloomerp.models.files import File
 from bloomerp.models.workspaces import Widget, SqlQuery
 from bloomerp.utils.models import model_name_plural_underline, get_detail_view_url
 from bloomerp.views.mixins import BloomerpModelFormViewMixin, HtmxMixin
-from registries.route_registry import router
+from bloomerp.router import router
 
 
 User = get_user_model()

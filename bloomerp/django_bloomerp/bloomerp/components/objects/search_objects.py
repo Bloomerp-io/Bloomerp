@@ -3,7 +3,7 @@ from django.http import HttpResponse, HttpRequest
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import BloomerpModel
 from bloomerp.utils.models import string_search
-from registries.route_registry import router
+from bloomerp.router import router
 
 
 @router.register(
