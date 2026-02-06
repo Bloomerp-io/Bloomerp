@@ -1,3 +1,4 @@
+from operator import mod
 from django.shortcuts import render
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.workspaces import Widget
@@ -8,6 +9,7 @@ from django.db.models import Model
 from bloomerp.views.mixins import HtmxMixin
 from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
+from bloomerp.modules.definition import module_registry
 
 @router.register(
     path="/",
@@ -21,43 +23,23 @@ class BloomerpHomeView(HtmxMixin, LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        widget_list = Widget.objects.all()
-        context['widget_list'] = widget_list
-        context["queryset"] = ContentType.objects.all()
-        context["fields"] = ApplicationField.get_for_model(ContentType).filter(field="name")
-        # Create a workspace for the user if it doesn't exist
+        context["modules"] = module_registry.get_all().values()
         return context
 
 
-@router.register(
-    path='workspace/<int:workspace_id>/',
-    name='View Workspace',
-    description='View a workspace',
-    route_type='app',
-    url_name='view_workspace'
-)
-class WorkspaceView(HtmxMixin, LoginRequiredMixin, View):
-    template_name = 'workspace_views/bloomerp_workspace_view.html'
+for module in module_registry.get_all().values():
+    @router.register(
+        path=f"/{module.code}/",
+        name=f'{module.name} Workspace',
+        description=f'The workspace for the {module.name} module',
+        route_type='app',
+        url_name=f'bloomerp_{module.code}_workspace_view'
+    )
+    class BloomerpModuleWorkspaceView(HtmxMixin, LoginRequiredMixin, TemplateView):
+        template_name = 'workspace_views/bloomerp_workspace_view.html'
 
-    def get(self, request, *args, **kwargs):
-        context = self.get_context_data()        
-        return render(request, self.template_name, context)
-    
-
-@router.register(
-        models="__all__",
-        path='',
-        name='{model} Dashboard',
-        description='The dashboard for the {model} model',
-        route_type = 'list',
-        url_name='dashboard'
-)
-class BloomerpContentTypeWorkspaceView(
-        HtmxMixin,
-        LoginRequiredMixin,
-        TemplateView
-    ):
-    model : Model = None
-    template_name = 'workspace_views/bloomerp_workspace_view.html'
-    
+        def get_context_data(self, **kwargs):
+            context = super().get_context_data(**kwargs)
+            print(f"Loading workspace for module: {module.name}")
+            return context
     

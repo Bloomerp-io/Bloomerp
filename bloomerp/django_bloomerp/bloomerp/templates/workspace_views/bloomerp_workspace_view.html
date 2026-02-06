@@ -1,15 +1,14 @@
-<div class="flex items-center justify-center h-full ">
-    <div class="container mx-auto my-auto px-4">
+<div class="flex justify-center mt-14">
+    <div class="container mx-auto px-4">
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8 justify-center">
-        {% for i in "12345" %}
-            <c-ui.tooltip title="" text="Hello" position="">
-                <div class="h-32 border border-gray-100 bg-white text-primary-900 rounded-xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-transform duration-150 ease-in-out transform hover:-translate-y-1">
-                    <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-50 to-white text-indigo-600 shadow">
-                        <i class="fas fa-user-friends fa-lg"></i>
-                    </div>
-                    <span class="text-sm font-semibold tracking-wide">HRM</span>
-                </div>    
-            </c-ui.tooltip>
+        {% for module in modules %}
+            <div class="h-full border hover:cursor-pointer border-gray-100 bg-white text-primary-900 rounded-xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-transform duration-150 ease-in-out transform hover:-translate-y-1">
+                <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-50 to-white text-indigo-600 shadow">
+                    <i class="fas {{module.icon}} fa-lg"></i>
+                </div>
+                <span class="text-sm font-semibold tracking-wide">{{ module.name }}</span>
+                <c-ui.text.muted class="mt-2 text-xs text-center">{{ module.description }}</c-ui.text.muted>
+            </div>    
         {% endfor %}
         </div>
     </div>

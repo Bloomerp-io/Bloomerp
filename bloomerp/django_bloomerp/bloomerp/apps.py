@@ -8,14 +8,21 @@ class BloomerpConfig(AppConfig):
         from django.db.utils import OperationalError, ProgrammingError
         from bloomerp.signals.automations import setup_automation_signals
         from bloomerp.utils.config import BloomerpConfigChecker
+        from bloomerp.modules.definition import module_registry
+        
         checker = BloomerpConfigChecker()
         checker.check()
-    
+
         try:
             setup_automation_signals()
         except (OperationalError, ProgrammingError):
             # Database may not be ready during migrations.
             pass
+        
+        # Refresh the module registry
+        module_registry.refresh()
+        
+        
         
         
 

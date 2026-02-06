@@ -2,4 +2,4 @@ id: finance
 code: FIN
 name: Finance
 description: Financial management module of the application
-icon: fa-money
+icon: fa-solid fa-chart-line

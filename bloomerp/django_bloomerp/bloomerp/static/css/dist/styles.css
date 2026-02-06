@@ -996,6 +996,12 @@
   .h-32 {
     height: calc(var(--spacing) * 32);
   }
+  .h-52 {
+    height: calc(var(--spacing) * 52);
+  }
+  .h-64 {
+    height: calc(var(--spacing) * 64);
+  }
   .h-72 {
     height: calc(var(--spacing) * 72);
   }

@@ -8,7 +8,7 @@ from bloomerp.modules.definition import (
     FieldConfig
 )
 from bloomerp.field_types import FieldType, FieldTypeDefinition
-
+from bloomerp.modules.definition import module_registry
 
 def _get_field_type_definition(field_type: str) -> FieldTypeDefinition:
     """Get field type definition for a field type."""
@@ -337,9 +337,12 @@ def load_all_models_from_modules() -> dict[str, type[Model]]:
                     # Use a unique key to avoid conflicts
                     model_key = f"{module.id}_{sub_module.id}_{model_config.id}"
                     models[model_key] = model_class
+                    
                 except Exception as e:
                     print(f"Error creating model '{model_config.name}' from module '{module.id}': {e}")
                     continue
+        print("Registering module:", module.id)
+        module_registry.register(module)
     return models
 
 

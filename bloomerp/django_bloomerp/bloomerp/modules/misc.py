@@ -1,8 +1,9 @@
 from .definition import ModuleConfig
 
 class MiscModule(ModuleConfig):
-    code = "misc"
-    icon = "fa-solid fa-ellipsis-h"
-    name = "Miscellaneous"
-    description = "A collection of miscellaneous features and tools that don't fit into other specific modules."
+    id: str = "misc"
+    code: str = "misc"
+    icon: str = "fa-solid fa-ellipsis-h"
+    name: str = "Miscellaneous"
+    description: str = "A collection of miscellaneous features and tools that don't fit into other specific modules."
     

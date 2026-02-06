@@ -2,4 +2,4 @@ id: hrm
 code: HRM
 name: Human Resources
 description: Complete HR system
-icon: "\U0001F465"
+icon: fa-solid fa-user-tie

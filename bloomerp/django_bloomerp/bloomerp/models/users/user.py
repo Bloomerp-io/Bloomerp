@@ -24,7 +24,8 @@ class AbstractBloomerpUser(
     # String search mixin fields
     string_search_fields = ['first_name+last_name', 'username']
     allow_string_search = True
-
+    modules = ["users"]
+    
     # ------------------------------------------------
     # User Preferences
     # ------------------------------------------------
@@ -86,13 +87,6 @@ class AbstractBloomerpUser(
 
         return content_types
 
-    def get_list_view_preference_for_model(self, model) -> QuerySet:
-        """
-        Get the list view preference for the provided model.
-        """
-        from bloomerp.models.auth import UserListViewField
-        content_type = ContentType.objects.get_for_model(model)
-        return UserListViewField.objects.filter(user=self, application_field__content_type=content_type)
 
     @property
     def accessible_content_types(self) -> QuerySet:
@@ -101,19 +95,8 @@ class AbstractBloomerpUser(
         '''
         return self.get_content_types_for_user(permission_types=["view"])
 
-    def latest_bookmarks(self) -> QuerySet:
-        '''
-        Property that returns the latest bookmarks for the user.
-        '''
-        return Bookmark.objects.filter(user=self).order_by('-datetime_created')[:5]
-
-    def workspaces(self) -> QuerySet:
-        '''
-        Method that returns the workspaces for the user.
-        '''
-        return Workspace.objects.filter(user=self, content_type=None)
-
-
+    
+    
 class User(AbstractBloomerpUser):
     class Meta(BloomerpModel.Meta):
         db_table = "auth_user"

@@ -2,6 +2,15 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+import warnings
+import traceback
+
+# def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+#     print("\n=== DJANGO WARNING TRACEBACK ===")
+#     traceback.print_stack()
+#     print("=== END TRACEBACK ===\n")
+
+# warnings.showwarning = warn_with_traceback
 
 
 def main():
