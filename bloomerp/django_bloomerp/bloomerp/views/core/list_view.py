@@ -8,11 +8,11 @@ from bloomerp.router import router
 
 
 @router.register(
-    path="list",
+    path="",
     name="{model} list",
-    url_name="list",
+    url_name="model",
     description="List of {model} model",
-    route_type="list",
+    route_type="model",
     exclude_models=[File],
 )
 class BloomerpListView(PermissionRequiredMixin, BloomerpModelContextMixin, HtmxMixin, ListView):

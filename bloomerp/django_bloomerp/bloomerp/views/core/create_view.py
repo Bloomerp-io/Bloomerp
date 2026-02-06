@@ -18,7 +18,7 @@ User = get_user_model()
     name="Create {model}",
     url_name="add",
     description="Create a new object from {model}",
-    route_type="list",
+    route_type="model",
     exclude_models=[File, Widget, SqlQuery, User],
 )
 class BloomerpCreateView(

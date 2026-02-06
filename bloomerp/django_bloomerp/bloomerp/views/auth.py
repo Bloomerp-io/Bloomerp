@@ -49,7 +49,7 @@ class ProfileMixin:
 @router.register(
     path="my-profile/",
     models=User,
-    route_type="list",
+    route_type="model",
     name="Profile",
     description="Overview of profile",
     url_name="my_profile_overview"
@@ -78,7 +78,7 @@ class BloomerpProfileView(BloomerpModelFormViewMixin, ProfileMixin, HtmxMixin, B
 @router.register(
     path="my-profile/reset-password/",
     models=User,
-    route_type="list",
+    route_type="model",
     name="Reset password",
     description="Reset password for a user",
     url_name="my_profile_change_password"
@@ -107,7 +107,7 @@ class BloomerpProfilePasswordResetView(ProfileMixin, BloomerpBaseDetailView, For
 @router.register(
     path="my-profile/list-view-preference/",
     models=User,
-    route_type="list",
+    route_type="model",
     name="List view preference",
     description="List view preference for a user",
     url_name="my_profile_list_view_preference"
@@ -165,7 +165,7 @@ from django.views.generic.edit import FormView
 @router.register(
     path="my-profile/detail-view-preferences/",
     models=User,
-    route_type="list",
+    route_type="model",
     name="Detail view preference",
     description="Detail view preference for a user",
     url_name="my_profile_detail_view_preference"
@@ -265,7 +265,7 @@ from django.contrib.messages.views import SuccessMessageMixin
     name="Create user",
     url_name="add",
     description="Create a new object from User",
-    route_type="list",
+    route_type="model",
     models=User
 )
 class UserCreateView(

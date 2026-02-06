@@ -14,7 +14,7 @@ from bloomerp.router import router
     name="Bulk Upload {model}",
     url_name="bulk_upload",
     description="Bulk upload objects from {model}",
-    route_type="list",
+    route_type="model",
     exclude_models=[File],
 )
 class BloomerpBulkUploadView(PermissionRequiredMixin, HtmxMixin, View):

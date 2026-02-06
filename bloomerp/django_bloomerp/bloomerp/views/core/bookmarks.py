@@ -12,7 +12,7 @@ from bloomerp.router import router
     name="Bookmarks for user",
     url_name="user_bookmarks",
     description="Bookmarks for user",
-    route_type="list",
+    route_type="model",
     models=[Bookmark],
 )
 class BloomerpBookmarksView(LoginRequiredMixin, HtmxMixin, View):

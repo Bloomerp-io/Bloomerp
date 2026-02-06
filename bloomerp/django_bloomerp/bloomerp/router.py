@@ -115,8 +115,9 @@ def _generate_name(name: Optional[str]=None, model: Optional[Model]=None, view: 
 # ------------------------
 class RouteType(Enum):
     APP = "app"
-    LIST = "list"
+    MODEL = "model"
     DETAIL = "detail"
+    MODULE = "module"
 
 class ViewType(Enum):
     CLASS = "class"

@@ -4,7 +4,12 @@ from django.db import connection, models
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 
 
-def create_test_models(app_label: str, model_defs: dict, use_bloomerp_base: bool = False) -> dict[str, models.Model | BloomerpModel]:
+def create_test_models(
+    app_label: str, 
+    model_defs: dict, 
+    use_bloomerp_base: bool = False,
+    bloomerp_meta_class: type = None
+    ) -> dict[str, models.Model | BloomerpModel]:
     """
     model_defs = {
         "ModelName": {
@@ -28,6 +33,10 @@ def create_test_models(app_label: str, model_defs: dict, use_bloomerp_base: bool
         Meta = type("Meta", (), {"app_label": app_label})
         attrs["Meta"] = Meta
 
+        # Add Bloomerp class if specified
+        if bloomerp_meta_class:
+            attrs["Bloomerp"] = bloomerp_meta_class
+        
         base = BloomerpModel if use_bloomerp_base else models.Model
 
         model = type(model_name, (base,), attrs)

@@ -9,11 +9,11 @@ from bloomerp.router import router
 
 
 @router.register(
-    path="list",
+    path="model",
     name="Files",
-    url_name="list",
+    url_name="model",
     description="Bloomerp Files",
-    route_type="list",
+    route_type="model",
     models=[File],
 )
 class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, View):

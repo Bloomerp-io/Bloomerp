@@ -24,7 +24,9 @@ class AbstractBloomerpUser(
     # String search mixin fields
     string_search_fields = ['first_name+last_name', 'username']
     allow_string_search = True
-    modules = ["users"]
+
+    class Bloomerp:
+        modules = ["users"]
     
     # ------------------------------------------------
     # User Preferences
@@ -101,4 +103,3 @@ class User(AbstractBloomerpUser):
     class Meta(BloomerpModel.Meta):
         db_table = "auth_user"
         swappable = "AUTH_USER_MODEL"
-

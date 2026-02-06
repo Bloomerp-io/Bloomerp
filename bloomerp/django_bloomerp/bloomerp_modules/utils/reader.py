@@ -287,8 +287,10 @@ def scan_modules_directory() -> list[ModuleConfig]:
                 'id': submodule_data.get('id', item.name),
                 'name': submodule_data.get('name', item.name.replace('_', ' ').title()),
                 'code': submodule_data.get('code', item.name.upper()),
+                'module_id': module_data.get('id', module_dir.name),
                 'description': submodule_data.get('description', ''),
                 'enabled': submodule_data.get('enabled', True),
+                'icon': submodule_data.get('icon'),
                 'models': models
             }
             sub_module_config = SubModuleConfig(**clean_submodule_data)
@@ -341,7 +343,6 @@ def load_all_models_from_modules() -> dict[str, type[Model]]:
                 except Exception as e:
                     print(f"Error creating model '{model_config.name}' from module '{module.id}': {e}")
                     continue
-        print("Registering module:", module.id)
         module_registry.register(module)
     return models
 
@@ -388,8 +389,10 @@ def parse_yaml_config(yaml_file_path: str) -> ModuleConfig:
                 id=sub_module_data['id'],
                 name=sub_module_data['name'],
                 code=sub_module_data['code'],
+                module_id=module_data['id'],
                 models=models,
-                description=sub_module_data.get('description')
+                description=sub_module_data.get('description'),
+                icon=sub_module_data.get('icon'),
             )
             sub_modules.append(sub_module_config)
     
@@ -401,6 +404,5 @@ def parse_yaml_config(yaml_file_path: str) -> ModuleConfig:
         icon=module_data['icon'],
         sub_modules=sub_modules
     )
-
 
 
