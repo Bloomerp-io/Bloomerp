@@ -7,6 +7,8 @@ from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.workspaces import Widget
 from django.utils.safestring import mark_safe
+from django.utils.html import escape
+import re
 import uuid
 from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField
 from django.db.models.functions import Cast
@@ -307,9 +309,12 @@ def detail_view_url(object:Model):
     '''
     try:
         return object.get_absolute_url()
-    except:
-        model = object._meta.model
-        return reverse(get_detail_view_url(model), kwargs={'pk': object.pk})
+    except Exception:
+        try:
+            model = object._meta.model
+            return reverse(get_detail_view_url(model), kwargs={'pk': object.pk})
+        except Exception:
+            return ""
 
 
 @register.filter
@@ -452,6 +457,26 @@ def get_item(dictionary, key):
         return dictionary.get(key, [])
     except (AttributeError, TypeError):
         return []
+
+
+@register.filter
+def highlight_query(value, query):
+    """Highlight query matches in a string with a yellow background."""
+    if value is None:
+        return ""
+
+    value_str = str(value)
+    query_str = str(query or "").strip()
+    if not query_str:
+        return value_str
+
+    escaped_value = escape(value_str)
+    pattern = re.compile(re.escape(query_str), re.IGNORECASE)
+
+    def _repl(match: re.Match) -> str:
+        return f'<span class="bg-yellow-200 text-gray-900 rounded px-1">{match.group(0)}</span>'
+
+    return mark_safe(pattern.sub(_repl, escaped_value))
 
 
 @register.inclusion_tag('inclusion_tags/sidebar_module_content.html')

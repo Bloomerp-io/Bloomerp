@@ -21,6 +21,7 @@
     --color-amber-300: oklch(87.9% 0.169 91.605);
     --color-amber-700: oklch(55.5% 0.163 48.998);
     --color-amber-800: oklch(47.3% 0.137 46.201);
+    --color-yellow-200: oklch(94.5% 0.129 101.54);
     --color-green-50: oklch(98.2% 0.018 155.826);
     --color-green-100: oklch(96.2% 0.044 156.743);
     --color-green-500: oklch(72.3% 0.219 149.579);
@@ -1682,6 +1683,9 @@
   .bg-primary {
     background-color: var(--color-primary);
   }
+  .bg-primary-50 {
+    background-color: var(--color-primary-50);
+  }
   .bg-primary-100 {
     background-color: var(--color-primary-100);
   }
@@ -1714,6 +1718,9 @@
   }
   .bg-white {
     background-color: var(--color-white);
+  }
+  .bg-yellow-200 {
+    background-color: var(--color-yellow-200);
   }
   .bg-gradient-to-br {
     --tw-gradient-position: to bottom right in oklab;
@@ -1819,6 +1826,9 @@
   }
   .pb-0 {
     padding-bottom: calc(var(--spacing) * 0);
+  }
+  .pb-2 {
+    padding-bottom: calc(var(--spacing) * 2);
   }
   .pb-4 {
     padding-bottom: calc(var(--spacing) * 4);
@@ -2070,6 +2080,9 @@
   }
   .ring-primary {
     --tw-ring-color: var(--color-primary);
+  }
+  .ring-primary-200 {
+    --tw-ring-color: var(--color-primary-200);
   }
   .ring-primary-500 {
     --tw-ring-color: var(--color-primary-500);

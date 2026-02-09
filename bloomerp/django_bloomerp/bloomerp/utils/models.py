@@ -1,5 +1,6 @@
-from django.db.models import Model
+from django.db.models import F, Model, QuerySet, Value
 from django.contrib.contenttypes.models import ContentType
+from django.db.models.functions import Concat
 from bloomerp.models import ApplicationField
 
 from django.db.models.query import QuerySet
@@ -469,6 +470,72 @@ def stringify_object(object: Model) -> str:
             object_string += f'{field_name}: [Error retrieving value: {str(e)}]\n'
 
     return object_string
+
+
+def string_search_queryset(qs: QuerySet, search_value: str) -> QuerySet:
+        model = qs.model
+        string_fields = getattr(model, "string_search_fields", None) or [
+            field.name
+            for field in model._meta.fields
+            if isinstance(field, CharField) or isinstance(field, TextField)
+        ]
+        if not string_fields:
+            return qs.none()
+
+        search_value = search_value or ""
+        query_filter = None
+        working_qs = qs
+
+        actual_field_names = {
+            field.name
+            for field in model._meta.fields
+            if isinstance(field, CharField) or isinstance(field, TextField)
+        }
+        token_fields = []
+
+        for field in string_fields:
+            if "+" in field:
+                concatenated_query = search_value.replace(" ", "")
+                concat_fields = field.split("+")
+                concat_operation = Concat(
+                    *[F(item) if item != " " else Value(" ") for item in concat_fields],
+                    output_field=CharField(),
+                )
+                working_qs = working_qs.annotate(**{field: concat_operation})
+                condition = {f"{field}__icontains": concatenated_query}
+                for part in concat_fields:
+                    if part in actual_field_names:
+                        token_fields.append(part)
+            else:
+                condition = {f"{field}__icontains": search_value}
+                if field in actual_field_names:
+                    token_fields.append(field)
+
+            if query_filter is None:
+                query_filter = Q(**condition)
+            else:
+                query_filter |= Q(**condition)
+
+        if query_filter is None:
+            return qs.none()
+
+        tokens = [token for token in search_value.split() if token]
+        token_fields = list(dict.fromkeys(token_fields))
+        if len(tokens) > 1 and token_fields:
+            tokens_query = None
+            for token in tokens:
+                token_query = Q()
+                for field in token_fields:
+                    token_query |= Q(**{f"{field}__icontains": token})
+                if tokens_query is None:
+                    tokens_query = token_query
+                else:
+                    tokens_query &= token_query
+
+            if tokens_query is not None:
+                query_filter = query_filter | tokens_query
+
+        return working_qs.filter(query_filter)
 
 
 

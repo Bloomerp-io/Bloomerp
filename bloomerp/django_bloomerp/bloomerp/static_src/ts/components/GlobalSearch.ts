@@ -10,7 +10,11 @@ export default class GlobalSearch extends BaseComponent {
     private shortcutLabelEl: HTMLElement | null = null;
     private keyHandler: ((e: KeyboardEvent) => void) | null = null;
     private inputHandler: ((e: InputEvent) => void) | null = null;
+    private inputKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+    private afterSwapHandler: ((e: Event) => void) | null = null;
     private debounceTimer: number | null = null;
+    private resultItems: HTMLElement[] = [];
+    private activeIndex: number = -1;
 
     public initialize(): void {
         if (!this.element) return;
@@ -70,6 +74,27 @@ export default class GlobalSearch extends BaseComponent {
             };
 
             this.modalInput.addEventListener('input', this.inputHandler);
+
+            this.inputKeyHandler = (e: KeyboardEvent) => {
+                if (!this.resultsContainer) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.moveSelection(1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.moveSelection(-1);
+                } else if (e.key === 'Enter') {
+                    const activeItem = this.getActiveItem();
+                    if (activeItem) {
+                        e.preventDefault();
+                        activeItem.click();
+                        this.searchModal?.close();
+                    }
+                }
+            };
+
+            this.modalInput.addEventListener('keydown', this.inputKeyHandler);
         }
 
         // Set shortcut label based on platform and listen for Cmd/Ctrl+K
@@ -91,6 +116,15 @@ export default class GlobalSearch extends BaseComponent {
         };
 
         document.addEventListener('keydown', this.keyHandler);
+
+        this.afterSwapHandler = (event: Event) => {
+            const detail = (event as CustomEvent).detail;
+            if (!detail || !this.resultsContainer) return;
+            if (detail.target !== this.resultsContainer) return;
+            this.refreshResultItems();
+        };
+
+        document.addEventListener('htmx:afterSwap', this.afterSwapHandler);
         
     }
 
@@ -105,11 +139,68 @@ export default class GlobalSearch extends BaseComponent {
             this.inputHandler = null;
         }
 
+        if (this.inputKeyHandler && this.modalInput) {
+            this.modalInput.removeEventListener('keydown', this.inputKeyHandler);
+            this.inputKeyHandler = null;
+        }
+
         if (this.debounceTimer) {
             window.clearTimeout(this.debounceTimer);
             this.debounceTimer = null;
         }
 
+        if (this.afterSwapHandler) {
+            document.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
+            this.afterSwapHandler = null;
+        }
+
         super.destroy();
+    }
+
+    private refreshResultItems(): void {
+        if (!this.resultsContainer) return;
+
+        this.resultItems = Array.from(
+            this.resultsContainer.querySelectorAll<HTMLElement>('[data-global-search-item]')
+        );
+        this.activeIndex = this.resultItems.length > 0 ? 0 : -1;
+        this.updateActiveStyles();
+    }
+
+    private moveSelection(delta: number): void {
+        if (this.resultItems.length === 0) return;
+
+        const nextIndex = (this.activeIndex + delta + this.resultItems.length) % this.resultItems.length;
+        this.activeIndex = nextIndex;
+        this.updateActiveStyles();
+        this.scrollActiveItemIntoView();
+    }
+
+    private updateActiveStyles(): void {
+        this.resultItems.forEach((item, index) => {
+            const row = item.closest('[data-global-search-row]') as HTMLElement | null;
+            if (!row) return;
+            if (index === this.activeIndex) {
+                row.classList.add('bg-primary-50', 'text-primary-900', 'ring-1', 'ring-primary-200');
+                row.classList.remove('hover:bg-gray-50');
+            } else {
+                row.classList.remove('bg-primary-50', 'text-primary-900', 'ring-1', 'ring-primary-200');
+                row.classList.add('hover:bg-gray-50');
+            }
+        });
+    }
+
+    private getActiveItem(): HTMLElement | null {
+        if (this.activeIndex < 0 || this.activeIndex >= this.resultItems.length) {
+            return null;
+        }
+        return this.resultItems[this.activeIndex];
+    }
+
+    private scrollActiveItemIntoView(): void {
+        const activeItem = this.getActiveItem();
+        if (!activeItem) return;
+        const row = activeItem.closest('[data-global-search-row]') as HTMLElement | null;
+        row?.scrollIntoView({ block: 'nearest' });
     }
 }
