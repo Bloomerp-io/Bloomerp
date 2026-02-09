@@ -22,7 +22,8 @@ class BloomerpBulkUploadView(PermissionRequiredMixin, HtmxMixin, View):
     model = None
     success_url = None
     success_message = "Objects were uploaded successfully."
-
+    module = None
+    
     def get_permission_required(self):
         return [f"{self.model._meta.app_label}.bulk_add_{self.model._meta.model_name}"]
 

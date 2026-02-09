@@ -316,6 +316,18 @@ class ModuleRegistry:
         # self._register_models_from_apps()
         return list(self._submodule_models.get((module_id, submodule_id), {}).values())
 
+    def get_modules_for_model(self, model: type[Model]) -> list[ModuleConfig]:
+        """Return the module config for a given model class."""
+        model_key = model._meta.label_lower
+        modules = []
+        for module_id, models in self._module_models.items():
+            if model_key in models:
+                module = self.items.get(module_id)
+                if module:
+                    modules.append(module.copy(update={"name": module.id}))
+        return modules
+        
+    
     def _register_models_from_apps(self) -> None:
         """Scan installed apps and map models to modules/submodules."""
         for model in apps.apps.get_models():
@@ -526,6 +538,5 @@ class ModuleRegistry:
             if model._meta.verbose_name_plural
             else None,
         )
-
 
 module_registry = ModuleRegistry()

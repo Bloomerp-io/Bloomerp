@@ -19,7 +19,8 @@ from bloomerp.router import router
 class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, View):
     template_name = "list_views/bloomerp_file_list_view.html"
     model = File
-
+    module = None
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 

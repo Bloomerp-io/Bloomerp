@@ -20,7 +20,7 @@ from bloomerp.router import router
     path='create',
     name= 'Create Sql Query',
     description='Create a new Sql Query',
-    route_type='list',
+    route_type='model',
     url_name='add'
 )
 class SqlQueryCreateView(PermissionRequiredMixin, HtmxMixin, BloomerpModelFormViewMixin, CreateView):
@@ -78,7 +78,7 @@ class SqlQueryEditorView(PermissionRequiredMixin, BloomerpModelContextMixin, Htm
         path='create',
         name='Create Widget',
         description='Create a new Widget',
-        route_type='list',
+        route_type='model',
         url_name='add'
 )
 class WidgetCreateWizardView(PermissionRequiredMixin, HtmxMixin, SessionWizardView):

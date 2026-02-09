@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.forms.models import modelform_factory
 from bloomerp.models import ApplicationField
 from django.views.generic import DetailView, UpdateView
+from bloomerp.modules.definition import ModuleConfig
 from bloomerp.utils.models import (
     get_create_view_url,
     get_update_view_url,
@@ -18,6 +19,7 @@ from django.views.generic.edit import ModelFormMixin
 from bloomerp.models import BloomerpModel
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 
+
 class HtmxMixin:
     '''Updates the template name based on the request.htmx attribute.'''
     htmx_template = 'bloomerp_htmx_base_view.html'
@@ -26,6 +28,9 @@ class HtmxMixin:
     htmx_main_target = 'main-content'
     is_detail_view = False
     include_padding = True
+    
+    # Some other args
+    module : ModuleConfig = None
     
     def get_context_data(self, **kwargs:Any) -> dict:
         try:

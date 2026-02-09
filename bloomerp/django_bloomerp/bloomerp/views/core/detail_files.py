@@ -16,7 +16,8 @@ from bloomerp.router import router
 )
 class BloomerpDetailFileListView(PermissionRequiredMixin, BloomerpBaseDetailView):
     template_name = "snippets/files_snippet.html"
-
+    modules = None
+    
     def get_permission_required(self):
         return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
 

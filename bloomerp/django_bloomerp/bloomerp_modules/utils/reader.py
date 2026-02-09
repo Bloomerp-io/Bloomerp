@@ -32,7 +32,7 @@ def _get_validator_functions(field_config:FieldConfig) -> list[Callable]:
                 validator_function = getattr(validator_module, function_name)
                 validator_functions.append(validator_function)
             except (ImportError, AttributeError) as e:
-                print(f"Warning: Could not import validator '{validator_path}': {e}")
+                print(f"Warning: Could not import validator '{validator_path}':{e}")
                 continue
     
     return validator_functions
@@ -174,8 +174,12 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
         if model_config.custom_permissions:
             permissions = [(perm.id, perm.name) for perm in model_config.custom_permissions] if isinstance(model_config.custom_permissions, list) else []
     
+    class Bloomerp:
+        modules = [f"{module_config.id}.{sub_module.id}"]
+    
     attrs['Meta'] = Meta
     attrs['__module__'] = 'bloomerp_modules.models'
+    attrs['Bloomerp'] = Bloomerp
     
     # Create class name from model name (remove spaces and special chars)
     model_class_name = get_model_class_name(model_config.name)

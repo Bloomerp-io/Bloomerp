@@ -9,48 +9,58 @@ import importlib
 import os
 from functools import wraps
 from typing import Callable, List, Literal
-
+from bloomerp.modules.definition import ModuleConfig, module_registry
 logger = logging.getLogger(__name__)
 
-def _generate_description(name: Optional[str]=None, model: Optional[Model]=None, view: Optional[Callable|View]=None) -> str:
+def _generate_description(
+    name: Optional[str] = None,
+    model: Optional[Model] = None,
+    view: Optional[Callable | View] = None,
+    module: Optional[ModuleConfig] = None,
+) -> str:
     """Auto-generate a descriptive name including model information"""
-    if not name and not model and not view:
+    if not name and not model and not view and not module:
         raise Exception("At least one argument needs to be given")
 
     # If name is provided, handle it
     if name:
-        # Check if name has {model} placeholder that needs formatting
-        if model and "{model}" in name:
+        format_values = {}
+        if model:
+            format_values["model"] = model._meta.verbose_name
+        if module:
+            format_values["module"] = module.name if getattr(module, "name", None) else module.id
+
+        if "{" in name and format_values:
             try:
-                return name.format(model=model._meta.verbose_name.lower())
+                return name.format(**format_values)
             except Exception:
                 return name
-        else:
-            # Return name as-is if no formatting needed
-            return name
+
+        # Return name as-is if no formatting needed
+        return name
 
     # If no name but we have model and view, generate from view name
     if not name and model and view:
         if hasattr(view, '__name__'):
             # Function-based view - convert snake_case to readable format
-            view_name = view.__name__.replace('_', ' ').lower()
+            view_name = view.__name__.replace('_', ' ')
             return view_name
         elif hasattr(view, '__class__'):
             # Class-based view - convert CamelCase to readable format
             class_name = view.__class__.__name__
             # Add spaces before capital letters and convert to lowercase
             import re
-            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name).lower()
+            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name)
             return readable_name
 
     # If we only have view (no name, no model), still try to generate from view
     if view and not name:
         if hasattr(view, '__name__'):
-            return view.__name__.replace('_', ' ').lower()
+            return view.__name__.replace('_', ' ')
         elif hasattr(view, '__class__'):
             class_name = view.__class__.__name__
             import re
-            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name).lower()
+            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name)
             return readable_name
 
     # If we have model but no view and no name, we can't generate anything meaningful
@@ -61,45 +71,55 @@ def _generate_description(name: Optional[str]=None, model: Optional[Model]=None,
     raise Exception("Unable to generate name with provided arguments")
 
 
-def _generate_name(name: Optional[str]=None, model: Optional[Model]=None, view: Optional[Callable|View]=None) -> str:
+def _generate_name(
+    name: Optional[str] = None,
+    model: Optional[Model] = None,
+    view: Optional[Callable | View] = None,
+    module: Optional[ModuleConfig] = None,
+) -> str:
     """Auto-generate a descriptive name including model information"""
-    if not name and not model and not view:
+    if not name and not model and not view and not module:
         raise Exception("At least one argument needs to be given")
 
     # If name is provided, handle it
     if name:
-        # Check if name has {model} placeholder that needs formatting
-        if model and "{model}" in name:
+        format_values = {}
+        if model:
+            format_values["model"] = model._meta.verbose_name
+        if module:
+            format_values["module"] = module.name if getattr(module, "name", None) else module.id
+
+        if "{" in name and format_values:
             try:
-                return name.format(model=model._meta.verbose_name.lower())
+                return name.format(**format_values)
             except Exception:
                 return name
-        else:
-            # Return name as-is if no formatting needed
-            return name
+
+        # Return name as-is if no formatting needed
+        return name
 
     # If no name but we have model and view, generate from view name
     if not name and model and view:
         if hasattr(view, '__name__'):
             # Function-based view - convert snake_case to readable format
-            view_name = view.__name__.replace('_', ' ').lower()
+            view_name = view.__name__.replace('_', ' ')
             return view_name
         elif hasattr(view, '__class__'):
             # Class-based view - convert CamelCase to readable format
             class_name = view.__class__.__name__
             # Add spaces before capital letters and convert to lowercase
             import re
-            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name).lower()
+            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name)
             return readable_name
 
     # If we only have view (no name, no model), still try to generate from view
     if view and not name:
         if hasattr(view, '__name__'):
-            return view.__name__.replace('_', ' ').lower()
+            return view.__name__.replace('_', ' ')
         elif hasattr(view, '__class__'):
             class_name = view.__class__.__name__
             import re
-            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name).lower()
+            readable_name = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name)
             return readable_name
 
     # If we have model but no view and no name, we can't generate anything meaningful
@@ -132,6 +152,7 @@ class BloomerpRoute:
     view_type: ViewType
     view: Callable | View
     model: Optional[Model] = None
+    module: Optional[ModuleConfig] = None
     description: str = None
     override: bool = False
     args : Optional[dict] = None
@@ -139,11 +160,11 @@ class BloomerpRoute:
 # ------------------------
 # Helper functions
 # ------------------------
-def _retrieve_models(models, exclude_models, route_type: RouteType) -> list[Model]:
+def _retrieve_models(models:list[Model], exclude_models:list[Model], route_type: RouteType) -> list[Model]:
     """Retrieves the used models from the parameters"""
-    if route_type == RouteType.APP:
+    if route_type in [RouteType.APP, RouteType.MODULE]:
         return [None]  # App routes don't need models
-
+    
     if not models and not exclude_models:
         return [None]
 
@@ -170,11 +191,13 @@ def _retrieve_models(models, exclude_models, route_type: RouteType) -> list[Mode
     return [None]
 
 
-def _generate_path(path: str, route_type: RouteType, model: Optional[Model] = None) -> str:
+def _generate_path(path: str, route_type: RouteType, model: Optional[Model] = None, module: Optional[ModuleConfig] = None) -> str:
     """Auto-generates a URL path based on the route type and model information."""
     # Validate that models are provided for routes that need them
-    if route_type in [RouteType.DETAIL, RouteType.LIST] and not model:
+    if route_type in [RouteType.DETAIL, RouteType.MODEL] and not model:
         raise ValueError(f"Model required for route type '{route_type.value}'")
+    if route_type in [RouteType.DETAIL, RouteType.MODEL, RouteType.MODULE] and not module:
+        raise ValueError(f"Module required for route type '{route_type.value}'")
 
     # Ensure path has proper slashes
     if path and not path.startswith('/'):
@@ -186,43 +209,48 @@ def _generate_path(path: str, route_type: RouteType, model: Optional[Model] = No
     if route_type == RouteType.APP:
         return path if path else "/app-route/"
 
-    elif route_type == RouteType.LIST:
+    elif route_type == RouteType.MODULE:
+        module_path = f"/{module.id.lower()}/"
+        return module_path + path.lstrip('/') if path else module_path
+    
+    elif route_type == RouteType.MODEL:
         # Get model plural name and convert to URL-friendly format
         model_plural = model._meta.verbose_name_plural.lower().replace(' ', '-')
         if path:
-            return f"/{model_plural}{path}"
-        else:
-            return f"/{model_plural}/"
+            return f"/{module.id.lower()}/{model_plural}{path}"
+        return f"/{module.id.lower()}/{model_plural}/"
 
     elif route_type == RouteType.DETAIL:
-        # Get model singular name and convert to URL-friendly format
+        # Get model plural name and convert to URL-friendly format
         model_name = model._meta.verbose_name_plural.lower().replace(' ', '-')
         if path:
-            return f"/{model_name}/<int_or_uuid:pk>{path}"
-        else:
-            return f"/{model_name}/<int_or_uuid:pk>/"
-
+            return f"/{module.id.lower()}/{model_name}/<int_or_uuid:pk>{path}"
+        return f"/{module.id.lower()}/{model_name}/<int_or_uuid:pk>/"
     else:
         return path if path else "/auto-route/"
 
 
-def _auto_generate_url_name(name:Optional[str], route_type:RouteType, model:Optional[Model] = None) -> str:
+def _auto_generate_url_name(name: Optional[str], route_type: RouteType, model: Optional[Model] = None, module: Optional[ModuleConfig] = None) -> str:
     """Auto generates a url name based on the given parameters"""
     def _transform_str(value:str) -> str:
         if value is None:
             return "unnamed_route"
         return value.lower().replace(" ","_")
 
-    if route_type in [RouteType.DETAIL, RouteType.LIST] and model is None:
+    if route_type in [RouteType.DETAIL, RouteType.MODEL] and model is None:
         raise ValueError(f"Model required for '{route_type.value}' route type")
+    if route_type == RouteType.MODULE and module is None:
+        raise ValueError("Module required for 'module' route type")
 
     match route_type:
         case RouteType.APP:
             return _transform_str(name)
         case RouteType.DETAIL:
             return _transform_str(model._meta.verbose_name_plural) + "_" + route_type.value + "_" + _transform_str(name)
-        case RouteType.LIST:
+        case RouteType.MODEL:
             return _transform_str(model._meta.verbose_name_plural) + "_" + _transform_str(name)
+        case RouteType.MODULE:
+            return _transform_str(module.id) + "_" + route_type.value + "_" + _transform_str(name)
         case _:
             raise ValueError("Invalid route type")
 
@@ -311,8 +339,9 @@ class BloomerpRouteRegistry:
     def register(
         self,
         path: str = None,
-        route_type: Literal['app', 'list', 'detail'] = 'app',
+        route_type: Literal['app', 'module', 'detail', 'model'] = 'app',
         models: Union[Model, List[Model], str, None] = None,
+        modules: Union[ModuleConfig, List[ModuleConfig], str, None] = None,
         exclude_models:Union[Model, List[Model], str, None] = None,
         name: Optional[str] = None,
         description: Optional[str] = None,
@@ -326,7 +355,7 @@ class BloomerpRouteRegistry:
         Args:
             path: The URL path for the route (optional, auto-generated if not provided)
             models: The model(s) associated with this route
-            route_type: Type of route ('app', 'list', 'detail')
+            route_type: Type of route ('app', 'module', 'detail', 'model')
             name: Name for the route (optional, derived from view if not provided)
             description: Description of the route
             override: Whether to override existing routes with same path
@@ -337,7 +366,9 @@ class BloomerpRouteRegistry:
             _description = description
             _path = path
             _url_name = url_name
-
+            _route_type = RouteType(route_type)
+            _modules = modules
+            
             # Determine view type and handle accordingly
             view_type = ViewType.FUNCTION
             registered_view = view
@@ -353,49 +384,112 @@ class BloomerpRouteRegistry:
                 registered_view = wrapped_view
             else:
                 raise TypeError("The provided view is neither a valid function-based view nor a class-based view.")
+            
+            def _auto_path() -> str:
+                if _path:
+                    return _path
+                if hasattr(view, '__name__'):
+                    return f"/{view.__name__.replace('_', '-')}/"
+                if hasattr(view, '__class__'):
+                    return f"/{view.__class__.__name__.lower()}/"
+                return "/unnamed-route/"
 
-            # Create and store the route
-            for model in _retrieve_models(models, exclude_models, RouteType(route_type)):
-                # Generate name for this model/view combination
-                actual_name = _generate_name(_name, model, registered_view)
+            def _auto_description(actual_name: str) -> str:
+                if _description:
+                    return _description
+                if hasattr(view, '__doc__') and view.__doc__:
+                    return view.__doc__.strip()
+                return f"Route for {actual_name}"
 
-                # Auto-generate description if not provided
-                actual_description = _description
-                if not actual_description:
-                    if hasattr(view, '__doc__') and view.__doc__:
-                        actual_description = view.__doc__.strip()
+            match _route_type:
+                case RouteType.APP:
+                    if _modules or models or exclude_models:
+                        raise ValueError("Modules and models parameters are not applicable for 'app' route type")
+
+                    actual_name = _generate_name(_name, None, registered_view, None)
+                    actual_description = _auto_description(actual_name)
+                    actual_path = _auto_path()
+                    actual_url_name = _url_name if _url_name else actual_name
+
+                    self.routes.append(
+                        BloomerpRoute(
+                            path=_generate_path(actual_path, _route_type),
+                            route_type=_route_type,
+                            name=actual_name,
+                            url_name=_auto_generate_url_name(actual_url_name, _route_type),
+                            view=registered_view,
+                            view_type=view_type,
+                            module=None,
+                            description=_generate_description(actual_description, None, registered_view, None),
+                            override=override
+                        )
+                    )
+
+                case RouteType.MODULE:
+                    if _modules is None:
+                        raise ValueError("Modules parameter is required for 'module' route type")
+
+                    if _modules == "__all__":
+                        modules_list = module_registry.get_all().values()
+                    elif isinstance(_modules, ModuleConfig):
+                        modules_list = [_modules]
+                    elif isinstance(_modules, str):
+                        modules_list = [module_registry.get(_modules)]
+                    elif isinstance(_modules, list):
+                        modules_list = _modules
                     else:
-                        actual_description = f"Route for {actual_name}"
+                        raise ValueError("Modules parameter must be a ModuleConfig instance, a list of ModuleConfig instances, or '__all__'")
 
-                # Auto-generate path if not provided
-                actual_path = _path
-                if not actual_path:
-                    if hasattr(view, '__name__'):
-                        actual_path = f"/{view.__name__.replace('_', '-')}/"
-                    elif hasattr(view, '__class__'):
-                        actual_path = f"/{view.__class__.__name__.lower()}/"
-                    else:
-                        actual_path = "/unnamed-route/"
+                    for module in modules_list:
+                        if not module:
+                            raise ValueError("Module not found in registry")
 
-                # Auto-generate url_name if not provided
-                actual_url_name = _url_name if _url_name else actual_name
+                        actual_name = _generate_name(_name, None, registered_view, module)
+                        actual_description = _auto_description(actual_name)
+                        actual_path = _auto_path()
+                        actual_url_name = _url_name if _url_name else actual_name
 
-                route = BloomerpRoute(
-                    path=_generate_path(_path, RouteType(route_type), model),
-                    model=model,
-                    route_type=RouteType(route_type),
-                    name=actual_name,
-                    url_name=_auto_generate_url_name(actual_url_name, RouteType(route_type), model),
-                    view=registered_view,
-                    view_type=view_type,
-                    description=_generate_description(description, model, registered_view),
-                    override=override
-                )
+                        self.routes.append(
+                            BloomerpRoute(
+                                path=_generate_path(actual_path, _route_type, None, module),
+                                route_type=_route_type,
+                                name=actual_name,
+                                url_name=_auto_generate_url_name(actual_url_name, _route_type, None, module),
+                                view=registered_view,
+                                view_type=view_type,
+                                module=module,
+                                description=_generate_description(actual_description, None, registered_view, module),
+                                override=override
+                            )
+                        )
 
-                self.routes.append(route)
+                case RouteType.MODEL | RouteType.DETAIL:
+                    for model in _retrieve_models(models, exclude_models, _route_type):
+                        actual_path = _auto_path()
 
+                        modules_list = module_registry.get_modules_for_model(model) if model else []
+
+                        for module in modules_list:
+                            actual_name = _generate_name(_name, model, registered_view, module)
+                            actual_description = _auto_description(actual_name)
+                            actual_url_name = _url_name if _url_name else actual_name
+                            route = BloomerpRoute(
+                                path=_generate_path(actual_path, _route_type, model, module),
+                                model=model,
+                                module=module,
+                                route_type=_route_type,
+                                name=actual_name,
+                                url_name=_auto_generate_url_name(actual_url_name, _route_type, model, module),
+                                view=registered_view,
+                                view_type=view_type,
+                                description=_generate_description(actual_description, model, registered_view, module),
+                                override=override
+                            )
+
+                            self.routes.append(route)
+   
             # Return the original view (for CBV) or wrapped view (for FBV)
-            return view if view_type == 'class' else registered_view
+            return view if view_type == ViewType.CLASS else registered_view
 
         return decorator
 
@@ -438,6 +532,9 @@ class BloomerpRouteRegistry:
             args = route.args if route.args else {}
             if route.model:
                 args["model"] = route.model
+            
+            if route.module:
+                args["module"] = route.module
 
             if route.view_type == ViewType.CLASS:
                 # For class-based views, use as_view()

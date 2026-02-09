@@ -1,6 +1,7 @@
 from django import template
 from django.db.models.manager import Manager
 from django.db.models import Model
+from django.http import HttpRequest, HttpResponse
 from bloomerp.utils.models import get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url
 from django.urls import reverse 
 from django.contrib.contenttypes.models import ContentType
@@ -16,6 +17,7 @@ from bloomerp.models import File
 import uuid
 from django.template.loader import render_to_string
 from bloomerp.field_types import FieldType
+from bloomerp.modules.definition import module_registry
 
 register = template.Library()
 
@@ -110,7 +112,6 @@ def getattr_filter(obj, attr):
         return None
 
    
-    
 @register.filter
 def get_link_by_id(id:int):
     '''
@@ -451,3 +452,24 @@ def get_item(dictionary, key):
         return dictionary.get(key, [])
     except (AttributeError, TypeError):
         return []
+
+
+@register.inclusion_tag('inclusion_tags/sidebar_module_content.html')
+def render_sidebar_module_content(request:HttpRequest) -> HttpResponse:
+    """Resolves the sidebar content based on the module defined in the url.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        
+    Returns:
+        HttpResponse: The rendered sidebar content.
+    """
+    # Get the module from the url
+    path_parts = request.path.strip('/').split('/')
+    module_id = path_parts[0] if len(path_parts) > 0 else None
+    models = module_registry.get_models_for_module(module_id)
+    module = module_registry.get(module_id) if module_id else None
+    return {
+        'module': module,
+        'models': models,
+    }

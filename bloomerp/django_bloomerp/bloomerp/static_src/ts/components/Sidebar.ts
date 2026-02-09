@@ -86,15 +86,6 @@ export class Sidebar extends BaseComponent {
 				this.toggle()
 			})
 		}
-
-		// Add keyboard click -> command + b OR cntrl + b toggles the sidebar
-		document.addEventListener('keydown', (event) => {
-			if ((event.metaKey || event.ctrlKey) && event.key === 'b') {
-				event.preventDefault();
-				this.toggle();
-			}
-		});
-
     }
 
     public toggle(): void {

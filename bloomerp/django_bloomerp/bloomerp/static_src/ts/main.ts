@@ -30,6 +30,7 @@ import UiMessage from './components/UiMessage';
 import ObjectDetailViewContainer from './components/detail_view_components/ObjectDetailViewContainer';
 import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
 import Workflow from './components/workflows/Workflow';
+import GlobalSearch from './components/GlobalSearch';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -81,6 +82,9 @@ registerComponent('detail-view-value', DetailViewCell);
 
 // Workflow
 registerComponent('workflow', Workflow);
+
+// Global search
+registerComponent('global-search-modal', GlobalSearch);
 
 // Auto init comonents
 setupComponentAutoInit();

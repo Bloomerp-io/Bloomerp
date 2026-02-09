@@ -312,7 +312,7 @@ class TestBulkUploadTableComponent(TestCase):
 # ----------------------------
 # SEARCH RESULTS COMPONENT TESTS
 # ----------------------------
-from bloomerp.components.search_results import search_results
+from bloomerp.components.global_search import search_results
 class TestSearchResultsComponent(TestCase):
     def setUp(self):
         self.factory = RequestFactory()

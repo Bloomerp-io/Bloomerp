@@ -8,7 +8,7 @@ from bloomerp.router import router
 
 
 @router.register(
-    path="",
+    path="/",
     name="{model} list",
     url_name="model",
     description="List of {model} model",
@@ -17,6 +17,7 @@ from bloomerp.router import router
 )
 class BloomerpListView(PermissionRequiredMixin, BloomerpModelContextMixin, HtmxMixin, ListView):
     model: Model = None
+    module = None
     template_name: str = "list_views/bloomerp_list_view.html"
     context_object_name: str = "object_list"
     create_object_url: str = None

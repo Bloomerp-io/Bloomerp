@@ -9,12 +9,7 @@
       bloomerp-component="sidebar"
   >
       <nav class="px-4 py-6 pb-8">
-          <c-ui.menu.container>
-              <c-ui.menu.item>Dashboard</c-ui.menu.item>
-              <c-ui.menu.item>HRM</c-ui.menu.item>
-              <c-ui.menu.item>Departments</c-ui.menu.item>
-              <c-ui.menu.item>Projects</c-ui.menu.item>
-          </c-ui.menu.container>
+          {% render_sidebar_module_content request %}
       </nav>
   </aside>
 

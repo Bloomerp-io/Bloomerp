@@ -1,0 +1,15 @@
+<div class="flex items-center gap-2 text-primary-900 btn">
+    <i class="fa {{ module.icon }}"></i>
+    <span class="font-bold">{{ module.name }}</span>
+</div>
+
+{% for sub_module in module.sub_modules %}
+    <a href="/{{ sub_module.id }}/" class="flex items-center gap-2 text-primary-700 hover:text-primary-900 transition-colors duration-150">
+        <i class="fa {{ sub_module.icon }}"></i>
+        <span>{{ sub_module.name }}</span>
+    </a>
+{% endfor %}
+
+<a>
+    Models
+</a>

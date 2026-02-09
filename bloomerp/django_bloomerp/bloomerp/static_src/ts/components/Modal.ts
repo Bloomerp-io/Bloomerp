@@ -129,15 +129,17 @@ export class Modal extends BaseComponent {
 
     private setupEscapeKeyHandler(): void {
         this.escapeKeyHandler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                const openModals = document.querySelectorAll('[id$="-backdrop"]:not(.hidden)');
-                if (openModals.length > 0) {
-                    const lastModal = openModals[openModals.length - 1];
-                    const modalId = lastModal.id.replace('-backdrop', '');
-                    if (modalId === this.modalId) {
-                        this.close();
-                    }
-                }
+            if (e.key !== 'Escape') return;
+
+            // Find currently visible modal backdrops (our modal elements have
+            // `bloomerp-component="modal"` and are hidden when closed)
+            const openModals = document.querySelectorAll('[bloomerp-component="modal"]:not(.hidden)') as NodeListOf<HTMLElement>;
+            if (openModals.length === 0) return;
+
+            const lastModal = openModals[openModals.length - 1];
+            const modalId = lastModal.id;
+            if (modalId === this.modalId) {
+                this.close();
             }
         };
 

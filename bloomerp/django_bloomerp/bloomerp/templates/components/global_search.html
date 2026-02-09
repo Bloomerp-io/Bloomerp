@@ -1,0 +1,10 @@
+<div>
+    <c-ui.text.muted>Models</c-ui.text.muted>
+
+    <c-ui.text.muted>Actions</c-ui.text.muted>
+
+    {% for route in matched_routes %}
+        <c-ui.dropdown.item text="{{ route.name }}" href="{{ route.path }}"/>
+    {% endfor %}
+    
+</div>

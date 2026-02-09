@@ -10,7 +10,7 @@ from django.contrib.auth.models import Permission
 
 @router.register(
     path='access-control',
-    route_type='list',
+    route_type="model",
     models='__all__',
 )
 class ManageAccessControlForModelView(HtmxMixin, TemplateView):

@@ -135,5 +135,4 @@ urlpatterns.extend(router.create_url_patterns())
 # ---------------------------------
 # Create path
 # ---------------------------------
-
 BLOOMERP_URLPATTERNS = path(BASE_URL, include(urlpatterns))

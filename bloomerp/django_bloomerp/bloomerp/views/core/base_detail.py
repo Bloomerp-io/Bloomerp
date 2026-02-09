@@ -7,7 +7,7 @@ class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
     htmx_template = "bloomerp_htmx_base_view.html"
     tabs = None
     exclude_header = False
-
+    
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
         context["exclude_header"] = self.exclude_header

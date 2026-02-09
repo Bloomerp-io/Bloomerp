@@ -62,3 +62,15 @@ class TestModules(TransactionTestCase):
             models, 
         )
     
+    def test_get_module_for_model(self):
+        """Tests whether get_module_for_model returns the correct module for a given model."""
+        customer_module = module_registry.get_modules_for_model(self.CustomerModel)[0]
+        order_module = module_registry.get_modules_for_model(self.OrderModel)[0]
+        
+        # Check if CustomerModel is in misc module
+        self.assertIsNotNone(customer_module)
+        self.assertEqual(customer_module.name, "misc")
+        
+        # Check if OrderModel is in data module
+        self.assertIsNotNone(order_module)
+        self.assertEqual(order_module.name, "data")

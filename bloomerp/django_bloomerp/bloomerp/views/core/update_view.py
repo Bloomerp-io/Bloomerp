@@ -31,7 +31,8 @@ class BloomerpUpdateView(
     template_name = "detail_views/bloomerp_detail_update_view.html"
     settings = None
     _uses_base_form = False
-
+    module = None
+    
     def get_success_url(self):
         try:
             return self.object.get_absolute_url()
