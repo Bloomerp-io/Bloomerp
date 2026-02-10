@@ -1,4 +1,5 @@
 from django.db import models
+from enum import Enum
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
@@ -141,7 +142,22 @@ class RowPolicyRule(models.Model):
     def clean(self):
         self.validate_rule()
     
+    def _normalize_rule(self):
+        if not isinstance(self.rule, dict):
+            return
+
+        rule = dict(self.rule)
+        operator = rule.get("operator")
+        if isinstance(operator, Enum):
+            operator = operator.value
+        if hasattr(operator, "id") and isinstance(operator.id, str):
+            rule["operator"] = operator.id
+
+        rule["operator"] = rule.get("operator")
+        self.rule = rule
+
     def save(self, *args, **kwargs):
+        self._normalize_rule()
         self.full_clean()
         return super().save(*args, **kwargs)
     

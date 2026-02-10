@@ -132,7 +132,6 @@ class SearchResultsTests(BaseBloomerpModelTestCase):
         
         policy = Policy.objects.create(
             name='Test Policy', 
-            content_type=self.content_type,
             row_policy=row_policy,
             field_policy=field_policy
         )

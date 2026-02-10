@@ -32,28 +32,51 @@ def _split_query_and_suffix(value: str) -> tuple[str, str]:
 def _normalize_key(value: str) -> str:
     return (value or "").strip().lower().replace("-", "_")
 
+def _ensure_module_registry_models() -> None:
+    # Ensure dynamic models are mapped into the registry for search.
+    try:
+        module_registry._register_models_from_apps()
+    except Exception:
+        module_registry.refresh()
+
 def _resolve_module(module_key: str):
+    _ensure_module_registry_models()
     normalized = _normalize_key(module_key)
     module = module_registry.get(normalized)
     if module:
         return module
+    exact_matches = []
+    partial_matches = []
     for item in module_registry.get_all().values():
-        if _normalize_key(item.code) == normalized or _normalize_key(item.name) == normalized:
-            return item
+        code = _normalize_key(item.code)
+        name = _normalize_key(item.name)
+        if code == normalized or name == normalized:
+            exact_matches.append(item)
+        elif code.startswith(normalized) or name.startswith(normalized):
+            partial_matches.append(item)
+    if exact_matches:
+        return exact_matches[0]
+    if partial_matches:
+        return partial_matches[0]
     return None
 
 def _resolve_models_by_name(model_key: str) -> list:
+    _ensure_module_registry_models()
     normalized = _normalize_key(model_key)
     matched = []
     for module in module_registry.get_all().values():
         for model in module_registry.get_models_for_module(module.id):
-            if _normalize_key(model._meta.model_name) == normalized:
-                matched.append(model)
-                continue
-            if _normalize_key(model._meta.verbose_name) == normalized:
-                matched.append(model)
-                continue
-            if _normalize_key(model._meta.verbose_name_plural) == normalized:
+            model_name = _normalize_key(model._meta.model_name)
+            verbose_name = _normalize_key(model._meta.verbose_name)
+            verbose_name_plural = _normalize_key(model._meta.verbose_name_plural)
+            if (
+                model_name == normalized
+                or verbose_name == normalized
+                or verbose_name_plural == normalized
+                or model_name.startswith(normalized)
+                or verbose_name.startswith(normalized)
+                or verbose_name_plural.startswith(normalized)
+            ):
                 matched.append(model)
     return matched
 
@@ -75,9 +98,7 @@ def _collect_object_results(
     for model in models:
         if not model or model == ContentType:
             continue
-
-        permission_name = f"{model._meta.app_label}.view_{model._meta.model_name}"
-        if not (request.user.has_perm(permission_name) or request.user.is_superuser):
+        if getattr(model._meta, "swapped", None):
             continue
 
         content_type = ContentType.objects.get_for_model(model)
@@ -85,10 +106,16 @@ def _collect_object_results(
             content_type=content_type
         ).exists()
 
-        if row_policies_exist:
-            base_qs = permission_manager.get_queryset(model, f"view_{model._meta.model_name}")
-        else:
+        permission_name = f"{model._meta.app_label}.view_{model._meta.model_name}"
+
+        if request.user.is_superuser:
             base_qs = model.objects.all()
+        elif row_policies_exist:
+            base_qs = permission_manager.get_queryset(model, f"view_{model._meta.model_name}")
+        elif request.user.has_perm(permission_name):
+            base_qs = model.objects.all()
+        else:
+            continue
 
         remaining_slots = total_limit - total_results
         if remaining_slots <= 0:
@@ -124,6 +151,29 @@ def _collect_object_results(
             break
 
     return results, truncated
+
+
+def _get_accessible_models(
+    request: HttpRequest,
+    permission_manager: UserPermissionManager,
+) -> list:
+    content_types = list(request.user.accessible_content_types)
+    row_policy_ct_ids = permission_manager.get_row_policies().values_list(
+        "content_type_id", flat=True
+    ).distinct()
+    if row_policy_ct_ids:
+        content_types.extend(ContentType.objects.filter(id__in=row_policy_ct_ids))
+
+    # De-duplicate while preserving order
+    seen_ids = set()
+    unique_content_types = []
+    for ct in content_types:
+        if ct.id in seen_ids:
+            continue
+        seen_ids.add(ct.id)
+        unique_content_types.append(ct)
+
+    return [content_type.model_class() for content_type in unique_content_types]
 
 
 @router.register(path='components/global_search/', name='components_global_search')
@@ -290,10 +340,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
 
             if search_query.startswith("///"):
                 search_value = search_query[3:].strip()
-                models = [
-                    content_type.model_class()
-                    for content_type in request.user.accessible_content_types
-                ]
+                models = _get_accessible_models(request, permission_manager)
                 context["search_label"] = "All content"
                 context["highlight_query"] = search_value
                 context["query"] = search_value
@@ -396,10 +443,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
             context["query"] = search_query
 
             if search_query:
-                models = [
-                    content_type.model_class()
-                    for content_type in request.user.accessible_content_types
-                ]
+                models = _get_accessible_models(request, permission_manager)
                 context["object_results"], truncated = _collect_object_results(
                     request,
                     permission_manager,
@@ -412,4 +456,3 @@ def global_search(request: HttpRequest) -> HttpResponse:
 
     return render(request, "components/global_search.html", context)
     
-
