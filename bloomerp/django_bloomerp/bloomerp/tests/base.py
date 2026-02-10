@@ -8,10 +8,13 @@ from bloomerp.tests.utils.dynamic_models import create_test_models
 from bloomerp.tests.utils.names import FIRST_NAMES, LAST_NAMES
 
 class BaseBloomerpModelTestCase(TransactionTestCase):
+    auto_create_customers = True
+    auto_create_users = True
+    
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-
+        
         cls.CustomerModel = create_test_models(
             app_label="bloomerp",
             model_defs={
@@ -21,32 +24,53 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
                     "age" : models.IntegerField(max_length=3)
                 }
             },
-            use_bloomerp_base=True
+            use_bloomerp_base=True,
         )["Customer"]
         
         
-    
     def setUp(self):
         super().setUp()
         # Create application fields
         save_application_fields.Command().handle()
         
         # Create users
-        self.admin_user = create_admin()
-        self.normal_user = create_normal_user()
+        if self.auto_create_users:
+            self.admin_user = create_admin()
+            self.normal_user = create_normal_user()
         
         # Create customer objects
-        for i in range(10):
-            self.CustomerModel.objects.create(
-                first_name = FIRST_NAMES[i],
-                last_name = LAST_NAMES[i],
-                age = 20 + i
-            )
+        if self.auto_create_customers:
+            for i in range(10):
+                self.CustomerModel.objects.create(
+                    first_name = FIRST_NAMES[i],
+                    last_name = LAST_NAMES[i],
+                    age = 20 + i
+                )
         
         # Call extended setup
         self.extendedSetup()
-        
+    
+    
     def extendedSetup(self):
         pass
         
-        
+    
+    def create_customer(self, first_name:str, last_name:str, age:int):
+        """Helper method to create customers
+
+        Args:
+            first_name (str): the first name of the customer
+            last_name (str): the last name of the customer
+            age (int): the age of the customer
+
+        Returns:
+            Customer: the created customer object
+        """
+        return self.CustomerModel.objects.create(
+            first_name=first_name,
+            last_name=last_name,
+            age=age
+        )
+    
+
+    

@@ -30,10 +30,25 @@
 	{% if tabs %}
 		{% for tab in tabs %}
 		<c-ui.tabs.item>
-			<a class="nav-link" {% if tab.requires_pk %}hx-get="{% url tab.url object.pk %}" {% else
-				%}hx-get="{% url tab.url %}" {% endif %} type="submit" hx-swap="innerHTML" hx-trigger="click"
-				hx-target="#detail-view-content" hx-push-url="true" 
-				{% if tab.requires_pk %} id="{% url tab.url object.pk %}" {% else %} id="{% url tab.url %}" {% endif %}>
+			<a 
+				class="nav-link" 
+
+				{% if tab.requires_pk %}
+					hx-get="{% url tab.url object.pk %}"
+				{% else %}
+					hx-get="{% url tab.url %}" 
+				{% endif %} 
+				
+				type="submit" 
+				hx-swap="innerHTML" 
+				hx-trigger="click"
+				hx-target="#detail-view-content" 
+				hx-push-url="true" 
+				{% if tab.requires_pk %} 
+				id="{% url tab.url object.pk %}" {% else %} 
+				id="{% url tab.url %}" 
+				{% endif %}
+				>
 				{{tab.name}}
 			</a>
 		</c-ui.tabs.item>
@@ -63,16 +78,3 @@
 <!--End Content-->
 
 
-<!--Update tabs modal-->
-<c-ui.modal id="updateTabsModal" title="Change Tab Layout">
-	<form method="POST" action="{% url 'components_detail_view_links' %}">
-		{% csrf_token %}
-
-		{{ detail_links_form | crispy }}
-
-		<div class="flex justify-content-end">
-			<button type="submit" class="btn btn-primary">Save</button>
-		</div>
-	</form>
-</c-ui.modal>
-<!--End Update tabs modal-->

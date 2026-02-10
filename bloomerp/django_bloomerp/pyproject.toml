@@ -188,4 +188,5 @@ dependencies = [
     "zipp==3.21.0",
     "zopfli==0.2.3",
     "crispy-tailwind==1.0.3",
+    "black>=26.1.0",
 ]

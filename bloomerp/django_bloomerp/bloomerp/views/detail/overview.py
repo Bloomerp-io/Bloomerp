@@ -9,8 +9,8 @@ from typing import Any
 from bloomerp.models import ApplicationField
 
 @router.register(
-    path="",
-    name="Overview",
+    path="/",
+    name="Overview of {model}",
     url_name="overview",
     description="Overview of object from {model} model",
     route_type="detail",
@@ -44,8 +44,7 @@ class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView
         if qs.exists():
             return qs.first()
         return create_default_detail_view_preference(content_type, user)
-    
-    
+     
     def resolve_layout(self, preference:UserDetailViewPreference, content_type:ContentType) -> dict:
         """_summary_
 

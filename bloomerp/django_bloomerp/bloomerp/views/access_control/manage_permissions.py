@@ -12,6 +12,8 @@ from django.contrib.auth.models import Permission
     path='access-control',
     route_type="model",
     models='__all__',
+    name="Create Policy for {model}",
+    description="Create an access control policies for {model}",
 )
 class ManageAccessControlForModelView(HtmxMixin, TemplateView):
     template_name = "access_control_views/manage_permissions.html"

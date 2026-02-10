@@ -43,14 +43,19 @@ class BloomerpCreateView(
         context["title"] = "Create " + self.model._meta.verbose_name
         return context
 
+    
     def get_permission_required(self):
         return [f"{self.model._meta.app_label}.add_{self.model._meta.model_name}"]
 
+    
     def get_success_message(self, cleaned_data):
         return f"{self.object} was created successfully."
 
+    
     def get_success_url(self):
         try:
             return self.object.get_absolute_url()
         except AttributeError:
             return reverse(get_detail_view_url(self.object), kwargs={"pk": self.object.pk})
+
+    

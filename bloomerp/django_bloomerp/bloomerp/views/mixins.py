@@ -18,6 +18,7 @@ from typing import Any
 from django.views.generic.edit import ModelFormMixin
 from bloomerp.models import BloomerpModel
 from bloomerp.forms.model_form import bloomerp_modelform_factory
+from bloomerp.router import router
 
 
 class HtmxMixin:
@@ -179,11 +180,11 @@ class BloomerpModelContextMixin:
         context['detail_view_url'] = get_detail_view_url(self.model)
         context['bulk_upload_url'] = get_bulk_upload_view_url(self.model)
 
-        try:
-            if hasattr(self, 'object'):
-                context['llm_args'] = 'content_type_id=' + str(context['content_type_id']) + ';object_id=' + str(self.object.pk)
-        except:
-            pass
+        
         # Application fields context data
         context['application_fields'] = ApplicationField.objects.filter(content_type_id=context['content_type_id'])
+        
+        # Tabs
         return context
+    
+    

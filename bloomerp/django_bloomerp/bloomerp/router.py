@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
+from optparse import Option
+from sre_constants import LITERAL
 from django.views import View
 from typing import Union
 import logging
@@ -9,6 +11,8 @@ import importlib
 import os
 from functools import wraps
 from typing import Callable, List, Literal
+
+from regex import B
 from bloomerp.modules.definition import ModuleConfig, module_registry
 logger = logging.getLogger(__name__)
 
@@ -157,6 +161,12 @@ class BloomerpRoute:
     override: bool = False
     args : Optional[dict] = None
 
+    
+    def nr_of_args(self) -> int:
+        """Number of arguments the view takes (excluding 'request')"""
+        # Each arg contains one "<"
+        return self.path.count("<")
+    
 # ------------------------
 # Helper functions
 # ------------------------
@@ -559,6 +569,93 @@ class BloomerpRouteRegistry:
         """Clear all registered routes."""
         self.routes.clear()
 
+    def filter(
+        self,
+        route_type: Optional[Literal['app', 'model', 'module', 'detail']] | Optional[RouteType] = None,
+        model: Optional[Model] = None,
+        module: Optional[ModuleConfig] = None,
+        view_type: Optional[str] | Optional[ViewType] = None,
+        name_contains: Optional[str] = None,
+        description_contains: Optional[str] = None,
+    ) -> list[BloomerpRoute]:
+        """
+        Filter registered routes and return a list of matching `BloomerpRoute` objects.
+
+        The registry will auto-import configured view modules before filtering to
+        ensure all registered routes are available.
+
+        Args
+        - `route_type`: Optional; a `RouteType` enum or its string value
+            (e.g. 'app', 'module', 'model', 'detail'). If provided only routes
+            of that type are returned.
+        - `model`: Optional Django `Model` class. If provided only routes
+            associated with that model are returned.
+        - `module`: Optional `ModuleConfig`. If provided only routes for that
+            module are returned.
+        - `view_type`: Optional; a `ViewType` enum or its string value
+            ('class' or 'function'). If provided only routes of that view type
+            are returned.
+        - `name_contains`: Optional string. Case-insensitive substring match
+            against the route `name`.
+        - `description_contains`: Optional string. Case-insensitive substring
+            match against the route `description`.
+
+        Returns
+        - `list[BloomerpRoute]`: List of routes matching all provided filters.
+        """
+        self._auto_import_views()
+
+        resolved_route_type = None
+        if route_type is not None:
+            if isinstance(route_type, RouteType):
+                resolved_route_type = route_type
+            else:
+                try:
+                    resolved_route_type = RouteType(str(route_type))
+                except ValueError:
+                    resolved_route_type = None
+
+        resolved_view_type = None
+        if view_type is not None:
+            if isinstance(view_type, ViewType):
+                resolved_view_type = view_type
+            else:
+                try:
+                    resolved_view_type = ViewType(str(view_type))
+                except ValueError:
+                    resolved_view_type = None
+
+        name_query = name_contains.lower() if name_contains else None
+        description_query = description_contains.lower() if description_contains else None
+
+        results: list[BloomerpRoute] = []
+        for route in self.routes:
+            if resolved_route_type is not None and route.route_type != resolved_route_type:
+                continue
+
+            if resolved_view_type is not None and route.view_type != resolved_view_type:
+                continue
+
+            if model is not None and route.model != model:
+                continue
+
+            if module is not None and route.module != module:
+                continue
+
+            if name_query:
+                route_name = route.name or ""
+                if name_query not in route_name.lower():
+                    continue
+
+            if description_query:
+                route_description = route.description or ""
+                if description_query not in route_description.lower():
+                    continue
+
+            results.append(route)
+
+        return results
+    
 
 # ------------------------
 # Init router

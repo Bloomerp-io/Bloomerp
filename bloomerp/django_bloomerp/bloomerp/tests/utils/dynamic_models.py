@@ -40,7 +40,7 @@ def create_test_models(
         base = BloomerpModel if use_bloomerp_base else models.Model
 
         model = type(model_name, (base,), attrs)
-
+        
         try:
             apps.register_model(app_label, model)
         except Exception:

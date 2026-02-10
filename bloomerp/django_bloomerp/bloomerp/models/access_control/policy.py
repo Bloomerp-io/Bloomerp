@@ -10,11 +10,13 @@ from bloomerp.models.mixins import TimestampedModelMixin, UserStampedModelMixin,
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.models import mixins
 
 class Policy(
     TimestampedModelMixin,
     UserStampedModelMixin,
     SkipApiCreationMixin,
+    mixins.AbsoluteUrlModelMixin,
     models.Model):
     """
     Represents an access control policy, which combines row-level and field-level policies.
