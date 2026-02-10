@@ -4,10 +4,14 @@ import django
 import django.forms
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
-from bloomerp.field_types import FieldType, Lookup
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.utils.form_fields import render_single_field
 from bloomerp.router import router
+from bloomerp.field_types import FieldType
+
+FILTERABLE_FIELD_TYPES = [
+    field_type.value.id for field_type in FieldType if field_type.value.allow_in_model
+]
+
 
 @router.register(
     path='components/filters/<int:content_type_id>/init/',
@@ -23,7 +27,9 @@ def filters_init(request:HttpRequest, content_type_id:int) -> HttpResponse:
     
     # TODO: integrate with permissions
     if not application_field_id:
-        application_fields = ApplicationField.get_for_content_type_id(content_type_id)
+        application_fields = ApplicationField.get_for_content_type_id(content_type_id).filter(
+            field_type__in=FILTERABLE_FIELD_TYPES
+        )
     else:
         application_fields = None
         selected_application_field = ApplicationField.objects.get(id=application_field_id)
@@ -109,7 +115,6 @@ def value_input(
         application_field = ApplicationField.objects.get(id=application_field_id)
         
         field_type = application_field.get_field_type_enum()
-        
         
         # Get the lookup value
         lookup_option = None

@@ -2,6 +2,8 @@ import htmx from "htmx.org";
 import BaseComponent, { getComponent, componentIdentifier } from "../BaseComponent";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { getLocalStorageValue, setLocalStorageValue } from "@/utils/localStorage";
+import { get } from "http";
+import FilterContainer from "../Filters";
 
 export class DataViewContainer extends BaseComponent {
     private target:string = '#data-view-data-section'
@@ -24,6 +26,29 @@ export class DataViewContainer extends BaseComponent {
         this.setupKeydownListeners();
 
         this.setupSplitViewResize();
+
+        // Make sure the filtering mechanism is working
+        const filterContainer = getComponent(document.querySelector(`[${componentIdentifier}='filter-container']`)) as FilterContainer;
+        const filterButton = this.element?.querySelector('#apply-filters-button');
+        if (filterButton && filterContainer) {
+            filterButton.addEventListener('click', () => {
+                const filters = filterContainer.getFilters();
+                
+                // construct arguments -> arg {first_name__contains: "John"}
+                const args: Record<string, string> = {};
+                filters.forEach(filter => {
+                    if (filter.value) {
+                        const key = `${filter.field}__${filter.operator}`;
+                        args[key] = filter.value.toString();
+                    }
+                });
+                
+                console.log('Applying filters with args:', args);
+
+                this.filter(args, true);
+            });
+        }
+
     }
 
     /**
@@ -49,6 +74,8 @@ export class DataViewContainer extends BaseComponent {
         });
 
         this.fullPath = baseUrl.toString();
+
+        console.log('Target', this.target, 'Loading data view with URL:', this.fullPath);
 
         htmx.ajax('get', this.fullPath, {
             target: this.target,

@@ -225,6 +225,7 @@ export default class FilterContainer extends BaseComponent {
         return filters;
     }
 
+
     /**
      * Try to find the lookup/operator select associated with a given field element.
      * Strategy:

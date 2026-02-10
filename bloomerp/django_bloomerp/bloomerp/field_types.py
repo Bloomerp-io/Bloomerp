@@ -1,14 +1,18 @@
 from dataclasses import dataclass, field as dataclass_field
 from typing import Optional, Callable, Any, Type
-from colorama import Fore
 from django.db import models
 from enum import Enum
-from django.forms import CharField, Widget
+from django.forms import Widget
 import django_filters
 from bloomerp.model_fields.user_field import UserField
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django import forms
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
+from typing import TYPE_CHECKING
+from django.contrib.contenttypes.models import ContentType
+
+if TYPE_CHECKING:
+    from bloomerp.models import ApplicationField
 
 def render_foreign_key_field(application_field:"ApplicationField") -> str:
     return ForeignFieldWidget(model=application_field.get_related_model()).render(
@@ -38,6 +42,22 @@ def render_equals_current_user(application_field:"ApplicationField") -> str:
         }
     )
 
+def render_advanced_lookup(application_field:"ApplicationField") -> str:
+    from bloomerp.models import ApplicationField
+    
+    related_model = application_field.related_model
+    
+    objects = ApplicationField.objects.filter(
+        content_type=ContentType.objects.get_for_model(related_model)
+    )
+    
+    html = "<select class='select'>"
+    for obj in objects:
+        html += f"<option value='{obj.id}'>{obj.title}</option>"
+    
+    html += "</select>"
+    
+    return html
 
 @dataclass
 class LookupDefinition:
@@ -69,6 +89,7 @@ class Lookup(Enum):
         aliases=["", "__exact", "__equals"],  # Can use field_name, field_name__exact, or field_name__equals
         filter_class=django_filters.CharFilter
     )
+    
     IEXACT = LookupDefinition(
         id="iexact",
         display_name="Equals (case-insensitive)",
@@ -76,6 +97,7 @@ class Lookup(Enum):
         aliases=["__iexact"],
         description="Case-insensitive exact match."
     )
+    
     CONTAINS = LookupDefinition(
         id="contains",
         display_name="Contains",
@@ -83,6 +105,7 @@ class Lookup(Enum):
         aliases=["__icontains", "__contains"],
         description="Containment test (generated as icontains by default)."
     )
+    
     STARTS_WITH = LookupDefinition(
         id="starts_with",
         display_name="Starts With",
@@ -90,6 +113,7 @@ class Lookup(Enum):
         aliases=["__startswith", "__istartswith"],
         description="Starts with test."
     )
+    
     ENDS_WITH = LookupDefinition(
         id="ends_with",
         display_name="Ends With",
@@ -97,30 +121,35 @@ class Lookup(Enum):
         aliases=["__endswith", "__iendswith"],
         description="Ends with test."
     )
+    
     GREATER_THAN = LookupDefinition(
         id="greater_than",
         display_name="Greater Than",
         django_representation="gt",
         aliases=["__gt"]
     )
+    
     GREATER_THAN_OR_EQUAL = LookupDefinition(
         id="greater_than_or_equal",
         display_name="Greater Than or Equal",
         django_representation="gte",
         aliases=["__gte"]
     )
+    
     LESS_THAN = LookupDefinition(
         id="less_than",
         display_name="Less Than",
         django_representation="lt",
         aliases=["__lt"]
     )
+    
     LESS_THAN_OR_EQUAL = LookupDefinition(
         id="less_than_or_equal",
         display_name="Less Than or Equal",
         django_representation="lte",
         aliases=["__lte"]
     )
+    
     IN = LookupDefinition(
         id="in",
         display_name="In",
@@ -128,6 +157,7 @@ class Lookup(Enum):
         aliases=["__in"],
         description="Checks if value is in a list of values."
     )
+    
     IS_NULL = LookupDefinition(
         id="is_null",
         display_name="Is Null",
@@ -135,6 +165,7 @@ class Lookup(Enum):
         aliases=["__isnull"],
         description="Checks if value is null (True) or not null (False)."
     )
+    
     NOT_EQUALS = LookupDefinition(
         id="not_equals",
         display_name="Not Equals",
@@ -163,8 +194,13 @@ class Lookup(Enum):
         render_func=render_foreign_key_field
     )
     
+    FOREIGN_ADVANCED = LookupDefinition(
+        id="foreign_advanced",
+        display_name="Advanced Lookup",
+        django_representation="",
+        render_func=render_advanced_lookup
+    )
     
-models.CharField    
 
 @dataclass(frozen=True)
 class FieldTypeDefinition:
@@ -485,6 +521,7 @@ class FieldType(Enum):
         lookups=[
             Lookup.FOREIGN_EQUALS,
             Lookup.FOREIGN_IN,
+            Lookup.FOREIGN_ADVANCED
         ],
         form_field_cls=forms.ModelChoiceField,
         widget_cls=ForeignFieldWidget,
@@ -559,6 +596,7 @@ class FieldType(Enum):
         display_name="Binary Field",
         model_field_cls=models.BinaryField,
     )
+    
     IP_ADDRESS_FIELD = FieldTypeDefinition(
         id="IPAddressField",
         display_name="IP Address Field",
@@ -607,6 +645,7 @@ class FieldType(Enum):
         allow_in_model=False,
         
     )
+    
     GENERIC_FOREIGN_KEY = FieldTypeDefinition(
         id="GenericForeignKey",
         display_name="Generic Foreign Key",

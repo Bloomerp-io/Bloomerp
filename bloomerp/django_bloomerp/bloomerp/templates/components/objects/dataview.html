@@ -2,7 +2,7 @@
 {% load crispy_forms_tags %}
 
 {% if request.htmx.target == 'data-view-data-section' %}
-<div id="data-tableß-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
+<div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
     <c-ui.data_view.display_options 
         :content_type_id="content_type_id"
         :view_types="view_types"
@@ -55,22 +55,18 @@
                     width="w-128"
                     >
                         <div class="p-3">
-                            <form hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
-                                  hx-target="#data-view-data-section"
-                                  hx-swap="outerHTML"
-                                  hx-animation-target="#data-table-body-{{ content_type_id }}"
-                                  >
-                                    <div class="mb-4">
-                                        <c-ui.text.subtitle class="">
-                                            Filter
-                                        </c-ui.text.subtitle>
-                                        
-                                        {{ filter_section|safe }}
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        Apply Filters
-                                    </button>
-                            </form>
+                            <div>
+                                <div class="mb-4">
+                                    <c-ui.text.subtitle class="">
+                                        Filter
+                                    </c-ui.text.subtitle>
+                                    
+                                    {{ filter_section | safe }}
+                                </div>
+                                <button type="button" class="btn btn-primary btn-sm" id="apply-filters-button">
+                                    Apply Filters
+                                </button>
+                            </div>
                         </div>
                 </c-ui.dropdown.body>
             </c-ui.tooltip>
