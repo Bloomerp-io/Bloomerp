@@ -24,6 +24,8 @@ from typing import Type, Optional
 from django.db.models import Model
 from django.db.models.query import QuerySet
 
+MAX_RELATION_FILTER_DEPTH = 2
+
 def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.FilterSet]:
     """
     Dynamically creates a FilterSet class for the given model. It generates filters
@@ -33,108 +35,114 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
     # Create a dictionary to store dynamically created filters
     filter_overrides = {}
 
-    # Iterate over the model's fields
-    for field in model._meta.get_fields():
-        field : Field
+    def add_scalar_filters(field: Field, prefix: str) -> None:
+        field_name = f"{prefix}{field.name}"
 
         if isinstance(field, JSONField):
-            # Skip JSON fields
-            continue
-        
+            return
         if isinstance(field, ImageField):
-            # Skip Image fields
-            continue
-        
+            return
         if isinstance(field, FileField):
-            # Skip File fields
-            continue  
-        
+            return
+
         if isinstance(field, CharField) or isinstance(field, TextField) or isinstance(field, StatusField):
-            # String fields: Add icontains, exact, and isnull filters
-            filter_overrides[f'{field.name}__icontains'] = django_filters.CharFilter(field_name=field.name, lookup_expr='icontains')
-            filter_overrides[f'{field.name}__isnull'] = django_filters.BooleanFilter(field_name=field.name, lookup_expr='isnull')
-            filter_overrides[f'{field.name}__exact'] = django_filters.CharFilter(field_name=field.name, lookup_expr='exact')
-            filter_overrides[f'{field.name}__startswith'] = django_filters.CharFilter(field_name=field.name, lookup_expr='startswith')
-            filter_overrides[f'{field.name}__endswith'] = django_filters.CharFilter(field_name=field.name, lookup_expr='endswith')
+            filter_overrides[f'{field_name}__icontains'] = django_filters.CharFilter(field_name=field_name, lookup_expr='icontains')
+            filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
+            filter_overrides[f'{field_name}__exact'] = django_filters.CharFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__startswith'] = django_filters.CharFilter(field_name=field_name, lookup_expr='startswith')
+            filter_overrides[f'{field_name}__endswith'] = django_filters.CharFilter(field_name=field_name, lookup_expr='endswith')
+            return
 
-        elif isinstance(field, IntegerField) or isinstance(field, BigAutoField) or isinstance(field, AutoField) or isinstance(field, DecimalField):
-            # Date and Integer fields: Add gte, lte, gt, lt filters
-            filter_overrides[f'{field.name}__gte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='gte')
-            filter_overrides[f'{field.name}__lte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='lte')
-            filter_overrides[f'{field.name}__gt'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='gt')
-            filter_overrides[f'{field.name}__lt'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='lt')
+        if isinstance(field, IntegerField) or isinstance(field, BigAutoField) or isinstance(field, AutoField) or isinstance(field, DecimalField):
+            filter_overrides[f'{field_name}__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='gte')
+            filter_overrides[f'{field_name}__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='lte')
+            filter_overrides[f'{field_name}__gt'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='gt')
+            filter_overrides[f'{field_name}__lt'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='lt')
+            filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
+            filter_overrides[f'{field_name}'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__equals'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__exact'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='exact')
+            return
 
-            # Add isnull filter for IntegerField
-            filter_overrides[f'{field.name}__isnull'] = django_filters.BooleanFilter(field_name=field.name, lookup_expr='isnull')
-            
-            # Add exact filter for IntegerField
-            filter_overrides[f'{field.name}'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='exact')
-            filter_overrides[f'{field.name}__equals'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='exact')
-            filter_overrides[f'{field.name}__exact'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='exact')
-
-        elif isinstance(field, DateField) or isinstance(field, DateTimeField):
+        if isinstance(field, DateField) or isinstance(field, DateTimeField):
             if field.get_internal_type() == 'DateField':
-                # Date fields: Add gte, lte, gt, lt filters
-                filter_overrides[f'{field.name}__gte'] = DateFilter(field_name=field.name, lookup_expr='gte')
-                filter_overrides[f'{field.name}__lte'] = DateFilter(field_name=field.name, lookup_expr='lte')
-                filter_overrides[f'{field.name}__gt'] = DateFilter(field_name=field.name, lookup_expr='gt')
-                filter_overrides[f'{field.name}__lt'] = DateFilter(field_name=field.name, lookup_expr='lt')
-
-                # Add exact filter for DateField
-                filter_overrides[f'{field.name}__exact'] = DateFilter(field_name=field.name, lookup_expr='exact')
+                filter_overrides[f'{field_name}__gte'] = DateFilter(field_name=field_name, lookup_expr='gte')
+                filter_overrides[f'{field_name}__lte'] = DateFilter(field_name=field_name, lookup_expr='lte')
+                filter_overrides[f'{field_name}__gt'] = DateFilter(field_name=field_name, lookup_expr='gt')
+                filter_overrides[f'{field_name}__lt'] = DateFilter(field_name=field_name, lookup_expr='lt')
+                filter_overrides[f'{field_name}__exact'] = DateFilter(field_name=field_name, lookup_expr='exact')
             else:
-                # DateTime fields: Add gte, lte, gt, lt filters
-                filter_overrides[f'{field.name}__gte'] = django_filters.DateTimeFilter(field_name=field.name, lookup_expr='gte')
-                filter_overrides[f'{field.name}__lte'] = django_filters.DateTimeFilter(field_name=field.name, lookup_expr='lte')
-                filter_overrides[f'{field.name}__gt'] = django_filters.DateTimeFilter(field_name=field.name, lookup_expr='gt')
-                filter_overrides[f'{field.name}__lt'] = django_filters.DateTimeFilter(field_name=field.name, lookup_expr='lt')
-                filter_overrides[f'{field.name}__exact'] = django_filters.DateTimeFilter(field_name=field.name, lookup_expr='exact')
+                filter_overrides[f'{field_name}__gte'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='gte')
+                filter_overrides[f'{field_name}__lte'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='lte')
+                filter_overrides[f'{field_name}__gt'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='gt')
+                filter_overrides[f'{field_name}__lt'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='lt')
+                filter_overrides[f'{field_name}__exact'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='exact')
 
+            filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
+            filter_overrides[f'{field_name}__year'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='year')
+            filter_overrides[f'{field_name}__month'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='month')
+            filter_overrides[f'{field_name}__day'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='day')
+            filter_overrides[f'{field_name}__week'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='week')
+            filter_overrides[f'{field_name}__year__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='year__gte')
+            filter_overrides[f'{field_name}__year__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='year__lte')
+            filter_overrides[f'{field_name}__month__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='month__gte')
+            filter_overrides[f'{field_name}__month__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='month__lte')
+            filter_overrides[f'{field_name}__day__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='day__gte')
+            filter_overrides[f'{field_name}__day__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='day__lte')
+            return
 
-            # Add isnull filter for DateField
-            filter_overrides[f'{field.name}__isnull'] = django_filters.BooleanFilter(field_name=field.name, lookup_expr='isnull')
+    def add_model_filters(current_model: Type[Model], prefix: str = "", depth: int = 0, seen: Optional[set[str]] = None) -> None:
+        if seen is None:
+            seen = set()
 
-            # Add year, month, day, week filters for DateField
-            filter_overrides[f'{field.name}__year'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='year')
-            filter_overrides[f'{field.name}__month'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='month')
-            filter_overrides[f'{field.name}__day'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='day')
-            filter_overrides[f'{field.name}__week'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='week')
+        model_label = current_model._meta.label_lower
+        if model_label in seen:
+            return
+        seen.add(model_label)
 
-            # Add year, month, day gte, lte filters for DateField
-            filter_overrides[f'{field.name}__year__gte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='year__gte')
-            filter_overrides[f'{field.name}__year__lte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='year__lte')
-            filter_overrides[f'{field.name}__month__gte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='month__gte')
-            filter_overrides[f'{field.name}__month__lte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='month__lte')
-            filter_overrides[f'{field.name}__day__gte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='day__gte')
-            filter_overrides[f'{field.name}__day__lte'] = django_filters.NumberFilter(field_name=field.name, lookup_expr='day__lte')
+        for field in current_model._meta.get_fields():
+            field = field  # type: Field
 
-        elif isinstance(field, ForeignKey):
-            # ForeignKey fields: Add filters for related model's CharField fields (e.g. manager__first_name)
+            if not getattr(field, "concrete", False):
+                continue
 
-            # Add isnull filter for ForeignKey
-            filter_overrides[f'{field.name}__isnull'] = django_filters.BooleanFilter(field_name=field.name, lookup_expr='isnull')
+            if isinstance(field, ForeignKey):
+                field_name = f"{prefix}{field.name}"
+                filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
+                if depth < MAX_RELATION_FILTER_DEPTH:
+                    related_model = field.related_model
+                    if related_model:
+                        add_model_filters(related_model, prefix=f"{field_name}__", depth=depth + 1, seen=set(seen))
+                continue
 
-            related_model = field.related_model
-            related_fields = related_model._meta.get_fields()  # Assuming you want to filter by string fields in related models
-            
-            for related_field in related_fields:
-                # For example: manager__first_name__icontains
-                filter_overrides[f'{field.name}__{related_field.name}__exact'] = django_filters.CharFilter(field_name=f'{field.name}__{related_field.name}', lookup_expr='exact')
-                filter_overrides[f'{field.name}__{related_field.name}'] = django_filters.CharFilter(field_name=f'{field.name}__{related_field.name}', lookup_expr='exact')
-        
-        elif field.get_internal_type() == 'ManyToManyField':
-            # ManyToMany fields: Add filters for related model's CharField fields (e.g. functions__name__icontains)
-            related_model = field.related_model
-            filter_overrides[field.name] = django_filters.ModelMultipleChoiceFilter(field_name=field.name, to_field_name='id', queryset=related_model.objects.all())
-            filter_overrides[f'{field.name}__id'] = django_filters.ModelMultipleChoiceFilter(field_name=field.name, to_field_name='id', queryset=related_model.objects.all())
-            filter_overrides[f'{field.name}__in'] = django_filters.ModelMultipleChoiceFilter(field_name=field.name, to_field_name='id', queryset=related_model.objects.all(), lookup_expr='in', distinct=True)
+            if field.many_to_many and not field.auto_created:
+                field_name = f"{prefix}{field.name}"
+                related_model = field.related_model
+                if related_model:
+                    filter_overrides[field_name] = django_filters.ModelMultipleChoiceFilter(
+                        field_name=field_name,
+                        to_field_name='id',
+                        queryset=related_model.objects.all()
+                    )
+                    filter_overrides[f'{field_name}__id'] = django_filters.ModelMultipleChoiceFilter(
+                        field_name=field_name,
+                        to_field_name='id',
+                        queryset=related_model.objects.all()
+                    )
+                    filter_overrides[f'{field_name}__in'] = django_filters.ModelMultipleChoiceFilter(
+                        field_name=field_name,
+                        to_field_name='id',
+                        queryset=related_model.objects.all(),
+                        lookup_expr='in',
+                        distinct=True
+                    )
+                if depth < MAX_RELATION_FILTER_DEPTH and related_model:
+                    add_model_filters(related_model, prefix=f"{field_name}__", depth=depth + 1, seen=set(seen))
+                continue
 
-            related_fields = related_model._meta.get_fields()
+            add_scalar_filters(field, prefix)
 
-            for related_field in related_fields:
-                filter_overrides[f'{field.name}__{related_field.name}__exact'] = django_filters.CharFilter(field_name=f'{field.name}__{related_field.name}', lookup_expr='exact')
-                filter_overrides[f'{field.name}__{related_field.name}'] = django_filters.CharFilter(field_name=f'{field.name}__{related_field.name}', lookup_expr='exact')
-                                
+    add_model_filters(model)
 
     # Meta class for FilterSet
     meta_class = type('Meta', (object,), {

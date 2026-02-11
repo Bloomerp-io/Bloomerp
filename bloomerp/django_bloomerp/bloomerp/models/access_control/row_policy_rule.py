@@ -1,5 +1,6 @@
 from django.db import models
 from enum import Enum
+from typing import Optional
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
@@ -92,39 +93,122 @@ class RowPolicyRule(models.Model):
         codename = permission
         return Permission.objects.filter(codename=codename, content_type=content_type).exists()
     
+    def _resolve_lookup(self, field_type, operator: str):
+        """Resolves a lookup by id, django representation, or alias."""
+        if not operator or not field_type:
+            return None
+
+        for lookup in field_type.lookups:
+            if operator == lookup.value.id:
+                return lookup
+            if operator == lookup.value.django_representation:
+                return lookup
+            if operator in (lookup.value.aliases or []):
+                return lookup
+        return None
+
+    def _is_valid_related_path(self, model_cls, path: str) -> bool:
+        if not model_cls or not path:
+            return False
+
+        parts = [part for part in path.split("__") if part]
+        if not parts:
+            return False
+
+        current_model = model_cls
+        for idx, part in enumerate(parts):
+            try:
+                field = current_model._meta.get_field(part)
+            except Exception:
+                # Allow lookup suffix on final segment
+                return idx == len(parts) - 1
+
+            if idx == len(parts) - 1:
+                return True
+
+            if not getattr(field, "is_relation", False):
+                return False
+
+            current_model = field.related_model
+            if current_model is None:
+                return False
+
+        return True
+
+    def _is_valid_related_path_by_fields(self, content_type, path: str) -> bool:
+        if not content_type or not path:
+            return False
+
+        parts = [part for part in path.split("__") if part]
+        if not parts:
+            return False
+
+        current_content_type = content_type
+        for idx, part in enumerate(parts):
+            app_field = ApplicationField.objects.filter(
+                content_type=current_content_type,
+                field=part,
+            ).first()
+
+            if not app_field:
+                return False
+
+            if idx == len(parts) - 1:
+                return True
+
+            if not app_field.related_model_id:
+                return False
+
+            current_content_type = app_field.related_model
+            if current_content_type is None:
+                return False
+
+        return False
+
     def validate_rule(self):
         """Checks whether the rule is valid
 
         Returns:
             bool: whether the rule is valid or not
         """
-        # NOTE: we assume that each row policy rule
-        # contains one and only one application field
-        # for now. This behavior could change in the future
         application_field_id = self.rule.get("application_field_id")
         if not application_field_id:
             raise ValidationError("Missing application field id in rule")
+
         try:
             application_field = ApplicationField.objects.get(id=application_field_id)
         except ApplicationField.DoesNotExist:
             raise ValidationError("Incorrect application field")
-        
-        # Check if the application field is related to the content type
-        if not application_field.content_type == self.content_type:
-            raise ValidationError("Content type of the application field does not match that of the field policy")
-        
-        
-        # Get the field type
+
         operator = self.rule.get("operator")
         if not operator:
             raise ValidationError("Missing operator")
-        
-        field_type = application_field.get_field_type_enum()
-        if not any([operator == field.value.id for field in field_type.lookups]):
-            raise ValidationError("Invalid operator")
-        
+
+        field_path = self.rule.get("field")
+        if isinstance(field_path, str) and "__" in field_path:
+            if not (
+                self._is_valid_related_path_by_fields(self.content_type, field_path)
+                or self._is_valid_related_path(self.content_type.model_class(), field_path)
+            ):
+                raise ValidationError("Invalid operator")
+        elif isinstance(operator, str) and operator.startswith("__"):
+            path = operator.lstrip("_")
+            if not (
+                self._is_valid_related_path_by_fields(self.content_type, path)
+                or self._is_valid_related_path(self.content_type.model_class(), path)
+            ):
+                raise ValidationError("Invalid operator")
+        else:
+            # Check if the application field is related to the content type
+            if not application_field.content_type == self.content_type:
+                raise ValidationError("Content type of the application field does not match that of the field policy")
+
+            field_type = application_field.get_field_type_enum()
+            if not self._resolve_lookup(field_type, str(operator)):
+                raise ValidationError("Invalid operator")
+
         value = self.rule.get("value")
-        if not value:
+        if value is None or value == "":
             raise ValidationError("No value given")
         
     def is_valid_rule(self) -> bool:

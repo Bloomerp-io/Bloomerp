@@ -10,10 +10,12 @@ interface FilterEntry {
 }
 
 export default class FilterContainer extends BaseComponent {
+    private static readonly MAX_ADVANCED_RELATION_DEPTH = 2;
     private contentTypeId: string;
     private fieldChangeHandler: ((event: Event) => void) | null = null;
     private lookupChangeHandler: ((event: Event) => void) | null = null;
     private htmxSwapHandler: ((event: Event) => void) | null = null;
+    private advancedChangeHandler: ((event: Event) => void) | null = null;
 
     public initialize(): void {
         // Get content_type_id from data attribute
@@ -90,6 +92,8 @@ export default class FilterContainer extends BaseComponent {
         if (this.getLookupOperatorInput()) {
             this.attachLookupOperatorListener();
         }
+
+        this.attachAdvancedLookupListener();
     }
 
     /**
@@ -113,6 +117,15 @@ export default class FilterContainer extends BaseComponent {
 
         if (!applicationFieldId || !lookupValue) {
             this.clearValueInput();
+            return;
+        }
+
+        if (lookupValue === 'foreign_advanced') {
+            const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}`;
+            htmx.ajax('get', url, {
+                target: '#value-input-section',
+                swap: 'innerHTML',
+            });
             return;
         }
 
@@ -214,7 +227,12 @@ export default class FilterContainer extends BaseComponent {
 
             // Find corresponding operator for this field
             const operatorSelect = this.findOperatorForField(field);
-            const operator = operatorSelect ? operatorSelect.value : null;
+            let operator: string | null = null;
+            if (operatorSelect) {
+                const selectedOption = operatorSelect.selectedOptions[0];
+                const djangoLookup = selectedOption?.getAttribute('data-lookup-django') || '';
+                operator = djangoLookup || operatorSelect.value;
+            }
 
             // Find applicationFieldId for this filter row
             const applicationFieldId = this.findApplicationFieldIdForField(field) || '';
@@ -239,7 +257,7 @@ export default class FilterContainer extends BaseComponent {
         // Prefer a select tagged with data-field equal to the input's name
         if (name) {
             const escaped = typeof (CSS as any)?.escape === 'function' ? (CSS as any).escape(name) : name;
-            const selector = `#lookup-operator-section select[data-field="${escaped}"]`;
+            const selector = `select[data-field="${escaped}"]`;
             const byData = document.querySelector(selector) as HTMLSelectElement | null;
             if (byData) {
                 return byData;
@@ -319,6 +337,13 @@ export default class FilterContainer extends BaseComponent {
         if (this.htmxSwapHandler) {
             this.element.removeEventListener('htmx:afterSwap', this.htmxSwapHandler);
         }
+
+        if (this.advancedChangeHandler) {
+            const valueSection = this.getValueInputSection();
+            if (valueSection) {
+                valueSection.removeEventListener('change', this.advancedChangeHandler);
+            }
+        }
     }
 
     private getFieldSelectorInput(): HTMLElement | null {
@@ -332,4 +357,134 @@ export default class FilterContainer extends BaseComponent {
     private getValueInputSection(): HTMLElement | null {
         return document.getElementById("value-input-section") || null;
     }
+
+    private attachAdvancedLookupListener(): void {
+        const valueSection = this.getValueInputSection();
+        if (!valueSection) return;
+
+        if (this.advancedChangeHandler) {
+            valueSection.removeEventListener('change', this.advancedChangeHandler);
+        }
+
+        this.advancedChangeHandler = (event: Event) => {
+            const target = event.target as HTMLElement | null;
+            if (!target) return;
+
+            if (target.matches('select[data-advanced-related-select]')) {
+                this.onAdvancedRelatedFieldSelected(target as HTMLSelectElement);
+            } else if (target.matches('select[data-advanced-operator-select]')) {
+                this.onAdvancedOperatorSelected(target as HTMLSelectElement);
+            }
+        };
+
+        valueSection.addEventListener('change', this.advancedChangeHandler);
+    }
+
+    private onAdvancedRelatedFieldSelected(select: HTMLSelectElement): void {
+        const builder = select.closest('[data-advanced-builder]') as HTMLElement | null;
+        if (!builder) return;
+
+        const selectedOption = select.selectedOptions[0];
+        if (!selectedOption) return;
+
+        const fieldName = selectedOption.getAttribute('data-field-name') || '';
+        const relatedContentTypeId = selectedOption.getAttribute('data-related-content-type-id') || '';
+        const applicationFieldId = select.value;
+
+        if (!fieldName) {
+            return;
+        }
+
+        const level = parseInt(select.getAttribute('data-level') || '1', 10);
+        const pathPrefix = select.getAttribute('data-path-prefix') || builder.getAttribute('data-base-field') || '';
+        const currentPath = pathPrefix ? `${pathPrefix}__${fieldName}` : fieldName;
+
+        // Clear deeper selects and operator/value sections
+        const selectsContainer = builder.querySelector('[data-advanced-selects]') as HTMLElement | null;
+        if (selectsContainer) {
+            const deeper = selectsContainer.querySelectorAll('[data-advanced-level]');
+            deeper.forEach((node) => {
+                const nodeLevel = parseInt((node as HTMLElement).getAttribute('data-advanced-level') || '0', 10);
+                if (nodeLevel > level) {
+                    node.remove();
+                }
+            });
+        }
+
+        const operatorSection = builder.querySelector('[data-advanced-operator]') as HTMLElement | null;
+        const valueSection = builder.querySelector('[data-advanced-value]') as HTMLElement | null;
+        if (operatorSection) operatorSection.innerHTML = '';
+        if (valueSection) valueSection.innerHTML = '';
+
+        this.updateAdvancedPathLabel(builder);
+
+        if (relatedContentTypeId && level < FilterContainer.MAX_ADVANCED_RELATION_DEPTH) {
+            const nextLevel = level + 1;
+            const url = `/components/filters/${relatedContentTypeId}/related-fields/?level=${nextLevel}&path_prefix=${encodeURIComponent(currentPath)}`;
+            const selectsTarget = builder.querySelector('[data-advanced-selects]') as HTMLElement | null;
+            if (selectsTarget) {
+                htmx.ajax('get', url, {
+                    target: selectsTarget,
+                    swap: 'beforeend',
+                });
+            }
+            return;
+        }
+
+        if (!applicationFieldId) {
+            return;
+        }
+
+        // Load lookup operators for the terminal field
+        const baseFieldId = builder.getAttribute('data-base-field-id') || '';
+        const url = `/components/filters/${this.contentTypeId}/lookup-operators/${applicationFieldId}/?field_path=${encodeURIComponent(currentPath)}&base_application_field_id=${encodeURIComponent(baseFieldId)}`;
+        if (operatorSection) {
+            htmx.ajax('get', url, {
+                target: operatorSection,
+                swap: 'innerHTML',
+            });
+        }
+    }
+
+    private onAdvancedOperatorSelected(select: HTMLSelectElement): void {
+        const builder = select.closest('[data-advanced-builder]') as HTMLElement | null;
+        if (!builder) return;
+
+        const lookupValue = select.value;
+        const fieldPath = select.getAttribute('data-field') || select.getAttribute('data-field-path') || '';
+        const applicationFieldId =
+            select.getAttribute('data-lookup-application-field-id')
+            || select.getAttribute('data-application-field-id')
+            || '';
+
+        if (!lookupValue || !fieldPath || !applicationFieldId) {
+            return;
+        }
+
+        const valueSection = builder.querySelector('[data-advanced-value]') as HTMLElement | null;
+        if (!valueSection) return;
+
+        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}&field_path=${encodeURIComponent(fieldPath)}`;
+        htmx.ajax('get', url, {
+            target: valueSection,
+            swap: 'innerHTML',
+        });
+    }
+
+    private updateAdvancedPathLabel(builder: HTMLElement): void {
+        const baseLabel = builder.getAttribute('data-base-label') || '';
+        const selects = Array.from(builder.querySelectorAll<HTMLSelectElement>('select[data-advanced-related-select]'));
+        const labels = [baseLabel];
+        selects.forEach((select) => {
+            const option = select.selectedOptions[0];
+            if (option && option.value) {
+                labels.push(option.textContent?.trim() || '');
+            }
+        });
+        const pathEl = builder.querySelector('[data-advanced-path]') as HTMLElement | null;
+        if (pathEl) {
+            pathEl.textContent = labels.filter(Boolean).join(' \u2192 ');
+        }
+    }
+
 }

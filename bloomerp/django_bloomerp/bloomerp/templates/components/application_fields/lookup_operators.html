@@ -1,9 +1,18 @@
-<select class="select w-full">
+<select
+    class="select w-full"
+    {% if field_path %}
+        data-field="{{ field_path }}"
+        data-advanced-operator-select="true"
+        data-application-field-id="{{ base_application_field_id|default:application_field.id }}"
+        data-lookup-application-field-id="{{ application_field.id }}"
+    {% endif %}
+>
     <option disabled selected value="">
         <c-blocktrans>Select operator</c-blocktrans>
     </option>
     {% for lookup in lookups %}
-        <option value="{{ lookup.value.id }}">{{ lookup.value.display_name }}</option>
+        <option value="{{ lookup.value.id }}" data-lookup-django="{{ lookup.value.django_representation }}">
+            {{ lookup.value.display_name }}
+        </option>
     {% endfor %}
 </select>
-

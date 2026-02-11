@@ -8,6 +8,7 @@
       "Courier New", monospace;
     --color-red-50: oklch(97.1% 0.013 17.38);
     --color-red-100: oklch(93.6% 0.032 17.717);
+    --color-red-200: oklch(88.5% 0.062 18.334);
     --color-red-400: oklch(70.4% 0.191 22.216);
     --color-red-500: oklch(63.7% 0.237 25.331);
     --color-red-600: oklch(57.7% 0.245 27.325);
@@ -24,6 +25,7 @@
     --color-yellow-200: oklch(94.5% 0.129 101.54);
     --color-green-50: oklch(98.2% 0.018 155.826);
     --color-green-100: oklch(96.2% 0.044 156.743);
+    --color-green-200: oklch(92.5% 0.084 155.995);
     --color-green-500: oklch(72.3% 0.219 149.579);
     --color-green-600: oklch(62.7% 0.194 149.214);
     --color-green-700: oklch(52.7% 0.154 150.069);
@@ -80,6 +82,7 @@
     --tracking-wide: 0.025em;
     --tracking-wider: 0.05em;
     --leading-normal: 1.5;
+    --radius-sm: 0.25rem;
     --radius-md: 0.375rem;
     --radius-lg: 0.5rem;
     --radius-xl: 0.75rem;
@@ -115,6 +118,7 @@
     --color-danger-light: #f8d7da;
     --color-danger-dark: #721c24;
     --color-warning-light: #fff3cd;
+    --color-warning-dark: #856404;
     --color-base: #f4f2f0;
     --color-light: #686765;
   }
@@ -888,6 +892,9 @@
   }
   .mr-3 {
     margin-right: calc(var(--spacing) * 3);
+  }
+  .mr-8 {
+    margin-right: calc(var(--spacing) * 8);
   }
   .mb-0 {
     margin-bottom: calc(var(--spacing) * 0);
@@ -2753,6 +2760,104 @@
   .btn-dark:hover:not(:disabled) {
     border-color: var(--color-gray-900);
     background-color: var(--color-gray-900);
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 1);
+    border-radius: var(--radius-md);
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+    padding-inline: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 1);
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+    --tw-font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium);
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+  .badge-sm {
+    padding-inline: calc(var(--spacing) * 2);
+    padding-block: calc(var(--spacing) * 0.5);
+    font-size: 11px;
+  }
+  .badge-primary {
+    border-color: var(--color-primary-500);
+    background-color: var(--color-primary-100);
+    color: var(--color-primary-700);
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-primary-200);
+      }
+    }
+  }
+  .badge-neutral {
+    border-color: var(--color-gray-300);
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-700);
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-gray-200);
+      }
+    }
+  }
+  .badge-danger {
+    border-color: var(--color-danger-dark);
+    background-color: var(--color-danger-light);
+    color: var(--color-danger-dark);
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-red-200);
+      }
+    }
+  }
+  .badge-success {
+    border-color: var(--color-success-dark);
+    background-color: var(--color-success-light);
+    color: var(--color-success-dark);
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-green-200);
+      }
+    }
+  }
+  .badge-warning {
+    border-color: var(--color-warning-dark);
+    background-color: var(--color-warning-light);
+    color: var(--color-warning-dark);
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-yellow-200);
+      }
+    }
+  }
+  .badge-info {
+    border-color: var(--color-blue-400);
+    background-color: var(--color-blue-100);
+    color: var(--color-blue-700);
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-blue-200);
+      }
+    }
+  }
+  .badge-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    opacity: 80%;
+    transition-property: opacity;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+    &:hover {
+      @media (hover: hover) {
+        opacity: 100%;
+      }
+    }
   }
   .btn-outline-primary {
     border-color: var(--color-primary-600);

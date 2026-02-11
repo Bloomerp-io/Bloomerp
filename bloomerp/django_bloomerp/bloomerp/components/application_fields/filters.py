@@ -1,10 +1,7 @@
-import select
-from attr import field
-import django
-import django.forms
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from bloomerp.models.application_field import ApplicationField
+from django.contrib.contenttypes.models import ContentType
 from bloomerp.router import router
 from bloomerp.field_types import FieldType
 
@@ -74,6 +71,8 @@ def filters_lookup_operators(
     try:
         # Get the application field
         application_field = ApplicationField.objects.get(id=application_field_id)
+        field_path = request.GET.get("field_path", None)
+        base_application_field_id = request.GET.get("base_application_field_id", None)
         
         # Get the field type
         field_type = application_field.get_field_type_enum()
@@ -84,6 +83,8 @@ def filters_lookup_operators(
             {
                 "application_field": application_field,
                 "lookups": field_type.lookups,
+                "field_path": field_path,
+                "base_application_field_id": base_application_field_id,
             }
         )
     except ApplicationField.DoesNotExist:
@@ -113,6 +114,7 @@ def value_input(
         # Get the selected application field and operator
         lookup_value = request.GET.get("lookup_value", "")
         application_field = ApplicationField.objects.get(id=application_field_id)
+        field_path = request.GET.get("field_path", None)
         
         field_type = application_field.get_field_type_enum()
         
@@ -126,11 +128,69 @@ def value_input(
         if not lookup_option:
             return HttpResponse("Invalid lookup operator.", status=400)
         
+        # Special handling for advanced foreign key lookups
+        if lookup_value == "foreign_advanced":
+            related_model = application_field.get_related_model()
+            if not related_model:
+                return HttpResponse("Related model not found.", status=400)
+            related_content_type_id = ContentType.objects.get_for_model(related_model).id
+            related_fields = ApplicationField.get_for_content_type_id(related_content_type_id).filter(
+                field_type__in=FILTERABLE_FIELD_TYPES
+            )
+
+            return render(
+                request,
+                "components/filters/advanced_lookup.html",
+                {
+                    "base_field": application_field,
+                    "related_fields": related_fields,
+                    "related_content_type_id": related_content_type_id,
+                }
+            )
+        
         lookup = application_field.get_field_type_enum().get_lookup_by_id(lookup_value).value
         
-        return HttpResponse(lookup.render(application_field))
+        return HttpResponse(lookup.render(application_field, name_override=field_path))
         
     except ApplicationField.DoesNotExist:
         return HttpResponse("Application field not found.", status=404)
+
+
+@router.register(
+    path='components/filters/<int:content_type_id>/related-fields/',
+    name='components_filters_related_fields'
+)
+def related_fields(
+    request: HttpRequest,
+    content_type_id: int,
+) -> HttpResponse:
+    """Returns a select list of related fields for advanced filter chaining."""
+    try:
+        level = int(request.GET.get("level", 1))
+    except (TypeError, ValueError):
+        level = 1
+
+    path_prefix = request.GET.get("path_prefix", "")
+
+    application_fields = ApplicationField.get_for_content_type_id(content_type_id).filter(
+        field_type__in=FILTERABLE_FIELD_TYPES
+    )
+
+    expandable_field_types = {
+        FieldType.FOREIGN_KEY.id,
+        FieldType.MANY_TO_MANY_FIELD.id,
+        FieldType.ONE_TO_ONE_FIELD.id,
+    }
+
+    return render(
+        request,
+        "components/filters/related_fields_select.html",
+        {
+            "application_fields": application_fields,
+            "level": level,
+            "path_prefix": path_prefix,
+            "expandable_field_types": expandable_field_types,
+        }
+    )
     
     

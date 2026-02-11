@@ -1,0 +1,19 @@
+<div
+    class="flex flex-col gap-2"
+    data-advanced-builder="true"
+    data-base-field="{{ base_field.field }}"
+    data-base-label="{{ base_field.title }}"
+    data-base-field-id="{{ base_field.id }}"
+    data-related-content-type-id="{{ related_content_type_id }}"
+>
+    <div class="text-sm font-medium text-gray-900" data-advanced-path>
+        {{ base_field.title }}
+    </div>
+
+    <div class="flex flex-col gap-2" data-advanced-selects>
+        {% include "components/filters/related_fields_select.html" with application_fields=related_fields level=1 path_prefix=base_field.field %}
+    </div>
+
+    <div class="mt-1" data-advanced-operator></div>
+    <div class="mt-1" data-advanced-value></div>
+</div>

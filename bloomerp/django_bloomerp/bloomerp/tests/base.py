@@ -11,18 +11,50 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
     auto_create_customers = True
     auto_create_users = True
     
+    create_foreign_models = False
+    
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         
+        if cls.create_foreign_models:
+            foreign_models = create_test_models(
+                app_label="bloomerp",
+                model_defs={
+                    "Planet" : {
+                        "name" : models.CharField(max_length=100)
+                    },
+                    "Country" : {
+                        "name"  : models.CharField(max_length=100),
+                        "planet" : models.ForeignKey(to="Planet", on_delete=models.CASCADE)
+                    },
+                    
+                }
+            )
+             
+            cls.CountryModel = foreign_models["Country"]
+            cls.PlanetModel = foreign_models["Planet"]
+            
+            
+        
+        customer_def = {
+            "first_name": models.CharField(max_length=100),
+            "last_name": models.CharField(max_length=100),
+            "age" : models.IntegerField(max_length=3),
+        }
+        
+        if cls.create_foreign_models:
+            customer_def["country"] = models.ForeignKey(
+                to=cls.CountryModel, 
+                blank=True, 
+                null=True,
+                on_delete=models.SET_NULL
+                )
+        
         cls.CustomerModel = create_test_models(
             app_label="bloomerp",
             model_defs={
-                "Customer": {
-                    "first_name": models.CharField(max_length=100),
-                    "last_name": models.CharField(max_length=100),
-                    "age" : models.IntegerField(max_length=3)
-                }
+                "Customer": customer_def
             },
             use_bloomerp_base=True,
         )["Customer"]
@@ -38,6 +70,24 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
             self.admin_user = create_admin()
             self.normal_user = create_normal_user()
         
+        if self.create_foreign_models:
+            for i in ["Earth", "Mars"]:
+                self.PlanetModel.objects.create(
+                    name=i
+                )
+            
+            for i in ["Belgium", "Netherlands", "Brazil"]:
+                self.CountryModel.objects.create(
+                    name=i,
+                    planet=self.PlanetModel.objects.filter(name="Earth").first()
+                )
+                
+            for i in ["Helvetia", "Aresia"]:
+                self.CountryModel.objects.create(
+                    name=i,
+                    planet=self.PlanetModel.objects.filter(name="Mars").first()
+                )
+            
         # Create customer objects
         if self.auto_create_customers:
             for i in range(10):
@@ -46,6 +96,7 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
                     last_name = LAST_NAMES[i],
                     age = 20 + i
                 )
+        
         
         # Call extended setup
         self.extendedSetup()

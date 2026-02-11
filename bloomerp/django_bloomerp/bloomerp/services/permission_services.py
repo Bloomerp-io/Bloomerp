@@ -261,6 +261,7 @@ class UserPermissionManager:
                 application_field_id = rule_dict.get("application_field_id")
                 operator_id = rule_dict.get("operator")
                 value = rule_dict.get("value")
+                field_path = rule_dict.get("field")
 
                 if not application_field_id or not operator_id:
                     continue
@@ -268,11 +269,33 @@ class UserPermissionManager:
                 application_field = ApplicationField.objects.filter(id=application_field_id).first()
                 if not application_field:
                     continue
-                if application_field.content_type_id != content_type.id:
-                    continue
 
                 field_name = application_field.field
-                lookup_enum = application_field.get_field_type_enum().get_lookup_by_id(str(operator_id))
+                operator_str = str(operator_id)
+
+                # Determine field path (supports advanced foreign path filters)
+                if isinstance(field_path, str) and "__" in field_path:
+                    field_name = field_path
+                    lookup_enum = None
+                    django_lookup = operator_str
+                elif operator_str.startswith("__"):
+                    # Operator contains full path (e.g. "__country__name__icontains")
+                    field_name = operator_str.lstrip("_")
+                    lookup_enum = None
+                    django_lookup = ""
+                else:
+                    lookup_enum = application_field.get_field_type_enum().get_lookup_by_id(operator_str)
+                    if not lookup_enum:
+                        # Allow django lookup representations (e.g., "icontains")
+                        for lookup in application_field.get_field_type_enum().lookups:
+                            if lookup.value.django_representation == operator_str:
+                                lookup_enum = lookup
+                                break
+                            if operator_str in (lookup.value.aliases or []):
+                                lookup_enum = lookup
+                                break
+
+                    django_lookup = (lookup_enum.value.django_representation or "").strip() if lookup_enum else operator_str
 
                 # Special-case: equals current user
                 if lookup_enum == Lookup.EQUALS_USER or str(value) == "$user":
@@ -280,10 +303,28 @@ class UserPermissionManager:
                     has_any_rule = True
                     continue
 
-                if not lookup_enum:
+                if not lookup_enum and operator_str.startswith("__"):
+                    # operator contains full field path with lookup already
+                    filter_key = field_name
+                    try:
+                        combined_q |= Q(**{filter_key: value})
+                        has_any_rule = True
+                    except Exception:
+                        continue
                     continue
 
-                django_lookup = (lookup_enum.value.django_representation or "").strip()
+                if not lookup_enum and django_lookup == operator_str and "__" in field_name:
+                    # Advanced field path with operator already normalized
+                    filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
+                    try:
+                        combined_q |= Q(**{filter_key: value})
+                        has_any_rule = True
+                    except Exception:
+                        continue
+                    continue
+
+                if not lookup_enum and not django_lookup:
+                    continue
 
                 # Basic normalization for common lookups
                 if lookup_enum == Lookup.IN and isinstance(value, str):

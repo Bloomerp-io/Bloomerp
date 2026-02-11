@@ -1,0 +1,24 @@
+<div class="advanced-field-select-row" data-advanced-level="{{ level }}">
+    <select
+        class="select w-full"
+        data-advanced-related-select="true"
+        data-level="{{ level }}"
+        data-path-prefix="{{ path_prefix }}"
+    >
+        <option value="">
+            <c-blocktrans>Select related field</c-blocktrans>
+        </option>
+        {% for field in application_fields %}
+            <option
+                value="{{ field.id }}"
+                data-field-name="{{ field.field }}"
+                data-field-type="{{ field.field_type }}"
+                {% if field.related_model_id and field.field_type in expandable_field_types %}
+                    data-related-content-type-id="{{ field.related_model_id }}"
+                {% endif %}
+            >
+                {{ field.title }}
+            </option>
+        {% endfor %}
+    </select>
+</div>

@@ -1,78 +1,48 @@
 from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
-from django.test import TransactionTestCase
-from django.db import models
-from bloomerp.management.commands import save_application_fields
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.tests.utils.dynamic_models import create_test_models
-from bloomerp.models.users import User
 from bloomerp.services.permission_services import UserPermissionManager
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Group
 from bloomerp.field_types import Lookup
+from bloomerp.tests.base import BaseBloomerpModelTestCase
 
-class TestUserPermissionManager(TransactionTestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-
-        # 1. Create isolated test model (NOT bloomerp data), but we register the
-        # model under the real "bloomerp" app so AUTH_USER_MODEL relations
-        # resolve normally and Django can flush tables between tests.
-        
-        cls.CustomerModel = create_test_models(
-            app_label="bloomerp",
-            model_defs={
-                "Customer": {
-                    "first_name": models.CharField(max_length=100),
-                    "last_name": models.CharField(max_length=100),
-                    "age" : models.IntegerField()
-                }
-            },
-            use_bloomerp_base=True
-        )["Customer"]
-        
-
-    def setUp(self):
-        super().setUp()
-        save_application_fields.Command().handle()
-        
-        
-        # 1. Create users
-        self.admin_user = User.objects.create(
-            username="U1",
-            password="password12345",
-            is_superuser=True,
-            is_staff=True,
-        )
-        
-        self.normal_user = User.objects.create(
-            username="U2",
-            password="password12345",
-        )
-
+class TestUserPermissionManager(BaseBloomerpModelTestCase):
+    auto_create_customers = False
+    create_foreign_models = True
+    
+    def extendedSetup(self):
         # 2. Create objects
         for i in range(10):
+            # 2 Records for Belgium
+            # 3 Records for Helvetia
             if i in [0,1]:
                 created_by = self.normal_user
+                country=self.CountryModel.objects.filter(name="Belgium").first()
+            elif i in [2,3,4]:
+                created_by = self.admin_user
+                country=self.CountryModel.objects.filter(name="Helvetia").first()
             else:
                 created_by = self.admin_user
+                country=self.CountryModel.objects.filter(name="Brazil").first()
+            
             
             self.CustomerModel.objects.create(
                 first_name=f"Jaimy {i}",
                 last_name=f"Fuller {i}",
                 created_by=created_by,
-                age=i
+                age=i,
+                country=country
             )
         
         # Get the
         ct = ContentType.objects.get_for_model(self.CustomerModel)
         self.customer_model_fields = ApplicationField.get_for_content_type_id(ct.id)
-
+        
         self.first_name_field = self.customer_model_fields.filter(field="first_name").first()
         self.last_name_field = self.customer_model_fields.filter(field="last_name").first()
         self.age_field = self.customer_model_fields.filter(field="age").first()
-
+        self.country_field = self.customer_model_fields.filter(field="country").first()
+        
         # Create policies
         self.field_policy = FieldPolicy.objects.create(
             content_type=ct,
@@ -95,6 +65,7 @@ class TestUserPermissionManager(TransactionTestCase):
             row_policy=self.row_policy,
             field_policy=self.field_policy
         )
+
 
     def tearDown(self):
         # The dynamic Customer model is created under an app_label that isn't
@@ -428,4 +399,73 @@ class TestUserPermissionManager(TransactionTestCase):
             if perm == "view": continue
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
+    
+    
+    def test_normal_user_has_access_with_foreign_field_operator(self):
+        """
+        Tests whether a normal user has access to objects with a foreign
+        field operator (i.e. using the country field)
+        """
+        # 1. Create a row policy rule
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id" : str(self.country_field.id),
+                "operator" : "__country__name",
+                "value" : "Belgium"
+            }
+        )
+        
+        row_policy.add_permission("view_customer")
+            
+        # 2. Assign the user to the policy
+        self.policy.assign_user(self.normal_user)
+        
+        # 3. Construct the user manager
+        manager = UserPermissionManager(self.normal_user)
+        
+        # 4. Check if the user has all levels of access to all objects
+        qs = manager.get_queryset(self.CustomerModel, f"view_customer")
+        self.assertEqual(qs.count(), 2)
+        
+        # 5. Check if the user has no other access
+        for perm in self.CustomerModel._meta.default_permissions:
+            if perm == "view": continue
+            qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
+            self.assertEqual(qs.count(), 0)
+           
+            
+    def test_normal_user_has_access_with_nested_foreign_field_operator(self):
+        """
+        Tests whether a normal user has access to objects with a foreign
+        field operator (i.e. using the planet field of the country field)
+        """
+        # 1. Create a row policy rule
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id" : str(self.country_field.id),
+                "operator" : "__country__planet__name",
+                "value" : "Mars"
+            }
+        )
+        
+        row_policy.add_permission("view_customer")
+            
+        # 2. Assign the user to the policy
+        self.policy.assign_user(self.normal_user)
+        
+        # 3. Construct the user manager
+        manager = UserPermissionManager(self.normal_user)
+        
+        # 4. Check if the user has all levels of access to all objects
+        qs = manager.get_queryset(self.CustomerModel, f"view_customer")
+        self.assertEqual(qs.count(), 3)
+        
+        # 5. Check if the user has no other access
+        for perm in self.CustomerModel._meta.default_permissions:
+            if perm == "view": continue
+            qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
+            self.assertEqual(qs.count(), 0)
+            
     

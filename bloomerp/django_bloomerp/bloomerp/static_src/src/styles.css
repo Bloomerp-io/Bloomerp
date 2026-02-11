@@ -196,6 +196,45 @@
         @apply bg-gray-900 border-gray-900;
     }
 
+    /*
+    * Badges
+    */
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium transition-colors;
+    }
+
+    .badge-sm {
+        @apply px-2 py-0.5 text-[11px];
+    }
+
+    .badge-primary {
+        @apply bg-primary-100 border-primary-500 text-primary-700 hover:bg-primary-200;
+    }
+
+    .badge-neutral {
+        @apply bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200;
+    }
+
+    .badge-danger {
+        @apply bg-danger-light border-danger-dark text-danger-dark hover:bg-red-200;
+    }
+
+    .badge-success {
+        @apply bg-success-light border-success-dark text-success-dark hover:bg-green-200;
+    }
+
+    .badge-warning {
+        @apply bg-warning-light border-warning-dark text-warning-dark hover:bg-yellow-200;
+    }
+
+    .badge-info {
+        @apply bg-blue-100 border-blue-400 text-blue-700 hover:bg-blue-200;
+    }
+
+    .badge-remove {
+        @apply inline-flex items-center justify-center rounded-sm text-[10px] opacity-80 transition-opacity hover:opacity-100;
+    }
+
     /* Outline button variants */
     .btn-outline-primary {
         @apply bg-transparent text-[var(--color-primary-600)] border-[var(--color-primary-600)] ring-[var(--color-primary-500)];

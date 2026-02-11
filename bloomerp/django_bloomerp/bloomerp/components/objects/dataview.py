@@ -27,6 +27,83 @@ from datetime import date, datetime, timedelta
 import uuid
 
 # -----------------------------------
+# Filter helpers
+# -----------------------------------
+RESERVED_FILTER_KEYS = {
+    "q",
+    "page",
+    "calendar_page",
+}
+
+LOOKUP_LABELS = {
+    "exact": "is",
+    "equals": "is",
+    "icontains": "contains",
+    "contains": "contains",
+    "startswith": "starts with",
+    "endswith": "ends with",
+    "gte": "≥",
+    "lte": "≤",
+    "gt": ">",
+    "lt": "<",
+    "isnull": "is empty",
+    "in": "in",
+    "year": "year is",
+    "month": "month is",
+    "day": "day is",
+    "week": "week is",
+}
+
+
+def _humanize_field_path(value: str) -> str:
+    parts = [part for part in value.split("__") if part]
+    labels = [part.replace("_", " ").title() for part in parts]
+    return " \u2192 ".join(labels)
+
+
+def _format_applied_filters(query_params) -> list[dict]:
+    applied = []
+
+    for key in query_params.keys():
+        if key in RESERVED_FILTER_KEYS:
+            continue
+
+        values = query_params.getlist(key)
+        if not values:
+            continue
+
+        raw_value = ", ".join([str(v) for v in values if v != ""])
+        if raw_value == "":
+            continue
+
+        parts = [part for part in key.split("__") if part]
+        lookup = None
+        field_path = key
+        if len(parts) > 1 and parts[-1] in LOOKUP_LABELS:
+            lookup = parts[-1]
+            field_path = "__".join(parts[:-1])
+
+        field_label = _humanize_field_path(field_path)
+        lookup_label = LOOKUP_LABELS.get(lookup, lookup or "is")
+
+        if lookup == "isnull":
+            lowered = raw_value.lower()
+            if lowered in {"true", "1", "yes"}:
+                label = f"{field_label} is empty"
+            else:
+                label = f"{field_label} has value"
+        else:
+            label = f"{field_label} {lookup_label} {raw_value}"
+
+        applied.append({
+            "key": key,
+            "label": label,
+            "tooltip": f"{key} = {raw_value}",
+        })
+
+    return applied
+
+# -----------------------------------
 # Helper functions for different view types
 # -----------------------------------
 def _build_pagination_range(page_obj, window: int = 2) -> list[int | None]:
@@ -442,6 +519,7 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),
         'pagination_pages': _build_pagination_range(page_obj),
+        'applied_filters': _format_applied_filters(request.GET),
     }
     context.update(_get_extra_context_for_view_type(preference, queryset, request))
     

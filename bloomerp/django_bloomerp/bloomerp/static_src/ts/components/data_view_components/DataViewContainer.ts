@@ -12,6 +12,13 @@ export class DataViewContainer extends BaseComponent {
     private searchInput:HTMLInputElement|null = null;
     private contentTypeId:string|null = null;
     private splitViewEnabled:boolean = false;
+    private appliedFiltersHandler: ((event: Event) => void) | null = null;
+
+    private static readonly RESERVED_FILTER_KEYS = new Set<string>([
+        "q",
+        "page",
+        "calendar_page",
+    ]);
 
     public initialize(): void {
         this.baseUrl = this.element?.dataset.baseUrl;
@@ -28,34 +35,42 @@ export class DataViewContainer extends BaseComponent {
         this.setupSplitViewResize();
 
         // Make sure the filtering mechanism is working
-        const filterContainer = getComponent(document.querySelector(`[${componentIdentifier}='filter-container']`)) as FilterContainer;
         const filterButton = this.element?.querySelector('#apply-filters-button');
-        if (filterButton && filterContainer) {
+        if (filterButton) {
             filterButton.addEventListener('click', () => {
-                const filters = filterContainer.getFilters();
+                const filters = this.getFilterContainer()?.getFilters() || [];
                 
                 // construct arguments -> arg {first_name__contains: "John"}
-                const args: Record<string, string> = {};
+                const args: Record<string, string | string[]> = {};
                 filters.forEach(filter => {
                     if (filter.value) {
                         const key = `${filter.field}__${filter.operator}`;
-                        args[key] = filter.value.toString();
+                        if (Array.isArray(filter.value)) {
+                            args[key] = filter.value;
+                        } else {
+                            args[key] = filter.value.toString();
+                        }
                     }
                 });
                 
                 console.log('Applying filters with args:', args);
 
-                this.filter(args, true);
+                // Merge new filters with existing query params
+                this.filter(args, false);
+                this.resetFilterSection();
             });
         }
 
+        // Handle applied filters clicks (remove / clear all)
+        this.appliedFiltersHandler = (event: Event) => this.handleAppliedFiltersClick(event);
+        this.element?.addEventListener('click', this.appliedFiltersHandler);
     }
 
     /**
      * Filter's the current data view
      */
     filter(
-        args: Record<string, string | number | boolean | null | undefined> = {},
+        args: Record<string, string | string[] | number | boolean | null | undefined> = {},
         resetParameters: boolean = false
     ): void {
         const base = resetParameters ? this.baseUrl : this.fullPath ?? this.baseUrl;
@@ -70,7 +85,24 @@ export class DataViewContainer extends BaseComponent {
 
         Object.entries(args).forEach(([key, value]) => {
             if (value === null || value === undefined || value === '') return;
-            baseUrl.searchParams.set(key, String(value));
+
+            if (Array.isArray(value)) {
+                value.forEach((item) => {
+                    if (item === null || item === undefined || item === '') return;
+                    if (resetParameters) {
+                        baseUrl.searchParams.append(key, String(item));
+                    } else {
+                        baseUrl.searchParams.append(key, String(item));
+                    }
+                });
+                return;
+            }
+
+            if (resetParameters) {
+                baseUrl.searchParams.set(key, String(value));
+            } else {
+                baseUrl.searchParams.append(key, String(value));
+            }
         });
 
         this.fullPath = baseUrl.toString();
@@ -81,6 +113,85 @@ export class DataViewContainer extends BaseComponent {
             target: this.target,
             swap: 'innerHTML',
         });
+    }
+
+    private handleAppliedFiltersClick(event: Event): void {
+        const target = event.target as HTMLElement | null;
+        if (!target) return;
+
+        const clearBtn = target.closest('[data-clear-filters]');
+        if (clearBtn) {
+            this.clearAllFilters();
+            return;
+        }
+
+        const removeBtn = target.closest('[data-filter-remove]');
+        if (!removeBtn) return;
+
+        const badge = removeBtn.closest('[data-filter-key]') as HTMLElement | null;
+        const key = badge?.getAttribute('data-filter-key') || '';
+        if (!key) return;
+
+        this.removeFilter(key);
+    }
+
+    private removeFilter(key: string): void {
+        const url = this.getCurrentUrl();
+        if (!url) return;
+
+        url.searchParams.delete(key);
+        url.searchParams.delete('page');
+        this.applyUrl(url);
+    }
+
+    private clearAllFilters(): void {
+        const url = this.getCurrentUrl();
+        if (!url) return;
+
+        Array.from(url.searchParams.keys()).forEach((key) => {
+            if (DataViewContainer.RESERVED_FILTER_KEYS.has(key)) return;
+            url.searchParams.delete(key);
+        });
+        url.searchParams.delete('page');
+
+        this.applyUrl(url);
+    }
+
+    private applyUrl(url: URL): void {
+        this.fullPath = url.toString();
+        htmx.ajax('get', this.fullPath, {
+            target: this.target,
+            swap: 'innerHTML',
+        });
+    }
+
+    private getCurrentUrl(): URL | null {
+        const base = this.fullPath ?? this.baseUrl;
+        if (!base) return null;
+        return new URL(base, window.location.origin);
+    }
+
+    private resetFilterSection(): void {
+        if (!this.contentTypeId) return;
+
+        const target = document.getElementById(`filter-section-${this.contentTypeId}`);
+        if (!target) return;
+
+        htmx.ajax(
+            'get',
+            `/components/filters/${this.contentTypeId}/init/`,
+            {
+                target: target,
+                swap: 'innerHTML',
+            }
+        );
+    }
+
+    private getFilterContainer(): FilterContainer | null {
+        if (!this.contentTypeId) return null;
+        const el = document.getElementById(`filter-container-${this.contentTypeId}`) as HTMLElement | null;
+        if (!el) return null;
+        return getComponent(el) as FilterContainer;
     }
 
     
@@ -195,5 +306,11 @@ export class DataViewContainer extends BaseComponent {
             document.addEventListener("pointermove", onMove);
             document.addEventListener("pointerup", onUp);
         });
+    }
+
+    public destroy(): void {
+        if (this.appliedFiltersHandler) {
+            this.element?.removeEventListener('click', this.appliedFiltersHandler);
+        }
     }
 }

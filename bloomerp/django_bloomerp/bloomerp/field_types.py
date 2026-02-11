@@ -14,27 +14,30 @@ from django.contrib.contenttypes.models import ContentType
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
 
-def render_foreign_key_field(application_field:"ApplicationField") -> str:
+def render_foreign_key_field(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
+    field_name = name_override or application_field.field
     return ForeignFieldWidget(model=application_field.get_related_model()).render(
-        name=application_field.field,
+        name=field_name,
         value=None,
         attrs={
             "class": "input w-full"
         }
     )
     
-def render_foreign_key_in(application_field:"ApplicationField") -> str:
+def render_foreign_key_in(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
+    field_name = name_override or application_field.field
     return ForeignFieldWidget(model=application_field.get_related_model()).render(
-        name=application_field.field,
+        name=field_name,
         value=None,
         attrs={
             "class": "input w-full"
         }
     )
     
-def render_equals_current_user(application_field:"ApplicationField") -> str:
+def render_equals_current_user(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
+    field_name = name_override or application_field.field
     return forms.CharField.widget_cls().render(
-        name=application_field.field,
+        name=field_name,
         value="$user",
         attrs={
             "class" : "input w-full",
@@ -42,7 +45,7 @@ def render_equals_current_user(application_field:"ApplicationField") -> str:
         }
     )
 
-def render_advanced_lookup(application_field:"ApplicationField") -> str:
+def render_advanced_lookup(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
     from bloomerp.models import ApplicationField
     
     related_model = application_field.related_model
@@ -74,11 +77,12 @@ class LookupDefinition:
     get_filter_kwargs: Optional[Callable[[Any], dict]] = None  # Function that returns extra kwargs  
     render_func : Optional[Callable] = None
     
-    def render(self, application_field) -> str:
+    def render(self, application_field, name_override: Optional[str] = None) -> str:
         if not self.render_func:
-            return f"""<input type=\"text\" class=\"input\" name=\"{application_field.field}\">"""
+            field_name = name_override or application_field.field
+            return f"""<input type=\"text\" class=\"input\" name=\"{field_name}\">"""
 
-        return self.render_func(application_field)
+        return self.render_func(application_field, name_override=name_override)
         
 
 class Lookup(Enum):
@@ -183,14 +187,14 @@ class Lookup(Enum):
     FOREIGN_EQUALS = LookupDefinition(
         id="foreign_equals",
         display_name="Equals",
-        django_representation="",
+        django_representation="exact",
         render_func=render_foreign_key_field
     )
     
     FOREIGN_IN = LookupDefinition(
         id="foreign_in",
         display_name="In",
-        django_representation="",
+        django_representation="in",
         render_func=render_foreign_key_field
     )
     

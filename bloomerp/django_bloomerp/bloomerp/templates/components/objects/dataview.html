@@ -1,7 +1,30 @@
 {% load bloomerp %}
 {% load crispy_forms_tags %}
 
-{% if request.htmx.target == 'data-view-data-section' %}
+<!--Applied filters-->
+<div hx-swap-oob="innerHTML" id="applied-filters-{{ content_type_id }}">
+    {% if applied_filters %}
+        <div class="flex flex-wrap gap-2 items-center">
+            {% for filter in applied_filters %}
+                <c-ui.tooltip text="{{ filter.tooltip }}">
+                    <span class="badge badge-primary" data-filter-key="{{ filter.key }}">
+                        <button type="button" class="badge-remove" data-filter-remove="true" aria-label="Remove filter">
+                            <i class="fa fa-x"></i>
+                        </button>
+                        <span>{{ filter.label }}</span>
+                    </span>
+                </c-ui.tooltip>
+            {% endfor %}
+            <button type="button" class="badge badge-neutral badge-sm" data-clear-filters="true">
+                Clear all
+            </button>
+        </div>
+    {% endif %}
+</div>
+<!--End applied filters-->
+
+
+<!--Options-->
 <div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
     <c-ui.data_view.display_options 
         :content_type_id="content_type_id"
@@ -14,7 +37,8 @@
         :calendar_view_modes="calendar_view_modes"
     />
 </div>
-{% endif %}
+<!--End options-->
+
 
 {% if not request.htmx.target == 'data-view-data-section' %}
 <div 
@@ -30,12 +54,12 @@
     >
     <!--Search inputs-->
     <div class="mb-2 justify-between flex items-center">
-        <div class="flex space-x-2">
+        <div class="flex items-center space-x-2">
             <input
                 type="text"
                 name="q"
                 placeholder="Search..."
-                class="input input-bordered"
+                class="input input-bordered mr-8"
                 hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
                 hx-trigger="keyup changed delay:200ms"
                 hx-target="#data-view-data-section"
@@ -43,6 +67,10 @@
                 hx-animation-target="#data-table-body-{{ content_type_id }}"
                 id="data-view-search-input-{{ content_type_id }}"
             />
+
+            <div id="applied-filters-{{ content_type_id }}">
+                
+            </div>
         </div>
 
         <div class="flex gap-2 items-center">
@@ -61,7 +89,9 @@
                                         Filter
                                     </c-ui.text.subtitle>
                                     
-                                    {{ filter_section | safe }}
+                                    <div id="filter-section-{{ content_type_id }}">
+                                        {{ filter_section | safe }}
+                                    </div>
                                 </div>
                                 <button type="button" class="btn btn-primary btn-sm" id="apply-filters-button">
                                     Apply Filters
@@ -274,7 +304,6 @@
 
 </div>
 {% endif %}
-
 
 
 

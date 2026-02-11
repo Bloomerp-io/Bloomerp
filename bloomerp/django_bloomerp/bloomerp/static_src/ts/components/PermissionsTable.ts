@@ -381,6 +381,7 @@ export class PermissionsTable extends BaseComponent {
             alert("Please add at least one condition for the row policy.");
             return;
         }
+        console.log(filters)
 
         filters.forEach((filter) => {
             const rule = {

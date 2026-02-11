@@ -164,11 +164,9 @@ class Command(BaseCommand):
                         db_table = field_info.get('db_table')
 
 
-                        if meta:
-                            if 'related_model' in meta:
-                                related_model = ContentType.objects.get(pk=meta['related_model'])
-                        else:
-                            related_model = None
+                        related_model = None
+                        if meta and 'related_model' in meta:
+                            related_model = ContentType.objects.get(pk=meta['related_model'])
                         
                         try:
                             ApplicationField.objects.update_or_create(
@@ -207,5 +205,4 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('ApplicationField model synced successfully'))
         
-
 
