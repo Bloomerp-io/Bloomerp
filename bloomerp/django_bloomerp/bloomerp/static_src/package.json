@@ -46,6 +46,7 @@
     "@lexical/list": "^0.18.0",
     "@lexical/rich-text": "^0.18.0",
     "@lexical/selection": "^0.18.0",
+    "@tailwindcss/postcss": "^4.1.18",
     "ace-builds": "^1.32.9",
     "alpinejs": "^3.15.3",
     "drawflow": "^0.0.60",

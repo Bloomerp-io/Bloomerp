@@ -26,6 +26,7 @@ import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
 import ForeignFieldWidget from './components/widgets/ForeignFieldWidget';
 import CodeEditorWidget from './components/widgets/CodeEditorWidget';
+import IconPickerWidget from './components/widgets/IconPickerWidget';
 import UiMessage from './components/UiMessage';
 import ObjectDetailViewContainer from './components/detail_view_components/ObjectDetailViewContainer';
 import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
@@ -73,6 +74,7 @@ registerComponent('dropdown-input', DropdownInput);
 // Form widgets
 registerComponent('foreign-field-widget', ForeignFieldWidget);
 registerComponent('code-editor-widget', CodeEditorWidget);
+registerComponent('icon-picker-widget', IconPickerWidget);
 
 // Messages
 registerComponent('ui-message', UiMessage);

@@ -662,6 +662,7 @@ dependencies = [
     { name = "docutils" },
     { name = "et-xmlfile" },
     { name = "executing" },
+    { name = "fa6-icons" },
     { name = "fastjsonschema" },
     { name = "fonttools" },
     { name = "fqdn" },
@@ -852,6 +853,7 @@ requires-dist = [
     { name = "docutils", specifier = "==0.21.2" },
     { name = "et-xmlfile", specifier = "==1.1.0" },
     { name = "executing", specifier = "==2.1.0" },
+    { name = "fa6-icons", specifier = ">=0.0.3" },
     { name = "fastjsonschema", specifier = "==2.21.1" },
     { name = "fonttools", specifier = "==4.54.0" },
     { name = "fqdn", specifier = "==1.5.1" },
@@ -1145,6 +1147,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/8c/e3/7d45f492c2c4a0e8e0fad57d081a7c8a0286cdd86372b070cca1ec0caa1e/executing-2.1.0.tar.gz", hash = "sha256:8ea27ddd260da8150fa5a708269c4a10e76161e2496ec3e587da9e3c0fe4b9ab", size = 977485, upload-time = "2024-09-01T12:37:35.708Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b5/fd/afcd0496feca3276f509df3dbd5dae726fcc756f1a08d9e25abe1733f962/executing-2.1.0-py2.py3-none-any.whl", hash = "sha256:8d63781349375b5ebccc3142f4b30350c0cd9c79f921cde38be2be4637e98eaf", size = 25805, upload-time = "2024-09-01T12:37:33.007Z" },
+]
+
+[[package]]
+name = "fa6-icons"
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fastcore" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/0a/534f2d05ed5ac7f1412553fcc064ceaf3639a7afa479864450ac6b98f1f5/fa6_icons-0.0.3.tar.gz", hash = "sha256:b547b6a8f632735abaac285d0806a1556ae8a3d121daec8207092f25e1bd2d7a", size = 618537, upload-time = "2025-05-10T22:59:01.997Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/3f/81b1a6319d3f219d4e75928b1ea702969435c002fb6349d307a88254812d/fa6_icons-0.0.3-py3-none-any.whl", hash = "sha256:d7beea45ceca72cd74730247e80b44f900be5819f65fa8cd2bc5eb72772bee61", size = 624205, upload-time = "2025-05-10T22:58:59.596Z" },
+]
+
+[[package]]
+name = "fastcore"
+version = "1.12.12"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/4e/b45883ffd4f1843286279f972262108a6a1c43d5c1237f231a77f3d0670e/fastcore-1.12.12.tar.gz", hash = "sha256:a113d70630e7aa4e28ceebc4311f1c7c2dc0b748cc138ab7f5c53e475ff438bc", size = 92042, upload-time = "2026-02-11T00:24:05.783Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ea/d6/bb13c44b5863c0be7a27ef02982eca88f50d717549df1979e85942292239/fastcore-1.12.12-py3-none-any.whl", hash = "sha256:bb1a3a3accd62a72bad56af974e0617af078316be5bb5dcc8763b8244c197fa8", size = 96240, upload-time = "2026-02-11T00:24:03.658Z" },
 ]
 
 [[package]]

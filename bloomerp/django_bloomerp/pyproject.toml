@@ -191,4 +191,5 @@ dependencies = [
     "zopfli==0.2.3",
     "crispy-tailwind==1.0.3",
     "black>=26.1.0",
+    "fa6-icons>=0.0.3",
 ]

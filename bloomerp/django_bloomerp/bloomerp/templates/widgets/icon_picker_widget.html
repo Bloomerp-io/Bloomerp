@@ -1,0 +1,68 @@
+<div
+    bloomerp-component="icon-picker-widget"
+    data-disabled="{{ widget.attrs.disabled|yesno:'true,false' }}"
+    class="relative"
+>
+    <input type="hidden" name="{{ widget.name }}" value="{{ widget.value|default_if_none:'' }}">
+
+    <button
+        type="button"
+        data-action="toggle"
+        class="{{ widget.attrs.class }} flex items-center gap-2 {% if widget.invalid %}border-red-500 ring-1 ring-red-500{% endif %}"
+        {% if widget.attrs.disabled %}disabled{% endif %}
+    >
+        <span class="h-9 w-9 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center text-primary" data-selected-preview>
+            {% if widget.value %}
+                <i class="{{ widget.value }}"></i>
+            {% else %}
+                <span class="text-gray-400 text-xs">Icon</span>
+            {% endif %}
+        </span>
+        <span class="text-sm text-gray-700" data-selected-label>
+            {% if widget.selected_label %}
+                {{ widget.selected_label }}
+            {% else %}
+                Select icon
+            {% endif %}
+        </span>
+        <span class="ml-auto text-gray-400">
+            <i class="fa-solid fa-chevron-down"></i>
+        </span>
+    </button>
+
+    <div class="icon-picker-dropdown hidden absolute left-0 right-0 top-full mt-1 z-50 w-72">
+        <div class="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-2 border-b border-gray-100 flex items-center gap-2">
+                <input
+                    type="text"
+                    class="input w-full text-sm"
+                    placeholder="Search icons"
+                    data-action="search"
+                    {% if widget.attrs.disabled %}disabled{% endif %}
+                >
+                <button
+                    type="button"
+                    class="text-xs text-primary px-2 py-1 rounded hover:bg-primary/10"
+                    data-action="clear"
+                    {% if widget.attrs.disabled %}disabled{% endif %}
+                >
+                    Clear
+                </button>
+            </div>
+            <div class="p-2 grid grid-cols-6 gap-2 max-h-64 overflow-auto" data-icon-grid>
+                {% for icon in widget.icons %}
+                    <button
+                        type="button"
+                        class="icon-picker-item h-10 w-10 rounded-lg border border-transparent hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center"
+                        data-value="{{ icon.value }}"
+                        data-label="{{ icon.label }}"
+                        title="{{ icon.label }}"
+                    >
+                        <i class="{{ icon.value }} text-primary"></i>
+                    </button>
+                {% endfor %}
+            </div>
+            <div class="p-2 text-xs text-gray-500 hidden" data-no-results>No icons found</div>
+        </div>
+    </div>
+</div>

@@ -8,6 +8,9 @@ from bloomerp.model_fields.user_field import UserField
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django import forms
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
+from bloomerp.model_fields.icon_field import IconField
+from bloomerp.form_fields.icon_field import IconFormField
+from bloomerp.widgets.icon_picker_widget import IconPickerWidget
 from typing import TYPE_CHECKING
 from django.contrib.contenttypes.models import ContentType
 
@@ -662,6 +665,15 @@ class FieldType(Enum):
         display_name="Status Field",
         lookups=TEXT_LOOKUPS,
         allow_in_model=False,
+    )
+
+    ICON_FIELD = FieldTypeDefinition(
+        id="IconField",
+        display_name="Icon Field",
+        model_field_cls=IconField,
+        form_field_cls=IconFormField,
+        widget_cls=IconPickerWidget,
+        lookups=TEXT_LOOKUPS,
     )
     
     BLOOMERP_FILE_FIELD = FieldTypeDefinition(
