@@ -31,6 +31,7 @@ import ObjectDetailViewContainer from './components/detail_view_components/Objec
 import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
 import Workflow from './components/workflows/Workflow';
 import GlobalSearch from './components/GlobalSearch';
+import { initMessagesWebsocket } from './modules/messages';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -88,3 +89,6 @@ registerComponent('global-search-modal', GlobalSearch);
 
 // Auto init comonents
 setupComponentAutoInit();
+
+// Realtime messages
+initMessagesWebsocket();

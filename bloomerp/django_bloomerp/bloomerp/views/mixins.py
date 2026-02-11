@@ -19,6 +19,9 @@ from django.views.generic.edit import ModelFormMixin
 from bloomerp.models import BloomerpModel
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.router import router
+from bloomerp.modules.definition import module_registry
+from bloomerp.router import RouteType
+from bloomerp.utils.models import get_list_view_url
 
 
 class HtmxMixin:
@@ -62,6 +65,99 @@ class HtmxMixin:
                     # In this case, we are dealing with a detail view
                     context['include_detail_content'] = self.template_name
                     self.template_name = self.base_detail_template
+
+        # ---------------------
+        # MODULE SIDEBAR CONTEXT
+        # ---------------------
+        if getattr(self, "module", None):
+            module = self.module
+
+            def _build_model_links(models: list) -> list[dict]:
+                items: list[dict] = []
+                for model in models:
+                    try:
+                        url = get_list_view_url(model)
+                    except Exception:
+                        url = None
+                    if not url:
+                        continue
+                    items.append({
+                        "name": model._meta.verbose_name_plural.title(),
+                        "url": url,
+                    })
+                return sorted(items, key=lambda item: item["name"].lower())
+
+            module_models = _build_model_links(module_registry.get_models_for_module(module.id))
+
+            module_routes = [
+                route for route in router.filter(module=module, route_type=RouteType.MODULE)
+                if "<" not in (route.path or "")
+            ]
+            home_route = None
+            module_path_root = f"/{module.id.lower()}/"
+            for route in module_routes:
+                if route.path == module_path_root:
+                    home_route = route
+                    break
+            if home_route is None:
+                for route in module_routes:
+                    if "home" in (route.name or "").lower():
+                        home_route = route
+                        break
+
+            module_views = [
+                {
+                    "name": route.name,
+                    "url": route.path,
+                    "description": route.description,
+                }
+                for route in module_routes
+                if route is not home_route
+            ]
+            module_home = None
+            if home_route:
+                module_home = {
+                    "name": home_route.name,
+                    "url": home_route.path,
+                    "description": home_route.description,
+                }
+
+            submodules_data: list[dict] = []
+            for sub in module.sub_modules:
+                sub_models = _build_model_links(
+                    module_registry.get_models_for_submodule(module.id, sub.id)
+                )
+                sub_views = [
+                    {
+                        "name": route.name,
+                        "url": route.path,
+                        "description": route.description,
+                    }
+                    for route in module_routes
+                    if route.path and route.path.startswith(f"/{module.id.lower()}/{sub.id.lower()}/")
+                ]
+
+                safe_id = sub.id.replace("-", "_").replace(" ", "_")
+                submodules_data.append(
+                    {
+                        "id": sub.id,
+                        "name": sub.name,
+                        "icon": sub.icon,
+                        "models": sub_models,
+                        "views": sub_views,
+                        "section_id": safe_id,
+                    }
+                )
+
+            context.update(
+                {
+                    "module": module,
+                    "module_models": module_models,
+                    "module_views": module_views,
+                    "module_submodules": submodules_data,
+                    "module_home": module_home,
+                }
+            )
         
         return context
     

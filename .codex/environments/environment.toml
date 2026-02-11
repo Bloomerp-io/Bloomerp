@@ -9,9 +9,8 @@ cd bloomerp/django_bloomerp/bloomerp/static_src && npm install
 
 # install uv
 cd ..
-curl -sSfL https://get.uv.sh | sh
+curl -Ls https://astral.sh/uv/install.sh | sh
 
 # Run uv 
 uv sync
-
 '''
