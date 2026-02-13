@@ -9,17 +9,20 @@ import BaseComponent from "./BaseComponent";
  * to persist user preferences across sessions.
  */
 export class Sidebar extends BaseComponent {
-	private mainElement : HTMLElement;
-	private overlayElement : HTMLElement;
-	private sidebarButton : HTMLElement;
+    private mainElement : HTMLElement | null;
+    private overlayElement : HTMLElement | null;
+    private sidebarButton : HTMLElement | null;
+    private floatingButton : HTMLElement | null;
 	private _isOpen : boolean;
 	private readonly storageKey = 'bloomerp_sidebar_state';
+    private hoverTimer: number | null = null;
 
 
 	public initialize(): void {
 		this.mainElement = document.getElementById('main');
 		this.overlayElement = document.getElementById('sidebar-overlay');
-		this.sidebarButton = document.getElementById('sidebar-toggle')
+        this.sidebarButton = document.getElementById('sidebar-toggle')
+        this.floatingButton = document.getElementById('sidebar-toggle-floating');
 
 		// Get state
 		const storedState = localStorage.getItem(this.storageKey);
@@ -36,6 +39,9 @@ export class Sidebar extends BaseComponent {
 
         // Setup event listeners
         this.setupEventListeners();
+
+        // Bind visibility handlers for the floating button (mouse/touch)
+        this.bindFloatingVisibilityHandlers();
 
 	}
 
@@ -56,6 +62,10 @@ export class Sidebar extends BaseComponent {
                 this.mainElement.classList.add('lg:ml-64');
                 this.mainElement.classList.remove('ml-2');
             }
+
+            if (this.floatingButton) {
+                this.floatingButton.classList.add('hidden');
+            }
         } else {
             // Closed state: add translate-x-full to hide sidebar
             this.element.classList.add('-translate-x-full');
@@ -70,6 +80,60 @@ export class Sidebar extends BaseComponent {
                 this.mainElement.classList.remove('lg:ml-64');
                 this.mainElement.classList.add('ml-2');
             }
+
+            if (this.floatingButton) {
+                // Keep the floating button hidden by default when sidebar is closed;
+                // visibility will be controlled by pointer/touch handlers.
+                this.floatingButton.classList.add('hidden');
+            }
+        }
+    }
+
+    private bindFloatingVisibilityHandlers(): void {
+        const mouseHandler = (e: MouseEvent) => this.handlePointer(e.clientX, e.clientY);
+        const touchHandler = () => this.toggleFloatingByTouch();
+
+        window.addEventListener('mousemove', mouseHandler);
+        window.addEventListener('touchstart', touchHandler, {passive:true});
+    }
+
+    private handlePointer(clientX: number, clientY: number): void {
+        if (this._isOpen) return; // don't show floating when sidebar is open
+
+        const nearLeft = clientX < 80 && clientY < 120;
+
+        if (nearLeft) {
+            if (this.hoverTimer) {
+                window.clearTimeout(this.hoverTimer);
+                this.hoverTimer = null;
+            }
+            this.showFloating();
+        } else {
+            if (!this.hoverTimer) {
+                this.hoverTimer = window.setTimeout(() => {
+                    this.hideFloating();
+                    this.hoverTimer = null;
+                }, 600);
+            }
+        }
+    }
+
+    private showFloating(): void {
+        if (!this.floatingButton) return;
+        this.floatingButton.classList.remove('hidden');
+    }
+
+    private hideFloating(): void {
+        if (!this.floatingButton) return;
+        this.floatingButton.classList.add('hidden');
+    }
+
+    private toggleFloatingByTouch(): void {
+        if (!this.floatingButton) return;
+        if (this.floatingButton.classList.contains('hidden')) {
+            this.showFloating();
+        } else {
+            this.hideFloating();
         }
     }
 
@@ -86,6 +150,12 @@ export class Sidebar extends BaseComponent {
 				this.toggle()
 			})
 		}
+
+        if (this.floatingButton) {
+            this.floatingButton.addEventListener('click', () => {
+                this.toggle()
+            })
+        }
     }
 
     public toggle(): void {

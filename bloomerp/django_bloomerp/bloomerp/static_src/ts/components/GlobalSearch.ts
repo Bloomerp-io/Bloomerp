@@ -20,14 +20,17 @@ export default class GlobalSearch extends BaseComponent {
         if (!this.element) return;
 
         this.headerButton = this.element.querySelector('#global-search-btn') as HTMLElement | null;
-        this.modalInput = this.element.querySelector('#global-search-modal-input') as HTMLInputElement | null;
-        const modalEl = this.element.querySelector('#global-search-modal') as HTMLElement | null;
+        this.modalInput = (this.element.querySelector('#global-search-modal-input') as HTMLInputElement | null)
+            || (document.getElementById('global-search-modal-input') as HTMLInputElement | null);
+        const modalEl = (this.element.querySelector('#global-search-modal') as HTMLElement | null)
+            || (document.getElementById('global-search-modal') as HTMLElement | null);
         if (modalEl) {
             this.searchModal = getComponent(modalEl) as Modal;
         }
 
         // Results container inside modal
-        this.resultsContainer = this.element.querySelector('#global-search-results') as HTMLElement | null;
+        this.resultsContainer = (this.element.querySelector('#global-search-results') as HTMLElement | null)
+            || (document.getElementById('global-search-results') as HTMLElement | null);
 
         if (this.headerButton) {
             this.headerButton.addEventListener('click', (e) => {

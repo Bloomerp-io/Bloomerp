@@ -2,23 +2,153 @@
 {% load cotton %}
 {% load static %}
 
-<div>
-  <aside
-      id="sidebar"
-      class="fixed left-0 top-14 h-[calc(100vh-2rem)] w-64 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 overflow-y-auto bg-base"
-      bloomerp-component="sidebar"
-  >
-      <nav class="px-4 py-6 pb-8">
-          
-      </nav>
-  </aside>
 
-  <!-- Mobile overlay -->
-  <div
-    id="sidebar-overlay"
-    class="fixed inset-0 bg-gray-900/50 z-30 lg:hidden hidden"
-  ></div>
+<aside id="sidebar"
+    class="fixed left-0 top-0 h-screen w-64 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 overflow-y-auto bg-base"
+    bloomerp-component="sidebar">
+    <div class="px-4 pt-2 pb-6 flex flex-col h-full">
+        <div class="flex items-center justify-between">
+            <a hx-get="{% url "bloomerp_home_view" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+                class="flex items-center hover:cursor-pointer h-full overflow-hidden">
+                <span class="hidden md:block h-16 w-28 overflow-hidden">
+                    <img src="{% static 'bloomerp/img/logo.png' %}"
+                        class="h-full w-full object-cover scale-115 origin-center">
+                </span>
+                <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
+            </a>
+
+            <button id="sidebar-toggle" type="button"
+                class="hover:cursor-pointer flex h-10 w-10 items-center justify-center">
+                <c-icons.lines_horizontal size="24" />
+            </button>
+        </div>
+        <!-- End Logo -->
+
+
+        <!-- Logo -->
+
+
+        <!-- Search bar -->
+        <div bloomerp-component="global-search-modal" class="mt-2">
+            <button id="global-search-btn" type="button" aria-haspopup="dialog" aria-controls="global-search-modal"
+                class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-xl hover:cursor-pointer focus:outline-none w-full hover:bg-gray-200">
+                <i class="fa fa-magnifying-glass text-gray-500"></i>
+                <span class="text-sm text-gray-600">Search</span>
+                <span id="global-search-shortcut"
+                    class="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">⌘K</span>
+            </button>
+        </div>
+        <!-- End search bar -->
+
+        <div class="flex justify-between px-3 mt-4 bg-white hover:bg-gray-200 border border-gray-200 rounded-lg py-1 hover:cursor-pointer">
+            <div class="flex items-center">
+                <i class="fa-solid fa-inbox text-gray-500"></i> <c-ui.text.muted class="ml-2">Inbox</c-ui.text.muted>
+            </div>
+
+            <div class="p-1 text-xs rounded-md bg-gray-100 text-gray-500">
+                65
+            </div>
+        </div>
+
+        <hr class="text-gray-300 my-4">
+
+        <div class="flex justify-between">
+            <span class="text-gray-500 text-sm  px-2">Workspaces</span>
+
+            <div>
+                <button class="ml-auto p-1 text-xs rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            </div>
+        </div>
+        
+
+        <div>
+            <!-- Dashboard list (copied design) -->
+            <ul class="mt-2 space-y-2">
+                <li class="px-2">
+                    <div class="text-gray-700 flex items-center gap-3 p-2 rounded hover:bg-gray-100">
+                        <span class="inline-flex items-center justify-center h-7 w-7 rounded bg-orange-100 text-orange-600">⚙️</span>
+                        <div class="text-sm font-medium">Developers</div>
+                    </div>
+
+                    <ul class="mt-1 ml-10 text-gray-500 space-y-1 text-sm">
+                        <li class="flex items-center gap-2 hover:text-gray-700 hover:font-medium cursor-pointer">
+                            <i class="fa-regular fa-square text-gray-400"></i>
+                            <span>Issues</span>
+                        </li>
+                        <li class="flex items-center gap-2 hover:text-gray-700 hover:font-medium cursor-pointer">
+                            <i class="fa-regular fa-cube text-gray-400"></i>
+                            <span>Projects</span>
+                        </li>
+                        <li class="flex items-center gap-2 hover:text-gray-700 hover:font-medium cursor-pointer">
+                            <i class="fa-regular fa-layer-group text-gray-400"></i>
+                            <span>Views</span>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="px-2">
+                    <div class="text-gray-700 flex items-center gap-3 p-2 rounded hover:bg-gray-100">
+                        <span class="inline-flex items-center justify-center h-7 w-7 rounded bg-blue-100 text-blue-600">B</span>
+                        <div class="text-sm">Brilliance Lab</div>
+                        <i class="fa-solid fa-chevron-right ml-auto text-xs text-gray-400"></i>
+                    </div>
+                </li>
+
+                <li class="px-2">
+                    <div class="text-gray-700 flex items-center gap-3 p-2 rounded hover:bg-gray-100">
+                        <span class="inline-flex items-center justify-center h-7 w-7 rounded bg-pink-100 text-pink-600">H</span>
+                        <div class="text-sm">Heron-ai</div>
+                        <i class="fa-solid fa-chevron-right ml-auto text-xs text-gray-400"></i>
+                    </div>
+                </li>
+            </ul>
+            <!-- End dashboard list -->
+        </div>
+
+        <!-- Profile -->
+        <div class="mt-auto pt-3">
+            <nav class="ml-auto">
+                <ul class="flex items-center space-x-4 mb-0">
+                    <li class="relative pr-3">
+                        <c-ui.dropdown.body
+                            trigger_text="{% avatar object=request.user class_name='rounded-full w-8 h-8' size=32 %}<span class='hidden md:block ml-2 text-sm font-medium text-gray-700'>{{request.user.first_name}} {{request.user.last_name}}</span>"
+                            position="right" size="md" direction="up" :icon="False">
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <h6 class="text-sm font-semibold text-primary-800">{{request.user.username}}</h6>
+                            </div>
+
+                            <c-ui.dropdown.item text="Account Settings" icon="bi bi-gear"
+                                hx_get="{% url 'users_my_profile_overview' %}" hx_target="#main-content"
+                                hx_swap="innerHTML" hx_push_url="true" />
+
+                            {% if request.user.is_staff %}
+                            <c-ui.dropdown.item text="Admin page" icon="bi bi-hammer" href="/admin/" />
+                            {% endif %}
+
+                            <c-ui.dropdown.item text="Bookmarks" icon="bi bi-bookmark"
+                                hx_get="{% url 'bookmarks_user_bookmarks' %}" hx_target="#main-content"
+                                hx_swap="innerHTML" hx_push_url="true" />
+
+                            <c-ui.dropdown.item type="divider" />
+
+                            <c-ui.dropdown.item text="Sign Out" icon="bi bi-box-arrow-right" danger=True
+                                onclick="document.getElementById('logoutForm').submit()" />
+
+                            <!-- Hidden logout form -->
+                            <form id="logoutForm" action="{% url 'logout' %}" method="post" style="display: none;">
+                                {% csrf_token %}
+                            </form>
+                        </c-ui.dropdown.body>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <!-- End Profile -->
+    </div>
+</aside>
+
+<!-- Mobile overlay -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/50 z-30 lg:hidden hidden"></div>
 </div>
-
-
-

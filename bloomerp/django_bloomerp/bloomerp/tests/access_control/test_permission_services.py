@@ -1,10 +1,13 @@
 from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.services.permission_services import UserPermissionManager
+from bloomerp.utils.api import generate_model_viewset_class, generate_serializer
+from bloomerp.views.api_views import BloomerpModelViewSet
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from bloomerp.field_types import Lookup
 from bloomerp.tests.base import BaseBloomerpModelTestCase
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 class TestUserPermissionManager(BaseBloomerpModelTestCase):
     auto_create_customers = False
@@ -65,6 +68,34 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             row_policy=self.row_policy,
             field_policy=self.field_policy
         )
+        
+        # Ensure permissions exist for the dynamically created model
+        self._ensure_permissions_for_model(self.CustomerModel)
+
+        # Build an API viewset + request factory for API-level tests
+        self.ApiViewSet = generate_model_viewset_class(
+            model=self.CustomerModel,
+            serializer=generate_serializer(self.CustomerModel),
+            base_viewset=BloomerpModelViewSet,
+        )
+        self.factory = APIRequestFactory()
+
+    def _ensure_permissions_for_model(self, model):
+        """Create default permissions for dynamic models (if missing)."""
+        content_type = ContentType.objects.get_for_model(model)
+        for perm in model._meta.default_permissions:
+            codename = f"{perm}_{model._meta.model_name}"
+            Permission.objects.get_or_create(
+                codename=codename,
+                content_type=content_type,
+                defaults={"name": f"Can {perm} {model._meta.verbose_name}"},
+            )
+
+    def _extract_results(self, response):
+        """Helper to normalize paginated vs. non-paginated responses."""
+        if isinstance(response.data, dict) and "results" in response.data:
+            return response.data["results"]
+        return response.data
 
 
     def tearDown(self):
@@ -467,5 +498,118 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             if perm == "view": continue
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
+
+    # --------------------------------------
+    # API tests using RequestFactory
+    # --------------------------------------
+    def test_api_list_respects_row_and_field_permissions(self):
+        """
+        GET list should:
+        - return only rows allowed by row policy
+        - include only fields allowed by field policy
+        """
+        # 1. Create a row policy rule that matches a single record
+        target = self.CustomerModel.objects.first()
+        row_rule = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id": str(self.first_name_field.id),
+                "operator": Lookup.EQUALS.value.id,
+                "value": target.first_name,
+            },
+        )
+        row_rule.add_permission("view_customer")
+
+        # 2. Assign the user to the policy
+        self.policy.assign_user(self.normal_user)
+
+        # 3. Call the auto-generated list endpoint
+        request = self.factory.get("/api/customers/")
+        force_authenticate(request, user=self.normal_user)
+
+        view = self.ApiViewSet.as_view({"get": "list"})
+        response = view(request)
+        
+        # 4. Validate row + field permissions
+        self.assertEqual(response.status_code, 200)
+        results = self._extract_results(response)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].get("first_name"), target.first_name)
+        self.assertNotIn("last_name", results[0])
+        self.assertIn("first_name", results[0])
+
+    def test_api_update_denies_disallowed_field(self):
+        """
+        PATCH should fail when writing to a field without change permission.
+        """
+        # 1. Allow row-level access for change
+        target = self.CustomerModel.objects.first()
+        row_rule = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id": str(self.first_name_field.id),
+                "operator": Lookup.EQUALS.value.id,
+                "value": target.first_name,
+            },
+        )
+        row_rule.add_permission("change_customer")
+
+        # 2. Assign the user to the policy
+        self.policy.assign_user(self.normal_user)
+
+        # 3. Attempt to update a disallowed field
+        request = self.factory.patch(
+            f"/api/customers/{target.id}/",
+            {"last_name": "Blocked"},
+            format="json",
+        )
+        force_authenticate(request, user=self.normal_user)
+
+        view = self.ApiViewSet.as_view({"patch": "partial_update"})
+        response = view(request, pk=str(target.id))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_api_update_allows_allowed_field(self):
+        """
+        PATCH should succeed when writing to a field with change permission.
+        """
+        # 1. Allow row-level access for change
+        target = self.CustomerModel.objects.first()
+        row_rule = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id": str(self.first_name_field.id),
+                "operator": Lookup.EQUALS.value.id,
+                "value": target.first_name,
+            },
+        )
+        row_rule.add_permission("change_customer")
+
+        # 2. Allow field-level change permission on first_name
+        rules = self.field_policy.rule or {}
+        rules.setdefault(str(self.first_name_field.id), [])
+        if "change_customer" not in rules[str(self.first_name_field.id)]:
+            rules[str(self.first_name_field.id)].append("change_customer")
+        self.field_policy.rule = rules
+        self.field_policy.save(update_fields=["rule"])
+
+        # 3. Assign the user to the policy
+        self.policy.assign_user(self.normal_user)
+
+        # 4. Update an allowed field
+        request = self.factory.patch(
+            f"/api/customers/{target.id}/",
+            {"first_name": "Allowed"},
+            format="json",
+        )
+        force_authenticate(request, user=self.normal_user)
+
+        view = self.ApiViewSet.as_view({"patch": "partial_update"})
+        response = view(request, pk=str(target.id))
+
+        self.assertEqual(response.status_code, 200)
+        target.refresh_from_db()
+        self.assertEqual(target.first_name, "Allowed")
             
     

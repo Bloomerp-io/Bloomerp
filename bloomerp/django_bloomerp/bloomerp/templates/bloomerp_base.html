@@ -9,17 +9,14 @@
 	</head>
 
 	{% block body %}
-	<body class="bg-base" id="bloomerpBody" x-data>	
-		<!--Header -->
-		<c-header.header/>
-		<!-- End Header -->
+	<body class="bg-base" id="bloomerpBody" x-data>
 
 		<!-- Sidebar -->
 		<c-sidebar.body/>
 		<!-- End Sidebar-->		
 		 
 		<!--Main -->
-		<main id="main" class="transition-all duration-300 ease-in-out mb-2 bg-white mt-14 h-[calc(100vh-4.2rem)] rounded-lg overflow-y-auto border border-gray-200 me-2">
+		<main id="main" class="transition-all duration-300 ease-in-out m-3 bg-white h-[calc(100vh-1.5rem)] rounded-lg overflow-y-auto border border-gray-200">
 			<div id="main-content" hx-history-elt class="px-6 py-6 h-full overflow-y-auto">
 				{% block main %}
 					{% if include_main_content %}
@@ -39,8 +36,27 @@
 		<c-ui.modal id="advanced-query-modal" title="Advanced query"/>
 		
 		<!--Global Search-->
-		
-		
+		<c-ui.modal id="global-search-modal" title="Search">
+			<div>
+				<div class="relative mb-2">
+					<span
+						class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
+						<i class="fa fa-magnifying-glass"></i>
+					</span>
+					<input id="global-search-modal-input" autofocus placeholder="Search or type a command"
+						class="w-full pl-10 pr-4 py-3 ring-0 focus:ring-0 border-0 focus:border-0" />
+				</div>
+				<div id="global-search-results"
+					class="divide-y divide-gray-200 max-h-96 overflow-y-auto rounded-b-lg bg-white">
+					<!-- Search results will be injected here -->
+				</div>
+			</div>
+		</c-ui.modal>
+
+		<button id="sidebar-toggle-floating" type="button"
+			class="fixed top-5 left-5 z-50 hidden rounded-full border border-gray-200 bg-white p-2 shadow-lg hover:bg-gray-50 hover:cursor-pointer">
+			<c-icons.lines_horizontal size="24"/>
+		</button>
 
 		<!--Messages -->
 		<div id="bloomerp-messages"></div>

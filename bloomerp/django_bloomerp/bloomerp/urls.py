@@ -5,20 +5,18 @@
 from django.urls import include, path,  register_converter
 from django.contrib.auth import views as auth_views
 from django.contrib.contenttypes.models import ContentType
-from zmq import has
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.views.api.access_control import PolicyViewSet
-from bloomerp.views.document_templates import router as document_template_router
 from django.db.models import Model
-from bloomerp.utils.models import ( 
-    model_name_plural_underline, 
-    get_base_model_route,
-    )
+from bloomerp.utils.models import (model_name_plural_underline)
 from bloomerp.utils.api import generate_serializer, generate_model_viewset_class
 from bloomerp.views.api_views import BloomerpModelViewSet
 from bloomerp.utils.urls import IntOrUUIDConverter
 from rest_framework.routers import DefaultRouter
 from bloomerp.router import router
+from django.contrib import admin
+from django.contrib.admin.sites import AlreadyRegistered
+
 
 # Register the custom URL converter
 register_converter(IntOrUUIDConverter, 'int_or_uuid') # Register the custom URL converter
@@ -27,7 +25,6 @@ drf_router = DefaultRouter()
 # Get the base URL from the settings
 from django.conf import settings
 BASE_URL = settings.BLOOMERP_SETTINGS.get('BASE_URL', '')
-
 
 # ---------------------------------
 # START GENERATION OF URL PATTERNS
@@ -89,6 +86,15 @@ for content_type in content_types:
         
         if not model:
             continue
+        
+        # ---------------------------------
+        # Add the model to the admin dashboard
+        # ---------------------------------
+        
+        try:
+            admin.site.register(model)
+        except AlreadyRegistered:
+            pass
             
         serializer_class = generate_serializer(model)
         
@@ -99,25 +105,22 @@ for content_type in content_types:
         )
 
         try:
-            if hasattr(model, 'skip_api_creation') and not model.skip_api_creation:
-                
-                drf_router.register(
-                    prefix = model_name_plural_underline(model), 
-                    viewset = ApiViewSet, 
-                    basename=model_name_plural_underline(model)
-                    )
-        except:
+            # Only skip API creation for models that explicitly opt-out by
+            # setting `skip_api_creation = True` on the model class.
+            if getattr(model, 'skip_api_creation', False):
+                # explicit opt-out; don't register this model on the API
+                continue
+
+            drf_router.register(
+                prefix = model_name_plural_underline(model), 
+                viewset = ApiViewSet, 
+                basename=model_name_plural_underline(model)
+            )
+            
+        except Exception as e:
+            # Don't fail URL loading if a single model registration errors
             pass
 
-        # ---------------------------------
-        # Add the model to the admin dashboard
-        # ---------------------------------
-        from django.contrib import admin
-        from django.contrib.admin.sites import AlreadyRegistered
-        try:
-            admin.site.register(model)
-        except AlreadyRegistered:
-            pass
 
 drf_router.register(
     prefix = model_name_plural_underline(Policy),

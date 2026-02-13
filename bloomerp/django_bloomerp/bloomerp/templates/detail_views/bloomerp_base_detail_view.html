@@ -31,7 +31,7 @@
 		{% for tab in tabs %}
 		<c-ui.tabs.item>
 			<a 
-				class="nav-link" 
+				class="nav-link text-sm" 
 
 				{% if tab.requires_pk %}
 					hx-get="{% url tab.url object.pk %}"
