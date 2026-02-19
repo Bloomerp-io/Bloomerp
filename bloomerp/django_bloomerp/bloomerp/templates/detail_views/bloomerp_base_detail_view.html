@@ -25,46 +25,104 @@
 <!--End Text under picture-->
 
 <!--Card Tabs-->
-<c-ui.tabs.container>
-	<!--If tabs are defined in the view, it should override-->
-	{% if tabs %}
-		{% for tab in tabs %}
-		<c-ui.tabs.item>
-			<a 
-				class="nav-link text-sm" 
-
+<div
+	bloomerp-component="detail-tabs"
+	data-content-type-id="{{ detail_view_content_type_id }}"
+	data-save-url="{% url 'components_detail_tabs_preference' %}"
+	data-folder-modal-url="{% url 'components_detail_tabs_folder_modal' %}"
+	data-tab-strip
+	class="mb-2"
+>
+	<div class="relative border-b border-gray-200 bg-white overflow-x-auto no-scrollbar" style="overflow-y: visible;" data-tabs-strip-container>
+		<ul class="flex min-w-max" role="tablist" data-tabs-strip>
+			{% for tab in tabs_top_level %}
 				{% if tab.requires_pk %}
-					hx-get="{% url tab.url object.pk %}"
+					{% url tab.url object.pk as tab_href %}
 				{% else %}
-					hx-get="{% url tab.url %}" 
-				{% endif %} 
-				
-				type="submit" 
-				hx-swap="innerHTML" 
-				hx-trigger="click"
-				hx-target="#detail-view-content" 
-				hx-push-url="true" 
-				{% if tab.requires_pk %} 
-				id="{% url tab.url object.pk %}" {% else %} 
-				id="{% url tab.url %}" 
+					{% url tab.url as tab_href %}
 				{% endif %}
+				<li
+					data-tab-item
+					data-tab-type="tab"
+					data-tab-key="{{ tab.key|default:tab.url }}"
+					data-tab-name="{{ tab.name }}"
+					data-tab-url="{{ tab.url }}"
+					data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
+					data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+					draggable="true"
+					class="shrink-0 border-b-2 border-transparent hover:bg-gray-50 cursor-pointer select-none"
 				>
-				{{tab.name}}
-			</a>
-		</c-ui.tabs.item>
-		{% endfor %}
-	{% else %}
-		{% for tab in detail_view_tabs %}
-		<c-ui.tabs.item>
-			<a hx-get="{% url tab.link.url object.pk %}" type="submit" hx-swap="innerHTML" hx-trigger="click"
-				hx-target="#detail-view-content" hx-push-url="true"
-				title="{{tab.link.description}}"
-				id="{% url tab.link.url object.pk %}"
-				>{{tab.link.name}}</a>
-		</c-ui.tabs.item>
-		{% endfor %}
-	{% endif %}
-</c-ui.tabs.container>
+					<button
+						type="button"
+						data-tab-link
+						role="tab"
+						aria-selected="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+						hx-get="{{ tab_href }}"
+						hx-swap="innerHTML"
+						hx-trigger="click"
+						hx-target="#detail-view-content"
+						hx-push-url="true"
+						id="{{ tab_href }}"
+						class="w-full h-full px-4 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500"
+					>
+						{{ tab.name }}
+					</button>
+				</li>
+			{% endfor %}
+
+			{% for folder in tab_folders %}
+				<li
+					data-tab-item
+					data-tab-type="folder"
+					data-folder-id="{{ folder.id }}"
+					data-folder-name="{{ folder.name }}"
+					draggable="true"
+					class="relative shrink-0 border-b-2 border-transparent hover:bg-gray-50 cursor-pointer select-none"
+				>
+					<button
+						type="button"
+						data-folder-toggle
+						class="w-full h-full px-4 py-1.5 text-sm whitespace-nowrap text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+					>
+						{{ folder.name }}
+					</button>
+
+					<div class="hidden absolute left-0 top-full mt-1 min-w-56 rounded-md border border-gray-200 bg-white z-50 shadow-lg" data-folder-tabs>
+						{% for tab in folder.tabs %}
+							{% if tab.requires_pk %}
+								{% url tab.url object.pk as tab_href %}
+							{% else %}
+								{% url tab.url as tab_href %}
+							{% endif %}
+							<button
+								type="button"
+								data-folder-tab-item
+								data-tab-key="{{ tab.key|default:tab.url }}"
+								data-tab-name="{{ tab.name }}"
+								data-tab-url="{{ tab.url }}"
+								data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
+								data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+								hx-get="{{ tab_href }}"
+								hx-swap="innerHTML"
+								hx-trigger="click"
+								hx-target="#detail-view-content"
+								hx-push-url="true"
+								class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+							>
+								{{ tab.name }}
+							</button>
+						{% endfor %}
+						{% if not folder.tabs %}
+							<div class="px-3 py-2 text-sm text-gray-500" data-folder-empty>
+								No tabs in folder
+							</div>
+						{% endif %}
+					</div>
+				</li>
+			{% endfor %}
+		</ul>
+	</div>
+</div>
 <!--End Card Tabs-->
 
 <!--Content-->

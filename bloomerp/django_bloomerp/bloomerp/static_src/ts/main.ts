@@ -30,6 +30,7 @@ import IconPickerWidget from './components/widgets/IconPickerWidget';
 import UiMessage from './components/UiMessage';
 import ObjectDetailViewContainer from './components/detail_view_components/ObjectDetailViewContainer';
 import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
+import DetailTabs from './components/detail_view_components/DetailTabs';
 import Workflow from './components/workflows/Workflow';
 import GlobalSearch from './components/GlobalSearch';
 import { initMessagesWebsocket } from './modules/messages';
@@ -82,6 +83,7 @@ registerComponent('ui-message', UiMessage);
 // Detail view
 registerComponent('object-detail-view-container', ObjectDetailViewContainer);
 registerComponent('detail-view-value', DetailViewCell);
+registerComponent('detail-tabs', DetailTabs);
 
 // Workflow
 registerComponent('workflow', Workflow);

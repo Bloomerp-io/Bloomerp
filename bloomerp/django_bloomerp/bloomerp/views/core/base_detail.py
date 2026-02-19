@@ -2,6 +2,9 @@ from typing import Any
 from django.views.generic.detail import DetailView
 from bloomerp.views.mixins import BloomerpModelContextMixin, HtmxMixin
 from bloomerp.router import router
+from django.contrib.contenttypes.models import ContentType
+from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
+from bloomerp.services.detail_view_services import resolve_tabs_with_state
 
 class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
     htmx_template = "bloomerp_htmx_base_view.html"
@@ -14,7 +17,19 @@ class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
         if self.tabs:
             context["tabs"] = self.tabs
             
-        context["tabs"] = self.get_tabs()
+        tabs = context.get("tabs") or self.get_tabs()
+
+        content_type = ContentType.objects.get_for_model(self.model)
+        context["detail_view_content_type_id"] = content_type.pk
+        preference = UserDetailViewPreference.get_or_create_for_user(self.request.user, content_type)
+        resolved_tabs, normalized_state = resolve_tabs_with_state(tabs=tabs, state=preference.tab_state_obj)
+        if normalized_state != preference.tab_state_obj:
+            preference.tab_state = normalized_state
+            preference.save(update_fields=["tab_state"])
+
+        context["tabs_top_level"] = resolved_tabs.get("top_level_tabs", [])
+        context["tab_folders"] = resolved_tabs.get("folders", [])
+        context["tabs"] = resolved_tabs.get("top_level_tabs", [])
         return context
 
     def get_tabs(self):
@@ -26,6 +41,7 @@ class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
             if route.nr_of_args() == 1:
                 tabs.append(
                     {
+                        "key" : route.url_name,
                         "name" : route.name,
                         "url" : route.url_name,
                         "path" : route.path,
