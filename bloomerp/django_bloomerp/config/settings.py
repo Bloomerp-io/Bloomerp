@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import sys
+
 from bloomerp.config import BLOOMERP_APPS, BLOOMERP_MIDDLEWARE, BLOOMERP_USER_MODEL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -41,8 +43,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'channels',
-    'bloomerp_modules',
 ]
+
+# Don't load the optional "bloomerp_modules" app during tests because it
+# registers routes and models that interfere with isolated test runs.
+if 'test' not in sys.argv:
+    INSTALLED_APPS.append('bloomerp_modules')
 
 INSTALLED_APPS += BLOOMERP_APPS
 

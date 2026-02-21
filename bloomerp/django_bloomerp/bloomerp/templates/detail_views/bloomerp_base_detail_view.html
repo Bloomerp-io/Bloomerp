@@ -63,7 +63,7 @@
 						hx-target="#detail-view-content"
 						hx-push-url="true"
 						id="{{ tab_href }}"
-						class="w-full h-full px-4 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500"
+						class="w-full h-full px-2 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer"
 					>
 						{{ tab.name }}
 					</button>
@@ -82,7 +82,7 @@
 					<button
 						type="button"
 						data-folder-toggle
-						class="w-full h-full px-4 py-1.5 text-sm whitespace-nowrap text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+						class="w-full h-full px-4 py-1.5 text-sm whitespace-nowrap text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer"
 					>
 						{{ folder.name }}
 					</button>
@@ -108,7 +108,7 @@
 								hx-target="#detail-view-content"
 								hx-push-url="true"
 								class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-							>
+							>	
 								{{ tab.name }}
 							</button>
 						{% endfor %}

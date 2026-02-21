@@ -7,12 +7,8 @@ from bloomerp.models.base_bloomerp_model import FieldLayout
 
 
 def get_default_tab_state() -> dict:
-    return {
-        "version": 2,
-        "top_level_order": [],
-        "folders": [],
-        "active": None,
-    }
+    from bloomerp.services.detail_view_services import get_default_tab_state_v2
+    return get_default_tab_state_v2()
 
 class UserDetailViewPreference(models.Model):
     """
@@ -98,9 +94,10 @@ class UserDetailViewPreference(models.Model):
 
     @property
     def tab_state_obj(self) -> dict:
-        if isinstance(self.tab_state, dict):
-            return self.tab_state
-        return get_default_tab_state()
+        from bloomerp.services.detail_view_services import normalize_detail_tab_state
+        if not isinstance(self.tab_state, dict):
+            return get_default_tab_state()
+        return normalize_detail_tab_state(self.tab_state)
     
     
     

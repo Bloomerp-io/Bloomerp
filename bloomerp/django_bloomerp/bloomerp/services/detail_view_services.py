@@ -6,7 +6,7 @@ from bloomerp.models import AbstractBloomerpUser
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.field_types import FieldType
 from django.utils.translation import gettext_lazy as _
-from bloomerp.models import UserDetailViewPreference
+from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.router import router
 
 
@@ -37,7 +37,7 @@ def _is_foreign_relationship_tab(tab: dict) -> bool:
     return url.endswith("_relationship")
 
 
-def _get_default_tab_state_v2() -> dict:
+def get_default_tab_state_v2() -> dict:
     return {
         "version": 2,
         "top_level_order": [],
@@ -62,7 +62,7 @@ def _normalize_tab_key_list(values: list | None) -> list[str]:
 
 
 def build_default_tab_state_from_tabs(tabs: list[dict]) -> dict:
-    _, normalized = resolve_tabs_with_state(tabs=tabs, state=_get_default_tab_state_v2())
+    _, normalized = resolve_tabs_with_state(tabs=tabs, state=get_default_tab_state_v2())
     return normalized
 
 
@@ -101,7 +101,7 @@ def _normalize_folders(values: list | None) -> list[dict]:
     return normalized
 
 
-def _convert_state_to_v2(state: dict | None) -> dict:
+def normalize_detail_tab_state(state: dict | None) -> dict:
     state = state if isinstance(state, dict) else {}
 
     if state.get("version") == 2:
@@ -123,6 +123,22 @@ def _convert_state_to_v2(state: dict | None) -> dict:
     }
 
 
+def get_ordered_tab_keys_from_state(state: dict | None) -> list[str]:
+    state_v2 = normalize_detail_tab_state(state)
+    ordered_keys: list[str] = []
+
+    for key in state_v2["top_level_order"]:
+        if key not in ordered_keys:
+            ordered_keys.append(key)
+
+    for folder in state_v2["folders"]:
+        for key in folder.get("tab_order", []):
+            if key not in ordered_keys:
+                ordered_keys.append(key)
+
+    return ordered_keys
+
+
 def resolve_tabs_with_state(tabs: list[dict], state: dict | None) -> tuple[dict, dict]:
     tabs = tabs or []
     available_by_key = {
@@ -132,7 +148,7 @@ def resolve_tabs_with_state(tabs: list[dict], state: dict | None) -> tuple[dict,
     }
     available_keys = list(available_by_key.keys())
 
-    state_v2 = _convert_state_to_v2(state)
+    state_v2 = normalize_detail_tab_state(state)
     folders = state_v2["folders"]
     top_level_order = state_v2["top_level_order"]
     active = state_v2["active"]
@@ -242,6 +258,7 @@ def resolve_tabs_with_state(tabs: list[dict], state: dict | None) -> tuple[dict,
     has_rendered_tabs = bool(top_level_tabs) or any(folder["tabs"] for folder in rendered_folders)
     if not has_rendered_tabs and available_keys:
         fallback_active = active if active in available_by_key else available_keys[0]
+        active = fallback_active
         top_level_tabs = []
         for key in available_keys:
             tab = dict(available_by_key[key])
@@ -291,6 +308,7 @@ def save_detail_tab_state(
     preference.tab_state = normalized_state
     preference.save(update_fields=["tab_state"])
     return normalized_state
+
 
 def get_default_layout(content_type:ContentType, user:AbstractBloomerpUser) -> FieldLayout:
     """Generates a default layout for a particular user
@@ -383,6 +401,8 @@ def create_default_detail_view_preference(content_type:ContentType, user:Abstrac
         tab_state=build_default_tab_state_from_tabs(default_tabs),
     )
     
+    
+
         
     
     

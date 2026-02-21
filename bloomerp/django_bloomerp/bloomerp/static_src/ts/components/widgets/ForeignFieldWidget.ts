@@ -24,10 +24,9 @@ export default class ForeignFieldWidget extends BaseComponent {
     private boundOnFocus: any = null;
     private boundOnFocusOut: any = null;
 
-    // 
     private createControlEl: HTMLElement | null = null;
     private advancedControlEl: HTMLElement | null = null;
-
+    
 
     public initialize(): void {
         this.outsideClickHandler = this.handleOutsideClick.bind(this);
@@ -342,6 +341,13 @@ export default class ForeignFieldWidget extends BaseComponent {
         this.hideDropdown();
     }
 
+
+    /**
+     * Creates badge element for a selected object with click handler to remove selection
+     * @param id the id of the selected object
+     * @param label the label of the selected element
+     * @returns the badge
+     */
     private createBadge(id: string, label: string): HTMLElement {
         const span = document.createElement('span');
         span.className = 'foreign-field-badge bg-primary text-xs text-white px-2 py-1 rounded-full cursor-pointer inline-block mr-2 ';

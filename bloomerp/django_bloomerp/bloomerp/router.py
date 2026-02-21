@@ -278,6 +278,9 @@ class BloomerpRouteRegistry:
         self.routes: List[BloomerpRoute] = []
         self._auto_imported = False
         self.dirs = dirs or []
+        # Stores registration parameters for MODEL/DETAIL routes so they can be
+        # replayed for models that are created after the initial import (e.g. in tests).
+        self._model_route_templates: List[dict] = []
 
     def route(self, *args, **kwargs):
         return self.register(*args, **kwargs)
@@ -474,6 +477,19 @@ class BloomerpRouteRegistry:
                         )
 
                 case RouteType.MODEL | RouteType.DETAIL:
+                    # Store template so late-arriving models can be registered later
+                    self._model_route_templates.append({
+                        'path': _auto_path(),
+                        'route_type': _route_type,
+                        'name': _name,
+                        'description': _description,
+                        'url_name': _url_name,
+                        'override': override,
+                        'view': view,
+                        'view_type': view_type,
+                        'registered_view': registered_view,
+                    })
+
                     for model in _retrieve_models(models, exclude_models, _route_type):
                         actual_path = _auto_path()
 
@@ -502,6 +518,56 @@ class BloomerpRouteRegistry:
             return view if view_type == ViewType.CLASS else registered_view
 
         return decorator
+
+    def register_routes_for_model(self, model: Model) -> None:
+        """
+        Register all stored model-route templates for the given model.
+
+        This is useful when a model is created after the initial import (e.g.
+        dynamic test models created in ``setUpClass``). Call this after adding
+        the model to Django's app registry and to the module_registry so that
+        route paths and URL names are generated correctly.
+        """
+        self._auto_import_views()  # Ensure templates are populated
+
+        existing_url_names = {r.url_name for r in self.routes}
+
+        for template in self._model_route_templates:
+            modules_list = module_registry.get_modules_for_model(model)
+            for module in modules_list:
+                actual_path = template['path']
+                actual_name = _generate_name(template['name'], model, template['view'], module)
+
+                def _auto_desc(name: str, tmpl: dict = template) -> str:
+                    if tmpl['description']:
+                        return tmpl['description']
+                    view = tmpl['view']
+                    if hasattr(view, '__doc__') and view.__doc__:
+                        return view.__doc__.strip()
+                    return f"Route for {name}"
+
+                actual_description = _auto_desc(actual_name)
+                actual_url_name_raw = template['url_name'] if template['url_name'] else actual_name
+                url_name = _auto_generate_url_name(actual_url_name_raw, template['route_type'], model, module)
+
+                # Skip if already registered (idempotent)
+                if url_name in existing_url_names:
+                    continue
+
+                route = BloomerpRoute(
+                    path=_generate_path(actual_path, template['route_type'], model, module),
+                    model=model,
+                    module=module,
+                    route_type=template['route_type'],
+                    name=actual_name,
+                    url_name=url_name,
+                    view=template['registered_view'],
+                    view_type=template['view_type'],
+                    description=_generate_description(actual_description, model, template['view'], module),
+                    override=template['override'],
+                )
+                self.routes.append(route)
+                existing_url_names.add(url_name)
 
     def get_routes(self) -> List[BloomerpRoute]:
         """Get all registered routes."""

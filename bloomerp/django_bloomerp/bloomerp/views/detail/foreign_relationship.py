@@ -6,12 +6,12 @@ from bloomerp.models.communication import Comment
 from bloomerp.models.files import File
 from bloomerp.router import router
 from bloomerp.views.core.base_detail import BloomerpBaseDetailView
-
+from django.contrib.contenttypes.models import ContentType
 
 class ForeignRelationshipView(PermissionRequiredMixin, BloomerpBaseDetailView):
     template_name: str = "detail_views/bloomerp_foreign_relationship_view.html"
     model = None
-    related_model = None
+    related_model = None 
     attribute_name = None
 
     def get_permission_required(self):
@@ -23,19 +23,7 @@ class ForeignRelationshipView(PermissionRequiredMixin, BloomerpBaseDetailView):
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
         related_accessor = getattr(self.object, self.attribute_name, None)
-
-        if hasattr(related_accessor, "all"):
-            related_queryset = related_accessor.all()
-        elif related_accessor is None:
-            related_queryset = self.related_model.objects.none()
-        else:
-            related_queryset = self.related_model.objects.filter(pk=related_accessor.pk)
-
-        context["related_model"] = self.related_model
-        context["related_model_name_singular"] = self.related_model._meta.verbose_name
-        context["related_model_name_plural"] = self.related_model._meta.verbose_name_plural
-        context["attribute_name"] = self.attribute_name
-        context["related_queryset"] = related_queryset
+        context["foreign_content_type_id"] = ContentType.objects.get_for_model(self.related_model).id
         return context
 
 
