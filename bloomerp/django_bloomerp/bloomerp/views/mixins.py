@@ -5,6 +5,7 @@ from django.forms.models import modelform_factory
 from bloomerp.models import ApplicationField
 from django.views.generic import DetailView, UpdateView
 from bloomerp.modules.definition import ModuleConfig
+from django.urls import reverse
 from bloomerp.utils.models import (
     get_create_view_url,
     get_update_view_url,
@@ -19,145 +20,190 @@ from django.views.generic.edit import ModelFormMixin
 from bloomerp.models import BloomerpModel
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.router import router
-from bloomerp.modules.definition import module_registry
 from bloomerp.router import RouteType
-from bloomerp.utils.models import get_list_view_url
 
 
 class HtmxMixin:
     '''Updates the template name based on the request.htmx attribute.'''
     htmx_template = 'bloomerp_htmx_base_view.html'
+    htmx_addendum_template = 'htmx_addendum.html'
     base_detail_template = 'detail_views/bloomerp_base_detail_view.html'
-    htmx_detail_target = 'detail-content'
+    htmx_detail_target = 'detail-view-content'
     htmx_main_target = 'main-content'
+    htmx_skip_addendum_target = 'data-table-detail-pane'
     is_detail_view = False
     include_padding = True
     
     # Some other args
     module : ModuleConfig = None
+
+    def _normalize_route_type(self, route_type) -> str | None:
+        if isinstance(route_type, RouteType):
+            return route_type.value
+        if isinstance(route_type, str):
+            return route_type.lower()
+        return None
+
+    def _resolve_current_route(self):
+        resolver_match = getattr(self.request, "resolver_match", None)
+        if not resolver_match or not resolver_match.url_name:
+            return None
+
+        try:
+            for route in router.get_routes():
+                if route.url_name == resolver_match.url_name:
+                    return route
+        except Exception:
+            return None
+        return None
+
+    def _resolve_route_title(self) -> str:
+        route = self._resolve_current_route()
+        if route and getattr(route, "name", None):
+            return route.name
+        return "Home"
+
+    def _resolve_detail_object(self, context: dict):
+        if context.get("object") is not None:
+            return context.get("object")
+
+        if not hasattr(self, "get_object"):
+            return None
+
+        try:
+            return self.get_object()
+        except Exception:
+            return None
+
+    def _build_breadcrumb_items(self, context: dict) -> list[dict]:
+        items: list[dict] = [
+            {
+                "text": "Home",
+                "url": "/",
+                "active": False,
+            }
+        ]
+
+        route = self._resolve_current_route()
+        if not route:
+            items[0]["active"] = True
+            return items
+
+        route_type = self._normalize_route_type(route.route_type)
+        module = getattr(route, "module", None)
+        model = getattr(route, "model", None)
+        route_name = route.name or "Route"
+        module_url = f"/{module.id.lower()}/" if module else None
+
+        if route_type == RouteType.APP.value:
+            items.append({"text": route_name, "url": self.request.path, "active": True})
+            return items
+
+        if module:
+            is_module_home = bool(route.path and route.path == module_url)
+            items.append(
+                {
+                    "text": module.name,
+                    "url": module_url,
+                    "active": is_module_home,
+                }
+            )
+            if is_module_home:
+                return items
+
+        if route_type == RouteType.MODULE.value:
+            items.append({"text": route_name, "url": self.request.path, "active": True})
+            return items
+
+        if model:
+            model_text = model._meta.verbose_name.title()
+            try:
+                model_url = get_list_view_url(model)
+            except Exception:
+                model_url = self.request.path
+            items.append({"text": model_text, "url": model_url, "active": False})
+
+        if route_type == RouteType.MODEL.value:
+            items.append({"text": route_name, "url": self.request.path, "active": True})
+            return items
+
+        if route_type == RouteType.DETAIL.value:
+            detail_object = self._resolve_detail_object(context)
+            if detail_object is not None:
+                object_text = str(detail_object)
+                try:
+                    object_url = reverse(get_detail_view_url(detail_object.__class__), kwargs={"pk": detail_object.pk})
+                except Exception:
+                    object_url = self.request.path
+                items.append({"text": object_text, "url": object_url, "active": False})
+
+            items.append({"text": route_name, "url": self.request.path, "active": True})
+            return items
+
+        items.append({"text": route_name, "url": self.request.path, "active": True})
+        return items
+    
     
     def get_context_data(self, **kwargs:Any) -> dict:
+        import random 
         try:
             context = super().get_context_data(**kwargs)
         except AttributeError:
             # If the super class does not have a get_context_data method
             context = {}
 
+        base_template_name = self.template_name
+        is_detail_request = self.is_detail_view or isinstance(self, DetailView) or isinstance(self, UpdateView)
+
+        
+        
         # ---------------------
         # NORMAL REQUEST
         # ---------------------
         if not self.request.htmx or self.request.htmx.history_restore_request:
-            if self.is_detail_view or isinstance(self, DetailView) or isinstance(self, UpdateView):
+            if is_detail_request:
                 context['include_main_content'] = self.base_detail_template
-                context['include_detail_content'] = self.template_name
+                context['include_detail_content'] = base_template_name
                 context['template_name'] = self.base_detail_template
             else:
-                context['template_name'] = self.template_name
+                context['template_name'] = base_template_name
             self.template_name = self.htmx_template
         
         # ---------------------
         # HTMX REQUEST
         # ---------------------
         else:
-            # Check the target of htmx
-            if self.request.htmx.target == self.htmx_main_target:
-                if isinstance(self, DetailView) or isinstance(self, UpdateView):
-                    # In this case, we are dealing with a detail view
-                    context['include_detail_content'] = self.template_name
-                    self.template_name = self.base_detail_template
+            htmx_target = getattr(self.request.htmx, 'target', None)
 
-        # ---------------------
-        # MODULE SIDEBAR CONTEXT
-        # ---------------------
-        if getattr(self, "module", None):
-            module = self.module
+            if htmx_target == self.htmx_skip_addendum_target:
+                context['template_name'] = base_template_name
+                self.template_name = base_template_name
+                context["rand_int"] = random.randint(0,10000)
+                context["route_title"] = self._resolve_route_title()
+                context["breadcrumbs"] = self._build_breadcrumb_items(context)
+                return context
 
-            def _build_model_links(models: list) -> list[dict]:
-                items: list[dict] = []
-                for model in models:
-                    try:
-                        url = get_list_view_url(model)
-                    except Exception:
-                        url = None
-                    if not url:
-                        continue
-                    items.append({
-                        "name": model._meta.verbose_name_plural.title(),
-                        "url": url,
-                    })
-                return sorted(items, key=lambda item: item["name"].lower())
-
-            module_models = _build_model_links(module_registry.get_models_for_module(module.id))
-
-            module_routes = [
-                route for route in router.filter(module=module, route_type=RouteType.MODULE)
-                if "<" not in (route.path or "")
-            ]
-            home_route = None
-            module_path_root = f"/{module.id.lower()}/"
-            for route in module_routes:
-                if route.path == module_path_root:
-                    home_route = route
-                    break
-            if home_route is None:
-                for route in module_routes:
-                    if "home" in (route.name or "").lower():
-                        home_route = route
-                        break
-
-            module_views = [
-                {
-                    "name": route.name,
-                    "url": route.path,
-                    "description": route.description,
-                }
-                for route in module_routes
-                if route is not home_route
-            ]
-            module_home = None
-            if home_route:
-                module_home = {
-                    "name": home_route.name,
-                    "url": home_route.path,
-                    "description": home_route.description,
-                }
-
-            submodules_data: list[dict] = []
-            for sub in module.sub_modules:
-                sub_models = _build_model_links(
-                    module_registry.get_models_for_submodule(module.id, sub.id)
-                )
-                sub_views = [
-                    {
-                        "name": route.name,
-                        "url": route.path,
-                        "description": route.description,
-                    }
-                    for route in module_routes
-                    if route.path and route.path.startswith(f"/{module.id.lower()}/{sub.id.lower()}/")
-                ]
-
-                safe_id = sub.id.replace("-", "_").replace(" ", "_")
-                submodules_data.append(
-                    {
-                        "id": sub.id,
-                        "name": sub.name,
-                        "icon": sub.icon,
-                        "models": sub_models,
-                        "views": sub_views,
-                        "section_id": safe_id,
-                    }
-                )
-
-            context.update(
-                {
-                    "module": module,
-                    "module_models": module_models,
-                    "module_views": module_views,
-                    "module_submodules": submodules_data,
-                    "module_home": module_home,
-                }
+            context['include_addendum_oob'] = (
+                is_detail_request and htmx_target == self.htmx_detail_target
             )
+
+            # Check the target of htmx
+            if htmx_target == self.htmx_main_target:
+                if is_detail_request:
+                    # In this case, we are dealing with a detail view
+                    context['include_detail_content'] = base_template_name
+                    context['template_name'] = self.base_detail_template
+                else:
+                    context['template_name'] = base_template_name
+            else:
+                context['template_name'] = base_template_name
+
+            self.template_name = self.htmx_addendum_template
+                
+        
+        context["rand_int"] = random.randint(0,10000)
+        context["route_title"] = self._resolve_route_title()
+        context["breadcrumbs"] = self._build_breadcrumb_items(context)
         
         return context
     

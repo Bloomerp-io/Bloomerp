@@ -34,6 +34,8 @@ import DetailTabs from './components/detail_view_components/DetailTabs';
 import Workflow from './components/workflows/Workflow';
 import GlobalSearch from './components/GlobalSearch';
 import { initMessagesWebsocket } from './modules/messages';
+import WorkspaceContainer from './components/workspaces/WorkspaceContainer';
+import WorkspaceTile from './components/workspaces/WorkspaceTile';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -90,6 +92,10 @@ registerComponent('workflow', Workflow);
 
 // Global search
 registerComponent('global-search-modal', GlobalSearch);
+
+// Workspace components
+registerComponent('workspace-container', WorkspaceContainer);
+registerComponent('workspace-tile', WorkspaceTile);
 
 // Auto init comonents
 setupComponentAutoInit();

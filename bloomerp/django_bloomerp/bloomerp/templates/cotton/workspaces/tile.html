@@ -1,0 +1,20 @@
+<div 
+    class="bg-white border border-1.5 border-gray-200 px-4 py-2 rounded-lg"
+    bloomerp-component="workspace-tile"
+    >
+    <div class="flex items-center justify-between mb-2 text-sm text-muted">
+        <div class="flex items-center gap-2">
+            <div class="p-0.5 bg-primary-50 text-primary-700 rounded">
+                <i class="fa {{ icon }}"></i>
+            </div>
+            <span class="font-semibold text-primary-900">{{ title }}</span>
+        </div>
+
+        <div>
+            <i class="fa fa-ellipsis-h"></i>
+        </div>
+    </div>
+    <div>
+        {{ slot }}
+    </div>
+</div>

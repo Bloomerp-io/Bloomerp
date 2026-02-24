@@ -2,16 +2,6 @@
 {% load bloomerp %}
 {% load crispy_forms_tags %}
 
-<!--Pagetitle-->
-<div class="flex justify-between items-center">
-	{% breadcrumb object=object model=model %}
-
-	<div>
-		{% include "detail_views/snippets/card_header.html" with content_type_id=content_type_id object=object %}
-	</div>
-</div>
-<!--End Pagetitle-->
-
 <!--Picture-->
 <div class="flex justify-center mb-3">
 	{% avatar object=object size="6em" class_name="rounded-circle" %}

@@ -7,8 +7,8 @@ from bloomerp.utils.realtime import send_user_message
 
 @router.register(
     path="/",
-    name='Bloomerp Dashboard',
-    description='The dashboard for the Bloomerp app',
+    name='Modules',
+    description='Available Modules',
     route_type='app',
     url_name='bloomerp_home_view'
 )
