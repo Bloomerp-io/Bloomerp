@@ -28,5 +28,9 @@ export default class WorkspaceTile extends BaseComponent {
     public setTitle(title: string): void {}
 
     
-
+    /**
+     * Sets the edit mode of the tile, allowing the user to remove the tile from the workspace
+     */
+    public setEditMode(): void {}
+    
 }
