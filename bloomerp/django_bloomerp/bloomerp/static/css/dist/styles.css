@@ -3410,6 +3410,10 @@
     --tw-ring-color: var(--color-primary-700);
     --tw-ring-offset-color: var(--color-white);
   }
+  .workspace-row--dragging {
+    scale: 0.99;
+    opacity: 80%;
+  }
   .workspace-row__header {
     position: relative;
     z-index: 10;
@@ -3422,18 +3426,12 @@
     display: none;
     align-items: center;
     gap: calc(var(--spacing) * 2);
-    border-radius: calc(infinity * 1px);
-    border-style: var(--tw-border-style);
-    border-width: 1px;
-    border-color: var(--color-slate-200);
     background-color: color-mix(in srgb, #fff 95%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-white) 95%, transparent);
     }
     padding-inline: calc(var(--spacing) * 2);
     padding-block: calc(var(--spacing) * 1);
-    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
   .workspace-edit-mode .workspace-row--focused .workspace-row__header {
     display: flex;

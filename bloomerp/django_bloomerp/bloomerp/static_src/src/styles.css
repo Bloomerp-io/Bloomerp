@@ -552,12 +552,16 @@
     @apply ring-[var(--color-primary-700)] ring-offset-white;
   }
 
+  .workspace-row--dragging {
+    @apply opacity-80 scale-[0.99];
+  }
+
   .workspace-row__header {
     @apply relative z-10 mb-2 hidden items-center justify-end;
   }
 
   .workspace-row__controls {
-    @apply hidden items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-2 py-1 shadow-sm;
+    @apply hidden items-center gap-2 bg-white/95 px-2 py-1;
   }
 
   .workspace-edit-mode .workspace-row--focused .workspace-row__header {

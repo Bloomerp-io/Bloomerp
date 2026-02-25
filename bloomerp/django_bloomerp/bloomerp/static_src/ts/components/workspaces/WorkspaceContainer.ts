@@ -279,9 +279,14 @@ export default class WorkspaceContainer extends BaseComponent {
             if (!this.editMode) return;
             event.preventDefault();
             if (this.draggedRow) {
+                const draggedRow = this.draggedRow;
                 this.draggedRow.classList.remove('workspace-row--dragging');
                 this.draggedRow = null;
                 this.reindexRows();
+                const newIndex = this.rowElements.indexOf(draggedRow);
+                if (newIndex >= 0) {
+                    this.focusRowByIndex(newIndex);
+                }
                 this.save();
                 return;
             }
@@ -318,15 +323,22 @@ export default class WorkspaceContainer extends BaseComponent {
             ?? target.closest<HTMLElement>('[data-workspace-row]');
 
         if (rowTarget) {
-            if (!this.isRowFocused) {
-                const rowIndex = Number.parseInt(rowTarget.dataset.rowIndex ?? `${this.focusedRowIndex}`, 10);
-                this.focusRowByIndex(rowIndex);
+            if (!this.editMode || !this.isRowFocused) {
+                event.preventDefault();
+                return;
             }
             this.draggedRow = rowTarget;
             rowTarget.classList.add('workspace-row--dragging');
             if (event.dataTransfer) {
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData('text/plain', rowTarget.dataset.rowIndex ?? '');
+                try {
+                    const offsetX = Math.min(40, Math.max(10, Math.round(rowTarget.clientWidth * 0.1)));
+                    const offsetY = Math.min(40, Math.max(10, Math.round(rowTarget.clientHeight * 0.1)));
+                    event.dataTransfer.setDragImage(rowTarget, offsetX, offsetY);
+                } catch {
+                    // Ignore drag image errors (e.g. browser restrictions)
+                }
             }
             return;
         }
@@ -667,13 +679,6 @@ export default class WorkspaceContainer extends BaseComponent {
                             class="workspace-row__input"
                             title="Row columns"
                         />
-                        <button
-                            data-row-drag-handle
-                            type="button"
-                            class="workspace-row__drag"
-                            title="Drag row"
-                        >
-                            <i class="fa fa-grip-vertical"></i>
                         </button>
                         <button
                             data-remove-row
@@ -697,6 +702,9 @@ export default class WorkspaceContainer extends BaseComponent {
             dragHandle?.addEventListener('dragstart', (event: DragEvent) => this.onDragStart(event));
             dragHandle?.addEventListener('dragend', () => this.onDragEnd());
             const header = rowEl.querySelector<HTMLElement>('[data-row-header]');
+            if (header) {
+                header.setAttribute('draggable', 'true');
+            }
             header?.addEventListener('dragstart', (event: DragEvent) => this.onDragStart(event));
             header?.addEventListener('dragend', () => this.onDragEnd());
 
@@ -726,10 +734,6 @@ export default class WorkspaceContainer extends BaseComponent {
             const handle = rowEl.querySelector<HTMLElement>('[data-row-drag-handle]');
             if (handle) {
                 handle.setAttribute('draggable', this.editMode ? 'true' : 'false');
-            }
-            const header = rowEl.querySelector<HTMLElement>('[data-row-header]');
-            if (header) {
-                header.setAttribute('draggable', this.editMode && isFocused ? 'true' : 'false');
             }
         });
     }
