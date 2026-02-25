@@ -7,7 +7,7 @@ from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from django.forms.fields import CharField
 from django.forms.widgets import Textarea
 from bloomerp.models.auth import Link
-from bloomerp.models.workspaces import Widget
+from bloomerp.models.workspaces import Tile
 import uuid
 from django.contrib.auth.decorators import login_required
 

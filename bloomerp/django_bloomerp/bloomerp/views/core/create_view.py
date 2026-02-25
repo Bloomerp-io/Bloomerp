@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth import get_user_model
 from django.contrib.messages.views import SuccessMessageMixin
 from bloomerp.models.files import File
-from bloomerp.models.workspaces import Widget, SqlQuery
+from bloomerp.models.workspaces import Tile, SqlQuery
 from bloomerp.utils.models import model_name_plural_underline, get_detail_view_url
 from bloomerp.views.mixins import BloomerpModelFormViewMixin, HtmxMixin
 from bloomerp.router import router
@@ -19,7 +19,7 @@ User = get_user_model()
     url_name="add",
     description="Create a new object from {model}",
     route_type="model",
-    exclude_models=[File, Widget, SqlQuery, User],
+    exclude_models=[File, Tile, SqlQuery, User],
 )
 class BloomerpCreateView(
     PermissionRequiredMixin,

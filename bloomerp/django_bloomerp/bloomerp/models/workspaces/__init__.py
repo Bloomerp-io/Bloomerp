@@ -1,12 +1,11 @@
-from .widget import Widget, WidgetType
+from .tile import Tile
 from .sql_query import SqlQuery
 from .workspace import Workspace
-from .widget_on_workspace import WidgetOnWorkspace
+from .tile_on_workspace import TileOnWorkspace
 
 __all__ = [
-    'Widget',
-    'WidgetType',
+    'Tile',
     'SqlQuery',
     'Workspace',
-    'WidgetOnWorkspace',
+    'TileOnWorkspace',
 ]

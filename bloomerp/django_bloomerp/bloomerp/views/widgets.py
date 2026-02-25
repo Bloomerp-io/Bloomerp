@@ -8,7 +8,6 @@ from bloomerp.views.mixins import HtmxMixin, BloomerpModelFormViewMixin, Bloomer
 from bloomerp.views.core import BloomerpBaseDetailView
 from django.views.generic.edit import CreateView, UpdateView
 from django.views.generic.detail import DetailView
-from bloomerp.components.workspaces.workspace_widget import workspace_widget
 from bloomerp.router import router
 
 

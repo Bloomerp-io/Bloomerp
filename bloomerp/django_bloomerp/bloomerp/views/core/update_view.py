@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from bloomerp.models.files import File
-from bloomerp.models.workspaces import Widget
+from bloomerp.models.workspaces import Tile
 from bloomerp.utils.models import get_detail_view_url, get_list_view_url
 from bloomerp.views.mixins import BloomerpModelFormViewMixin, BloomerpModelContextMixin, HtmxMixin
 from bloomerp.router import router
@@ -18,7 +18,7 @@ from bloomerp.router import router
     url_name="update",
     description="Update object from {model}",
     route_type="detail",
-    exclude_models=[File, Widget],
+    exclude_models=[File, Tile],
 )
 class BloomerpUpdateView(
     PermissionRequiredMixin,
