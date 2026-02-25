@@ -527,6 +527,68 @@
   .cell-selected {
     @apply bg-primary-50;
   }
+
+  .workspace-tile--focused {
+    @apply outline-none ring-2 ring-offset-2;
+    @apply ring-[var(--color-primary-700)] ring-offset-white;
+  }
+}
+
+@layer components {
+  .workspace-row {
+    @apply relative rounded-2xl border border-transparent bg-transparent p-0;
+  }
+
+  .workspace-row__grid {
+    @apply grid gap-3 transition-all duration-200;
+  }
+
+  .workspace-edit-mode .workspace-row {
+    @apply border border-slate-100 bg-white/95 p-2;
+  }
+
+  .workspace-row--focused {
+    @apply outline-none ring-2 ring-offset-2;
+    @apply ring-[var(--color-primary-700)] ring-offset-white;
+  }
+
+  .workspace-row__header {
+    @apply relative z-10 mb-2 hidden items-center justify-end;
+  }
+
+  .workspace-row__controls {
+    @apply hidden items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-2 py-1 shadow-sm;
+  }
+
+  .workspace-edit-mode .workspace-row--focused .workspace-row__header {
+    @apply flex;
+  }
+
+  .workspace-edit-mode .workspace-row--focused .workspace-row__controls {
+    @apply flex;
+  }
+
+  .workspace-row__input {
+    @apply w-12 rounded-md border border-slate-200 px-1 py-0.5 text-center text-xs;
+  }
+
+  .workspace-row__drag {
+    @apply h-6 w-6 rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50;
+  }
+
+  .workspace-row__remove {
+    @apply h-6 w-6 rounded-full border border-rose-200 text-rose-500 transition hover:bg-rose-50;
+  }
+}
+
+@layer utilities {
+  .workspace-row-selection [data-tile-controls] {
+    @apply hidden;
+  }
+
+  .workspace-row-selection [data-colspan-resize-handle] {
+    @apply hidden;
+  }
 }
 
 /*

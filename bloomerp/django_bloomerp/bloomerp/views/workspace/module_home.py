@@ -6,7 +6,7 @@ from django.views.generic import TemplateView
 
 @router.register(
     path=f"/",
-    name='{module} home',
+    name='{module}',
     description='The homepage for the {module} module.',
     route_type='module',
     modules="__all__"

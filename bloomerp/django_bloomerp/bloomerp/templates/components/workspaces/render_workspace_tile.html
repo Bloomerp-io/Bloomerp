@@ -1,5 +1,48 @@
-<c-workspaces.tile icon="{{ icon }}" title="{{ title }}">
-    <div class="font-bold text-2xl text-gray-700">
-        {{ value }}
-    </div>
+<c-workspaces.tile
+    icon="{{ icon }}"
+    title="{{ title }}"
+    tile_id="{{ tile_id }}"
+    tile_type="{{ tile_type }}"
+    colspan="{{ colspan }}"
+    max_cols="{{ max_cols }}"
+>
+    {% if tile_type == "kpi" %}
+        <div class="space-y-1">
+            <div class="text-2xl font-semibold text-slate-800">{{ payload.value }}</div>
+            <div class="text-xs text-emerald-600">{{ payload.delta }}</div>
+        </div>
+    {% elif tile_type == "table" %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-100 text-slate-500">
+                        {% for column in payload.columns %}
+                            <th class="pb-1 font-medium">{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in payload.rows %}
+                        <tr class="border-b border-slate-50 last:border-0">
+                            {% for cell in row %}
+                                <td class="py-1.5">{{ cell }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% elif tile_type == "two_dim_chart" %}
+        <div class="h-44 w-full overflow-hidden">
+            {{ chart_html }}
+        </div>
+    {% elif tile_type == "links" %}
+        <div class="space-y-1 flex flex-col">
+            {% for link in payload.links %}
+                <a href="{{ link.url }}" class="text-blue-500 hover:underline">{{ link.label }}</a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-sm text-slate-500">Unsupported tile type.</div>
+    {% endif %}
 </c-workspaces.tile>

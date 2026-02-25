@@ -1,21 +1,18 @@
 <div 
     bloomerp-component="workspace-container"
+    data-cols="4"
+    data-rows='[{"divider":false,"cols":4},{"divider":true,"cols":6},{"divider":false,"cols":4}]'
     data-tile-ids="1,2,3,4,5,6"
-    >
-    <div class="mb-2 flex justify-start gap-2">
-
-        <button class="btn btn-sm btn-secondary" id="filter-workspaces-btn">
-            <i class="fa fa-filter"></i> Filter 
+    class="space-y-3"
+>
+    <div class="flex items-center justify-end my-2 gap-4">
+        <button class="btn btn-sm btn-secondary" id="edit-workspaces-btn">
+            <i class="fa fa-pen-to-square"></i> Edit
         </button>
-
-        <button class="btn btn-sm btn-secondary text-gray-600" id="edit-workspaces-btn">
-            <i class="fa fa-gear"></i> Edit 
+        <button class="btn btn-sm btn-secondary" id="edit-workspaces-btn">
+            <i class="fa fa-filter"></i> Filter
         </button>
     </div>
 
-
-    <div class="grid grid-cols-4 gap-4" id="workspace-tiles-section">
-        
-    </div>
+    <div class="space-y-4" id="workspace-tiles-section"></div>
 </div>
-

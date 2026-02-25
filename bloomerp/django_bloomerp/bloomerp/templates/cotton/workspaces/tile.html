@@ -1,20 +1,48 @@
-<div 
-    class="bg-white border border-1.5 border-gray-200 px-4 py-2 rounded-lg"
+<div
+    class="workspace-tile group relative rounded-xl border border-slate-200 bg-white/95 p-3"
     bloomerp-component="workspace-tile"
-    >
-    <div class="flex items-center justify-between mb-2 text-sm text-muted">
+    data-tile-id="{{ tile_id|default:'0' }}"
+    data-tile-type="{{ tile_type|default:'' }}"
+    data-colspan="{{ colspan|default:'1' }}"
+    data-max-cols="{{ max_cols|default:'4' }}"
+>
+    <div class="mb-3 flex items-center justify-between text-xs text-slate-500">
         <div class="flex items-center gap-2">
-            <div class="p-0.5 bg-primary-50 text-primary-700 rounded">
+            <div data-tile-icon class="rounded-md bg-slate-100 px-1.5 py-1 text-slate-600">
                 <i class="fa {{ icon }}"></i>
             </div>
-            <span class="font-semibold text-primary-900">{{ title }}</span>
+            <span data-tile-title class="font-medium text-slate-700">{{ title }}</span>
         </div>
 
-        <div>
-            <i class="fa fa-ellipsis-h"></i>
+        <div data-tile-controls class="hidden items-center gap-1">
+            <input
+                data-colspan-input
+                type="number"
+                min="1"
+                value="{{ colspan|default:'1' }}"
+                class="w-12 rounded-md border border-slate-200 px-1 py-0.5 text-center text-xs"
+                title="Tile width (colspan)"
+            />
+            <button
+                data-remove-tile
+                type="button"
+                class="h-6 w-6 rounded-full border border-rose-200 text-rose-500 transition hover:bg-rose-50"
+                title="Remove tile"
+            >
+                <i class="fa fa-xmark"></i>
+            </button>
         </div>
     </div>
-    <div>
+
+    <div class="min-h-20 text-sm text-slate-700">
         {{ slot }}
     </div>
+
+    <button
+        data-colspan-resize-handle
+        class="absolute right-1 top-1/2 hidden h-8 w-2 -translate-y-1/2 cursor-ew-resize rounded bg-slate-200/80 transition group-[.workspace-tile--editing]:block"
+        title="Drag to resize width"
+        aria-label="Drag to resize width"
+        type="button"
+    ></button>
 </div>

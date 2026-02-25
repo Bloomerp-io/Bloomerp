@@ -8,6 +8,18 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
         managed = True
         db_table = 'bloomerp_workspace'
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    sub_module_id = models.CharField(max_length=255)
-    module_id = models.CharField(max_length=255)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE
+        )
+    name = models.CharField(
+        max_length=255
+        )
+    sub_module_id = models.CharField(
+        max_length=255
+        )
+    module_id = models.CharField(
+        max_length=255
+        )
+    
+    
