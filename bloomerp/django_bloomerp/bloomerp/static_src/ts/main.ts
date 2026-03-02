@@ -10,6 +10,7 @@ import 'drawflow/dist/drawflow.min.css';
 
 import { registerComponent, setupComponentAutoInit } from './components/BaseComponent';
 import { Modal } from './components/Modal';
+import { Drawer } from './components/Drawer';
 import { Sidebar } from './components/Sidebar';
 import { DataTable } from './components/data_view_components/DataTable'
 import { DataTableCell } from './components/data_view_components/DataTable'
@@ -24,6 +25,7 @@ import TextEditor from './components/inputs/TextEditor';
 import WebsiteBuilder from './components/WebsiteBuilder';
 import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
+import SelectableCards from './components/inputs/SelectableCards';
 import ForeignFieldWidget from './components/widgets/ForeignFieldWidget';
 import CodeEditorWidget from './components/widgets/CodeEditorWidget';
 import IconPickerWidget from './components/widgets/IconPickerWidget';
@@ -36,9 +38,11 @@ import GlobalSearch from './components/GlobalSearch';
 import { initMessagesWebsocket } from './modules/messages';
 import WorkspaceContainer from './components/workspaces/WorkspaceContainer';
 import WorkspaceTile from './components/workspaces/WorkspaceTile';
+import SqlQueryEditor from './components/inputs/SqlQueryEditor';
 
 // Register components here
 registerComponent('modal', Modal);
+registerComponent('drawer', Drawer);
 registerComponent('sidebar', Sidebar);
 
 // Dataview component
@@ -74,6 +78,9 @@ registerComponent('permission-checkboxes', PermissionCheckboxes)
 // Dropdown input
 registerComponent('dropdown-input', DropdownInput);
 
+// Selectable cards
+registerComponent('selectable-cards', SelectableCards);
+
 // Form widgets
 registerComponent('foreign-field-widget', ForeignFieldWidget);
 registerComponent('code-editor-widget', CodeEditorWidget);
@@ -96,6 +103,8 @@ registerComponent('global-search-modal', GlobalSearch);
 // Workspace components
 registerComponent('workspace-container', WorkspaceContainer);
 registerComponent('workspace-tile', WorkspaceTile);
+
+registerComponent('sql-query-editor', SqlQueryEditor);
 
 // Auto init comonents
 setupComponentAutoInit();

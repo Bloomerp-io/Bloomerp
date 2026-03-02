@@ -1,6 +1,8 @@
+import getGeneralModal from "@/utils/modals";
 import BaseComponent, { componentIdentifier, getComponent, initComponents } from "../BaseComponent";
 import WorkspaceTile from "./WorkspaceTile";
 import htmx from "htmx.org";
+
 
 const TILE_ENDPOINT = "/components/render_workspace_tile/";
 
@@ -18,6 +20,7 @@ export default class WorkspaceContainer extends BaseComponent {
     private focusedRowIndex: number = 0;
     private isRowFocused: boolean = false;
     private draggedRow: HTMLElement | null = null;
+    private addTileBtn: HTMLElement | null = null;
 
     public initialize(): void {
         if (!this.element) return;
@@ -50,6 +53,26 @@ export default class WorkspaceContainer extends BaseComponent {
         this.tileSection?.addEventListener('workspace:tile-colspan-change', () => this.onTileColspanChange());
 
         this.setupDnDForSection();
+
+        // Add listener to add tile button
+        this.addTileBtn = this.element.querySelector("#add-tile-btn");
+        this.addTileBtn?.addEventListener("click", () => {
+            const modal = getGeneralModal();
+            modal.setTitle("Add Tile");
+            
+            htmx.ajax("get",
+                "/create-tile/",
+                {
+                    target: modal.getBodyElement(),
+                    swap: "innerHTML",
+                }
+            ).then(()=> {
+                modal.open();
+            })
+        
+        });
+
+
     }
 
     public setCols(cols: number): void {

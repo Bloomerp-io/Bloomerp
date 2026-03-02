@@ -1,0 +1,91 @@
+<div
+    bloomerp-component="sql-query-editor"
+    data-sql-schema-url="{% url 'api_sql_accessible_tables' %}"
+    data-sql-execute-url="{% url 'components_execute_sql_query' %}"
+    data-sql-queries-url="{% url 'api_sql_queries' %}"
+    class="w-full h-[700px] rounded-lg border border-base bg-white overflow-hidden"
+    >
+    <input type="hidden" data-sql-csrf value="{{ csrf_token }}">
+    <input type="hidden" data-sql-hidden-query-input name="{{ name|default:'query' }}" value="{{ value|default:'' }}">
+    <input type="hidden" data-sql-active-query-id name="query_id" value="">
+
+    <div class="grid grid-cols-12 h-full overflow-hidden">
+        <aside class="col-span-3 border-r border-base bg-base flex flex-col min-h-0 overflow-hidden">
+            <div class="flex items-center justify-between p-3 border-b border-base">
+                <h3 class="text-sm font-semibold text-primary-900">Catalog</h3>
+                <button data-sql-refresh class="w-7 h-7 rounded-md border border-base bg-white text-gray-600 hover:text-primary-700 hover:border-primary-300">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+            </div>
+            <div class="p-3 border-b border-base">
+                <input
+                    type="text"
+                    data-sql-sidebar-search
+                    class="input input-sm w-full bg-white border border-base"
+                    placeholder="Type to filter tables or fields"
+                    >
+            </div>
+            <div class="p-3 text-xs text-gray-500 border-b border-base">
+                Click or drag fields/tables into the editor
+            </div>
+            <div class="p-3 space-y-1 text-sm flex-1 min-h-0 overflow-y-auto overflow-x-hidden" data-sql-catalog-tree>
+                <div class="text-gray-500 text-sm">Loading schema...</div>
+            </div>
+        </aside>
+
+        <section class="col-span-9 flex flex-col">
+            <div class="border-b border-base bg-white">
+                <ul class="flex items-center text-sm overflow-x-auto no-scrollbar" data-sql-tabs>
+                    <li class="px-4 py-3 border-b-2 border-primary bg-primary/5 text-primary font-medium" data-sql-tab-id="unsaved" data-sql-tab-query="{{ value|default:'' }}" title="Unsaved Query">
+                        Unsaved Query
+                    </li>
+                    <li class="px-4 py-3 text-gray-500 cursor-pointer" data-sql-tab-add title="New query tab"><i class="fa-solid fa-plus"></i></li>
+                </ul>
+            </div>
+
+            <div class="px-3 py-2 border-b border-base bg-base flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <button data-sql-execute class="btn btn-sm btn-primary text-white border-0 hover:bg-primary-700">
+                        <i class="fa-solid fa-play mr-1"></i>
+                        Execute
+                    </button>
+
+                    <select 
+                        id="sql-query-editor-page-size" 
+                        class="select select-sm"
+                        >
+                        <option disabled selected>Page size</option>
+                        <option value="25">10</option>
+                        <option value="25">25</option>
+                        <option value="25">50</option>
+                        <option value="25">100</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input
+                        type="text"
+                        data-sql-query-name
+                        class="input input-sm border border-base bg-white w-64"
+                        placeholder="Query name"
+                        value="Unsaved Query"
+                        >
+                    <button data-sql-save class="btn btn-sm bg-white border border-base text-gray-700 hover:bg-base">Save</button>
+                </div>
+            </div>
+
+            <div class="border-b border-base bg-white h-[320px] overflow-hidden">
+                <div data-sql-editor class="w-full h-full"></div>
+                <textarea data-sql-query-input class="hidden">{{ slot }}</textarea>
+            </div>
+
+            <div class="flex-1 flex flex-col min-h-0 bg-white">
+                <div class="px-3 py-2 border-b border-base flex items-center justify-between gap-3">
+                    <input type="text" data-sql-results-search class="input input-sm w-64 border border-base bg-white" placeholder="Search results">
+                </div>
+                <div class="flex-1 min-h-0 flex flex-col overflow-hidden" data-sql-results-target>
+                    {% include "components/execute_sql_query.html" with columns=None rows=None row_count=0 execution_ms=None policy_message=None %}
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

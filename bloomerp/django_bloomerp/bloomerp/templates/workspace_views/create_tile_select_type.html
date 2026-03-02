@@ -1,0 +1,15 @@
+<c-ui.inputs.selectable_cards.container
+    name="tile_type"
+    :include_search="False"
+    :allow_multiple="False"
+    value="{{ selected_tile_type }}"
+>
+    {% for tile in tiles %}
+        <c-ui.inputs.selectable_cards.item
+            value="{{ tile.key }}"
+            icon="{{ tile.icon }}"
+            name="{{ tile.name }}"
+            description="{{ tile.description }}"
+        />
+    {% endfor %}
+</c-ui.inputs.selectable_cards.container>

@@ -1,0 +1,24 @@
+<div class="space-y-4">
+    <div>
+        <label class="block text-sm font-medium text-gray-700" for="config_title">Configuration title</label>
+        <input
+            id="config_title"
+            name="config_title"
+            type="text"
+            value="{{ config_title }}"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2"
+            placeholder="Optional"
+        />
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700" for="config_json">Configuration (JSON)</label>
+        <textarea
+            id="config_json"
+            name="config_json"
+            rows="6"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2"
+            placeholder="{}"
+        >{{ config_json }}</textarea>
+    </div>
+</div>

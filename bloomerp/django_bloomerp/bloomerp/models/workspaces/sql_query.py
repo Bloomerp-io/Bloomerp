@@ -42,55 +42,6 @@ class SqlQuery(BloomerpModel):
         Check if the query is a SELECT statement
         '''
         return self.executor.is_safe(self.query)
-
     
-    def result_dataframe(self):
-        '''
-        Execute the query and return the result
-        '''
-        return self.executor.execute_to_df(self.query)
-    
-    
-    def result_dict(self):
-        '''
-        Execute the query and return the result
-        '''
-        return self.executor.execute_to_dict(self.query)
-    
-    
-    def result_raw(self):
-        '''
-        Execute the query and return the result
-        '''
-        return self.executor.execute_raw(self.query)
-    
-    
-    def result_value(self):
-        '''
-        Execute the query and return the result
-        '''
-        return self.executor.execute_to_first_value(self.query)
-
-
-    def clean(self) -> None:
-        '''
-        Clean method does the following:
-        - Check if the query is safe
-        - Check if the query actually returns a result
-        '''
-        errors = {}
-
-        # Check if the query is safe
-        if not self.is_safe():
-            errors['query'] = 'Unsafe query'
-
-        # Check if the query returns a result
-        result = self.executor.is_valid(self.query)
-        if result != True:
-            errors['query'] = result
-
-        if errors:
-            raise ValidationError(errors)
-
     def __str__(self):
         return self.name

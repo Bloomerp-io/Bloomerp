@@ -20,6 +20,10 @@ This reference condenses `.github/instructions/bloomerp_components.instructions.
   - `pageshow` (bfcache restore)
 - Use lazy access via `getComponent(element)` when needed.
 
+### Cotton integration
+- If the component can be seen as a composable UI element, than create a cotton component. This means that the html should live in templates/cotton/... and can be accessed using <c-path1.path2. ...> within the templates.
+- For an example of the cotton integration, look at sidebar/body.html
+
 ### Frontend best practices
 - Always guard for null element.
 - Keep handler references as instance properties for `removeEventListener` in `destroy()`.
@@ -66,3 +70,4 @@ response['HX-Trigger'] = 'dataUpdated,formClosed'
 
 ## Migration note
 If legacy `urls.py` entries define component routes, migrate to route decorators in component modules for discoverability and consistent registration.
+

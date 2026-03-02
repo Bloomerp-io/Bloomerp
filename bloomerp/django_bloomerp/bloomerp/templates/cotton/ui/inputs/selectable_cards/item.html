@@ -1,0 +1,27 @@
+{% comment %}
+item
+
+Represents an item that goes inside of the container of selectable cards.
+
+Parameters:
+- icon (str): the icon (using fa icons)
+- name (str): the name of the item 
+- description (str): a description of the item
+- value (any): the actual value of the item
+
+{% endcomment %}
+
+<div
+    class="relative h-full border hover:cursor-pointer border-gray-200 bg-white text-primary-900 rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:shadow-md transition-transform duration-150 ease-in-out transform hover:-translate-y-1"
+    data-value="{{ value }}"
+    >
+    <div data-selectable-check class="hidden absolute top-3 right-3 w-6 h-6 rounded-full bg-primary-700 text-white items-center justify-center">
+        <i class="fas fa-check text-xs"></i>
+    </div>
+    <div
+        class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br bg-primary-50 text-primary-700 shadow">
+        <i class="fas {{ icon }} fa-lg"></i>
+    </div>
+    <span class="text-sm font-semibold tracking-wide">{{ name }}</span>
+    <c-ui.text.muted class="mt-2 text-xs text-center">{{ description }}</c-ui.text.muted>
+</div>

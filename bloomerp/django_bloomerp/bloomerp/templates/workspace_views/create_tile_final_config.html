@@ -1,0 +1,25 @@
+<div class="space-y-4">
+    <div>
+        <label class="block text-sm font-medium text-gray-700" for="name">Tile name</label>
+        <input
+            id="name"
+            name="name"
+            type="text"
+            value="{{ name }}"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2"
+            placeholder="My Tile"
+            required
+        />
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700" for="description">Description</label>
+        <textarea
+            id="description"
+            name="description"
+            rows="4"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2"
+            placeholder="Optional"
+        >{{ description }}</textarea>
+    </div>
+</div>

@@ -44,7 +44,7 @@ export default class CodeEditorWidget extends BaseComponent {
 
     private async loadLanguageMode(language: string): Promise<void> {
         try {
-            await import(`ace-builds/src-noconflict/mode-${language}`);
+            await import(/* @vite-ignore */ `ace-builds/src-noconflict/mode-${language}`);
             this.editor.session.setMode(`ace/mode/${language}`);
         } catch (error) {
             console.warn(`Ace editor language mode not found: ${language}`, error);

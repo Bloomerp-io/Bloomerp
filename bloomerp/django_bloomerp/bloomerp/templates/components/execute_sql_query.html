@@ -1,34 +1,55 @@
-{% load static %}
+{% load bloomerp %}
 
-<div
-    class="table-responsive"
->
-    <table
-        class="table datatable"
-    >
-        <thead>
-            <tr>
-                {% for column in column_names %}
-                    <th scope="col">{{ column }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in data %}
-            <tr>
-                {% for cell in row %}
-                    <td>{{ cell }}</td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="h-full flex flex-col min-h-0 bg-white overflow-scroll">
+	<div class="flex-1 overflow-auto">
+		{% if error_message %}
+			<div class="p-3">
+				<div class="border border-red-200 bg-red-50 text-red-700 rounded-md px-3 py-2 text-sm">
+					{{ error_message }}
+				</div>
+			</div>
+		{% else %}
+			<table class="table table-sm w-full">
+				<thead class="bg-base">
+					<tr>
+						<th class="w-10">#</th>
+						{% for column in columns %}
+							<th>{{ column }}</th>
+						{% endfor %}
+					</tr>
+				</thead>
+				<tbody data-sql-results-body>
+					{% for row in rows %}
+						<tr>
+							<td>{{ forloop.counter }}</td>
+							{% for column in columns %}
+								<td {% if forloop.last %}class="text-right"{% endif %}>{{ row|get_item:column }}</td>
+							{% endfor %}
+						</tr>
+					{% empty %}
+						<tr>
+							<td colspan="{% if columns %}{{ columns|length|add:'1' }}{% else %}1{% endif %}" class="text-center text-gray-500 py-6">
+								Query executed successfully, but returned no rows.
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		{% endif %}
+	</div>
+
+	<div class="px-3 py-2 border-t border-base text-xs text-gray-600 flex items-center justify-between">
+		<span>
+			<span data-sql-exec-time>{% if execution_ms is not None %}{{ execution_ms }}ms{% else %}--{% endif %}</span>
+			|
+			<span data-sql-row-count>{% if row_count is not None %}{{ row_count }} rows returned{% else %}0 rows returned{% endif %}</span>
+		</span>
+		<span data-sql-refresh-time>Refreshed just now</span>
+	</div>
+
+	{% if policy_message %}
+		<div class="px-3 pb-3 text-xs text-amber-700" data-sql-policy-note>
+			{{ policy_message }}
+		</div>
+	{% endif %}
 </div>
-
-
-
-{% block scripts %}
-
-<script src="{% static 'bloomerp/js/main.js' %}"></script>
-
-{% endblock scripts %}

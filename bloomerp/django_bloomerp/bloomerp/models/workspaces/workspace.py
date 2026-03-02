@@ -12,14 +12,6 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE
         )
-    name = models.CharField(
-        max_length=255
-        )
-    sub_module_id = models.CharField(
-        max_length=255
-        )
-    module_id = models.CharField(
-        max_length=255
-        )
+    
     
     

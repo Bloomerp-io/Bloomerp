@@ -538,6 +538,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         self.assertNotIn("last_name", results[0])
         self.assertIn("first_name", results[0])
 
+
     def test_api_update_denies_disallowed_field(self):
         """
         PATCH should fail when writing to a field without change permission.
@@ -569,6 +570,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         response = view(request, pk=str(target.id))
 
         self.assertEqual(response.status_code, 403)
+
 
     def test_api_update_allows_allowed_field(self):
         """
@@ -612,4 +614,8 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         target.refresh_from_db()
         self.assertEqual(target.first_name, "Allowed")
             
+    
+    # --------------------------------------
+    # SQL Query
+    # --------------------------------------
     

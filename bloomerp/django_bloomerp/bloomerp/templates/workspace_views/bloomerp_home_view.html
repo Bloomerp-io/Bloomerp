@@ -2,7 +2,12 @@
     <div class="container mx-auto px-4">
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8 justify-center">
         {% for module in modules %}
-            <a href="/{{ module.id }}/">
+            <a 
+                hx-get="/{{ module.id }}/"
+                hx-target="#main-content"
+                hx-push-url="true"
+                hx-swap="innerHTML"
+            >
                 <div class="h-full border hover:cursor-pointer border-gray-200 bg-white text-primary-900 rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:shadow-md transition-transform duration-150 ease-in-out transform hover:-translate-y-1">
                         <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br bg-primary-50 text-primary-700 shadow">
                             <i class="fas {{module.icon}} fa-lg"></i>

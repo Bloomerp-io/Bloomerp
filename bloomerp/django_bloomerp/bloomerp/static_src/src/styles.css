@@ -651,8 +651,7 @@
   }
 
   .select-sm {
-    @apply px-2 py-1 text-xs;
-    padding-right: 2.5rem;
+    @apply px-3 py-1.5 text-[0.75rem] leading-4;
     background-position: right 0.25rem center;
   }
 

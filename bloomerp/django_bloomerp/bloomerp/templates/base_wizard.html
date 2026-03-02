@@ -1,0 +1,67 @@
+{% load i18n %}
+
+<div id="wizard-root" class="space-y-4">
+    <form
+        method="post"
+        hx-post="{{ request.path }}?{{ wizard_step_query_param }}={{ step_index }}"
+        hx-target="#wizard-root"
+        hx-swap="outerHTML"
+        class="space-y-4"
+    >
+        {% csrf_token %}
+
+        <div class="border-gray-200 ">
+            <div class="grid grid-cols-1 md:grid-cols-3 items-center gap-3">
+                <div class="justify-self-start">
+                <c-ui.text.subtitle>{{ step_title }}</c-ui.text.subtitle>
+                {% if step_description %}
+                    <c-ui.text.text>{{ step_description }}</c-ui.text.text>
+                {% endif %}
+                </div>
+
+                <div class="justify-self-center self-center">
+                    <c-ui.text.muted>
+                        {{ step_index|add:1 }} / {{ wizard_total_steps }}
+                    </c-ui.text.muted>
+                </div>
+
+                <div class="justify-self-start md:justify-self-end flex items-center gap-2">
+                    {% if step_index > 0 %}
+                        <button
+                            type="submit"
+                            name="_wizard_action"
+                            value="back"
+                            class="btn btn-sm btn-secondary"
+                        >
+                            {% trans "Back" %}
+                        </button>
+                    {% endif %}
+
+                    <button
+                        type="submit"
+                        name="_wizard_action"
+                        value="next"
+                        class="btn btn-sm btn-primary"
+                    >
+                        {% trans "Continue" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {% if wizard_error %}
+            <div class="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3">
+                {% if wizard_error.title %}
+                    <p class="font-medium">{{ wizard_error.title }}</p>
+                {% endif %}
+                <p class="text-sm">{{ wizard_error.message }}</p>
+            </div>
+        {% endif %}
+
+        <div class="">
+            {% if step_template_name %}
+                {% include step_template_name %}
+            {% endif %}
+        </div>
+    </form>
+</div>
