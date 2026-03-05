@@ -1,5 +1,6 @@
 from ast import mod
 from django.db import models
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db.models import QuerySet
@@ -44,7 +45,7 @@ class ActivityLog(models.Model):
 
     timestamp = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(
-        "auth.User", on_delete=models.SET_NULL, null=True, blank=True
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
     )
     content_type = models.ForeignKey(to=ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(max_length=255)

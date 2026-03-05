@@ -4,16 +4,25 @@ from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from ..base_executor import BaseExecutor
 from django.contrib.contenttypes.models import ContentType
 from django import forms
+from django.db.utils import OperationalError, ProgrammingError
 
 class ConfigParamsForm(forms.Form):
     content_type_id = forms.IntegerField(
         widget=ForeignFieldWidget(
             {
                 "is_m2m" : False,
-                "application_field" : ApplicationField.objects.filter(field="content_type").first()
             }            
         )
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.fields["content_type_id"].widget.application_field = ApplicationField.objects.filter(
+                field="content_type"
+            ).first()
+        except (OperationalError, ProgrammingError):
+            self.fields["content_type_id"].widget.application_field = None
     
 
 class CreateObjectExecutor(BaseExecutor):

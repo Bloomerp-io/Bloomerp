@@ -19,6 +19,20 @@ class DatabaseTable(BaseModel):
     icon:str = "fa-solid fa-table"
     content_type_id:int | None = None
     fields:list[Field]
+
+
+class SqlQueryResponse(BaseModel):
+    columns: list[str]
+    rows: list[dict[str, Any]]
+    row_count: int
+    page_rows_count: int
+    execution_ms: int
+    policy_message: str | None = None
+    page: int
+    page_size: int
+    total_pages: int
+    page_start: int
+    page_end: int
     
 
 class SqlExecutor:
@@ -88,7 +102,7 @@ class SqlExecutor:
 
         return sorted(tables.values(), key=lambda table: table.name.lower())
     
-    def execute_query(self, query:str) -> dict[str, Any]:
+    def execute_query(self, query:str, page:int = 1, page_size:int = 25) -> SqlQueryResponse:
         """Executes the sql query, with included
         permissions
 
@@ -115,15 +129,42 @@ class SqlExecutor:
             blocked_list = ", ".join(sorted(set(blocked_tables)))
             raise PermissionError(f"You do not have access to table(s): {blocked_list}")
 
+        normalized_page_size = max(1, min(page_size, 200))
+        normalized_page = max(1, page)
+        offset = (normalized_page - 1) * normalized_page_size
+
         executor = SqlQueryExecutor()
+        query_without_semicolon = normalized_query.rstrip(";")
+        count_query = (
+            "SELECT COUNT(*) AS total_count "
+            f"FROM ({query_without_semicolon}) AS bloomerp_sql_count_subquery"
+        )
 
         started_at = time.perf_counter()
-        result = executor.execute_to_dict(normalized_query, safe=True, use_cache=False)
+        count_result = executor.execute_to_dict(count_query, safe=True, use_cache=False)
+        count_rows = count_result.get("rows", [])
+        total_row_count = int(count_rows[0][0] or 0) if count_rows else 0
+
+        if total_row_count > 0 and offset >= total_row_count:
+            normalized_page = ((total_row_count - 1) // normalized_page_size) + 1
+            offset = (normalized_page - 1) * normalized_page_size
+
+        paginated_query = (
+            "SELECT * "
+            f"FROM ({query_without_semicolon}) AS bloomerp_sql_page_subquery "
+            f"LIMIT {normalized_page_size} OFFSET {offset}"
+        )
+
+        result = executor.execute_to_dict(paginated_query, safe=True, use_cache=False)
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
 
         columns = result.get("columns", [])
         raw_rows = result.get("rows", [])
         rows = [dict(zip(columns, row)) for row in raw_rows]
+        page_rows_count = len(rows)
+        total_pages = max(1, (total_row_count + normalized_page_size - 1) // normalized_page_size)
+        page_start = offset + 1 if total_row_count > 0 else 0
+        page_end = min(offset + page_rows_count, total_row_count)
 
         policy_message = None
         if not self.user.is_superuser:
@@ -132,13 +173,19 @@ class SqlExecutor:
                 "Row policies are enforced in ORM views and may further restrict accessible records."
             )
 
-        return {
-            "columns": columns,
-            "rows": rows,
-            "row_count": len(rows),
-            "execution_ms": elapsed_ms,
-            "policy_message": policy_message,
-        }
+        return SqlQueryResponse(
+            columns=columns,
+            rows=rows,
+            row_count=total_row_count,
+            page_rows_count=page_rows_count,
+            execution_ms=elapsed_ms,
+            policy_message=policy_message,
+            page=normalized_page,
+            page_size=normalized_page_size,
+            total_pages=total_pages,
+            page_start=page_start,
+            page_end=page_end,
+        )
         
         
     def is_safe(self, query:str) -> bool:
@@ -198,5 +245,3 @@ class SqlExecutor:
             return "fa-solid fa-link"
 
         return "fa-solid fa-table-columns"
-
-

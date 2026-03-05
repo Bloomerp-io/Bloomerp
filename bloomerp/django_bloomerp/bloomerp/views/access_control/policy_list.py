@@ -9,7 +9,7 @@ from bloomerp.models import ApplicationField
 
 @router.register(
     path='access-control/policies/',
-    route_type='list',
+    route_type='model',
     models='__all__',
 )
 class ManageAccessControlForModelView(HtmxMixin, TemplateView):

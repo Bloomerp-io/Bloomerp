@@ -1,6 +1,5 @@
 import BaseComponent from "../BaseComponent";
 import ace from 'ace-builds/src-noconflict/ace';
-import 'ace-builds/src-noconflict/ext-language_tools';
 import htmx from "htmx.org";
 import { insertSkeleton } from "../../utils/animations";
 
@@ -48,6 +47,11 @@ export default class SqlQueryEditor extends BaseComponent {
     private searchInput: HTMLInputElement | null = null;
     private resultsSearchInput: HTMLInputElement | null = null;
     private refreshButton: HTMLButtonElement | null = null;
+    private pageSizeSelect: HTMLSelectElement | null = null;
+    private paginationControls: HTMLElement | null = null;
+    private editorPane: HTMLElement | null = null;
+    private resultsPane: HTMLElement | null = null;
+    private resizeHandle: HTMLElement | null = null;
     private saveButton: HTMLButtonElement | null = null;
     private queryNameInput: HTMLInputElement | null = null;
     private csrfInput: HTMLInputElement | null = null;
@@ -60,6 +64,7 @@ export default class SqlQueryEditor extends BaseComponent {
     private savedQueries: SavedSqlQuery[] = [];
     private activeQueryId: number | null = null;
     private completionWords: string[] = [];
+    private tableFieldMap: Map<string, { name: string; fields: string[] }> = new Map();
     private onEditorChange: (() => void) | null = null;
     private onExecuteClick: ((event: Event) => void) | null = null;
     private onSearchInput: ((event: Event) => void) | null = null;
@@ -69,10 +74,22 @@ export default class SqlQueryEditor extends BaseComponent {
     private onSaveClick: ((event: Event) => void) | null = null;
     private onTabsClick: ((event: Event) => void) | null = null;
     private onResultsSwap: ((event: Event) => void) | null = null;
+    private onPageSizeChange: ((event: Event) => void) | null = null;
+    private onPaginationClick: ((event: Event) => void) | null = null;
+    private onResizeHandleMouseDown: ((event: MouseEvent) => void) | null = null;
+    private onWindowMouseMove: ((event: MouseEvent) => void) | null = null;
+    private onWindowMouseUp: (() => void) | null = null;
     private onEditorDragOver: ((event: DragEvent) => void) | null = null;
     private onEditorDrop: ((event: DragEvent) => void) | null = null;
     private schemaCompleter: any = null;
     private localTabCounter = 1;
+    private currentPage = 1;
+    private totalPages = 1;
+    private pageSize = 25;
+    private isResizing = false;
+    private resizeStartY = 0;
+    private resizeStartEditorHeight = 0;
+    private readonly editorHeightStorageKey = 'bloomerp.sqlQueryEditor.editorHeight';
 
     public initialize(): void {
         if (!this.element) return;
@@ -91,6 +108,11 @@ export default class SqlQueryEditor extends BaseComponent {
         this.searchInput = this.element.querySelector<HTMLInputElement>('[data-sql-sidebar-search]');
         this.resultsSearchInput = this.element.querySelector<HTMLInputElement>('[data-sql-results-search]');
         this.refreshButton = this.element.querySelector<HTMLButtonElement>('[data-sql-refresh]');
+        this.pageSizeSelect = this.element.querySelector<HTMLSelectElement>('[data-sql-page-size]');
+        this.paginationControls = this.element.querySelector<HTMLElement>('[data-sql-pagination-controls]');
+        this.editorPane = this.element.querySelector<HTMLElement>('[data-sql-editor-pane]');
+        this.resultsPane = this.element.querySelector<HTMLElement>('[data-sql-results-pane]');
+        this.resizeHandle = this.element.querySelector<HTMLElement>('[data-sql-resize-handle]');
         this.saveButton = this.element.querySelector<HTMLButtonElement>('[data-sql-save]');
         this.queryNameInput = this.element.querySelector<HTMLInputElement>('[data-sql-query-name]');
         this.tabsContainer = this.element.querySelector<HTMLElement>('[data-sql-tabs]');
@@ -98,13 +120,11 @@ export default class SqlQueryEditor extends BaseComponent {
 
         if (!this.editorContainer || !this.queryInput) return;
 
+        this.configureAceModuleLoader();
         this.editor = ace.edit(this.editorContainer);
         this.editor.setTheme('ace/theme/chrome');
 
         this.editor.setOptions({
-            enableBasicAutocompletion: true,
-            enableLiveAutocompletion: false,
-            enableSnippets: true,
             showPrintMargin: false,
             fontSize: 14,
             tabSize: 2,
@@ -113,7 +133,9 @@ export default class SqlQueryEditor extends BaseComponent {
 
         this.editor.session.setUseWrapMode(true);
         this.setupEditorDropZone();
+        this.setupResizablePanels();
 
+        void this.loadLanguageTools();
         void this.loadSqlMode();
 
         const defaultQuery = this.hiddenQueryInput?.value || this.queryInput.value || this.queryInput.textContent || 'SELECT 1;';
@@ -140,7 +162,7 @@ export default class SqlQueryEditor extends BaseComponent {
 
         this.onExecuteClick = (event: Event) => {
             event.preventDefault();
-            this.executeQuery();
+            this.executeQuery(1);
         };
 
         if (this.executeButton) {
@@ -221,11 +243,48 @@ export default class SqlQueryEditor extends BaseComponent {
 
         this.onResultsSwap = () => {
             this.filterResultsTable();
+            this.syncPaginationStateFromResultsMeta();
+            this.updatePaginationControls();
         };
 
         if (this.resultsTarget) {
             this.resultsTarget.addEventListener('htmx:afterSwap', this.onResultsSwap);
         }
+
+        this.onPageSizeChange = (event: Event) => {
+            const target = event.target as HTMLSelectElement;
+            const nextPageSize = Number.parseInt(target.value, 10);
+            if (Number.isNaN(nextPageSize) || nextPageSize < 1) return;
+
+            this.pageSize = nextPageSize;
+            this.executeQuery(1);
+        };
+
+        if (this.pageSizeSelect) {
+            this.pageSizeSelect.value = String(this.pageSize);
+            this.pageSizeSelect.addEventListener('change', this.onPageSizeChange);
+        }
+
+        this.onPaginationClick = (event: Event) => {
+            const target = event.target as HTMLElement;
+            const button = target.closest<HTMLElement>('[data-sql-page-nav]');
+            if (!button) return;
+
+            event.preventDefault();
+            const direction = button.dataset.sqlPageNav;
+            if (direction === 'prev' && this.currentPage > 1) {
+                this.executeQuery(this.currentPage - 1);
+            } else if (direction === 'next' && this.currentPage < this.totalPages) {
+                this.executeQuery(this.currentPage + 1);
+            }
+        };
+
+        if (this.paginationControls) {
+            this.paginationControls.addEventListener('click', this.onPaginationClick);
+        }
+
+        this.syncPaginationStateFromResultsMeta();
+        this.updatePaginationControls();
 
         void Promise.all([
             this.fetchAndRenderSchema(false),
@@ -248,10 +307,11 @@ export default class SqlQueryEditor extends BaseComponent {
     /**
      * Executes the SQL query and displays the results.
      */
-    public executeQuery() : void {
+    public executeQuery(page: number = this.currentPage) : void {
         const query = this.getQuery().trim();
         if (!query || !this.resultsTarget) return;
 
+        this.currentPage = Math.max(1, page);
         insertSkeleton(this.resultsTarget);
 
         htmx.ajax('post', this.executeUrl, {
@@ -259,6 +319,8 @@ export default class SqlQueryEditor extends BaseComponent {
             swap: 'innerHTML',
             values: {
                 sql_query: query,
+                sql_page: this.currentPage,
+                sql_page_size: this.pageSize,
                 csrfmiddlewaretoken: this.csrfInput?.value || '',
             },
         });
@@ -301,6 +363,26 @@ export default class SqlQueryEditor extends BaseComponent {
             this.resultsTarget.removeEventListener('htmx:afterSwap', this.onResultsSwap);
         }
 
+        if (this.pageSizeSelect && this.onPageSizeChange) {
+            this.pageSizeSelect.removeEventListener('change', this.onPageSizeChange);
+        }
+
+        if (this.paginationControls && this.onPaginationClick) {
+            this.paginationControls.removeEventListener('click', this.onPaginationClick);
+        }
+
+        if (this.resizeHandle && this.onResizeHandleMouseDown) {
+            this.resizeHandle.removeEventListener('mousedown', this.onResizeHandleMouseDown);
+        }
+
+        if (this.onWindowMouseMove) {
+            window.removeEventListener('mousemove', this.onWindowMouseMove);
+        }
+
+        if (this.onWindowMouseUp) {
+            window.removeEventListener('mouseup', this.onWindowMouseUp);
+        }
+
         if (this.editorContainer && this.onEditorDragOver) {
             this.editorContainer.removeEventListener('dragover', this.onEditorDragOver);
         }
@@ -323,6 +405,11 @@ export default class SqlQueryEditor extends BaseComponent {
         this.onSaveClick = null;
         this.onTabsClick = null;
         this.onResultsSwap = null;
+        this.onPageSizeChange = null;
+        this.onPaginationClick = null;
+        this.onResizeHandleMouseDown = null;
+        this.onWindowMouseMove = null;
+        this.onWindowMouseUp = null;
         this.onEditorDragOver = null;
         this.onEditorDrop = null;
     }
@@ -331,7 +418,6 @@ export default class SqlQueryEditor extends BaseComponent {
         if (!this.editor) return;
 
         try {
-            await import('ace-builds/src-noconflict/mode-sql');
             this.editor.session.setMode('ace/mode/sql');
         } catch (error) {
             console.warn('Failed to load Ace SQL mode', error);
@@ -662,6 +748,114 @@ export default class SqlQueryEditor extends BaseComponent {
         });
     }
 
+    private syncPaginationStateFromResultsMeta(): void {
+        if (!this.resultsTarget) return;
+
+        const meta = this.resultsTarget.querySelector<HTMLElement>('[data-sql-results-meta]');
+        if (!meta) return;
+
+        const nextPage = Number.parseInt(meta.dataset.sqlPage || '', 10);
+        const nextTotalPages = Number.parseInt(meta.dataset.sqlTotalPages || '', 10);
+        const nextPageSize = Number.parseInt(meta.dataset.sqlPageSize || '', 10);
+
+        this.currentPage = Number.isNaN(nextPage) ? 1 : Math.max(1, nextPage);
+        this.totalPages = Number.isNaN(nextTotalPages) ? 1 : Math.max(1, nextTotalPages);
+        this.pageSize = Number.isNaN(nextPageSize) ? this.pageSize : Math.max(1, nextPageSize);
+
+        if (this.pageSizeSelect) {
+            this.pageSizeSelect.value = String(this.pageSize);
+        }
+    }
+
+    private updatePaginationControls(): void {
+        if (!this.paginationControls) return;
+
+        const label = this.paginationControls.querySelector<HTMLElement>('[data-sql-page-label]');
+        const prevButton = this.paginationControls.querySelector<HTMLButtonElement>('[data-sql-page-nav="prev"]');
+        const nextButton = this.paginationControls.querySelector<HTMLButtonElement>('[data-sql-page-nav="next"]');
+
+        if (label) {
+            label.textContent = `Page ${this.currentPage} of ${this.totalPages}`;
+        }
+
+        if (prevButton) {
+            prevButton.disabled = this.currentPage <= 1;
+        }
+
+        if (nextButton) {
+            nextButton.disabled = this.currentPage >= this.totalPages;
+        }
+    }
+
+    private setupResizablePanels(): void {
+        if (!this.editorPane || !this.resultsPane || !this.resizeHandle) return;
+
+        const storedHeight = window.localStorage.getItem(this.editorHeightStorageKey);
+        if (storedHeight) {
+            const parsedHeight = Number.parseInt(storedHeight, 10);
+            if (!Number.isNaN(parsedHeight)) {
+                this.setEditorPaneHeight(parsedHeight, false);
+            }
+        }
+
+        this.onResizeHandleMouseDown = (event: MouseEvent) => {
+            event.preventDefault();
+            if (!this.editorPane) return;
+
+            this.isResizing = true;
+            this.resizeStartY = event.clientY;
+            this.resizeStartEditorHeight = this.editorPane.getBoundingClientRect().height;
+            document.body.classList.add('select-none');
+            document.body.style.cursor = 'row-resize';
+        };
+
+        this.onWindowMouseMove = (event: MouseEvent) => {
+            if (!this.isResizing) return;
+            const deltaY = event.clientY - this.resizeStartY;
+            this.setEditorPaneHeight(this.resizeStartEditorHeight + deltaY, false);
+        };
+
+        this.onWindowMouseUp = () => {
+            if (!this.isResizing) return;
+            this.isResizing = false;
+            document.body.classList.remove('select-none');
+            document.body.style.cursor = '';
+
+            if (this.editorPane) {
+                const height = Math.round(this.editorPane.getBoundingClientRect().height);
+                window.localStorage.setItem(this.editorHeightStorageKey, String(height));
+            }
+        };
+
+        this.resizeHandle.addEventListener('mousedown', this.onResizeHandleMouseDown);
+        window.addEventListener('mousemove', this.onWindowMouseMove);
+        window.addEventListener('mouseup', this.onWindowMouseUp);
+    }
+
+    private setEditorPaneHeight(rawHeight: number, persist: boolean): void {
+        if (!this.editorPane || !this.resultsPane || !this.resizeHandle) return;
+
+        const minEditorHeight = 160;
+        const minResultsHeight = 180;
+
+        const resultsRect = this.resultsPane.getBoundingClientRect();
+        const handleRect = this.resizeHandle.getBoundingClientRect();
+        const totalResizableHeight = this.editorPane.getBoundingClientRect().height + handleRect.height + resultsRect.height;
+        const maxEditorHeight = Math.max(minEditorHeight, totalResizableHeight - handleRect.height - minResultsHeight);
+        const nextHeight = Math.max(minEditorHeight, Math.min(rawHeight, maxEditorHeight));
+
+        this.editorPane.style.height = `${Math.round(nextHeight)}px`;
+        this.editorPane.style.flex = '0 0 auto';
+
+        if (this.editor) {
+            this.editor.resize();
+        }
+
+        if (persist) {
+            window.localStorage.setItem(this.editorHeightStorageKey, String(Math.round(nextHeight)));
+        }
+    }
+
     private escapeHtml(value: string): string {
         return value
             .replace(/&/g, '&amp;')
@@ -704,6 +898,8 @@ export default class SqlQueryEditor extends BaseComponent {
     }
 
     private refreshAutocompleteTokens(): void {
+        this.tableFieldMap.clear();
+
         const tokenSet = new Set<string>([
             'select',
             'from',
@@ -729,6 +925,13 @@ export default class SqlQueryEditor extends BaseComponent {
         this.schemaData.forEach((database) => {
             database.tables.forEach((table) => {
                 tokenSet.add(table.name);
+                this.tableFieldMap.set(
+                    table.name.toLowerCase(),
+                    {
+                        name: table.name,
+                        fields: table.fields.map((field) => field.name),
+                    },
+                );
 
                 table.fields.forEach((field) => {
                     tokenSet.add(field.name);
@@ -741,38 +944,188 @@ export default class SqlQueryEditor extends BaseComponent {
     }
 
     private setupSchemaCompleter(): void {
-        if (!this.editor || this.schemaCompleter) return;
+        if (!this.editor) return;
 
-        this.schemaCompleter = {
-            getCompletions: (
-                _editor: any,
-                _session: any,
-                _pos: any,
-                prefix: string,
-                callback: (error: null, completions: any[]) => void,
-            ) => {
-                if (!prefix || prefix.length < 1) {
-                    callback(null, []);
-                    return;
+        if (!this.schemaCompleter) {
+            this.schemaCompleter = {
+                insertMatch: (editor: any, data: any) => {
+                    const value = data?.value || data?.caption || '';
+                    if (!value) return;
+
+                    const session = editor.getSession();
+                    const pos = editor.getCursorPosition();
+                    const lineUntilCursor = (session.getLine(pos.row) || '').slice(0, pos.column);
+                    const prefixMatch = lineUntilCursor.match(/([a-zA-Z_][\w]*)$/);
+
+                    if (!prefixMatch) {
+                        editor.insert(value);
+                        return;
+                    }
+
+                    const Range = (ace as any).require('ace/range').Range;
+                    const prefix = prefixMatch[1];
+                    const range = new Range(pos.row, pos.column - prefix.length, pos.row, pos.column);
+                    session.replace(range, value);
+                },
+                getCompletions: (
+                    _editor: any,
+                    session: any,
+                    pos: any,
+                    prefix: string,
+                    callback: (error: null, completions: any[]) => void,
+                ) => {
+                    const lineUntilCursor = (session.getLine(pos.row) || '').slice(0, pos.column);
+                    const identifierBeforeDotMatch = lineUntilCursor.match(/([a-zA-Z_][\w]*)\.\s*$/);
+                    const isTableContext = /\b(from|join)\s+[\w"]*$/i.test(lineUntilCursor);
+
+                    if (identifierBeforeDotMatch) {
+                        const identifier = identifierBeforeDotMatch[1];
+                        const aliasMap = this.extractTableAliases(this.getQuery());
+                        const tableName = aliasMap.get(identifier.toLowerCase()) || identifier;
+                        const tableConfig = this.tableFieldMap.get(tableName.toLowerCase());
+                        const fieldNames = tableConfig?.fields || [];
+
+                        const completions = fieldNames.slice(0, 200).map((fieldName) => ({
+                            caption: fieldName,
+                            value: fieldName,
+                            meta: tableConfig?.name || tableName,
+                            score: 2000,
+                        }));
+                        callback(null, completions);
+                        return;
+                    }
+
+                    if (!prefix || prefix.length < 1) {
+                        callback(null, []);
+                        return;
+                    }
+
+                    if (isTableContext) {
+                        const tableCompletions = Array.from(this.tableFieldMap.values())
+                            .map((tableConfig) => tableConfig.name)
+                            .filter((tableName) => tableName.toLowerCase().includes(prefix.toLowerCase()))
+                            .slice(0, 100)
+                            .map((tableName) => ({
+                                caption: tableName,
+                                value: tableName,
+                                meta: 'table',
+                                score: tableName.toLowerCase().startsWith(prefix.toLowerCase()) ? 1900 : 1200,
+                            }));
+
+                        callback(null, tableCompletions);
+                        return;
+                    }
+
+                    const completions = this.completionWords
+                        .filter((word) => word.toLowerCase().includes(prefix.toLowerCase()))
+                        .slice(0, 100)
+                        .map((word) => ({
+                            caption: word,
+                            value: word,
+                            meta: word.includes('.') ? 'field' : 'sql',
+                            score: word.toLowerCase().startsWith(prefix.toLowerCase()) ? 1500 : 900,
+                        }));
+
+                    callback(null, completions);
+                },
+            };
+        }
+
+        // Force our schema-aware completer as the active source for Ace autocomplete.
+        this.editor.completers = [this.schemaCompleter];
+    }
+
+    private configureAutocompleteBehavior(): void {
+        const languageTools = (ace as any).require('ace/ext/language_tools');
+        if (languageTools?.Autocomplete?.prototype) {
+            // Prevent automatic insertion when there is a single suggestion; user must confirm.
+            languageTools.Autocomplete.prototype.autoInsert = false;
+            languageTools.Autocomplete.prototype.autoSelect = true;
+        }
+
+        if (this.editor && (this.editor as any).completer) {
+            (this.editor as any).completer.autoInsert = false;
+            (this.editor as any).completer.autoSelect = true;
+        }
+    }
+
+    private configureAceModuleLoader(): void {
+        const aceConfig = (ace as any).config;
+        if (!aceConfig?.setLoader) return;
+
+        // Use Ace's native loader hook so loadModule() never falls back to "loader is not configured".
+        aceConfig.setLoader((moduleName: string, cb: (error: unknown, module?: unknown) => void) => {
+            const normalized = moduleName.startsWith('./') ? `ace/${moduleName.slice(2)}` : moduleName;
+
+            const resolveModule = (): Promise<unknown> => {
+                if (normalized === 'ace/theme/chrome') {
+                    return import('ace-builds/src-noconflict/theme-chrome');
                 }
 
-                const completions = this.completionWords
-                    .filter((word) => word.toLowerCase().includes(prefix.toLowerCase()))
-                    .slice(0, 100)
-                    .map((word) => ({
-                        caption: word,
-                        value: word,
-                        meta: word.includes('.') ? 'field' : 'sql',
-                    }));
+                if (normalized === 'ace/mode/sql') {
+                    return import('ace-builds/src-noconflict/mode-sql');
+                }
 
-                callback(null, completions);
-            },
-        };
+                if (normalized === 'ace/ext/language_tools') {
+                    return import('ace-builds/src-noconflict/ext-language_tools');
+                }
 
-        const languageTools = (ace as any).require('ace/ext/language_tools');
-        if (languageTools?.addCompleter) {
-            languageTools.addCompleter(this.schemaCompleter);
+                return Promise.reject(new Error(`Unsupported Ace module: ${normalized}`));
+            };
+
+            void resolveModule()
+                .then((module) => cb(null, (module as any)?.default || module))
+                .catch((error) => cb(error));
+        });
+    }
+
+    private async loadLanguageTools(): Promise<void> {
+        if (!this.editor) return;
+
+        try {
+            const aceConfig = (ace as any).config;
+            if (!aceConfig?.loadModule) {
+                throw new Error('Ace module loader is unavailable');
+            }
+
+            await new Promise<void>((resolve, reject) => {
+                aceConfig.loadModule('ace/ext/language_tools', (module: any) => {
+                    if (!module) {
+                        reject(new Error('Ace language tools failed to load'));
+                        return;
+                    }
+                    resolve();
+                });
+            });
+        } catch (error) {
+            console.warn('Failed to load Ace language tools', error);
+            return;
         }
+
+        this.editor.setOptions({
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true,
+            enableSnippets: false,
+        });
+        this.configureAutocompleteBehavior();
+        this.setupSchemaCompleter();
+    }
+
+    private extractTableAliases(sql: string): Map<string, string> {
+        const aliasMap = new Map<string, string>();
+        const aliasRegex = /\b(?:from|join)\s+("?[\w\.]+"?)\s+(?:as\s+)?("?[\w]+"?)/gi;
+        let match: RegExpExecArray | null = aliasRegex.exec(sql);
+
+        while (match) {
+            const tableName = (match[1] || '').replace(/"/g, '');
+            const aliasName = (match[2] || '').replace(/"/g, '');
+            if (tableName && aliasName) {
+                aliasMap.set(aliasName.toLowerCase(), tableName);
+            }
+            match = aliasRegex.exec(sql);
+        }
+
+        return aliasMap;
     }
 
 }
