@@ -136,7 +136,7 @@ def _render_two_dim_chart_html(payload: dict) -> str:
     )
 
 
-@router.route(
+@router.register(
     path="components/render_workspace_tile/",
     name="components_render_workspace_tile",
 )
@@ -160,5 +160,5 @@ def render_workspace_tile(request: HttpRequest) -> HttpResponse:
         "payload": tile.payload,
         "chart_html": mark_safe(chart_html),
     }
-
+    
     return render(request, "components/workspaces/render_workspace_tile.html", context)

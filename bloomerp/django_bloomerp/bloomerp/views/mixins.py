@@ -24,7 +24,7 @@ from bloomerp.router import RouteType
 
 
 class HtmxMixin:
-    '''Updates the template name based on the request.htmx attribute.'''
+    """Updates the template name based on the request.htmx attribute."""
     htmx_template = 'bloomerp_htmx_base_view.html'
     htmx_addendum_template = 'htmx_addendum.html'
     base_detail_template = 'detail_views/bloomerp_base_detail_view.html'

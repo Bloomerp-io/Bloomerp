@@ -39,6 +39,7 @@ import { initMessagesWebsocket } from './modules/messages';
 import WorkspaceContainer from './components/workspaces/WorkspaceContainer';
 import WorkspaceTile from './components/workspaces/WorkspaceTile';
 import SqlQueryEditor from './components/inputs/SqlQueryEditor';
+import Canvas from './components/workspaces/tiles/Canvas';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -106,8 +107,11 @@ registerComponent('workspace-tile', WorkspaceTile);
 
 registerComponent('sql-query-editor', SqlQueryEditor);
 
+registerComponent('workspace-tile-canvas', Canvas);
+
 // Auto init comonents
 setupComponentAutoInit();
+
 
 // Realtime messages
 initMessagesWebsocket();

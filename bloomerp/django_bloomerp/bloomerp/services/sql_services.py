@@ -39,12 +39,11 @@ class SqlExecutor:
     """
     Class for executing SQL query within the app.
     """
-    
-    def __init__(self, user:AbstractBloomerpUser):
+    def __init__(self, user: AbstractBloomerpUser | None = None):
         self.user = user
-        self.permission_manager = UserPermissionManager(user)
+        self.permission_manager = UserPermissionManager(user) if user is not None else None
         
-        
+     
     def get_accessible_tables_and_fields(self) -> list[DatabaseTable]:
         """Returns the accessible tables and fields for 
         the user.
@@ -52,6 +51,9 @@ class SqlExecutor:
         Returns:
             list[DatabaseTable]: list of database tables with fields
         """
+        if self.user is None or self.permission_manager is None:
+            return []
+
         content_types = self.user.get_content_types_for_user(permission_types=["view"])
         if not content_types.exists():
             return []
@@ -102,6 +104,7 @@ class SqlExecutor:
 
         return sorted(tables.values(), key=lambda table: table.name.lower())
     
+
     def execute_query(self, query:str, page:int = 1, page_size:int = 25) -> SqlQueryResponse:
         """Executes the sql query, with included
         permissions
@@ -117,17 +120,18 @@ class SqlExecutor:
         if not self.is_safe(normalized_query):
             raise ValueError("Only safe read-only SELECT/WITH queries are allowed")
 
-        allowed_tables = {table.name for table in self.get_accessible_tables_and_fields()}
-        referenced_tables = self._extract_referenced_tables(normalized_query)
-        blocked_tables = [
-            table_name
-            for table_name in referenced_tables
-            if table_name not in allowed_tables and table_name.split(".")[-1] not in allowed_tables
-        ]
+        if self.user is not None:
+            allowed_tables = {table.name for table in self.get_accessible_tables_and_fields()}
+            referenced_tables = self._extract_referenced_tables(normalized_query)
+            blocked_tables = [
+                table_name
+                for table_name in referenced_tables
+                if table_name not in allowed_tables and table_name.split(".")[-1] not in allowed_tables
+            ]
 
-        if blocked_tables:
-            blocked_list = ", ".join(sorted(set(blocked_tables)))
-            raise PermissionError(f"You do not have access to table(s): {blocked_list}")
+            if blocked_tables:
+                blocked_list = ", ".join(sorted(set(blocked_tables)))
+                raise PermissionError(f"You do not have access to table(s): {blocked_list}")
 
         normalized_page_size = max(1, min(page_size, 200))
         normalized_page = max(1, page)
@@ -167,7 +171,7 @@ class SqlExecutor:
         page_end = min(offset + page_rows_count, total_row_count)
 
         policy_message = None
-        if not self.user.is_superuser:
+        if self.user is not None and not self.user.is_superuser:
             policy_message = (
                 "Results are limited to accessible tables and fields for your user. "
                 "Row policies are enforced in ORM views and may further restrict accessible records."
@@ -218,6 +222,7 @@ class SqlExecutor:
 
         return disallowed is None
 
+    
     def _extract_referenced_tables(self, query: str) -> set[str]:
         matches = re.findall(r"\b(?:from|join)\s+([\w\.\"]+)", query, flags=re.IGNORECASE)
         normalized_tables: set[str] = set()

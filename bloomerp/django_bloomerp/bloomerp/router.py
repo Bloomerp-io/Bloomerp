@@ -284,7 +284,7 @@ class BloomerpRouteRegistry:
 
     def route(self, *args, **kwargs):
         return self.register(*args, **kwargs)
-
+    
     def _auto_import_views(self):
         """
         Automatically import all Python files in the directories specified in self.dirs
@@ -322,11 +322,20 @@ class BloomerpRouteRegistry:
                                     importlib.import_module(module_name)
                                     logger.debug(f"Successfully imported: {module_name}")
                                 except (ImportError, AttributeError, ModuleNotFoundError) as e:
-                                    # Log but don't fail - some files might not be valid modules
-                                    logger.debug(f"Could not import {module_name}: {e}")
+                                    # Keep startup resilient, but surface route-load failures clearly.
+                                    logger.warning(
+                                        "Skipping auto-import for module '%s' due to import error: %s",
+                                        module_name,
+                                        e,
+                                        exc_info=True,
+                                    )
                                 except Exception as e:
-                                    # Log unexpected errors but continue
-                                    logger.warning(f"Unexpected error importing {module_name}: {e}")
+                                    logger.warning(
+                                        "Skipping auto-import for module '%s' due to unexpected error: %s",
+                                        module_name,
+                                        e,
+                                        exc_info=True,
+                                    )
 
 
                     # Also check for direct file (e.g., views.py, components.py)
@@ -337,9 +346,19 @@ class BloomerpRouteRegistry:
                             importlib.import_module(module_name)
                             logger.debug(f"Successfully imported: {module_name}")
                         except (ImportError, AttributeError, ModuleNotFoundError) as e:
-                            logger.debug(f"Could not import {module_name}: {e}")
+                            logger.warning(
+                                "Skipping auto-import for module '%s' due to import error: %s",
+                                module_name,
+                                e,
+                                exc_info=True,
+                            )
                         except Exception as e:
-                            logger.warning(f"Unexpected error importing {module_name}: {e}")
+                            logger.warning(
+                                "Skipping auto-import for module '%s' due to unexpected error: %s",
+                                module_name,
+                                e,
+                                exc_info=True,
+                            )
 
             self._auto_imported = True
             logger.info(f"Auto-import completed. Registered {len(self.routes)} routes.")

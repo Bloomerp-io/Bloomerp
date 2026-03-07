@@ -7,6 +7,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 from PIL import Image
+from typing import Optional
+from enum import Enum
 
 def fetch_image(image_url):
     """Helper function to download image from a URL and save it temporarily."""
@@ -31,7 +33,6 @@ def link_callback(uri, rel):
     else:
         # If it's a local file path, resolve it and return
         return uri
-
 
 def generate_pdf(
         html_content:str, 
@@ -194,8 +195,6 @@ def generate_pdf(
         return pdf_buffer.getvalue()
     
 
-
-
 class PdfHandler:
     def __init__(self, file: str):
         self.file = file
@@ -257,3 +256,57 @@ class PdfHandler:
 
         # Return bytes
         return modified_pdf_bytes.getvalue()
+
+
+class PageSize(Enum):
+    A4 = "A4"
+    LETTER = "letter"
+    A3 = "A3"
+
+class PageOrientation(Enum):
+    PORTRAIT = "portrait"
+    LANDSCAPE = "landscape"
+
+class PDFDocumentGenerator:
+    content:str
+
+    def __init__(
+            self, 
+            content:str,
+            footer:str = None,
+            title:str = "PDF Document",
+            page_size:PageSize = PageSize.A4,
+            page_orientation:PageOrientation = PageOrientation.PORTRAIT,
+            ):
+        self.content = content
+        self.footer = footer
+        self.title = title
+        self.page_size = page_size
+        self.page_orientation = page_orientation
+
+    def generate_pdf(self) -> bytes:
+        """Generates a PDF document based on the provided content and settings.
+    
+        Returns:
+            bytes: The generated PDF document as a byte stream.
+        """
+        pass
+
+    def add_signature(self, signature_bytes: bytes, slot_name:Optional[str] = None):
+        """
+        Adds a signature to the PDF document at the specified slot.
+        If the slot is not found, or if no slot_name is provided, the 
+        signature will be added to the available slot.
+
+        If no slot is available, no signature will be added.
+
+        Args:
+            signature_bytes (bytes): The bytes of the signature image.
+            slot_name (str, optional): The name of the slot where the signature should be placed. Defaults to None.
+
+        Returns:
+            None: The actual generation happens within the generate_pdf function, this function just modifies the content to include the signature.
+        """
+        pass
+
+    

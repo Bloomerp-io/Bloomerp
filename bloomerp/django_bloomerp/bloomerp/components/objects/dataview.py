@@ -657,16 +657,11 @@ def dataview_edit_field(request: HttpRequest, application_field_id:int, object_i
         )
         form = FormCls(request.POST, instance=object)
         if form.is_valid():
-            print("Form is valid")
             form.save()
             return render_message(request, "Field updated successfully", "success")
         else:
             pass
             
-            
-        
-    
-
 
 @router.register(
     path="components/kanban_move_card/<int:content_type_id>/",

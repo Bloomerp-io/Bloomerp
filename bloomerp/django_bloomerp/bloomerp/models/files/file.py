@@ -22,7 +22,7 @@ class File(
 
     def upload_to(self, filename):
         '''Returns the upload path for the file'''
-        # Can fetch this from settings in the future
+        # TODO: Can fetch this from settings in the future
         ROOT = 'bloomerp'
 
         if self.content_type is None:
