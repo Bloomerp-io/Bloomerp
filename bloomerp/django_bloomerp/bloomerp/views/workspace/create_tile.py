@@ -125,6 +125,14 @@ def pcs_type_config(request: HttpRequest, view, orchestrator: BaseStateOrchestra
     )
 
 
+BUILDER_STEP = WizardStep(
+    name=_("Build tile"),
+    description=_("Configure the details of your tile and preview what it looks like."),
+    template_name="workspace_views/create_tile_wizard/create_tile_analytics_builder.html",
+    context_func=ctx_analytics_builder,
+    process_func=pcs_analytics_builder,
+)
+
 @router.register(
     path="create-tile",
     name="Create Tile",
@@ -162,23 +170,11 @@ class CreateTileView(HtmxMixin, WizardMixin, TemplateView):
                     process_func=pcs_analytics_query,
                 )
 
-            return WizardStep(
-                name=_("Configure"),
-                template_name="workspace_views/create_tile_wizard/create_tile_type_config.html",
-                description=_("Configure your selected tile"),
-                context_func=ctx_type_config,
-                process_func=pcs_type_config,
-            )
+            return BUILDER_STEP
 
         if step == 2:
             if tile_type == TileType.ANALYTICS_TILE:
-                return WizardStep(
-                    name=_("Build analytics tile"),
-                    template_name="workspace_views/create_tile_wizard/create_tile_analytics_builder.html",
-                    description=_("Choose visualization type and basic options"),
-                    context_func=ctx_analytics_builder,
-                    process_func=pcs_analytics_builder,
-                )
+                return BUILDER_STEP
         
         return None
 
