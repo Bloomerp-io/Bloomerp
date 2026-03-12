@@ -1,14 +1,14 @@
 <div id="htmx-addendum" {% if include_addendum_oob %}hx-swap-oob="outerHTML"{% endif %}>
-    <div class="flex justify-between items-center">
+    <div class="flex justify-between items-center mb-4">
         <c-ui.text.subtitle>
-            {{ route_title }}
+            {{ route_title | title }}
         </c-ui.text.subtitle>
 
         <c-ui.breadcrumb.body>
             {% for crumb in breadcrumbs %}
                 {% if crumb.active %}
                 <c-ui.breadcrumb.item
-                    text="{{ crumb.text }}"
+                    text="{{ crumb.text | title }}"
                     hx_get="{{ crumb.url }}"
                     hx_target="#main-content"
                     hx_swap="innerHTML"
@@ -18,7 +18,7 @@
                     />
                 {% else %}
                 <c-ui.breadcrumb.item
-                    text="{{ crumb.text }}"
+                    text="{{ crumb.text | title }}"
                     hx_get="{{ crumb.url }}"
                     hx_target="#main-content"
                     hx_swap="innerHTML"
