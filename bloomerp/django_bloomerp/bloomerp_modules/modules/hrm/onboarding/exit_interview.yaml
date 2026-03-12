@@ -30,14 +30,14 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Interview"
       columns: 2
       items:
-        - offboarding_process
-        - interviewer
-        - scheduled_at
+        - id: offboarding_process
+        - id: interviewer
+        - id: scheduled_at
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

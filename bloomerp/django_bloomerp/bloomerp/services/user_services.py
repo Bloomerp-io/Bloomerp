@@ -134,6 +134,3 @@ def toggle_field_visibility(
     return is_visible, preference
 
 
-def create_default_detail_view_preference(user:AbstractBloomerpUser) -> UserDetailViewPreference:
-    
-    return

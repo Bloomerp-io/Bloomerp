@@ -58,18 +58,18 @@ fields:
     options:
       default: false
 field_layout:
-  sections:
+  rows:
     - title: "Balance Summary"
       columns: 2
       items:
-        - account
-        - fiscal_period
-        - opening_balance
-        - closing_balance
+        - id: account
+        - id: fiscal_period
+        - id: opening_balance
+        - id: closing_balance
     - title: "Activity"
       columns: 2
       items:
-        - debit_total
-        - credit_total
-        - as_of_date
-        - is_locked
+        - id: debit_total
+        - id: credit_total
+        - id: as_of_date
+        - id: is_locked

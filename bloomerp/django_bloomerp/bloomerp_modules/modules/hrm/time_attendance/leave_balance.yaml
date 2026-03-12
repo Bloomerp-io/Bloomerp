@@ -30,11 +30,11 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Balance"
       columns: 2
       items:
-        - employee
-        - leave_type
-        - balance
-        - as_of_date
+        - id: employee
+        - id: leave_type
+        - id: balance
+        - id: as_of_date

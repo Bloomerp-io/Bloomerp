@@ -36,15 +36,15 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Team Details"
       columns: 2
       items:
-        - name
-        - department
-        - lead
-        - is_active
+        - id: name
+        - id: department
+        - id: lead
+        - id: is_active
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

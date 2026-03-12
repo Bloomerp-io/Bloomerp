@@ -66,23 +66,23 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Contact Info"
       columns: 2
       items:
-        - account
-        - is_primary
-        - first_name
-        - last_name
-        - title
-        - department
+        - id: account
+        - id: is_primary
+        - id: first_name
+        - id: last_name
+        - id: title
+        - id: department
     - title: "Communication"
       columns: 2
       items:
-        - email
-        - phone
-        - mobile_phone
+        - id: email
+        - id: phone
+        - id: mobile_phone
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

@@ -18,11 +18,12 @@ class ConfigParamsForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
-            self.fields["content_type_id"].widget.application_field = ApplicationField.objects.filter(
+            application_field = ApplicationField.objects.filter(
                 field="content_type"
             ).first()
+            self.fields["content_type_id"].widget.attrs.update(application_field.meta if application_field else {})
         except (OperationalError, ProgrammingError):
-            self.fields["content_type_id"].widget.application_field = None
+            self.fields["content_type_id"].widget.attrs.update({})
     
 
 class CreateObjectExecutor(BaseExecutor):

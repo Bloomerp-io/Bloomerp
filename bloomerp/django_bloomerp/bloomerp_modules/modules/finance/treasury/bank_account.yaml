@@ -59,22 +59,22 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Account Details"
       columns: 2
       items:
-        - bank_name
-        - account_name
-        - account_number
-        - account_type
-        - currency
+        - id: bank_name
+        - id: account_name
+        - id: account_number
+        - id: account_type
+        - id: currency
     - title: "Identifiers"
       columns: 2
       items:
-        - iban
-        - swift_code
-        - branch
+        - id: iban
+        - id: swift_code
+        - id: branch
     - title: "Status"
       columns: 1
       items:
-        - is_active
+        - id: is_active

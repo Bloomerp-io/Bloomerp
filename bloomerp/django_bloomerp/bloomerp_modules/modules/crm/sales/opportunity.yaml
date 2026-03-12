@@ -101,30 +101,30 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Opportunity Details"
       columns: 2
       items:
-        - opportunity_name
-        - status
-        - account
-        - stage
-        - contact
-        - lead
+        - id: opportunity_name
+        - id: status
+        - id: account
+        - id: stage
+        - id: contact
+        - id: lead
     - title: "Forecast"
       columns: 2
       items:
-        - amount
-        - probability
-        - expected_close_date
-        - close_date
+        - id: amount
+        - id: probability
+        - id: expected_close_date
+        - id: close_date
     - title: "Ownership"
       columns: 2
       items:
-        - source
-        - assigned_to
-        - next_step
+        - id: source
+        - id: assigned_to
+        - id: next_step
     - title: "Notes"
       columns: 1
       items:
-        - description
+        - id: description

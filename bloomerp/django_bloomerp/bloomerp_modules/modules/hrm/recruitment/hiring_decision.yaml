@@ -40,15 +40,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Decision"
       columns: 2
       items:
-        - application
-        - decision
-        - decided_at
-        - decided_by
+        - id: application
+        - id: decision
+        - id: decided_at
+        - id: decided_by
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

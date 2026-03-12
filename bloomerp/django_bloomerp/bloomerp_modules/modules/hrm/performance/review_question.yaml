@@ -28,14 +28,14 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Question"
       columns: 2
       items:
-        - performance_cycle
-        - category
-        - is_active
+        - id: performance_cycle
+        - id: category
+        - id: is_active
     - title: "Text"
       columns: 1
       items:
-        - question_text
+        - id: question_text

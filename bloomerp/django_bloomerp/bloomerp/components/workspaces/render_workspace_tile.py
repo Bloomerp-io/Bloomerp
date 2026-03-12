@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import plotly.graph_objects as go
 import plotly.io as pio
+from bloomerp.models.workspaces.tile import Tile
 from bloomerp.router import router
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
@@ -20,16 +21,16 @@ class DummyTile:
 
 
 DUMMY_TILES = {
-    1: DummyTile(
-        tile_id=1,
+    9001: DummyTile(
+        tile_id=9001,
         tile_type="kpi",
         icon="fa-coins",
         title="MRR",
         colspan=1,
         payload={"value": "$24.8k", "delta": "+12.4% vs last month"},
     ),
-    2: DummyTile(
-        tile_id=2,
+    9002: DummyTile(
+        tile_id=9002,
         tile_type="table",
         icon="fa-table-list",
         title="Recent invoices",
@@ -43,8 +44,8 @@ DUMMY_TILES = {
             ],
         },
     ),
-    3: DummyTile(
-        tile_id=3,
+    9003: DummyTile(
+        tile_id=9003,
         tile_type="two_dim_chart",
         icon="fa-chart-line",
         title="Pipeline trend",
@@ -54,16 +55,16 @@ DUMMY_TILES = {
             "y": [13, 18, 15, 22, 20, 26, 24],
         },
     ),
-    4: DummyTile(
-        tile_id=4,
+    9004: DummyTile(
+        tile_id=9004,
         tile_type="kpi",
         icon="fa-users",
         title="New customers",
         colspan=1,
         payload={"value": "184", "delta": "+8 this week"},
     ),
-    5: DummyTile(
-        tile_id=5,
+    9005: DummyTile(
+        tile_id=9005,
         tile_type="table",
         icon="fa-list-check",
         title="Top opportunities",
@@ -77,8 +78,8 @@ DUMMY_TILES = {
             ],
         },
     ),
-    6: DummyTile(
-        tile_id=6,
+    9006: DummyTile(
+        tile_id=9006,
         tile_type="two_dim_chart",
         icon="fa-chart-column",
         title="Weekly volume",
@@ -88,8 +89,8 @@ DUMMY_TILES = {
             "y": [4, 7, 6, 9],
         },
     ),
-    7: DummyTile(
-        tile_id=7,
+    9007: DummyTile(
+        tile_id=9007,
         tile_type="links",
         icon="fa-link",
         title="Useful Links",
@@ -142,22 +143,29 @@ def _render_two_dim_chart_html(payload: dict) -> str:
 )
 def render_workspace_tile(request: HttpRequest) -> HttpResponse:
     raw_tile_id = request.GET.get("tile_id")
-    tile_id = int(raw_tile_id) if raw_tile_id and raw_tile_id.isdigit() else random.choice(list(DUMMY_TILES.keys()))
+    try:
+        tile_id = int(raw_tile_id) if raw_tile_id is not None else None
+    except (TypeError, ValueError):
+        tile_id = None
+    max_cols = int(request.GET.get("max_cols", "4")) if str(request.GET.get("max_cols", "4")).isdigit() else 4
 
-    tile = DUMMY_TILES.get(tile_id) or random.choice(list(DUMMY_TILES.values()))
+    tile_model = Tile.objects.filter(pk=tile_id).first() if tile_id else None
+    tile = None if tile_model else (DUMMY_TILES.get(tile_id) if tile_id else None)
+    if tile is None and tile_model is None:
+        tile = random.choice(list(DUMMY_TILES.values()))
 
     chart_html = ""
-    if tile.tile_type == "two_dim_chart":
+    if tile and tile.tile_type == "two_dim_chart":
         chart_html = _render_two_dim_chart_html(tile.payload)
 
     context = {
-        "tile_id": tile.tile_id,
-        "tile_type": tile.tile_type,
-        "icon": tile.icon,
-        "title": tile.title,
-        "colspan": tile.colspan,
-        "max_cols": 4,
-        "payload": tile.payload,
+        "tile_id": tile_model.pk if tile_model else tile.tile_id,
+        "tile_type": "generic" if tile_model else tile.tile_type,
+        "icon": "fa-grip" if tile_model else tile.icon,
+        "title": tile_model.name if tile_model else tile.title,
+        "colspan": 1 if tile_model else tile.colspan,
+        "max_cols": max_cols,
+        "payload": {"text": tile_model.description or ""} if tile_model else tile.payload,
         "chart_html": mark_safe(chart_html),
     }
     

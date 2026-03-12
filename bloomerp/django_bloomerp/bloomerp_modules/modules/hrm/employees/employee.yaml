@@ -128,27 +128,27 @@ fields:
       default: "active"
 
 field_layout:
-  sections:
+  rows:
     - title: "Personal Details"
       columns: 2
       items:
-        - first_name
-        - middle_name
-        - last_name
-        - date_of_birth
+        - id: first_name
+        - id: middle_name
+        - id: last_name
+        - id: date_of_birth
     - title: "Job Details"
       columns: 2
       items:
-        - job_title
-        - department
-        - team
-        - office_location
-        - cost_center
-        - employment_type
-        - hire_date
-        - status
+        - id: job_title
+        - id: department
+        - id: team
+        - id: office_location
+        - id: cost_center
+        - id: employment_type
+        - id: hire_date
+        - id: status
     - title: "Contact"
       columns: 2
       items:
-        - email
-        - phone
+        - id: email
+        - id: phone

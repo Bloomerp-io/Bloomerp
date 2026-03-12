@@ -1,6 +1,5 @@
-from bloomerp.models.base_bloomerp_model import FieldLayout
+from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models import ApplicationField
-from bloomerp.models.base_bloomerp_model import LayoutSection
 from django.db.models import Model
 from bloomerp.models import AbstractBloomerpUser
 from django.contrib.contenttypes.models import ContentType
@@ -8,6 +7,7 @@ from bloomerp.field_types import FieldType
 from django.utils.translation import gettext_lazy as _
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.router import router
+from bloomerp.services.sectioned_layout_services import create_default_layout
 
 
 # Default Folder Policy
@@ -318,7 +318,7 @@ def get_default_layout(content_type:ContentType, user:AbstractBloomerpUser) -> F
         user (AbstractBloomerpUser): the user object
 
     Returns:
-        list[LayoutSection]: list of layouts
+        FieldLayout: default sectioned layout
     """
     # 1. Get the fields
     fields = ApplicationField.objects.filter(
@@ -330,31 +330,18 @@ def get_default_layout(content_type:ContentType, user:AbstractBloomerpUser) -> F
     
     # Get the model
     model = content_type.model_class()
-    layout_sections = []
-    if hasattr(model, "field_layout") and model.field_layout:
-        field_layout = model.field_layout
-
-        # Keep items as field identifier strings (not PKs)
-        for section in field_layout.sections:
-            items = [field_str for field_str in section.items]
-
-            layout_sections.append(
-                LayoutSection(
-                    columns=section.columns,
-                    title=section.title,
-                    items=items
-                )
-            )
-
-        return FieldLayout(sections=layout_sections)
+    if model:
+        return create_default_layout(model)
 
     else:
-        # Auto generate the layout using field identifiers (strings)
-        items = list(fields.exclude(field_type=FieldType.PROPERTY.value).values_list("field", flat=True))
+        items = [
+            LayoutItem(id=application_field.pk, colspan=1)
+            for application_field in fields.exclude(field_type=FieldType.PROPERTY.value)
+        ]
         return FieldLayout(
-            sections=[
-                LayoutSection(
-                    title=_("Details"),
+            rows=[
+                LayoutRow(
+                    title=str(_("Details")),
                     items=items,
                     columns=2
                 )
@@ -372,32 +359,15 @@ def create_default_detail_view_preference(content_type:ContentType, user:Abstrac
     Returns:
         UserDetailViewPreference: the detail view preference object
     """
-    # Get the FieldLayout with field identifier strings
     default_layout = get_default_layout(content_type, user)
-
-    # Convert field identifier strings to ApplicationField PKs for storage
-    stored_sections = []
-    for section in default_layout.sections:
-        items_pks = []
-        for field_str in section.items:
-            af = ApplicationField.objects.filter(content_type=content_type, field=field_str).first()
-            if af:
-                items_pks.append(af.pk)
-
-        stored_sections.append({
-            "title": section.title,
-            "columns": section.columns,
-            "items": items_pks,
-        })
 
     model = content_type.model_class()
     default_tabs = get_router_detail_tabs(model) if model else []
 
-    # Persist the converted layout
     return UserDetailViewPreference.objects.create(
         user=user,
         content_type=content_type,
-        field_layout={"sections": stored_sections},
+        field_layout=default_layout.model_dump(),
         tab_state=build_default_tab_state_from_tabs(default_tabs),
     )
     
@@ -407,4 +377,3 @@ def create_default_detail_view_preference(content_type:ContentType, user:Abstrac
     
     
     
-

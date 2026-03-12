@@ -1,50 +1,67 @@
 {% load bloomerp %}
 {% load static %}
 
-{% if no_preferences %}
-    <p>You currently have no list view preferences set for this model. You can your view preferences
-        <a hx-get="{% url 'users_my_profile_detail_view_preference' %}?content_type_id={{content_type_id}}&return_to={{request.path}}"
-            hx-target="#main-content" 
-            hx-swap="innerHTML" 
-            hx-trigger="click" 
-            hx-push-url="true">here.</a>
-    </p>
-{% endif %}
-
 <div 
     bloomerp-component="object-detail-view-container"
     data-content-type-id="{{ content_type_id }}"
+    data-object-id="{{ detail_object_id }}"
+    data-layout='{{ layout_json }}'
+    data-layout-save-url="{{ layout_save_url }}"
+    data-layout-available-items-url="{{ layout_available_items_url }}"
+    data-layout-render-item-url="{{ layout_render_item_url }}"
+    data-layout-kind="detail"
     >
-{% if layout %}
-    {% for section in layout.sections %}
-        {% if section.items %}
+    <div class="mb-4 flex justify-end gap-3">
+        <button type="button" class="btn btn-sm btn-secondary" data-layout-edit-toggle>
+            <i class="fa fa-pen-to-square"></i> Edit layout
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary hidden" data-layout-open-sidebar bloomerp-open-drawer="detail-layout-items-drawer">
+            <i class="fa fa-plus"></i> Add fields
+        </button>
+    </div>
+    <div class="space-y-4" data-layout-root>
+    {% if layout %}
+        {% for row in layout.rows %}
             <div 
-                data-section="{{ section.title }}"
-                data-section-columns="{{ section.columns }}"
+                class="workspace-row"
+                data-layout-row
+                data-row-title="{{ row.title|default:'' }}"
+                data-row-columns="{{ row.columns }}"
                 >
-                {% if section.title %}
-                <c-ui.text.subtitle class="mt-4">
-                    {{ section.title }}
-                </c-ui.text.subtitle>
-                {% endif %}
+                <div class="workspace-row__header workspace-row__header--static" data-row-header>
+                    <span class="workspace-row__title{% if not row.title %} workspace-row__title--empty{% endif %}" data-row-title-display>{{ row.title|default:' ' }}</span>
 
-                <div 
-                    class="grid grid-cols-1 md:grid-cols-{{ section.columns }} gap-x-16 gap-y-6"
-                    data-columns="{{ section.columns }}"
-                    >
-                    {% for item in section.items %}
+                    <div class="workspace-row__controls" data-row-controls>
+                        <input type="text" class="input input-sm min-w-32" data-row-title-input value="{{ row.title|default:'' }}" placeholder="Row title" />
+                        <input type="number" min="1" max="12" value="{{ row.columns }}" class="workspace-row__input" data-row-cols-input />
+                        <button type="button" class="workspace-row__add" data-add-row title="Add row below">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                        <button type="button" class="workspace-row__drag" data-row-drag-handle title="Drag row">
+                            <i class="fa fa-grip-vertical"></i>
+                        </button>
+                        <button type="button" class="workspace-row__remove" data-remove-row title="Remove row">
+                            <i class="fa fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="workspace-row__grid" data-layout-grid style="grid-template-columns: repeat({{ row.columns }}, minmax(0, 1fr));">
+                    {% for item in row.items %}
                         {% if item.can_view %}
-                            <div data-section-id="{{forloop.counter0}}">{% render_detail_view_value object item.application_field request.user item.can_view item.can_edit %}</div>
+                            {% render_detail_view_value object item.application_field request.user item.can_view item.can_edit item.colspan %}
                         {% endif %}
                     {% endfor %}
                 </div>
             </div>
-        {% endif %}
-    {% endfor %}
-{% endif %}
+        {% endfor %}
+    {% endif %}
+    </div>
+
+    <c-ui.drawer id="detail-layout-items-drawer" side="right" backdrop="False">
+        <div class="p-4">
+            <c-ui.text.subtitle>Available fields</c-ui.text.subtitle>
+            <div class="mt-4" data-layout-available-items></div>
+        </div>
+    </c-ui.drawer>
 </div>
-
-
-
-
-

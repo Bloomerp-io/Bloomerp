@@ -2,6 +2,7 @@
     class="workspace-tile group relative rounded-xl border border-slate-200 bg-white/95 p-3"
     bloomerp-component="workspace-tile"
     data-tile-id="{{ tile_id|default:'0' }}"
+    data-layout-item-id="{{ tile_id|default:'0' }}"
     data-tile-type="{{ tile_type|default:'' }}"
     data-colspan="{{ colspan|default:'1' }}"
     data-max-cols="{{ max_cols|default:'4' }}"
@@ -14,9 +15,9 @@
             <span data-tile-title class="font-medium text-slate-700">{{ title }}</span>
         </div>
 
-        <div data-tile-controls class="hidden items-center gap-1">
+        <div data-layout-item-controls class="hidden items-center gap-1">
             <input
-                data-colspan-input
+                data-layout-colspan-input
                 type="number"
                 min="1"
                 value="{{ colspan|default:'1' }}"
@@ -24,7 +25,7 @@
                 title="Tile width (colspan)"
             />
             <button
-                data-remove-tile
+                data-layout-remove-item
                 type="button"
                 class="h-6 w-6 rounded-full border border-rose-200 text-rose-500 transition hover:bg-rose-50"
                 title="Remove tile"
@@ -39,7 +40,7 @@
     </div>
 
     <button
-        data-colspan-resize-handle
+        data-layout-colspan-resize-handle
         class="absolute right-1 top-1/2 hidden h-8 w-2 -translate-y-1/2 cursor-ew-resize rounded bg-slate-200/80 transition group-[.workspace-tile--editing]:block"
         title="Drag to resize width"
         aria-label="Drag to resize width"

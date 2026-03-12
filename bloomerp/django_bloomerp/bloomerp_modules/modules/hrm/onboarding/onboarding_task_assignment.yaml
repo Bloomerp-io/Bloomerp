@@ -46,13 +46,13 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Assignment"
       columns: 2
       items:
-        - onboarding_process
-        - onboarding_task
-        - assignee
-        - status
-        - due_date
-        - completed_at
+        - id: onboarding_process
+        - id: onboarding_task
+        - id: assignee
+        - id: status
+        - id: due_date
+        - id: completed_at

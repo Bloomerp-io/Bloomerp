@@ -37,15 +37,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Policy"
       columns: 2
       items:
-        - name
-        - leave_type
-        - accrual_rate
-        - max_balance
+        - id: name
+        - id: leave_type
+        - id: accrual_rate
+        - id: max_balance
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

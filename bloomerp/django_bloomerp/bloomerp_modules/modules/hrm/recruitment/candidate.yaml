@@ -66,18 +66,18 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Candidate Details"
       columns: 2
       items:
-        - person
-        - status
-        - first_name
-        - last_name
-        - email
-        - phone
-        - source
+        - id: person
+        - id: status
+        - id: first_name
+        - id: last_name
+        - id: email
+        - id: phone
+        - id: source
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

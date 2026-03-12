@@ -19,6 +19,7 @@ import uuid
 from django.template.loader import render_to_string
 from bloomerp.field_types import FieldType
 from bloomerp.modules.definition import module_registry
+from bloomerp.services.sectioned_layout_services import build_detail_value_context
 
 register = template.Library()
 
@@ -380,7 +381,8 @@ def render_detail_view_value(
         application_field: ApplicationField, 
         user: AbstractBloomerpUser,
         can_view:bool=False,
-        can_edit:bool=False
+        can_edit:bool=False,
+        colspan:int=1,
         ):
     """Renders a detail view value
 
@@ -392,29 +394,13 @@ def render_detail_view_value(
     Returns:
         html: the rendered html
     """
-    value = getattr(object, application_field.field, None)
-    
-    # Get the field type enum
-    widget = application_field.get_widget()
-    attrs = {
-        "class" : "input w-full",
-    }
-    
-    if not can_edit:
-        attrs["readonly"] = "readonly"
-    
-    input = widget.render(
-            name=application_field.field,
-            value=value,
-            attrs=attrs
-        )
-    
-    return {
-        "value": value,
-        "object": object,
-        "application_field": application_field,
-        "input": input,
-    }
+    context = build_detail_value_context(
+        obj=object,
+        application_field=application_field,
+        can_edit=can_edit,
+    )
+    context["colspan"] = colspan
+    return context
     
 
 @register.simple_tag
@@ -476,24 +462,3 @@ def highlight_query(value, query):
         return f'<span class="bg-yellow-200 text-gray-900 rounded px-1">{match.group(0)}</span>'
 
     return mark_safe(pattern.sub(_repl, escaped_value))
-
-
-@register.inclusion_tag('inclusion_tags/sidebar_module_content.html')
-def render_sidebar_module_content(request:HttpRequest) -> HttpResponse:
-    """Resolves the sidebar content based on the module defined in the url.
-
-    Args:
-        request (HttpRequest): The HTTP request object.
-        
-    Returns:
-        HttpResponse: The rendered sidebar content.
-    """
-    # Get the module from the url
-    path_parts = request.path.strip('/').split('/')
-    module_id = path_parts[0] if len(path_parts) > 0 else None
-    models = module_registry.get_models_for_module(module_id)
-    module = module_registry.get(module_id) if module_id else None
-    return {
-        'module': module,
-        'models': models,
-    }

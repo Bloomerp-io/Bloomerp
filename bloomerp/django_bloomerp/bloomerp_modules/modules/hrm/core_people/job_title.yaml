@@ -35,15 +35,15 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Details"
       columns: 2
       items:
-        - title
-        - code
-        - level
-        - is_active
+        - id: title
+        - id: code
+        - id: level
+        - id: is_active
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

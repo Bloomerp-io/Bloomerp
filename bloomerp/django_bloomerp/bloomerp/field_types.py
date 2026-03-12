@@ -11,6 +11,7 @@ from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from bloomerp.model_fields.icon_field import IconField
 from bloomerp.form_fields.icon_field import IconFormField
 from bloomerp.widgets.icon_picker_widget import IconPickerWidget
+from bloomerp.widgets.select_widget import InputSelectWidget
 from typing import TYPE_CHECKING
 from django.contrib.contenttypes.models import ContentType
 
@@ -19,7 +20,9 @@ if TYPE_CHECKING:
 
 def render_foreign_key_field(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
     field_name = name_override or application_field.field
-    return ForeignFieldWidget(model=application_field.get_related_model()).render(
+    widget_attrs = {}
+    widget_attrs.update(application_field.meta or {})
+    return ForeignFieldWidget(attrs=widget_attrs).render(
         name=field_name,
         value=None,
         attrs={
@@ -29,7 +32,9 @@ def render_foreign_key_field(application_field:"ApplicationField", name_override
     
 def render_foreign_key_in(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
     field_name = name_override or application_field.field
-    return ForeignFieldWidget(model=application_field.get_related_model()).render(
+    widget_attrs = {}
+    widget_attrs.update(application_field.meta or {})
+    return ForeignFieldWidget(attrs=widget_attrs).render(
         name=field_name,
         value=None,
         attrs={
@@ -337,7 +342,7 @@ class FieldType(Enum):
         id="CharField",
         display_name="Char Field",
         model_field_cls=models.CharField,
-        widget_cls=forms.widgets.TextInput,
+        widget_cls=InputSelectWidget,
         default_model_field_args={
             "max_length": 100,
         },
@@ -348,6 +353,7 @@ class FieldType(Enum):
         id="ChoiceField",
         display_name="Choice Field",
         model_field_cls=models.CharField,
+        widget_cls=InputSelectWidget,
         lookups=TEXT_LOOKUPS,
         default_model_field_args={
             "max_length": 50,

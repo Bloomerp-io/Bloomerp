@@ -37,15 +37,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Cycle"
       columns: 2
       items:
-        - name
-        - status
-        - start_date
-        - end_date
+        - id: name
+        - id: status
+        - id: start_date
+        - id: end_date
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

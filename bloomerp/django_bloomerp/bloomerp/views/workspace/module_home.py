@@ -1,4 +1,6 @@
 from bloomerp.router import router
+from bloomerp.models.workspaces.workspace import Workspace
+from bloomerp.services.sectioned_layout_services import dump_layout_json
 from bloomerp.views.mixins import HtmxMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
@@ -17,4 +19,8 @@ class BloomerpModuleHomeView(HtmxMixin, LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["module"] = self.module
+        module_id = getattr(self.module, "id", "") if self.module else ""
+        workspace = Workspace.get_or_create_for_user(self.request.user, module_id=module_id)
+        context["workspace"] = workspace
+        context["workspace_layout_json"] = dump_layout_json(workspace.layout_obj)
         return context

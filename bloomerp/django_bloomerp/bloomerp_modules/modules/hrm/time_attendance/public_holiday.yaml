@@ -26,11 +26,11 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Holiday"
       columns: 2
       items:
-        - name
-        - date
-        - location
-        - is_active
+        - id: name
+        - id: date
+        - id: location
+        - id: is_active

@@ -4,6 +4,7 @@ from django.conf import settings
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.models.base_bloomerp_model import FieldLayout
+from bloomerp.services.sectioned_layout_services import normalize_layout_payload
 
 
 def get_default_tab_state() -> dict:
@@ -58,7 +59,12 @@ class UserDetailViewPreference(models.Model):
             user=user,
         )
         if qs.exists():
-            return qs.first()
+            preference = qs.first()
+            if not preference.field_layout_obj.rows or not any(row.items for row in preference.field_layout_obj.rows):
+                from bloomerp.services.detail_view_services import get_default_layout
+                preference.field_layout = get_default_layout(content_type=content_type, user=user).model_dump()
+                preference.save(update_fields=["field_layout"])
+            return preference
 
         return UserDetailViewPreference.create_default_for_user(user, content_type)
     
@@ -83,14 +89,13 @@ class UserDetailViewPreference(models.Model):
     
     
     def validate_field_layout(self):
-        FieldLayout.model_dump(self.field_layout)
+        normalize_layout_payload(self.field_layout)
         
     @property
     def field_layout_obj(self) -> FieldLayout:
-        # `field_layout` is stored as JSON (dict) in the DB; convert it to a FieldLayout object.
         if isinstance(self.field_layout, FieldLayout):
             return self.field_layout
-        return FieldLayout.model_validate(self.field_layout)
+        return normalize_layout_payload(self.field_layout)
 
     @property
     def tab_state_obj(self) -> dict:

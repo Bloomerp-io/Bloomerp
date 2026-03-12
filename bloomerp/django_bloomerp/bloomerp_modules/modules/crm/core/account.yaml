@@ -75,22 +75,22 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Account Details"
       columns: 2
       items:
-        - account_name
-        - account_type
-        - industry
-        - rating
+        - id: account_name
+        - id: account_type
+        - id: industry
+        - id: rating
     - title: "Contact"
       columns: 2
       items:
-        - primary_email
-        - primary_phone
-        - website
+        - id: primary_email
+        - id: primary_phone
+        - id: website
     - title: "Addresses"
       columns: 1
       items:
-        - billing_address
-        - shipping_address
+        - id: billing_address
+        - id: shipping_address

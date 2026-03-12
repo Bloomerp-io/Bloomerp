@@ -30,14 +30,14 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Progress"
       columns: 2
       items:
-        - goal
-        - progress_percent
-        - update_date
+        - id: goal
+        - id: progress_percent
+        - id: update_date
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

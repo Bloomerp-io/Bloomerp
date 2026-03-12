@@ -38,15 +38,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Feedback"
       columns: 2
       items:
-        - employee
-        - performance_cycle
-        - reviewer
-        - rating
+        - id: employee
+        - id: performance_cycle
+        - id: reviewer
+        - id: rating
     - title: "Details"
       columns: 1
       items:
-        - feedback
+        - id: feedback

@@ -87,10 +87,12 @@ class BloomerpModelForm(forms.ModelForm):
             if field.field in self.fields:
                 related_model = field.meta['related_model']
                 model = ContentType.objects.get(pk=related_model).model_class()
-                self.fields[field.field].widget = ForeignFieldWidget(attrs={
+                widget_attrs = {
                     'class' : 'input',
                     'model' : model,
-                })
+                }
+                widget_attrs.update(field.meta or {})
+                self.fields[field.field].widget = ForeignFieldWidget(attrs=widget_attrs)
         
         # ---------------------------------
         # MANY TO MANY FIELDS

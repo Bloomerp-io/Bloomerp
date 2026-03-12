@@ -26,14 +26,14 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Cost Center"
       columns: 2
       items:
-        - code
-        - name
-        - is_active
+        - id: code
+        - id: name
+        - id: is_active
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

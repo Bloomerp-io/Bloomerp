@@ -49,17 +49,17 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Location Details"
       columns: 2
       items:
-        - name
-        - code
-        - city
-        - country
-        - phone
-        - is_active
+        - id: name
+        - id: code
+        - id: city
+        - id: country
+        - id: phone
+        - id: is_active
     - title: "Address"
       columns: 1
       items:
-        - address
+        - id: address

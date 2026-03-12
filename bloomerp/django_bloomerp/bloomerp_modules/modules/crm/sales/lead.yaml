@@ -102,29 +102,29 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Lead Details"
       columns: 2
       items:
-        - lead_name
-        - status
-        - company_name
-        - lead_source
-        - priority
-        - assigned_to
+        - id: lead_name
+        - id: status
+        - id: company_name
+        - id: lead_source
+        - id: priority
+        - id: assigned_to
     - title: "Contact"
       columns: 2
       items:
-        - account
-        - contact
-        - email
-        - phone
+        - id: account
+        - id: contact
+        - id: email
+        - id: phone
     - title: "Forecast"
       columns: 2
       items:
-        - estimated_value
-        - expected_close_date
+        - id: estimated_value
+        - id: expected_close_date
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

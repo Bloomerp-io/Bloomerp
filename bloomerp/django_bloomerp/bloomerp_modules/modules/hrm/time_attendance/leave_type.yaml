@@ -38,12 +38,12 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Leave Type"
       columns: 2
       items:
-        - name
-        - code
-        - category
-        - requires_approval
-        - is_active
+        - id: name
+        - id: code
+        - id: category
+        - id: requires_approval
+        - id: is_active

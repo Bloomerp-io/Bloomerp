@@ -1,12 +1,11 @@
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
-from bloomerp.services.detail_view_services import create_default_detail_view_preference
-from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.views.core import BloomerpBaseDetailView
 from bloomerp.router import router
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from typing import Any
-from bloomerp.models import ApplicationField
+from bloomerp.services.detail_view_services import get_default_layout
+from bloomerp.services.sectioned_layout_services import dump_layout_json, resolve_detail_layout_rows
 
 @router.register(
     path="/",
@@ -27,71 +26,30 @@ class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView
         context = super().get_context_data(**kwargs)
         content_type = ContentType.objects.get_for_model(self.model)
     
-        # Get the detail view preference
         preference = self._get_or_create_detail_view_preference(content_type, self.request.user)
-
-        # Add content type id to context
         layout = self.resolve_layout(preference, content_type)
+        if not any(row.get("items") for row in layout["rows"]):
+            preference.field_layout = get_default_layout(content_type=content_type, user=self.request.user).model_dump()
+            preference.save(update_fields=["field_layout"])
+            layout = self.resolve_layout(preference, content_type)
         context["content_type_id"] = content_type.pk
         context["layout"] = layout
+        context["layout_json"] = dump_layout_json(preference.field_layout_obj)
+        context["layout_save_url"] = "/components/detail_layout_preference/"
+        context["layout_available_items_url"] = f"/components/detail_layout_available_fields/?content_type_id={content_type.pk}"
+        context["layout_render_item_url"] = "/components/detail_layout_render_field/"
+        context["detail_object_id"] = self.object.pk
         return context
 
     def _get_or_create_detail_view_preference(self, content_type, user) -> UserDetailViewPreference:
-        qs = UserDetailViewPreference.objects.filter(
-           content_type=content_type,
-           user=user,
-        )
-        if qs.exists():
-            return qs.first()
-        return create_default_detail_view_preference(content_type, user)
+        return UserDetailViewPreference.get_or_create_for_user(user, content_type)
      
     def resolve_layout(self, preference:UserDetailViewPreference, content_type:ContentType) -> dict:
-        """_summary_
-
-        Args:
-            preference (UserDetailViewPreference): _description_
-            content_type (ContentType): _description_
-
-        Returns:
-            dict: _description_
-        """
-        manager = UserPermissionManager(self.request.user)
-        permission_str = f"view_{self.model._meta.model_name}"
-
-        layout: dict = {}
-        sections: list = []
-
-        for section in getattr(preference.field_layout_obj, "sections", []):
-            _section = {
-                "columns": getattr(section, "columns", None),
-                "title": getattr(section, "title", None),
-            }
-            
-            items: list = []
-            for item in getattr(section, "items", []) or []:
-                try:
-                    field = ApplicationField.objects.filter(id=item, content_type=content_type).first()
-                except Exception:
-                    field = None
-
-                if not field:
-                    continue
-
-                # Check permission on the actual ApplicationField
-                can_view = manager.has_field_permission(field, permission_str)
-                if not can_view:
-                    continue
-                items.append(
-                    {
-                        "application_field" : field,
-                        "can_view": can_view,
-                        "can_edit": manager.has_field_permission(field, f"change_{self.model._meta.model_name}"),
-                    }
-                )
-
-            _section["items"] = items
-            sections.append(_section)
-
-        layout["sections"] = sections
-        return layout
+        return {
+            "rows": resolve_detail_layout_rows(
+                layout=preference.field_layout_obj,
+                content_type=content_type,
+                user=self.request.user,
+            )
+        }
     

@@ -32,12 +32,12 @@ fields:
     options:
       default: false
 field_layout:
-  sections:
+  rows:
     - title: "Stage Details"
       columns: 2
       items:
-        - stage_name
-        - sequence
-        - probability
-        - is_won
-        - is_lost
+        - id: stage_name
+        - id: sequence
+        - id: probability
+        - id: is_won
+        - id: is_lost

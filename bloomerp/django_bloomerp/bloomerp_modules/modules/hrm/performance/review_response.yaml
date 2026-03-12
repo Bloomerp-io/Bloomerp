@@ -29,14 +29,14 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Response"
       columns: 2
       items:
-        - performance_review
-        - question
-        - rating
+        - id: performance_review
+        - id: question
+        - id: rating
     - title: "Text"
       columns: 1
       items:
-        - response_text
+        - id: response_text

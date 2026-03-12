@@ -7,6 +7,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import ValidationError
 
+from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
+
 class TodoPriority(models.TextChoices):
     URGENT = ('urgent', 'Urgent')
     HIGH = ('high', 'High')
@@ -39,6 +41,33 @@ class Todo(BloomerpModel):
     class Meta(BloomerpModel.Meta):
         managed = True
         db_table = 'bloomerp_todo'
+
+    class Bloomerp:
+        field_layout = FieldLayout(
+            rows=[
+                LayoutRow(
+                    title="Details",
+                    columns=4,
+                    items=[
+                        LayoutItem(id="title", colspan=4),
+                        LayoutItem(id="status", colspan=1),
+                        LayoutItem(id="effort", colspan=1),
+                        LayoutItem(id="priority", colspan=1),
+                        LayoutItem(id="assigned_to", colspan=1),
+                        LayoutItem(id="assigned_to", colspan=1),
+                        LayoutItem(id="content", colspan=4)
+                    ]
+                ),
+                LayoutRow(
+                    title="Users",
+                    columns=4,
+                    items=[
+                        LayoutItem(id="requested_by"),
+                        LayoutItem(id="requested_by"),
+                    ]
+                )
+            ]
+        )
 
     avatar = None
     allow_string_search = False # Do not allow string search for todos (we dont want to-do's to be searchable in the search bar)

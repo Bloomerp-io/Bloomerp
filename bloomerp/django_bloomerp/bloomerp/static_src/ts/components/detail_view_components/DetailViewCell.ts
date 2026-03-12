@@ -1,95 +1,116 @@
-import BaseComponent, { registerComponent } from "../BaseComponent";
-import { getContextMenu, type ContextMenuItem } from "../../utils/contextMenu";
+import { type ContextMenuItem, getContextMenu } from "../../utils/contextMenu";
+import BaseSectionedLayoutItem from "../layouts/BaseSectionedLayoutItem";
 
-export class DetailViewCell extends BaseComponent {
-	public value: string | null = null;
-	public label: string | null = null;
-	public applicationFieldId: string | null = null;
+export class DetailViewCell extends BaseSectionedLayoutItem {
+    public value: string | null = null;
+    public label: string | null = null;
+    public applicationFieldId: string | null = null;
 
-	public initialize(): void {
-		if (!this.element) return;
+    public initialize(): void {
+        super.initialize();
+        if (!this.element) return;
 
-		// Extract data attributes
-		this.value = this.element.getAttribute('data-value') ?? null;
-		this.label = this.element.getAttribute('data-label') ?? null;
-		this.applicationFieldId = this.element.getAttribute('data-application-field-id') ?? null;
+        this.value = this.element.getAttribute("data-value") ?? null;
+        this.label = this.element.getAttribute("data-label") ?? null;
+        this.applicationFieldId = this.element.getAttribute("data-application-field-id") ?? null;
 
-		// Setup right-click context menu
-		this.setupContextMenu();
-	}
+        const applicationFieldId = Number.parseInt(this.applicationFieldId ?? "-1", 10);
+        if (Number.isFinite(applicationFieldId)) {
+            this.itemId = applicationFieldId;
+        }
 
-	public destroy(): void {
-		if (!this.element) return;
-		this.element.removeEventListener('contextmenu', this.onContextMenu, true);
-	}
+        this.setupContextMenu();
+    }
 
-	private onContextMenu = (event: MouseEvent): void => {
-		event.preventDefault();
-		this.showContextMenu(event);
-	};
+    public destroy(): void {
+        if (!this.element) return;
+        this.element.removeEventListener("contextmenu", this.onContextMenu, true);
+    }
 
-	private setupContextMenu(): void {
-		if (!this.element) return;
-		this.element.addEventListener('contextmenu', this.onContextMenu, true);
-	}
+    public override setEditMode(isEditMode?: boolean): void {
+        super.setEditMode(isEditMode);
+        if (!this.element) return;
 
-	private showContextMenu(event: MouseEvent): void {
-		if (!this.element) return;
+        this.element.classList.toggle("detail-layout-item--editing", this.isEditMode);
+        const focusableElements = this.element.querySelectorAll<HTMLElement>(
+            ".detail-layout-item__body input, .detail-layout-item__body textarea, .detail-layout-item__body select, .detail-layout-item__body button",
+        );
+        focusableElements.forEach((element) => {
+            if (this.isEditMode) {
+                element.setAttribute("tabindex", "-1");
+            } else {
+                element.removeAttribute("tabindex");
+            }
+        });
+    }
 
-		const items = this.constructContextMenu();
-		if (items.length === 0) return;
+    public override focusPrimaryTarget(): void {
+        this.focusReadModeTarget();
+    }
 
-		getContextMenu().show(event, this.element, items);
-	}
+    public override focusReadModeTarget(): void {
+        if (!this.element) return;
 
-	public constructContextMenu(): ContextMenuItem[] {
-		const items: ContextMenuItem[] = [];
+        const focusTarget = this.element.querySelector<HTMLElement>(
+            ".detail-layout-item__body input, .detail-layout-item__body textarea, .detail-layout-item__body select, .detail-layout-item__body button, .detail-layout-item__body [contenteditable=\"true\"], .detail-layout-item__body [tabindex]:not([tabindex=\"-1\"])",
+        );
+        if (focusTarget) {
+            focusTarget.focus();
+            return;
+        }
+        this.element.focus();
+    }
 
-		// Add copy value option
-		if (this.value) {
-			items.push({
-				label: 'Copy Value',
-				icon: 'fa-solid fa-copy',
-				onClick: (context) => {
-					this.copyValue();
-					context.hide();
-				},
-			});
-		}
+    public override focusEditModeTarget(): void {
+        this.element?.focus();
+    }
 
-		return items;
-	}
+    private onContextMenu = (event: MouseEvent): void => {
+        event.preventDefault();
+        this.showContextMenu(event);
+    };
 
-	private copyValue(): void {
-		if (!this.value) return;
+    private setupContextMenu(): void {
+        if (!this.element) return;
+        this.element.addEventListener("contextmenu", this.onContextMenu, true);
+    }
 
-		// Copy to clipboard
-		navigator.clipboard.writeText(this.value).then(
-			() => {
-				console.log('Value copied to clipboard');
-				// Optional: Show a toast notification
-			},
-			(err) => {
-				console.error('Failed to copy value:', err);
-			}
-		);
-	}
+    private showContextMenu(event: MouseEvent): void {
+        if (!this.element) return;
 
-	/**
-	 * Highlights the cell (for keyboard navigation)
-	 */
-	public highlight(): void {
-		if (!this.element) return;
-		this.element.classList.add('cell-focused');
-	}
+        const items = this.constructContextMenu();
+        if (items.length === 0) return;
 
-	/**
-	 * Removes highlight from the cell
-	 */
-	public unhighlight(): void {
-		if (!this.element) return;
-		this.element.classList.remove('cell-focused');
-	}
+        getContextMenu().show(event, this.element, items);
+    }
+
+    public constructContextMenu(): ContextMenuItem[] {
+        const items: ContextMenuItem[] = [];
+        if (this.value) {
+            items.push({
+                label: "Copy Value",
+                icon: "fa-solid fa-copy",
+                onClick: (context) => {
+                    this.copyValue();
+                    context.hide();
+                },
+            });
+        }
+        return items;
+    }
+
+    public highlight(): void {
+        this.element?.classList.add("cell-focused");
+    }
+
+    public unhighlight(): void {
+        this.element?.classList.remove("cell-focused");
+    }
+
+    private copyValue(): void {
+        if (!this.value) return;
+        navigator.clipboard.writeText(this.value).catch((error) => {
+            console.error("Failed to copy value:", error);
+        });
+    }
 }
-
-// Register the component

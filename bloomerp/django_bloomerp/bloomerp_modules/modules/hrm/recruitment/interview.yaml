@@ -56,17 +56,17 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Interview Details"
       columns: 2
       items:
-        - application
-        - status
-        - scheduled_at
-        - interview_type
-        - location
-        - interviewer
+        - id: application
+        - id: status
+        - id: scheduled_at
+        - id: interview_type
+        - id: location
+        - id: interviewer
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

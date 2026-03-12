@@ -46,17 +46,17 @@ fields:
       blank: true
       on_delete: SET_NULL
 field_layout:
-  sections:
+  rows:
     - title: "Request"
       columns: 2
       items:
-        - employee
-        - leave_type
-        - start_date
-        - end_date
-        - status
-        - approved_by
+        - id: employee
+        - id: leave_type
+        - id: start_date
+        - id: end_date
+        - id: status
+        - id: approved_by
     - title: "Reason"
       columns: 1
       items:
-        - reason
+        - id: reason

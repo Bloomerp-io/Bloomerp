@@ -33,15 +33,15 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Task"
       columns: 2
       items:
-        - name
-        - category
-        - default_due_days
-        - is_active
+        - id: name
+        - id: category
+        - id: default_due_days
+        - id: is_active
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

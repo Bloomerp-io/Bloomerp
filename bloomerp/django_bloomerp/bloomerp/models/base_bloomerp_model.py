@@ -4,13 +4,20 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from bloomerp.models import mixins
 
-class LayoutSection(BaseModel):
+
+class LayoutItem(BaseModel):
+    id: int | str
+    colspan: int = 1
+
+
+class LayoutRow(BaseModel):
     columns: int
-    items: list[str | int] = Field(default_factory=list)
+    items: list[LayoutItem] = Field(default_factory=list)
     title: Optional[str] = None
-    
+
+
 class FieldLayout(BaseModel):
-    sections: list[LayoutSection] = Field(default_factory=list)
+    rows: list[LayoutRow] = Field(default_factory=list)
 
 
 class BloomerpModel(

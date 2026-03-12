@@ -40,15 +40,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Feedback"
       columns: 2
       items:
-        - interview
-        - reviewer
-        - rating
-        - recommendation
+        - id: interview
+        - id: reviewer
+        - id: rating
+        - id: recommendation
     - title: "Comments"
       columns: 1
       items:
-        - comments
+        - id: comments

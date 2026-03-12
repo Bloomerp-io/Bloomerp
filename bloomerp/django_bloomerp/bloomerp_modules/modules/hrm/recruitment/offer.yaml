@@ -54,17 +54,17 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Offer"
       columns: 2
       items:
-        - application
-        - status
-        - offer_date
-        - proposed_start_date
-        - salary
-        - currency
+        - id: application
+        - id: status
+        - id: offer_date
+        - id: proposed_start_date
+        - id: salary
+        - id: currency
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

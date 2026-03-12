@@ -39,15 +39,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Approval"
       columns: 2
       items:
-        - offer
-        - approver
-        - status
-        - decided_at
+        - id: offer
+        - id: approver
+        - id: status
+        - id: decided_at
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

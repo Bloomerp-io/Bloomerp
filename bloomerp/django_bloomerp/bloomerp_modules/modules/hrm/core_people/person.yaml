@@ -60,18 +60,18 @@ fields:
         - ["inactive", "Inactive"]
       default: "active"
 field_layout:
-  sections:
+  rows:
     - title: "Personal Details"
       columns: 2
       items:
-        - first_name
-        - last_name
-        - middle_name
-        - date_of_birth
-        - person_type
-        - status
+        - id: first_name
+        - id: last_name
+        - id: middle_name
+        - id: date_of_birth
+        - id: person_type
+        - id: status
     - title: "Contact"
       columns: 2
       items:
-        - email
-        - phone
+        - id: email
+        - id: phone

@@ -47,16 +47,16 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Application"
       columns: 2
       items:
-        - candidate
-        - job_opening
-        - applied_date
-        - status
-        - resume_link
+        - id: candidate
+        - id: job_opening
+        - id: applied_date
+        - id: status
+        - id: resume_link
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

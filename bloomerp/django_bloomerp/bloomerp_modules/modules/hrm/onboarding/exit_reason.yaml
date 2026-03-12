@@ -28,14 +28,14 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Reason"
       columns: 2
       items:
-        - name
-        - code
-        - is_active
+        - id: name
+        - id: code
+        - id: is_active
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

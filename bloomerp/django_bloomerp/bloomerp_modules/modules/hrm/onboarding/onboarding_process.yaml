@@ -40,15 +40,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Process"
       columns: 2
       items:
-        - employee
-        - status
-        - start_date
-        - owner
+        - id: employee
+        - id: status
+        - id: start_date
+        - id: owner
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

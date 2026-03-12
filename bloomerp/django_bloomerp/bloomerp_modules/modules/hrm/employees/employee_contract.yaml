@@ -74,22 +74,22 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Contract Details"
       columns: 2
       items:
-        - employee
-        - contract_type
-        - status
-        - start_date
-        - end_date
-        - signed_date
+        - id: employee
+        - id: contract_type
+        - id: status
+        - id: start_date
+        - id: end_date
+        - id: signed_date
     - title: "Compensation"
       columns: 2
       items:
-        - salary
-        - currency
+        - id: salary
+        - id: currency
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

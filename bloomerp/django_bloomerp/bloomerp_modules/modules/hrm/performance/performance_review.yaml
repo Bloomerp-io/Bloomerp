@@ -47,16 +47,16 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Review"
       columns: 2
       items:
-        - employee
-        - performance_cycle
-        - reviewer
-        - status
-        - overall_rating
+        - id: employee
+        - id: performance_cycle
+        - id: reviewer
+        - id: status
+        - id: overall_rating
     - title: "Summary"
       columns: 1
       items:
-        - summary
+        - id: summary

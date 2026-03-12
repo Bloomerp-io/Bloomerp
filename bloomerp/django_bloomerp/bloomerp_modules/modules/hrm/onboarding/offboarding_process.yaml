@@ -47,16 +47,16 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Process"
       columns: 2
       items:
-        - employee
-        - status
-        - start_date
-        - end_date
-        - exit_reason
+        - id: employee
+        - id: status
+        - id: start_date
+        - id: end_date
+        - id: exit_reason
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

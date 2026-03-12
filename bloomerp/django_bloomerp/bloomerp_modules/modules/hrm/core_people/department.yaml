@@ -53,17 +53,17 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Department Details"
       columns: 2
       items:
-        - name
-        - code
-        - parent_department
-        - manager
-        - cost_center
-        - is_active
+        - id: name
+        - id: code
+        - id: parent_department
+        - id: manager
+        - id: cost_center
+        - id: is_active
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

@@ -1,0 +1,26 @@
+<div class="space-y-2" data-layout-available-items-list>
+    {% for item in items %}
+        <div
+            role="button"
+            tabindex="0"
+            draggable="true"
+            data-layout-sidebar-item
+            data-layout-item-id="{{ item.id }}"
+            class="flex w-full cursor-grab items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-slate-300 hover:bg-slate-50 active:cursor-grabbing"
+        >
+            <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+                <i class="fa {{ item.icon|default:'fa-grip' }}"></i>
+            </span>
+            <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium text-slate-700">{{ item.title }}</span>
+                {% if item.description %}
+                    <span class="block truncate text-xs text-slate-500">{{ item.description }}</span>
+                {% endif %}
+            </span>
+        </div>
+    {% empty %}
+        <div class="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500">
+            No items available.
+        </div>
+    {% endfor %}
+</div>

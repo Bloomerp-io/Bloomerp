@@ -34,15 +34,15 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Entry"
       columns: 2
       items:
-        - employee
-        - work_date
-        - hours
-        - work_type
+        - id: employee
+        - id: work_date
+        - id: hours
+        - id: work_type
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

@@ -557,14 +557,22 @@
   }
 
   .workspace-row__header {
-    @apply relative z-10 mb-2 hidden items-center justify-end;
+    @apply relative z-10 mb-2 flex items-center justify-between gap-3;
   }
 
   .workspace-row__controls {
     @apply hidden items-center gap-2 bg-white/95 px-2 py-1;
   }
 
-  .workspace-edit-mode .workspace-row--focused .workspace-row__header {
+  .workspace-row__title {
+    @apply min-w-0 flex-1 truncate font-bold text-primary-900;
+  }
+
+  .workspace-row__title--empty {
+    @apply invisible;
+  }
+
+  .workspace-edit-mode .workspace-row__controls {
     @apply flex;
   }
 
@@ -580,18 +588,50 @@
     @apply h-6 w-6 rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50;
   }
 
+  .workspace-row__add {
+    @apply h-6 w-6 rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50;
+  }
+
   .workspace-row__remove {
     @apply h-6 w-6 rounded-full border border-rose-200 text-rose-500 transition hover:bg-rose-50;
   }
 }
 
 @layer utilities {
-  .workspace-row-selection [data-tile-controls] {
+  .workspace-row-selection [data-layout-item-controls] {
     @apply hidden;
   }
 
-  .workspace-row-selection [data-colspan-resize-handle] {
+  .workspace-row-selection [data-layout-colspan-resize-handle] {
     @apply hidden;
+  }
+
+  .detail-layout-item--editing .detail-layout-item__body {
+    @apply pointer-events-none opacity-70;
+  }
+
+  .detail-layout-item {
+    @apply relative;
+  }
+
+  .detail-layout-item:not(.detail-layout-item--editing) {
+    @apply rounded-none border-0 bg-transparent p-0 shadow-none outline-none ring-0;
+  }
+
+  .detail-layout-item__header {
+    @apply gap-2;
+  }
+
+  .detail-layout-item--editing {
+    @apply rounded-xl border border-slate-200 bg-white/95 p-3;
+  }
+
+  .detail-layout-item--editing .detail-layout-item__header {
+    @apply mb-2 text-xs text-slate-500;
+  }
+
+  .detail-layout-item--editing [data-layout-colspan-resize-handle] {
+    @apply block;
   }
 }
 

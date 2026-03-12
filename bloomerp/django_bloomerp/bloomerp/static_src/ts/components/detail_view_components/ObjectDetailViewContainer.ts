@@ -1,351 +1,314 @@
-import BaseComponent, { getComponent } from "../BaseComponent";
-import { getContextMenu, type ContextMenuItem } from "../../utils/contextMenu";
+import htmx from "htmx.org";
+
+import { type ContextMenuItem, getContextMenu } from "../../utils/contextMenu";
+import { componentIdentifier, getComponent, initComponents } from "../BaseComponent";
+import BaseSectionedLayoutContainer, { type SectionedLayoutRowPayload } from "../layouts/BaseSectionedLayoutContainer";
 import { DetailViewCell } from "./DetailViewCell";
 
-type SectionInfo = {
-	element: HTMLElement;
-	columns: number;
-	items: DetailViewCell[];
+type RowInfo = {
+    element: HTMLElement;
+    columns: number;
+    items: DetailViewCell[];
 };
 
-export default class ObjectDetailViewContainer extends BaseComponent {
-	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
-	private focusInHandler: ((event: FocusEvent) => void) | null = null;
-	private currentItem: DetailViewCell | null = null;
-	private sections: SectionInfo[] = [];
-
-	public initialize(): void {
-		if (!this.element) return;
-
-		this.parseSections();
-		this.applyTabIndexToItems();
-
-		this.keydownHandler = (event: KeyboardEvent) => this.onKeyDown(event);
-		this.element.addEventListener('keydown', this.keydownHandler);
-
-		this.focusInHandler = (event: FocusEvent) => this.onFocusIn(event);
-		this.element.addEventListener('focusin', this.focusInHandler);
-	}
-
-	public destroy(): void {
-		if (!this.element) return;
-		if (this.keydownHandler) {
-			this.element.removeEventListener('keydown', this.keydownHandler);
-		}
-		if (this.focusInHandler) {
-			this.element.removeEventListener('focusin', this.focusInHandler);
-		}
-		this.keydownHandler = null;
-		this.focusInHandler = null;
-		this.currentItem = null;
-		this.sections = [];
-	}
-
-	public onAfterSwap(): void {
-		this.parseSections();
-		this.applyTabIndexToItems();
-	}
-
-	private parseSections(): void {
-		if (!this.element) return;
-
-		this.sections = [];
-		const sectionElements = this.element.querySelectorAll<HTMLElement>('[data-section]');
-
-		sectionElements.forEach((sectionEl) => {
-			const columnsAttr = sectionEl.getAttribute('data-section-columns');
-			const columns = columnsAttr ? parseInt(columnsAttr, 10) : 1;
-
-			const items: DetailViewCell[] = [];
-			const itemElements = sectionEl.querySelectorAll<HTMLElement>('[bloomerp-component="detail-view-value"]');
-
-			itemElements.forEach((el) => {
-				if (el.offsetParent === null) return;
-				
-				const component = getComponent(el);
-				if (component instanceof DetailViewCell) {
-					items.push(component);
-				}
-			});
-
-			this.sections.push({
-				element: sectionEl,
-				columns,
-				items,
-			});
-		});
-	}
-
-	private onFocusIn(event: FocusEvent): void {
-		const target = event.target as HTMLElement | null;
-		if (!target) return;
-		const itemEl = target.closest<HTMLElement>(`[bloomerp-component="detail-view-value"]`);
-		if (itemEl && this.element?.contains(itemEl)) {
-			const component = getComponent(itemEl);
-			if (component instanceof DetailViewCell) {
-				this.currentItem = component;
-			}
-		}
-	}
-
-	private onKeyDown(event: KeyboardEvent): void {
-		if (!this.element) return;
-
-		const key = event.key;
-		const isMeta = event.metaKey || event.ctrlKey;
-		const isAlt = event.altKey;
-		const isShift = event.shiftKey;
-
-		// Shift+Arrow triggers navigation
-		if (isShift && this.isArrowKey(key)) {
-			event.preventDefault();
-
-			const allItems = this.getAllItems();
-			if (allItems.length === 0) return;
-
-			if (!this.currentItem || !allItems.includes(this.currentItem)) {
-				this.currentItem = allItems[0];
-			}
-
-			let next: DetailViewCell | null = null;
-
-			if (isMeta) {
-				// Cmd+Shift+arrow: move to edge within section
-				next = this.getEdgeItem(key);
-			} else {
-				// Shift+arrow: move one step
-				next = this.findNextItem(key);
-			}
-
-			if (!next) return;
-
-			this.focusItem(next);
-			this.currentItem = next;
-			return;
-		}
-
-		// Option+Down triggers context menu
-		if (isAlt && key === 'ArrowDown') {
-			event.preventDefault();
-			this.openContextMenu();
-			return;
-		}
-	}
-
-	private isArrowKey(key: string): boolean {
-		return key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight';
-	}
-
-	private applyTabIndexToItems(): void {
-		this.getAllItems().forEach((item) => {
-			if (!item.element || item.element.hasAttribute('tabindex')) return;
-			item.element.setAttribute('tabindex', '0');
-		});
-	}
-
-	private focusItem(item: DetailViewCell): void {
-		if (!item.element) return;
-		
-		// Focus the inner input element so it shows its native focus ring
-		const focusTarget = this.getFocusableTarget(item.element);
-		if (focusTarget) {
-			focusTarget.focus();
-		} else {
-			// Fallback to cell container if no focusable element found
-			item.element.focus();
-		}
-
-		// Unhighlight the previous item
-		if (this.currentItem && this.currentItem !== item) {
-			this.currentItem.unhighlight();
-		}
-		// Don't highlight the new item - let the native input focus ring show instead
-	}
-
-	private getFocusableTarget(itemElement: HTMLElement): HTMLElement | null {
-		const focusable = itemElement.querySelector<HTMLElement>(
-			'input, textarea, select, button, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
-		);
-		return focusable ?? null;
-	}
-
-	private getAllItems(): DetailViewCell[] {
-		return this.sections.flatMap((section) => section.items);
-	}
-
-	private getCurrentPosition(): { section: SectionInfo; index: number } | null {
-		if (!this.currentItem) return null;
-
-		for (const section of this.sections) {
-			const index = section.items.indexOf(this.currentItem);
-			if (index !== -1) {
-				return { section, index };
-			}
-		}
-
-		return null;
-	}
-
-	private findNextItem(key: string): DetailViewCell | null {
-		const pos = this.getCurrentPosition();
-		if (!pos) return null;
-
-		const { section, index } = pos;
-
-		switch (key) {
-			case 'ArrowLeft':
-				return this.moveLeft(section, index);
-			case 'ArrowRight':
-				return this.moveRight(section, index);
-			case 'ArrowUp':
-				return this.moveUp(section, index);
-			case 'ArrowDown':
-				return this.moveDown(section, index);
-			default:
-				return null;
-		}
-	}
-
-	private moveLeft(section: SectionInfo, index: number): DetailViewCell | null {
-		const col = index % section.columns;
-
-		if (col > 0) {
-			// Can move left within the same row
-			return section.items[index - 1] ?? null;
-		}
-
-		// Already at leftmost column, stay in place
-		return null;
-	}
-
-	private moveRight(section: SectionInfo, index: number): DetailViewCell | null {
-		const col = index % section.columns;
-
-		if (col < section.columns - 1 && index + 1 < section.items.length) {
-			// Can move right within the same row
-			return section.items[index + 1] ?? null;
-		}
-
-		// Already at rightmost column or end of items, stay in place
-		return null;
-	}
-
-	private moveUp(section: SectionInfo, index: number): DetailViewCell | null {
-		const targetIndex = index - section.columns;
-
-		if (targetIndex >= 0) {
-			// Move up within the same section
-			return section.items[targetIndex] ?? null;
-		}
-
-		// At top of section, move to last item of previous section
-		const currentSectionIndex = this.sections.indexOf(section);
-		if (currentSectionIndex > 0) {
-			const prevSection = this.sections[currentSectionIndex - 1];
-			return prevSection.items[prevSection.items.length - 1] ?? null;
-		}
-
-		// Already at first section, stay in place
-		return null;
-	}
-
-	private moveDown(section: SectionInfo, index: number): DetailViewCell | null {
-		const targetIndex = index + section.columns;
-
-		if (targetIndex < section.items.length) {
-			// Move down within the same section
-			return section.items[targetIndex] ?? null;
-		}
-
-		// At bottom of section, move to first item of next section
-		const currentSectionIndex = this.sections.indexOf(section);
-		if (currentSectionIndex < this.sections.length - 1) {
-			const nextSection = this.sections[currentSectionIndex + 1];
-			return nextSection.items[0] ?? null;
-		}
-
-		// Already at last section, stay in place
-		return null;
-	}
-
-	private getEdgeItem(key: string): DetailViewCell | null {
-		const pos = this.getCurrentPosition();
-		if (!pos) return null;
-
-		const { section, index } = pos;
-
-		switch (key) {
-			case 'ArrowLeft':
-				return this.getLeftmostItem(section, index);
-			case 'ArrowRight':
-				return this.getRightmostItem(section, index);
-			case 'ArrowUp':
-				return this.getTopmostItem(section, index);
-			case 'ArrowDown':
-				return this.getBottommostItem(section, index);
-			default:
-				return null;
-		}
-	}
-
-	private getLeftmostItem(section: SectionInfo, index: number): DetailViewCell | null {
-		const row = Math.floor(index / section.columns);
-		const rowStartIndex = row * section.columns;
-		return section.items[rowStartIndex] ?? null;
-	}
-
-	private getRightmostItem(section: SectionInfo, index: number): DetailViewCell | null {
-		const row = Math.floor(index / section.columns);
-		const rowStartIndex = row * section.columns;
-		const rowEndIndex = Math.min(rowStartIndex + section.columns - 1, section.items.length - 1);
-		return section.items[rowEndIndex] ?? null;
-	}
-
-	private getTopmostItem(section: SectionInfo, index: number): DetailViewCell | null {
-		const col = index % section.columns;
-		return section.items[col] ?? section.items[0] ?? null;
-	}
-
-	private getBottommostItem(section: SectionInfo, index: number): DetailViewCell | null {
-		const col = index % section.columns;
-		const totalRows = Math.ceil(section.items.length / section.columns);
-		const lastRowStartIndex = (totalRows - 1) * section.columns;
-		const targetIndex = lastRowStartIndex + col;
-
-		if (targetIndex < section.items.length) {
-			return section.items[targetIndex] ?? null;
-		}
-
-		// If the column doesn't exist in the last row, return the last item
-		return section.items[section.items.length - 1] ?? null;
-	}
-
-	private openContextMenu(): void {
-		if (!this.currentItem || !this.currentItem.element) return;
-
-		const items = this.constructContextMenu();
-		if (items.length === 0) {
-			// If container has no menu, try the cell's menu
-			this.currentItem.constructContextMenu();
-			return;
-		}
-
-		const rect = this.currentItem.element.getBoundingClientRect();
-		const clientX = Math.round(rect.left + Math.min(24, rect.width / 2));
-		const clientY = Math.round(rect.bottom - 4);
-
-		const synthetic = new MouseEvent('contextmenu', {
-			bubbles: true,
-			cancelable: true,
-			clientX,
-			clientY,
-		});
-
-		getContextMenu().show(synthetic, this.currentItem.element, items);
-	}
-
-	protected constructContextMenu(): ContextMenuItem[] {
-		// Override in subclasses to provide context menu items
-		return [];
-	}
+export default class ObjectDetailViewContainer extends BaseSectionedLayoutContainer<DetailViewCell> {
+    private currentItem: DetailViewCell | null = null;
+    private focusInHandler: ((event: FocusEvent) => void) | null = null;
+
+    protected getItemSelector(): string {
+        return `[${componentIdentifier}="detail-view-value"]`;
+    }
+
+    protected getItemComponent(element: HTMLElement): DetailViewCell | null {
+        const component = getComponent(element);
+        return component instanceof DetailViewCell ? component : null;
+    }
+
+    protected override shouldApplyFocusedItemClass(): boolean {
+        return this.editMode;
+    }
+
+    protected override onInitialItemFocus(item: DetailViewCell): void {
+        this.currentItem = item;
+    }
+
+    public override initialize(): void {
+        super.initialize();
+        this.items.forEach((item) => {
+            if (!item.element || item.element.hasAttribute("tabindex")) return;
+            item.element.setAttribute("tabindex", "0");
+        });
+
+        this.focusInHandler = (event: FocusEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (!target) return;
+            const itemEl = target.closest<HTMLElement>(this.getItemSelector());
+            if (!itemEl) return;
+
+            const component = this.getItemComponent(itemEl);
+            if (component) {
+                this.currentItem = component;
+            }
+        };
+        this.element?.addEventListener("focusin", this.focusInHandler);
+    }
+
+    public override destroy(): void {
+        if (this.focusInHandler && this.element) {
+            this.element.removeEventListener("focusin", this.focusInHandler);
+        }
+        this.focusInHandler = null;
+    }
+
+    public override onAfterSwap(): void {
+        this.items.forEach((item) => {
+            if (!item.element || item.element.hasAttribute("tabindex")) return;
+            item.element.setAttribute("tabindex", "0");
+        });
+    }
+
+    protected async renderItem(itemId: number, rowIndex: number, position?: number): Promise<void> {
+        if (!this.element) return;
+
+        const rowEl = this.rowElements[rowIndex];
+        const targetGrid = rowEl?.querySelector<HTMLElement>("[data-layout-grid]");
+        const renderUrl = this.element.dataset.layoutRenderItemUrl;
+        const contentTypeId = this.element.dataset.contentTypeId;
+        const objectId = this.element.dataset.objectId;
+        if (!targetGrid || !renderUrl || !contentTypeId || !objectId) return;
+
+        await htmx.ajax("get", renderUrl, {
+            target: targetGrid,
+            swap: "beforeend",
+            values: {
+                content_type_id: contentTypeId,
+                object_id: objectId,
+                field_id: itemId,
+            },
+        });
+
+        initComponents(targetGrid);
+        if (typeof position === "number") {
+            const renderedElements = Array.from(targetGrid.querySelectorAll<HTMLElement>(this.getItemSelector()));
+            const renderedElement = renderedElements.find((element) => Number.parseInt(element.dataset.layoutItemId ?? "-1", 10) === itemId)
+                ?? renderedElements[renderedElements.length - 1];
+            const anchor = renderedElements[position] ?? null;
+            if (renderedElement && anchor && anchor !== renderedElement) {
+                targetGrid.insertBefore(renderedElement, anchor);
+            }
+        }
+
+        this.reindexItems();
+    }
+
+    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; content_type_id: number | null } {
+        return {
+            content_type_id: Number.parseInt(this.element?.dataset.contentTypeId ?? "", 10) || null,
+            layout: {
+                rows: this.serializeRows(),
+            },
+        };
+    }
+
+    protected override handleReadModeKeyDown(event: KeyboardEvent): void {
+        const key = event.key;
+        const isMeta = event.metaKey || event.ctrlKey;
+        const isAlt = event.altKey;
+        const isShift = event.shiftKey;
+
+        if (isShift && this.isArrowKey(key)) {
+            event.preventDefault();
+
+            const allItems = this.getAllItems();
+            if (allItems.length === 0) return;
+
+            if (!this.currentItem || !allItems.includes(this.currentItem)) {
+                this.currentItem = key === "ArrowLeft" || key === "ArrowUp"
+                    ? allItems[allItems.length - 1]
+                    : allItems[0];
+            }
+
+            const next = isMeta ? this.getEdgeItem(key) : this.findNextItem(key);
+            if (!next) return;
+
+            this.focusReadModeItem(next);
+            this.currentItem = next;
+            return;
+        }
+
+        if (isAlt && key === "ArrowDown") {
+            event.preventDefault();
+            this.openContextMenu();
+        }
+    }
+
+    protected override onClick(event: MouseEvent): void {
+        super.onClick(event);
+        const target = event.target as HTMLElement | null;
+        const itemEl = target?.closest<HTMLElement>(this.getItemSelector());
+        if (!itemEl) return;
+
+        const component = this.getItemComponent(itemEl);
+        if (component) {
+            this.currentItem = component;
+        }
+    }
+
+    private getRows(): RowInfo[] {
+        return this.rowElements.map((rowEl) => {
+            const columns = Number.parseInt(rowEl.dataset.rowColumns ?? "1", 10) || 1;
+            const items = Array.from(rowEl.querySelectorAll<HTMLElement>(this.getItemSelector()))
+                .map((itemEl) => this.getItemComponent(itemEl))
+                .filter((item): item is DetailViewCell => item instanceof DetailViewCell);
+            return {
+                element: rowEl,
+                columns,
+                items,
+            };
+        });
+    }
+
+    private getAllItems(): DetailViewCell[] {
+        return this.getRows().flatMap((row) => row.items);
+    }
+
+    private isArrowKey(key: string): boolean {
+        return key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight";
+    }
+
+    private focusReadModeItem(item: DetailViewCell): void {
+        item.focusReadModeTarget();
+        if (this.currentItem && this.currentItem !== item) {
+            this.currentItem.unhighlight();
+        }
+    }
+
+    private getCurrentPosition(): { row: RowInfo; index: number } | null {
+        if (!this.currentItem) return null;
+
+        for (const row of this.getRows()) {
+            const index = row.items.indexOf(this.currentItem);
+            if (index !== -1) {
+                return { row, index };
+            }
+        }
+
+        return null;
+    }
+
+    private findNextItem(key: string): DetailViewCell | null {
+        const position = this.getCurrentPosition();
+        if (!position) return null;
+
+        const { row, index } = position;
+        switch (key) {
+            case "ArrowLeft":
+                return this.moveLeft(row, index);
+            case "ArrowRight":
+                return this.moveRight(row, index);
+            case "ArrowUp":
+                return this.moveUp(row, index);
+            case "ArrowDown":
+                return this.moveDown(row, index);
+            default:
+                return null;
+        }
+    }
+
+    private moveLeft(row: RowInfo, index: number): DetailViewCell | null {
+        const column = index % row.columns;
+        if (column > 0) {
+            return row.items[index - 1] ?? null;
+        }
+        return null;
+    }
+
+    private moveRight(row: RowInfo, index: number): DetailViewCell | null {
+        const column = index % row.columns;
+        if (column < row.columns - 1 && index + 1 < row.items.length) {
+            return row.items[index + 1] ?? null;
+        }
+        return null;
+    }
+
+    private moveUp(row: RowInfo, index: number): DetailViewCell | null {
+        const targetIndex = index - row.columns;
+        if (targetIndex >= 0) {
+            return row.items[targetIndex] ?? null;
+        }
+
+        const rows = this.getRows();
+        const rowIndex = rows.findIndex((currentRow) => currentRow.element === row.element);
+        if (rowIndex > 0) {
+            const previousRow = rows[rowIndex - 1];
+            return previousRow.items[previousRow.items.length - 1] ?? null;
+        }
+
+        return null;
+    }
+
+    private moveDown(row: RowInfo, index: number): DetailViewCell | null {
+        const targetIndex = index + row.columns;
+        if (targetIndex < row.items.length) {
+            return row.items[targetIndex] ?? null;
+        }
+
+        const rows = this.getRows();
+        const rowIndex = rows.findIndex((currentRow) => currentRow.element === row.element);
+        if (rowIndex < rows.length - 1) {
+            return rows[rowIndex + 1]?.items[0] ?? null;
+        }
+
+        return null;
+    }
+
+    private getEdgeItem(key: string): DetailViewCell | null {
+        const position = this.getCurrentPosition();
+        if (!position) return null;
+
+        const { row, index } = position;
+        switch (key) {
+            case "ArrowLeft":
+                return row.items[Math.floor(index / row.columns) * row.columns] ?? null;
+            case "ArrowRight": {
+                const rowStart = Math.floor(index / row.columns) * row.columns;
+                const rowEnd = Math.min(rowStart + row.columns - 1, row.items.length - 1);
+                return row.items[rowEnd] ?? null;
+            }
+            case "ArrowUp":
+                return row.items[index % row.columns] ?? row.items[0] ?? null;
+            case "ArrowDown": {
+                const column = index % row.columns;
+                const totalRows = Math.ceil(row.items.length / row.columns);
+                const lastRowStart = (totalRows - 1) * row.columns;
+                return row.items[lastRowStart + column] ?? row.items[row.items.length - 1] ?? null;
+            }
+            default:
+                return null;
+        }
+    }
+
+    private openContextMenu(): void {
+        if (!this.currentItem?.element) return;
+
+        const items = this.constructContextMenu();
+        if (items.length === 0) {
+            this.currentItem.constructContextMenu();
+            return;
+        }
+
+        const rect = this.currentItem.element.getBoundingClientRect();
+        const synthetic = new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            clientX: Math.round(rect.left + Math.min(24, rect.width / 2)),
+            clientY: Math.round(rect.bottom - 4),
+        });
+
+        getContextMenu().show(synthetic, this.currentItem.element, items);
+    }
+
+    protected constructContextMenu(): ContextMenuItem[] {
+        return [];
+    }
 }

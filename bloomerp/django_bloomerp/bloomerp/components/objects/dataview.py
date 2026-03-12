@@ -639,15 +639,16 @@ def dataview_edit_field(request: HttpRequest, application_field_id:int, object_i
         return HttpResponse(status=405)
     
     if request.method == "GET":
-        WidgetCls = application_field.get_field_type_enum().get_widget_cls()
+        widget = application_field.get_widget()
+        widget_choices = getattr(widget, "get_choices", lambda *_args, **_kwargs: [])()
+        input_class = "select select-sm w-full bg-transparent border-0" if isinstance(widget, forms.Select) or widget_choices else "border-0 w-full bg-transparent input-sm"
         
         return HttpResponse(
-            WidgetCls().render(
+            widget.render(
                 name=application_field.field,
                 value=getattr(object, application_field.field),
                 attrs={
-                    "application_field" : application_field,
-                    "class" : "border-0 w-full bg-transparent input-sm",
+                    "class" : input_class,
                 }
         ))
     elif request.method == "POST":

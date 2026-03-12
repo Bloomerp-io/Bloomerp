@@ -29,11 +29,11 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Rule"
       columns: 2
       items:
-        - name
-        - minimum_hours
-        - rate_multiplier
-        - is_active
+        - id: name
+        - id: minimum_hours
+        - id: rate_multiplier
+        - id: is_active

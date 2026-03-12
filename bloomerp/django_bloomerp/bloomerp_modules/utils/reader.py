@@ -1,14 +1,14 @@
-from pyexpat import model
 from django.db.models import Model
 import yaml
 from django.db import models
-from typing import Optional, Dict, Any, Callable
+from typing import Dict, Any, Callable
 from bloomerp.modules.definition import ModelConfig, ModuleConfig, SubModuleConfig
 from bloomerp.modules.definition import (
     FieldConfig
 )
 from bloomerp.field_types import FieldType, FieldTypeDefinition
 from bloomerp.modules.definition import module_registry
+from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
 
 def _get_field_type_definition(field_type: str) -> FieldTypeDefinition:
     """Get field type definition for a field type."""
@@ -114,6 +114,64 @@ def get_model_class_name(model_name: str) -> str:
     return ''.join(word.capitalize() for word in model_name.replace('-', ' ').replace('_', ' ').split())
 
 
+def _normalize_layout_item(raw_item: Any) -> LayoutItem | None:
+    if isinstance(raw_item, dict):
+        item_id = raw_item.get('id')
+        if item_id in (None, ''):
+            return None
+        return LayoutItem(id=item_id, colspan=raw_item.get('colspan', 1))
+
+    if raw_item in (None, ''):
+        return None
+
+    return LayoutItem(id=raw_item, colspan=1)
+
+
+def _normalize_field_layout(field_layout: Any) -> FieldLayout | None:
+    if isinstance(field_layout, FieldLayout):
+        return field_layout if field_layout.rows else None
+
+    if field_layout in (None, {}):
+        return None
+
+    raw_rows = None
+    if isinstance(field_layout, dict):
+        if isinstance(field_layout.get('rows'), list):
+            raw_rows = field_layout.get('rows', [])
+        elif isinstance(field_layout.get('sections'), list):
+            raw_rows = field_layout.get('sections', [])
+    elif isinstance(field_layout, list):
+        raw_rows = field_layout
+
+    if not isinstance(raw_rows, list):
+        return None
+
+    rows: list[LayoutRow] = []
+    for raw_row in raw_rows:
+        if not isinstance(raw_row, dict):
+            continue
+
+        raw_items = raw_row.get('items', [])
+        if not isinstance(raw_items, list):
+            raw_items = []
+
+        items = []
+        for raw_item in raw_items:
+            item = _normalize_layout_item(raw_item)
+            if item is not None:
+                items.append(item)
+
+        rows.append(
+            LayoutRow(
+                title=raw_row.get('title'),
+                columns=raw_row.get('columns', 1),
+                items=items,
+            )
+        )
+
+    return FieldLayout(rows=rows) if rows else None
+
+
 def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleConfig, module_config: ModuleConfig, model_lookup: Dict[str, str] = None) -> type[Model]:
     """Create a Django model class from Pydantic configuration objects."""
     attrs = {}
@@ -176,6 +234,10 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
     
     class Bloomerp:
         modules = [f"{module_config.id}.{sub_module.id}"]
+
+    field_layout = _normalize_field_layout(getattr(model_config, 'field_layout', None))
+    if field_layout:
+        Bloomerp.field_layout = field_layout
     
     attrs['Meta'] = Meta
     attrs['__module__'] = 'bloomerp_modules.models'
@@ -197,19 +259,6 @@ def create_model_from_config(model_config: ModelConfig, sub_module: SubModuleCon
     if hasattr(model_config, 'has_avatar'):
         if model_config.has_avatar is False:
             attrs['avatar'] = None
-    
-    # Field layout - model_config.field_layout should now be a FieldLayout object.
-    if getattr(model_config, 'field_layout', None):
-        # Allow older list-based configs as a fallback
-        if isinstance(model_config.field_layout, list):
-            try:
-                from bloomerp.models.base_bloomerp_model import FieldLayout
-
-                attrs["field_layout"] = FieldLayout(sections=model_config.field_layout)
-            except Exception:
-                attrs["field_layout"] = model_config.field_layout
-        else:
-            attrs["field_layout"] = model_config.field_layout
     
     # Create and return the model class. Import BloomerpModel lazily to avoid circular imports.
     from bloomerp.models.base_bloomerp_model import BloomerpModel
@@ -274,7 +323,7 @@ def scan_modules_directory() -> list[ModuleConfig]:
                         'custom_permissions': model_data.get('custom_permissions'),
                         'string_representation': model_data.get('string_representation'),
                         'has_avatar': model_data.get('has_avatar', True),
-                        'field_layout':model_data.get('field_layout')
+                        'field_layout': _normalize_field_layout(model_data.get('field_layout'))
                         
                     }
                     
@@ -385,7 +434,8 @@ def parse_yaml_config(yaml_file_path: str) -> ModuleConfig:
                         description=model_data.get('description'),
                         fields=fields,
                         name_plural=model_data.get('name_plural'),
-                        custom_permissions=model_data.get('custom_permissions')
+                        custom_permissions=model_data.get('custom_permissions'),
+                        field_layout=_normalize_field_layout(model_data.get('field_layout')),
                     )
                     models.append(model_config)
             

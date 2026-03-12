@@ -73,23 +73,23 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Activity Details"
       columns: 2
       items:
-        - subject
-        - activity_type
-        - due_date
-        - completed
-        - completed_at
+        - id: subject
+        - id: activity_type
+        - id: due_date
+        - id: completed
+        - id: completed_at
     - title: "Related Records"
       columns: 2
       items:
-        - account
-        - contact
-        - opportunity
-        - assigned_to
+        - id: account
+        - id: contact
+        - id: opportunity
+        - id: assigned_to
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

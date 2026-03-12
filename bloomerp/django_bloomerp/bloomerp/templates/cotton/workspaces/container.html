@@ -1,45 +1,48 @@
 <div 
     bloomerp-component="workspace-container"
-    data-cols="4"
-    data-rows='[{"divider":false,"cols":4},{"divider":true,"cols":6},{"divider":false,"cols":4}]'
-    data-tile-ids="1,2,3,4,5,6,7"
+    data-layout='{{ layout_json|default:"{\"rows\":[{\"title\":null,\"columns\":4,\"items\":[]}]}" }}'
+    data-workspace-id="{{ workspace_id|default:'' }}"
+    data-layout-save-url="/components/workspaces/save_workspace_layout/"
+    data-layout-available-items-url="/components/workspaces/available_workspace_tiles/"
+    data-layout-render-item-url="/components/render_workspace_tile/"
+    data-layout-kind="workspace"
     class="space-y-3"
 >
     <div class="flex items-center justify-end my-2 gap-4">
-        <button class="btn btn-sm btn-secondary" id="edit-workspaces-btn">
+        <button class="btn btn-sm btn-secondary" type="button" data-layout-edit-toggle>
             <i class="fa fa-pen-to-square"></i> Edit
         </button>
-        <button class="btn btn-sm btn-secondary" id="edit-workspaces-btn">
+        <button class="btn btn-sm btn-secondary" type="button">
             <i class="fa fa-filter"></i> Filter
+        </button>
+        <button class="btn btn-sm btn-secondary hidden" type="button" data-layout-open-sidebar bloomerp-open-drawer="workspace-layout-items-drawer">
+            <i class="fa fa-grip"></i> Add items
         </button>
     </div>
 
-    <div class="space-y-4" id="workspace-tiles-section"></div>
+    <div class="space-y-4" data-layout-root></div>
 
     <div class="absolute bottom-6 right-6 gap-4 flex">
         <button 
             class="btn btn-primary" 
-            id="add-tile-btn"
-            >
-            <c-blocktrans>Create tile</c-blocktrans>
-        </button>
-        <button 
-            class="btn btn-primary" 
-            bloomerp-open-drawer="add-tile-drawer"
+            type="button"
+            data-layout-open-sidebar
+            bloomerp-open-drawer="workspace-layout-items-drawer"
             >
             <c-blocktrans>Add tile</c-blocktrans>
         </button>
     </div>
 
     <c-ui.drawer 
-        id="add-tile-drawer" 
+        id="workspace-layout-items-drawer" 
         side="right" 
         backdrop="False"
         >
         <div class="p-4">
             <c-ui.text.subtitle class="">
-                Add Tile
+                Workspace Items
             </c-ui.text.subtitle>
+            <div class="mt-4" data-layout-available-items></div>
         </div>
     </c-ui.drawer>
 </div>

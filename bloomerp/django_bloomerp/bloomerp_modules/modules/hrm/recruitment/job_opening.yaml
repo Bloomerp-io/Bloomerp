@@ -67,19 +67,19 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Opening Details"
       columns: 2
       items:
-        - title
-        - status
-        - job_title
-        - department
-        - location
-        - openings_count
-        - posted_date
-        - closing_date
+        - id: title
+        - id: status
+        - id: job_title
+        - id: department
+        - id: location
+        - id: openings_count
+        - id: posted_date
+        - id: closing_date
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

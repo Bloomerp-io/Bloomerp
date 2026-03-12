@@ -33,7 +33,7 @@ class ModelConfig(BaseConfig):
     fields: list[FieldConfig] = Field(default_factory=list)
     custom_permissions: Optional[PermissionConfig] = Field(default_factory=list)
     string_representation: Optional[str] = None
-    field_layout: Optional[FieldLayout] = Field(default_factory=FieldLayout)
+    field_layout: Optional[FieldLayout] = None
 
 
 class SubModuleConfig(BaseConfig):

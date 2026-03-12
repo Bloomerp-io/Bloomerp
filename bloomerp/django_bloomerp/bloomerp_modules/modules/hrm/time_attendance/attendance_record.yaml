@@ -42,16 +42,16 @@ fields:
       null: true
       blank: true
 field_layout:
-  sections:
+  rows:
     - title: "Attendance"
       columns: 2
       items:
-        - employee
-        - attendance_date
-        - status
-        - check_in
-        - check_out
+        - id: employee
+        - id: attendance_date
+        - id: status
+        - id: check_in
+        - id: check_out
     - title: "Notes"
       columns: 1
       items:
-        - notes
+        - id: notes

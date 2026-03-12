@@ -18,7 +18,7 @@ class ApplicationField(models.Model):
     class Meta:
         managed = True
         db_table = "bloomerp_application_field"
-
+    
     allow_string_search = False
 
     field = models.CharField(
@@ -187,11 +187,10 @@ class ApplicationField(models.Model):
         
         if form_field is None:
             return None
-        
-        # Override widget if a custom one is defined
+
         if field_type.widget_cls:
             form_field.widget = self.get_widget()
-        
+
         return form_field
     
     def get_form_field_cls(self) -> Type[forms.Field]:
@@ -211,17 +210,28 @@ class ApplicationField(models.Model):
         """
         field_type = self.get_field_type_enum().value
         default_attrs = field_type.default_widget_args
-        
-        attrs = {
-            "application_field" : self
-        }
+
+        attrs = {}
         attrs.update(default_attrs)
-        
-        # For foreign key fields, pass the related model
+        if self.meta:
+            attrs.update(self.meta)
+
         related_model = self.get_related_model()
         if related_model:
             attrs['model'] = related_model
-        
+
+        if field_type.widget_cls:
+            return field_type.get_widget_cls()(
+                attrs=attrs
+            )
+
+        ModelCls = self.get_model()
+        model_field: models.Field = ModelCls._meta.get_field(self.field)
+        form_field = model_field.formfield()
+        if form_field is not None and form_field.widget is not None:
+            form_field.widget.attrs.update(attrs)
+            return form_field.widget
+
         return field_type.get_widget_cls()(
             attrs=attrs
         )

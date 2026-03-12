@@ -1,12 +1,18 @@
+import json
+
 from django.test import RequestFactory
 
 from bloomerp.tests.base import BaseBloomerpModelTestCase
-from bloomerp.models import UserDetailViewPreference
+from bloomerp.models import ApplicationField, UserDetailViewPreference
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.router import router
+from bloomerp.models.workspaces.workspace import Workspace
+from bloomerp.models.workspaces.tile import Tile
 
 class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
-    
+    # -------------------
+    # TABS
+    # -------------------
     def test_automatically_create_tabs(self):
         """
         Tests whether detail view tabs are automatically created for users that don't have any tabs yet
@@ -39,8 +45,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         
         # 5. Check whether the created detail view preferences have the default tabs
         self.assertTrue(len(detail_view_preference.tab_state_obj.get("top_level_order")) > 0)
-        
-        
+                
     def test_non_existant_url_name_should_not_return_500(self):
         """
         Tests whether a non-existant URL name in the tabs configuration raises an error or is just ignored.
@@ -97,8 +102,160 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(detail_view_preference.tab_state_obj.get("top_level_order"), [])
         self.assertEqual(detail_view_preference.tab_state_obj.get("folders"), [])
         self.assertIsNone(detail_view_preference.tab_state_obj.get("active"))
-        
-    
-    
+
+    # -------------------
+    # DETAIL VIEWS
+    # -------------------
+    def test_detail_layout_save_persists_row_item_shape(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        field = ApplicationField.objects.filter(content_type=content_type).first()
+
+        response = self.client.post(
+            "/components/detail_layout_preference/",
+            data=json.dumps({
+                "content_type_id": content_type.pk,
+                "layout": {
+                    "rows": [
+                        {
+                            "title": "Primary",
+                            "columns": 3,
+                            "items": [{"id": field.pk, "colspan": 2}],
+                        }
+                    ]
+                },
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
+        self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
+        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, field.pk)
+        self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
+
+    def test_detail_layout_render_field_returns_fragment(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        field = ApplicationField.objects.filter(content_type=content_type).first()
+        obj = self.CustomerModel.objects.first()
+
+        response = self.client.get(
+            "/components/detail_layout_render_field/",
+            {
+                "content_type_id": content_type.pk,
+                "object_id": obj.pk,
+                "field_id": field.pk,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, field.title)
+
+    def test_detail_layout_auto_generation_without_setup(self):
+        """
+        Tests whether the detail layout creates the 
+        """
+        from bloomerp.services.sectioned_layout_services import create_default_layout
+        # 1. Create a default layout
+        field_layout = create_default_layout(self.CustomerModel)
+
+        # 2. Validate 
+
+
+    # -------------------
+    # WORKSPACE VIEWS
+    # -------------------
+    def test_workspace_layout_save_persists_shape(self):
+        self.client.force_login(self.admin_user)
+        workspace = Workspace.get_or_create_for_user(self.admin_user)
+        tile = Tile.objects.create(name="Revenue", description="Tile", schema={})
+
+        response = self.client.post(
+            "/components/workspaces/save_workspace_layout/",
+            data=json.dumps({
+                "workspace_id": workspace.pk,
+                "layout": {
+                    "rows": [
+                        {
+                            "title": "Metrics",
+                            "columns": 4,
+                            "items": [{"id": tile.pk, "colspan": 2}],
+                        }
+                    ]
+                },
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        workspace.refresh_from_db()
+        self.assertEqual(workspace.layout_obj.rows[0].title, "Metrics")
+        self.assertEqual(workspace.layout_obj.rows[0].items[0].id, tile.pk)
+
+    def test_workspace_layout_save_deduplicates_duplicate_item_ids(self):
+        self.client.force_login(self.admin_user)
+        workspace = Workspace.get_or_create_for_user(self.admin_user)
+        tile = Tile.objects.create(name="Active deals", description="Tile", schema={})
+
+        response = self.client.post(
+            "/components/workspaces/save_workspace_layout/",
+            data=json.dumps({
+                "workspace_id": workspace.pk,
+                "layout": {
+                    "rows": [
+                        {
+                            "title": "Metrics",
+                            "columns": 4,
+                            "items": [
+                                {"id": tile.pk, "colspan": 2},
+                                {"id": tile.pk, "colspan": 1},
+                            ],
+                        },
+                        {
+                            "title": "Duplicate row",
+                            "columns": 4,
+                            "items": [{"id": tile.pk, "colspan": 3}],
+                        },
+                    ]
+                },
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        workspace.refresh_from_db()
+        item_ids = [item.id for row in workspace.layout_obj.rows for item in row.items]
+        self.assertEqual(item_ids, [tile.pk])
+
+    def test_existing_empty_detail_layout_is_seeded_with_default_items(self):
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        preference = UserDetailViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            field_layout={},
+            tab_state={
+                "version": 2,
+                "top_level_order": [],
+                "folders": [],
+                "active": None,
+            },
+        )
+
+        repaired = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
+        self.assertEqual(repaired.pk, preference.pk)
+        self.assertTrue(any(row.items for row in repaired.field_layout_obj.rows))
+
+    def test_existing_empty_workspace_layout_is_seeded_with_dummy_items(self):
+        workspace = Workspace.objects.create(
+            user=self.admin_user,
+            module_id="",
+            sub_module_id="",
+            layout={},
+        )
+
+        repaired = Workspace.get_or_create_for_user(self.admin_user)
+        self.assertEqual(repaired.pk, workspace.pk)
+        self.assertTrue(any(row.items for row in repaired.layout_obj.rows))
     
     

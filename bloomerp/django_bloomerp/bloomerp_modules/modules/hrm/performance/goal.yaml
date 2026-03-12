@@ -46,16 +46,16 @@ fields:
         - ["blocked", "Blocked"]
       default: "not_started"
 field_layout:
-  sections:
+  rows:
     - title: "Goal"
       columns: 2
       items:
-        - employee
-        - performance_cycle
-        - title
-        - status
-        - target_date
+        - id: employee
+        - id: performance_cycle
+        - id: title
+        - id: status
+        - id: target_date
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

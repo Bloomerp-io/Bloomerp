@@ -40,16 +40,16 @@ fields:
     options:
       default: true
 field_layout:
-  sections:
+  rows:
     - title: "Schedule"
       columns: 2
       items:
-        - name
-        - is_active
-        - start_time
-        - end_time
-        - work_days
+        - id: name
+        - id: is_active
+        - id: start_time
+        - id: end_time
+        - id: work_days
     - title: "Description"
       columns: 1
       items:
-        - description
+        - id: description

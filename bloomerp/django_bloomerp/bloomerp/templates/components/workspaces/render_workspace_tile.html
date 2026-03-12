@@ -42,6 +42,10 @@
                 <a href="{{ link.url }}" class="text-blue-500 hover:underline">{{ link.label }}</a>
             {% endfor %}
         </div>
+    {% elif tile_type == "generic" %}
+        <div class="text-sm text-slate-600">
+            {{ payload.text|default:"Tile ready." }}
+        </div>
     {% else %}
         <div class="text-sm text-slate-500">Unsupported tile type.</div>
     {% endif %}
