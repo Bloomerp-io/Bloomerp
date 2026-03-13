@@ -13,6 +13,7 @@ class ForeignRelationshipView(PermissionRequiredMixin, BloomerpBaseDetailView):
     model = None
     related_model = None 
     attribute_name = None
+    relationship_field_name = None
 
     def get_permission_required(self):
         return [
@@ -22,8 +23,11 @@ class ForeignRelationshipView(PermissionRequiredMixin, BloomerpBaseDetailView):
 
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
-        related_accessor = getattr(self.object, self.attribute_name, None)
         context["foreign_content_type_id"] = ContentType.objects.get_for_model(self.related_model).id
+        query_params = self.request.GET.copy()
+        if self.relationship_field_name:
+            query_params[self.relationship_field_name] = str(self.object.pk)
+        context["foreign_relationship_querystring"] = query_params.urlencode()
         return context
 
 
@@ -51,6 +55,7 @@ def _iter_foreign_relationship_specs() -> list[dict[str, Any]]:
                     "model": model,
                     "related_model": field.related_model,
                     "attribute_name": attribute_name,
+                    "relationship_field_name": field.field.name,
                 }
             )
 
@@ -61,6 +66,7 @@ for spec in _iter_foreign_relationship_specs():
     model = spec["model"]
     related_model = spec["related_model"]
     attribute_name = spec["attribute_name"]
+    relationship_field_name = spec["relationship_field_name"]
 
     dynamic_view_name = (
         f"{model.__name__}{related_model.__name__}{attribute_name.title().replace('_', '')}ForeignRelationshipView"
@@ -73,6 +79,7 @@ for spec in _iter_foreign_relationship_specs():
             "model": model,
             "related_model": related_model,
             "attribute_name": attribute_name,
+            "relationship_field_name": relationship_field_name,
         },
     )
 
