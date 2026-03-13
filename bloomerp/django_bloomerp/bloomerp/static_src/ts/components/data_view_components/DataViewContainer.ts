@@ -12,7 +12,9 @@ export class DataViewContainer extends BaseComponent {
     private searchInput:HTMLInputElement|null = null;
     private contentTypeId:string|null = null;
     private splitViewEnabled:boolean = false;
+    private syncUrl:boolean = false;
     private appliedFiltersHandler: ((event: Event) => void) | null = null;
+    private afterSwapHandler: ((event: Event) => void) | null = null;
 
     private static readonly RESERVED_FILTER_KEYS = new Set<string>([
         "q",
@@ -26,6 +28,7 @@ export class DataViewContainer extends BaseComponent {
         this.contentTypeId = this.element?.dataset.contentTypeId ?? null;
         this.searchInput = this.element?.querySelector(`#data-view-search-input-${this.contentTypeId}`) ?? null;
         this.splitViewEnabled = this.element?.dataset.splitViewEnabled === 'True';
+        this.syncUrl = this.element?.dataset.syncUrl === 'true';
 
         this.focusSearchInput();
 
@@ -64,6 +67,9 @@ export class DataViewContainer extends BaseComponent {
         // Handle applied filters clicks (remove / clear all)
         this.appliedFiltersHandler = (event: Event) => this.handleAppliedFiltersClick(event);
         this.element?.addEventListener('click', this.appliedFiltersHandler);
+
+        this.afterSwapHandler = (event: Event) => this.handleAfterSwap(event);
+        this.element?.addEventListener('htmx:afterSwap', this.afterSwapHandler);
     }
 
     /**
@@ -84,16 +90,14 @@ export class DataViewContainer extends BaseComponent {
         }
 
         Object.entries(args).forEach(([key, value]) => {
+            baseUrl.searchParams.delete(key);
+
             if (value === null || value === undefined || value === '') return;
 
             if (Array.isArray(value)) {
                 value.forEach((item) => {
                     if (item === null || item === undefined || item === '') return;
-                    if (resetParameters) {
-                        baseUrl.searchParams.append(key, String(item));
-                    } else {
-                        baseUrl.searchParams.append(key, String(item));
-                    }
+                    baseUrl.searchParams.append(key, String(item));
                 });
                 return;
             }
@@ -104,6 +108,8 @@ export class DataViewContainer extends BaseComponent {
                 baseUrl.searchParams.append(key, String(value));
             }
         });
+
+        baseUrl.searchParams.delete('page');
 
         this.fullPath = baseUrl.toString();
 
@@ -163,6 +169,28 @@ export class DataViewContainer extends BaseComponent {
             target: this.target,
             swap: 'innerHTML',
         });
+    }
+
+    private handleAfterSwap(event: Event): void {
+        if (!(event instanceof CustomEvent)) return;
+
+        const target = event.detail?.target as HTMLElement | null | undefined;
+        if (!target || target.id !== 'data-view-data-section') return;
+
+        const responseUrl = event.detail?.xhr?.responseURL;
+        if (!responseUrl) return;
+
+        this.fullPath = new URL(responseUrl, window.location.origin).toString();
+
+        if (this.syncUrl) {
+            this.syncBrowserUrl(new URL(this.fullPath, window.location.origin));
+        }
+    }
+
+    private syncBrowserUrl(dataViewUrl: URL): void {
+        const browserUrl = new URL(window.location.href);
+        browserUrl.search = dataViewUrl.search;
+        window.history.replaceState(window.history.state, '', `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`);
     }
 
     private getCurrentUrl(): URL | null {
@@ -311,6 +339,9 @@ export class DataViewContainer extends BaseComponent {
     public destroy(): void {
         if (this.appliedFiltersHandler) {
             this.element?.removeEventListener('click', this.appliedFiltersHandler);
+        }
+        if (this.afterSwapHandler) {
+            this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
         }
     }
 }

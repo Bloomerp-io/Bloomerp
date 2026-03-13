@@ -37,8 +37,6 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
             cls.CountryModel = foreign_models["Country"]
             cls.PlanetModel = foreign_models["Planet"]
             
-            
-        
         customer_def = {
             "first_name": models.CharField(max_length=100),
             "last_name": models.CharField(max_length=100),

@@ -1,4 +1,5 @@
 from django.forms import modelform_factory
+from django import forms
 from django.shortcuts import get_object_or_404, render
 from bloomerp.components.application_fields.filters import filters_init
 from bloomerp.utils.requests import render_message
@@ -504,6 +505,7 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     # Add extra context based on view type
     page_querystring = request.GET.copy()
     page_querystring.pop('page', None)
+    sync_url = request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
 
     context = {
         'content_type_id': content_type_id,
@@ -516,6 +518,8 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'page_sizes': PageSize,
         'calendar_view_modes': CalendarViewMode,
         'render_id': str(uuid.uuid4()),
+        'search_query': query or '',
+        'sync_url': sync_url,
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),
         'pagination_pages': _build_pagination_range(page_obj),

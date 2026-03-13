@@ -2,6 +2,7 @@
 {% load crispy_forms_tags %}
 
 <!--Applied filters-->
+{% if request.htmx.target == 'data-view-data-section' %}
 <div hx-swap-oob="innerHTML" id="applied-filters-{{ content_type_id }}">
     {% if applied_filters %}
         <div class="flex flex-wrap gap-2 items-center">
@@ -21,6 +22,7 @@
         </div>
     {% endif %}
 </div>
+{% endif %}
 <!--End applied filters-->
 
 
@@ -48,6 +50,7 @@
     data-render-id="{{ render_id }}"
     data-url="{{ request.get_full_path }}"
     data-base-url="{{ request.path }}"
+    data-sync-url="{{ sync_url|yesno:'true,false' }}"
     class="flex flex-col"
     bloomerp-component="dataview-container"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
@@ -58,6 +61,7 @@
             <input
                 type="text"
                 name="q"
+                value="{{ search_query }}"
                 placeholder="Search..."
                 class="input input-bordered mr-8"
                 hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
@@ -69,7 +73,23 @@
             />
 
             <div id="applied-filters-{{ content_type_id }}">
-                
+                {% if applied_filters %}
+                    <div class="flex flex-wrap gap-2 items-center">
+                        {% for filter in applied_filters %}
+                            <c-ui.tooltip text="{{ filter.tooltip }}">
+                                <span class="badge badge-primary" data-filter-key="{{ filter.key }}">
+                                    <button type="button" class="badge-remove" data-filter-remove="true" aria-label="Remove filter">
+                                        <i class="fa fa-x"></i>
+                                    </button>
+                                    <span>{{ filter.label }}</span>
+                                </span>
+                            </c-ui.tooltip>
+                        {% endfor %}
+                        <button type="button" class="badge badge-neutral badge-sm" data-clear-filters="true">
+                            Clear all
+                        </button>
+                    </div>
+                {% endif %}
             </div>
         </div>
 
