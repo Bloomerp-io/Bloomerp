@@ -134,6 +134,11 @@ class TestDataView(BaseBloomerpModelTestCase):
 
         # 6. Make sure the applied filter badge is really present in the rendered UI
         self.assertContains(data_view_response, '<span>First Name is xyz</span>', html=False)
+        self.assertContains(
+            data_view_response,
+            f'hx-get="{dataview_url}?first_name=xyz"',
+            html=False,
+        )
         
 
     

@@ -64,7 +64,7 @@
                 value="{{ search_query }}"
                 placeholder="Search..."
                 class="input input-bordered mr-8"
-                hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
+                hx-get="{% url 'components_data_view' content_type_id=content_type_id %}{% if search_querystring %}?{{ search_querystring }}{% endif %}"
                 hx-trigger="keyup changed delay:200ms"
                 hx-target="#data-view-data-section"
                 hx-swap="outerHTML"
