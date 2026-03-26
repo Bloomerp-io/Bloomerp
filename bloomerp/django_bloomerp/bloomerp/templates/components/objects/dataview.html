@@ -56,23 +56,28 @@
     data-split-view-enabled="{{ preference.split_view_enabled }}"
     >
     <!--Search inputs-->
-    <div class="mb-2 justify-between flex items-center">
-        <div class="flex items-center space-x-2">
-            <input
-                type="text"
-                name="q"
-                value="{{ search_query }}"
-                placeholder="Search..."
-                class="input input-bordered mr-8"
-                hx-get="{% url 'components_data_view' content_type_id=content_type_id %}{% if search_querystring %}?{{ search_querystring }}{% endif %}"
-                hx-trigger="keyup changed delay:200ms"
-                hx-target="#data-view-data-section"
-                hx-swap="outerHTML"
-                hx-animation-target="#data-table-body-{{ content_type_id }}"
-                id="data-view-search-input-{{ content_type_id }}"
-            />
+    <div class="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div class="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary sm:max-w-80 sm:flex-none">
+                <span class="pointer-events-none shrink-0 text-gray-400">
+                    <i class="fa fa-search"></i>
+                </span>
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ search_query }}"
+                    placeholder="Search..."
+                    class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                    hx-get="{% url 'components_data_view' content_type_id=content_type_id %}{% if search_querystring %}?{{ search_querystring }}{% endif %}"
+                    hx-trigger="keyup changed delay:200ms"
+                    hx-target="#data-view-data-section"
+                    hx-swap="outerHTML"
+                    hx-animation-target="#data-table-body-{{ content_type_id }}"
+                    id="data-view-search-input-{{ content_type_id }}"
+                />
+            </div>
 
-            <div id="applied-filters-{{ content_type_id }}">
+            <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex-1">
                 {% if applied_filters %}
                     <div class="flex flex-wrap gap-2 items-center">
                         {% for filter in applied_filters %}
@@ -93,15 +98,19 @@
             </div>
         </div>
 
-        <div class="flex gap-2 items-center">
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
             <!--Filter-->
-            <c-ui.tooltip position="bottom" text="Filter">
-                <c-ui.dropdown.body 
-                    trigger_text="Display"
-                    trigger_class="border-0 hover:cursor-pointer hover:bg-none text-primary-900 hover:text-primary p-0"
-                    trigger_icon="filter"
-                    width="w-128"
-                    >
+            <div class="w-full sm:w-auto">
+                <c-ui.tooltip position="bottom" text="Filter">
+                    <c-ui.dropdown.body 
+                        trigger_text="Filter"
+                        trigger_icon_class="fa fa-filter"
+                        trigger_button_class="btn-secondary"
+                        trigger_class="w-full justify-center gap-2"
+                        wrapper_class="w-full"
+                        size="sm"
+                        width="w-128"
+                        >
                         <div class="p-3">
                             <div>
                                 <div class="mb-4">
@@ -118,18 +127,23 @@
                                 </button>
                             </div>
                         </div>
-                </c-ui.dropdown.body>
-            </c-ui.tooltip>
+                    </c-ui.dropdown.body>
+                </c-ui.tooltip>
+            </div>
 
             
             <!--Display options-->
-            <c-ui.tooltip position="bottom" text="Display options">
-                <c-ui.dropdown.body 
-                    trigger_text="Display"
-                    trigger_class="border-0 hover:cursor-pointer hover:bg-none hover:text-primary p-0 text-primary-900"
-                    trigger_icon="three_dots"
-                    width="w-80"
-                    >
+            <div class="w-full sm:w-auto">
+                <c-ui.tooltip position="bottom" text="Display options">
+                    <c-ui.dropdown.body 
+                        trigger_text="Display"
+                        trigger_icon_class="fa fa-sliders"
+                        trigger_button_class="btn-secondary"
+                        trigger_class="w-full justify-center gap-2"
+                        wrapper_class="w-full"
+                        size="sm"
+                        width="w-80"
+                        >
                     
                     <div class="p-2" id="data-table-display-options-{{ content_type_id }}">
                         <c-ui.data_view.display_options 
@@ -145,20 +159,22 @@
                         />
                     </div>
                     
-                </c-ui.dropdown.body>
-            </c-ui.tooltip>
+                    </c-ui.dropdown.body>
+                </c-ui.tooltip>
+            </div>
             
             <!--Add button-->
             <c-ui.tooltip position="bottom" text="Add object">
                 <button 
-                    class="inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 px-3 py-2 text-base cursor-hover:cursor-pointer hover:cursor-pointer"
+                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
                     hx-push-url="false"
                     bloomerp-open-modal="create-object-modal"
                     hx-get="{% url 'components_create_object' content_type_id=content_type_id %}"
                     hx-target="#create-object-modal-body"
                     hx-swap="innerHTML"
                 >
-                    <c-icons.plus size="24"/>
+                    <i class="fa fa-plus"></i>
+                    <span>Add</span>
                 </button>
             </c-ui.tooltip>
         </div>

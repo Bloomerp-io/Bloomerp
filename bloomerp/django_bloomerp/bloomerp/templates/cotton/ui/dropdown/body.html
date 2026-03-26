@@ -4,6 +4,8 @@ Parameters:
 - slot : everything inside of the component
 - trigger_text : text to display on the dropdown button (default: "Options")
 - trigger_icon : HTML for a custom icon to display instead of text (default: None)
+- trigger_icon_class : CSS classes for a Font Awesome or other icon element rendered before the trigger text
+- trigger_button_class : use btn-based trigger styling instead of the default inline trigger styling
 - trigger_class : additional CSS classes for the trigger button
 - menu_class : additional CSS classes for the dropdown menu
 - position : dropdown position - "left", "right", or "center" (default: "right")
@@ -16,6 +18,8 @@ Parameters:
 
 {% load static %}
 {% load bloomerp %}
+
+{% if icon %}{% endif %}
 
 <div class="relative inline-block text-left {% if wrapper_class %}{{ wrapper_class }}{% endif %}" x-data="{ open: false }" @click.away="open = false"
     {% if trigger_selector %}
@@ -35,20 +39,30 @@ Parameters:
     <button 
         type="button" 
         class="
-            {% if size == 'sm' %}
-                px-2 py-1.5 text-sm
-            {% elif size == 'lg' %}
-                px-6 py-3 text-lg
+            {% if trigger_button_class %}
+                btn
+                {% if size == 'sm' %}
+                    btn-sm
+                {% elif size == 'lg' %}
+                    btn-lg
+                {% endif %}
+                {{ trigger_button_class }}
             {% else %}
-                px-3 py-2 text-base
-            {% endif %}
+                {% if size == 'sm' %}
+                    px-2 py-1.5 text-sm
+                {% elif size == 'lg' %}
+                    px-6 py-3 text-lg
+                {% else %}
+                    px-3 py-2 text-base
+                {% endif %}
 
-            inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200
-            
-            {% if disabled %}
-                opacity-50 cursor-not-allowed
-            {% else %}
-                cursor-hover:cursor-pointer
+                inline-flex items-center justify-center w-full rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200
+
+                {% if disabled %}
+                    opacity-50 cursor-not-allowed
+                {% else %}
+                    cursor-hover:cursor-pointer
+                {% endif %}
             {% endif %}
             {{ trigger_class }}
         " 
@@ -58,13 +72,18 @@ Parameters:
         {% if disabled %}disabled{% endif %}
     >
         {# Show custom trigger_icon if provided, else use trigger_text #}
-        {% if trigger_icon %}
+        {% if trigger_icon_class %}
+            <i class="{{ trigger_icon_class }}"></i>
+        {% elif trigger_icon %}
             {% load_icon trigger_icon size=24 %}
         {% else %}
-            {{ trigger_text|default:"Options" }}
+            {{ trigger_text|default:"Options"|safe }}
+        {% endif %}
+        {% if trigger_icon_class and trigger_text %}
+            <span>{{ trigger_text|safe }}</span>
         {% endif %}
         {# Arrow icon shown only when icon is true and no custom trigger_icon #}
-        {% if icon|default:True and not trigger_icon %}
+        {% if icon|default:True and not trigger_icon and not trigger_icon_class %}
             <svg class="-mr-1 ml-2 h-5 w-5 transition-transform duration-200" 
                 :class="{ 'rotate-180': open }"
                 fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">

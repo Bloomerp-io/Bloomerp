@@ -33,7 +33,12 @@ Variables:
 
     <div class="flex gap-1">
         <!-- Toggle view dropdown -->
-        <c-ui.dropdown.body :icon="False" trigger_icon="eye">
+        <c-ui.dropdown.body
+            trigger_text="View"
+            trigger_icon_class="fa fa-eye"
+            trigger_button_class="btn-secondary"
+            trigger_class="gap-2"
+            size="sm">
             <div class="py-1" role="none">
                 <button 
                     type="button"
@@ -47,7 +52,13 @@ Variables:
         <!-- End toggle view dropdown -->
 
         <!-- Filter dropdown -->
-        <c-ui.dropdown.body :icon="False" trigger_icon="filter" menu_class="min-w-96 p-4">
+        <c-ui.dropdown.body
+            trigger_text="Filter"
+            trigger_icon_class="fa fa-filter"
+            trigger_button_class="btn-secondary"
+            trigger_class="gap-2"
+            size="sm"
+            menu_class="min-w-96 p-4">
             <div id="filterForm{{ datatable_id }}">
                 <div class="p-4">
                     <div 
@@ -109,7 +120,12 @@ Variables:
         <!-- End filter dropdown -->
 
         <!-- End Settings -->
-        <c-ui.dropdown.body :icon="False" trigger_icon="three_dots">
+        <c-ui.dropdown.body
+            trigger_text="Options"
+            trigger_icon_class="fa fa-ellipsis-h"
+            trigger_button_class="btn-secondary"
+            trigger_class="gap-2"
+            size="sm">
             
             <div class="py-1" role="none">
                 <a 
