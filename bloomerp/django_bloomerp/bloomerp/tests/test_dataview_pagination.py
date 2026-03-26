@@ -16,13 +16,15 @@ class TestDataViewPagination(TransactionTestCase):
         cls.CustomerModel = create_test_models(
             app_label="bloomerp",
             model_defs={
-                "Customer": {
+                "PaginationCustomer": {
                     "name": models.CharField(max_length=100),
                     "age": models.IntegerField(),
                 }
             },
             use_bloomerp_base=True,
-        )["Customer"]
+        )["PaginationCustomer"]
+        cls.CustomerModel._meta.verbose_name = "customer"
+        cls.CustomerModel._meta.verbose_name_plural = "customers"
 
     def setUp(self):
         super().setUp()

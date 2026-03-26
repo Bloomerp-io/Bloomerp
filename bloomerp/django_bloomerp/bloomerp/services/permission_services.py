@@ -83,6 +83,23 @@ class UserPermissionManager:
             .prefetch_related("rules__permissions")
             .distinct()
         )
+
+    def _resolve_lookup(self, application_field: ApplicationField, operator_str: str) -> Lookup | None:
+        if not application_field or not operator_str:
+            return None
+
+        field_type = application_field.get_field_type_enum()
+        lookup_enum = field_type.get_lookup_by_id(operator_str)
+        if lookup_enum:
+            return lookup_enum
+
+        for lookup in field_type.lookups:
+            if lookup.value.django_representation == operator_str:
+                return lookup
+            if operator_str in (lookup.value.aliases or []):
+                return lookup
+
+        return None
     
     def has_global_permission(self, model : models.Model, permission_str) -> bool:
         pass
@@ -270,37 +287,33 @@ class UserPermissionManager:
                 if not application_field:
                     continue
 
-                field_name = application_field.field
                 operator_str = str(operator_id)
-
-                # Determine field path (supports advanced foreign path filters)
+                field_name = application_field.field
                 if isinstance(field_path, str) and "__" in field_path:
                     field_name = field_path
-                    lookup_enum = None
-                    django_lookup = operator_str
-                elif operator_str.startswith("__"):
+
+                # Determine field path (supports advanced foreign path filters)
+                if operator_str.startswith("__"):
                     # Operator contains full path (e.g. "__country__name__icontains")
                     field_name = operator_str.lstrip("_")
                     lookup_enum = None
                     django_lookup = ""
                 else:
-                    lookup_enum = application_field.get_field_type_enum().get_lookup_by_id(operator_str)
-                    if not lookup_enum:
-                        # Allow django lookup representations (e.g., "icontains")
-                        for lookup in application_field.get_field_type_enum().lookups:
-                            if lookup.value.django_representation == operator_str:
-                                lookup_enum = lookup
-                                break
-                            if operator_str in (lookup.value.aliases or []):
-                                lookup_enum = lookup
-                                break
-
+                    lookup_enum = self._resolve_lookup(application_field, operator_str)
                     django_lookup = (lookup_enum.value.django_representation or "").strip() if lookup_enum else operator_str
 
                 # Special-case: equals current user
                 if lookup_enum == Lookup.EQUALS_USER or str(value) == "$user":
                     combined_q |= Q(**{field_name: self.user})
                     has_any_rule = True
+                    continue
+
+                if lookup_enum == Lookup.NOT_EQUALS:
+                    try:
+                        combined_q |= ~Q(**{field_name: value})
+                        has_any_rule = True
+                    except Exception:
+                        continue
                     continue
 
                 if not lookup_enum and operator_str.startswith("__"):

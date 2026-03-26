@@ -430,6 +430,30 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             if perm == "view": continue
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
+
+
+    def test_normal_user_has_access_to_queryset_with_not_equals_operator(self):
+        """
+        This test checks that the not-equals operator is translated to a
+        negated exact filter rather than an invalid Django lookup.
+        """
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id": str(self.last_name_field.id),
+                "operator": Lookup.NOT_EQUALS.value.id,
+                "value": "Fuller 0",
+            },
+        )
+
+        row_policy.add_permission("view_customer")
+        self.policy.assign_user(self.normal_user)
+
+        manager = UserPermissionManager(self.normal_user)
+        qs = manager.get_queryset(self.CustomerModel, "view_customer")
+
+        self.assertEqual(qs.count(), 9)
+        self.assertFalse(qs.filter(last_name="Fuller 0").exists())
     
     
     def test_normal_user_has_access_with_foreign_field_operator(self):

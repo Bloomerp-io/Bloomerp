@@ -111,7 +111,7 @@
 */
 @layer components {
     .btn {
-        @apply px-4 py-2 font-semibold rounded-md;
+        @apply px-4 py-2 font-semibold rounded-xl;
     }
 
     .btn:focus {
