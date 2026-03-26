@@ -6,8 +6,9 @@ from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
+from bloomerp.models.mixins import AbsoluteUrlModelMixin
 
-class RowPolicyRule(models.Model):
+class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
     """
     Model representing a rule within a row-level access control policy.
     """

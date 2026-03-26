@@ -188,7 +188,11 @@ class ApplicationField(models.Model):
         Returns:
             forms.Field: the form field object
         """
-        model_field = self._get_model_field()
+        try:
+            model_field = self._get_model_field()
+        except FieldDoesNotExist:
+            return None
+
         if not hasattr(model_field, "formfield"):
             return None
         
@@ -242,7 +246,13 @@ class ApplicationField(models.Model):
                 attrs=attrs
             )
 
-        model_field = self._get_model_field()
+        try:
+            model_field = self._get_model_field()
+        except FieldDoesNotExist:
+            return field_type.get_widget_cls()(
+                attrs=attrs
+            )
+
         if not hasattr(model_field, "formfield"):
             return field_type.get_widget_cls()(
                 attrs=attrs

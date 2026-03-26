@@ -1,12 +1,13 @@
 from __future__ import annotations
-from tabnanny import verbose
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-class RowPolicy(models.Model):
+from bloomerp.models import mixins
+
+class RowPolicy(mixins.AbsoluteUrlModelMixin, models.Model):
     """
     A policy that limits which rows (records) are visible/mutable for a subject.
     """
