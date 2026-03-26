@@ -382,9 +382,6 @@
   .left-1\/2 {
     left: calc(1/2 * 100%);
   }
-  .left-4 {
-    left: calc(var(--spacing) * 4);
-  }
   .left-5 {
     left: calc(var(--spacing) * 5);
   }
@@ -934,9 +931,6 @@
   }
   .mr-3 {
     margin-right: calc(var(--spacing) * 3);
-  }
-  .mr-8 {
-    margin-right: calc(var(--spacing) * 8);
   }
   .mb-0 {
     margin-bottom: calc(var(--spacing) * 0);
@@ -2056,9 +2050,6 @@
   }
   .pl-10 {
     padding-left: calc(var(--spacing) * 10);
-  }
-  .pl-12 {
-    padding-left: calc(var(--spacing) * 12);
   }
   .text-center {
     text-align: center;
@@ -3807,7 +3798,7 @@
     appearance: none;
     background-position: right;
     background-repeat: no-repeat;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-xl);
     border-style: var(--tw-border-style);
     border-width: 1px;
     border-color: var(--color-gray-200);
