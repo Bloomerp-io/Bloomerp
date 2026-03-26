@@ -2,7 +2,7 @@ from django import template
 from django.db.models.manager import Manager
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
-from bloomerp.utils.models import get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url
+from bloomerp.utils.models import get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url, get_delete_view_url
 from django.urls import reverse 
 from django.contrib.contenttypes.models import ContentType
 from django.utils.safestring import mark_safe
@@ -326,6 +326,20 @@ def detail_view_url(object:Model):
             return reverse(get_detail_view_url(model), kwargs={'pk': object.pk})
         except Exception:
             return ""
+
+
+@register.filter
+def delete_view_url(object:Model):
+    """
+    Returns the delete url of an object.
+
+    Example usage:
+    {{ object|delete_view_url }}
+    """
+    try:
+        return reverse(get_delete_view_url(object.__class__), kwargs={'pk': object.pk})
+    except Exception:
+        return ""
 
 
 @register.filter

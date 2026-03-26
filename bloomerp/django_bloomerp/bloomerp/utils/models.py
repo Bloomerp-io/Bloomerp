@@ -219,9 +219,9 @@ def get_list_view_url(model:Model, type='relative') -> str:
     This function returns the list view url for a given model.
     """
     if type == 'relative':
-        return model_name_plural_underline(model) + '_list'
+        return model_name_plural_underline(model) + '_model'
     elif type == 'absolute':
-        return model_name_plural_slug(model) + '/list/'
+        return model_name_plural_slug(model) + '/'
 
 def get_create_view_url(model:Model, type='relative') -> str:
     """
@@ -264,6 +264,20 @@ def get_update_view_url(model:Model, type='relative') -> str:
         return model_name_plural_underline(model) + '_detail_update'
     elif type == 'absolute':
         return model_name_plural_slug(model) + '/<int_or_uuid:pk>/update/'
+
+def get_delete_view_url(model:Model, type='relative') -> str:
+    """
+    This function returns the delete view url for a given model.
+
+    Example:
+        get_delete_view_url(User) -> 'users_detail_delete'
+
+        get_delete_view_url(User, type='absolute') -> 'users/<int_or_uuid:pk>/delete/'
+    """
+    if type == 'relative':
+        return model_name_plural_underline(model) + '_detail_delete'
+    elif type == 'absolute':
+        return model_name_plural_slug(model) + '/<int_or_uuid:pk>/delete/'
     
 def get_detail_view_url(model, type='relative') -> str:
     """
@@ -536,7 +550,5 @@ def string_search_queryset(qs: QuerySet, search_value: str) -> QuerySet:
                 query_filter = query_filter | tokens_query
 
         return working_qs.filter(query_filter)
-
-
 
 
