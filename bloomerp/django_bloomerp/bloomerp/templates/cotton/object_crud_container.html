@@ -1,0 +1,78 @@
+{% load bloomerp %}
+{% load cotton %}
+
+<div
+    bloomerp-component="object-crud-view-container"
+    data-content-type-id="{{ content_type_id }}"
+    {% if not create and object %}data-object-id="{{ object.pk }}"{% endif %}
+    data-layout='{{ layout|dump_layout_json }}'
+    data-layout-save-url="{% url 'components_workspaces_crud_layout_preference' %}"
+    data-layout-available-items-url="{{ layout_available_items_url }}"
+    data-layout-render-item-url="{{ layout_render_item_url }}"
+    data-layout-kind="{% if create %}create{% else %}detail{% endif %}"
+>
+    <div class="mb-4 flex justify-start gap-3">
+        <button type="button" class="btn btn-sm btn-secondary{% if create and create_blocked %} hidden{% endif %}" data-layout-edit-toggle>
+            <i class="fa fa-pen-to-square"></i> Edit layout
+        </button>
+        <button
+            type="button"
+            class="btn btn-sm btn-secondary hidden{% if create and create_blocked %} hidden{% endif %}"
+            data-layout-open-sidebar
+            bloomerp-open-drawer="{% if create %}create{% else %}detail{% endif %}-layout-items-drawer"
+        >
+            <i class="fa fa-plus"></i> Add fields
+        </button>
+        {{ buttons }}
+    </div>
+
+    {{ slot }}
+
+    <div class="space-y-4" data-layout-root>
+        {% if layout %}
+            {% for row in layout.rows %}
+                <div
+                    class="workspace-row"
+                    data-layout-row
+                    data-row-title="{{ row.title|default:'' }}"
+                    data-row-columns="{{ row.columns }}"
+                >
+                    <div class="workspace-row__header workspace-row__header--static" data-row-header>
+                        <span class="workspace-row__title{% if not row.title %} workspace-row__title--empty{% endif %}" data-row-title-display>{{ row.title|default:' ' }}</span>
+
+                        <div class="workspace-row__controls" data-row-controls>
+                            <input type="text" class="input input-sm min-w-32" data-row-title-input value="{{ row.title|default:'' }}" placeholder="Row title" />
+                            <input type="number" min="1" max="12" value="{{ row.columns }}" class="workspace-row__input" data-row-cols-input />
+                            <button type="button" class="workspace-row__add" data-add-row title="Add row below">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                            <button type="button" class="workspace-row__drag" data-row-drag-handle title="Drag row">
+                                <i class="fa fa-grip-vertical"></i>
+                            </button>
+                            <button type="button" class="workspace-row__remove" data-remove-row title="Remove row">
+                                <i class="fa fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="workspace-row__grid" data-layout-grid style="grid-template-columns: repeat({{ row.columns }}, minmax(0, 1fr));">
+                        {% for item in row.items %}
+                            {% if create %}
+                                {% include "inclusion_tags/create_view_field.html" with application_field=item.application_field field=item.field input=item.input errors=item.errors help_text=item.help_text colspan=item.colspan is_required=item.is_required only %}
+                            {% elif item.can_view %}
+                                {% render_detail_view_value object item.application_field request.user item.can_view item.can_edit item.colspan %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <c-ui.drawer id="{% if create %}create{% else %}detail{% endif %}-layout-items-drawer" side="right" backdrop="False">
+        <div class="p-4">
+            <c-ui.text.subtitle>Available fields</c-ui.text.subtitle>
+            <div class="mt-4" data-layout-available-items></div>
+        </div>
+    </c-ui.drawer>
+</div>

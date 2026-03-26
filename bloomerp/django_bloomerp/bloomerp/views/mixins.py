@@ -269,9 +269,12 @@ class BloomerpModelFormViewMixin(ModelFormMixin):
         return form
 
     def get_form_class(self) -> BloomerpModelForm:
+        return self.get_form_class_for_fields("__all__")
+
+    def get_form_class_for_fields(self, fields: list[str] | str) -> BloomerpModelForm:
         return bloomerp_modelform_factory(
             model_cls=self.model,
-            fields="__all__",
+            fields=fields,
         )
 
 

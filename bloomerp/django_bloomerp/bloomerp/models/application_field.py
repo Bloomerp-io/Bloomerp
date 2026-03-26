@@ -1,6 +1,7 @@
 from django import forms
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models.query import QuerySet
 from typing import Optional, Type
 from django.utils.translation import gettext_lazy as _
@@ -165,6 +166,21 @@ class ApplicationField(models.Model):
         if self.related_model:
             return self.related_model.model_class()
         return None
+
+    def _get_model_field(self) -> models.Field:
+        """Resolve the concrete Django model field for this application field.
+
+        `ApplicationField.field` may refer to aliases such as `pk`, which are
+        valid Python-level attributes on a model but not always resolvable via
+        Django's `_meta.get_field()`.
+        """
+        model_cls = self.get_model()
+        try:
+            return model_cls._meta.get_field(self.field)
+        except FieldDoesNotExist:
+            if self.field == "pk":
+                return model_cls._meta.pk
+            raise
     
     def get_form_field(self) -> forms.Field:
         """Returns the form field object for this application field
@@ -172,8 +188,9 @@ class ApplicationField(models.Model):
         Returns:
             forms.Field: the form field object
         """
-        ModelCls = self.get_model()
-        model_field : models.Field = ModelCls._meta.get_field(self.field)
+        model_field = self._get_model_field()
+        if not hasattr(model_field, "formfield"):
+            return None
         
         field_type = self.get_field_type_enum().value
         
@@ -225,8 +242,12 @@ class ApplicationField(models.Model):
                 attrs=attrs
             )
 
-        ModelCls = self.get_model()
-        model_field: models.Field = ModelCls._meta.get_field(self.field)
+        model_field = self._get_model_field()
+        if not hasattr(model_field, "formfield"):
+            return field_type.get_widget_cls()(
+                attrs=attrs
+            )
+
         form_field = model_field.formfield()
         if form_field is not None and form_field.widget is not None:
             form_field.widget.attrs.update(attrs)

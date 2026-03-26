@@ -5,6 +5,8 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
     public value: string | null = null;
     public label: string | null = null;
     public applicationFieldId: string | null = null;
+    private focusInHandler: ((event: FocusEvent) => void) | null = null;
+    private focusOutHandler: ((event: FocusEvent) => void) | null = null;
 
     public initialize(): void {
         super.initialize();
@@ -20,11 +22,18 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         }
 
         this.setupContextMenu();
+        this.setupDetailFieldChangeLogging();
     }
 
     public destroy(): void {
         if (!this.element) return;
         this.element.removeEventListener("contextmenu", this.onContextMenu, true);
+        if (this.focusInHandler) {
+            this.element.removeEventListener("focusin", this.focusInHandler, true);
+        }
+        if (this.focusOutHandler) {
+            this.element.removeEventListener("focusout", this.focusOutHandler, true);
+        }
     }
 
     public override setEditMode(isEditMode?: boolean): void {
@@ -75,6 +84,40 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         this.element.addEventListener("contextmenu", this.onContextMenu, true);
     }
 
+    private setupDetailFieldChangeLogging(): void {
+        if (!this.element) return;
+
+        const layoutContainer = this.element.closest<HTMLElement>("[data-layout-kind]");
+        if (layoutContainer?.dataset.layoutKind !== "detail") return;
+
+        this.focusInHandler = (event: FocusEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (!this.isTrackableField(target)) return;
+            target.dataset.initialValue = this.getFieldValue(target);
+        };
+
+        this.focusOutHandler = (event: FocusEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (!this.isTrackableField(target)) return;
+
+            const initialValue = target.dataset.initialValue ?? "";
+            const nextValue = this.getFieldValue(target);
+            delete target.dataset.initialValue;
+
+            if (initialValue === nextValue) return;
+
+            this.value = nextValue;
+            console.log("Detail overview field changed", {
+                fieldId: this.applicationFieldId,
+                label: this.label,
+                value: nextValue,
+            });
+        };
+
+        this.element.addEventListener("focusin", this.focusInHandler, true);
+        this.element.addEventListener("focusout", this.focusOutHandler, true);
+    }
+
     private showContextMenu(event: MouseEvent): void {
         if (!this.element) return;
 
@@ -112,5 +155,18 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         navigator.clipboard.writeText(this.value).catch((error) => {
             console.error("Failed to copy value:", error);
         });
+    }
+
+    private isTrackableField(target: HTMLElement | null): target is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement {
+        return target instanceof HTMLInputElement
+            || target instanceof HTMLTextAreaElement
+            || target instanceof HTMLSelectElement;
+    }
+
+    private getFieldValue(target: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string {
+        if (target instanceof HTMLInputElement && target.type === "checkbox") {
+            return target.checked ? "true" : "false";
+        }
+        return target.value ?? "";
     }
 }

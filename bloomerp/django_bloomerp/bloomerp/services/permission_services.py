@@ -23,6 +23,7 @@ from django.contrib.contenttypes.models import ContentType
 from typing import Type
 from django.db.models import Q
 from bloomerp.field_types import Lookup
+from django.core.exceptions import FieldDoesNotExist
     
 # --------------------------
 # Service Functions
@@ -103,6 +104,71 @@ class UserPermissionManager:
     
     def has_global_permission(self, model : models.Model, permission_str) -> bool:
         pass
+
+    def get_row_policy_rules(self, model_or_content_type: Type[models.Model] | ContentType, permission_str: str):
+        # TODO: Add method description
+        if isinstance(model_or_content_type, ContentType):
+            content_type = model_or_content_type
+        elif issubclass(model_or_content_type, models.Model):
+            content_type = ContentType.objects.get_for_model(model_or_content_type)
+        else:
+            raise TypeError("model_or_content_type must be a Django model class or a ContentType")
+
+        if getattr(self.user, "is_superuser", False):
+            return []
+
+        applicable_rules = []
+        for row_policy in self.get_row_policies().filter(content_type=content_type):
+            for rule_obj in row_policy.rules.all():
+                perms = getattr(rule_obj, "permissions", None)
+                if perms is None:
+                    continue
+                if permission_str in {p.codename for p in perms.all()}:
+                    applicable_rules.append(rule_obj)
+        return applicable_rules
+
+    def has_row_level_access(self, model_or_content_type: Type[models.Model] | ContentType, permission_str: str) -> bool:
+        # TODO: Add method description
+        if getattr(self.user, "is_superuser", False):
+            return True
+        return len(self.get_row_policy_rules(model_or_content_type, permission_str)) > 0
+
+    def candidate_matches_row_policies(
+        self,
+        model_or_content_type: Type[models.Model] | ContentType,
+        permission_str: str,
+        cleaned_data: dict,
+    ) -> bool:
+        # TODO: Add method description, is a bit of a vague api right now
+        if isinstance(model_or_content_type, ContentType):
+            content_type = model_or_content_type
+            model = content_type.model_class()
+        elif issubclass(model_or_content_type, models.Model):
+            model = model_or_content_type
+            content_type = ContentType.objects.get_for_model(model)
+        else:
+            raise TypeError("model_or_content_type must be a Django model class or a ContentType")
+
+        if model is None:
+            return False
+
+        if getattr(self.user, "is_superuser", False):
+            return True
+
+        rules = self.get_row_policy_rules(content_type, permission_str)
+        if not rules:
+            return False
+
+        candidate = model(**cleaned_data)
+        if hasattr(candidate, "created_by") and not getattr(candidate, "created_by", None):
+            candidate.created_by = self.user
+        if hasattr(candidate, "updated_by") and not getattr(candidate, "updated_by", None):
+            candidate.updated_by = self.user
+
+        for rule in rules:
+            if self._candidate_matches_rule(candidate, rule):
+                return True
+        return False
     
     def has_field_permission(self, field: ApplicationField, permission_str:str) -> bool:
         """Check whether the user has the given permission for a specific field.
@@ -357,6 +423,110 @@ class UserPermissionManager:
             return model.objects.none()
 
         return model.objects.filter(combined_q).distinct()
+
+    def _candidate_matches_rule(self, candidate: models.Model, rule_obj) -> bool:
+        # TODO: Add method description
+        rule_dict = getattr(rule_obj, "rule", None) or {}
+        if not isinstance(rule_dict, dict):
+            return False
+
+        application_field_id = rule_dict.get("application_field_id")
+        operator_id = rule_dict.get("operator")
+        expected_value = rule_dict.get("value")
+        explicit_field_path = rule_dict.get("field")
+
+        if not application_field_id or not operator_id:
+            return False
+
+        application_field = ApplicationField.objects.filter(id=application_field_id).first()
+        if not application_field:
+            return False
+
+        field_path = application_field.field
+        operator_str = str(operator_id)
+        if isinstance(explicit_field_path, str) and "__" in explicit_field_path:
+            field_path = explicit_field_path
+
+        resolved_value = self._resolve_candidate_value(candidate, field_path)
+
+        lookup_enum = None
+        if operator_str.startswith("__"):
+            field_path = operator_str.lstrip("_")
+            resolved_value = self._resolve_candidate_value(candidate, field_path)
+            lookup = "exact"
+        else:
+            try:
+                lookup_enum = application_field.get_field_type_enum().get_lookup_by_id(operator_str)
+            except Exception:
+                lookup_enum = None
+            if not lookup_enum:
+                for lookup in application_field.get_field_type_enum().lookups:
+                    if operator_str == lookup.value.django_representation or operator_str in (lookup.value.aliases or []):
+                        lookup_enum = lookup
+                        break
+            lookup = lookup_enum.value.django_representation if lookup_enum else operator_str
+
+        if lookup_enum == Lookup.EQUALS_USER or str(expected_value) == "$user":
+            return self._normalize_compare_value(resolved_value) == self._normalize_compare_value(self.user)
+
+        if operator_str.startswith("__"):
+            return self._matches_lookup(resolved_value, expected_value, lookup)
+
+        return self._matches_lookup(resolved_value, expected_value, lookup)
+
+    def _resolve_candidate_value(self, candidate: models.Model, field_path: str):
+        current = candidate
+        for part in [segment for segment in field_path.split("__") if segment]:
+            if current is None:
+                return None
+            try:
+                current = getattr(current, part)
+            except (AttributeError, FieldDoesNotExist):
+                return None
+        return current
+
+    def _normalize_compare_value(self, value):
+        if isinstance(value, models.Model):
+            return getattr(value, "pk", None)
+        return value
+
+    def _matches_lookup(self, actual, expected, lookup: str) -> bool:
+        normalized_actual = self._normalize_compare_value(actual)
+        normalized_expected = self._normalize_compare_value(expected)
+
+        if lookup in {"exact", "equals", "", None}:
+            return normalized_actual == normalized_expected
+        if lookup == "iexact":
+            return str(normalized_actual).lower() == str(normalized_expected).lower()
+        if lookup == "icontains":
+            return str(normalized_expected).lower() in str(normalized_actual).lower()
+        if lookup == "startswith":
+            return str(normalized_actual).startswith(str(normalized_expected))
+        if lookup == "endswith":
+            return str(normalized_actual).endswith(str(normalized_expected))
+        if lookup == "gt":
+            return normalized_actual is not None and normalized_actual > normalized_expected
+        if lookup == "gte":
+            return normalized_actual is not None and normalized_actual >= normalized_expected
+        if lookup == "lt":
+            return normalized_actual is not None and normalized_actual < normalized_expected
+        if lookup == "lte":
+            return normalized_actual is not None and normalized_actual <= normalized_expected
+        if lookup == "in":
+            if isinstance(normalized_expected, str):
+                values = [item.strip() for item in normalized_expected.split(",") if item.strip()]
+            else:
+                values = list(normalized_expected) if normalized_expected is not None else []
+            normalized_values = [self._normalize_compare_value(value) for value in values]
+            return normalized_actual in normalized_values
+        if lookup == "isnull":
+            expected_bool = normalized_expected
+            if isinstance(expected_bool, str):
+                expected_bool = expected_bool.lower() in {"true", "1", "yes"}
+            return (normalized_actual is None) is bool(expected_bool)
+        if lookup == "ne":
+            return normalized_actual != normalized_expected
+        return False
     
     
         

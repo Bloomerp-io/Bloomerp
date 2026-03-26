@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 from django.test import RequestFactory
 
@@ -8,6 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.router import router
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.models.workspaces.tile import Tile
+from bloomerp.services.sectioned_layout_services import get_application_field_help_text
 
 class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
     # -------------------
@@ -112,8 +114,9 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         field = ApplicationField.objects.filter(content_type=content_type).first()
 
         response = self.client.post(
-            "/components/detail_layout_preference/",
+            "/components/workspaces/crud_layout_preference/",
             data=json.dumps({
+                "layout_kind": "detail",
                 "content_type_id": content_type.pk,
                 "layout": {
                     "rows": [
@@ -137,12 +140,13 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
     def test_detail_layout_render_field_returns_fragment(self):
         self.client.force_login(self.admin_user)
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        field = ApplicationField.objects.filter(content_type=content_type).first()
+        field = ApplicationField.objects.filter(content_type=content_type).order_by("field").first()
         obj = self.CustomerModel.objects.first()
 
         response = self.client.get(
-            "/components/detail_layout_render_field/",
+            "/components/workspaces/crud_layout_render_field/",
             {
+                "layout_kind": "detail",
                 "content_type_id": content_type.pk,
                 "object_id": obj.pk,
                 "field_id": field.pk,
@@ -152,10 +156,33 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, field.title)
 
+    def test_shared_layout_available_fields_route_returns_detail_items(self):
+        # TODO: Add description of what this test actually does
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+
+        response = self.client.get(
+            "/components/workspaces/crud_layout_available_fields/",
+            {
+                "content_type_id": content_type.pk,
+                "layout_kind": "detail",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-layout-item-id", html=False)
+
+    def test_get_application_field_help_text_reads_form_field_help_text(self):
+        field = ApplicationField(field="first_name")
+        field.get_form_field = lambda: SimpleNamespace(help_text="Helpful text")
+
+        self.assertEqual(get_application_field_help_text(field), "Helpful text")
+
     def test_detail_layout_auto_generation_without_setup(self):
         """
         Tests whether the detail layout creates the 
         """
+        # TODO: Refine test
         from bloomerp.services.sectioned_layout_services import create_default_layout
         # 1. Create a default layout
         field_layout = create_default_layout(self.CustomerModel)

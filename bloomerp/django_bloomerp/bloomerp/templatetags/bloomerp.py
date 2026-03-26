@@ -19,9 +19,20 @@ import uuid
 from django.template.loader import render_to_string
 from bloomerp.field_types import FieldType
 from bloomerp.modules.definition import module_registry
-from bloomerp.services.sectioned_layout_services import build_detail_value_context
+from bloomerp.services.sectioned_layout_services import build_detail_value_context, dump_layout_json as dump_layout_json_service
 
 register = template.Library()
+
+
+@register.filter(name="dump_layout_json")
+def dump_layout_json_filter(layout):
+    """
+    Serialize a CRUD layout object or dict for use in `data-layout` attributes.
+
+    Example usage:
+    {{ layout|dump_layout_json }}
+    """
+    return dump_layout_json_service(layout)
 
 @register.filter(name='get_dict_value')
 def get_dict_value(dictionary:dict, key:str):

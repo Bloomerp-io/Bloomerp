@@ -68,7 +68,7 @@
     * Danger
     */
     --color-danger-light: #f8d7da;
-    --color-danger-dark: #721c24;
+    --color-danger-dark: #c91e12;
 
     /*
     * Warning
@@ -157,11 +157,11 @@
     }
 
     .btn-danger {
-        @apply bg-danger-light text-white border-danger-light ring-danger-light;
+      @apply bg-danger-dark text-white border-danger-dark ring-red-300;
     }
 
     .btn-danger:hover:not(:disabled) {
-        @apply bg-danger-dark border-danger-dark;
+      @apply bg-red-800 border-red-800;
     }
 
     .btn-warning {

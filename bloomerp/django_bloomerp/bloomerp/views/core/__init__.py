@@ -2,7 +2,6 @@ from bloomerp.router import router
 from .base_detail import BloomerpBaseDetailView
 from .list_view import BloomerpListView
 from .create_view import BloomerpCreateView
-from .update_view import BloomerpUpdateView
 from .detail_files import BloomerpDetailFileListView
 from .bulk_upload import BloomerpBulkUploadView
 from .file_list import BloomerpFileListView
@@ -14,7 +13,6 @@ __all__ = [
     "BloomerpBaseDetailView",
     "BloomerpListView",
     "BloomerpCreateView",
-    "BloomerpUpdateView",
     "BloomerpDetailFileListView",
     "BloomerpBulkUploadView",
     "BloomerpFileListView",

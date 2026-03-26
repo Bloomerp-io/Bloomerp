@@ -1,11 +1,11 @@
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
-from bloomerp.views.core import BloomerpBaseDetailView
+from bloomerp.views.core.base_detail import BloomerpBaseDetailView
 from bloomerp.router import router
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from typing import Any
 from bloomerp.services.detail_view_services import get_default_layout
-from bloomerp.services.sectioned_layout_services import dump_layout_json, resolve_detail_layout_rows
+from bloomerp.services.sectioned_layout_services import resolve_detail_layout_rows
 
 @router.register(
     path="/",
@@ -34,10 +34,9 @@ class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView
             layout = self.resolve_layout(preference, content_type)
         context["content_type_id"] = content_type.pk
         context["layout"] = layout
-        context["layout_json"] = dump_layout_json(preference.field_layout_obj)
-        context["layout_save_url"] = "/components/detail_layout_preference/"
-        context["layout_available_items_url"] = f"/components/detail_layout_available_fields/?content_type_id={content_type.pk}"
-        context["layout_render_item_url"] = "/components/detail_layout_render_field/"
+        # TODO: These two attributes can be derived from the type, i.e. they don't need to be passed on actually...
+        context["layout_available_items_url"] = f"/components/workspaces/crud_layout_available_fields/?content_type_id={content_type.pk}&layout_kind=detail"
+        context["layout_render_item_url"] = "/components/workspaces/crud_layout_render_field/?layout_kind=detail"
         context["detail_object_id"] = self.object.pk
         return context
 

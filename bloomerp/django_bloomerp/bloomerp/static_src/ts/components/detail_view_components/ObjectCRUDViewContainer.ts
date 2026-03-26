@@ -11,7 +11,7 @@ type RowInfo = {
     items: DetailViewCell[];
 };
 
-export default class ObjectDetailViewContainer extends BaseSectionedLayoutContainer<DetailViewCell> {
+export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContainer<DetailViewCell> {
     private currentItem: DetailViewCell | null = null;
     private focusInHandler: ((event: FocusEvent) => void) | null = null;
 
@@ -75,16 +75,20 @@ export default class ObjectDetailViewContainer extends BaseSectionedLayoutContai
         const renderUrl = this.element.dataset.layoutRenderItemUrl;
         const contentTypeId = this.element.dataset.contentTypeId;
         const objectId = this.element.dataset.objectId;
-        if (!targetGrid || !renderUrl || !contentTypeId || !objectId) return;
+        if (!targetGrid || !renderUrl || !contentTypeId) return;
+
+        const values: Record<string, string | number> = {
+            content_type_id: contentTypeId,
+            field_id: itemId,
+        };
+        if (objectId) {
+            values.object_id = objectId;
+        }
 
         await htmx.ajax("get", renderUrl, {
             target: targetGrid,
             swap: "beforeend",
-            values: {
-                content_type_id: contentTypeId,
-                object_id: objectId,
-                field_id: itemId,
-            },
+            values,
         });
 
         initComponents(targetGrid);
@@ -101,9 +105,10 @@ export default class ObjectDetailViewContainer extends BaseSectionedLayoutContai
         this.reindexItems();
     }
 
-    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; content_type_id: number | null } {
+    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; content_type_id: number | null; layout_kind: string } {
         return {
             content_type_id: Number.parseInt(this.element?.dataset.contentTypeId ?? "", 10) || null,
+            layout_kind: this.element?.dataset.layoutKind ?? "detail",
             layout: {
                 rows: this.serializeRows(),
             },
@@ -216,73 +221,51 @@ export default class ObjectDetailViewContainer extends BaseSectionedLayoutContai
     }
 
     private moveLeft(row: RowInfo, index: number): DetailViewCell | null {
-        const column = index % row.columns;
-        if (column > 0) {
-            return row.items[index - 1] ?? null;
-        }
-        return null;
+        if (index > 0) return row.items[index - 1];
+        const rows = this.getRows();
+        const rowIndex = rows.findIndex((candidate) => candidate.element === row.element);
+        if (rowIndex <= 0) return null;
+        const previousRow = rows[rowIndex - 1];
+        return previousRow.items[previousRow.items.length - 1] ?? null;
     }
 
     private moveRight(row: RowInfo, index: number): DetailViewCell | null {
-        const column = index % row.columns;
-        if (column < row.columns - 1 && index + 1 < row.items.length) {
-            return row.items[index + 1] ?? null;
-        }
-        return null;
+        if (index < row.items.length - 1) return row.items[index + 1];
+        const rows = this.getRows();
+        const rowIndex = rows.findIndex((candidate) => candidate.element === row.element);
+        if (rowIndex === -1 || rowIndex >= rows.length - 1) return null;
+        return rows[rowIndex + 1].items[0] ?? null;
     }
 
     private moveUp(row: RowInfo, index: number): DetailViewCell | null {
-        const targetIndex = index - row.columns;
-        if (targetIndex >= 0) {
-            return row.items[targetIndex] ?? null;
-        }
-
         const rows = this.getRows();
-        const rowIndex = rows.findIndex((currentRow) => currentRow.element === row.element);
-        if (rowIndex > 0) {
-            const previousRow = rows[rowIndex - 1];
-            return previousRow.items[previousRow.items.length - 1] ?? null;
-        }
+        const rowIndex = rows.findIndex((candidate) => candidate.element === row.element);
+        if (rowIndex <= 0) return null;
 
-        return null;
+        const previousRow = rows[rowIndex - 1];
+        return previousRow.items[Math.min(index, previousRow.items.length - 1)] ?? null;
     }
 
     private moveDown(row: RowInfo, index: number): DetailViewCell | null {
-        const targetIndex = index + row.columns;
-        if (targetIndex < row.items.length) {
-            return row.items[targetIndex] ?? null;
-        }
-
         const rows = this.getRows();
-        const rowIndex = rows.findIndex((currentRow) => currentRow.element === row.element);
-        if (rowIndex < rows.length - 1) {
-            return rows[rowIndex + 1]?.items[0] ?? null;
-        }
+        const rowIndex = rows.findIndex((candidate) => candidate.element === row.element);
+        if (rowIndex === -1 || rowIndex >= rows.length - 1) return null;
 
-        return null;
+        const nextRow = rows[rowIndex + 1];
+        return nextRow.items[Math.min(index, nextRow.items.length - 1)] ?? null;
     }
 
     private getEdgeItem(key: string): DetailViewCell | null {
-        const position = this.getCurrentPosition();
-        if (!position) return null;
+        const rows = this.getRows();
+        if (rows.length === 0) return null;
 
-        const { row, index } = position;
         switch (key) {
             case "ArrowLeft":
-                return row.items[Math.floor(index / row.columns) * row.columns] ?? null;
-            case "ArrowRight": {
-                const rowStart = Math.floor(index / row.columns) * row.columns;
-                const rowEnd = Math.min(rowStart + row.columns - 1, row.items.length - 1);
-                return row.items[rowEnd] ?? null;
-            }
             case "ArrowUp":
-                return row.items[index % row.columns] ?? row.items[0] ?? null;
-            case "ArrowDown": {
-                const column = index % row.columns;
-                const totalRows = Math.ceil(row.items.length / row.columns);
-                const lastRowStart = (totalRows - 1) * row.columns;
-                return row.items[lastRowStart + column] ?? row.items[row.items.length - 1] ?? null;
-            }
+                return rows[0].items[0] ?? null;
+            case "ArrowRight":
+            case "ArrowDown":
+                return rows[rows.length - 1].items[rows[rows.length - 1].items.length - 1] ?? null;
             default:
                 return null;
         }
@@ -290,25 +273,18 @@ export default class ObjectDetailViewContainer extends BaseSectionedLayoutContai
 
     private openContextMenu(): void {
         if (!this.currentItem?.element) return;
-
-        const items = this.constructContextMenu();
-        if (items.length === 0) {
-            this.currentItem.constructContextMenu();
-            return;
-        }
-
         const rect = this.currentItem.element.getBoundingClientRect();
-        const synthetic = new MouseEvent("contextmenu", {
-            bubbles: true,
-            cancelable: true,
-            clientX: Math.round(rect.left + Math.min(24, rect.width / 2)),
-            clientY: Math.round(rect.bottom - 4),
-        });
+        const items = this.currentItem.constructContextMenu();
+        if (items.length === 0) return;
 
-        getContextMenu().show(synthetic, this.currentItem.element, items);
-    }
-
-    protected constructContextMenu(): ContextMenuItem[] {
-        return [];
+        getContextMenu().show(
+            {
+                preventDefault: () => undefined,
+                clientX: rect.left + rect.width / 2,
+                clientY: rect.top + rect.height / 2,
+            } as MouseEvent,
+            this.currentItem.element,
+            items as ContextMenuItem[],
+        );
     }
 }

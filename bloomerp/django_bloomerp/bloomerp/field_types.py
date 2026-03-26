@@ -220,6 +220,7 @@ class FieldTypeDefinition:
     id: str  # Internal ID used for lookup (e.g., "ForeignKey")
     display_name: str  # Human-readable name
     description: Optional[str] = None
+    icon: str = "fa-solid fa-table-columns"
     
     # Django model field
     model_field_cls: Optional[type[models.Field]] = None
@@ -313,12 +314,14 @@ class FieldType(Enum):
     PROPERTY = FieldTypeDefinition(
         id="Property",
         display_name="Property",
+        icon="fa-solid fa-sliders",
         allow_in_model=False,
     )
     
     AUTO_FIELD = FieldTypeDefinition(
         id="AutoField",
         display_name="Auto Field",
+        icon="fa-solid fa-hashtag",
         model_field_cls=models.AutoField,
         lookups=NUMERIC_LOOKUPS,
     )
@@ -326,6 +329,7 @@ class FieldType(Enum):
     BIG_AUTO_FIELD = FieldTypeDefinition(
         id="BigAutoField",
         display_name="Big Auto Field",
+        icon="fa-solid fa-hashtag",
         model_field_cls=models.BigAutoField,
         lookups=NUMERIC_LOOKUPS,
     )
@@ -333,6 +337,7 @@ class FieldType(Enum):
     SMALL_AUTO_FIELD = FieldTypeDefinition(
         id="SmallAutoField",
         display_name="Small Auto Field",
+        icon="fa-solid fa-hashtag",
         model_field_cls=models.SmallAutoField,
         lookups=NUMERIC_LOOKUPS,
     )
@@ -341,6 +346,7 @@ class FieldType(Enum):
     CHAR_FIELD = FieldTypeDefinition(
         id="CharField",
         display_name="Char Field",
+        icon="fa-solid fa-font",
         model_field_cls=models.CharField,
         widget_cls=InputSelectWidget,
         default_model_field_args={
@@ -352,6 +358,7 @@ class FieldType(Enum):
     CHOICE_FIELD = FieldTypeDefinition(
         id="ChoiceField",
         display_name="Choice Field",
+        icon="fa-solid fa-list",
         model_field_cls=models.CharField,
         widget_cls=InputSelectWidget,
         lookups=TEXT_LOOKUPS,
@@ -363,6 +370,7 @@ class FieldType(Enum):
     TEXT_FIELD = FieldTypeDefinition(
         id="TextField",
         display_name="Text Field",
+        icon="fa-solid fa-paragraph",
         model_field_cls=models.TextField,
         lookups=TEXT_LOOKUPS,
         widget_cls=BloomerpTextEditorWidget
@@ -371,6 +379,7 @@ class FieldType(Enum):
     EMAIL_FIELD = FieldTypeDefinition(
         id="EmailField",
         display_name="Email Field",
+        icon="fa-solid fa-envelope",
         model_field_cls=models.EmailField,
         lookups=TEXT_LOOKUPS,
         default_model_field_args={
@@ -381,6 +390,7 @@ class FieldType(Enum):
     URL_FIELD = FieldTypeDefinition(
         id="URLField",
         display_name="URL Field",
+        icon="fa-solid fa-link",
         model_field_cls=models.URLField,
         lookups=TEXT_LOOKUPS,
         default_model_field_args={
@@ -391,6 +401,7 @@ class FieldType(Enum):
     SLUG_FIELD = FieldTypeDefinition(
         id="SlugField",
         display_name="Slug Field",
+        icon="fa-solid fa-tag",
         model_field_cls=models.SlugField,
         lookups=TEXT_LOOKUPS,
         default_model_field_args={
@@ -402,6 +413,7 @@ class FieldType(Enum):
     INTEGER_FIELD = FieldTypeDefinition(
         id="IntegerField",
         display_name="Integer Field",
+        icon="fa-solid fa-hashtag",
         model_field_cls=models.IntegerField,
         lookups=NUMERIC_LOOKUPS
     )
@@ -409,6 +421,7 @@ class FieldType(Enum):
     FLOAT_FIELD = FieldTypeDefinition(
         id="FloatField",
         display_name="Float Field",
+        icon="fa-solid fa-calculator",
         model_field_cls=models.FloatField,
         lookups=NUMERIC_LOOKUPS
     )
@@ -416,6 +429,7 @@ class FieldType(Enum):
     DECIMAL_FIELD = FieldTypeDefinition(
         id="DecimalField",
         display_name="Decimal Field",
+        icon="fa-solid fa-calculator",
         model_field_cls=models.DecimalField,
         lookups=NUMERIC_LOOKUPS,
         default_model_field_args={
@@ -427,6 +441,7 @@ class FieldType(Enum):
     POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
         id="PositiveIntegerField",
         display_name="Positive Integer Field",
+        icon="fa-solid fa-plus",
         model_field_cls=models.PositiveIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
@@ -434,6 +449,7 @@ class FieldType(Enum):
     POSITIVE_SMALL_INTEGER_FIELD = FieldTypeDefinition(
         id="PositiveSmallIntegerField",
         display_name="Positive Small Integer Field",
+        icon="fa-solid fa-plus",
         model_field_cls=models.PositiveSmallIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
@@ -441,6 +457,7 @@ class FieldType(Enum):
     BIG_INTEGER_FIELD = FieldTypeDefinition(
         id="BigIntegerField",
         display_name="Big Integer Field",
+        icon="fa-solid fa-hashtag",
         model_field_cls=models.BigIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
@@ -448,6 +465,7 @@ class FieldType(Enum):
     SMALL_INTEGER_FIELD = FieldTypeDefinition(
         id="SmallIntegerField",
         display_name="Small Integer Field",
+        icon="fa-solid fa-hashtag",
         model_field_cls=models.SmallIntegerField,
         lookups=NUMERIC_LOOKUPS
     )
@@ -456,6 +474,7 @@ class FieldType(Enum):
     BOOLEAN_FIELD = FieldTypeDefinition(
         id="BooleanField",
         display_name="Boolean Field",
+        icon="fa-solid fa-toggle-on",
         model_field_cls=models.BooleanField,
         lookups=BOOLEAN_LOOKUPS,
         default_model_field_args={
@@ -466,6 +485,7 @@ class FieldType(Enum):
     NULL_BOOLEAN_FIELD = FieldTypeDefinition(
         id="NullBooleanField",
         display_name="Null Boolean Field",
+        icon="fa-solid fa-toggle-on",
         model_field_cls=models.BooleanField,
         lookups=BOOLEAN_LOOKUPS,
         default_model_field_args={
@@ -478,6 +498,7 @@ class FieldType(Enum):
     DATE_FIELD = FieldTypeDefinition(
         id="DateField",
         display_name="Date Field",
+        icon="fa-solid fa-calendar-days",
         model_field_cls=models.DateField,
         lookups=DATE_LOOKUPS,
         widget_cls=forms.widgets.DateInput,
@@ -489,6 +510,7 @@ class FieldType(Enum):
     DATE_TIME_FIELD = FieldTypeDefinition(
         id="DateTimeField",
         display_name="DateTime Field",
+        icon="fa-solid fa-clock",
         model_field_cls=models.DateTimeField,
         lookups=DATE_LOOKUPS,
         widget_cls=forms.widgets.DateTimeInput
@@ -497,6 +519,7 @@ class FieldType(Enum):
     TIME_FIELD = FieldTypeDefinition(
         id="TimeField",
         display_name="Time Field",
+        icon="fa-solid fa-clock",
         model_field_cls=models.TimeField,
         lookups=DATE_LOOKUPS,
         widget_cls=forms.widgets.TimeInput
@@ -505,6 +528,7 @@ class FieldType(Enum):
     DURATION_FIELD = FieldTypeDefinition(
         id="DurationField",
         display_name="Duration Field",
+        icon="fa-solid fa-hourglass-half",
         model_field_cls=models.DurationField,
         lookups=NUMERIC_LOOKUPS
     )
@@ -512,6 +536,7 @@ class FieldType(Enum):
     FILE_FIELD = FieldTypeDefinition(
         id="FileField",
         display_name="File Field",
+        icon="fa-solid fa-file",
         model_field_cls=models.FileField,
         default_model_field_args={
             "upload_to": "uploads/",
@@ -521,6 +546,7 @@ class FieldType(Enum):
     IMAGE_FIELD = FieldTypeDefinition(
         id="ImageField",
         display_name="Image Field",
+        icon="fa-solid fa-image",
         model_field_cls=models.ImageField,
         default_model_field_args={
             "upload_to": "images/",
@@ -530,6 +556,7 @@ class FieldType(Enum):
     FOREIGN_KEY = FieldTypeDefinition(
         id="ForeignKey",
         display_name="Foreign Key",
+        icon="fa-solid fa-link",
         model_field_cls=models.ForeignKey,
         lookups=[
             Lookup.FOREIGN_EQUALS,
@@ -549,6 +576,7 @@ class FieldType(Enum):
     ONE_TO_ONE_FIELD = FieldTypeDefinition(
         id="OneToOneField",
         display_name="One To One Field",
+        icon="fa-solid fa-link",
         model_field_cls=models.OneToOneField,
         lookups=[
             Lookup.IS_NULL,
@@ -563,6 +591,7 @@ class FieldType(Enum):
     MANY_TO_MANY_FIELD = FieldTypeDefinition(
         id="ManyToManyField",
         display_name="Many To Many Field",
+        icon="fa-solid fa-share-nodes",
         model_field_cls=models.ManyToManyField,
         lookups=[
             Lookup.EQUALS,
@@ -578,12 +607,14 @@ class FieldType(Enum):
     ONE_TO_MANY_FIELD = FieldTypeDefinition(
         id="OneToManyField",
         display_name="One To Many Field",
+        icon="fa-solid fa-share-nodes",
         allow_in_model=False,
     )
     
     USER_FIELD = FieldTypeDefinition(
         id="UserField",
         display_name="User Field",
+        icon="fa-solid fa-user",
         model_field_cls=UserField,
         widget_cls=ForeignFieldWidget,
         default_widget_args={
@@ -600,6 +631,7 @@ class FieldType(Enum):
     UUID_FIELD = FieldTypeDefinition(
         id="UUIDField",
         display_name="UUID Field",
+        icon="fa-solid fa-fingerprint",
         model_field_cls=models.UUIDField,
         lookups=[Lookup.EQUALS, Lookup.IN, Lookup.IS_NULL]
     )
@@ -607,12 +639,14 @@ class FieldType(Enum):
     BINARY_FIELD = FieldTypeDefinition(
         id="BinaryField",
         display_name="Binary Field",
+        icon="fa-solid fa-code",
         model_field_cls=models.BinaryField,
     )
     
     IP_ADDRESS_FIELD = FieldTypeDefinition(
         id="IPAddressField",
         display_name="IP Address Field",
+        icon="fa-solid fa-network-wired",
         model_field_cls=models.GenericIPAddressField,
         lookups=TEXT_LOOKUPS
     )
@@ -620,6 +654,7 @@ class FieldType(Enum):
     GENERIC_IP_ADDRESS_FIELD = FieldTypeDefinition(
         id="GenericIPAddressField",
         display_name="Generic IP Address Field",
+        icon="fa-solid fa-network-wired",
         model_field_cls=models.GenericIPAddressField,
         lookups=TEXT_LOOKUPS
     )
@@ -627,6 +662,7 @@ class FieldType(Enum):
     JSON_FIELD = FieldTypeDefinition(
         id="JSONField",
         display_name="JSON Field",
+        icon="fa-solid fa-code",
         model_field_cls=models.JSONField,
         default_model_field_args={
             "default": dict,
@@ -637,6 +673,7 @@ class FieldType(Enum):
     ARRAY_FIELD = FieldTypeDefinition(
         id="ArrayField",
         display_name="Array Field",
+        icon="fa-solid fa-list-ol",
         lookups=[
             Lookup.CONTAINS, 
             Lookup.IS_NULL
@@ -647,6 +684,7 @@ class FieldType(Enum):
     HSTORE_FIELD = FieldTypeDefinition(
         id="HStoreField",
         display_name="HStore Field",
+        icon="fa-solid fa-box-archive",
         allow_in_model=False,
         
     )
@@ -655,6 +693,7 @@ class FieldType(Enum):
     GENERIC_RELATION = FieldTypeDefinition(
         id="GenericRelation",
         display_name="Generic Relation",
+        icon="fa-solid fa-share-nodes",
         allow_in_model=False,
         
     )
@@ -662,6 +701,7 @@ class FieldType(Enum):
     GENERIC_FOREIGN_KEY = FieldTypeDefinition(
         id="GenericForeignKey",
         display_name="Generic Foreign Key",
+        icon="fa-solid fa-link",
         allow_in_model=False,
     )
     
@@ -669,6 +709,7 @@ class FieldType(Enum):
     STATUS_FIELD = FieldTypeDefinition(
         id="StatusField",
         display_name="Status Field",
+        icon="fa-solid fa-signal",
         lookups=TEXT_LOOKUPS,
         allow_in_model=False,
     )
@@ -676,6 +717,7 @@ class FieldType(Enum):
     ICON_FIELD = FieldTypeDefinition(
         id="IconField",
         display_name="Icon Field",
+        icon="fa-solid fa-star",
         model_field_cls=IconField,
         form_field_cls=IconFormField,
         widget_cls=IconPickerWidget,
@@ -685,6 +727,7 @@ class FieldType(Enum):
     BLOOMERP_FILE_FIELD = FieldTypeDefinition(
         id="BloomerpFileField",
         display_name="Bloomerp File Field",
+        icon="fa-solid fa-file-lines",
         allow_in_model=False,
     )
 
@@ -697,6 +740,11 @@ class FieldType(Enum):
     def display_name(self) -> str:
         """Returns the human-readable display name."""
         return self.value.display_name
+
+    @property
+    def icon(self) -> str:
+        """Returns the Font Awesome icon class for the field type."""
+        return self.value.icon
     
     @property
     def model_field_cls(self) -> Optional[type[models.Field]]:

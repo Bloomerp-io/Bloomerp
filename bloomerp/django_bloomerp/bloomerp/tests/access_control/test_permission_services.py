@@ -523,6 +523,110 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
 
+    def test_candidate_matches_add_row_policy_for_direct_field(self):
+        # TODO: Add laymen description of what this test actually does
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id": str(self.first_name_field.id),
+                "operator": Lookup.EQUALS.value.id,
+                "value": "Allowed",
+            },
+        )
+        row_policy.add_permission("add_customer")
+        self.policy.assign_user(self.normal_user)
+
+        manager = UserPermissionManager(self.normal_user)
+
+        self.assertTrue(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Allowed",
+                    "last_name": "Person",
+                    "age": 30,
+                },
+            )
+        )
+        self.assertFalse(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Blocked",
+                    "last_name": "Person",
+                    "age": 30,
+                },
+            )
+        )
+
+    def test_candidate_matches_add_row_policy_with_equals_user(self):
+        created_by_field = ApplicationField.get_for_model(self.CustomerModel).filter(field="created_by").first()
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id": str(created_by_field.id),
+                "operator": Lookup.EQUALS_USER.value.id,
+                "value": "$user",
+            },
+        )
+        row_policy.add_permission("add_customer")
+        self.policy.assign_user(self.normal_user)
+
+        manager = UserPermissionManager(self.normal_user)
+
+        self.assertTrue(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Allowed",
+                    "last_name": "Person",
+                    "age": 30,
+                },
+            )
+        )
+
+    def test_candidate_matches_add_row_policy_with_nested_foreign_field(self):
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "application_field_id": str(self.country_field.id),
+                "operator": "__country__planet__name",
+                "value": "Earth",
+            },
+        )
+        row_policy.add_permission("add_customer")
+        self.policy.assign_user(self.normal_user)
+
+        manager = UserPermissionManager(self.normal_user)
+
+        self.assertTrue(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Allowed",
+                    "last_name": "Person",
+                    "age": 30,
+                    "country": self.CountryModel.objects.get(name="Belgium"),
+                },
+            )
+        )
+        self.assertFalse(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Allowed",
+                    "last_name": "Person",
+                    "age": 30,
+                    "country": self.CountryModel.objects.get(name="Helvetia"),
+                },
+            )
+        )
+
     # --------------------------------------
     # API tests using RequestFactory
     # --------------------------------------
