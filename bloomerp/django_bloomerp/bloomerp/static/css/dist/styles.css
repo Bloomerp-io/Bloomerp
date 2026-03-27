@@ -138,6 +138,7 @@
     --color-warning-dark: #856404;
     --color-base: #f4f2f0;
     --color-light: #686765;
+    --color-dark: #5d5e5e;
   }
 }
 @layer base {
@@ -1258,9 +1259,6 @@
   .min-w-72 {
     min-width: calc(var(--spacing) * 72);
   }
-  .min-w-96 {
-    min-width: calc(var(--spacing) * 96);
-  }
   .min-w-\[160px\] {
     min-width: 160px;
   }
@@ -2202,6 +2200,9 @@
   }
   .text-blue-800 {
     color: var(--color-blue-800);
+  }
+  .text-dark {
+    color: var(--color-dark);
   }
   .text-emerald-600 {
     color: var(--color-emerald-600);
@@ -3191,7 +3192,7 @@
   }
   .btn-dark {
     border-color: var(--color-gray-800);
-    background-color: var(--color-gray-800);
+    background-color: var(--color-dark);
     color: var(--color-white);
     --tw-ring-color: var(--color-gray-600);
   }

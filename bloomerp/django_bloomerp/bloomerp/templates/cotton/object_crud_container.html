@@ -10,20 +10,54 @@
     data-layout-available-items-url="{{ layout_available_items_url }}"
     data-layout-render-item-url="{{ layout_render_item_url }}"
     data-layout-kind="{% if create %}create{% else %}detail{% endif %}"
+    data-non-required-fields-visible="{{ non_required_fields_visible|default:'true'|lower }}"
 >
-    <div class="mb-4 flex justify-start gap-3">
-        <button type="button" class="btn btn-sm btn-secondary{% if create and create_blocked %} hidden{% endif %}" data-layout-edit-toggle>
-            <i class="fa fa-pen-to-square"></i> Edit layout
-        </button>
-        <button
-            type="button"
-            class="btn btn-sm btn-secondary hidden{% if create and create_blocked %} hidden{% endif %}"
-            data-layout-open-sidebar
-            bloomerp-open-drawer="{% if create %}create{% else %}detail{% endif %}-layout-items-drawer"
-        >
-            <i class="fa fa-plus"></i> Add fields
-        </button>
-        {{ buttons }}
+    <div class="mb-4 flex justify-between">
+        <div class="flex gap-3">
+
+        
+            <c-ui.tooltip title="" text="Allows you to edit the layout of the form" position="bottom">
+                <button type="button" class="btn btn-sm btn-secondary{% if create and create_blocked %} hidden{% endif %}" data-layout-edit-toggle>
+                    <i class="fa fa-pen-to-square"></i>
+                    <c-blocktrans>
+                        Edit Layout
+                    </c-blocktrans>
+                </button>
+            </c-ui.tooltip>
+            <button
+                type="button"
+                class="btn btn-sm btn-secondary hidden{% if create and create_blocked %} hidden{% endif %}"
+                data-layout-open-sidebar
+                bloomerp-open-drawer="{% if create %}create{% else %}detail{% endif %}-layout-items-drawer"
+            >
+                <i class="fa fa-plus"></i>
+                <c-blocktrans>
+                    Add Fields
+                </c-blocktrans>
+            </button>
+
+            <c-ui.tooltip text="Toggles the required fields" position="bottom">
+                <button 
+                    type="button" 
+                    class="btn btn-sm btn-dark"
+                    data-toggle-non-required-fields
+                    aria-pressed="false"
+                >
+                    <i class="fa fa-asterisk"></i>
+                    <span data-toggle-non-required-fields-label>
+                        <c-blocktrans>
+                            Show Required Only
+                        </c-blocktrans>
+                    </span>
+                </button>
+            </c-ui.tooltip>
+
+            {{ buttons_left }}
+        </div>
+
+        <div class="flex gap-3">
+            {{ buttons_right }}
+        </div>
     </div>
 
     {{ slot }}
@@ -58,7 +92,7 @@
                     <div class="workspace-row__grid" data-layout-grid style="grid-template-columns: repeat({{ row.columns }}, minmax(0, 1fr));">
                         {% for item in row.items %}
                             {% if create %}
-                                {% include "inclusion_tags/create_view_field.html" with application_field=item.application_field field=item.field input=item.input errors=item.errors help_text=item.help_text colspan=item.colspan is_required=item.is_required only %}
+                                {% include "inclusion_tags/create_view_field.html" with application_field=item.application_field field=item.field input=item.input errors=item.errors help_text=item.help_text colspan=item.colspan is_required=item.is_required non_required_fields_visible=non_required_fields_visible only %}
                             {% elif item.can_view %}
                                 {% render_detail_view_value object item.application_field request.user item.can_view item.can_edit item.colspan %}
                             {% endif %}

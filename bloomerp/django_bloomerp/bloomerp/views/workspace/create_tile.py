@@ -141,7 +141,7 @@ BUILDER_STEP = WizardStep(
 class CreateTileView(HtmxMixin, WizardMixin, TemplateView):
     template_name = "base_wizard.html"
     session_key = CREATE_TILE_SESSION_KEY
-    htmx_skip_addendum_target = "wizard-root"
+    htmx_include_addendum = False
 
     def get_step(self, step: int) -> WizardStep | None:
         tile_type = TileType.from_key(self.orchestrator.get_session_data("tile_type"))

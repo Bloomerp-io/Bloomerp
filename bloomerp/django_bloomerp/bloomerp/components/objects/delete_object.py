@@ -16,7 +16,7 @@ from bloomerp.views.core.delete_view import BloomerpDeleteView
     name="components_delete_object",
 )
 class DeleteObjectComponentView(BloomerpDeleteView):
-    htmx_skip_addendum_target = "delete-object-modal-body"
+    htmx_include_addendum = False
 
     def dispatch(self, request, *args, **kwargs):
         self.content_type = get_object_or_404(ContentType, id=kwargs["content_type_id"])

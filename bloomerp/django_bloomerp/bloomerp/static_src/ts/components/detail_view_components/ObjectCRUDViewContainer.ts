@@ -14,6 +14,12 @@ type RowInfo = {
 export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContainer<DetailViewCell> {
     private currentItem: DetailViewCell | null = null;
     private focusInHandler: ((event: FocusEvent) => void) | null = null;
+    private nonRequiredFieldsVisible: boolean = true;
+    private toggleVisibilityBtn: HTMLButtonElement | null = null;
+    private toggleVisibilityLabel: HTMLElement | null = null;
+    private openFullFormBtn: HTMLButtonElement | null = null;
+    private toggleVisibilityHandler: (() => void) | null = null;
+    private openFullFormHandler: (() => void) | null = null;
 
     protected getItemSelector(): string {
         return `[${componentIdentifier}="detail-view-value"]`;
@@ -39,6 +45,16 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             item.element.setAttribute("tabindex", "0");
         });
 
+        // Get the required fields visible
+        this.nonRequiredFieldsVisible = !(this.element.dataset.nonRequiredFieldsVisible?.toLowerCase() === "false");
+        this.toggleVisibilityBtn = this.element.querySelector<HTMLButtonElement>("[data-toggle-non-required-fields]");
+        this.toggleVisibilityLabel = this.element.querySelector<HTMLElement>("[data-toggle-non-required-fields-label]");
+        this.openFullFormBtn = this.element.querySelector<HTMLButtonElement>("[data-open-full-form]");
+        this.toggleVisibilityHandler = () => this.toggleNonRequiredFieldsVisibility();
+        this.openFullFormHandler = () => this.openFullForm();
+        this.toggleVisibilityBtn?.addEventListener("click", this.toggleVisibilityHandler);
+        this.openFullFormBtn?.addEventListener("click", this.openFullFormHandler);
+
         this.focusInHandler = (event: FocusEvent) => {
             const target = event.target as HTMLElement | null;
             if (!target) return;
@@ -51,13 +67,26 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             }
         };
         this.element?.addEventListener("focusin", this.focusInHandler);
+        this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
+
     }
 
     public override destroy(): void {
         if (this.focusInHandler && this.element) {
             this.element.removeEventListener("focusin", this.focusInHandler);
         }
+        if (this.toggleVisibilityHandler) {
+            this.toggleVisibilityBtn?.removeEventListener("click", this.toggleVisibilityHandler);
+        }
+        if (this.openFullFormHandler) {
+            this.openFullFormBtn?.removeEventListener("click", this.openFullFormHandler);
+        }
         this.focusInHandler = null;
+        this.toggleVisibilityHandler = null;
+        this.openFullFormHandler = null;
+        this.toggleVisibilityBtn = null;
+        this.toggleVisibilityLabel = null;
+        this.openFullFormBtn = null;
     }
 
     public override onAfterSwap(): void {
@@ -65,6 +94,14 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             if (!item.element || item.element.hasAttribute("tabindex")) return;
             item.element.setAttribute("tabindex", "0");
         });
+        this.syncToggleVisibility();
+        this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
+    }
+
+    protected override toggleEditMode(): void {
+        super.toggleEditMode();
+        this.syncToggleVisibility();
+        this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
     }
 
     protected async renderItem(itemId: number, rowIndex: number, position?: number): Promise<void> {
@@ -164,7 +201,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             const columns = Number.parseInt(rowEl.dataset.rowColumns ?? "1", 10) || 1;
             const items = Array.from(rowEl.querySelectorAll<HTMLElement>(this.getItemSelector()))
                 .map((itemEl) => this.getItemComponent(itemEl))
-                .filter((item): item is DetailViewCell => item instanceof DetailViewCell);
+                .filter((item): item is DetailViewCell => item instanceof DetailViewCell && !item.element?.classList.contains("hidden"));
             return {
                 element: rowEl,
                 columns,
@@ -287,4 +324,74 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             items as ContextMenuItem[],
         );
     }
+
+    /**
+     * 
+     * @param visible whether it is visible or not
+     */
+    public setNonRequiredFieldsVisibility(visible: boolean): void {
+        this.nonRequiredFieldsVisible = visible;
+        this.element?.setAttribute("data-non-required-fields-visible", String(visible));
+        const shouldShowAllFields = this.editMode || visible;
+
+        this.items.forEach((item) => {
+            if (!item.element) return;
+
+            const isRequired = item.element.dataset.isRequired === "true";
+            const hasErrors = item.element.dataset.hasErrors === "true";
+            const shouldShow = shouldShowAllFields || isRequired || hasErrors;
+            item.element.classList.toggle("hidden", !shouldShow);
+        });
+
+        this.rowElements.forEach((rowElement) => {
+            const visibleItems = rowElement.querySelectorAll(`${this.getItemSelector()}:not(.hidden)`).length;
+            rowElement.classList.toggle("hidden", visibleItems === 0);
+        });
+
+        const visibleItems = this.getAllItems();
+        if (!this.currentItem || !visibleItems.includes(this.currentItem)) {
+            this.currentItem = visibleItems[0] ?? null;
+        }
+
+        this.toggleVisibilityBtn?.setAttribute("aria-pressed", String(!visible));
+        if (this.toggleVisibilityLabel) {
+            this.toggleVisibilityLabel.textContent = visible
+                ? "Show Required Only"
+                : "Show All Fields";
+        }
+    }
+
+    /**
+     * Toggles the visibility of the required fields.
+     */
+    public toggleNonRequiredFieldsVisibility(): void {
+        this.setNonRequiredFieldsVisibility(!this.nonRequiredFieldsVisible);
+    }
+
+    private syncToggleVisibility(): void {
+        this.toggleVisibilityBtn?.classList.toggle("hidden", this.editMode);
+    }
+
+    /**
+     * Redirects the user to the full create view
+     * TODO: This could be implemented more elegantly
+     */
+    private openFullForm(): void {
+        const fullFormUrl = this.openFullFormBtn?.dataset.fullFormUrl;
+        const form = this.element?.closest("form");
+        if (!fullFormUrl || !form) return;
+
+        const url = new URL(fullFormUrl, window.location.origin);
+        const formData = new FormData(form);
+
+        formData.forEach((value, key) => {
+            if (key === "csrfmiddlewaretoken") return;
+            if (value instanceof File) return;
+            if (value === "") return;
+            url.searchParams.append(key, value);
+        });
+
+        window.location.assign(url.toString());
+    }
+
 }

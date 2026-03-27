@@ -82,6 +82,12 @@
 
     --color-base: #f4f2f0;
     --color-light: #686765;
+
+    /*
+    * Dark
+    */
+    --color-dark: #5d5e5e
+
 }
 
 /*
@@ -189,7 +195,7 @@
     }
 
     .btn-dark {
-        @apply bg-gray-800 text-white border-gray-800 ring-gray-600;
+        @apply bg-dark text-white border-gray-800 ring-gray-600;
     }
 
     .btn-dark:hover:not(:disabled) {

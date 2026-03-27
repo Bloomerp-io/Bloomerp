@@ -44,6 +44,21 @@ class BloomerpCreateView(
     module = None
     model = None
 
+    def get_form_hx_target(self) -> str:
+        return "#main-content"
+
+    def get_form_hx_push_url(self) -> bool:
+        return True
+
+    def get_non_required_fields_visible_default(self) -> bool:
+        return True
+
+    def get_non_required_fields_visible_attr(self) -> str:
+        return "true" if self.get_non_required_fields_visible_default() else "false"
+
+    def get_full_form_url(self) -> str | None:
+        return None
+
     def dispatch(self, request, *args, **kwargs):
         self.model_content_type = ContentType.objects.get_for_model(self.model)
         self.create_access_state = get_create_access_state(content_type=self.model_content_type, user=request.user)
@@ -82,6 +97,11 @@ class BloomerpCreateView(
         context["layout"] = layout
         context["layout_available_items_url"] = f"/components/workspaces/crud_layout_available_fields/?content_type_id={self.model_content_type.pk}&layout_kind=create"
         context["layout_render_item_url"] = "/components/workspaces/crud_layout_render_field/?layout_kind=create"
+        context["form_hx_target"] = self.get_form_hx_target()
+        context["form_hx_push_url"] = self.get_form_hx_push_url()
+        context["non_required_fields_visible"] = self.get_non_required_fields_visible_default()
+        context["non_required_fields_visible_attr"] = self.get_non_required_fields_visible_attr()
+        context["full_form_url"] = self.get_full_form_url()
         return context
 
     def get_permission_required(self):

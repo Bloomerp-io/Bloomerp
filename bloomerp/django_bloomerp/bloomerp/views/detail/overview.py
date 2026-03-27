@@ -9,7 +9,7 @@ from bloomerp.services.sectioned_layout_services import resolve_detail_layout_ro
 
 @router.register(
     path="/",
-    name="Overview of {model}",
+    name="Details",
     url_name="overview",
     description="Overview of object from {model} model",
     route_type="detail",

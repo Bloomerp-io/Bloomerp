@@ -30,7 +30,7 @@ class HtmxMixin:
     base_detail_template = 'detail_views/bloomerp_base_detail_view.html'
     htmx_detail_target = 'detail-view-content'
     htmx_main_target = 'main-content'
-    htmx_skip_addendum_target = 'data-table-detail-pane'
+    htmx_include_addendum = True
     is_detail_view = False
     include_padding = True
     
@@ -74,6 +74,16 @@ class HtmxMixin:
             return self.get_object()
         except Exception:
             return None
+
+    def get_htmx_include_addendum(self) -> bool:
+        return self.htmx_include_addendum
+
+    def should_include_htmx_addendum(self) -> bool:
+        if not self.get_htmx_include_addendum():
+            return False
+
+        htmx_target = getattr(self.request.htmx, 'target', None)
+        return htmx_target != 'data-table-detail-pane'
 
     def _build_breadcrumb_items(self, context: dict) -> list[dict]:
         items: list[dict] = [
@@ -175,7 +185,7 @@ class HtmxMixin:
         else:
             htmx_target = getattr(self.request.htmx, 'target', None)
 
-            if htmx_target == self.htmx_skip_addendum_target:
+            if not self.should_include_htmx_addendum():
                 context['template_name'] = base_template_name
                 self.template_name = base_template_name
                 context["rand_int"] = random.randint(0,10000)

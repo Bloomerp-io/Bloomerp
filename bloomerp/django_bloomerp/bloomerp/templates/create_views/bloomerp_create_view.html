@@ -6,9 +6,9 @@
 {% if layout %}
 <form
     hx-post="{{ request.path }}"
-    hx-enctype="multipart/form-data"
-    hx-target="#main-content"
-    hx-push-url="true"
+    hx-encoding="multipart/form-data"
+    hx-target="{{ form_hx_target|default:'#main-content' }}"
+    hx-push-url="{{ form_hx_push_url|yesno:'true,false' }}"
 >
     {% csrf_token %}
 
@@ -16,7 +16,22 @@
         create=True
         content_type_id="{{ content_type_id }}"
         :layout="layout"
+        non_required_fields_visible="{{ non_required_fields_visible_attr }}"
     >
+        {% if full_form_url %}
+            <c-slot name="buttons_right">
+                <button
+                    type="button"
+                    class="btn btn-sm btn-secondary"
+                    data-open-full-form
+                    data-full-form-url="{{ full_form_url }}"
+                >
+                    <i class="fa fa-up-right-from-square"></i>
+                    Open Full Form
+                </button>
+            </c-slot>
+        {% endif %}
+
         {% if form.non_field_errors %}
             <div class="alert alert-danger mb-4" role="alert">
                 {{ form.non_field_errors }}

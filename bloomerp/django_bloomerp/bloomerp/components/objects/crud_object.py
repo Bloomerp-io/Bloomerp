@@ -1,53 +1,48 @@
+from django.contrib.contenttypes.models import ContentType
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.router import router
-from django.http import HttpResponse
-from django.http import HttpRequest
-from django.contrib.contenttypes.models import ContentType
-from django.forms.models import modelform_factory
-from django.shortcuts import get_object_or_404
-
-from bloomerp.forms.core import BloomerpModelForm
+from bloomerp.utils.models import get_create_view_url
 from bloomerp.utils.requests import render_blank_form
+from bloomerp.views.core.create_view import BloomerpCreateView
 
 @router.register(
     path="components/create-object/<int:content_type_id>/",
     name="components_create_object",
 )
-def create_object(request: HttpRequest, content_type_id: int) -> HttpResponse:
-    """Renders the create object form for the given content type ID.
+class CreateObjectComponentView(BloomerpCreateView):
+    htmx_include_addendum = False
 
-    Args:
-        request (HttpRequest): The request object.
-        content_type_id (int): The content type ID of the object to create.
+    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        self.content_type = get_object_or_404(ContentType, id=kwargs["content_type_id"])
+        self.model = self.content_type.model_class()
+        if self.model is None:
+            return HttpResponse("Invalid content type", status=400)
+        return super().dispatch(request, *args, **kwargs)
 
-    Returns:
-        HttpResponse: The rendered create object form.
-    """
-    content_type = get_object_or_404(ContentType, id=content_type_id)
-    model_class = content_type.model_class()
-    
-    # TODO: 1. Check permissions (user needs crud permission)
-    # 2. Render the form -> has to be scalable bcs of usage in View
-    # 3. Handle form submission (POST request)
-    # 4. Return appropriate response (success or error)
-    # 5. Make sure to include a button somewhere to go to the actual view (this is a component)
-    ModelForm = modelform_factory(
-        model_class,
-        form=BloomerpModelForm,
-        fields="__all__",
-    )
+    def get_form_hx_target(self) -> str:
+        return "#create-object-modal-body"
 
-    form = ModelForm(
-        model=model_class,
-        user=request.user,
-    )
-    
-    return render_blank_form(
-            request, 
-            form, 
-            {}, 
-            f"/components/create-object/{content_type_id}/"
-        )
+    def get_form_hx_push_url(self) -> bool:
+        return False
+
+    def get_non_required_fields_visible_default(self) -> bool:
+        return False
+
+    def get_full_form_url(self) -> str | None:
+        return reverse(get_create_view_url(self.model))
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if not self.request.htmx:
+            return response
+
+        htmx_response = HttpResponse(status=204)
+        htmx_response["HX-Refresh"] = "true"
+        return htmx_response
 
 
 @router.register(

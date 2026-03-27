@@ -1,11 +1,13 @@
 <div
     bloomerp-component="detail-view-value"
-    class="detail-layout-item group relative flex flex-col gap-1"
+    class="detail-layout-item group relative flex flex-col gap-1{% if non_required_fields_visible|default:'true'|lower != 'true' and not is_required and not errors %} hidden{% endif %}"
     data-value="{{ value|default:'' }}"
     data-label="{{ application_field.title }}"
     data-application-field-id="{{ application_field.id }}"
     data-layout-item-id="{{ application_field.id }}"
     data-colspan="{{ colspan|default:'1' }}"
+    data-is-required="{% if is_required %}true{% else %}false{% endif %}"
+    data-has-errors="{% if errors %}true{% else %}false{% endif %}"
 >
     <div class="detail-layout-item__header flex items-center justify-between gap-2">
         <label class="text-slate-700 font-medium text-sm my-2 mb-0" data-detail-label>
