@@ -504,7 +504,7 @@
 
 @layer components {
   .card {
-    @apply border border-gray-50 shadow rounded p-4
+    @apply border border-gray-50 rounded-xl border-slate-200 bg-white/95 p-3 
   }
 }
 

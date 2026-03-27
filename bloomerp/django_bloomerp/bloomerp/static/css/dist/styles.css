@@ -3573,13 +3573,16 @@
 }
 @layer components {
   .card {
-    border-radius: 0.25rem;
+    border-radius: var(--radius-xl);
     border-style: var(--tw-border-style);
     border-width: 1px;
     border-color: var(--color-gray-50);
-    padding: calc(var(--spacing) * 4);
-    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    border-color: var(--color-slate-200);
+    background-color: color-mix(in srgb, #fff 95%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 95%, transparent);
+    }
+    padding: calc(var(--spacing) * 3);
   }
 }
 @layer utilities {

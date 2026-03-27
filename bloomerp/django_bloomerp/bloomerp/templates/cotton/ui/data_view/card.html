@@ -20,7 +20,7 @@ Parameters:
 >
     {% for object in queryset %}
     <div
-        class="card bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        class="card bg-white hover:shadow-md transition-shadow cursor-pointer"
         data-detail-url="{{ object.get_absolute_url }}"
         data-object-id="{{ object.pk }}"
         data-object-string="{{ object }}"

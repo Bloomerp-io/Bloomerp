@@ -33,6 +33,7 @@ export class Modal extends BaseComponent {
     private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
     private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
     private tabKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+    private readonly triggerBoundAttribute = 'data-modal-trigger-bound';
 
     public initialize(): void {
         if (!this.element) {
@@ -64,6 +65,8 @@ export class Modal extends BaseComponent {
             return;
         }
 
+        this.captureOriginalState();
+
         // Setup event listeners
         this.setupBackdropClickHandler();
         this.setupEscapeKeyHandler();
@@ -80,25 +83,40 @@ export class Modal extends BaseComponent {
         let openTriggers = document.querySelectorAll(`[${OPEN_MODAL_ATTRIBUTE}="${this.element.id}"]`);
         
         openTriggers.forEach((trigger)=>{
+            if ((trigger as HTMLElement).getAttribute(this.triggerBoundAttribute) === `${this.modalId}:open`) {
+                return;
+            }
+
             trigger.addEventListener('click', (e) =>{
                 this.open() 
-            })
+            });
+            (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:open`);
         })
 
         let closeTriggers = document.querySelectorAll(`[${CLOSE_MODAL_ATTRIBUTE}="${this.element.id}"]`);
         
         closeTriggers.forEach((trigger)=>{
+            if ((trigger as HTMLElement).getAttribute(this.triggerBoundAttribute) === `${this.modalId}:close`) {
+                return;
+            }
+
             trigger.addEventListener('click', (e) =>{
                 this.close() 
-            })
+            });
+            (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:close`);
         })
 
         let fullscreenTriggers = document.querySelectorAll(`[${TOGGLE_FULL_SCREEN_ATTRIBUTE}="${this.element.id}"]`);
         
         fullscreenTriggers.forEach((trigger)=>{
+            if ((trigger as HTMLElement).getAttribute(this.triggerBoundAttribute) === `${this.modalId}:fullscreen`) {
+                return;
+            }
+
             trigger.addEventListener('click', (e) =>{
                 this.toggleFullscreen() 
-            })
+            });
+            (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:fullscreen`);
         })
     }
 
@@ -270,28 +288,13 @@ export class Modal extends BaseComponent {
     }
 
     private enterFullscreen(container: HTMLElement, modalBody: HTMLElement): void {
+        this.captureOriginalState(container, modalBody);
+
         // Store original size and body classes in data attributes for reliable restoration
         const sizeClasses = ['max-w-sm', 'max-w-2xl', 'max-w-4xl', 'max-w-6xl'];
-        let currentSize = 'md';
+        let currentSize = container.getAttribute('data-original-size') || 'md';
 
-        // Detect current size before modifying classes
-        for (const sizeClass of sizeClasses) {
-            if (container.classList.contains(sizeClass)) {
-                if (sizeClass === 'max-w-sm') currentSize = 'sm';
-                else if (sizeClass === 'max-w-2xl') currentSize = 'md';
-                else if (sizeClass === 'max-w-4xl') currentSize = 'lg';
-                else if (sizeClass === 'max-w-6xl') currentSize = 'xl';
-                break;
-            }
-        }
-
-        // Store original size and body classes
         this.originalSize = currentSize;
-        container.setAttribute('data-original-size', currentSize);
-        
-        // Store original modal body classes for restoration
-        const bodyClasses = Array.from(modalBody.classList).join(' ');
-        container.setAttribute('data-original-body-classes', bodyClasses);
 
         // Remove all size classes from container
         sizeClasses.forEach((sizeClass) => {
@@ -307,9 +310,40 @@ export class Modal extends BaseComponent {
         this.isFullscreen = true;
     }
 
+    private captureOriginalState(
+        container: HTMLElement | null = this.containerElement,
+        modalBody: HTMLElement | null = this.modalBodyElement
+    ): void {
+        if (!container || !modalBody) return;
+
+        if (!container.getAttribute('data-original-size')) {
+            container.setAttribute('data-original-size', this.detectCurrentSize(container));
+        }
+
+        if (!container.getAttribute('data-original-body-classes')) {
+            container.setAttribute('data-original-body-classes', Array.from(modalBody.classList).join(' '));
+        }
+    }
+
+    private detectCurrentSize(container: HTMLElement): string {
+        const sizeClasses = ['max-w-sm', 'max-w-2xl', 'max-w-4xl', 'max-w-6xl', 'max-w-full'];
+
+        for (const sizeClass of sizeClasses) {
+            if (container.classList.contains(sizeClass)) {
+                if (sizeClass === 'max-w-sm') return 'sm';
+                if (sizeClass === 'max-w-2xl') return 'md';
+                if (sizeClass === 'max-w-4xl') return 'lg';
+                if (sizeClass === 'max-w-6xl') return 'xl';
+                if (sizeClass === 'max-w-full') return 'full';
+            }
+        }
+
+        return 'md';
+    }
+
     private exitFullscreen(container: HTMLElement, modalBody: HTMLElement): void {
         // Remove fullscreen classes from container
-        container.classList.remove('max-w-full', 'w-full', 'h-full', 'rounded-none', 'flex', 'flex-col');
+        container.classList.remove('max-w-full', 'h-full', 'rounded-none', 'flex', 'flex-col');
 
         // Get original size from data attribute (more reliable) or instance property
         const storedSize = container.getAttribute('data-original-size') || this.originalSize;
@@ -319,10 +353,17 @@ export class Modal extends BaseComponent {
             'sm': 'max-w-sm',
             'lg': 'max-w-4xl',
             'xl': 'max-w-6xl',
+            'full': 'max-w-full',
         };
 
         const sizeClass = sizeClassMap[storedSize] || 'max-w-2xl';
         container.classList.add(sizeClass);
+
+        if (storedSize === 'full') {
+            container.classList.add('h-full', 'rounded-none');
+        } else {
+            container.classList.add('w-full');
+        }
 
         // Restore original modal body classes
         const originalBodyClasses = container.getAttribute('data-original-body-classes');
@@ -366,4 +407,3 @@ export class Modal extends BaseComponent {
         }
     }
 }
-
