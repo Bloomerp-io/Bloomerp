@@ -88,7 +88,7 @@ class LookupDefinition:
     def render(self, application_field, name_override: Optional[str] = None) -> str:
         if not self.render_func:
             field_name = name_override or application_field.field
-            return f"""<input type=\"text\" class=\"input\" name=\"{field_name}\">"""
+            return f"""<input type=\"text\" class=\"input w-full\" name=\"{field_name}\">"""
 
         return self.render_func(application_field, name_override=name_override)
         
@@ -513,7 +513,10 @@ class FieldType(Enum):
         icon="fa-solid fa-clock",
         model_field_cls=models.DateTimeField,
         lookups=DATE_LOOKUPS,
-        widget_cls=forms.widgets.DateTimeInput
+        widget_cls=forms.widgets.DateTimeInput,
+        default_widget_args={
+            "type": "datetime-local"
+        }
     )
     
     TIME_FIELD = FieldTypeDefinition(
@@ -560,8 +563,9 @@ class FieldType(Enum):
         model_field_cls=models.ForeignKey,
         lookups=[
             Lookup.FOREIGN_EQUALS,
-            Lookup.FOREIGN_IN,
-            Lookup.FOREIGN_ADVANCED
+            # TODO: fix this Lookup.FOREIGN_IN,
+            Lookup.FOREIGN_ADVANCED,
+            Lookup.IS_NULL,
         ],
         form_field_cls=forms.ModelChoiceField,
         widget_cls=ForeignFieldWidget,

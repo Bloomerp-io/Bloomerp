@@ -50,10 +50,11 @@ export default class FilterContainer extends BaseComponent {
         const select = event.target as HTMLSelectElement;
         const applicationFieldId = select.value;
 
+        this.clearValueInput();
+
         if (!applicationFieldId) {
             // Clear lookup and value sections if no field selected
             this.clearLookupOperators();
-            this.clearValueInput();
             return;
         }
 
@@ -89,8 +90,12 @@ export default class FilterContainer extends BaseComponent {
      */
     public onAfterSwap(): void {
         // Check if lookup operators were just swapped in
-        if (this.getLookupOperatorInput()) {
+        const lookupInput = this.getLookupOperatorInput() as HTMLSelectElement | null;
+        if (lookupInput) {
             this.attachLookupOperatorListener();
+            if (!lookupInput.value) {
+                this.clearValueInput();
+            }
         }
 
         this.attachAdvancedLookupListener();
@@ -142,7 +147,7 @@ export default class FilterContainer extends BaseComponent {
      * Clears lookup operators section
      */
     private clearLookupOperators(): void {
-        const section = document.getElementById('lookup-operator-section');
+        const section = this.element.querySelector('#lookup-operator-section');
         if (section) {
             section.innerHTML = '';
         }
@@ -152,7 +157,7 @@ export default class FilterContainer extends BaseComponent {
      * Clears value input section
      */
     private clearValueInput(): void {
-        const section = document.getElementById('value-input-section');
+        const section = this.element.querySelector('#value-input-section');
         if (section) {
             section.innerHTML = '';
         }
@@ -347,15 +352,15 @@ export default class FilterContainer extends BaseComponent {
     }
 
     private getFieldSelectorInput(): HTMLElement | null {
-        return document.getElementById("field-selector-section")?.querySelector("select") || null;
+        return this.element.querySelector("#field-selector-section select");
     }
 
     private getLookupOperatorInput(): HTMLElement | null {
-        return document.getElementById("lookup-operator-section")?.querySelector("select") || null;
+        return this.element.querySelector("#lookup-operator-section select");
     }
 
     private getValueInputSection(): HTMLElement | null {
-        return document.getElementById("value-input-section") || null;
+        return this.element.querySelector("#value-input-section");
     }
 
     private attachAdvancedLookupListener(): void {

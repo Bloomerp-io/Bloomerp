@@ -1,3 +1,4 @@
+from django import forms
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from bloomerp.models.application_field import ApplicationField
@@ -8,6 +9,42 @@ from bloomerp.field_types import FieldType
 FILTERABLE_FIELD_TYPES = [
     field_type.value.id for field_type in FieldType if field_type.value.allow_in_model
 ]
+
+
+def _render_filter_value_widget(application_field: ApplicationField, field_path: str | None) -> str:
+    """Render the default step-3 filter input using the field's standard widget.
+
+    This keeps filter inputs aligned with normal application field rendering,
+    including choice-backed selects and date/datetime input attributes, while
+    still allowing advanced lookups to override the submitted field name.
+    """
+    field_name = field_path or application_field.field
+    widget = application_field.get_widget()
+    widget_choices = getattr(widget, "get_choices", lambda *_args, **_kwargs: [])()
+
+    input_class = (
+        "select w-full"
+        if isinstance(widget, forms.Select) or widget_choices
+        else "input w-full"
+    )
+
+    return widget.render(
+        name=field_name,
+        value=None,
+        attrs={
+            "class": input_class,
+        },
+    )
+
+
+def _render_is_null_widget(field_name: str) -> str:
+    return forms.Select(
+        choices=[
+            ("true", "True"),
+            ("false", "False"),
+        ],
+        attrs={"class": "select w-full"},
+    ).render(name=field_name, value=None)
 
 
 @router.register(
@@ -149,7 +186,13 @@ def value_input(
             )
         
         lookup = application_field.get_field_type_enum().get_lookup_by_id(lookup_value).value
-        
+
+        if lookup_value == "is_null":
+            return HttpResponse(_render_is_null_widget(field_path or application_field.field))
+
+        if lookup.render_func is None:
+            return HttpResponse(_render_filter_value_widget(application_field, field_path))
+
         return HttpResponse(lookup.render(application_field, name_override=field_path))
         
     except ApplicationField.DoesNotExist:
