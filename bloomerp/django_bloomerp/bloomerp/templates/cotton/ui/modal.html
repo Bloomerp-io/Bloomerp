@@ -18,14 +18,14 @@ Parameters:
 <!-- Modal backdrop -->
 <div 
     id="{{ id }}" 
-    class="fixed inset-0 bg-black/50 z-50 hidden items-start justify-center pt-12 p-4 transition-opacity duration-200 ease-out rounded-lg"
+    class="fixed inset-0 bg-black/50 z-50 hidden items-start justify-center pt-12 p-4 transition-opacity duration-200 ease-out rounded-xl"
     bloomerp-component="modal"
     data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
 >
     <!-- Modal container -->
     <div 
         class="
-            bg-white rounded-lg shadow-xl max-h-full overflow-hidden
+            bg-white rounded-xl shadow-xl max-h-full overflow-hidden
             {% if size == 'sm' %}
                 max-w-sm w-full
             {% elif size == 'lg' %}
@@ -57,7 +57,7 @@ Parameters:
                         bloomerp-full-screen-modal="{{ id }}"
                         class="hover:cursor-pointer"
                         title="Toggle fullscreen">
-                        <c-icons.fullscreen size="24"/>
+                        <i class="fas fa-expand text-primary-900 text-xl font-medium"></i>
                     </button>
                 </c-ui.tooltip>
 
@@ -67,7 +67,7 @@ Parameters:
                         type="button"
                         class="hover:cursor-pointer"
                         bloomerp-close-modal="{{ id }}">
-                        <c-icons.close size="24"/>
+                        <i class="fas fa-times text-primary-900 text-xl font-medium"></i> 
                     </button>
                 </c-ui.tooltip>
             </div>

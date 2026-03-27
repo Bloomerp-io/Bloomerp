@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.forms import widgets
 from django.db.models import Model
 from django.core.exceptions import ObjectDoesNotExist
+from django.urls import reverse
 
 
 class ForeignFieldWidget(widgets.Widget):
@@ -44,8 +45,28 @@ class ForeignFieldWidget(widgets.Widget):
 
         return self.model
 
+    def get_object_detail_url(self, obj) -> str:
+        if hasattr(obj, "get_absolute_url"):
+            try:
+                return obj.get_absolute_url()
+            except Exception:
+                pass
+        if hasattr(obj, "pk") and hasattr(obj, "__class__"):
+            try:
+                from bloomerp.utils.models import get_detail_view_url
+                return reverse(get_detail_view_url(obj.__class__), kwargs={"pk": obj.pk})
+            except Exception:
+                return ""
+        return ""
+
+    def value_from_datadict(self, data, files, name):
+        if self.is_m2m and hasattr(data, "getlist"):
+            return [value for value in data.getlist(name) if value not in (None, "")]
+        return super().value_from_datadict(data, files, name)
+
     def get_context(self, name, value:Model, attrs):
         context = super().get_context(name, value, attrs)
+        context["widget"]["is_m2m"] = self.is_m2m
         context["content_type_id"] = self.get_related_content_type_id() or ""
 
         # Check if an invalid entry was made
@@ -58,6 +79,7 @@ class ForeignFieldWidget(widgets.Widget):
         # Set selected value(s)
         selected_ids = []
         selected_labels = []
+        selected_urls = []
 
         if value is not None:
             if self.is_m2m:
@@ -69,41 +91,50 @@ class ForeignFieldWidget(widgets.Widget):
                     items = [value]
 
                 for item in items:
-                    if isinstance(item, Model):
+                    if isinstance(item, Model) or hasattr(item, "pk"):
                         selected_ids.append(item.pk)
                         selected_labels.append(str(item))
+                        selected_urls.append(self.get_object_detail_url(item))
                     elif related_model_class is not None:
                         # Fetch the model instance by ID
                         try:
                             instance = related_model_class.objects.get(pk=item)
                             selected_ids.append(item)
                             selected_labels.append(str(instance))
+                            selected_urls.append(self.get_object_detail_url(instance))
                         except (ObjectDoesNotExist, ValueError, TypeError):
                             selected_ids.append(item)
                             selected_labels.append(str(item))
+                            selected_urls.append("")
                     else:
                         selected_ids.append(item)
                         selected_labels.append(str(item))
+                        selected_urls.append("")
             else:
-                if isinstance(value, Model):
+                if isinstance(value, Model) or hasattr(value, "pk"):
                     selected_ids = [value.pk]
                     selected_labels = [str(value)]
+                    selected_urls = [self.get_object_detail_url(value)]
                 elif related_model_class is not None:
                     # Fetch the model instance by ID
                     try:
                         instance = related_model_class.objects.get(pk=value)
                         selected_ids = [value]
                         selected_labels = [str(instance)]
+                        selected_urls = [self.get_object_detail_url(instance)]
                     except (ObjectDoesNotExist, ValueError, TypeError):
                         selected_ids = [value]
                         selected_labels = [str(value)]
+                        selected_urls = [""]
                 else:
                     selected_ids = [value]
                     selected_labels = [str(value)]
+                    selected_urls = [""]
 
         context['selected_value'] = selected_ids[0] if selected_ids else ''
         context['selected_label'] = selected_labels[0] if selected_labels else ''
         context['selected_ids_json'] = json.dumps([str(v) for v in selected_ids])
         context['selected_labels_json'] = json.dumps([str(v) for v in selected_labels])
+        context['selected_urls_json'] = json.dumps(selected_urls)
         
         return context

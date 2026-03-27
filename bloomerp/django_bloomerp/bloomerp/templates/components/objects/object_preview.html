@@ -1,0 +1,39 @@
+{% load bloomerp %}
+
+<div class="w-[28rem] max-w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white shadow-xl">
+    <div class="border-b border-gray-100 px-4 py-3">
+        <div class="truncate text-sm font-semibold text-gray-900">{{ object }}</div>
+        <div class="text-xs uppercase tracking-[0.12em] text-gray-500">{{ object_verbose_name }}</div>
+    </div>
+
+    <div class="max-h-80 overflow-auto px-4 py-3">
+        {% if access_denied_message %}
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {{ access_denied_message }}
+            </div>
+        {% elif preview_error_message %}
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                {{ preview_error_message }}
+            </div>
+        {% else %}
+            <div class="space-y-4">
+                {% for row in layout.rows %}
+                    {% if row.items %}
+                        <div class="space-y-3">
+                            {% if row.title %}
+                                <div class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">{{ row.title }}</div>
+                            {% endif %}
+                            <div class="grid gap-3" style="grid-template-columns: repeat({{ row.columns }}, minmax(0, 1fr));">
+                                {% for item in row.items %}
+                                    {% if item.can_view %}
+                                        {% render_object_preview_value object item.application_field request.user item.can_view item.can_edit item.colspan %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>

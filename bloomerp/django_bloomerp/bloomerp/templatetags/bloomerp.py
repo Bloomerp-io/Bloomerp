@@ -397,6 +397,7 @@ def render_dataview_value(
         "url" : url,
         "application_field" : application_field,
         "split_view_enabled": split_view_enabled,
+        "value_content_type_id": application_field.related_model_id,
     }
 
 
@@ -426,6 +427,36 @@ def render_detail_view_value(
     )
     context["colspan"] = colspan
     return context
+
+
+@register.inclusion_tag('inclusion_tags/object_preview_value.html')
+def render_object_preview_value(
+        object: Model,
+        application_field: ApplicationField,
+        user: AbstractBloomerpUser,
+        can_view: bool = False,
+        can_edit: bool = False,
+        colspan: int = 1,
+        ):
+    """Renders a detail value inside an object preview without failing the whole preview."""
+    context = {
+        "application_field": application_field,
+        "colspan": colspan,
+        "preview_field_error_message": None,
+    }
+
+    try:
+        detail_context = build_detail_value_context(
+            obj=object,
+            application_field=application_field,
+            can_edit=can_edit,
+        )
+        detail_context["colspan"] = colspan
+        detail_context["preview_field_error_message"] = None
+        return detail_context
+    except Exception:
+        context["preview_field_error_message"] = "Preview is not available for this field."
+        return context
     
 
 @register.simple_tag

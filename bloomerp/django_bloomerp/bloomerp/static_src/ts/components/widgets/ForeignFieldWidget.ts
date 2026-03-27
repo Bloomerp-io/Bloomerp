@@ -3,8 +3,10 @@ import BaseComponent, { getComponent } from "../BaseComponent";
 import { Modal } from "../Modal";
 import { BaseDataViewCell } from "@/components/data_view_components/BaseDataViewCell";
 import htmx from "htmx.org";
+import { attachObjectPreviewTooltip, hideObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
 
 export default class ForeignFieldWidget extends BaseComponent {
+    private readonly maxVisibleSelections = 4;
     private input: HTMLInputElement | null = null;
     private dropdown: HTMLElement | null = null;
     private resultsList: HTMLUListElement | null = null;
@@ -23,6 +25,7 @@ export default class ForeignFieldWidget extends BaseComponent {
     private currentIndex: number = -1;
     private boundOnFocus: any = null;
     private boundOnFocusOut: any = null;
+    private previewCleanupFns: Array<() => void> = [];
 
     private createControlEl: HTMLElement | null = null;
     private advancedControlEl: HTMLElement | null = null;
@@ -84,6 +87,7 @@ export default class ForeignFieldWidget extends BaseComponent {
         if (this.boundOnFocusOut) this.element.removeEventListener('focusout', this.boundOnFocusOut);
         document.removeEventListener('click', this.outsideClickHandler);
         if (this.debounceTimer) window.clearTimeout(this.debounceTimer);
+        this.cleanupPreviewHandlers();
     }
 
     private onFocus(e: Event) {
@@ -104,15 +108,17 @@ export default class ForeignFieldWidget extends BaseComponent {
         if (!ids.length) return;
 
         const labels = this.parseDataArray(this.element.dataset.selectedLabels);
+        const urls = this.parseDataArray(this.element.dataset.selectedUrls);
         const labelFallback = (index: number) => labels[index] ?? ids[index] ?? '';
+        const urlFallback = (index: number) => urls[index] ?? '';
 
         if (this.isM2M) {
             ids.forEach((id, index) => {
                 if (!id) return;
-                this.selectObject(id, labelFallback(index));
+                this.selectObject(id, labelFallback(index), urlFallback(index));
             });
         } else {
-            this.selectObject(ids[0], labelFallback(0));
+            this.selectObject(ids[0], labelFallback(0), urlFallback(0));
         }
     }
 
@@ -169,9 +175,12 @@ export default class ForeignFieldWidget extends BaseComponent {
                     (cellComp as BaseDataViewCell).onClickOverride = (cell) => {
                         const objectId = cell.objectId;
                         const label = cell.objectString;
+                        const detailUrl = cell.element?.dataset.detailUrl || '';
                         if (objectId) {
-                            this.selectObject(String(objectId), String(label || objectId));
-                            modal.close();
+                            this.selectObject(String(objectId), String(label || objectId), detailUrl);
+                            if (!this.isM2M) {
+                                modal.close();
+                            }
                         }
                     };
                 }
@@ -237,6 +246,8 @@ export default class ForeignFieldWidget extends BaseComponent {
     private handleOutsideClick(e: MouseEvent) {
         if (!this.element.contains(e.target as Node)) {
             this.hideDropdown();
+            this.closeOverflowMenus();
+            hideObjectPreviewTooltip();
         }
     }
 
@@ -267,7 +278,7 @@ export default class ForeignFieldWidget extends BaseComponent {
         }
     }
 
-    private renderResults(objects: Array<{id:number, string_representation:string}>) {
+    private renderResults(objects: Array<{id:number, string_representation:string, detail_url?: string}>) {
         if (!this.resultsList || !this.dropdown) return;
         this.resultsList.innerHTML = '';
         if (!objects.length) {
@@ -284,6 +295,7 @@ export default class ForeignFieldWidget extends BaseComponent {
             const li = document.createElement('li');
             li.dataset.id = String(obj.id);
             li.dataset.label = obj.string_representation;
+            li.dataset.url = obj.detail_url || '';
             li.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm';
             li.textContent = obj.string_representation;
             li.tabIndex = 0;
@@ -298,46 +310,48 @@ export default class ForeignFieldWidget extends BaseComponent {
         if (!li || !li.dataset.id) return;
         const id = li.dataset.id;
         const label = li.dataset.label || li.textContent || id;
-        this.selectObject(id, label);
+        const url = li.dataset.url || '';
+        this.selectObject(id, label, url);
+        this.clearResults();
+        if (e instanceof MouseEvent && e.detail > 0) {
+            this.input?.blur();
+        }
     }
 
-    private selectObject(id: string, label: string) {
+    private selectObject(id: string, label: string, url: string = '') {
         if (!this.fieldName || !this.selectedContainer) return;
 
         if (this.isM2M) {
             // prevent duplicates
-            if (this.selectedContainer.querySelector(`[data-id="${id}"]`)) {
+            if (this.getSelectionInputs().some((input) => input.value === id)) {
                 this.input && (this.input.value = '');
                 this.hideDropdown();
                 return;
             }
-            const badge = this.createBadge(id, label);
-            this.selectedContainer.appendChild(badge);
-
-            // create hidden input for this value
             const hidden = document.createElement('input');
             hidden.type = 'hidden';
             hidden.name = this.fieldName;
             hidden.value = id;
             hidden.dataset.generated = 'true';
+            hidden.dataset.label = label;
+            hidden.dataset.url = url;
             this.element.appendChild(hidden);
             if (this.input) this.input.value = '';
         } else {
             // single value: remove previous generated hidden inputs
-            const prev = this.element.querySelectorAll(`input[type=hidden][name="${this.fieldName}"]`);
-            prev.forEach((n) => n.remove());
-            this.selectedContainer.innerHTML = '';
-            const badge = this.createBadge(id, label);
-            this.selectedContainer.appendChild(badge);
+            this.getSelectionInputs().forEach((input) => input.remove());
             const hidden = document.createElement('input');
             hidden.type = 'hidden';
             hidden.name = this.fieldName;
             hidden.value = id;
             hidden.dataset.generated = 'true';
+            hidden.dataset.label = label;
+            hidden.dataset.url = url;
             this.element.appendChild(hidden);
             if (this.input) this.input.value = label;
         }
 
+        this.renderSelectedState();
         this.hideDropdown();
     }
 
@@ -348,37 +362,177 @@ export default class ForeignFieldWidget extends BaseComponent {
      * @param label the label of the selected element
      * @returns the badge
      */
-    private createBadge(id: string, label: string): HTMLElement {
-        const span = document.createElement('span');
-        span.className = 'foreign-field-badge bg-primary text-xs text-white px-2 py-1 rounded-full cursor-pointer inline-block mr-2 ';
-        span.dataset.id = id;
-        span.setAttribute('role', 'button');
-        span.textContent = label + ' ×';
+    private createBadge(id: string, label: string, url: string = ''): HTMLElement {
+        const badge = document.createElement('span');
+        badge.className = 'foreign-field-badge inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs text-white mr-2';
+        badge.dataset.id = id;
+
+        const content = document.createElement(url ? 'a' : 'span');
+        content.className = url
+            ? 'max-w-56 truncate rounded-full px-1 hover:underline focus:outline-none focus:underline'
+            : 'max-w-56 truncate px-1';
+        content.textContent = label;
+        this.attachPreview(content, id);
+        if (url) {
+            content.setAttribute('href', url);
+        }
+        badge.appendChild(content);
+
         if (this.isDisabled) {
-            span.setAttribute('aria-disabled', 'true');
-            span.classList.add('cursor-not-allowed', 'opacity-60');
+            badge.setAttribute('aria-disabled', 'true');
+            badge.classList.add('opacity-60');
         } else {
-            span.addEventListener('click', (ev) => {
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'rounded-full px-1 leading-none hover:bg-white/20 focus:outline-none';
+            removeButton.setAttribute('aria-label', `Remove ${label}`);
+            removeButton.textContent = '×';
+            removeButton.addEventListener('click', (ev) => {
                 ev.preventDefault();
+                ev.stopPropagation();
                 this.removeSelection(id);
             });
+            badge.appendChild(removeButton);
         }
-        return span;
+        return badge;
     }
 
     private removeSelection(id: string) {
         if (this.isDisabled) return;
         if (!this.fieldName) return;
-        // remove badge
-        const badge = this.selectedContainer && this.selectedContainer.querySelector(`[data-id="${id}"]`);
-        if (badge && badge.parentElement) badge.parentElement.removeChild(badge);
         // remove hidden input(s)
-        const inputs = Array.from(this.element.querySelectorAll(`input[type=hidden][name="${this.fieldName}"]`)) as HTMLInputElement[];
+        const inputs = this.getSelectionInputs();
         for (const inp of inputs) {
             if (inp.value === id) inp.remove();
         }
         // if single select, clear visible input
         if (!this.isM2M && this.input) this.input.value = '';
+        this.renderSelectedState();
+    }
+
+    private getSelectionInputs(): HTMLInputElement[] {
+        if (!this.fieldName) return [];
+        return Array.from(
+            this.element.querySelectorAll(`input[type=hidden][name="${this.fieldName}"][data-generated="true"]`)
+        ) as HTMLInputElement[];
+    }
+
+    private getSelections(): Array<{ id: string; label: string; url: string }> {
+        return this.getSelectionInputs().map((input) => ({
+            id: input.value,
+            label: input.dataset.label || input.value,
+            url: input.dataset.url || '',
+        }));
+    }
+
+    private renderSelectedState(): void {
+        if (!this.selectedContainer) return;
+
+        this.cleanupPreviewHandlers();
+        hideObjectPreviewTooltip();
+        this.selectedContainer.innerHTML = '';
+
+        const selections = this.getSelections();
+        if (!selections.length) {
+            return;
+        }
+
+        const visibleSelections = selections.slice(0, this.maxVisibleSelections);
+        const overflowSelections = selections.slice(this.maxVisibleSelections);
+
+        for (const selection of visibleSelections) {
+            this.selectedContainer.appendChild(this.createBadge(selection.id, selection.label, selection.url));
+        }
+
+        if (overflowSelections.length) {
+            this.selectedContainer.appendChild(this.createOverflowMenu(overflowSelections));
+        }
+    }
+
+    private createOverflowMenu(selections: Array<{ id: string; label: string; url: string }>): HTMLElement {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'foreign-field-overflow relative inline-block align-top';
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'foreign-field-overflow-toggle inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50';
+        toggle.textContent = '...';
+        toggle.setAttribute('aria-label', `Show ${selections.length} more selected values`);
+        if (this.isDisabled) {
+            toggle.disabled = true;
+        }
+
+        const menu = document.createElement('div');
+        menu.className = 'foreign-field-overflow-menu hidden absolute left-0 top-full z-50 mt-2 min-w-72 rounded-xl border border-gray-200 bg-white p-2 shadow-lg';
+
+        selections.forEach((selection) => {
+            menu.appendChild(this.createOverflowItem(selection.id, selection.label, selection.url));
+        });
+
+        toggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = !menu.classList.contains('hidden');
+            this.closeOverflowMenus();
+            if (!isOpen) {
+                menu.classList.remove('hidden');
+            }
+        });
+
+        wrapper.appendChild(toggle);
+        wrapper.appendChild(menu);
+        return wrapper;
+    }
+
+    private createOverflowItem(id: string, label: string, url: string): HTMLElement {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm hover:bg-gray-50';
+
+        const labelEl = document.createElement(url ? 'a' : 'span');
+        labelEl.className = 'min-w-0 flex-1 truncate text-gray-700';
+        labelEl.textContent = label;
+        if (url) {
+            labelEl.setAttribute('href', url);
+            labelEl.classList.add('hover:underline');
+            this.attachPreview(labelEl, id);
+        }
+        row.appendChild(labelEl);
+
+        if (!this.isDisabled) {
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'shrink-0 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50';
+            deleteButton.textContent = 'Delete';
+            deleteButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.removeSelection(id);
+            });
+            row.appendChild(deleteButton);
+        }
+
+        return row;
+    }
+
+    private closeOverflowMenus(): void {
+        const menus = this.element.querySelectorAll('.foreign-field-overflow-menu');
+        menus.forEach((menu) => menu.classList.add('hidden'));
+    }
+
+    private attachPreview(element: HTMLElement, objectId: string): void {
+        if (!this.contentTypeId) return;
+        this.previewCleanupFns.push(
+            attachObjectPreviewTooltip({
+                element,
+                objectId,
+                contentTypeId: this.contentTypeId,
+            })
+        );
+    }
+
+    private cleanupPreviewHandlers(): void {
+        this.previewCleanupFns.forEach((cleanup) => cleanup());
+        this.previewCleanupFns = [];
     }
 
     private clearResults() {

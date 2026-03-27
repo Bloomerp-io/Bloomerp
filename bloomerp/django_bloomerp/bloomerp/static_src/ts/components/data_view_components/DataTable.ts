@@ -6,6 +6,7 @@ import htmx from "htmx.org";
 import showMessage from "@/utils/messages";
 import { MessageType } from "../UiMessage";
 import getGeneralModal from "@/utils/modals";
+import { attachObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
 
 export class DataTableCell extends BaseDataViewCell {
     public columnIndex: number = -1;
@@ -14,6 +15,7 @@ export class DataTableCell extends BaseDataViewCell {
     public filterable: boolean = true;
     public value: string;
     public applicationFieldId : string | null = null;
+    private previewCleanup: (() => void) | null = null;
 
     public initialize(): void {
         super.initialize();
@@ -33,6 +35,23 @@ export class DataTableCell extends BaseDataViewCell {
         this.value = this.element.getAttribute('data-value') ?? '';
 
         this.applicationFieldId = this.element.dataset.applicationFieldId;
+
+        const previewTarget = this.element.querySelector<HTMLElement>('[data-preview-object-id][data-preview-content-type-id]');
+        const previewObjectId = previewTarget?.dataset.previewObjectId;
+        const previewContentTypeId = previewTarget?.dataset.previewContentTypeId;
+        if (previewTarget && previewObjectId && previewContentTypeId) {
+            this.previewCleanup = attachObjectPreviewTooltip({
+                element: previewTarget,
+                objectId: previewObjectId,
+                contentTypeId: previewContentTypeId,
+            });
+        }
+    }
+
+    public destroy(): void {
+        this.previewCleanup?.();
+        this.previewCleanup = null;
+        super.destroy();
     }
 
 }
@@ -319,4 +338,3 @@ export class DataTable extends BaseDataViewComponent {
     }
 
 }
-

@@ -24,6 +24,8 @@
             hx-push-url="true"
             class="text-primary"
             data-no-row-click
+            data-preview-object-id="{{ value.pk }}"
+            data-preview-content-type-id="{{ value_content_type_id }}"
             >{{ value }}</a>
         {% else %}
             {{ value }}
