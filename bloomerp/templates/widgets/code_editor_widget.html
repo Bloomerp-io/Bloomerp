@@ -1,0 +1,55 @@
+<!-- code_editor_widget.html -->
+{% load static %}
+
+<!--bloomAi-->
+
+<div class="d-flex mb-2 gap-2">
+    <a
+        class="pointer"
+        data-bs-toggle="modal"
+        data-bs-target="#modal_{{ widget.name }}bloomAi"
+    >
+        <img src="{% static 'bloomerp/icons/magic-stick.svg' %}" alt="Magic" width=20 height=20>
+    </a>
+</div>
+
+
+<div id="{{ widget.editor_id }}" style="width: 100%; height: 300px;"></div>
+
+<textarea id="{{ widget.attrs.id }}" name="{{ widget.name }}" style="display: none;">{{ widget.value }}</textarea>
+<p class="text-muted">Language: {{ widget.language }}</p>
+
+
+
+{% include 'snippets/llm_modal_snippet.html' with id=widget.name|add:"bloomAi" title='Generate query' query_type="code" %}
+
+
+
+<script>
+    (function() {
+        // Make sure the scripts are loaded before running this code
+        var textarea = document.getElementById("{{ widget.attrs.id }}");
+        var editor = ace.edit("{{ widget.editor_id }}");
+        editor.session.setMode("ace/mode/{{ widget.language }}");
+        editor.setValue(textarea.value, -1);
+
+        editor.session.on('change', function(){
+            textarea.value = editor.getValue();
+        });
+
+
+        let llm_output_div = document.getElementById('llm_output_{{ widget.name }}bloomAi');
+
+        // Add event listener to the div
+        if (llm_output_div) {
+            llm_output_div.addEventListener('llm-inserted', function(e) {
+                // Set the content to the widget
+                console.log('inserted')
+                editor.setValue(llm_output_div.innerHTML, -1);
+            });
+        }
+
+    })();
+</script>
+
+
