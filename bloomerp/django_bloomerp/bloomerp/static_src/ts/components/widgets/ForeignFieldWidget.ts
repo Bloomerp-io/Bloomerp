@@ -7,6 +7,7 @@ import { attachObjectPreviewTooltip, hideObjectPreviewTooltip } from "@/utils/ob
 
 export default class ForeignFieldWidget extends BaseComponent {
     private readonly maxVisibleSelections = 4;
+    private readonly createSuccessEventName = 'bloomerp:foreign-field-object-created';
     private input: HTMLInputElement | null = null;
     private dropdown: HTMLElement | null = null;
     private resultsList: HTMLUListElement | null = null;
@@ -26,6 +27,8 @@ export default class ForeignFieldWidget extends BaseComponent {
     private boundOnFocus: any = null;
     private boundOnFocusOut: any = null;
     private previewCleanupFns: Array<() => void> = [];
+    private widgetInstanceId: string = '';
+    private createSuccessHandler: ((event: Event) => void) | null = null;
 
     private createControlEl: HTMLElement | null = null;
     private advancedControlEl: HTMLElement | null = null;
@@ -43,6 +46,7 @@ export default class ForeignFieldWidget extends BaseComponent {
         this.contentTypeId = this.element.dataset.contentTypeId || null;
         this.fieldName = this.element.dataset.fieldName || null;
         this.isDisabled = this.element.dataset.disabled === 'true';
+        this.widgetInstanceId = this.ensureWidgetInstanceId();
 
         if (!this.input || !this.resultsList || !this.selectedContainer || !this.fieldName || !this.contentTypeId) {
             return;
@@ -68,7 +72,7 @@ export default class ForeignFieldWidget extends BaseComponent {
         // Add event listeners for create and advanced controls
         if (this.createControlEl) {
             this.boundCreateClick = (e: Event) => this.handleCreateClick(e);
-            this.createControlEl.addEventListener('click', (e) => this.handleCreateClick(e));
+            this.createControlEl.addEventListener('click', this.boundCreateClick);
         }
         if (this.advancedControlEl) {
             this.boundAdvancedClick = (e: Event) => this.handleAdvancedClick(e);
@@ -88,6 +92,7 @@ export default class ForeignFieldWidget extends BaseComponent {
         document.removeEventListener('click', this.outsideClickHandler);
         if (this.debounceTimer) window.clearTimeout(this.debounceTimer);
         this.cleanupPreviewHandlers();
+        this.teardownCreateSuccessListener();
     }
 
     private onFocus(e: Event) {
@@ -139,19 +144,17 @@ export default class ForeignFieldWidget extends BaseComponent {
     // Click handlers
     private handleCreateClick(e: Event) {
         e.preventDefault();
-        // 1. Open the modal
         let modal = getComponent(document.querySelector('#create-object-modal')) as Modal;
+        if (!modal || !this.contentTypeId) return;
 
-        htmx.ajax('get', `/components/create-object/${this.contentTypeId}/`, {
+        this.setupCreateSuccessListener(modal);
+
+        htmx.ajax('get', `/components/create-object/${this.contentTypeId}/?foreign_field_widget_id=${encodeURIComponent(this.widgetInstanceId)}`, {
             target: modal.getBodyElement(),
             swap: 'innerHTML',
         }).then(() => {
             modal.open();
         });
-
-        // 2. Listen for object created event
-        
-    
     }
 
     private async handleAdvancedClick(e: Event) {
@@ -517,6 +520,41 @@ export default class ForeignFieldWidget extends BaseComponent {
     private closeOverflowMenus(): void {
         const menus = this.element.querySelectorAll('.foreign-field-overflow-menu');
         menus.forEach((menu) => menu.classList.add('hidden'));
+    }
+
+    private ensureWidgetInstanceId(): string {
+        if (this.element.dataset.widgetInstanceId) {
+            return this.element.dataset.widgetInstanceId;
+        }
+
+        const widgetId = `foreign-field-widget-${Math.random().toString(36).slice(2, 11)}`;
+        this.element.dataset.widgetInstanceId = widgetId;
+        return widgetId;
+    }
+
+    private setupCreateSuccessListener(modal: Modal): void {
+        this.teardownCreateSuccessListener();
+        this.createSuccessHandler = (event: Event) => {
+            const detail = (event as CustomEvent).detail || {};
+            if (detail.foreign_field_widget_id !== this.widgetInstanceId) return;
+            if (String(detail.content_type_id || '') !== String(this.contentTypeId || '')) return;
+            if (!detail.object_id) return;
+
+            this.selectObject(
+                String(detail.object_id),
+                String(detail.object_label || detail.object_id),
+                String(detail.object_detail_url || ''),
+            );
+            modal.close();
+            this.teardownCreateSuccessListener();
+        };
+        document.body.addEventListener(this.createSuccessEventName, this.createSuccessHandler);
+    }
+
+    private teardownCreateSuccessListener(): void {
+        if (!this.createSuccessHandler) return;
+        document.body.removeEventListener(this.createSuccessEventName, this.createSuccessHandler);
+        this.createSuccessHandler = null;
     }
 
     private attachPreview(element: HTMLElement, objectId: string): void {

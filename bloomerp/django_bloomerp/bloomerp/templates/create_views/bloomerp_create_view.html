@@ -11,6 +11,9 @@
     hx-push-url="{{ form_hx_push_url|yesno:'true,false' }}"
 >
     {% csrf_token %}
+    {% if foreign_field_widget_id %}
+        <input type="hidden" name="foreign_field_widget_id" value="{{ foreign_field_widget_id }}">
+    {% endif %}
     {% for field_name, value in hidden_initial_fields %}
         <input type="hidden" name="{{ field_name }}" value="{{ value }}">
     {% endfor %}

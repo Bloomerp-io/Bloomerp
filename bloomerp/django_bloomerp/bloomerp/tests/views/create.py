@@ -264,6 +264,36 @@ class TestCreateView(BaseBloomerpModelTestCase):
         self.assertEqual(created.first_name, "Allowed")
         self.assertEqual(created.created_by, self.normal_user)
 
+    def test_component_post_from_foreign_field_widget_returns_trigger_instead_of_refresh(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.post(
+            f'{reverse("components_create_object", kwargs={"content_type_id": self.content_type.pk})}?foreign_field_widget_id=widget-123',
+            {
+                "first_name": "Created",
+                "last_name": "From Widget",
+                "age": 30,
+                "foreign_field_widget_id": "widget-123",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn("HX-Refresh", response)
+        trigger = json.loads(response["HX-Trigger"])
+        self.assertEqual(
+            trigger["bloomerp:foreign-field-object-created"]["foreign_field_widget_id"],
+            "widget-123",
+        )
+        self.assertEqual(
+            trigger["bloomerp:foreign-field-object-created"]["content_type_id"],
+            self.content_type.pk,
+        )
+        self.assertEqual(
+            trigger["bloomerp:foreign-field-object-created"]["object_label"],
+            "Created From Widget",
+        )
+
     def test_create_layout_preference_save_persists_shape(self):
         self.grant_policy(
             user=self.normal_user,
