@@ -1,11 +1,11 @@
 from bloomerp.router import router
-from .base_detail import BloomerpBaseDetailView
+from ..detail.base_detail import BloomerpBaseDetailView
 from .list_view import BloomerpListView
 from .create_view import BloomerpCreateView
-from .detail_files import BloomerpDetailFileListView
+from ..detail.files import BloomerpDetailFileListView
 from .bulk_upload import BloomerpBulkUploadView
 from .file_list import BloomerpFileListView
-from .detail_comments import BloomerpDetailCommentsView
+from ..detail.comments import BloomerpDetailCommentsView
 from .bookmarks import BloomerpBookmarksView
 
 __all__ = [

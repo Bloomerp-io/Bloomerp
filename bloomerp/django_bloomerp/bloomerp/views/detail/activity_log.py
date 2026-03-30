@@ -1,6 +1,6 @@
 from typing import Any, Dict
 from bloomerp.router import router
-from bloomerp.views.core.base_detail import BloomerpBaseDetailView
+from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
 from bloomerp.models.activity_log import ActivityLog
 
 @router.register(

@@ -105,9 +105,6 @@ class BloomerpCreateView(
         context["hidden_initial_fields"] = self.get_hidden_initial_fields(layout=layout, form=form)
         return context
 
-    def get_permission_required(self):
-        return [f"{self.model._meta.app_label}.add_{self.model._meta.model_name}"]
-
     def get_success_message(self, cleaned_data):
         return f"{self.object} was created successfully."
 
@@ -180,4 +177,10 @@ class BloomerpCreateView(
 
         return hidden_fields
 
-    
+    def has_permission(self):
+        manager = UserPermissionManager(self.request.user)    
+
+        return manager.has_global_permission(
+            self.model, 
+            create_permission_str(self.model, "add")
+            )

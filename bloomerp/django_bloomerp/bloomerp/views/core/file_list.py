@@ -11,7 +11,7 @@ from bloomerp.router import router
 @router.register(
     path="model",
     name="Files",
-    url_name="model",
+    url_name="app",
     description="Bloomerp Files",
     route_type="model",
     models=[File],

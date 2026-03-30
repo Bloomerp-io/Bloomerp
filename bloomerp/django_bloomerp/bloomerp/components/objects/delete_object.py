@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 
 from bloomerp.router import router
-from bloomerp.views.core.delete_view import BloomerpDeleteView
+from bloomerp.views.detail.delete_view import BloomerpDeleteView
 
 
 # TODO: integrate with crud components

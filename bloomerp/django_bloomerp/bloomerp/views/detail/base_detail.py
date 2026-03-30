@@ -1,16 +1,52 @@
 from typing import Any
 from django.views.generic.detail import DetailView
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.mixins import BloomerpModelContextMixin, HtmxMixin
 from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.services.detail_view_services import resolve_tabs_with_state
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
-class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
+class BloomerpBaseDetailView(HtmxMixin, PermissionRequiredMixin, BloomerpModelContextMixin, DetailView):
     htmx_template = "bloomerp_htmx_base_view.html"
     tabs = None
     exclude_header = False
-    
+    permissions : list[str] = ["view"]
+    permission_fields : list[tuple[str, str]] = []
+
+    def has_permission(self) -> bool:
+        """
+        Overrides the permission required mixin and checks
+        whether the user has certain permissions.
+        """
+        manager = UserPermissionManager(self.request.user)
+        obj = self.get_object()
+        content_type = self.content_type
+        
+        for permission in self.permissions:
+            if not manager.has_access_to_object(
+                obj,
+                create_permission_str(obj, permission)
+                ):
+                return False
+        
+        if self.permission_fields:
+            application_fields = ApplicationField.objects.filter(
+                field__in=[entry[0] for entry in self.permission_fields],
+                content_type=content_type
+            )
+
+            for field_name, permission in self.permission_fields:
+                application_field = application_fields.filter(field=field_name).first()
+                perm_string = create_permission_str(obj, permission)
+
+                if not manager.has_field_permission(application_field, perm_string):
+                    return False
+
+        return True
+
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
         context["exclude_header"] = self.exclude_header
@@ -49,6 +85,6 @@ class BloomerpBaseDetailView(HtmxMixin, BloomerpModelContextMixin, DetailView):
                     }
                 )
         return tabs
-        
-        
+    
+    
         

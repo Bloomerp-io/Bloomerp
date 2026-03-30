@@ -747,3 +747,43 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
     # SQL Query
     # --------------------------------------
     
+
+
+
+
+    # --------------------------------------
+    # Global permissions
+    # --------------------------------------
+    def test_admin_has_global_permission(self):
+        manager = UserPermissionManager(self.admin_user)
+
+        self.assertTrue(manager.has_global_permission(self.CustomerModel, "add_customer"))
+
+    def test_normal_user_has_no_global_permission_without_legacy_or_policy_access(self):
+        manager = UserPermissionManager(self.normal_user)
+
+        self.assertFalse(manager.has_global_permission(self.CustomerModel, "add_customer"))
+
+    def test_normal_user_has_global_permission_via_legacy_django_permissions(self):
+        permission = Permission.objects.get(
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            codename="add_customer",
+        )
+        self.normal_user.user_permissions.add(permission)
+
+        manager = UserPermissionManager(self.normal_user)
+
+        self.assertTrue(manager.has_global_permission(self.CustomerModel, "add_customer"))
+
+    def test_normal_user_has_global_permission_via_policy_global_permissions(self):
+        permission = Permission.objects.get(
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            codename="add_customer",
+        )
+        self.policy.assign_user(self.normal_user)
+        self.policy.global_permissions.add(permission)
+
+        manager = UserPermissionManager(self.normal_user)
+
+        self.assertTrue(manager.has_global_permission(self.CustomerModel, "add_customer"))
+    

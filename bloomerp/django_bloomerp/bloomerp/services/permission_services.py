@@ -102,8 +102,57 @@ class UserPermissionManager:
 
         return None
     
-    def has_global_permission(self, model : models.Model, permission_str) -> bool:
-        pass
+    def has_global_permission(self, model_or_content_type : models.Model | ContentType, permission_str: str) -> bool:
+        """Return whether the user has the given model-level permission.
+
+        This checks both Django's legacy permission system and any matching
+        permissions granted through assigned Policy.global_permissions.
+
+        Args:
+            model_or_content_type: A Django model class, model instance, or
+                ContentType identifying the protected model.
+            permission_str: The full permission codename to check, such as
+                ``add_customer`` or ``view_invoice``.
+
+        Returns:
+            bool: True when the user has the requested global permission.
+
+        Raises:
+            TypeError: If ``model_or_content_type`` is not a model, model
+                class, or ContentType.
+        """
+        if not self.user:
+            return False
+
+        if getattr(self.user, "is_superuser", False):
+            return True
+
+        if isinstance(model_or_content_type, ContentType):
+            content_type = model_or_content_type
+            model_class = content_type.model_class()
+        elif isinstance(model_or_content_type, models.Model):
+            content_type = ContentType.objects.get_for_model(model_or_content_type)
+        elif isinstance(model_or_content_type, type) and issubclass(model_or_content_type, models.Model):
+            content_type = ContentType.objects.get_for_model(model_or_content_type)
+        else:
+            raise TypeError("model_or_content_type must be a Django model class, instance, or ContentType")
+
+        permission_value = str(permission_str or "").strip()
+        if not permission_value:
+            return False
+
+        if "." in permission_value and self.user.has_perm(permission_value):
+            return True
+
+        permission_codename = permission_value.split(".", 1)[-1]
+
+        if self.user.has_perm(f"{content_type.app_label}.{permission_codename}"):
+            return True
+
+        return self.policies.filter(
+            global_permissions__content_type=content_type,
+            global_permissions__codename=permission_codename,
+        ).exists()
 
     def get_row_policy_rules(self, model_or_content_type: Type[models.Model] | ContentType, permission_str: str):
         # TODO: Add method description
@@ -276,18 +325,30 @@ class UserPermissionManager:
             id__in=allowed_field_ids
         )
         
-    def has_access_to_object(self, object:models.Model, permission_str:str) -> bool:
+    def has_access_to_object(self, object:models.Model, permission_str:str, check_global:bool=True) -> bool:
         """Returns a boolean that checks whether a user has access to a particular object
 
         Args:
             object (models.Model): the django ORM object
+            permission_str (str): the permission to check
+            check_global (bool): whether to check the global permission for the object as well. Defaults to true.
 
         Returns:
             bool: whether the user has access to the object
         """
-        return self.get_queryset(object._meta.model, permission_str).filter(
-            id=object.id
-        ).exists()
+        if check_global:
+            has_global_permission = self.has_global_permission(
+                object._meta.model,
+                permission_str
+            )
+        else:
+            has_global_permission = True
+
+        has_obj_permission = self.get_queryset(object._meta.model, permission_str).filter(
+                    id=object.id
+                ).exists()
+        
+        return (has_global_permission and has_obj_permission)
     
     def get_queryset(self, model_or_content_type:Type[models.Model]|ContentType, permission_str:str) -> QuerySet[models.Model]:
         """Returns the queryset for a particular model that the user has access to

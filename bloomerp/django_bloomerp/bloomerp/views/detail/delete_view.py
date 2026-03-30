@@ -11,6 +11,8 @@ from django.urls import reverse
 from bloomerp.models.files import File
 from bloomerp.models.workspaces import SqlQuery, Tile
 from bloomerp.router import router
+from bloomerp.services.permission_services import UserPermissionManager
+from bloomerp.services.permission_services import create_permission_str
 from bloomerp.utils.models import get_delete_view_url
 from bloomerp.utils.models import get_list_view_url
 from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
@@ -30,7 +32,9 @@ User = get_user_model()
 )
 class BloomerpDeleteView(BloomerpBaseDetailView):
     template_name = "delete_views/bloomerp_delete_view.html"
-    permissions = ["delete"]
+
+    def get_delete_permission(self) -> str:
+        return create_permission_str(self.model, "delete")
 
     def get_object(self, queryset=None):
         if getattr(self, "object", None) is None:
@@ -41,6 +45,15 @@ class BloomerpDeleteView(BloomerpBaseDetailView):
         if not hasattr(self, "_delete_preview"):
             self._delete_preview = _build_delete_preview(self.get_object())
         return self._delete_preview
+
+    def has_permission(self):
+        permission_manager = UserPermissionManager(self.request.user)
+        permission_str = self.get_delete_permission()
+
+        return (
+            permission_manager.has_global_permission(self.model, permission_str)
+            and permission_manager.has_access_to_object(self.get_object(), permission_str)
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

@@ -1,7 +1,6 @@
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
-from bloomerp.views.core.base_detail import BloomerpBaseDetailView
+from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
 from bloomerp.router import router
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from typing import Any
 from bloomerp.services.detail_view_services import get_default_layout
@@ -15,12 +14,10 @@ from bloomerp.services.sectioned_layout_services import resolve_detail_layout_ro
     route_type="detail",
     models = "__all__",
 )
-class BloomerpDetailOverviewView(PermissionRequiredMixin, BloomerpBaseDetailView):
+class BloomerpDetailOverviewView(BloomerpBaseDetailView):
     template_name = "detail_views/bloomerp_detail_overview_view.html"
     settings = None
 
-    def get_permission_required(self):
-        return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
 
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)
