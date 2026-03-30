@@ -76,3 +76,53 @@ class TestPolicySerializer(BaseBloomerpModelTestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("row_policy", serializer.errors)
         self.assertIn("field_policy", serializer.errors)
+
+    def test_serializer_updates_existing_policy_in_place(self):
+        create_payload = self.build_payload(
+            global_permissions=["view_customer", "change_customer"],
+            row_permissions=["view_customer"],
+            field_permissions=["change_customer"],
+        )
+        create_serializer = PolicySerializer(data=create_payload)
+        self.assertTrue(create_serializer.is_valid(), create_serializer.errors)
+        policy = create_serializer.save()
+
+        original_row_policy_id = policy.row_policy_id
+        original_field_policy_id = policy.field_policy_id
+
+        updated_payload = self.build_payload(
+            global_permissions=["change_customer"],
+            row_permissions=["change_customer"],
+            field_permissions=["change_customer"],
+        )
+        updated_payload["name"] = "Updated customer policy"
+        updated_payload["description"] = "Updated serializer test"
+        updated_payload["row_policy"]["name"] = "Updated row policy"
+        updated_payload["field_policy"]["name"] = "Updated field policy"
+        updated_payload["row_policy"]["rules"][0]["rule"]["value"] = "Bob"
+
+        update_serializer = PolicySerializer(instance=policy, data=updated_payload)
+        self.assertTrue(update_serializer.is_valid(), update_serializer.errors)
+        updated_policy = update_serializer.save()
+
+        self.assertEqual(updated_policy.pk, policy.pk)
+        self.assertEqual(updated_policy.row_policy_id, original_row_policy_id)
+        self.assertEqual(updated_policy.field_policy_id, original_field_policy_id)
+        self.assertEqual(updated_policy.name, "Updated customer policy")
+        self.assertEqual(updated_policy.description, "Updated serializer test")
+        self.assertEqual(
+            list(updated_policy.global_permissions.values_list("codename", flat=True)),
+            ["change_customer"],
+        )
+        self.assertEqual(updated_policy.row_policy.name, "Updated row policy")
+        self.assertEqual(updated_policy.field_policy.name, "Updated field policy")
+        self.assertEqual(updated_policy.row_policy.rules.count(), 1)
+        self.assertEqual(updated_policy.row_policy.rules.first().rule["value"], "Bob")
+        self.assertEqual(
+            list(updated_policy.row_policy.rules.first().permissions.values_list("codename", flat=True)),
+            ["change_customer"],
+        )
+        self.assertEqual(
+            updated_policy.field_policy.rule,
+            {str(self.first_name_field.pk): ["change_customer"]},
+        )
