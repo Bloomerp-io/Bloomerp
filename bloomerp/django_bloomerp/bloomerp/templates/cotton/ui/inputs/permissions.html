@@ -11,16 +11,20 @@
                 class="checkbox rounded"
                 name="{{ name }}"
                 value="{{ perm.codename }}"
+                {% if perm.codename in selected_permissions %}checked{% endif %}
                 >
             <span class="text-sm text-gray-800 font-medium">{{ perm.name }}</span>
         </label>
     {% endfor %}
-    <label class="flex items-center gap-2 cursor-pointer col-span-3">
-        <input 
-            type="checkbox" 
-            class="checkbox rounded"
-            name="{{ name }}"
-            value="__all__">
-        <span class="text-gray-800 font-medium text-sm"><c-blocktrans>All Permissions</c-blocktrans></span>
-    </label>
+    {% if permissions|length > 1 %}
+        <label class="flex items-center gap-2 cursor-pointer col-span-3">
+            <input 
+                type="checkbox" 
+                class="checkbox rounded"
+                name="{{ name }}"
+                value="__all__"
+                {% if permissions and permissions|length > 0 and selected_permissions|length == permissions|length %}checked{% endif %}>
+            <span class="text-gray-800 font-medium text-sm"><c-blocktrans>All Permissions</c-blocktrans></span>
+        </label>
+    {% endif %}
 </div>

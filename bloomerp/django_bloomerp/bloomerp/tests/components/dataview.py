@@ -1,11 +1,28 @@
 from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Permission
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.models import ApplicationField
+from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.services.user_services import get_data_view_fields
 
 class TestDataView(BaseBloomerpModelTestCase):
     def extendedSetup(self):
         return super().extendedSetup()    
+
+    def _ensure_permissions_for_model(self, model):
+        """
+        Ensures that the default permissions for a given model are created.
+        """
+        content_type = ContentType.objects.get_for_model(model)
+        for perm in model._meta.default_permissions:
+            codename = f"{perm}_{model._meta.model_name}"
+            Permission.objects.get_or_create(
+                codename=codename,
+                content_type=content_type,
+                defaults={"name": f"Can {perm} {model._meta.verbose_name}"},
+            )
         
     def test_update_field_get(self):
         """
@@ -139,9 +156,86 @@ class TestDataView(BaseBloomerpModelTestCase):
             f'hx-get="{dataview_url}?first_name=xyz"',
             html=False,
         )
+
+    def test_list_view_drops_persisted_fields_that_are_no_longer_accessible(self):
+        """
+        This test checks whether the list view correctly drops
+        persisted display fields that the user no longer has access to.
+
+        This is necessary to ensure that the UI does not
+        display fields that the user should no longer see.
+        """
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        first_name_field = ApplicationField.get_by_field(self.CustomerModel, "first_name")
+        last_name_field = ApplicationField.get_by_field(self.CustomerModel, "last_name")
+        self._ensure_permissions_for_model(self.CustomerModel)
+
+        # 1. Create the policy
+        field_policy = FieldPolicy.objects.create(
+            content_type=content_type,
+            name="Employee dataview fields",
+            rule={
+                str(first_name_field.id): ["view_customer"],
+                str(last_name_field.id): ["view_customer"],
+            },
+        )
+        row_policy = RowPolicy.objects.create(
+            content_type=content_type,
+            name="Employee dataview rows",
+        )
+        row_rule = RowPolicyRule.objects.create(
+            row_policy=row_policy,
+            rule={
+                "field": "__all__",
+                "application_field_id": "__all__",
+            },
+        )
+        row_rule.add_permission("view_customer")
+
+        policy = Policy.objects.create(
+            name="Dataview policy",
+            description="Permission-safe dataview fields",
+            row_policy=row_policy,
+            field_policy=field_policy,
+        )
+        policy.assign_user(self.normal_user)
+
+        # 2. Create the preference object including the two fields
+        preference = UserListViewPreference.objects.create(
+            user=self.normal_user,
+            content_type=content_type,
+            display_fields={
+                "table": [first_name_field.id, last_name_field.id],
+                "kanban": [],
+                "card": [],
+                "calendar": [],
+                "gant": [],
+                "pivot_table": [],
+            },
+        )
+
+        field_policy.rule = {
+            str(first_name_field.id): ["view_customer"],
+        }
+        field_policy.save(update_fields=["rule"])
+
+        self.client.force_login(self.normal_user)
+        
+        url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type.id},
+        )
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<th >First Name</th>", html=False)
+        self.assertNotContains(response, "<th >Last Name</th>", html=False)
+
+        data_view_fields = get_data_view_fields(preference, "table")
+        self.assertEqual([field.id for field in data_view_fields.visible_fields], [first_name_field.id])
+
+        preference.refresh_from_db()
+        self.assertEqual(preference.get_visible_field_ids("table"), [first_name_field.id])
         
 
     
-
-
-

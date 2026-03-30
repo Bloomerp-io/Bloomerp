@@ -125,22 +125,7 @@ export default class FilterContainer extends BaseComponent {
             return;
         }
 
-        if (lookupValue === 'foreign_advanced') {
-            const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}`;
-            htmx.ajax('get', url, {
-                target: '#value-input-section',
-                swap: 'innerHTML',
-            });
-            return;
-        }
-
-        // Load value input via HTMX AJAX
-        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}`;
-
-        htmx.ajax('get', url, {
-            target: '#value-input-section',
-            swap: 'innerHTML',
-        });
+        void this.loadValueInput(applicationFieldId, lookupValue);
     }
 
     /**
@@ -172,6 +157,26 @@ export default class FilterContainer extends BaseComponent {
 
     public removeRow(): void {
 
+    }
+
+    public async setFilter(filter: FilterEntry): Promise<void> {
+        const operatorSelect = this.getLookupOperatorInput() as HTMLSelectElement | null;
+        if (!operatorSelect || !filter.applicationFieldId || !filter.operator) {
+            return;
+        }
+
+        const matchingOption = Array.from(operatorSelect.options).find((option) => {
+            return option.value === filter.operator
+                || option.getAttribute('data-lookup-django') === filter.operator;
+        });
+
+        if (!matchingOption) {
+            return;
+        }
+
+        operatorSelect.value = matchingOption.value;
+        await this.loadValueInput(filter.applicationFieldId, matchingOption.value);
+        this.setValueInput(filter.value);
     }
 
     /**
@@ -490,6 +495,59 @@ export default class FilterContainer extends BaseComponent {
         if (pathEl) {
             pathEl.textContent = labels.filter(Boolean).join(' \u2192 ');
         }
+    }
+
+    private async loadValueInput(applicationFieldId: string, lookupValue: string): Promise<void> {
+        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}`;
+        await htmx.ajax('get', url, {
+            target: '#value-input-section',
+            swap: 'innerHTML',
+        });
+    }
+
+    private setValueInput(value: string | string[] | null): void {
+        const valueSection = this.getValueInputSection();
+        if (!valueSection || value === null) {
+            return;
+        }
+
+        const fields = Array.from(
+            valueSection.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+                'input[name], select[name], textarea[name]'
+            )
+        );
+
+        if (fields.length === 0) {
+            return;
+        }
+
+        const values = Array.isArray(value) ? value.map(String) : [String(value)];
+
+        fields.forEach((field) => {
+            if (field instanceof HTMLInputElement) {
+                if (field.type === 'checkbox' || field.type === 'radio') {
+                    field.checked = values.includes(field.value);
+                    return;
+                }
+
+                field.value = values[0] || '';
+                return;
+            }
+
+            if (field instanceof HTMLSelectElement) {
+                if (field.multiple) {
+                    Array.from(field.options).forEach((option) => {
+                        option.selected = values.includes(option.value);
+                    });
+                    return;
+                }
+
+                field.value = values[0] || '';
+                return;
+            }
+
+            field.value = values[0] || '';
+        });
     }
 
 }

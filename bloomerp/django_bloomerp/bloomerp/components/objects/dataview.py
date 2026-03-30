@@ -63,6 +63,8 @@ def _humanize_field_path(value: str) -> str:
 
 
 def _format_applied_filters(query_params) -> list[dict]:
+    # TODO: formatting function is also implemented in the frontend, we should unify this logic by moving this to the frontend
+    # we can do so by just creating a component which onload formats the applied filters or something like that
     applied = []
 
     for key in query_params.keys():

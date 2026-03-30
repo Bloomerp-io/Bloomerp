@@ -101,6 +101,98 @@ class UserPermissionManager:
                 return lookup
 
         return None
+
+    def _normalize_lookup_value(self, lookup: str, value):
+        normalized_lookup = str(lookup or "").strip().lower()
+
+        if normalized_lookup == "in" and isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+
+        if normalized_lookup == "isnull":
+            if isinstance(value, str):
+                return value.lower() in {"true", "1", "yes"}
+            return bool(value)
+
+        return value
+
+    def build_q_for_rule_dict(self, rule_dict: dict) -> Q | None:
+        if not isinstance(rule_dict, dict):
+            return None
+
+        application_field_id = rule_dict.get("application_field_id")
+        operator_id = rule_dict.get("operator")
+        value = rule_dict.get("value")
+        field_path = rule_dict.get("field")
+
+        if field_path == "__all__" or application_field_id == "__all__":
+            return Q()
+
+        if not application_field_id or not operator_id:
+            return None
+
+        application_field = ApplicationField.objects.filter(id=application_field_id).first()
+        if not application_field:
+            return None
+
+        operator_str = str(operator_id)
+        field_name = application_field.field
+        if isinstance(field_path, str) and "__" in field_path:
+            field_name = field_path
+
+        if operator_str.startswith("__"):
+            filter_key = operator_str.lstrip("_")
+            advanced_lookup = filter_key.rsplit("__", 1)[-1] if "__" in filter_key else ""
+            return Q(**{filter_key: self._normalize_lookup_value(advanced_lookup, value)})
+
+        lookup_enum = self._resolve_lookup(application_field, operator_str)
+        django_lookup = (lookup_enum.value.django_representation or "").strip() if lookup_enum else operator_str
+
+        if lookup_enum == Lookup.EQUALS_USER or str(value) == "$user":
+            return Q(**{field_name: self.user})
+
+        if lookup_enum == Lookup.NOT_EQUALS:
+            return ~Q(**{field_name: value})
+
+        filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
+        return Q(**{filter_key: self._normalize_lookup_value(django_lookup, value)})
+
+    def build_queryset_from_rule_dicts(
+        self,
+        model_or_content_type: Type[models.Model] | ContentType,
+        rule_dicts: list[dict],
+    ) -> QuerySet[models.Model]:
+        # TODO: Get this out of the permissin manager
+        if isinstance(model_or_content_type, ContentType):
+            content_type = model_or_content_type
+            model = content_type.model_class()
+        elif issubclass(model_or_content_type, models.Model):
+            model = model_or_content_type
+            content_type = ContentType.objects.get_for_model(model)
+        else:
+            raise TypeError("model_or_content_type must be a Django model class or a ContentType")
+
+        if model is None:
+            return models.QuerySet(model=None).none()
+
+        combined_q = Q()
+        has_any_rule = False
+
+        for rule_dict in rule_dicts:
+            try:
+                rule_q = self.build_q_for_rule_dict(rule_dict)
+            except Exception:
+                rule_q = None
+
+            if rule_q is None:
+                continue
+
+            combined_q |= rule_q
+            has_any_rule = True
+
+        if not has_any_rule:
+            return model.objects.none()
+
+        return model.objects.filter(combined_q).distinct()
     
     def has_global_permission(self, model_or_content_type : models.Model | ContentType, permission_str: str) -> bool:
         """Return whether the user has the given model-level permission.
@@ -385,8 +477,7 @@ class UserPermissionManager:
         if not row_policies.exists():
             return model.objects.none()
 
-        combined_q = Q()
-        has_any_rule = False
+        applicable_rule_dicts: list[dict] = []
 
         for row_policy in row_policies:
             for rule_obj in row_policy.rules.all():
@@ -399,95 +490,12 @@ class UserPermissionManager:
                     continue
 
                 rule_dict = getattr(rule_obj, "rule", None) or {}
-                if not isinstance(rule_dict, dict):
-                    continue
+                if isinstance(rule_dict, dict):
+                    applicable_rule_dicts.append(rule_dict)
 
-                application_field_id = rule_dict.get("application_field_id")
-                operator_id = rule_dict.get("operator")
-                value = rule_dict.get("value")
-                field_path = rule_dict.get("field")
+        return self.build_queryset_from_rule_dicts(content_type, applicable_rule_dicts)
 
-                if not application_field_id or not operator_id:
-                    continue
-
-                application_field = ApplicationField.objects.filter(id=application_field_id).first()
-                if not application_field:
-                    continue
-
-                operator_str = str(operator_id)
-                field_name = application_field.field
-                if isinstance(field_path, str) and "__" in field_path:
-                    field_name = field_path
-
-                # Determine field path (supports advanced foreign path filters)
-                if operator_str.startswith("__"):
-                    # Operator contains full path (e.g. "__country__name__icontains")
-                    field_name = operator_str.lstrip("_")
-                    lookup_enum = None
-                    django_lookup = ""
-                else:
-                    lookup_enum = self._resolve_lookup(application_field, operator_str)
-                    django_lookup = (lookup_enum.value.django_representation or "").strip() if lookup_enum else operator_str
-
-                # Special-case: equals current user
-                if lookup_enum == Lookup.EQUALS_USER or str(value) == "$user":
-                    combined_q |= Q(**{field_name: self.user})
-                    has_any_rule = True
-                    continue
-
-                if lookup_enum == Lookup.NOT_EQUALS:
-                    try:
-                        combined_q |= ~Q(**{field_name: value})
-                        has_any_rule = True
-                    except Exception:
-                        continue
-                    continue
-
-                if not lookup_enum and operator_str.startswith("__"):
-                    # operator contains full field path with lookup already
-                    filter_key = field_name
-                    try:
-                        combined_q |= Q(**{filter_key: value})
-                        has_any_rule = True
-                    except Exception:
-                        continue
-                    continue
-
-                if not lookup_enum and django_lookup == operator_str and "__" in field_name:
-                    # Advanced field path with operator already normalized
-                    filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
-                    try:
-                        combined_q |= Q(**{filter_key: value})
-                        has_any_rule = True
-                    except Exception:
-                        continue
-                    continue
-
-                if not lookup_enum and not django_lookup:
-                    continue
-
-                # Basic normalization for common lookups
-                if lookup_enum == Lookup.IN and isinstance(value, str):
-                    # Allow comma-separated lists
-                    value = [v.strip() for v in value.split(",") if v.strip()]
-
-                filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
-
-                try:
-                    combined_q |= Q(**{filter_key: value})
-                    has_any_rule = True
-                except Exception:
-                    # Defensive: ignore malformed rules
-                    continue
-
-        if not has_any_rule:
-            return model.objects.none()
-
-        return model.objects.filter(combined_q).distinct()
-
-    def _candidate_matches_rule(self, candidate: models.Model, rule_obj) -> bool:
-        # TODO: Add method description
-        rule_dict = getattr(rule_obj, "rule", None) or {}
+    def candidate_matches_rule_dict(self, candidate: models.Model, rule_dict: dict) -> bool:
         if not isinstance(rule_dict, dict):
             return False
 
@@ -495,6 +503,9 @@ class UserPermissionManager:
         operator_id = rule_dict.get("operator")
         expected_value = rule_dict.get("value")
         explicit_field_path = rule_dict.get("field")
+
+        if explicit_field_path == "__all__" or application_field_id == "__all__":
+            return True
 
         if not application_field_id or not operator_id:
             return False
@@ -534,6 +545,11 @@ class UserPermissionManager:
             return self._matches_lookup(resolved_value, expected_value, lookup)
 
         return self._matches_lookup(resolved_value, expected_value, lookup)
+
+    def _candidate_matches_rule(self, candidate: models.Model, rule_obj) -> bool:
+        # TODO: Add method description
+        rule_dict = getattr(rule_obj, "rule", None) or {}
+        return self.candidate_matches_rule_dict(candidate, rule_dict)
 
     def _resolve_candidate_value(self, candidate: models.Model, field_path: str):
         current = candidate

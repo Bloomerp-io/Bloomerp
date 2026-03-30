@@ -24,6 +24,27 @@ class DataViewFields:
     accessible_fields: list[tuple]
 
 
+def _sanitize_visible_field_ids(
+    preference: UserListViewPreference,
+    accessible_fields_qs,
+    view_type: str,
+) -> list[int]:
+    accessible_field_ids = list(accessible_fields_qs.values_list("id", flat=True))
+    accessible_field_ids_set = set(accessible_field_ids)
+
+    visible_field_ids = [
+        field_id
+        for field_id in preference.get_visible_field_ids(view_type)
+        if field_id in accessible_field_ids_set
+    ]
+
+    if visible_field_ids != preference.get_visible_field_ids(view_type):
+        preference.set_visible_field_ids(view_type, visible_field_ids)
+        preference.save(update_fields=["display_fields"])
+
+    return visible_field_ids
+
+
 def get_data_view_fields(preference: UserListViewPreference, view_type: str = None) -> DataViewFields:
     """Gets the visible and accessible fields for a user's list view preference.
     
@@ -49,8 +70,8 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
         ]
     )
     
-    # Get the visible field IDs for this view type
-    visible_field_ids = preference.get_visible_field_ids(view_type)
+    # Remove persisted fields the user can no longer access.
+    visible_field_ids = _sanitize_visible_field_ids(preference, accessible_fields_qs, view_type)
     
     # If no visible fields are set, use default fields (first 5)
     if not visible_field_ids:
@@ -60,8 +81,13 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
         preference.set_visible_field_ids(view_type, default_fields)
         preference.save(update_fields=['display_fields'])
     
-    # Get visible fields as a queryset, preserving order
-    visible_fields = preference.get_visible_fields_queryset(view_type)
+    # Get visible fields in persisted display order, limited to accessible fields.
+    accessible_fields_by_id = {field.id: field for field in accessible_fields_qs}
+    visible_fields = [
+        accessible_fields_by_id[field_id]
+        for field_id in visible_field_ids
+        if field_id in accessible_fields_by_id
+    ]
     
     # Build accessible fields list with visibility flag
     visible_field_ids_set = set(visible_field_ids)
@@ -71,7 +97,7 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
     ]
     
     return DataViewFields(
-        visible_fields=list(visible_fields),
+        visible_fields=visible_fields,
         accessible_fields=accessible_fields
     )
 
@@ -126,11 +152,19 @@ def toggle_field_visibility(
     """
     preference = get_user_list_view_preference(user, content_type)
     view_type = view_type or preference.view_type
+
+    manager = UserPermissionManager(user)
+    permission_str = create_permission_str(content_type.model_class(), "view")
+    accessible_field_ids = set(
+        manager.get_accessible_fields(content_type, permission_str).values_list("id", flat=True)
+    )
+
+    if field_id not in accessible_field_ids:
+        return False, preference
     
     # Verify the field exists and is accessible
     is_visible = preference.toggle_field(view_type, field_id)
     preference.save(update_fields=['display_fields'])
     
     return is_visible, preference
-
 

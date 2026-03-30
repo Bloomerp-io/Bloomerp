@@ -172,6 +172,9 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
         Returns:
             bool: whether the rule is valid or not
         """
+        if self.rule.get("field") == "__all__" or self.rule.get("application_field_id") == "__all__":
+            return
+
         application_field_id = self.rule.get("application_field_id")
         if not application_field_id:
             raise ValidationError("Missing application field id in rule")

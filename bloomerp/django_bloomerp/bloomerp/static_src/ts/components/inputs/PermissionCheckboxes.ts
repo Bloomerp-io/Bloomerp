@@ -76,6 +76,21 @@ export default class PermissionCheckboxes extends BaseComponent {
     }
 
     /**
+     * Sets the selected values of the permission checkboxes.
+     */
+    public setValues(values: string[]): void {
+        const selected = new Set(values);
+        this.individualCheckboxes.forEach((checkbox) => {
+            checkbox.checked = selected.has(checkbox.value);
+        });
+
+        if (this.allCheckbox) {
+            this.allCheckbox.checked = this.individualCheckboxes.length > 0
+                && this.individualCheckboxes.every((checkbox) => checkbox.checked);
+        }
+    }
+
+    /**
      * Sets the onchange callback function
      */
     public setOnChange(callback: () => void): void {

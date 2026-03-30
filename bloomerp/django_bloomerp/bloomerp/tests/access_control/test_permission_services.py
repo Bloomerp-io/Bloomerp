@@ -627,6 +627,41 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             )
         )
 
+    def test_user_can_view_all_objects_with_all_row_policy(self):
+        """
+        This test checks whether a user can view all object if the row policy has an all rule.
+        The all rule is still bounded by the permissions assigned to the rule.
+        """
+        perm = "view_customer"
+
+        # 1. Create a row policy rule
+        rule = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule={
+                "field" : "__all__",
+            },
+        )
+        
+        # 2. Assign permissions to the rule
+        rule.add_permission(perm)
+
+        # 3. Assign the user to the policy
+        self.policy.assign_user(self.normal_user)
+
+        # 4. Construct the user manager
+        manager = UserPermissionManager(self.normal_user)
+
+        # 5. Check if the user has access to all objects
+        qs = manager.get_queryset(self.CustomerModel, perm)
+        self.assertEqual(qs.count(), self.CustomerModel.objects.count())
+
+        # 6. Check if the user has no other access
+        for perm in self.CustomerModel._meta.default_permissions:
+            if perm == "view": continue
+            qs = manager.get_queryset(self.CustomerModel, f"{perm}_customer")
+            self.assertEqual(qs.count(), 0)
+        
+
     # --------------------------------------
     # API tests using RequestFactory
     # --------------------------------------
