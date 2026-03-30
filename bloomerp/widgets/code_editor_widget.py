@@ -2,7 +2,7 @@ import json
 from django import forms
 
 class AceEditorWidget(forms.Textarea):
-    template_name = 'widgets/ace_editor_widget.html'
+    template_name = 'widgets/code_editor_widget.html'
 
     def __init__(self, attrs=None, language='python'):
         attrs = attrs or {}

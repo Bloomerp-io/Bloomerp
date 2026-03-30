@@ -1,4 +1,4 @@
-<!-- ace_editor_widget.html -->
+<!-- code_editor_widget.html -->
 {% load static %}
 
 <!--bloomAi-->
@@ -27,7 +27,7 @@
 
 <script>
     (function() {
-        // Make the scripts are loaded before running this code
+        // Make sure the scripts are loaded before running this code
         var textarea = document.getElementById("{{ widget.attrs.id }}");
         var editor = ace.edit("{{ widget.editor_id }}");
         editor.session.setMode("ace/mode/{{ widget.language }}");
@@ -39,13 +39,15 @@
 
 
         let llm_output_div = document.getElementById('llm_output_{{ widget.name }}bloomAi');
-        
-		// Add event listener to the div
-		llm_output_div.addEventListener('llm-inserted', function(e) {
-			// Set the content to the widget
-            console.log('inserted')
-			editor.setValue(llm_output_div.innerHTML, -1);
-		});
+
+        // Add event listener to the div
+        if (llm_output_div) {
+            llm_output_div.addEventListener('llm-inserted', function(e) {
+                // Set the content to the widget
+                console.log('inserted')
+                editor.setValue(llm_output_div.innerHTML, -1);
+            });
+        }
 
     })();
 </script>
