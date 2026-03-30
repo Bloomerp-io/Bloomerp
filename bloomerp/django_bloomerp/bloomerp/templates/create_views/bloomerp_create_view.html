@@ -11,6 +11,9 @@
     hx-push-url="{{ form_hx_push_url|yesno:'true,false' }}"
 >
     {% csrf_token %}
+    {% for field_name, value in hidden_initial_fields %}
+        <input type="hidden" name="{{ field_name }}" value="{{ value }}">
+    {% endfor %}
 
     <c-object_crud_container
         create=True

@@ -503,11 +503,17 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     
     
     # Add extra context based on view type
+    # TODO: take a look at this logic, it looks a little bit weird
     page_querystring = request.GET.copy()
     page_querystring.pop('page', None)
     search_querystring = request.GET.copy()
     search_querystring.pop('page', None)
     search_querystring.pop('q', None)
+    search_querystring.pop('calendar_page', None)
+    create_querystring = request.GET.copy()
+    create_querystring.pop('page', None)
+    create_querystring.pop('q', None)
+    create_querystring.pop('calendar_page', None)
     sync_url = request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
 
     context = {
@@ -523,6 +529,7 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'render_id': str(uuid.uuid4()),
         'search_query': query or '',
         'search_querystring': search_querystring.urlencode(),
+        'create_querystring': create_querystring.urlencode(),
         'sync_url': sync_url,
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),

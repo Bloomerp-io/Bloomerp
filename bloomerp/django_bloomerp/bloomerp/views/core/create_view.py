@@ -102,6 +102,7 @@ class BloomerpCreateView(
         context["non_required_fields_visible"] = self.get_non_required_fields_visible_default()
         context["non_required_fields_visible_attr"] = self.get_non_required_fields_visible_attr()
         context["full_form_url"] = self.get_full_form_url()
+        context["hidden_initial_fields"] = self.get_hidden_initial_fields(layout=layout, form=form)
         return context
 
     def get_permission_required(self):
@@ -158,5 +159,25 @@ class BloomerpCreateView(
         from bloomerp.services.create_view_services import get_default_layout
 
         return get_default_layout(content_type=self.model_content_type, user=self.request.user)
+
+    def get_hidden_initial_fields(self, *, layout: dict, form) -> list[tuple[str, str]]:
+        # TODO: Check that the fields are filled EVEN when the fields are not on the actual form.
+        
+        layout_field_names = {
+            item["application_field"].field
+            for row in layout.get("rows", [])
+            for item in row.get("items", [])
+            if item.get("application_field") is not None
+        }
+        hidden_fields: list[tuple[str, str]] = []
+
+        for field_name, value in self.get_initial().items():
+            if field_name not in form.fields:
+                continue
+            if field_name in layout_field_names:
+                continue
+            hidden_fields.append((field_name, value))
+
+        return hidden_fields
 
     

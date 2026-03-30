@@ -169,7 +169,7 @@
                     class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
                     hx-push-url="false"
                     bloomerp-open-modal="create-object-modal"
-                    hx-get="{% url 'components_create_object' content_type_id=content_type_id %}"
+                    hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
                     hx-target="#create-object-modal-body"
                     hx-swap="innerHTML"
                 >
@@ -340,7 +340,6 @@
 
 </div>
 {% endif %}
-
 
 
 
