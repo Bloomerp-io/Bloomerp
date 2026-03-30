@@ -21,9 +21,12 @@ class BloomerpBaseDetailView(HtmxMixin, PermissionRequiredMixin, BloomerpModelCo
         Overrides the permission required mixin and checks
         whether the user has certain permissions.
         """
+        if self.request.user.is_superuser:
+            return True
+
         manager = UserPermissionManager(self.request.user)
         obj = self.get_object()
-        content_type = self.content_type
+        content_type = ContentType.objects.get_for_model(self.model)
         
         for permission in self.permissions:
             if not manager.has_access_to_object(

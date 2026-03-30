@@ -3,15 +3,16 @@ from django.db.models import Model
 from django.views.generic.list import ListView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from bloomerp.models.files import File
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.mixins import BloomerpModelContextMixin, HtmxMixin
 from bloomerp.router import router
 
 
 @router.register(
     path="/",
-    name="{model} list",
+    name="{model} List",
     url_name="model",
-    description="List of {model} model",
+    description="List of records for {model} model",
     route_type="model",
     exclude_models=[File],
 )
@@ -23,13 +24,11 @@ class BloomerpListView(PermissionRequiredMixin, BloomerpModelContextMixin, HtmxM
     create_object_url: str = None
     permission_required = None
 
-    def get_permission_required(self):
-        if self.permission_required:
-            return self.permission_required
-        return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
-
     def has_permission(self):
-        return True
+        return UserPermissionManager(self.request.user).has_global_permission(
+            self.model,
+            create_permission_str(self.model, "view")
+        )
 
     def get_context_data(self, **kwargs: Any) -> dict:
         context = super().get_context_data(**kwargs)

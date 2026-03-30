@@ -6,6 +6,7 @@ from django.db.models.query import QuerySet
 from typing import Optional, Type
 from django.utils.translation import gettext_lazy as _
 from bloomerp.field_types import FieldType
+from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 
 class ApplicationField(models.Model):
     """
@@ -240,6 +241,12 @@ class ApplicationField(models.Model):
         related_model = self.get_related_model()
         if related_model:
             attrs['model'] = related_model
+
+        if field_type.id == "OneToManyField":
+            if related_model:
+                attrs['related_model'] = related_model
+            attrs.pop('model', None)
+            return OneToManyFieldWidget(attrs=attrs)
 
         if field_type.widget_cls:
             return field_type.get_widget_cls()(

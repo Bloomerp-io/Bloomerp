@@ -138,7 +138,7 @@ BUILDER_STEP = WizardStep(
     name="Create Tile",
     description="Create a new tile for the workspace",
 )
-class CreateTileView(HtmxMixin, WizardMixin, TemplateView):
+class CreateTileView(WizardMixin, HtmxMixin, TemplateView):
     template_name = "base_wizard.html"
     session_key = CREATE_TILE_SESSION_KEY
     htmx_include_addendum = False

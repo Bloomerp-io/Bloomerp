@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils.translation import gettext as _
+from django.core.exceptions import ObjectDoesNotExist
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.utils.models import get_detail_view_url
 from django.conf import settings
@@ -32,7 +33,11 @@ class Bookmark(models.Model):
     allow_string_search = False
 
     def __str__(self) -> str:
-        return f"Bookmark for {self.content_type} with ID {self.object_id}"
+        try:
+            content_type_label = str(self.content_type)
+        except ObjectDoesNotExist:
+            content_type_label = f"content type #{self.content_type_id}" if self.content_type_id else "unknown content type"
+        return f"Bookmark for {content_type_label} with ID {self.object_id}"
 
     def get_absolute_url(self):
         try:

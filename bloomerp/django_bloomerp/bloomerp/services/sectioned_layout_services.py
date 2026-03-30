@@ -146,6 +146,16 @@ def build_detail_value_context(
     can_edit: bool,
 ) -> dict[str, Any]:
     value = getattr(obj, application_field.field, None)
+    try:
+        model_field = application_field._get_model_field()
+    except Exception:
+        model_field = None
+
+    if value is None and model_field is not None:
+        accessor_name = getattr(model_field, "get_accessor_name", lambda: None)()
+        if accessor_name:
+            value = getattr(obj, accessor_name, None)
+
     widget = application_field.get_widget()
     attrs = get_layout_widget_attrs(widget=widget)
     if not can_edit:

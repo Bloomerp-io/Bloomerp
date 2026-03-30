@@ -83,7 +83,8 @@ class WizardMixin:
     step_query_param: str = "step"
     wizard_step_state_key: str = "__wizard_step"
     wizard_error_state_key: str = "__wizard_error"
-    
+    htmx_include_addendum = False
+
     def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
         super().setup(request, *args, **kwargs)
         self.orchestrator = self.state_orchestrator_cls(request=request, session_key=self.session_key)

@@ -273,6 +273,13 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(repaired.pk, preference.pk)
         self.assertTrue(any(row.items for row in repaired.field_layout_obj.rows))
 
+    def test_user_detail_view_handles_auto_created_one_to_many_fields(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(self.admin_user.get_absolute_url())
+
+        self.assertEqual(response.status_code, 200)
+
     def test_existing_empty_workspace_layout_is_seeded_with_dummy_items(self):
         workspace = Workspace.objects.create(
             user=self.admin_user,
