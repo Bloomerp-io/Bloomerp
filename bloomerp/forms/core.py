@@ -15,6 +15,7 @@ from bloomerp.widgets.code_editor_widget import AceEditorWidget
 from bloomerp.widgets.multiple_model_select_widget import MultipleModelSelect
 from django.forms.widgets import DateInput, DateTimeInput
 from bloomerp.forms.layouts import BloomerpModelformHelper
+from django.core.exceptions import FieldDoesNotExist
 
 # ---------------------------------
 # Bloomerp Bulk Upload Form
@@ -119,8 +120,11 @@ class BloomerpModelForm(forms.ModelForm):
         # Update the widgets for the json fields
         for field_name, field in self.fields.items():
             # Check if the field is a JSONField
-            model_field = self._meta.model._meta.get_field(field_name)
-            
+            try:
+                model_field = self._meta.model._meta.get_field(field_name)
+            except FieldDoesNotExist:
+                continue
+
             if isinstance(model_field, (JSONField, DefaultJSONField)):
                 # Apply the AceEditorWidget for JSON fields
                 self.fields[field_name].widget = AceEditorWidget(language='json')

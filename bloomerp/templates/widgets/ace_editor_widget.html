@@ -27,7 +27,12 @@
 
 <script>
     (function() {
-        // Make the scripts are loaded before running this code
+        // Ensure the base path is set so ace can load mode/theme files from the CDN
+        if (typeof ace !== 'undefined') {
+            ace.config.set('basePath', 'https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict');
+        }
+
+        // Make sure the scripts are loaded before running this code
         var textarea = document.getElementById("{{ widget.attrs.id }}");
         var editor = ace.edit("{{ widget.editor_id }}");
         editor.session.setMode("ace/mode/{{ widget.language }}");
@@ -39,13 +44,15 @@
 
 
         let llm_output_div = document.getElementById('llm_output_{{ widget.name }}bloomAi');
-        
-		// Add event listener to the div
-		llm_output_div.addEventListener('llm-inserted', function(e) {
-			// Set the content to the widget
-            console.log('inserted')
-			editor.setValue(llm_output_div.innerHTML, -1);
-		});
+
+        // Add event listener to the div
+        if (llm_output_div) {
+            llm_output_div.addEventListener('llm-inserted', function(e) {
+                // Set the content to the widget
+                console.log('inserted')
+                editor.setValue(llm_output_div.innerHTML, -1);
+            });
+        }
 
     })();
 </script>
