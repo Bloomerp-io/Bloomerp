@@ -84,6 +84,7 @@ build/
 # TypeScript/Vite build outputs
 bloomerp/django_bloomerp/bloomerp/static/bloomerp/js/dist/
 bloomerp/django_bloomerp/bloomerp/static/css/dist/
+bloomerp/django_bloomerp/bloomerp/static_src/.vite/
 *.tsbuildinfo
 
 # Keep setup.py out for now
