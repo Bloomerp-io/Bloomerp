@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 
 class CodeEditorWidget(forms.Textarea):
@@ -5,12 +7,23 @@ class CodeEditorWidget(forms.Textarea):
 
     def __init__(self, attrs=None, language='python'):
         attrs = attrs or {}
-        attrs.setdefault('hidden', 'true')  # Hide the textarea
         super().__init__(attrs)
         self.language = language
 
-    class Media:
-        js = ('https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/ace.js',)
+    def format_value(self, value):
+        if self.language != 'json':
+            return super().format_value(value)
+
+        if value is None or value == '':
+            return ''
+
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                return value
+
+        return json.dumps(value, indent=2, ensure_ascii=False)
 
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)

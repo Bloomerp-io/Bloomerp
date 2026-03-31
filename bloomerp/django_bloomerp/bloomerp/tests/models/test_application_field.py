@@ -7,6 +7,7 @@ from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.field_types import Lookup
 from bloomerp.tests.base import BaseBloomerpModelTestCase
+from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 
 
 class TestApplicationField(BaseBloomerpModelTestCase):
@@ -66,6 +67,18 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         widget = application_field.get_widget()
 
         self.assertIsNotNone(widget)
+
+    def test_json_application_field_uses_json_code_editor_widget(self):
+        content_type = ContentType.objects.get_for_model(ApplicationField)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="meta",
+        )
+
+        widget = application_field.get_widget()
+
+        self.assertIsInstance(widget, CodeEditorWidget)
+        self.assertEqual(widget.language, "json")
 
     def test_property_backed_application_field_returns_no_form_field(self):
         content_type = ContentType.objects.get_for_model(RowPolicyRule)

@@ -232,6 +232,7 @@ class ApplicationField(models.Model):
         """
         field_type = self.get_field_type_enum().value
         default_attrs = field_type.default_widget_args
+        widget_init_kwargs = field_type.widget_init_kwargs.copy()
 
         attrs = {}
         attrs.update(default_attrs)
@@ -250,7 +251,8 @@ class ApplicationField(models.Model):
 
         if field_type.widget_cls:
             return field_type.get_widget_cls()(
-                attrs=attrs
+                attrs=attrs,
+                **widget_init_kwargs,
             )
 
         try:

@@ -8,6 +8,7 @@ from bloomerp.model_fields.user_field import UserField
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django import forms
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
+from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.model_fields.icon_field import IconField
 from bloomerp.form_fields.icon_field import IconFormField
 from bloomerp.widgets.icon_picker_widget import IconPickerWidget
@@ -233,6 +234,7 @@ class FieldTypeDefinition:
     # Widget class or callable that returns a widget class
     widget_cls:Optional[Widget|Callable] = None
     default_widget_args: dict = dataclass_field(default_factory=dict)
+    widget_init_kwargs: dict = dataclass_field(default_factory=dict)
     
     
     lookups: list[Lookup] = dataclass_field(default_factory=list)
@@ -668,10 +670,13 @@ class FieldType(Enum):
         display_name="JSON Field",
         icon="fa-solid fa-code",
         model_field_cls=models.JSONField,
+        widget_cls=CodeEditorWidget,
         default_model_field_args={
             "default": dict,
         },
-        
+        widget_init_kwargs={
+            "language": "json",
+        },
     )
     
     ARRAY_FIELD = FieldTypeDefinition(
