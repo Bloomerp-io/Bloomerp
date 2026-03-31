@@ -1,11 +1,17 @@
 import renderDataView from "@/utils/dataview";
-import BaseComponent, { getComponent } from "../BaseComponent";
+import { getComponent } from "../BaseComponent";
 import { Modal } from "../Modal";
 import { BaseDataViewCell } from "@/components/data_view_components/BaseDataViewCell";
 import htmx from "htmx.org";
 import { attachObjectPreviewTooltip, hideObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
+import { BaseWidget, type BaseWidgetSerializableState } from "./BaseWidget";
 
-export default class ForeignFieldWidget extends BaseComponent {
+type ForeignFieldWidgetSerializableState = BaseWidgetSerializableState & {
+    inputValue: string;
+    selections: Array<{ id: string; label: string; url: string }>;
+};
+
+export default class ForeignFieldWidget extends BaseWidget {
     private readonly maxVisibleSelections = 4;
     private readonly createSuccessEventName = 'bloomerp:foreign-field-object-created';
     private input: HTMLInputElement | null = null;
@@ -120,10 +126,10 @@ export default class ForeignFieldWidget extends BaseComponent {
         if (this.isM2M) {
             ids.forEach((id, index) => {
                 if (!id) return;
-                this.selectObject(id, labelFallback(index), urlFallback(index));
+                this.selectObject(id, labelFallback(index), urlFallback(index), false);
             });
         } else {
-            this.selectObject(ids[0], labelFallback(0), urlFallback(0));
+            this.selectObject(ids[0], labelFallback(0), urlFallback(0), false);
         }
     }
 
@@ -321,8 +327,10 @@ export default class ForeignFieldWidget extends BaseComponent {
         }
     }
 
-    private selectObject(id: string, label: string, url: string = '') {
+    private selectObject(id: string, label: string, url: string = '', emitChange: boolean = true) {
         if (!this.fieldName || !this.selectedContainer) return;
+
+        const previousValue = this.getValue();
 
         if (this.isM2M) {
             // prevent duplicates
@@ -356,6 +364,10 @@ export default class ForeignFieldWidget extends BaseComponent {
 
         this.renderSelectedState();
         this.hideDropdown();
+
+        if (emitChange && !this.valuesEqual(previousValue, this.getValue())) {
+            this.onChange();
+        }
     }
 
 
@@ -403,6 +415,7 @@ export default class ForeignFieldWidget extends BaseComponent {
     private removeSelection(id: string) {
         if (this.isDisabled) return;
         if (!this.fieldName) return;
+        const previousValue = this.getValue();
         // remove hidden input(s)
         const inputs = this.getSelectionInputs();
         for (const inp of inputs) {
@@ -411,6 +424,10 @@ export default class ForeignFieldWidget extends BaseComponent {
         // if single select, clear visible input
         if (!this.isM2M && this.input) this.input.value = '';
         this.renderSelectedState();
+
+        if (!this.valuesEqual(previousValue, this.getValue())) {
+            this.onChange();
+        }
     }
 
     private getSelectionInputs(): HTMLInputElement[] {
@@ -573,6 +590,90 @@ export default class ForeignFieldWidget extends BaseComponent {
         this.previewCleanupFns = [];
     }
 
+    public getValue(): string | string[] {
+        const values = this.getSelectionInputs().map((input) => input.value);
+        return this.isM2M ? values : (values[0] || '');
+    }
+
+    public setValue(value: unknown, emitChange: boolean = false): void {
+        const previousValue = this.getValue();
+        const nextValues = Array.isArray(value)
+            ? value.map((item) => String(item))
+            : (typeof value === "string" && value ? [value] : []);
+        const existingSelections = this.getSelections();
+
+        this.getSelectionInputs().forEach((input) => input.remove());
+
+        if (!this.fieldName) {
+            return;
+        }
+
+        nextValues.forEach((id) => {
+            const existingSelection = existingSelections.find((selection) => selection.id === id);
+            const hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = this.fieldName;
+            hidden.value = id;
+            hidden.dataset.generated = "true";
+            hidden.dataset.label = existingSelection?.label || id;
+            hidden.dataset.url = existingSelection?.url || "";
+            this.element.appendChild(hidden);
+        });
+
+        if (this.input) {
+            this.input.value = this.isM2M ? "" : (nextValues[0] ? existingSelections.find((selection) => selection.id === nextValues[0])?.label || nextValues[0] : "");
+        }
+
+        this.renderSelectedState();
+        this.hideDropdown();
+
+        if (emitChange && !this.valuesEqual(previousValue, this.getValue())) {
+            this.onChange();
+        }
+    }
+
+    public override getSerializableState(): ForeignFieldWidgetSerializableState {
+        return {
+            value: this.getValue(),
+            inputValue: this.input?.value || "",
+            selections: this.getSelections().map((selection) => ({ ...selection })),
+        };
+    }
+
+    public override setSerializableState(state: BaseWidgetSerializableState, emitChange: boolean = false): void {
+        const previousValue = this.getValue();
+        const nextState = state as ForeignFieldWidgetSerializableState;
+        const nextSelections = Array.isArray(nextState.selections) ? nextState.selections : [];
+
+        this.getSelectionInputs().forEach((input) => input.remove());
+
+        if (!this.fieldName) {
+            return;
+        }
+
+        nextSelections.forEach((selection) => {
+            const hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = this.fieldName;
+            hidden.value = selection.id;
+            hidden.dataset.generated = "true";
+            hidden.dataset.label = selection.label;
+            hidden.dataset.url = selection.url;
+            this.element.appendChild(hidden);
+        });
+
+        if (this.input) {
+            this.input.value = nextState.inputValue || "";
+        }
+
+        this.renderSelectedState();
+        this.hideDropdown();
+
+        if (emitChange && !this.valuesEqual(previousValue, this.getValue())) {
+            this.onChange();
+        }
+    }
+
     private clearResults() {
         if (this.resultsList) this.resultsList.innerHTML = '';
         this.hideDropdown();
@@ -584,5 +685,21 @@ export default class ForeignFieldWidget extends BaseComponent {
 
     private hideDropdown() {
         if (this.dropdown) this.dropdown.classList.add('hidden');
+    }
+
+    private valuesEqual(left: string | string[], right: string | string[]): boolean {
+        if (Array.isArray(left) || Array.isArray(right)) {
+            if (!Array.isArray(left) || !Array.isArray(right)) {
+                return false;
+            }
+
+            if (left.length !== right.length) {
+                return false;
+            }
+
+            return left.every((value, index) => value === right[index]);
+        }
+
+        return left === right;
     }
 }

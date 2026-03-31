@@ -3,12 +3,21 @@ import htmx from "htmx.org";
 import { type ContextMenuItem, getContextMenu } from "../../utils/contextMenu";
 import { componentIdentifier, getComponent, initComponents } from "../BaseComponent";
 import BaseSectionedLayoutContainer, { type SectionedLayoutRowPayload } from "../layouts/BaseSectionedLayoutContainer";
-import { DetailViewCell } from "./DetailViewCell";
+import { DetailViewCell, type DetailViewCellChangeDetail, type DetailViewCellSnapshot, type DetailViewCellValue } from "./DetailViewCell";
 
 type RowInfo = {
     element: HTMLElement;
     columns: number;
     items: DetailViewCell[];
+};
+
+type PendingCellChange = {
+    cell: DetailViewCell;
+    previousValue: DetailViewCellValue;
+    value: DetailViewCellValue;
+    target: HTMLElement | null;
+    previousSnapshot: DetailViewCellSnapshot;
+    snapshot: DetailViewCellSnapshot;
 };
 
 export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContainer<DetailViewCell> {
@@ -20,6 +29,14 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
     private openFullFormBtn: HTMLButtonElement | null = null;
     private toggleVisibilityHandler: (() => void) | null = null;
     private openFullFormHandler: (() => void) | null = null;
+    private btnContainer: HTMLElement | null = null;
+    private backBtn: HTMLButtonElement | null = null;
+    private resetBtn: HTMLButtonElement | null = null;
+    private pendingChanges: PendingCellChange[] = [];
+    private detailViewCellChangeHandler: ((event: Event) => void) | null = null;
+    private backButtonHandler: (() => void) | null = null;
+    private resetButtonHandler: (() => void) | null = null;
+    private undoShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
 
     protected getItemSelector(): string {
         return `[${componentIdentifier}="detail-view-value"]`;
@@ -54,6 +71,44 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.openFullFormHandler = () => this.openFullForm();
         this.toggleVisibilityBtn?.addEventListener("click", this.toggleVisibilityHandler);
         this.openFullFormBtn?.addEventListener("click", this.openFullFormHandler);
+        this.cacheChangeActionButtons();
+        this.backButtonHandler = () => this.undoLastChange();
+        this.resetButtonHandler = () => this.resetChanges();
+        this.backBtn?.addEventListener("click", this.backButtonHandler);
+        this.resetBtn?.addEventListener("click", this.resetButtonHandler);
+        this.undoShortcutHandler = (event: KeyboardEvent) => {
+            const isUndoShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "z";
+            if (!isUndoShortcut) return;
+            if (this.pendingChanges.length === 0) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            this.undoLastChange();
+        };
+        this.element.addEventListener("keydown", this.undoShortcutHandler, true);
+        this.detailViewCellChangeHandler = (event: Event) => {
+            const customEvent = event as CustomEvent<DetailViewCellChangeDetail>;
+            const { cell, previousValue, value, target, previousSnapshot, snapshot } = customEvent.detail;
+            this.pendingChanges.push({
+                cell,
+                previousValue: this.cloneValue(previousValue),
+                value: this.cloneValue(value),
+                target,
+                previousSnapshot: this.cloneSnapshot(previousSnapshot),
+                snapshot: this.cloneSnapshot(snapshot),
+            });
+            console.log("ObjectCRUDViewContainer registered change:", {
+                cell,
+                previousValue,
+                value,
+                target,
+                previousSnapshot,
+                snapshot,
+                pendingChanges: this.pendingChanges,
+            });
+            this.syncChangeButtonsVisibility();
+        };
+        this.element.addEventListener(DetailViewCell.changeEventName, this.detailViewCellChangeHandler);
 
         this.focusInHandler = (event: FocusEvent) => {
             const target = event.target as HTMLElement | null;
@@ -68,6 +123,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         };
         this.element?.addEventListener("focusin", this.focusInHandler);
         this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
+        this.syncChangeButtonsVisibility();
 
     }
 
@@ -81,12 +137,31 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         if (this.openFullFormHandler) {
             this.openFullFormBtn?.removeEventListener("click", this.openFullFormHandler);
         }
+        if (this.detailViewCellChangeHandler && this.element) {
+            this.element.removeEventListener(DetailViewCell.changeEventName, this.detailViewCellChangeHandler);
+        }
+        if (this.backButtonHandler) {
+            this.backBtn?.removeEventListener("click", this.backButtonHandler);
+        }
+        if (this.resetButtonHandler) {
+            this.resetBtn?.removeEventListener("click", this.resetButtonHandler);
+        }
+        if (this.undoShortcutHandler && this.element) {
+            this.element.removeEventListener("keydown", this.undoShortcutHandler, true);
+        }
         this.focusInHandler = null;
         this.toggleVisibilityHandler = null;
         this.openFullFormHandler = null;
+        this.detailViewCellChangeHandler = null;
+        this.backButtonHandler = null;
+        this.resetButtonHandler = null;
+        this.undoShortcutHandler = null;
         this.toggleVisibilityBtn = null;
         this.toggleVisibilityLabel = null;
         this.openFullFormBtn = null;
+        this.btnContainer = null;
+        this.backBtn = null;
+        this.resetBtn = null;
     }
 
     public override onAfterSwap(): void {
@@ -94,6 +169,8 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             if (!item.element || item.element.hasAttribute("tabindex")) return;
             item.element.setAttribute("tabindex", "0");
         });
+        this.cacheChangeActionButtons();
+        this.syncChangeButtonsVisibility();
         this.syncToggleVisibility();
         this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
     }
@@ -208,6 +285,70 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
                 items,
             };
         });
+    }
+
+    private cacheChangeActionButtons(): void {
+        this.btnContainer = this.element.querySelector<HTMLElement>("#object-crud-container-buttons");
+        this.backBtn = this.element.querySelector<HTMLButtonElement>("#object-crud-container-back-button");
+        this.resetBtn = this.element.querySelector<HTMLButtonElement>("#object-crud-container-reset-button");
+    }
+
+    private syncChangeButtonsVisibility(): void {
+        this.btnContainer?.classList.toggle("hidden", this.pendingChanges.length === 0);
+    }
+
+    private undoLastChange(): void {
+        const lastChange = this.pendingChanges.pop();
+        if (!lastChange) return;
+
+        lastChange.cell.restoreChange(lastChange.target, lastChange.previousValue, lastChange.previousSnapshot);
+        console.log("ObjectCRUDViewContainer undo change:", {
+            cell: lastChange.cell,
+            restoredValue: lastChange.previousValue,
+            target: lastChange.target,
+            previousSnapshot: lastChange.previousSnapshot,
+            pendingChanges: this.pendingChanges,
+        });
+        this.syncChangeButtonsVisibility();
+    }
+
+    private resetChanges(): void {
+        if (this.pendingChanges.length === 0) return;
+
+        const changesToReset = [...this.pendingChanges].reverse();
+        this.pendingChanges = [];
+
+        changesToReset.forEach((change) => {
+            change.cell.restoreChange(change.target, change.previousValue, change.previousSnapshot);
+        });
+
+        console.log("ObjectCRUDViewContainer reset changes:", {
+            resetCount: changesToReset.length,
+            pendingChanges: this.pendingChanges,
+        });
+        this.syncChangeButtonsVisibility();
+    }
+
+    private cloneValue(value: DetailViewCellValue): DetailViewCellValue {
+        return Array.isArray(value) ? [...value] : value;
+    }
+
+    private cloneSnapshot(snapshot: DetailViewCellSnapshot): DetailViewCellSnapshot {
+        if (snapshot.kind === "widget") {
+            return {
+                kind: "widget",
+                state: structuredClone(snapshot.state),
+            };
+        }
+
+        return {
+            kind: "native",
+            fields: snapshot.fields.map((field) => ({
+                value: field.value,
+                checked: field.checked,
+                selectedValues: field.selectedValues ? [...field.selectedValues] : undefined,
+            })),
+        };
     }
 
     private getAllItems(): DetailViewCell[] {

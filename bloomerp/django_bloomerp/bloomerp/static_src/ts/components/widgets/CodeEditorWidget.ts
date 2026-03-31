@@ -1,7 +1,7 @@
 import ace from 'ace-builds/src-noconflict/ace';
-import BaseComponent from "../BaseComponent";
+import { BaseWidget } from './BaseWidget';
 
-export default class CodeEditorWidget extends BaseComponent {
+export default class CodeEditorWidget extends BaseWidget {
     private textarea: HTMLTextAreaElement | null = null;
     private editorContainer: HTMLElement | null = null;
     private editor: any = null;
@@ -38,9 +38,7 @@ export default class CodeEditorWidget extends BaseComponent {
         });
 
         this.boundOnEditorChange = () => {
-            if (this.textarea) {
-                this.textarea.value = this.editor.getValue();
-            }
+            this.onChange();
         };
         this.editor.session.on('change', this.boundOnEditorChange);
     }
@@ -106,6 +104,38 @@ export default class CodeEditorWidget extends BaseComponent {
             this.editor.session.setMode(`ace/mode/${language}`);
         } catch (error) {
             console.warn(`Ace editor language mode not found: ${language}`, error);
+        }
+    }
+
+    public override onChange(): void {
+        if (this.textarea) {
+            this.textarea.value = this.getValue();
+        }
+
+        super.onChange();
+    }
+
+    public getValue(): string {
+        if (this.editor) {
+            return this.editor.getValue();
+        }
+
+        return this.textarea?.value || this.textarea?.textContent || '';
+    }
+
+    public setValue(value: unknown, emitChange: boolean = false): void {
+        const normalizedValue = typeof value === "string" ? value : "";
+
+        if (this.editor) {
+            this.editor.setValue(normalizedValue, -1);
+        }
+
+        if (this.textarea) {
+            this.textarea.value = normalizedValue;
+        }
+
+        if (emitChange) {
+            this.onChange();
         }
     }
 }

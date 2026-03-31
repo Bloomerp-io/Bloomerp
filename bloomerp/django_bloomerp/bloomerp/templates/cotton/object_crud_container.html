@@ -14,8 +14,6 @@
 >
     <div class="mb-4 flex justify-between">
         <div class="flex gap-3">
-
-        
             <c-ui.tooltip title="" text="Allows you to edit the layout of the form" position="bottom">
                 <button type="button" class="btn btn-sm btn-secondary{% if create and create_blocked %} hidden{% endif %}" data-layout-edit-toggle>
                     <i class="fa fa-pen-to-square"></i>
@@ -51,11 +49,32 @@
                     </span>
                 </button>
             </c-ui.tooltip>
-
             {{ buttons_left }}
         </div>
 
         <div class="flex gap-3">
+            <div class="hidden flex gap-3" id="object-crud-container-buttons">
+                <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-back-button">
+                    <i class="fa fa-arrow-left"></i>
+                    <c-blocktrans>
+                        Back
+                    </c-blocktrans>
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-reset-button">
+                    <i class="fa fa-rotate-left"></i>
+                    <c-blocktrans>
+                        Reset
+                    </c-blocktrans>
+                </button>
+                {% if not create %}
+                <button class="btn btn-sm btn-primary" id="object-crud-container-save-button">
+                    <i class="fa fa-save"></i>
+                    <c-blocktrans>
+                        Save
+                    </c-blocktrans>
+                </button>
+                {% endif %}
+            </div>
             {{ buttons_right }}
         </div>
     </div>

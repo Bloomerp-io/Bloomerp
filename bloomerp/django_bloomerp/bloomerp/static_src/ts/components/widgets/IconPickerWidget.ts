@@ -1,6 +1,6 @@
-import BaseComponent from "../BaseComponent";
+import { BaseWidget } from "./BaseWidget";
 
-export default class IconPickerWidget extends BaseComponent {
+export default class IconPickerWidget extends BaseWidget {
     private hiddenInput: HTMLInputElement | null = null;
     private toggleButton: HTMLButtonElement | null = null;
     private dropdown: HTMLElement | null = null;
@@ -46,9 +46,9 @@ export default class IconPickerWidget extends BaseComponent {
         if (this.hiddenInput.value) {
             const selectedButton = this.iconButtons.find((btn) => btn.dataset.value === this.hiddenInput?.value);
             if (selectedButton) {
-                this.setSelection(selectedButton.dataset.value || '', selectedButton.dataset.label || '');
+                this.setSelection(selectedButton.dataset.value || '', selectedButton.dataset.label || '', false);
             } else {
-                this.setSelection(this.hiddenInput.value, this.hiddenInput.value);
+                this.setSelection(this.hiddenInput.value, this.hiddenInput.value, false);
             }
         }
     }
@@ -89,7 +89,9 @@ export default class IconPickerWidget extends BaseComponent {
         this.toggleDropdown(false);
     }
 
-    private setSelection(value: string, label: string): void {
+    private setSelection(value: string, label: string, emitChange: boolean = true): void {
+        const previousValue = this.getValue();
+
         if (this.hiddenInput) {
             this.hiddenInput.value = value;
         }
@@ -114,6 +116,10 @@ export default class IconPickerWidget extends BaseComponent {
         if (this.labelEl) {
             this.labelEl.textContent = label || 'Select icon';
         }
+
+        if (emitChange && previousValue !== this.getValue()) {
+            this.onChange();
+        }
     }
 
     private filterIcons(): void {
@@ -132,5 +138,16 @@ export default class IconPickerWidget extends BaseComponent {
         if (this.noResults) {
             this.noResults.classList.toggle('hidden', visibleCount > 0);
         }
+    }
+
+    public getValue(): string {
+        return this.hiddenInput?.value || '';
+    }
+
+    public setValue(value: unknown, emitChange: boolean = false): void {
+        const normalizedValue = typeof value === "string" ? value : "";
+        const selectedButton = this.iconButtons.find((btn) => btn.dataset.value === normalizedValue);
+        const label = selectedButton?.dataset.label || normalizedValue;
+        this.setSelection(normalizedValue, label, emitChange);
     }
 }
