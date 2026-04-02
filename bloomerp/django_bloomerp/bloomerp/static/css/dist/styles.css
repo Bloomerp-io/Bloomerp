@@ -1259,6 +1259,9 @@
   .min-w-32 {
     min-width: calc(var(--spacing) * 32);
   }
+  .min-w-48 {
+    min-width: calc(var(--spacing) * 48);
+  }
   .min-w-56 {
     min-width: calc(var(--spacing) * 56);
   }
@@ -1291,6 +1294,9 @@
   }
   .table-auto {
     table-layout: auto;
+  }
+  .table-fixed {
+    table-layout: fixed;
   }
   .border-collapse {
     border-collapse: collapse;
@@ -1482,6 +1488,12 @@
   }
   .grid-cols-12 {
     grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .grid-cols-\[8rem_minmax\(0\,1fr\)\] {
+    grid-template-columns: 8rem minmax(0,1fr);
+  }
+  .grid-cols-\[10rem_minmax\(0\,1fr\)\] {
+    grid-template-columns: 10rem minmax(0,1fr);
   }
   .grid-cols-\[148px_1fr\] {
     grid-template-columns: 148px 1fr;

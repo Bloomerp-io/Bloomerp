@@ -1,11 +1,1 @@
-{% load bloomerp %}
-{% load static %}
-{% load cotton %}
-
-<c-object_crud_container
-    create=False
-    content_type_id="{{ content_type_id }}"
-    :layout="layout"
->
-</c-object_crud_container>
-
+{% include "mixins/bloomerp_layout_form_mixin.html" %}

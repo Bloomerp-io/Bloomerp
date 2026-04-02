@@ -19,7 +19,11 @@ import uuid
 from django.template.loader import render_to_string
 from bloomerp.field_types import FieldType
 from bloomerp.modules.definition import module_registry
-from bloomerp.services.sectioned_layout_services import build_detail_value_context, dump_layout_json as dump_layout_json_service
+from bloomerp.services.sectioned_layout_services import (
+    build_crud_layout_field_context,
+    dump_layout_json as dump_layout_json_service,
+    get_object_field_value,
+)
 
 register = template.Library()
 
@@ -401,7 +405,7 @@ def render_dataview_value(
     }
 
 
-@register.inclusion_tag('inclusion_tags/detail_view_value.html')
+@register.inclusion_tag('inclusion_tags/layout_field.html')
 def render_detail_view_value(
         object: Model, 
         application_field: ApplicationField, 
@@ -420,9 +424,9 @@ def render_detail_view_value(
     Returns:
         html: the rendered html
     """
-    context = build_detail_value_context(
-        obj=object,
+    context = build_crud_layout_field_context(
         application_field=application_field,
+        value=get_object_field_value(obj=object, application_field=application_field),
         can_edit=can_edit,
     )
     context["colspan"] = colspan
@@ -446,9 +450,9 @@ def render_object_preview_value(
     }
 
     try:
-        detail_context = build_detail_value_context(
-            obj=object,
+        detail_context = build_crud_layout_field_context(
             application_field=application_field,
+            value=get_object_field_value(obj=object, application_field=application_field),
             can_edit=can_edit,
         )
         detail_context["colspan"] = colspan

@@ -346,6 +346,7 @@ export default class ForeignFieldWidget extends BaseWidget {
             hidden.dataset.generated = 'true';
             hidden.dataset.label = label;
             hidden.dataset.url = url;
+            hidden.disabled = this.isDisabled;
             this.element.appendChild(hidden);
             if (this.input) this.input.value = '';
         } else {
@@ -358,6 +359,7 @@ export default class ForeignFieldWidget extends BaseWidget {
             hidden.dataset.generated = 'true';
             hidden.dataset.label = label;
             hidden.dataset.url = url;
+            hidden.disabled = this.isDisabled;
             this.element.appendChild(hidden);
             if (this.input) this.input.value = label;
         }
@@ -617,6 +619,7 @@ export default class ForeignFieldWidget extends BaseWidget {
             hidden.dataset.generated = "true";
             hidden.dataset.label = existingSelection?.label || id;
             hidden.dataset.url = existingSelection?.url || "";
+            hidden.disabled = this.isDisabled;
             this.element.appendChild(hidden);
         });
 
@@ -659,6 +662,7 @@ export default class ForeignFieldWidget extends BaseWidget {
             hidden.dataset.generated = "true";
             hidden.dataset.label = selection.label;
             hidden.dataset.url = selection.url;
+            hidden.disabled = this.isDisabled;
             this.element.appendChild(hidden);
         });
 

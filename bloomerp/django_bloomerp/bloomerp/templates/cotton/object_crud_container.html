@@ -6,10 +6,9 @@
     data-content-type-id="{{ content_type_id }}"
     {% if not create and object %}data-object-id="{{ object.pk }}"{% endif %}
     data-layout='{{ layout|dump_layout_json }}'
-    data-layout-save-url="{% url 'components_workspaces_crud_layout_preference' %}"
+    data-layout-save-url="{{ layout_save_url }}"
     data-layout-available-items-url="{{ layout_available_items_url }}"
     data-layout-render-item-url="{{ layout_render_item_url }}"
-    data-layout-kind="{% if create %}create{% else %}detail{% endif %}"
     data-non-required-fields-visible="{{ non_required_fields_visible|default:'true'|lower }}"
 >
     <div class="mb-4 flex justify-between">
@@ -66,14 +65,12 @@
                         Reset
                     </c-blocktrans>
                 </button>
-                {% if not create %}
-                <button class="btn btn-sm btn-primary" id="object-crud-container-save-button">
+                <button type="submit" class="btn btn-sm btn-primary" id="object-crud-container-save-button">
                     <i class="fa fa-save"></i>
                     <c-blocktrans>
                         Save
                     </c-blocktrans>
                 </button>
-                {% endif %}
             </div>
             {{ buttons_right }}
         </div>
@@ -110,11 +107,7 @@
 
                     <div class="workspace-row__grid" data-layout-grid style="grid-template-columns: repeat({{ row.columns }}, minmax(0, 1fr));">
                         {% for item in row.items %}
-                            {% if create %}
-                                {% include "inclusion_tags/create_view_field.html" with application_field=item.application_field field=item.field input=item.input errors=item.errors help_text=item.help_text colspan=item.colspan is_required=item.is_required non_required_fields_visible=non_required_fields_visible only %}
-                            {% elif item.can_view %}
-                                {% render_detail_view_value object item.application_field request.user item.can_view item.can_edit item.colspan %}
-                            {% endif %}
+                            {% include "inclusion_tags/layout_field.html" with application_field=item.application_field field=item.field value=item.value input=item.input errors=item.errors help_text=item.help_text colspan=item.colspan is_required=item.is_required non_required_fields_visible=non_required_fields_visible only %}
                         {% endfor %}
                     </div>
                 </div>

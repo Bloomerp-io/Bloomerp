@@ -3,6 +3,7 @@ from typing import Any, Optional, Type
 
 from django.contrib.contenttypes.models import ContentType
 from django import forms
+from django.forms import BoundField
 from django.db.models import Model
 
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
@@ -139,12 +140,7 @@ def get_default_workspace_layout() -> FieldLayout:
     )
 
 
-def build_detail_value_context(
-    *,
-    obj: Model,
-    application_field: ApplicationField,
-    can_edit: bool,
-) -> dict[str, Any]:
+def get_object_field_value(*, obj: Model, application_field: ApplicationField) -> Any:
     value = getattr(obj, application_field.field, None)
     try:
         model_field = application_field._get_model_field()
@@ -156,20 +152,51 @@ def build_detail_value_context(
         if accessor_name:
             value = getattr(obj, accessor_name, None)
 
-    widget = application_field.get_widget()
-    attrs = get_layout_widget_attrs(widget=widget)
-    if not can_edit:
-        attrs["disabled" if isinstance(widget, forms.Select) else "readonly"] = "disabled" if isinstance(widget, forms.Select) else "readonly"
+    return value
 
-    input_html = widget.render(
-        name=application_field.field,
-        value=value,
-        attrs=attrs,
-    )
+
+def _get_readonly_layout_widget_attrs(*, widget: forms.Widget) -> dict[str, str]:
+    attrs = get_layout_widget_attrs(widget=widget)
+    # Readonly HTML inputs still submit their value on POST. Disabled widgets stay
+    # visible in the overview while being excluded from form submission.
+    attrs["disabled"] = "disabled"
+    if not isinstance(widget, forms.Select):
+        attrs["readonly"] = "readonly"
+    return attrs
+
+
+def build_crud_layout_field_context(
+    *,
+    application_field: ApplicationField,
+    bound_field: BoundField | None = None,
+    value: Any = None,
+    can_edit: bool = True,
+) -> dict[str, Any]:
+    if bound_field is not None:
+        widget = bound_field.field.widget
+        attrs = get_layout_widget_attrs(widget=widget)
+        if bound_field.errors:
+            attrs["class"] += " border-red-500"
+
+        return build_layout_field_context(
+            application_field=application_field,
+            value=bound_field.value(),
+            input=bound_field.as_widget(attrs=attrs),
+            help_text=bound_field.help_text,
+            errors=list(bound_field.errors),
+            field=bound_field,
+        )
+
+    widget = application_field.get_widget()
+    attrs = get_layout_widget_attrs(widget=widget) if can_edit else _get_readonly_layout_widget_attrs(widget=widget)
     return build_layout_field_context(
         application_field=application_field,
         value=value,
-        input=input_html,
+        input=widget.render(
+            name=application_field.field,
+            value=value,
+            attrs=attrs,
+        ),
         help_text=get_application_field_help_text(application_field),
     )
 
@@ -223,27 +250,6 @@ def resolve_detail_layout_rows(
     return rows
 
 
-def build_create_field_context(
-    *,
-    form,
-    application_field: ApplicationField,
-) -> dict[str, Any]:
-    bound_field = form[application_field.field]
-    widget = bound_field.field.widget
-    attrs = get_layout_widget_attrs(widget=widget)
-    if bound_field.errors:
-        attrs["class"] += " border-red-500"
-
-    return build_layout_field_context(
-        application_field=application_field,
-        value=bound_field.value(),
-        input=bound_field.as_widget(attrs=attrs),
-        help_text=bound_field.help_text,
-        errors=list(bound_field.errors),
-        field=bound_field,
-    )
-
-
 def resolve_create_layout_rows(
     *,
     layout: FieldLayout | dict[str, Any] | None,
@@ -277,9 +283,9 @@ def resolve_create_layout_rows(
                     "id": application_field.pk,
                     "colspan": clamp_layout_colspan(item.colspan, row.columns),
                     "application_field": application_field,
-                    **build_create_field_context(
-                        form=form,
+                    **build_crud_layout_field_context(
                         application_field=application_field,
+                        bound_field=form[application_field.field],
                     ),
                 }
             )

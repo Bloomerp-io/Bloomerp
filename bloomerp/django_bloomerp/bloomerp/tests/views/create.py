@@ -13,10 +13,10 @@ from bloomerp.models import (
     RowPolicyRule,
     UserCreateViewPreference,
 )
-from bloomerp.tests.base import BaseBloomerpModelTestCase
+from bloomerp.tests.views.crud_test_mixin import CrudViewTestMixin
 
 
-class TestCreateView(BaseBloomerpModelTestCase):
+class TestCreateView(CrudViewTestMixin):
     create_foreign_models = True
     auto_create_customers = False
 
@@ -80,18 +80,23 @@ class TestCreateView(BaseBloomerpModelTestCase):
         policy.global_permissions.add(page_permission)
         return policy
 
-    def test_get_prefills_and_uses_overview_style_layout(self):
+    def test_GET_with_query_parameters_prefills_form(self):
+        """
+        This tests whether adding
+        query parameters will prefill
+        the form
+        """
         self.client.force_login(self.admin_user)
 
         response = self.client.get(f"{self.get_url()}?first_name=XYZ")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "text/html; charset=utf-8")
-        self.assertContains(response, 'bloomerp-component="object-crud-view-container"', html=False)
-        self.assertContains(response, 'data-layout-kind="create"', html=False)
-        self.assertContains(response, 'value="XYZ"', html=False)
+        
+        self.assertTrue(self.field_has_value(response, "first_name", "XYZ"))
 
     def test_get_without_add_permission_returns_403(self):
+        """
+        This tests whether the user can access the page without
+        a global add permission
+        """
         self.client.force_login(self.normal_user)
 
         response = self.client.get(self.get_url())
@@ -310,10 +315,9 @@ class TestCreateView(BaseBloomerpModelTestCase):
         field = self.fields_by_name["first_name"]
 
         response = self.client.post(
-            "/components/workspaces/crud_layout_preference/",
+            "/components/workspaces/create_layout_preference/",
             data=json.dumps(
                 {
-                    "layout_kind": "create",
                     "content_type_id": self.content_type.pk,
                     "layout": {
                         "rows": [
@@ -373,13 +377,13 @@ class TestCreateView(BaseBloomerpModelTestCase):
         self.client.force_login(self.normal_user)
 
         response = self.client.get(
-            "/components/workspaces/crud_layout_available_fields/",
+            "/components/workspaces/create_layout_available_fields/",
             {
                 "content_type_id": self.content_type.pk,
-                "layout_kind": "create",
             },
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.fields_by_name["first_name"].title)
         self.assertNotContains(response, self.fields_by_name["country"].title)
+    

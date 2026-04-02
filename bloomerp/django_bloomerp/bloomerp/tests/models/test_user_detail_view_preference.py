@@ -114,9 +114,8 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         field = ApplicationField.objects.filter(content_type=content_type).first()
 
         response = self.client.post(
-            "/components/workspaces/crud_layout_preference/",
+            "/components/workspaces/detail_layout_preference/",
             data=json.dumps({
-                "layout_kind": "detail",
                 "content_type_id": content_type.pk,
                 "layout": {
                     "rows": [
@@ -146,7 +145,6 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         response = self.client.get(
             "/components/workspaces/crud_layout_render_field/",
             {
-                "layout_kind": "detail",
                 "content_type_id": content_type.pk,
                 "object_id": obj.pk,
                 "field_id": field.pk,
@@ -162,10 +160,9 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
 
         response = self.client.get(
-            "/components/workspaces/crud_layout_available_fields/",
+            "/components/workspaces/detail_layout_available_fields/",
             {
                 "content_type_id": content_type.pk,
-                "layout_kind": "detail",
             },
         )
 

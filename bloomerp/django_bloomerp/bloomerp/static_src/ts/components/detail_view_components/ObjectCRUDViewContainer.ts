@@ -219,10 +219,9 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.reindexItems();
     }
 
-    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; content_type_id: number | null; layout_kind: string } {
+    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; content_type_id: number | null } {
         return {
             content_type_id: Number.parseInt(this.element?.dataset.contentTypeId ?? "", 10) || null,
-            layout_kind: this.element?.dataset.layoutKind ?? "detail",
             layout: {
                 rows: this.serializeRows(),
             },

@@ -32,7 +32,7 @@ class TestObjectPreview(BaseBloomerpModelTestCase):
 
         self.client.force_login(self.admin_user)
         with patch(
-            "bloomerp.templatetags.bloomerp.build_detail_value_context",
+            "bloomerp.templatetags.bloomerp.build_crud_layout_field_context",
             side_effect=RuntimeError("broken preview field"),
         ):
             response = self.client.get(f"/components/object-preview/{content_type.pk}/{customer.pk}/")
