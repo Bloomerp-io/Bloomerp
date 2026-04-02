@@ -65,10 +65,7 @@
         </c-object_crud_container>
 
         {% if layout_is_create %}
-        <div class="flex justify-center gap-2 mt-4">
-            <button type="submit" class="btn btn-primary" {% if create_blocked %}disabled{% endif %}>Create {{ model_name }}</button>
-            <button type="reset" class="btn btn-secondary">Reset</button>
-        </div>
+        
         {% endif %}
     </form>
     {% else %}
