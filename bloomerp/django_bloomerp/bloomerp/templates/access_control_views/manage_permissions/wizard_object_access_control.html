@@ -55,70 +55,64 @@
     </div>
 
     <div class="mb-4 overflow-hidden rounded-xl border border-gray-300 bg-white">
-        <table class="w-full border-collapse">
-            <thead>
-                <tr>
-                    <th class="border-b border-r border-gray-300 p-2 w-32"></th>
-                    <th class="border-b border-gray-300 p-2" colspan="3">
-                        <input class="input" placeholder="Field Policy" id="field-policy-name-input" value="{{ field_policy_name }}">
-                    </th>
-                </tr>
-                <tr>
-                    <th class="border-r border-gray-300 p-2 w-32">
-                        <input class="input" placeholder="Row Policy" id="row-policy-name-input" value="{{ row_policy_name }}">
-                    </th>
-                    <th class="bg-white p-2">
-                        <div
-                            class="min-h-[72px] rounded-md border-1 border-dashed border-gray-300 p-2 transition-all"
-                            data-drop-zone="column"
-                            data-drop-index="0"
-                        >
-                            <div class="text-center text-xs font-medium text-gray-500">
-                                <c-blocktrans>Drop fields here</c-blocktrans>
-                            </div>
-                            <div class="mt-2 flex flex-wrap items-center justify-center gap-2" data-field-policy-preview>
-                                {% for field in field_policy_fields %}
-                                    <span class="badge badge-primary" data-field-id="{{ field.id }}" data-drop-kind="column">
-                                        <button type="button" class="badge-remove" data-remove-field aria-label="Remove field policy">
-                                            <i class="fa fa-x"></i>
-                                        </button>
-                                        <span>{{ field.title }}</span>
-                                    </span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="border-t border-r border-gray-300 bg-white p-2">
-                        <div
-                            class="min-h-[72px] rounded-md border-1 border-dashed border-gray-300 p-2 transition-all"
-                            data-drop-zone="row"
-                            data-drop-index="0"
-                        >
-                            <div class="text-center text-xs font-medium text-gray-500">
-                                <c-blocktrans>Drop fields here</c-blocktrans>
-                            </div>
-                            <div class="mt-2 flex flex-wrap items-center justify-center gap-2" data-row-policy-preview>
-                                {% for field in row_policy_fields %}
-                                    <span class="badge badge-primary" data-field-id="{{ field.id }}" data-drop-kind="row">
-                                        <button type="button" class="badge-remove" data-remove-field aria-label="Remove row policy">
-                                            <i class="fa fa-x"></i>
-                                        </button>
-                                        <span>{{ field.title }}</span>
-                                    </span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </td>
-                    <td class="border-t border-gray-300 p-2">
-                        <div id="permissions-table-preview" class="min-h-[72px] overflow-x-auto"></div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="grid grid-cols-[10rem_minmax(0,1fr)]">
+            <div class="border-b border-r border-gray-300 p-2"></div>
+            <div class="border-b border-gray-300 p-2 min-w-0">
+                <div class="flex justify-center w-full items-center">
+                    <input class="input mx-auto" placeholder="Field Policy" id="field-policy-name-input" value="{{ field_policy_name }}">
+                </div>
+            </div>
+
+            <div class="border-r border-gray-300 p-2 min-w-0">
+                <input class="input w-full min-w-0" placeholder="Row Policy" id="row-policy-name-input" value="{{ row_policy_name }}">
+            </div>
+            <div class="bg-white p-2 min-w-0">
+                <div
+                    class="min-h-[72px] w-full min-w-0 rounded-md border-1 border-dashed border-gray-300 p-2 transition-all"
+                    data-drop-zone="column"
+                    data-drop-index="0"
+                >
+                    <div class="text-center text-xs font-medium text-gray-500">
+                        <c-blocktrans>Drop fields here</c-blocktrans>
+                    </div>
+                    <div class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-start gap-2" data-field-policy-preview>
+                        {% for field in field_policy_fields %}
+                            <span class="badge badge-primary max-w-full" data-field-id="{{ field.id }}" data-drop-kind="column">
+                                <button type="button" class="badge-remove" data-remove-field aria-label="Remove field policy">
+                                    <i class="fa fa-x"></i>
+                                </button>
+                                <span class="min-w-0 truncate">{{ field.title }}</span>
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-r border-gray-300 bg-white p-2 ">
+                <div
+                    class="min-h-[72px] w-full min-w-0 rounded-md border-1 border-dashed border-gray-300 p-2 transition-all"
+                    data-drop-zone="row"
+                    data-drop-index="0"
+                >
+                    <div class="text-center text-xs font-medium text-gray-500">
+                        <c-blocktrans>Drop fields here</c-blocktrans>
+                    </div>
+                    <div class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-start gap-2" data-row-policy-preview>
+                        {% for field in row_policy_fields %}
+                            <span class="badge badge-primary max-w-full" data-field-id="{{ field.id }}" data-drop-kind="row">
+                                <button type="button" class="badge-remove" data-remove-field aria-label="Remove row policy">
+                                    <i class="fa fa-x"></i>
+                                </button>
+                                <span class="min-w-0 truncate">{{ field.title }}</span>
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-300 p-2 min-w-0">
+                <div id="permissions-table-preview" class="min-h-[72px] w-full min-w-0"></div>
+            </div>
+        </div>
     </div>
 
     <c-ui.modal id="row-policy-modal" title="Add Row Policy">

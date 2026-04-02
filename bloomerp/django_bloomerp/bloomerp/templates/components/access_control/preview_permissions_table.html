@@ -19,14 +19,14 @@
 
     {% if has_row_rules %}
         {% if page_obj.object_list %}
-            <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                <table class="table-auto table-hover table w-full border-collapse text-sm">
+            <div class="w-full min-w-0 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table class="table-auto table-hover table min-w-max border-collapse text-sm">
                     <thead class="text-left text-gray-600">
                         <tr>
-                            <th class="w-48">Object Permissions</th>
+                            <th class="w-48 min-w-48">Object Permissions</th>
                             {% if preview_columns %}
                                 {% for column in preview_columns %}
-                                    <th>{{ column.title }}</th>
+                                    <th class="whitespace-nowrap">{{ column.title }}</th>
                                 {% endfor %}
                             {% else %}
                                 <th class="px-3 py-2 font-medium">Object</th>
@@ -37,7 +37,7 @@
                         {% for row in preview_rows %}
                             <tr>
                                 <td class="px-3 py-2 align-top">
-                                    <div class="text-gray-700">
+                                    <div class="min-w-48 text-gray-700">
                                         {% for permission_label in row.row_permissions %}
                                             {{ permission_label }}{% if not forloop.last %}, {% endif %}
                                         {% empty %}
@@ -47,7 +47,7 @@
                                 </td>
                                 {% if preview_columns %}
                                     {% for cell in row.cells %}
-                                        <td class="cursor-context-menu">
+                                        <td class="cursor-context-menu whitespace-nowrap px-3 py-2 align-top">
                                             <c-ui.tooltip title="" text="{{ cell.tooltip_text }}" position="top">
                                                 {% if cell.is_field_type.foreign_key %}
                                                     {% if cell.value.get_absolute_url %}

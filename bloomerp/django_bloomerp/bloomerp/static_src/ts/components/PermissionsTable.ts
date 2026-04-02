@@ -492,7 +492,7 @@ export class PermissionsTable extends BaseComponent {
 
         this.rowPolicyRules.forEach((rowPolicyRule, index) => {
             const badge = document.createElement("span");
-            badge.className = "badge badge-primary cursor-pointer";
+            badge.className = "badge badge-primary max-w-full cursor-pointer";
             badge.dataset.rowPolicyIndex = String(index);
             badge.title = formatFilterTooltip(
                 String(rowPolicyRule.rule.field || ""),
@@ -515,6 +515,7 @@ export class PermissionsTable extends BaseComponent {
             });
 
             const text = document.createElement("span");
+            text.className = "min-w-0 truncate";
             if (rowPolicyRule.rule.field === "__all__" || rowPolicyRule.rule.application_field_id === "__all__") {
                 text.textContent = "All objects";
             } else {
@@ -560,7 +561,7 @@ export class PermissionsTable extends BaseComponent {
             }
 
             const badge = document.createElement("span");
-            badge.className = "badge badge-primary cursor-pointer";
+            badge.className = "badge badge-primary max-w-full cursor-pointer";
             badge.dataset.fieldId = fieldId;
 
             const removeButton = document.createElement("button");
@@ -577,6 +578,7 @@ export class PermissionsTable extends BaseComponent {
             });
 
             const text = document.createElement("span");
+            text.className = "min-w-0 truncate";
             text.textContent = field.label;
 
             badge.appendChild(removeButton);
