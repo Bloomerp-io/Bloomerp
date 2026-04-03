@@ -11,6 +11,15 @@ from bloomerp.models import UserDetailViewPreference
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.field_types import FieldType
 
+AUTO_MANAGED_FIELD_NAMES = {
+    "id",
+    "pk",
+    "datetime_created",
+    "datetime_updated",
+    "created_by",
+    "updated_by",
+}
+
 @dataclass
 class DataViewFields:
     """Container for visible and accessible fields in a data view.
@@ -73,9 +82,12 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
     # Remove persisted fields the user can no longer access.
     visible_field_ids = _sanitize_visible_field_ids(preference, accessible_fields_qs, view_type)
     
-    # If no visible fields are set, use default fields (first 5)
+    # If no visible fields are set, prefer business fields before audit/system fields.
     if not visible_field_ids:
-        default_fields = list(accessible_fields_qs[:5].values_list('id', flat=True))
+        preferred_fields = accessible_fields_qs.exclude(field__in=AUTO_MANAGED_FIELD_NAMES)
+        default_fields = list(preferred_fields[:5].values_list('id', flat=True))
+        if not default_fields:
+            default_fields = list(accessible_fields_qs[:5].values_list('id', flat=True))
         visible_field_ids = default_fields
         # Optionally persist the defaults
         preference.set_visible_field_ids(view_type, default_fields)
@@ -167,4 +179,3 @@ def toggle_field_visibility(
     preference.save(update_fields=['display_fields'])
     
     return is_visible, preference
-

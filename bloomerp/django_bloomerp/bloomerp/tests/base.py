@@ -181,7 +181,7 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
         pass
         
     
-    def create_customer(self, first_name:str, last_name:str, age:int):
+    def create_customer(self, first_name:str, last_name:str, age:int, **kwargs) -> models.Model:
         """Helper method to create customers
 
         Args:
@@ -195,8 +195,43 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
         return self.CustomerModel.objects.create(
             first_name=first_name,
             last_name=last_name,
-            age=age
+            age=age,
+            **kwargs
+        )
+    
+    def create_country(self, name:str, planet=None) -> models.Model:
+        """Helper method to create countries
+
+        Args:
+            name (str): the name of the country
+            planet (Planet, optional): the planet the country is located on. Defaults to None.
+
+        Returns:
+            Country: the created country object
+        """
+        if not self.create_foreign_models:
+            raise Exception("Foreign models not enabled for this test case")
+        
+        return self.CountryModel.objects.create(
+            name=name,
+            planet=planet
         )
     
 
+    def create_planet(self, name:str) -> models.Model:
+        """Helper method to create planets
+
+        Args:
+            name (str): the name of the planet
+
+        Returns:
+            Planet: the created planet object
+        """
+        if not self.create_foreign_models:
+            raise Exception("Foreign models not enabled for this test case")
+        
+        return self.PlanetModel.objects.create(
+            name=name
+        )
+    
     
