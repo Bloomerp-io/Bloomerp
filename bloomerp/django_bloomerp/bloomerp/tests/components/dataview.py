@@ -8,6 +8,8 @@ from bloomerp.models.users.user_list_view_preference import UserListViewPreferen
 from bloomerp.services.user_services import get_data_view_fields
 
 class TestDataView(BaseBloomerpModelTestCase):
+    create_foreign_models = True
+
     def extendedSetup(self):
         return super().extendedSetup()    
 
@@ -237,5 +239,103 @@ class TestDataView(BaseBloomerpModelTestCase):
         preference.refresh_from_db()
         self.assertEqual(preference.get_visible_field_ids("table"), [first_name_field.id])
         
+    def test_filter_dataview_with_string_field(self):
+        """
+        This test checks whether the dataview correctly applies filters
+        based on the query parameters.
+        """
+        # Login the client
+        self.client.force_login(self.admin_user)
+        
+        # Create customers
+        self.create_customer("Alice", "Smith", 30)
+        self.create_customer("Bob", "Johnson", 25)
+        
+        # Create url with filter for first_name
+        content_type_id = ContentType.objects.get_for_model(self.CustomerModel).id
+        url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type_id},
+        ) + "?first_name=Alice"
+        
+        # Send GET request to the URL
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        
+        # Check if the response contains Alice and not Bob
+        self.assertContains(response, "Alice")
+        self.assertNotContains(response, "Bob")
+
+    def test_filter_dataview_with_foreign_key_field(self):
+        """
+        This test checks whether the dataview correctly applies filters
+        based on foreign key fields.
+        """
+        name = "ansdljsdhsajh"
+
+        # Login the client
+        self.client.force_login(self.admin_user)
+        
+        # Create a planet
+        planet = self.PlanetModel.objects.create(name="Earth")
+        country = self.create_country(name="Belgium", planet=planet)
+
+        # Create customers with different ages
+        self.create_customer(name, "Smith", 30, country=country)
+        self.create_customer("Bob", "Johnson", 25)
+        
+        # Create url with filter for country
+        # Note: the exact lookup is what is given in the dataview
+        for lookup in ["", "__exact"]:
+            content_type_id = ContentType.objects.get_for_model(self.CustomerModel).id
+            url = reverse(
+                viewname="components_data_view",
+                kwargs={"content_type_id": content_type_id},
+            ) + "?country" + lookup + "=" + str(country.id)
+
+            # Send GET request to the URL
+            response = self.client.get(url, HTTP_HX_REQUEST="true")
+            self.assertEqual(response.status_code, 200)
+
+            # Check if the response contains the customer with the correct country and not the other one
+            self.assertContains(response, name)
+            self.assertNotContains(response, "Bob")
+
+    
+    def test_filter_dataview_with_foreign_key_field_using_field_lookup(self):
+        """
+        This test filters the dataview based on a foreign key and uses
+        a field to lookup the value 
+
+        for example country__name=Belgium instead of country__exact=<id>
+        """
+        name = "ansdljsdhsajh"
+
+        # Login the client
+        self.client.force_login(self.admin_user)
+        
+        # Create a planet
+        planet = self.PlanetModel.objects.create(name="Earth")
+        country = self.create_country(name="Belgium", planet=planet)
+
+        # Create customers with different ages
+        self.create_customer(name, "Smith", 30, country=country)
+        self.create_customer("Bob", "Johnson", 25)
+        
+        # Create url with filter for country
+        for lookup in ["__name", "__name__exact"]:
+            content_type_id = ContentType.objects.get_for_model(self.CustomerModel).id
+            url = reverse(
+                viewname="components_data_view",
+                kwargs={"content_type_id": content_type_id},
+            ) + "?country" + lookup + "=" + country.name
+
+            # Send GET request to the URL
+            response = self.client.get(url, HTTP_HX_REQUEST="true")
+            self.assertEqual(response.status_code, 200)
+
+            # Check if the response contains the customer with the correct country and not the other one
+            self.assertContains(response, name)
+            self.assertNotContains(response, "Bob")
 
     

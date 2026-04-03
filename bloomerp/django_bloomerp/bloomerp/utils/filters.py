@@ -46,6 +46,7 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
             return
 
         if isinstance(field, CharField) or isinstance(field, TextField) or isinstance(field, StatusField):
+            filter_overrides[f'{field_name}'] = django_filters.CharFilter(field_name=field_name, lookup_expr='exact')
             filter_overrides[f'{field_name}__icontains'] = django_filters.CharFilter(field_name=field_name, lookup_expr='icontains')
             filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
             filter_overrides[f'{field_name}__exact'] = django_filters.CharFilter(field_name=field_name, lookup_expr='exact')
@@ -108,9 +109,26 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
 
             if isinstance(field, ForeignKey):
                 field_name = f"{prefix}{field.name}"
+                related_model = field.related_model
+                if related_model:
+                    filter_overrides[field_name] = django_filters.ModelChoiceFilter(
+                        field_name=field_name,
+                        queryset=related_model.objects.all(),
+                    )
+                    filter_overrides[f'{field_name}__exact'] = django_filters.ModelChoiceFilter(
+                        field_name=field_name,
+                        queryset=related_model.objects.all(),
+                    )
+                    filter_overrides[f'{field_name}__id'] = django_filters.NumberFilter(
+                        field_name=f"{field_name}__id",
+                        lookup_expr='exact',
+                    )
+                    filter_overrides[f'{field_name}__id__exact'] = django_filters.NumberFilter(
+                        field_name=f"{field_name}__id",
+                        lookup_expr='exact',
+                    )
                 filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
                 if depth < MAX_RELATION_FILTER_DEPTH:
-                    related_model = field.related_model
                     if related_model:
                         add_model_filters(related_model, prefix=f"{field_name}__", depth=depth + 1, seen=set(seen))
                 continue
