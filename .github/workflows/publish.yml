@@ -2,34 +2,87 @@ name: Publish Python Package
 
 on:
   push:
-    tags:
-      - 'v*.*.*'  # Triggers the workflow on version tags
+    branches:
+      - main
+    paths:
+      - "bloomerp/django_bloomerp/pyproject.toml"
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+      - name: Detect version change in pyproject.toml
+        id: version_check
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          import tomllib
+          from pathlib import Path
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
+          pyproject_path = Path("bloomerp/django_bloomerp/pyproject.toml")
+          current_data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+          current_version = current_data["project"]["version"]
 
-    - name: Build package
-      run: |
-        python setup.py sdist bdist_wheel
+          before_sha = os.getenv("GITHUB_EVENT_BEFORE", "")
+          if not before_sha or set(before_sha) == {"0"}:
+              changed = True
+              previous_version = "<none>"
+          else:
+              try:
+                  previous_content = subprocess.check_output(
+                      ["git", "show", f"{before_sha}:{pyproject_path.as_posix()}"],
+                      text=True,
+                  )
+              except subprocess.CalledProcessError:
+                  changed = True
+                  previous_version = "<unavailable>"
+              else:
+                  previous_data = tomllib.loads(previous_content)
+                  previous_version = previous_data["project"]["version"]
+                  changed = previous_version != current_version
 
-    - name: Publish package to Test PyPI
-      env:
-        TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
-      run: |
-        twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
+          with github_output.open("a", encoding="utf-8") as output:
+              output.write(f"changed={str(changed).lower()}\n")
+              output.write(f"current_version={current_version}\n")
+              output.write(f"previous_version={previous_version}\n")
+
+          print(f"Previous version: {previous_version}")
+          print(f"Current version:  {current_version}")
+          print(f"Version changed:  {changed}")
+          PY
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+
+      - name: Stop when version is unchanged
+        if: steps.version_check.outputs.changed != 'true'
+        run: |
+          echo "No version bump detected in bloomerp/django_bloomerp/pyproject.toml. Skipping publish."
+
+      - name: Set up Python
+        if: steps.version_check.outputs.changed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build package
+        if: steps.version_check.outputs.changed == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install setuptools wheel
+          python setup.py sdist bdist_wheel
+
+      - name: Publish package to PyPI
+        if: steps.version_check.outputs.changed == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
