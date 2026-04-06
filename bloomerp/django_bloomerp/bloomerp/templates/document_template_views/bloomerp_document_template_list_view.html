@@ -1,68 +1,8 @@
-
-<h5 class="card-title">List of documents</h5>
-
 <div
-    class="row g-2"
+	hx-get="{% url 'components_data_view' content_type_id=content_type_id %}?content_type={{ model_content_type_id }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}&_component_id=document-templates-dataview"
+	hx-headers='{"X-Bloomerp-Sync-Url": "true"}'
+	hx-trigger="load"
+	hx-target="this"
+	hx-swap="outerHTML"
 >
-    <div class="col-sm-4">
-        <input type="text" class="form-control" id="templateSearchInput" placeholder="Search by template name">
-    </div>
 </div>
-
-
-
-<div class="row mt-4">
-    {% for template in document_templates %}
-        <div class="col-xxl-3 col-md-6 template-card">
-            <a 
-                hx-get="{% url document_template_generate_url pk=object.pk template_id=template.pk %}"
-                hx-target="#detail-view-content"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-                class="hover:cursor-pointer"
-                >
-                <div class="card-body bg-light rounded hover">
-                    <h5 class="card-title">{{template.name}}</h5>
-                    <div class="flex align-items-center">
-                        <div class="card-icon rounded-circle flex align-items-center justify-center">
-                            <i class="ri ri-file-list-2-line"></i>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-    {% endfor %}
-</div>
-
-<div id="noResultsMessage" style="display: none;">No results found</div>
-
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-      var input = document.getElementById("templateSearchInput");
-      var noResultsMessage = document.getElementById("noResultsMessage");
-
-      input.addEventListener("input", function () {
-          var searchText = input.value.toLowerCase();
-          var templateCards = document.querySelectorAll(".template-card");
-          var hasResults = false;
-
-          templateCards.forEach(function (card) {
-              var templateName = card.querySelector(".card-title").textContent.toLowerCase();
-              if (templateName.includes(searchText)) {
-                  card.style.display = "block";
-                  hasResults = true;
-              } else {
-                  card.style.display = "none";
-              }
-          });
-
-          // Show/hide the "No results found" message
-          if (hasResults) {
-              noResultsMessage.style.display = "none";
-          } else {
-              noResultsMessage.style.display = "block";
-          }
-      });
-  });
-</script>
-

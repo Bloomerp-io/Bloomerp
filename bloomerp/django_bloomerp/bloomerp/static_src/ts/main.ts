@@ -40,6 +40,8 @@ import WorkspaceContainer from './components/workspaces/WorkspaceContainer';
 import WorkspaceTile from './components/workspaces/WorkspaceTile';
 import SqlQueryEditor from './components/inputs/SqlQueryEditor';
 import Canvas from './components/workspaces/tiles/Canvas';
+import FileBrowser from './components/files/FileBrowser';
+import DocumentTemplateDataViewContainer from './components/data_view_components/DocumentTemplateDataViewContainer';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -48,6 +50,7 @@ registerComponent('sidebar', Sidebar);
 
 // Dataview component
 registerComponent('dataview-container', DataViewContainer);
+registerComponent('document-templates-dataview', DocumentTemplateDataViewContainer);
 
 // Datatable
 registerComponent('datatable', DataTable);
@@ -101,6 +104,9 @@ registerComponent('workflow', Workflow);
 // Global search
 registerComponent('global-search-modal', GlobalSearch);
 
+// File browser
+registerComponent('file-browser', FileBrowser);
+
 // Workspace components
 registerComponent('workspace-container', WorkspaceContainer);
 registerComponent('workspace-tile', WorkspaceTile);
@@ -108,6 +114,7 @@ registerComponent('workspace-tile', WorkspaceTile);
 registerComponent('sql-query-editor', SqlQueryEditor);
 
 registerComponent('workspace-tile-canvas', Canvas);
+
 
 // Auto init comonents
 setupComponentAutoInit();

@@ -1,7 +1,8 @@
 from django.shortcuts import render
-from django.views.generic import View
+from django.views.generic import TemplateView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.files import File
 from bloomerp.views.mixins import HtmxMixin
@@ -9,42 +10,24 @@ from bloomerp.router import router
 
 
 @router.register(
-    path="model",
+    path="files",
+    route_type="app",
     name="Files",
     url_name="app",
-    description="Bloomerp Files",
-    route_type="model",
-    models=[File],
+    description="List of all files across the application.",
 )
-class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, View):
+class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, TemplateView):
     template_name = "list_views/bloomerp_file_list_view.html"
     model = File
     module = None
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        fields = [
-            "name",
-            "datetime_created",
-            "datetime_updated",
-            "created_by",
-            "updated_by",
-            "object_id",
-            "content_type",
-        ]
-        context["target"] = "file_list"
-        context["application_fields"] = ApplicationField.objects.filter(
-            content_type=ContentType.objects.get_for_model(self.model),
-            field__in=fields,
-        )
-        context["content_type_id"] = ContentType.objects.get_for_model(self.model).id
+        query_string = self.request.GET.urlencode()
+        context["file_browser_url"] = reverse("components_files")
+        if query_string:
+            context["file_browser_url"] = f"{context['file_browser_url']}?{query_string}"
         return context
-
-    def get_permission_required(self):
-        return [f"{self.model._meta.app_label}.view_{self.model._meta.model_name}"]
-
-    def get(self, request, *args, **kwargs):
-        context = self.get_context_data()
-
-        return render(request, self.template_name, context)
+    
+    def has_permission(self):
+        return True

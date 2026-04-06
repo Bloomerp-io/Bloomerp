@@ -324,7 +324,7 @@ class ModuleRegistry:
             if model_key in models:
                 module = self.items.get(module_id)
                 if module:
-                    modules.append(module.copy(update={"name": module.id}))
+                    modules.append(module)
         return modules
         
     

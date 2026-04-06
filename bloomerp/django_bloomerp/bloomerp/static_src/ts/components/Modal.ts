@@ -227,6 +227,11 @@ export class Modal extends BaseComponent {
         
         // Focus container
         container.focus();
+
+        this.element?.dispatchEvent(new CustomEvent('bloomerp:modal-opened', {
+            bubbles: true,
+            detail: { modalId: this.modalId },
+        }));
     }
 
     /**
@@ -253,6 +258,11 @@ export class Modal extends BaseComponent {
             
             // Restore body scroll
             document.body.style.overflow = '';
+
+            this.element?.dispatchEvent(new CustomEvent('bloomerp:modal-closed', {
+                bubbles: true,
+                detail: { modalId: this.modalId },
+            }));
         }, 200);
     }
 

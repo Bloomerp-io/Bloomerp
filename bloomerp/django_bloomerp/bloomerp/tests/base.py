@@ -1,8 +1,11 @@
+from django.http import HttpResponse
 from django.test import TransactionTestCase, modify_settings
+from django.test.utils import override_settings
 from django.db import models
 from django.apps import apps
 from django.db import connection
 from django.urls import clear_url_caches
+import tempfile
 from bloomerp.management.commands import save_application_fields
 from bloomerp.tests.utils.users import create_admin, create_normal_user
 from bloomerp.tests.utils.dynamic_models import create_test_models
@@ -24,11 +27,13 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
                 app_label="bloomerp",
                 model_defs={
                     "Planet" : {
-                        "name" : models.CharField(max_length=100)
+                        "name" : models.CharField(max_length=100),
+                        "__str__" : lambda self: self.name
                     },
                     "Country" : {
                         "name"  : models.CharField(max_length=100),
-                        "planet" : models.ForeignKey(to="Planet", on_delete=models.CASCADE)
+                        "planet" : models.ForeignKey(to="Planet", on_delete=models.CASCADE),
+                        "__str__" : lambda self: self.name
                     },
                     
                 }
@@ -41,6 +46,7 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
             "first_name": models.CharField(max_length=100),
             "last_name": models.CharField(max_length=100),
             "age" : models.IntegerField(max_length=3),
+            "__str__" : lambda self: f"{self.first_name} {self.last_name}"
         }
         
         if cls.create_foreign_models:
@@ -136,6 +142,9 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
         
     def setUp(self):
         super().setUp()
+        self._media_tempdir = tempfile.TemporaryDirectory()
+        self._media_override = override_settings(MEDIA_ROOT=self._media_tempdir.name)
+        self._media_override.enable()
         # Create application fields
         save_application_fields.Command().handle()
         
@@ -171,10 +180,30 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
                     last_name = LAST_NAMES[i],
                     age = 20 + i
                 )
+        elif hasattr(self, "get_object") and not self.CustomerModel.objects.exists():
+            self.CustomerModel.objects.create(
+                first_name=FIRST_NAMES[0],
+                last_name=LAST_NAMES[0],
+                age=20,
+            )
         
         
         # Call extended setup
         self.extendedSetup()
+
+    def tearDown(self):
+        try:
+            super().tearDown()
+        finally:
+            media_override = getattr(self, "_media_override", None)
+            if media_override is not None:
+                media_override.disable()
+                self._media_override = None
+
+            media_tempdir = getattr(self, "_media_tempdir", None)
+            if media_tempdir is not None:
+                media_tempdir.cleanup()
+                self._media_tempdir = None
     
     
     def extendedSetup(self):
@@ -216,6 +245,18 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
             name=name,
             planet=planet
         )
+
+    def assertContains(self, response, text, *args, **kwargs):
+        if isinstance(response, (bytes, str)):
+            wrapper = HttpResponse(response)
+            return super().assertContains(wrapper, text, *args, **kwargs)
+        return super().assertContains(response, text, *args, **kwargs)
+
+    def assertNotContains(self, response, text, *args, **kwargs):
+        if isinstance(response, (bytes, str)):
+            wrapper = HttpResponse(response)
+            return super().assertNotContains(wrapper, text, *args, **kwargs)
+        return super().assertNotContains(response, text, *args, **kwargs)
     
 
     def create_planet(self, name:str) -> models.Model:

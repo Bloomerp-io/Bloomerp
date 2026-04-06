@@ -50,7 +50,25 @@ def create_test_models(
         created_models[model_name] = model
 
     with connection.schema_editor() as schema:
+        existing_tables = set(connection.introspection.table_names())
         for model in created_models.values():
+            if model._meta.db_table in existing_tables:
+                existing_columns = {
+                    column.name
+                    for column in connection.introspection.get_table_description(
+                        connection.cursor(),
+                        model._meta.db_table,
+                    )
+                }
+                for field in model._meta.local_fields:
+                    if field.column in existing_columns:
+                        continue
+                    if getattr(field, "auto_created", False):
+                        continue
+                    schema.add_field(model, field)
+                    existing_columns.add(field.column)
+                continue
             schema.create_model(model)
+            existing_tables.add(model._meta.db_table)
 
     return created_models

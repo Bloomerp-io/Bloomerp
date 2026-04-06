@@ -454,7 +454,7 @@ def _build_kanban_groups(queryset, group_by_field: ApplicationField) -> list:
     path="components/data_view/<int:content_type_id>/",
     name="components_data_view",
 )
-def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> HttpResponse:
+def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     """
     Renders the data table component. A data table is a table that takes in a content type 
     id and renders a table of the corresponding model's data.
@@ -517,6 +517,7 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     create_querystring.pop('q', None)
     create_querystring.pop('calendar_page', None)
     sync_url = request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
+    component_id = request.GET.get('_component_id')
 
     context = {
         'content_type_id': content_type_id,
@@ -537,6 +538,7 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
         'page_querystring': page_querystring.urlencode(),
         'pagination_pages': _build_pagination_range(page_obj),
         'applied_filters': _format_applied_filters(request.GET),
+        'component_id': component_id,
     }
     context.update(_get_extra_context_for_view_type(preference, queryset, request))
     
@@ -548,7 +550,6 @@ def data_view(request: HttpRequest, content_type_id: int, some_ctx:dict={}) -> H
     name="components_change_data_view_preference",
 )
 def change_data_view_preference(request: HttpRequest, content_type_id: int) -> HttpResponse:
-    
     """Changes the datatable preference
 
     Args:
@@ -625,7 +626,7 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
         # Save preference if no field toggle (field toggle already saves)
         preference.save()
     
-    return data_view(request, content_type_id, {})
+    return data_view(request, content_type_id)
 
 
 @router.register(

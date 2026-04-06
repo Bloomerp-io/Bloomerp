@@ -6,6 +6,7 @@ import uuid
 from bloomerp.models import mixins
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from django.db.models.query import QuerySet
+from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
 
 class File(
     mixins.TimestampedModelMixin, 
@@ -47,6 +48,13 @@ class File(
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
     object_id = models.CharField(max_length=36, null=True, blank=True) # In order to support both UUID and integer primary keys
     content_object = GenericForeignKey("content_type", "object_id")
+    folder : "FileFolder" = models.ForeignKey(
+        "bloomerp.FileFolder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="files",
+    )
     persisted = models.BooleanField(default=False) # A field to indicate if the file is temporary or persisted
 
     # Created/updated utils
@@ -86,6 +94,24 @@ class File(
     def __str__(self):
         return str(self.name)
 
+    def _ensure_auto_folder_hierarchy(self):
+        if not self.content_type_id or not self.object_id:
+            return None
+
+        linked_object = self.content_object
+        if linked_object is None:
+            model = self.content_type.model_class()
+            if model is None:
+                return None
+            linked_object = model.objects.filter(pk=self.object_id).first()
+            if linked_object is None:
+                return None
+
+        return ensure_folder_hierarchy_for_object(
+            linked_object,
+            created_by=self.created_by,
+            updated_by=self.updated_by,
+        )
 
     def save(self, *args, **kwargs):
         # Check if a new file is being uploaded
@@ -101,6 +127,10 @@ class File(
         # Set the name if not already set
         if not self.name:
             self.name = self.auto_name()
+
+        if self.folder_id is None and self.content_type_id and self.object_id:
+            self.folder = self._ensure_auto_folder_hierarchy()
+
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -140,7 +170,7 @@ class File(
         content_types = user.get_content_types_for_user(permission_types=["view"])
 
         if folder:
-            qs = folder.files.filter(content_type__in=content_types).order_by(
+            qs = File.objects.filter(folder=folder, content_type__in=content_types).order_by(
                 "-datetime_created"
             )
         else:
@@ -164,3 +194,4 @@ class File(
 
         return qs
 
+    

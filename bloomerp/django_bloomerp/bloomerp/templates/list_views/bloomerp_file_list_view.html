@@ -1,11 +1,7 @@
-{% load bloomerp %}
-
-{% breadcrumb model=model title="Files" %}
-
 <div
-	hx-get="{% url 'components_data_view' content_type_id=content_type_id %}"
-	hx-trigger="load"
-	hx-target="this"
-	hx-swap="outerHTML"
->
-</div>
+    hx-get="{{ file_browser_url }}"
+    hx-trigger="load"
+    hx-target="this"
+    hx-swap="outerHTML"
+    hx-headers='{"X-Bloomerp-Sync-Url": "true"}'
+></div>
