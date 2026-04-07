@@ -137,7 +137,11 @@ export default class ForeignFieldWidget extends BaseWidget {
         if (!value) return [];
         try {
             const parsed = JSON.parse(value);
-            if (Array.isArray(parsed)) return parsed.map((item) => String(item));
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .map((item) => String(item).trim())
+                    .filter((item) => item.length > 0);
+            }
         } catch {
             // fall back to CSV parsing
         }
@@ -440,11 +444,13 @@ export default class ForeignFieldWidget extends BaseWidget {
     }
 
     private getSelections(): Array<{ id: string; label: string; url: string }> {
-        return this.getSelectionInputs().map((input) => ({
-            id: input.value,
-            label: input.dataset.label || input.value,
-            url: input.dataset.url || '',
-        }));
+        return this.getSelectionInputs()
+            .filter((input) => input.value.trim().length > 0)
+            .map((input) => ({
+                id: input.value,
+                label: input.dataset.label || input.value,
+                url: input.dataset.url || '',
+            }));
     }
 
     private renderSelectedState(): void {

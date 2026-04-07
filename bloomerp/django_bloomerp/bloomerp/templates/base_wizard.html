@@ -1,12 +1,17 @@
 {% load i18n %}
 
-<div id="wizard-root" class="space-y-4">
+<div id="wizard-root" class="space-y-4" x-data="{ wizardSubmitting: false }">
     <form
         method="post"
+        enctype="multipart/form-data"
         hx-post="{{ request.path }}?{{ wizard_step_query_param }}={{ step_index }}"
+        hx-encoding="multipart/form-data"
         hx-target="#wizard-root"
         hx-swap="outerHTML"
         class="space-y-4"
+        x-on:htmx:before-request="wizardSubmitting = true"
+        x-on:htmx:after-request="wizardSubmitting = false"
+        x-on:htmx:response-error="wizardSubmitting = false"
     >
         {% csrf_token %}
 
@@ -26,12 +31,24 @@
                 </div>
 
                 <div class="justify-self-start md:justify-self-end flex items-center gap-2">
+                    {% if wizard_has_data %}
+                    <button 
+                        class="btn btn-sm btn-danger"
+                        hx-target="#wizard-root"
+                        hx-swap="outerHTML"
+                        hx-get="{{ request.path }}?reset_wizard=true"
+                        >
+                        <c-blocktrans>Reset</c-blocktrans>
+                    </button>
+                    {% endif %}
                     {% if step_index > 0 %}
                         <button
                             type="submit"
                             name="_wizard_action"
                             value="back"
                             class="btn btn-sm btn-secondary"
+                            x-bind:disabled="wizardSubmitting"
+                            x-bind:class="{ 'opacity-60 cursor-not-allowed': wizardSubmitting }"
                         >
                             {% trans "Back" %}
                         </button>
@@ -42,15 +59,23 @@
                         name="_wizard_action"
                         value="next"
                         class="btn btn-sm btn-primary"
+                        x-bind:disabled="wizardSubmitting"
+                        x-bind:class="{ 'opacity-60 cursor-not-allowed': wizardSubmitting }"
                     >
-                        {% trans "Continue" %}
+                        <span x-show="!wizardSubmitting">
+                            {{ wizard_submit_label|default:_("Continue") }}
+                        </span>
+                        <span x-show="wizardSubmitting" class="inline-flex items-center gap-2">
+                            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                            {% trans "Processing..." %}
+                        </span>
                     </button>
                 </div>
             </div>
         </div>
 
         {% if wizard_error %}
-            <div class="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3">
+            <div class="alert alert-danger">
                 {% if wizard_error.title %}
                     <p class="font-medium">{{ wizard_error.title }}</p>
                 {% endif %}

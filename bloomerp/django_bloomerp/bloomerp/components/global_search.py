@@ -1,3 +1,31 @@
+"""
+The global search component is a powerful tool that allows users to quickly navigate
+to different parts of the application as well as search for specific content.
+
+It works by analyzing the different search prefixes and then performing 
+the appropriate search based on the prefix used.
+
+Prefixes:
+- No prefix: General search. This allows users to search for content across the application.
+
+- ">":  Search for routes. This allows users to quickly navigate to different parts of the application by typing the name 
+        of the route they want to go to. If the user adds ? at the end of a query (e.g. ">dashboard?first_name=david"), the search will include those query parameters in the search results. 
+        The same applies for # to include fragments in the search results (e.g. ">dashboard#section1").
+
+- "@":  Search for users. This allows users to quickly find other users in the system by typing their name or username.
+
+- "!":  Actions. This allows users to quickly perform actions by typing the name of the action they want to perform. (Not implemented yet)
+
+- "/":  Module and model search. This allows users to do a more targeted search by specifying the module and model they want to search in
+        Patterns:
+            - /<module_code>//<string_query>: Search for all content within a specific module. Since the model is not specified, the search will include all models within that module.
+            - //<model_name>/<string_query>: Search for all content related to a specific model across all modules. The result will include the module name in the search results to differentiate between different modules that have the same model.
+            - /<module_code>/<model_name>/<string_query>: Search for all content related to a specific
+            - ///: Same as general search
+        Note: ? can be used for filtering the search results based on query parameters (e.g. "/sales/customer/<string_query>?first_name=david")
+        
+"""
+
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from django.contrib.auth.decorators import login_required
@@ -181,32 +209,6 @@ def _get_accessible_models(
 def global_search(request: HttpRequest) -> HttpResponse:
     """
     Component that is used for global search.
-    
-    The global search component is a powerful tool that allows users to quickly navigate
-    to different parts of the application as well as search for specific content.
-
-    It works by analyzing the different search prefixes and then performing 
-    the appropriate search based on the prefix used.
-    
-    Prefixes:
-    - No prefix: General search. This allows users to search for content across the application.
-    
-    - ">":  Search for routes. This allows users to quickly navigate to different parts of the application by typing the name 
-            of the route they want to go to. If the user adds ? at the end of a query (e.g. ">dashboard?first_name=david"), the search will include those query parameters in the search results. 
-            The same applies for # to include fragments in the search results (e.g. ">dashboard#section1").
-
-    - "@":  Search for users. This allows users to quickly find other users in the system by typing their name or username.
-    
-    - "!":  Actions. This allows users to quickly perform actions by typing the name of the action they want to perform. (Not implemented yet)
-    
-    - "/":  Module and model search. This allows users to do a more targeted search by specifying the module and model they want to search in
-            Patterns:
-                - /<module_code>//<string_query>: Search for all content within a specific module. Since the model is not specified, the search will include all models within that module.
-                - //<model_name>/<string_query>: Search for all content related to a specific model across all modules. The result will include the module name in the search results to differentiate between different modules that have the same model.
-                - /<module_code>/<model_name>/<string_query>: Search for all content related to a specific
-                - ///: Same as general search
-            Note: ? can be used for filtering the search results based on query parameters (e.g. "/sales/customer/<string_query>?first_name=david")
-            
     
     Args:
         request (HttpRequest): the request object

@@ -1,5 +1,6 @@
 import json
 from typing import Optional
+from uuid import UUID
 
 from django.contrib.contenttypes.models import ContentType
 from django.forms import widgets
@@ -64,6 +65,46 @@ class ForeignFieldWidget(widgets.Widget):
             return [value for value in data.getlist(name) if value not in (None, "")]
         return super().value_from_datadict(data, files, name)
 
+    def _is_empty_value(self, value) -> bool:
+        if value in (None, ""):
+            return True
+        if isinstance(value, str) and not value.strip():
+            return True
+        if isinstance(value, (list, tuple, set)) and len(value) == 0:
+            return True
+        return False
+
+    def _normalize_related_pk(self, value):
+        if self._is_empty_value(value):
+            return None
+
+        if isinstance(value, Model) or hasattr(value, "pk"):
+            return getattr(value, "pk", value)
+
+        if isinstance(value, float):
+            if value.is_integer():
+                return int(value)
+            return value
+
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return None
+
+            try:
+                return UUID(stripped)
+            except (ValueError, TypeError, AttributeError):
+                pass
+
+            if stripped.endswith(".0"):
+                integer_candidate = stripped[:-2]
+                if integer_candidate.lstrip("-").isdigit():
+                    return integer_candidate
+
+            return stripped
+
+        return value
+
     def get_context(self, name, value:Model, attrs):
         context = super().get_context(name, value, attrs)
         context["widget"]["is_m2m"] = self.is_m2m
@@ -81,7 +122,7 @@ class ForeignFieldWidget(widgets.Widget):
         selected_labels = []
         selected_urls = []
 
-        if value is not None:
+        if not self._is_empty_value(value):
             if self.is_m2m:
                 if hasattr(value, 'all'):
                     items = list(value.all())
@@ -91,6 +132,9 @@ class ForeignFieldWidget(widgets.Widget):
                     items = [value]
 
                 for item in items:
+                    normalized_item = self._normalize_related_pk(item)
+                    if normalized_item is None:
+                        continue
                     if isinstance(item, Model) or hasattr(item, "pk"):
                         selected_ids.append(item.pk)
                         selected_labels.append(str(item))
@@ -98,38 +142,44 @@ class ForeignFieldWidget(widgets.Widget):
                     elif related_model_class is not None:
                         # Fetch the model instance by ID
                         try:
-                            instance = related_model_class.objects.get(pk=item)
-                            selected_ids.append(item)
+                            instance = related_model_class.objects.get(pk=normalized_item)
+                            selected_ids.append(str(instance.pk))
                             selected_labels.append(str(instance))
                             selected_urls.append(self.get_object_detail_url(instance))
                         except (ObjectDoesNotExist, ValueError, TypeError):
-                            selected_ids.append(item)
-                            selected_labels.append(str(item))
+                            selected_ids.append(str(normalized_item))
+                            selected_labels.append(str(normalized_item))
                             selected_urls.append("")
                     else:
-                        selected_ids.append(item)
-                        selected_labels.append(str(item))
+                        selected_ids.append(str(normalized_item))
+                        selected_labels.append(str(normalized_item))
                         selected_urls.append("")
             else:
                 if isinstance(value, Model) or hasattr(value, "pk"):
-                    selected_ids = [value.pk]
+                    selected_ids = [str(value.pk)]
                     selected_labels = [str(value)]
                     selected_urls = [self.get_object_detail_url(value)]
                 elif related_model_class is not None:
+                    normalized_value = self._normalize_related_pk(value)
+                    if normalized_value is None:
+                        normalized_value = ""
                     # Fetch the model instance by ID
                     try:
-                        instance = related_model_class.objects.get(pk=value)
-                        selected_ids = [value]
+                        instance = related_model_class.objects.get(pk=normalized_value)
+                        selected_ids = [str(instance.pk)]
                         selected_labels = [str(instance)]
                         selected_urls = [self.get_object_detail_url(instance)]
                     except (ObjectDoesNotExist, ValueError, TypeError):
-                        selected_ids = [value]
-                        selected_labels = [str(value)]
-                        selected_urls = [""]
+                        if normalized_value not in ("", None):
+                            selected_ids = [str(normalized_value)]
+                            selected_labels = [str(normalized_value)]
+                            selected_urls = [""]
                 else:
-                    selected_ids = [value]
-                    selected_labels = [str(value)]
-                    selected_urls = [""]
+                    normalized_value = self._normalize_related_pk(value)
+                    if normalized_value not in ("", None):
+                        selected_ids = [str(normalized_value)]
+                        selected_labels = [str(normalized_value)]
+                        selected_urls = [""]
 
         context['selected_value'] = selected_ids[0] if selected_ids else ''
         context['selected_label'] = selected_labels[0] if selected_labels else ''

@@ -88,6 +88,10 @@ class WizardMixin:
     def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
         super().setup(request, *args, **kwargs)
         self.orchestrator = self.state_orchestrator_cls(request=request, session_key=self.session_key)
+
+        if request.GET.get("reset_wizard") == "true":
+            self.clear_state()
+
     
     def clear_state(self):
         """Clears the state of the wizard
@@ -143,9 +147,16 @@ class WizardMixin:
         except (TypeError, ValueError):
             step = 0
 
-        step = max(step, 0)
+        step = self.normalize_step_index(max(step, 0))
         self.set_current_step_index(step)
         return step
+
+    def normalize_step_index(self, step: int) -> int:
+        """Normalize a requested step index before the wizard renders it.
+
+        Subclasses can override this to enforce prerequisites for later steps.
+        """
+        return max(step, 0)
 
     def get_total_steps(self, max_steps: int = 20) -> int:
         if isinstance(self.steps, list):
@@ -188,11 +199,22 @@ class WizardMixin:
 
         self.clear_wizard_error()
 
+        if not self.should_advance_after_process(step):
+            return self.render_step(step=step, **kwargs)
+
         next_step = step + 1
         if self.get_wizard_step(next_step) is None:
             return self._handle_done(current_step=step)
 
         return self.render_step(step=next_step, **kwargs)
+
+    def should_advance_after_process(self, step: int) -> bool:
+        """Return whether a successful POST on the current step should advance.
+
+        Subclasses can override this for steps that support internal actions such
+        as pagination or preview refresh without moving to the next wizard step.
+        """
+        return True
 
     def _handle_done(self, current_step: int | None = None) -> HttpResponse:
         response = self.done()
@@ -228,6 +250,7 @@ class WizardMixin:
         context["step_template_name"] = step.template_name if step else ""
         context["wizard_step_query_param"] = self.step_query_param
         context["wizard_error"] = self.get_wizard_error(step_index)
+        context["wizard_has_data"] = self.wizard_has_data()
         return context
     
     def get_wizard_step(self, step:int) -> WizardStep | None:
@@ -256,6 +279,12 @@ class WizardMixin:
 
         raise ValueError("steps needs to be a list[WizardStep] when provided")
             
-    
+    def wizard_has_data(self) -> bool:
+        """Returns true if the wizard has any data in the session, false otherwise
+        """
+        state = self.orchestrator.get_all_session_data()
+        state.pop(self.wizard_step_state_key, None)
+        
+        return bool(state)
     
         

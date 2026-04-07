@@ -69,6 +69,7 @@
     */
     --color-danger-light: #f8d7da;
     --color-danger-dark: #d14836;
+    --color-danger-100: #f8d7da;
 
     /*
     * Warning
@@ -976,6 +977,29 @@ Dashboard
   Alert messages
 */
 /* Wrapper to hold all messages */
+@layer components {
+  .alert {
+    @apply rounded-lg border px-4 py-3 text-sm;
+  }
+
+  .alert-primary {
+    @apply bg-primary-50 text-primary-900 border-primary-100;
+  }
+
+  .alert-secondary {
+    @apply bg-secondary-50 text-secondary-900 border-secondary-100;
+  }
+
+  .alert-success {
+    @apply bg-success-light text-success-dark border-success-100;
+  }
+
+  .alert-danger {
+    @apply bg-danger-light text-danger-dark border-danger-100;
+  }
+}
+
+
 .messages-wrapper {
   position: fixed;
   bottom: 40px; /* Distance from the bottom */
