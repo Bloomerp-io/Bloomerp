@@ -12,7 +12,7 @@ Parameters:
 {% load i18n %}
 
 <div 
-    class="rounded-xl border border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
+    class="rounded-xl border border-b-0 border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
     bloomerp-component="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
     data-content-type-id="{{ content_type_id }}"
     >
@@ -25,7 +25,6 @@ Parameters:
                 {% for field in fields %}
                 <th >{{ field.title }}</th>
                 {% endfor %}
-                <th class="w-32">{% trans "Actions" %}</th>
             </tr>
         </thead>
         <tbody id="data-table-body-{{ content_type_id }}">
@@ -37,9 +36,6 @@ Parameters:
                 {% for field in fields %}
                     {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
                 {% endfor %}
-                <td class="w-32" data-no-row-click>
-                    <c-ui.data_view.actions :object="object" :content_type_id="content_type_id"/>
-                </td>
             </tr>
             {% endfor %}
             {% else %}
