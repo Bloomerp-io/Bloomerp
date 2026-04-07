@@ -5,7 +5,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
     private detailUrl : string;
     // Optional runtime click override. When set, `click()` will call this
     // instead of performing the default navigation behaviour.
-    public onClickOverride: ((cell: BaseDataViewCell) => void) | null = null;
+    public onClickOverride: ((cell: BaseDataViewCell) => boolean | void) | null = null;
     public objectString: string | null = null;
     public objectId: string | null = null;
 
@@ -96,13 +96,24 @@ export abstract class BaseDataViewCell extends BaseComponent {
         // If an override is provided, prefer that (useful for selection UIs).
         if (this.onClickOverride) {
             try {
-                this.onClickOverride(this);
+                const handled = this.onClickOverride(this);
+                if (handled !== false) {
+                    return;
+                }
             } catch (err) {
                 console.error('onClickOverride error', err);
+                return;
             }
-            return;
         }
-        
+
+        this.performDefaultClick(target);
+    }
+
+    public getDetailUrl(): string {
+        return this.detailUrl;
+    }
+
+    protected performDefaultClick(target?: string | HTMLElement): void {
         if (this.detailUrl) {
             const resolvedTarget = target ?? this.resolveDefaultTarget();
             const shouldPush = this.shouldPushUrl(resolvedTarget);

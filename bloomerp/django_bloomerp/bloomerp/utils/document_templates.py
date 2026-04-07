@@ -123,7 +123,8 @@ class DocumentController:
             file_object.save()
 
             if document_template.save_to_folder:
-                document_template.save_to_folder.files.add(file_object)
+                file_object.folder = document_template.save_to_folder
+                file_object.save(update_fields=["folder"])
                 
 
             return file_object
@@ -249,7 +250,6 @@ class DocumentController:
 
         return signed_file_obj
         
-
 
 
 

@@ -71,28 +71,6 @@ def model_name_plural(obj:Model):
     '''
     return obj._meta.verbose_name_plural
 
-@register.filter
-def model_dashboard_url(content_type:ContentType):
-    '''
-    Returns the model app dashboard URL of an object.
-
-    Example usage:
-    {{ object|model_app_dashboard_url }}
-    
-    '''
-    return reverse(get_model_dashboard_view_url(content_type.model_class()))
-
-@register.filter
-def model_name_plural_from_content_type(content_type:ContentType):
-    '''
-    Returns the model verbose name of an object.
-
-    Example usage:
-    {{ object|model_name_plural }}
-    
-    '''
-    return content_type.model_class()._meta.verbose_name_plural
-
 
 @register.filter
 def length(obj) -> int:
@@ -129,50 +107,7 @@ def getattr_filter(obj, attr):
         return None
 
    
-@register.filter
-def get_link_by_id(id:int):
-    '''
-    Returns the link object with the given id.
 
-    Example usage:
-    {{ id|get_link }}
-
-    or 
-
-    {% with id|get_link as link %}
-    {% if link %}
-    {{ link.name }}
-    {% endif %}
-    {% endwith %}
-
-    '''
-    try:
-        return Link.objects.get(pk=id)
-    except:
-        return 
-    
-    
-@register.filter
-def get_widget_by_id(id:int):
-    '''
-    Returns the widget object with the given id.
-
-    Example usage:
-    {{ id|get_widget }}
-
-    or 
-
-    {% with id|get_widget as widget %}
-    {% if widget %}
-    {{ widget.name }}
-    {% endif %}
-    {% endwith %}
-
-    '''
-    try:
-        return Widget.objects.get(pk=id)
-    except:
-        return 
 
 
 @register.inclusion_tag('snippets/workspace_item.html')
@@ -189,26 +124,6 @@ def workspace_item(item:dict):
     return {'item': item}
 
 
-@register.simple_tag(name='render_link')
-def render_link(link_id:int):
-    '''
-    Returns a link object.
-
-    Example usage:
-    {% render_link link_id %}
-    '''
-    try:
-        link = Link.objects.get(pk=link_id)
-        if link.is_external_url():
-            return mark_safe(f'<a link-id="{link.pk}" class="hover:cursor-pointer text-primary link-item" href="https://{link.url}" target="_blank">{link.name}</a>')
-        elif link.is_absolute_url:
-            return mark_safe(f'<a link-id="{link.pk}" class="hover:cursor-pointer text-primary link-item" hx-get="{link.url}" hx-target="#main-content" hx-push-url="true">{link.name}</a>')
-        elif not link.requires_args():
-            return mark_safe(f'<a link-id="{link.pk}" class="hover:cursor-pointer text-primary link-item" hx-get="{reverse(link.url)}" hx-target="#main-content" hx-push-url="true">{link.name}</a>')
-        else:
-            return mark_safe("<p>Link requires arguments</p>")
-    except:
-        return mark_safe("<p>Link not found</p>")
 
 
 @register.inclusion_tag('components/bookmark.html')
@@ -232,31 +147,6 @@ def render_bookmark(object:Model, user:AbstractBloomerpUser, size:int, target:st
         'target' : target,
         'size': size
     }
-
-
-
-@register.inclusion_tag('snippets/breadcrumb.html')
-def breadcrumb(title:str=None, model:Model = None, object:Model=None):
-    '''
-    Returns a breadcrumb navigation.
-
-    Example usage:
-    {% breadcrumb title model object %}
-    '''
-    # Init context
-    context = {"title": title}
-
-    # Check if the model is set
-    if model:
-        list_view_url = get_list_view_url(model)
-        model_dashboard_view_url = get_model_dashboard_view_url(model)
-        model_name_plural = model._meta.verbose_name_plural.title()
-        context['list_view_url'] = list_view_url
-        context['model_name_plural'] = model_name_plural
-        context['model_dashboard_url'] = model_dashboard_view_url
-    if object:
-        context['object'] = object
-    return context
 
 
 @register.inclusion_tag('snippets/avatar.html')

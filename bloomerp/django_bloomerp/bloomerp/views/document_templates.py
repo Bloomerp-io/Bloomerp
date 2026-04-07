@@ -39,14 +39,8 @@ class BloomerpDetailDocumentTemplateListView(BloomerpBaseDetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Get related document templates
-        content_type = ContentType.objects.get_for_model(self.model)
-
-        context["document_templates"] = DocumentTemplate.objects.filter(
-            model_variable=content_type
-        )
-        context["document_template_detail_url"] = self.document_template_detail_url
-        context["document_template_generate_url"] = get_detail_base_view_url(self.model) + "_document_template_generate"
+        context["content_type_id"] = ContentType.objects.get_for_model(DocumentTemplate).id
+        context["model_content_type_id"] = ContentType.objects.get_for_model(self.model)
         return context
 
 # ---------------------------------

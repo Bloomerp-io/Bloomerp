@@ -1,8 +1,8 @@
 import htmx from "htmx.org";
 import BaseComponent, { getComponent, componentIdentifier } from "../BaseComponent";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
+import { BaseDataViewCell } from "./BaseDataViewCell";
 import { getLocalStorageValue, setLocalStorageValue } from "@/utils/localStorage";
-import { get } from "http";
 import FilterContainer from "../Filters";
 
 export class DataViewContainer extends BaseComponent {
@@ -15,6 +15,7 @@ export class DataViewContainer extends BaseComponent {
     private syncUrl:boolean = false;
     private appliedFiltersHandler: ((event: Event) => void) | null = null;
     private afterSwapHandler: ((event: Event) => void) | null = null;
+    private addButtonHandler: ((event: MouseEvent) => void) | null = null;
 
     private static readonly RESERVED_FILTER_KEYS = new Set<string>([
         "q",
@@ -68,8 +69,13 @@ export class DataViewContainer extends BaseComponent {
         this.appliedFiltersHandler = (event: Event) => this.handleAppliedFiltersClick(event);
         this.element?.addEventListener('click', this.appliedFiltersHandler);
 
+        this.addButtonHandler = (event: MouseEvent) => this.handleAddButtonClick(event);
+        this.getAddButton()?.addEventListener('click', this.addButtonHandler, true);
+
         this.afterSwapHandler = (event: Event) => this.handleAfterSwap(event);
         this.element?.addEventListener('htmx:afterSwap', this.afterSwapHandler);
+
+        this.installCellClickOverrides();
     }
 
     /**
@@ -185,6 +191,53 @@ export class DataViewContainer extends BaseComponent {
         if (this.syncUrl) {
             this.syncBrowserUrl(new URL(this.fullPath, window.location.origin));
         }
+
+        this.installCellClickOverrides();
+    }
+
+    private handleAddButtonClick(event: MouseEvent): void {
+        if (this.onAdd(event) === false) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
+
+    private installCellClickOverrides(): void {
+        let dataView: BaseDataViewComponent;
+
+        try {
+            dataView = this.getDataViewComponent();
+        } catch {
+            return;
+        }
+
+        const cells = dataView.getCells();
+        for (const cell of cells) {
+            cell.onClickOverride = (clickedCell) => this.onCellClick(clickedCell);
+        }
+    }
+
+    protected onAdd(_event: MouseEvent): boolean {
+        return false;
+    }
+
+    protected onCellClick(_cell: BaseDataViewCell): boolean {
+        return false;
+    }
+
+    protected navigateTo(url: string, target: string | HTMLElement = '#main-content', pushUrl: boolean = true): void {
+        htmx.ajax('get', url, {
+            target,
+            swap: 'innerHTML',
+            push: pushUrl ? 'true' : 'false',
+        });
+    }
+
+    private getAddButton(): HTMLElement | null {
+        return this.element?.querySelector<HTMLElement>('[data-dataview-add-button]') ?? null;
     }
 
     private syncBrowserUrl(dataViewUrl: URL): void {
@@ -221,7 +274,6 @@ export class DataViewContainer extends BaseComponent {
         if (!el) return null;
         return getComponent(el) as FilterContainer;
     }
-
     
     public getDataViewComponent() : BaseDataViewComponent {
         if (!this.element) throw new Error('DataViewContainer element not found');
@@ -238,7 +290,6 @@ export class DataViewContainer extends BaseComponent {
 
         throw new Error('No DataView component found inside DataViewContainer');
     }
-
 
     public focusSearchInput(): void {
         if (this.searchInput) {
@@ -337,6 +388,10 @@ export class DataViewContainer extends BaseComponent {
     }
 
     public destroy(): void {
+        const addButton = this.getAddButton();
+        if (addButton && this.addButtonHandler) {
+            addButton.removeEventListener('click', this.addButtonHandler, true);
+        }
         if (this.appliedFiltersHandler) {
             this.element?.removeEventListener('click', this.appliedFiltersHandler);
         }
@@ -344,4 +399,37 @@ export class DataViewContainer extends BaseComponent {
             this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
         }
     }
+
+    /**
+     * Hides the filtered badge from the applied filter section.
+     * 
+     * If all filters are removed, the clear all button will also be hidden. This is done by checking if there are any visible badges left after hiding the specified one, and if not, hiding the clear all button as well.
+     * 
+     * @param key The key of the filter to hide
+     */
+    public hideFilter(key:string): void {
+        const badge = this.element?.querySelector(`[data-filter-key="${key}"]`) as HTMLElement | null;
+        if (badge) {
+            badge.style.display = 'none';
+        }
+    }
+
+    /**
+     * Retrieves the list of filter keys from the applied filter section.
+     * 
+     * A filter key is stored in the `data-filter-key` attribute of the badge element. This method collects all badges and extracts their keys to return as a list.
+     * 
+     * @returns list of filter keys
+     */
+    public getFilterKeys(): string[] {
+        const badges = this.element?.querySelectorAll<HTMLElement>('[data-filter-key]') ?? [];
+        const keys: string[] = [];
+        badges.forEach(badge => {
+            const key = badge.getAttribute('data-filter-key');
+            if (key) keys.push(key);
+        });
+        return keys;
+    }
+
+    
 }

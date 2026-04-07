@@ -301,7 +301,6 @@ class TestDataView(BaseBloomerpModelTestCase):
             self.assertContains(response, name)
             self.assertNotContains(response, "Bob")
 
-    
     def test_filter_dataview_with_foreign_key_field_using_field_lookup(self):
         """
         This test filters the dataview based on a foreign key and uses
@@ -338,4 +337,36 @@ class TestDataView(BaseBloomerpModelTestCase):
             self.assertContains(response, name)
             self.assertNotContains(response, "Bob")
 
-    
+    # ---------------------------
+    # Querying by string
+    # ---------------------------
+    def test_querying_by_double_string_should_return_results_that_contain_both_strings(self):
+        """
+        This test checks whether the dataview correctly applies filters
+        when querying by a string that contains multiple words.
+
+        The dataview should return results that contain all the words in the query string.
+        """
+        # Login the client
+        self.client.force_login(self.admin_user)
+        
+        # Create customers
+        self.create_customer("Alice", "Smith", 30)
+        self.create_customer("Bob", "Johnson", 25)
+        self.create_customer("Alice", "Johnson", 28)
+        
+        # Create url with filter for first_name and last_name
+        content_type_id = ContentType.objects.get_for_model(self.CustomerModel).id
+        url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type_id},
+        ) + "?q=Alice Johnson"
+        
+        # Send GET request to the URL
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        
+        # Check if the response contains only the customer that has both Alice and Johnson in their name
+        self.assertNotContains(response, "Alice Smith")
+        self.assertNotContains(response, "Bob Johnson")
+        self.assertContains(response, "Alice Johnson")    

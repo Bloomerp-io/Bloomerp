@@ -50,9 +50,10 @@
     data-render-id="{{ render_id }}"
     data-url="{{ request.get_full_path }}"
     data-base-url="{{ request.path }}"
+    data-full-create-url="{{ full_create_url|default:'' }}"
     data-sync-url="{{ sync_url|yesno:'true,false' }}"
     class="flex flex-col"
-    bloomerp-component="dataview-container"
+    bloomerp-component="{{ component_id | default:'dataview-container' }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
     >
     <!--Search inputs-->
@@ -167,6 +168,7 @@
             <c-ui.tooltip position="bottom" text="Add object">
                 <button 
                     class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+                    data-dataview-add-button="true"
                     hx-push-url="false"
                     bloomerp-open-modal="create-object-modal"
                     hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
