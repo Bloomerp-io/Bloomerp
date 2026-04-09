@@ -14,7 +14,9 @@ Parameters:
 - separator: Type of separator - 'chevron', 'slash', 'arrow' (default: 'chevron')
 {% endcomment %}
 
-<li class="inline-flex items-center {{ class|default:'' }}">
+<li 
+    id="{{ id }}"
+    class="inline-flex items-center {{ class|default:'' }}">
     {% if not active %}
         {% if href %}
             <!-- Regular link -->
@@ -53,12 +55,17 @@ Parameters:
         {% endif %}
     {% else %}
         <!-- Active/current item -->
-        <span class="inline-flex items-center text-sm font-medium text-gray-400" aria-current="page">
+        <a 
+            href="#"
+            class="inline-flex items-center text-sm font-medium text-gray-400" aria-current="page"
+            hx-get="{{ hx_get }}"
+            {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
+            >
             {% if icon %}
                 <i class="{{ icon }} mr-2 text-sm"></i>
             {% endif %}
             {{ text }}
-        </span>
+        </a>
     {% endif %}
 
     {% if show_separator|default:True and not active %}

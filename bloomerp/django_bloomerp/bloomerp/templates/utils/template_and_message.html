@@ -1,0 +1,9 @@
+{% if hx_swap_oob and hx_swap_oob_id %}
+    <div id="{{ hx_swap_oob_id }}" hx-swap-oob="{{ hx_swap_oob }}">
+        {% include template_name %}    
+    </div>
+{% else %}
+    {% include template_name %}
+{% endif %}
+
+<c-ui.message text="{{ message }}" type="{{ type}}" duration="{{ duration }}" />

@@ -43,7 +43,11 @@ class UserPermissionManager:
     
     def __init__(self, user: AbstractBloomerpUser):
         self.user = user
+        self.is_anonymous = not user or user.is_anonymous
+        
         self.policies = self.get_user_policies()
+        
+
     
     def get_user_policies(self) -> QuerySet[Policy]:
         """Retrieve all policies associated with the user.
@@ -51,7 +55,7 @@ class UserPermissionManager:
         Returns:
             QuerySet[Policy]: queryset of policies linked to the user.
         """
-        if not self.user:
+        if self.is_anonymous:
             return Policy.objects.none()
 
         return (
@@ -213,7 +217,7 @@ class UserPermissionManager:
             TypeError: If ``model_or_content_type`` is not a model, model
                 class, or ContentType.
         """
-        if not self.user:
+        if self.is_anonymous:
             return False
 
         if getattr(self.user, "is_superuser", False):

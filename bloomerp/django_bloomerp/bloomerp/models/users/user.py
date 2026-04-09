@@ -10,6 +10,7 @@ from bloomerp.models.mixins import (
     AvatarModelMixin,
     StringSearchModelMixin,
 )
+from bloomerp.models.workspaces.sidebar_item import Sidebar
 
 
 class AbstractBloomerpUser(
@@ -95,9 +96,27 @@ class AbstractBloomerpUser(
         '''
         Property that returns all content types the user has view access to.
         '''
+        # TODO: Get rid of this property
         return self.get_content_types_for_user(permission_types=["view"])
 
-    
+    @property
+    def selected_sidebar(self) -> Sidebar:
+        """
+        Returns the sidebar items for the user's selected sidebar, ordered by position.
+        """
+        selected_sidebar = self.sidebars.filter(selected=True).first()
+        if selected_sidebar:
+            return selected_sidebar
+
+        first_sidebar = self.sidebars.order_by("id").first()
+        if first_sidebar:
+            first_sidebar.select()
+            return first_sidebar
+
+        return Sidebar.objects.create(
+            user=self,
+            selected=True,
+        )
     
 class User(AbstractBloomerpUser):
     class Meta(BloomerpModel.Meta):

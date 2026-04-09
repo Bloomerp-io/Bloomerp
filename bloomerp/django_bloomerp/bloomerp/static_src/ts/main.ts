@@ -11,7 +11,7 @@ import 'drawflow/dist/drawflow.min.css';
 import { registerComponent, setupComponentAutoInit } from './components/BaseComponent';
 import { Modal } from './components/Modal';
 import { Drawer } from './components/Drawer';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar } from './components/sidebar/Sidebar';
 import { DataTable } from './components/data_view_components/DataTable'
 import { DataTableCell } from './components/data_view_components/DataTable'
 import { DataViewContainer } from './components/data_view_components/DataViewContainer';
@@ -42,6 +42,7 @@ import SqlQueryEditor from './components/inputs/SqlQueryEditor';
 import Canvas from './components/workspaces/tiles/Canvas';
 import FileBrowser from './components/files/FileBrowser';
 import DocumentTemplateDataViewContainer from './components/data_view_components/DocumentTemplateDataViewContainer';
+import { SidebarItem } from './components/sidebar/SidebarItem';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -114,7 +115,7 @@ registerComponent('workspace-tile', WorkspaceTile);
 registerComponent('sql-query-editor', SqlQueryEditor);
 
 registerComponent('workspace-tile-canvas', Canvas);
-
+registerComponent('sidebar-item', SidebarItem)
 
 // Auto init comonents
 setupComponentAutoInit();

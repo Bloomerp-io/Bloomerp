@@ -1184,7 +1184,7 @@ class Command(BaseCommand):
             self.stdout.write("Skipping User data (already exists).")
             return
 
-        self._create_records(
+        users = self._create_records(
             user_model,
             [
                 {
@@ -1208,3 +1208,45 @@ class Command(BaseCommand):
             ],
             ["username"],
         )
+
+        # Create sidebar items
+        from bloomerp.models.workspaces.sidebar import Sidebar
+        from bloomerp.models.workspaces.sidebar_item import SidebarItem
+        admin_user = users[0]
+
+
+        sidebar_obj = Sidebar.objects.create(
+            user=admin_user,
+            selected=True
+        )
+
+        folders = []
+        for folder in [
+            ("HR", "fa-solid fa-users"),
+            ("Finance", "fa-solid fa-chart-line"),
+            ("CRM", "fa-solid fa-handshake"),
+            ("Projects", "fa-solid fa-briefcase"),
+        ]:
+            folders.append(SidebarItem.create_folder(
+                sidebar=sidebar_obj,
+                name=folder[0],
+                icon=folder[1]
+            ))
+
+        for folder in folders:
+            for i in range(1, 4):
+                SidebarItem.objects.create(
+                    sidebar=sidebar_obj,
+                    name=f"{folder.name} Item {i}",
+                    icon="fa-solid fa-file",
+                    url=f"/{folder.name.lower()}/item-{i}/",
+                    parent=folder,
+                    is_folder=False,
+                    position=i
+                )
+
+            
+
+
+
+    

@@ -1,5 +1,7 @@
 from django import forms
 
+from bloomerp.widgets.icon_picker_widget import parse_icon_value
+
 class IconFormField(forms.CharField):
     """Form field for selecting a Font Awesome icon value."""
 
@@ -12,5 +14,7 @@ class IconFormField(forms.CharField):
         if value in self.empty_values:
             return
 
-        if self.allowed_icons and value not in self.allowed_icons:
+        normalized_icon_value = parse_icon_value(value).get("icon", "")
+
+        if self.allowed_icons and normalized_icon_value not in self.allowed_icons:
             raise forms.ValidationError("Select a valid icon.")

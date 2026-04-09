@@ -1,5 +1,169 @@
-<a class="content-type-item block px-3 py-2 text-xs text-gray-500 font-bold hover:text-primary-800 hover:bg-gray-200 rounded-md transition-colors cursor-hover:cursor-pointer"
-    hx-get="{{ url }}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
-    href="#">
-    {{ slot }}
-</a>
+{% load bloomerp %}
+
+{% with children=item.children.all %}
+<li class="list-none">
+    <div
+        data-sidebar-dropzone
+        data-sidebar-gap-dropzone
+        data-drop-parent-id="{{ item.parent_id|default:'' }}"
+        data-drop-position="{{ item.position }}"
+        class="h-1 my-0 rounded-lg border border-dashed border-transparent transition-all duration-200 ease-out"
+    ></div>
+</li>
+<li 
+    bloomerp-component="sidebar-item" 
+    data-sidebar-item-root
+    data-is-folder="{{ item.is_folder }}"
+    data-is-internal-url="{{ item.is_internal_url|yesno:'true,false' }}"
+    data-sidebar-item-id="{{ item.id }}"
+    data-url="{{ item.url }}"
+    data-sidebar-id="{{ sidebar.id }}"
+    class="relative overflow-visible"
+    x-data="{ open: false, expanded: false, actionsPinned: false }" 
+    @mouseenter="if (!actionsPinned) open = true" 
+    @mouseleave="if (!actionsPinned) open = false"
+    @click.away="open = false; actionsPinned = false"
+    @dropdown-close="open = false; actionsPinned = false"
+    >
+    <div
+        bloomerp-component="sidebar-item"
+        data-sidebar-item-draggable
+        data-sidebar-item-id="{{ item.id }}"
+        draggable="true"
+        {% if item.is_folder %}
+        data-sidebar-folder-dropzone
+        data-drop-parent-id="{{ item.id }}"
+        data-drop-position="{{ children|length }}"
+        {% endif %}
+        class="relative flex items-center overflow-visible rounded-lg cursor-grab active:cursor-grabbing"
+        @click="if ({{ item.is_folder|yesno:'true,false' }} && !$event.target.closest('[data-ignore-toggle]')) expanded = !expanded"
+    >
+        {% if item.is_folder %}
+        <div class="text-gray-700 flex min-w-0 flex-1 items-center gap-3 px-1 py-0.5 rounded">
+        {% else %}
+        <a
+            href="{{ item.url }}"
+            draggable="false"
+            class="text-gray-700 flex min-w-0 flex-1 items-center gap-3 px-1 py-0.5 rounded hover:text-primary-800"
+            {% if item.is_internal_url %}
+            hx-get="{{ item.url }}"
+            hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            {% else %}
+            target="_blank"
+            rel="noopener noreferrer"
+            {% endif %}
+        >
+        {% endif %}
+            {% with parsed_icon=item.icon|parse_icon_value %}
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded {{ parsed_icon.bg_class|default:'bg-gray-100' }}">
+                        <i class="{{ parsed_icon.icon }} {{ parsed_icon.text_class|default:'text-gray-700' }} text-sm leading-none"></i>
+                    </span>
+                </span>
+            {% endwith %}
+            <div class="min-w-0 flex-1 text-sm font-medium leading-6 break-words">{{ item.name }}</div>
+
+            {% if item.is_folder and item.children.exists %}
+            <button
+                @click.stop="expanded = !expanded"
+                :aria-expanded="expanded.toString()"
+                class="btn btn-sm ml-auto shrink-0 p-1 text-xs rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer">
+                <i :class="(expanded ? 'fa-solid fa-caret-down' : 'fa-solid fa-caret-right') + ' text-secondary text-sm'"></i>
+            </button>
+            {% endif %}
+        {% if item.is_folder %}
+        </div>
+        {% else %}
+        </a>
+        {% endif %}
+
+        <div class="ml-2 flex w-8 shrink-0 justify-end">
+            <div
+                data-ignore-toggle
+                @click.stop="actionsPinned = true; open = true"
+                :class="open || actionsPinned ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'"
+                class="transition-opacity duration-150"
+            >
+                <c-ui.dropdown.body data-ignore-toggle trigger_icon_class="fa-solid fa-ellipsis"
+                    trigger_button_class="p-1 text-xs rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer"
+                    size="sm" direction="down">
+                {% if item.is_folder %}
+                <c-ui.dropdown.submenu 
+                        text="Add Subfolder" 
+                        icon="fa fa-folder" 
+                        id="add-subfolder-btn-{{ item.id }}">
+                        <div
+                            id="sidebar-add-subfolder-panel-{{ item.id }}"
+                            hx-get="{% url 'components_workspaces_sidebar_create_folder' sidebar_id=sidebar.id %}?parent_item_id={{ item.id }}"
+                            hx-trigger="click from:#add-subfolder-btn-{{ item.id }}"
+                            hx-target="this"
+                            hx-swap="innerHTML"
+                        >
+                            <div class="px-4 py-2 text-xs text-gray-500">Loading form...</div>
+                        </div>
+                </c-ui.dropdown.submenu>
+                <c-ui.dropdown.submenu 
+                        text="Add Link" 
+                        icon="fa fa-link" 
+                        id="add-item-link-btn-{{ item.id }}">
+                        <div
+                            id="sidebar-add-item-link-panel-{{ item.id }}"
+                            hx-get="{% url 'components_workspaces_sidebar_create_link' sidebar_id=sidebar.id %}?parent_item_id={{ item.id }}"
+                            hx-trigger="click from:#add-item-link-btn-{{ item.id }}"
+                            hx-target="this"
+                            hx-swap="innerHTML"
+                            
+                        >
+                            <div class="px-4 py-2 text-xs text-gray-500">Loading form...</div>
+                        </div>
+                </c-ui.dropdown.submenu>
+                {% endif %}
+
+                <c-ui.dropdown.submenu 
+                        text="Edit" 
+                        icon="fa fa-pen" 
+                        id="edit-item-btn-{{ item.id }}">
+                        <div
+                            id="sidebar-edit-item-panel-{{ item.id }}"
+                            hx-get="{% url 'components_workspaces_sidebar_edit_item' item_id=item.id %}"
+                            hx-trigger="click from:#edit-item-btn-{{ item.id }}"
+                            hx-target="this"
+                            hx-swap="innerHTML"
+                        >
+                            <div class="px-4 py-2 text-xs text-gray-500">Loading form...</div>
+                        </div>
+                </c-ui.dropdown.submenu>
+                
+                <c-ui.dropdown.item 
+                    id="delete-item-btn-{{ item.id }}" 
+                    text="Delete" 
+                    icon="fa-solid fa-trash"
+                    danger=True 
+                    hx_post="{% url 'components_workspaces_sidebar_delete_item' item_id=item.id %}"
+                    hx_target="#sidebar-content"
+                    hx_swap="outerHTML"
+                    hx_vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                    close_menu=True
+                    />
+                </c-ui.dropdown.body>
+            </div>
+        </div>
+    </div>
+
+    {% if children %}
+    <ul x-show="expanded" x-cloak x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0 transform -translate-y-1"
+        x-transition:enter-end="opacity-100 transform translate-y-0"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100 transform translate-y-0"
+        x-transition:leave-end="opacity-0 transform -translate-y-1"
+        class="mt-1 ml-8 text-gray-500 text-sm overflow-visible">
+        {% for child in children %}
+        <c-sidebar.item :sidebar="sidebar" :item="child" />
+        {% endfor %}
+    </ul>
+    {% endif %}
+</li>
+{% endwith %}

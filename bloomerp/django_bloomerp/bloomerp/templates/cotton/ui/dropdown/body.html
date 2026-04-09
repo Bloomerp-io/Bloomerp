@@ -14,6 +14,7 @@ Parameters:
 - width : custom width class for the dropdown menu (e.g. "w-80"). Overrides size.
 - disabled : whether the dropdown is disabled (default: False)
 - icon : whether to show the arrow indicator icon (default: True; ignored when trigger_icon is set)
+- close_on_item_event : event name used to close this dropdown from nested items/submenus (default: "dropdown-close")
 {% endcomment %}
 
 {% load static %}
@@ -21,7 +22,18 @@ Parameters:
 
 {% if icon %}{% endif %}
 
-<div class="relative inline-block text-left {% if wrapper_class %}{{ wrapper_class }}{% endif %}" x-data="{ open: false }" @click.away="open = false"
+<div class="relative inline-block text-left {% if wrapper_class %}{{ wrapper_class }}{% endif %}"
+    x-data="{ open: false, wasOpen: false }"
+    x-effect="
+        if (open) {
+            wasOpen = true;
+        } else if (wasOpen) {
+            window.dispatchEvent(new CustomEvent('{{ close_on_item_event|default:'dropdown-close' }}'));
+            wasOpen = false;
+        }
+    "
+    @click.away="open = false"
+    @{{ close_on_item_event|default:'dropdown-close' }}="open = false"
     {% if trigger_selector %}
     x-init="(() => {
         const el = document.querySelector('{{ trigger_selector }}');
@@ -96,7 +108,7 @@ Parameters:
     <!-- Dropdown menu -->
     <div 
         class="
-            absolute z-50 
+            absolute z-[90] 
             {% if direction == 'up' %}
                 bottom-full mb-2
             {% else %}
@@ -138,4 +150,3 @@ Parameters:
         </div>
     </div>
 </div>
-

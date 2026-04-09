@@ -999,6 +999,14 @@ Dashboard
   }
 }
 
+@layer components {
+  [data-sidebar-content] [data-sidebar-folder-dropzone] {
+    transition:
+      box-shadow 180ms ease-out,
+      background-color 150ms ease-out;
+  }
+}
+
 
 .messages-wrapper {
   position: fixed;

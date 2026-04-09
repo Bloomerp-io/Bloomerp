@@ -5,7 +5,12 @@
     action="{{ url }}" 
     hx-post="{{ url }}" 
     hx-target="this" 
-    hx-swap="outerHTML">
+    hx-swap="outerHTML"
+    class="p-3"
+    {% for arg,value in form_args.items %}
+    {{ arg }}="{{ value }}"
+    {% endfor %}
+    >
     {% csrf_token %}
     {% if form %}
     {{ form | crispy }}
@@ -16,12 +21,14 @@
     {% endfor %}
     {% endif %}
 
-    <div class="mt-4 flex justify-end gap-2">
+    <div class="mt-4 flex justify-start gap-2">
         <button 
             type="submit" 
             class="btn btn-primary"
             >
-            <c-blocktrans>Create</c-blocktrans>
+            <c-blocktrans>
+                {{ submit_label|default:"Submit" }}
+            </c-blocktrans>
         </button>
     </div>
 
