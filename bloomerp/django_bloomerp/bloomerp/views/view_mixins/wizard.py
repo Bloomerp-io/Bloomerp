@@ -81,9 +81,9 @@ class WizardMixin:
     template_name:str = "base_wizard.html"
     session_key:str = "default_session_key"
     step_query_param: str = "step"
+    allow_step_query_navigation: bool = False
     wizard_step_state_key: str = "__wizard_step"
     wizard_error_state_key: str = "__wizard_error"
-    htmx_include_addendum = False
 
     def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
         super().setup(request, *args, **kwargs)
@@ -137,7 +137,7 @@ class WizardMixin:
         )
 
     def get_current_step_index(self) -> int:
-        if self.step_query_param in self.request.GET:
+        if self.allow_step_query_navigation and self.step_query_param in self.request.GET:
             step_value = self.request.GET.get(self.step_query_param, "0")
         else:
             step_value = str(self.orchestrator.get_session_data(self.wizard_step_state_key) or "0")
@@ -287,4 +287,13 @@ class WizardMixin:
         
         return bool(state)
     
+    def get_htmx_include_addendum(self) -> bool:
+        htmx_request = self.request.htmx
+        if htmx_request:
+            if htmx_request.target == "main-content":
+                return True
+
+            return False
+
+        return True
         

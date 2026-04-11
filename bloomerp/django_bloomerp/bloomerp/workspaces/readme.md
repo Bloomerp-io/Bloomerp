@@ -117,6 +117,14 @@ Model-backed tile family.
 - config stores content type, view type, and selected fields
 - operations update those choices incrementally
 
+### `text_tile`
+
+Simple markdown tile family.
+
+- config stores one markdown string
+- operation updates that content incrementally from the builder
+- renderer converts markdown to sanitized HTML for preview and final display
+
 ## How to add a new tile family
 
 If you want to add a new top-level workspace tile type, the normal path is:

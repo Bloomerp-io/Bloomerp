@@ -19,6 +19,12 @@ def _is_truthy(value) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _resolve_bool_option(value, *, default: bool) -> bool:
+    if value is None:
+        return default
+    return _is_truthy(value)
+
+
 def _field_label(field: FieldConfig | None) -> str:
     if field is None:
         return ""
@@ -94,8 +100,7 @@ class AnalyticsTwoDimChartRenderer(BaseTileRenderer):
             data = _apply_text_x_axis_order(data, x_axis, opts.get("x_axis_order"))
 
         stacked = _is_truthy(opts.get("stacked")) and len(y_axis_fields) > 1
-        show_legend_opt = opts.get("show_legend")
-        show_legend = len(y_axis_fields) > 1 if show_legend_opt in (None, "") else _is_truthy(show_legend_opt)
+        show_legend = _resolve_bool_option(opts.get("show_legend"), default=len(y_axis_fields) > 1)
         fig = go.Figure()
         x_values = data[x_axis].tolist()
 

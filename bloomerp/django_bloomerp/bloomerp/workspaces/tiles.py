@@ -12,6 +12,8 @@ from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
 from bloomerp.workspaces.dataview_tile.render import DataViewTileRenderer
 from bloomerp.workspaces.links_tile.model import LinkTileConfig
 from bloomerp.workspaces.links_tile.render import LinksTileRenderer
+from bloomerp.workspaces.text_tile.model import TextTileConfig
+from bloomerp.workspaces.text_tile.render import TextTileRenderer
 from bloomerp.workspaces.base import TileTypeDefinition
 
 
@@ -41,6 +43,14 @@ class TileType(Enum):
         render_cls=LinksTileRenderer
     )
 
+    TEXT_TILE = TileTypeDefinition(
+        name=str(_("Text")),
+        description=str(_("Displays simple markdown content such as notes, instructions, or reference text.")),
+        icon="fa-align-left",
+        model=TextTileConfig,
+        render_cls=TextTileRenderer
+    )
+
     # DATAVIEW_TILE = TileTypeDefinition(
     #     name=str(_("Data View")),
     #     description=str(_("Displays and manages records from a selected model in a structured view with filtering, sorting, and interaction capabilities.")),
@@ -61,4 +71,3 @@ class TileType(Enum):
 
         return cls.__members__.get(normalized_key)
     
-

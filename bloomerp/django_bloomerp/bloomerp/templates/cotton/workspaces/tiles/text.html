@@ -1,0 +1,11 @@
+<div class="space-y-3 text-sm text-slate-700">
+    {% if config.markdown %}
+        <div class="break-words">
+            {{ rendered_markdown }}
+        </div>
+    {% else %}
+        <div class="text-sm text-slate-400">
+            <c-blocktrans>Add markdown content to preview your text tile.</c-blocktrans>
+        </div>
+    {% endif %}
+</div>

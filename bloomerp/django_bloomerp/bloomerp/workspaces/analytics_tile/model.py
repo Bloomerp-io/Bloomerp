@@ -10,6 +10,7 @@ from enum import Enum
 from pydantic import BaseModel
 
 from bloomerp.workspaces.analytics_tile.kpi import AnalyticsKpiRenderer
+from bloomerp.workspaces.analytics_tile.pie_chart import AnalyticsPieChartRenderer
 from bloomerp.workspaces.analytics_tile.table import AnalyticsTableRenderer
 from bloomerp.workspaces.analytics_tile.two_dim_chart import AnalyticsTwoDimChartRenderer
 from bloomerp.workspaces.analytics_tile.utils import (
@@ -317,6 +318,37 @@ class AnalyticsTileType(Enum):
         name=str(_("Pie Chart")),
         description=str(_("Visualizes data from a custom query in a pie chart format, allowing users to easily understand the proportional distribution of different categories or segments within a dataset, making it ideal for displaying parts of a whole and comparing relative sizes for enhanced insights and decision-making.")),
         icon="fa-chart-pie",
+        fields=[
+            FieldDefinition(
+                key="labels",
+                label=_("Labels"),
+                icon="fa-solid fa-tag",
+                description=_("The field used for the pie slice labels."),
+                allow_multiple=False,
+                opts=[
+                    LABEL_OPTION,
+                ],
+            ),
+            FieldDefinition(
+                key="values",
+                label=_("Values"),
+                icon="fa-solid fa-chart-pie",
+                description=_("The numeric field used for the pie slice values."),
+                allow_multiple=False,
+                restrict_to=[TileFieldType.NUMERIC],
+                opts=[
+                    LABEL_OPTION,
+                    FORMATTER_OPTION,
+                    PREFIX_OPTION,
+                    SUFFIX_OPTION,
+                ],
+            ),
+        ],
+        opts=[
+            SHOW_LEGEND_OPTION,
+            LEGEND_POSITION_OPTION,
+        ],
+        render_cls=AnalyticsPieChartRenderer,
     )
 
     @classmethod

@@ -9,6 +9,7 @@ from bloomerp.forms.workspaces import DEFAULT_TILE_ICON, TileMetadataForm
 from bloomerp.router import router
 from bloomerp.services.sql_services import DatabaseTable
 from bloomerp.services.user_services import get_data_view_fields, get_user_list_view_preference
+from bloomerp.utils.requests import parse_bool_parameter
 from bloomerp.views.view_mixins.wizard import BaseStateOrchestrator
 from bloomerp.views.workspace.create_tile import (
     CREATE_TILE_SESSION_KEY,
@@ -28,6 +29,7 @@ from bloomerp.workspaces.analytics_tile.utils import get_primitive_field_icon
 from bloomerp.workspaces.base import BaseTileConfig
 from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig, build_preview_preference
 from bloomerp.workspaces.links_tile.model import LinkTileConfig
+from bloomerp.workspaces.text_tile.model import TextTileConfig
 from bloomerp.workspaces.tiles import TileType
 from bloomerp.models.users.user_list_view_preference import ViewType
 from django.views.generic import TemplateView
@@ -133,6 +135,10 @@ class PreviewWorkspaceTile(TemplateView):
         ctx["tile_preview_title"] = ctx["tile_name"] or _("Untitled tile")
         ctx["tile_preview_description"] = ctx["tile_description"]
         ctx["tile_preview_icon"] = ctx["tile_icon"] or DEFAULT_TILE_ICON
+        ctx["include_builder_section"] = parse_bool_parameter(
+            self.request.GET.get("include_builder_section", True),
+            True
+        )
         return ctx
     
     def get_tile_builder_template(self):
@@ -142,12 +148,14 @@ class PreviewWorkspaceTile(TemplateView):
                 return "components/workspaces/tile_builders/analytics_tile_builder.html"
             case TileType.LINKS_TILE:
                 return "components/workspaces/tile_builders/links_tile_builder.html"
+            case TileType.TEXT_TILE:
+                return "components/workspaces/tile_builders/text_tile_builder.html"
             # case TileType.DATAVIEW_TILE:
             #     return "components/workspaces/tile_builders/dataview_tile_builder.html"
             case _:
                 return "components/workspaces/tile_builders/default_tile_builder.html"
 
-    def get_config(self) -> LinkTileConfig | DataViewTileConfig | AnalyticsTileConfig | Any:
+    def get_config(self) -> LinkTileConfig | TextTileConfig | DataViewTileConfig | AnalyticsTileConfig | Any:
         """
         Returns the tile config
         """

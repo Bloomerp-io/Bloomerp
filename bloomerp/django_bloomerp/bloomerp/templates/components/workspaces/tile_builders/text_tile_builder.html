@@ -1,0 +1,20 @@
+<div class="border-b border-gray-200 p-3">
+    <c-ui.text.label class="">
+        Markdown
+    </c-ui.text.label>
+    <textarea
+        id="text-tile-markdown"
+        class="textarea min-h-64 w-full input"
+        placeholder="## Notes&#10;&#10;Add markdown content here..."
+        hx-post="{% url 'preview_workspace_tile' %}?include_builder_section=false"
+        hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+        hx-vars='js:{
+            operation: "update_markdown",
+            data: {
+                markdown: this.value
+            }
+        }'
+        hx-target="#tile-preview-section"
+        hx-trigger="input changed delay:250ms"
+    >{{ config.markdown }}</textarea>
+</div>

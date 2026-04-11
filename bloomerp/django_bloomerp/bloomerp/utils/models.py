@@ -225,7 +225,7 @@ def get_list_view_url(model:Model, type:Literal['relative', 'absolute']='relativ
     elif type == 'absolute':
         return model_name_plural_slug(model) + '/'
 
-def get_create_view_url(model:Model, type='relative') -> str:
+def get_create_view_url(model:Model, type:Literal['relative', 'absolute']='relative') -> str:
     """
     This function returns the create view url for a given model.
 
@@ -237,7 +237,7 @@ def get_create_view_url(model:Model, type='relative') -> str:
     if type == 'relative':
         return model_name_plural_underline(model) + '_add'
     elif type == 'absolute':
-        return model_name_plural_slug(model) + '/add/'
+        return model_name_plural_slug(model) + '/create/'
     
 def get_model_dashboard_view_url(model:Model, type='relative') -> str:
     """
