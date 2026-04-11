@@ -2,19 +2,26 @@ import re
 import time
 from typing import Any
 
+import pandas as pd
+
 from bloomerp.models import ApplicationField
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.sql import SqlQueryExecutor
+from bloomerp.workspaces.analytics_tile.utils import TileFieldType, get_primitive_field_icon, to_primitive_field_type
 from pydantic import BaseModel
 
 class Field(BaseModel):
+    """Represents one selectable SQL output field or accessible database field."""
+
     name:str
     field_type:str
     icon:str = "fa-solid fa-table-columns"
     permissions:list[str] = []
 
 class DatabaseTable(BaseModel):
+    """Represents a table-like collection of fields for the SQL builder."""
+
     name:str
     icon:str = "fa-solid fa-table"
     content_type_id:int | None = None
@@ -22,6 +29,8 @@ class DatabaseTable(BaseModel):
 
 
 class SqlQueryResponse(BaseModel):
+    """Structured SQL response used by the SQL preview and analytics builder."""
+
     columns: list[str]
     rows: list[dict[str, Any]]
     row_count: int
@@ -33,7 +42,15 @@ class SqlQueryResponse(BaseModel):
     total_pages: int
     page_start: int
     page_end: int
+    output_fields: DatabaseTable | None = None
     
+    def to_dataframe(self) -> pd.DataFrame:
+        """Creates a DataFrame from the already materialized response rows."""
+        if not self.rows:
+            return pd.DataFrame(columns=self.columns)
+
+        return pd.DataFrame.from_records(self.rows, columns=self.columns)
+
 
 class SqlExecutor:
     """
@@ -189,6 +206,13 @@ class SqlExecutor:
             total_pages=total_pages,
             page_start=page_start,
             page_end=page_end,
+            output_fields=DatabaseTable(
+                name=query,
+                fields=[
+                    self._build_output_field(field, rows)
+                    for field in result.get("output_fields", [])
+                ],
+            ),
         )
         
         
@@ -234,19 +258,55 @@ class SqlExecutor:
 
         return normalized_tables
 
+
     def _field_icon(self, field_type: str | None) -> str:
-        normalized = (field_type or "").lower()
+        """Returns the icon that corresponds to the primitive analytics field type."""
 
-        if "int" in normalized or "decimal" in normalized or "float" in normalized:
-            return "fa-solid fa-hashtag"
+        return get_primitive_field_icon(field_type)
 
-        if "date" in normalized or "time" in normalized:
-            return "fa-solid fa-calendar-days"
+    def _build_output_field(self, field: dict[str, str], rows: list[dict[str, Any]]) -> Field:
+        field_type = self._resolve_output_field_type(field["name"], field.get("field_type"), rows)
+        return Field(
+            name=field["name"],
+            field_type=field_type,
+            icon=self._field_icon(field_type),
+            permissions=[],
+        )
 
-        if "bool" in normalized:
-            return "fa-solid fa-toggle-on"
+    def _resolve_output_field_type(self, field_name: str, field_type: str | None, rows: list[dict[str, Any]]) -> str:
+        if field_type and field_type != "unknown":
+            return to_primitive_field_type(field_type).value.key
 
-        if "foreign" in normalized or "one" in normalized or "many" in normalized:
-            return "fa-solid fa-link"
+        for row in rows:
+            value = row.get(field_name)
+            if value is None:
+                continue
 
-        return "fa-solid fa-table-columns"
+            value_type = type(value).__name__.lower()
+            if value_type in {"int", "float", "decimal"}:
+                return TileFieldType.NUMERIC.value.key
+            if value_type == "str":
+                return TileFieldType.TEXT.value.key
+            if value_type == "bool":
+                return TileFieldType.BOOL.value.key
+            if value_type == "date":
+                return TileFieldType.DATE.value.key
+            if value_type in {"datetime", "timestamp"}:
+                return TileFieldType.DATETIME.value.key
+
+            return to_primitive_field_type(value_type).value.key
+
+        normalized_name = field_name.strip().lower()
+        if normalized_name == "id" or normalized_name.endswith("_id"):
+            return TileFieldType.NUMERIC.value.key
+        if normalized_name.startswith(("is_", "has_", "can_")):
+            return TileFieldType.BOOL.value.key
+        if normalized_name.endswith("_at") or "datetime" in normalized_name or "timestamp" in normalized_name:
+            return TileFieldType.DATETIME.value.key
+        if "date" in normalized_name:
+            return TileFieldType.DATE.value.key
+
+        return TileFieldType.TEXT.value.key
+
+
+    

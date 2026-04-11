@@ -4,14 +4,32 @@ from django.http import HttpRequest
 from django.views.generic import TemplateView
 from django.utils.translation import gettext_lazy as _
 
+from bloomerp.forms.workspaces import DEFAULT_TILE_ICON, TileMetadataForm
+from bloomerp.services.sql_services import SqlExecutor
 from bloomerp.workspaces.tiles import TileType
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.router import router
 from bloomerp.views.mixins import HtmxMixin
 from bloomerp.views.view_mixins.wizard import BaseStateOrchestrator, WizardError, WizardMixin, WizardStep
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileType
+from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileType
 
 CREATE_TILE_SESSION_KEY = "workspace_create_tile_wizard"
+TILE_NAME_SESSION_KEY = "tile_name"
+TILE_DESCRIPTION_SESSION_KEY = "tile_description"
+TILE_ICON_SESSION_KEY = "tile_icon"
+
+
+def _tile_metadata_context(orchestrator: BaseStateOrchestrator) -> dict[str, str]:
+    form = TileMetadataForm(
+        initial={
+            "name": orchestrator.get_session_data(TILE_NAME_SESSION_KEY) or "",
+            "description": orchestrator.get_session_data(TILE_DESCRIPTION_SESSION_KEY) or "",
+            "icon": orchestrator.get_session_data(TILE_ICON_SESSION_KEY) or DEFAULT_TILE_ICON,
+        }
+    )
+    return {
+        "tile_metadata_form": form,
+    }
 
 
 def ctx_0(request, view, orchestrator: BaseStateOrchestrator):
@@ -44,6 +62,9 @@ def pcs_0(request: HttpRequest, view, orchestrator: BaseStateOrchestrator):
     orchestrator.set_session_data("query", "")
     orchestrator.set_session_data("analytics_builder", {})
     orchestrator.set_session_data("tile_config", {})
+    orchestrator.set_session_data(TILE_NAME_SESSION_KEY, "")
+    orchestrator.set_session_data(TILE_DESCRIPTION_SESSION_KEY, "")
+    orchestrator.set_session_data(TILE_ICON_SESSION_KEY, DEFAULT_TILE_ICON)
 
 
 def ctx_analytics_query(request, view, orchestrator: BaseStateOrchestrator):
@@ -61,16 +82,25 @@ def pcs_analytics_query(request: HttpRequest, view, orchestrator: BaseStateOrche
             title=_("Query required"),
             step=1,
         )
+    config = AnalyticsTileConfig.get_default(
+        query=query
+    )
 
+    # Get the database fields
+    output_table = SqlExecutor(request.user).execute_query(query).output_fields.model_dump()
+    
+    # Save the fields
+    orchestrator.set_session_data("output_table", output_table)
     orchestrator.set_session_data("query", query)
+    orchestrator.set_session_data("config", config.model_dump())
 
 
 def ctx_analytics_builder(request, view, orchestrator: BaseStateOrchestrator):
-    analytics_builder = orchestrator.get_session_data("analytics_builder") or {}
     return {
         "types" : [
             i for i in AnalyticsTileType.__members__.values()
-        ]
+        ],
+        **_tile_metadata_context(orchestrator),
     }
 
 
@@ -102,6 +132,7 @@ def ctx_type_config(request, view, orchestrator: BaseStateOrchestrator):
     
     return {
         "form" : form if tile_type.form_cls else None,
+        **_tile_metadata_context(orchestrator),
     }
 
 
@@ -143,10 +174,9 @@ class CreateTileView(WizardMixin, HtmxMixin, TemplateView):
     session_key = CREATE_TILE_SESSION_KEY
     htmx_include_addendum = False
 
+
     def get_step(self, step: int) -> WizardStep | None:
         tile_type = TileType.from_key(self.orchestrator.get_session_data("tile_type"))
-
-
 
         if step == 0:
             return WizardStep(
@@ -180,5 +210,17 @@ class CreateTileView(WizardMixin, HtmxMixin, TemplateView):
 
     def done(self):
         payload = self.orchestrator.get_all_session_data()
-        print("Final payload:", payload)
+        
+        # Create the tile
+        tile = Tile.objects.create(
+            created_by=self.request.user,
+            updated_by=self.request.user,
+            name=payload.get(TILE_NAME_SESSION_KEY),
+            description=payload.get(TILE_DESCRIPTION_SESSION_KEY),
+            schema=payload.get("config"),
+            type=payload.get("tile_type"),
+            icon=payload.get(TILE_ICON_SESSION_KEY),
+            auto_generated=False
+        )
+        
         return None

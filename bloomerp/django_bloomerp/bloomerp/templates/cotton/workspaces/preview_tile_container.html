@@ -1,23 +1,24 @@
 <div
-    bloomerp-component="preview-tile-container"
-    class="overflow-hidden rounded-xl border border-gray-200 bg-white"
+    
+    class="overflow-visible rounded-xl border border-gray-200 bg-white"
     hx-get="{% url 'preview_workspace_tile' %}"
-    hx-target="#tile-builder-preview-section"
+    hx-target="#tile-preview-section"
     hx-trigger="load delay:500ms"
     >
     <div class="grid grid-cols-1 lg:grid-cols-2">
-        <div class="border-r border-gray-200">
+        <div class="relative z-10 min-w-0 overflow-visible border-r border-gray-200">
             <div class="border-b border-gray-200 p-4">
                     <c-blocktrans>
                         <p class="font-bold text-primary-900">{{ name }}</p>
                     </c-blocktrans>
             </div>
+
             <div id="tile-builder-section">
                 {{ slot }}
             </div>
         </div>
 
-        <div class="bg-white">
+        <div class="relative z-0 min-w-0 bg-white">
             <div class="border-b border-gray-200 p-4">
                 <c-blocktrans>
                     <p class="font-bold text-primary-900">
@@ -25,9 +26,8 @@
                     </p>
                 </c-blocktrans>
             </div>
-
-            <div class="space-y-6 px-6 py-5" id="tile-builder-preview-section">
-
+            <div class="min-w-0 space-y-6 px-6 py-5" id="tile-preview-section">
+                
             </div>
         </div>
     </div>

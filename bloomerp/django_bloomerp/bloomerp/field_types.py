@@ -375,7 +375,7 @@ class FieldType(Enum):
         icon="fa-solid fa-paragraph",
         model_field_cls=models.TextField,
         lookups=TEXT_LOOKUPS,
-        widget_cls=BloomerpTextEditorWidget
+        widget_cls=forms.Textarea
     )
     
     EMAIL_FIELD = FieldTypeDefinition(

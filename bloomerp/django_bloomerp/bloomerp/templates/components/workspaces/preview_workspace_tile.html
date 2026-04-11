@@ -1,11 +1,36 @@
-<div class="p-2 h-full flex w-full flex-col items-center justify-center">
-    <div class="w-full">
-        <c-workspaces.tile tile_id="" tile_type="" colspan="1" max_cols="1" icon="" title="Some tile"></c-workspaces.tile>
+{% load crispy_forms_tags %}
+
+<div class="h-full min-w-0 w-full p-2" id="tile-preview-section">
+    <div class="min-w-0 w-full">
+        <c-workspaces.tile colspan="1" max_cols="1" icon="{{ tile_preview_icon }}" title="{{ tile_preview_title }}" description="{{ tile_preview_description}}">
+            {{ tile_preview_html|safe}}
+        </c-workspaces.tile>
     </div>
 </div>
 
 
 <div id="tile-builder-section" hx-swap-oob="innerHTML">
+    <form
+        class="border-b border-gray-200 p-3"
+        hx-post="{% url 'preview_workspace_tile' %}"
+        hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+        hx-target="#tile-preview-section"
+        hx-trigger="change delay:200ms, bloomerp:widget-change"
+    >
+        {% csrf_token %}
+        <div class="">
+            <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_220px] gap-3 items-start">
+                {% for field in tile_metadata_form.visible_fields %}
+                    <div>
+                        {{ field|as_crispy_field }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </form>
     {% include tile_builder_template_name %}
 </div>
 
+{% if message %}
+    <c-ui.message text="{{ message }}" type="{{ message_type }}" duration="5" />
+{% endif %}

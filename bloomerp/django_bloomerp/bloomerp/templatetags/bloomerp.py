@@ -24,6 +24,7 @@ from bloomerp.services.sectioned_layout_services import (
     dump_layout_json as dump_layout_json_service,
     get_object_field_value,
 )
+from bloomerp.widgets.icon_picker_widget import parse_icon_value as parse_icon_value_service
 
 register = template.Library()
 
@@ -412,3 +413,9 @@ def highlight_query(value, query):
         return f'<span class="bg-yellow-200 text-gray-900 rounded px-1">{match.group(0)}</span>'
 
     return mark_safe(pattern.sub(_repl, escaped_value))
+
+
+@register.filter
+def parse_icon_value(value):
+    """Split a stored icon value into glyph and color-chip classes for templates."""
+    return parse_icon_value_service(value)

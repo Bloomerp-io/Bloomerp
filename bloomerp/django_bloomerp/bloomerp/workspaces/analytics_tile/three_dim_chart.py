@@ -1,7 +1,15 @@
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
-from bloomerp.workspaces.tiles import BaseTileRenderer
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from bloomerp.workspaces.base import BaseTileRenderer
+
+if TYPE_CHECKING:
+    from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
 
 
 class AnalyticsThreeDimChartRenderer(BaseTileRenderer):
-    def render(self, config:AnalyticsTileConfig):
+
+    @classmethod
+    def render(cls, config: AnalyticsTileConfig, user):
         pass

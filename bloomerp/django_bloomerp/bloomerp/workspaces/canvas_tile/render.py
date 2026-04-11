@@ -1,10 +1,11 @@
-from bloomerp.workspaces.tiles import BaseTileRenderer
+from bloomerp.workspaces.base import BaseTileRenderer
 from bloomerp.workspaces.canvas_tile.model import CanvasTileConfig
 
 class CanvasTileRenderer(BaseTileRenderer):
     template_name = "cotton/workspaces/tiles/canvas.html"
 
-    def render(self, config: CanvasTileConfig) -> str:
+    @classmethod
+    def render(cls, config: CanvasTileConfig, user) -> str:
         """
         Render the canvas tile based on the provided configuration.
 
@@ -17,4 +18,4 @@ class CanvasTileRenderer(BaseTileRenderer):
         context = {
             "content": config.content
         }
-        return self.render_to_string(context)
+        return cls.render_to_string(context)

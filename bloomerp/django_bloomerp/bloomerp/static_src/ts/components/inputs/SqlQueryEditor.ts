@@ -74,6 +74,7 @@ export default class SqlQueryEditor extends BaseComponent {
     private onSaveClick: ((event: Event) => void) | null = null;
     private onTabsClick: ((event: Event) => void) | null = null;
     private onResultsSwap: ((event: Event) => void) | null = null;
+    private onResultsBeforeSwap: ((event: Event) => void) | null = null;
     private onPageSizeChange: ((event: Event) => void) | null = null;
     private onPaginationClick: ((event: Event) => void) | null = null;
     private onResizeHandleMouseDown: ((event: MouseEvent) => void) | null = null;
@@ -247,8 +248,23 @@ export default class SqlQueryEditor extends BaseComponent {
             this.updatePaginationControls();
         };
 
+        this.onResultsBeforeSwap = (event: Event) => {
+            if (!this.resultsTarget) return;
+
+            const customEvent = event as CustomEvent;
+            const detail = customEvent.detail;
+
+            if (!detail || detail.target !== this.resultsTarget || detail.xhr.status < 400) {
+                return;
+            }
+
+            detail.shouldSwap = true;
+            detail.isError = false;
+        };
+
         if (this.resultsTarget) {
             this.resultsTarget.addEventListener('htmx:afterSwap', this.onResultsSwap);
+            this.resultsTarget.addEventListener('htmx:beforeSwap', this.onResultsBeforeSwap);
         }
 
         this.onPageSizeChange = (event: Event) => {
@@ -363,6 +379,10 @@ export default class SqlQueryEditor extends BaseComponent {
             this.resultsTarget.removeEventListener('htmx:afterSwap', this.onResultsSwap);
         }
 
+        if (this.resultsTarget && this.onResultsBeforeSwap) {
+            this.resultsTarget.removeEventListener('htmx:beforeSwap', this.onResultsBeforeSwap);
+        }
+
         if (this.pageSizeSelect && this.onPageSizeChange) {
             this.pageSizeSelect.removeEventListener('change', this.onPageSizeChange);
         }
@@ -405,6 +425,7 @@ export default class SqlQueryEditor extends BaseComponent {
         this.onSaveClick = null;
         this.onTabsClick = null;
         this.onResultsSwap = null;
+        this.onResultsBeforeSwap = null;
         this.onPageSizeChange = null;
         this.onPaginationClick = null;
         this.onResizeHandleMouseDown = null;

@@ -1,3 +1,63 @@
-<div bloomerp-component="dropdown-input">
-    <input type="text" class="{{ class }}">
+{% comment %}
+dropdown_input
+
+An input that allows you to fill in values with the help of dropdown "suggestions".
+
+Parameters:
+- allow_free_value (bool): whether to allow free values for the input as well
+- class (str): the class
+- attrs (dict): extra attrs for the input
+- id (str): the id
+- placeholder (str): optional placeholder for the input
+- values (list[tuple[str, str]]) : the values as (submitted_value, visible_label)
+
+{% endcomment %}
+
+<div 
+    bloomerp-component="dropdown-input"
+    data-allow-free-value="{{ allow_free_value|default:False}}"
+    class="relative inline-block w-full text-left"
+    >
+    <input
+        type="text"
+        class="{{ class|default:'input w-full pr-10' }}"
+        id="{{ id }}"
+        placeholder="{{ placeholder|default:'' }}"
+        autocomplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded="false"
+        data-dropdown-input-text="true"
+        {% if attrs %}
+        {% for attr,value in attrs.items %} {{attr}}="{{ value}}" {% endfor %}
+        {% endif %}
+    >
+    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+        <svg class="h-5 w-5 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+    </div>
+
+    <div
+        data-dropdown-options="true"
+        role="listbox"
+        class="absolute left-0 z-[90] mt-2 hidden max-h-64 w-72 max-w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg transition-all duration-200 ease-in-out focus:outline-none"
+    >
+        <div class="py-1" role="none">
+        {% for option in values %}
+        <button
+            type="button"
+            role="option"
+            data-dropdown-option="true"
+            data-label="{{ option.1|default:option.0 }}"
+            data-value="{{ option.0 }}"
+            class="block w-full rounded-lg px-4 py-2 text-left text-sm text-gray-700 transition-colors duration-200 hover:bg-gray-50"
+        >
+            <span class="block truncate font-medium text-gray-900">{{ option.1|default:option.0 }}</span>
+        </button>
+        {% empty %}
+        <div class="px-4 py-2 text-sm text-gray-500">No options available</div>
+        {% endfor %}
+        </div>
+    </div>
 </div>

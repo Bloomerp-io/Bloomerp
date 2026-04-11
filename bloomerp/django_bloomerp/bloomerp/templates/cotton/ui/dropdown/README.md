@@ -32,6 +32,21 @@ These templates provide a reusable dropdown system for Bloomerp:
 
 Use `close_menu=True` when selecting the item should dismiss the full dropdown tree.
 
+## Custom item content
+
+`c-ui.dropdown.item` also accepts slotted content directly. When slot content is present, it is rendered inside a non-interactive container that uses the same spacing, colors, and hover styling as a regular dropdown item, without generating a wrapping `button` or `a` element.
+
+```django
+<c-ui.dropdown.item>
+    <button type="button" class="flex w-full items-center justify-between gap-4 px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-primary-800">
+        <span>Revenue</span>
+        <span class="text-xs text-muted">Number</span>
+    </button>
+</c-ui.dropdown.item>
+```
+
+Use the existing `text="..."` API when you want the built-in dropdown item button or link. Use slot content when you need full control over the inner markup, including rendering your own buttons or links, while keeping the standard dropdown item look and feel.
+
 ## Nested submenu
 
 ```django

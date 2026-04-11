@@ -1,55 +1,18 @@
-from typing import Type
 
-from django.forms import Form
 from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
-from pydantic import BaseModel
-
-from abc import ABC, abstractmethod
 
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
+from bloomerp.workspaces.analytics_tile.render import AnalyticsTileRenderer
 from bloomerp.workspaces.canvas_tile.model import CanvasTileConfig
-from bloomerp.workspaces.data_view_tile.form import DataViewTileForm
-from bloomerp.workspaces.data_view_tile.model import DataViewTileConfig
+from bloomerp.workspaces.canvas_tile.render import CanvasTileRenderer
+from bloomerp.workspaces.dataview_tile.form import DataViewTileForm
+from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
+from bloomerp.workspaces.dataview_tile.render import DataViewTileRenderer
 from bloomerp.workspaces.links_tile.model import LinkTileConfig
-
-class BaseTileRenderer(ABC):
-    template_name: str = ""
-
-    @abstractmethod
-    def render(self, config: BaseModel) -> str:
-        """
-        Render the tile based on the provided configuration.
-
-        Args:
-            config (BaseModel): The configuration for the tile.
-
-        Returns:
-            str: The rendered HTML for the tile.
-        """
-        raise NotImplementedError("Subclasses must implement the render method.")
-
-    def render_to_string(self, context: dict) -> str:
-        """
-        Render the tile using the specified template and context.
-
-        Args:
-            context (dict): The context data to be passed to the template.
-        Returns:
-            str: The rendered HTML for the tile.
-        """        
-        from django.template.loader import render_to_string
-        return render_to_string(self.template_name, context)
-
-
-class TileTypeDefinition(BaseModel):
-    name:str
-    description:str
-    icon:str = "" # Font awesome icon
-    form_cls:Type[Form] | None = None
-    model:Type[BaseModel] | None = None
-    render_cls:Type[BaseTileRenderer] | None = None
+from bloomerp.workspaces.links_tile.render import LinksTileRenderer
+from bloomerp.workspaces.base import TileTypeDefinition
 
 
 class TileType(Enum):
@@ -59,13 +22,15 @@ class TileType(Enum):
         icon="fa-chart-line",
         form_cls=None, # TODO: Implement form for analytics tile configuration
         model=AnalyticsTileConfig,
+        render_cls=AnalyticsTileRenderer
     )
 
     CANVAS_TILE = TileTypeDefinition(
         name=str(_("Canvas")),
         description=str(_("A free-form workspace where users can add and arrange different types of content such as text, media, and embedded components.")),
         icon="fa-palette",
-        model=CanvasTileConfig
+        model=CanvasTileConfig,
+        render_cls=CanvasTileRenderer
     )
 
     LINKS_TILE = TileTypeDefinition(
@@ -73,15 +38,17 @@ class TileType(Enum):
         description=str(_("Provides quick access to a collection of internal or external links, allowing users to navigate efficiently to frequently used resources.")),
         icon="fa-link",
         model=LinkTileConfig,
+        render_cls=LinksTileRenderer
     )
 
-    DATA_VIEW_TILE = TileTypeDefinition(
-        name=str(_("Data View")),
-        description=str(_("Displays and manages records from a selected model in a structured view with filtering, sorting, and interaction capabilities.")),
-        icon="fa-table",
-        form_cls=DataViewTileForm,
-        model=DataViewTileConfig,
-    )
+    # DATAVIEW_TILE = TileTypeDefinition(
+    #     name=str(_("Data View")),
+    #     description=str(_("Displays and manages records from a selected model in a structured view with filtering, sorting, and interaction capabilities.")),
+    #     icon="fa-table",
+    #     form_cls=DataViewTileForm,
+    #     model=DataViewTileConfig,
+    #     render_cls=DataViewTileRenderer
+    # )
 
     @classmethod
     def from_key(cls, key: str | None) -> "TileType | None":
@@ -93,3 +60,5 @@ class TileType(Enum):
             return None
 
         return cls.__members__.get(normalized_key)
+    
+

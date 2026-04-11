@@ -7,6 +7,7 @@ import importlib
 import inspect
 import pkgutil
 from django import apps
+from typing import Type
 
 logger = logging.getLogger(__name__)
 
@@ -311,7 +312,7 @@ class ModuleRegistry:
         # self._register_models_from_apps()
         return list(self._module_models.get(module_id, {}).values())
 
-    def get_models_for_submodule(self, module_id: str, submodule_id: str) -> list[type[Model]]:
+    def get_models_for_submodule(self, module_id: str, submodule_id: str) -> list[Type[Model]]:
         """Return all model classes for a given module + submodule."""
         # self._register_models_from_apps()
         return list(self._submodule_models.get((module_id, submodule_id), {}).values())

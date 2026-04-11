@@ -60,14 +60,50 @@ class SqlQueryExecutor:
 
         with connection.cursor() as cursor:
             cursor.execute(query)
-            columns = [col[0] for col in cursor.description]
+            description = cursor.description or []
+            columns = [col[0] for col in description]
             rows = cursor.fetchall()
-            result = {"columns": columns, "rows": rows}
+            output_fields = []
+
+            for column in description:
+                field_name = column[0]
+                field_type = self._get_field_type(column)
+                output_fields.append(
+                    {
+                        "name": field_name,
+                        "field_type": field_type,
+                    }
+                )
+
+            result = {
+                "columns": columns,
+                "rows": rows,
+                "output_fields": output_fields,
+            }
 
         if use_cache:
             self._set_cache_result(result)
 
         return result
+
+    def _get_field_type(self, description: Any) -> str:
+        type_code = getattr(description, "type_code", None)
+
+        if type_code is None and isinstance(description, (tuple, list)) and len(description) > 1:
+            type_code = description[1]
+
+        if type_code is None:
+            return "unknown"
+
+        try:
+            field_type = connection.introspection.get_field_type(type_code, description)
+        except Exception:
+            field_type = None
+
+        if field_type:
+            return str(field_type).lower()
+
+        return str(type_code).lower()
 
     def execute_to_first_value(self, query: str, safe: bool = True, use_cache: bool = False) -> Any:
         """

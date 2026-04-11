@@ -1,3 +1,5 @@
+from typing import Literal
+
 from django.db.models import F, Model, QuerySet, Value
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.functions import Concat
@@ -214,7 +216,7 @@ def get_foreign_key_fields_for_model(model:Model) -> QuerySet[ApplicationField]:
 # ---------------------------------
 # URL Related Functions
 # ---------------------------------
-def get_list_view_url(model:Model, type='relative') -> str:
+def get_list_view_url(model:Model, type:Literal['relative', 'absolute']='relative') -> str:
     """
     This function returns the list view url for a given model.
     """
