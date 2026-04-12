@@ -1,4 +1,3 @@
-from prompt_toolkit import Application
 from bloomerp.router import router
 from django.views.generic import TemplateView
 from bloomerp.views.mixins import HtmxMixin
