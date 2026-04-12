@@ -1,6 +1,6 @@
 [project]
 name = "Bloomerp"
-version = "1.0.0.dev1"
+version = "1.0.0.dev2"
 description = "Bloomerp is an open-source Business Management Software framework that lets you create fully functional business management applications just by defining your Django database models."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -125,7 +125,6 @@ dependencies = [
     "prometheus_client==0.21.1",
     "prompt_toolkit==3.0.48",
     "psutil==6.1.0",
-    "psycopg2-binary==2.9.9",
     "pure_eval==0.2.3",
     "pycparser==2.22",
     "pydantic==2.9.2",
@@ -193,6 +192,11 @@ dependencies = [
     "black>=26.1.0",
     "fa6-icons>=0.0.3",
     "celery>=5.4.0",
+]
+
+[project.optional-dependencies]
+postgres = [
+    "psycopg2-binary==2.9.9",
 ]
 
 [project.scripts]
