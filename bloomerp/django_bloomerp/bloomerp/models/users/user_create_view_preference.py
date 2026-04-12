@@ -4,7 +4,7 @@ from django.db import models
 from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.services.sectioned_layout_services import normalize_layout_payload
-
+from django.conf import settings
 
 class UserCreateViewPreference(models.Model):
     """
@@ -16,7 +16,7 @@ class UserCreateViewPreference(models.Model):
         db_table = "bloomerp_user_create_view_preference"
 
     user = models.ForeignKey(
-        "bloomerp.User",
+        to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="create_view_preference",
     )
