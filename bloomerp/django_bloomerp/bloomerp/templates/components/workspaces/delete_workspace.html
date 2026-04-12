@@ -1,0 +1,22 @@
+<c-ui.container>
+    <div class="flex flex-col space-y-4">
+        <c-ui.text.muted>
+            Delete <span class="font-medium text-slate-700">{{ workspace.name }}</span>? This will permanently remove the workspace and its layout.
+        </c-ui.text.muted>
+
+        <form
+            method="post"
+            action="{{ submit_url }}"
+            hx-post="{{ submit_url }}"
+            hx-target="#delete-workspace-modal-body"
+            hx-swap="innerHTML"
+        >
+            {% csrf_token %}
+            <div class="flex gap-2">
+                <button class="btn btn-danger" type="submit">
+                    Delete workspace
+                </button>
+            </div>
+        </form>
+    </div>
+</c-ui.container>

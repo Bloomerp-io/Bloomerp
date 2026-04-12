@@ -59,6 +59,12 @@ Parameters:
             {% if hx_push_url %}hx-push-url="{{ hx_push_url }}"{% endif %}
             {% if onclick %}onclick="{{ onclick }}"{% endif %}
             {% if close_menu and not disabled %}@click="$dispatch('dropdown-close')"{% endif %}
+            
+            {% if extra_attrs %}
+            {% for a,v in extra_attrs.items %} 
+            {{ a }}="{{ v }}" 
+            {% endfor %}
+            {% endif %}
             class="
                 flex items-center px-4 py-2 text-sm w-full text-left transition-colors duration-150
                 {% if danger %}

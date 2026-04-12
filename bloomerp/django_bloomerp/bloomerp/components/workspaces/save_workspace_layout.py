@@ -32,9 +32,7 @@ def save_workspace_layout(request: HttpRequest) -> HttpResponse:
         return HttpResponse("Permission denied", status=403)
 
     layout = normalize_layout_payload(payload.get("layout"))
-    from bloomerp.components.workspaces.render_workspace_tile import DUMMY_TILES
-
-    valid_ids = set(Tile.objects.values_list("id", flat=True)) | set(DUMMY_TILES.keys())
+    valid_ids = set(Tile.objects.values_list("id", flat=True))
     requested_ids = {
         int(item.id)
         for row in layout.rows

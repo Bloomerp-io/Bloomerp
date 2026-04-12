@@ -49,6 +49,8 @@ export class Modal extends BaseComponent {
             return;
         }
 
+        this.portalToDocumentBody();
+
         // The element itself is the backdrop
         this.backdropElement = this.element;
         
@@ -72,6 +74,23 @@ export class Modal extends BaseComponent {
         this.setupEscapeKeyHandler();
         this.setupTabKeyHandler();
         this.setupTriggerButtons();
+    }
+
+    private portalToDocumentBody(): void {
+        if (!this.element || this.element.parentElement === document.body) return;
+
+        const duplicateModal = Array.from(document.querySelectorAll<HTMLElement>(`[id="${this.modalId}"]`))
+            .find((element) => element !== this.element);
+
+        if (duplicateModal) {
+            const duplicateInstance = (duplicateModal as HTMLElement & {
+                __bloomerp_component?: { destroy?: () => void };
+            }).__bloomerp_component;
+            duplicateInstance?.destroy?.();
+            duplicateModal.remove();
+        }
+
+        document.body.appendChild(this.element);
     }
 
     /**

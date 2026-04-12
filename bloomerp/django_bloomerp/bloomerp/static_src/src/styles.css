@@ -118,7 +118,7 @@
 */
 @layer components {
     .btn {
-        @apply px-4 py-2 font-semibold rounded-xl;
+        @apply px-4 py-2 font-semibold rounded-xl shadow-xs;
     }
 
     .btn:focus {
@@ -991,7 +991,7 @@ Dashboard
   }
 
   .alert-success {
-    @apply bg-success-light text-success-dark border-success-100;
+    @apply bg-success-light text-success-dark border-success-light;
   }
 
   .alert-danger {

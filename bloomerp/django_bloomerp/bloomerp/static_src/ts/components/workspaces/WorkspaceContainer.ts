@@ -55,6 +55,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         if (!this.element) return;
 
         const row = this.layoutRows[rowIndex];
+        const rowItem = row?.items.find((item) => item.id === itemId);
         const rowEl = this.rowElements[rowIndex];
         const targetGrid = rowEl?.querySelector<HTMLElement>("[data-layout-grid]");
         const renderUrl = this.element.dataset.layoutRenderItemUrl;
@@ -84,6 +85,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             swap: "beforeend",
             values: {
                 tile_id: itemId,
+                colspan: rowItem?.colspan ?? 1,
                 max_cols: row.columns,
             },
         });

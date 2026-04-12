@@ -13,6 +13,7 @@ from django.views.generic.edit import CreateView
 from bloomerp.models import UserCreateViewPreference
 from bloomerp.models.files import File
 from bloomerp.models.workspaces import SqlQuery, Tile
+from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.router import router
 from bloomerp.services.create_view_services import (
     get_create_access_state,
@@ -33,7 +34,7 @@ User = get_user_model()
     url_name="add",
     description="Create a new object from {model}",
     route_type="model",
-    exclude_models=[File, Tile, SqlQuery, User],
+    exclude_models=[File, Tile, SqlQuery, User, Workspace],
 )
 class BloomerpCreateView(
     PermissionRequiredMixin,

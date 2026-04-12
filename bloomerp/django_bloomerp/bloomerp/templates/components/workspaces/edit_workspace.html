@@ -1,0 +1,27 @@
+<c-ui.container>
+    <form
+        class="flex flex-col space-y-4"
+        method="post"
+        action="{{ submit_url }}"
+        hx-post="{{ submit_url }}"
+        hx-target="#edit-workspace-modal-body"
+        hx-swap="innerHTML"
+        bloomerp-component="focus-in"
+    >
+        {% csrf_token %}
+        <c-ui.text.muted>
+            Update the name for <span class="font-medium text-slate-700">{{ workspace.name }}</span>.
+        </c-ui.text.muted>
+
+        <div class="flex flex-col">
+            <c-ui.text.label>Name</c-ui.text.label>
+            {{ form.name }}
+        </div>
+
+        <div class="flex gap-2">
+            <button class="btn btn-primary" type="submit">
+                Save
+            </button>
+        </div>
+    </form>
+</c-ui.container>

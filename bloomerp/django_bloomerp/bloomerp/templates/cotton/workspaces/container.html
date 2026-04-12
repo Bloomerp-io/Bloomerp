@@ -4,20 +4,49 @@
     data-workspace-id="{{ workspace_id|default:'' }}"
     data-layout-save-url="/components/workspaces/save_workspace_layout/"
     data-layout-available-items-url="/components/workspaces/available_workspace_tiles/"
-    data-layout-render-item-url="/components/render_workspace_tile/"
+    data-layout-render-item-url="{% url 'components_render_workspace_tile' %}"
     data-layout-kind="workspace"
-    class="space-y-3"
+    class="space-y-4"
 >
-    <div class="flex items-center justify-end my-2 gap-4">
-        <button class="btn btn-sm btn-secondary" type="button" data-layout-edit-toggle>
-            <i class="fa fa-pen-to-square"></i> Edit
-        </button>
-        <button class="btn btn-sm btn-secondary" type="button">
-            <i class="fa fa-filter"></i> Filter
-        </button>
-        <button class="btn btn-sm btn-secondary hidden" type="button" data-layout-open-sidebar bloomerp-open-drawer="workspace-layout-items-drawer">
-            <i class="fa fa-grip"></i> Add items
-        </button>
+    <div class="flex items-center justify-between mb-4 gap-4">
+        <div>
+            {{ slot }}
+        </div>
+
+        <div>
+            {% if workspace.user == request.user %}
+            <button class="btn btn-sm btn-secondary" type="button" data-layout-edit-toggle>
+                <i class="fa fa-pen-to-square"></i> 
+                <c-blocktrans>Edit</c-blocktrans>
+            </button>
+            <c-ui.dropdown.body
+                trigger_text="Share"
+                trigger_button_class="btn btn-sm btn-secondary"
+                trigger_icon_class="fa fa-share-nodes"
+                position="right"
+            >
+                <div
+                    id="workspace-share-component-{{ workspace.id }}"
+                    class="p-2"
+                    hx-get="{% url 'components_workspaces_share_workspace' workspace_id=workspace.id %}"
+                    hx-trigger="load"
+                    hx-target="this"
+                    hx-swap="innerHTML"
+                >
+                    <div class="px-3 py-2 text-sm text-slate-500">
+                        <c-blocktrans>Loading sharing options...</c-blocktrans>
+                    </div>
+                </div>
+            </c-ui.dropdown.body>
+            
+            <button class="btn btn-sm btn-secondary hidden" type="button" data-layout-open-sidebar bloomerp-open-drawer="workspace-layout-items-drawer">
+                <div class="flex items-center gap-1">
+                    <i class="fa fa-grip"></i> Add items
+                </div>
+                
+            </button>
+            {% endif %}
+        </div>
     </div>
 
     <div class="space-y-4" data-layout-root></div>

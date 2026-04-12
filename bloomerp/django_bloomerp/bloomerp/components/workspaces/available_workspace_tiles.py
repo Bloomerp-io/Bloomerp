@@ -2,7 +2,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from bloomerp.router import router
-from bloomerp.services.sectioned_layout_services import get_available_workspace_tiles
+from bloomerp.services.workspace_services import UserWorkspaceService
 
 
 @router.register(
@@ -12,9 +12,12 @@ from bloomerp.services.sectioned_layout_services import get_available_workspace_
 def available_workspace_tiles(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         return HttpResponse("Permission denied", status=403)
+    
+    service = UserWorkspaceService(request.user)
+    tiles = service.get_available_workspace_tiles()
 
     return render(
         request,
         "components/layouts/available_items.html",
-        {"items": get_available_workspace_tiles()},
+        {"items": tiles},
     )

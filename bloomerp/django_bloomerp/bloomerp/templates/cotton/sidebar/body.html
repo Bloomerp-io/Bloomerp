@@ -63,7 +63,7 @@
 
         {% with request.user.selected_sidebar as sidebar %}
         <div class="flex justify-between">
-            <span class="text-gray-500 text-sm  px-2">Workspaces</span>
+            <span class="text-gray-500 text-sm  px-2">Sidebar</span>
 
             <div>
                 <c-ui.dropdown.body
@@ -208,5 +208,5 @@
 </aside>
 
 <!-- Mobile overlay -->
-<div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/50 z-[60] lg:hidden hidden"></div>
+<div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/50 z-[50] lg:hidden hidden"></div>
 </div>

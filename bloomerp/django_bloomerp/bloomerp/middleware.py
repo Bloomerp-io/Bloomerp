@@ -19,10 +19,10 @@ class HTMXPermissionDeniedMiddleware:
     def process_exception(self, request, exception):
         if isinstance(exception, PermissionDenied):
             if request.headers.get('HX-Request'):
-                response_html = render_to_string('snippets/403.html')
+                response_html = render_to_string('snippets/403.html', request=request)
                 return HttpResponse(response_html, status=200)
             else:
-                response_html = render_to_string('403.html')
+                response_html = render_to_string('403.html', request=request)
                 return HttpResponse(response_html, status=403)
                 
         return None

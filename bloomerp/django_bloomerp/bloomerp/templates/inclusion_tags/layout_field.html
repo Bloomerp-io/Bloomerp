@@ -43,7 +43,7 @@
             <p class="mt-1 text-sm text-red-500">{{ error }}</p>
         {% endfor %}
         {% if help_text %}
-            <small class="mt-1 text-gray-600">{{ help_text|safe }}</small>
+            <c-ui.text.help_text>{{ help_text|safe }}</c-ui.text.help_text>
         {% endif %}
     </div>
 

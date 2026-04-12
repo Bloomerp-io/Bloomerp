@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from typing import Any, Optional, Type
 
 from django.contrib.contenttypes.models import ContentType
@@ -10,9 +11,16 @@ from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutR
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.services.permission_services import UserPermissionManager
 from django.db.models import QuerySet
+from bloomerp.models.users import User
 
 MAX_LAYOUT_COLUMNS = 12
 
+@dataclass
+class AvailableLayoutItem:
+    id:str|int
+    title:str
+    description:str
+    icon:str
 
 def clamp_layout_columns(value: Any) -> int:
     try:
@@ -352,6 +360,7 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
     Returns the available fields for a particular content type
     and user.
     """
+    # TODO: use dataclass for response here
     model = content_type.model_class()
     permission_manager = UserPermissionManager(user)
     permission_prefix = "add" if layout_kind == "create" else "view"
@@ -376,34 +385,6 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
             }
         )
     return available
-
-
-def get_available_workspace_tiles() -> list[dict[str, Any]]:
-    from bloomerp.components.workspaces.render_workspace_tile import DUMMY_TILES
-    from bloomerp.models.workspaces.tile import Tile
-
-    dummy_items = [
-        {
-            "id": tile.tile_id,
-            "title": tile.title,
-            "description": "Demo tile",
-            "icon": tile.icon,
-        }
-        for tile in DUMMY_TILES.values()
-    ]
-
-    real_items = [
-        {
-            "id": tile.pk,
-            "title": tile.name,
-            "description": tile.description or "",
-            "icon": "fa-grip",
-        }
-        for tile in Tile.objects.order_by("name")
-    ]
-
-    return dummy_items + real_items
-
 
 
 def resolve_field(

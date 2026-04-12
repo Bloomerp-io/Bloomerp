@@ -1,0 +1,126 @@
+<c-ui.container>
+    <form 
+        class="flex flex-col space-y-3"
+        method="post"
+        action="{{ url }}"
+        hx-post="{{ url }}"
+        hx-target="#create-new-workspace-modal-body"
+        hx-swap="innerHTML"
+        bloomerp-component="focus-in"
+        >
+        {% csrf_token %}
+        <c-ui.text.muted class="">
+            A workspace is your personal and personalizable page on which you can place tiles of various kinds,
+            like links, charts, kpi's, and even your own whiteboard. You can similarly share your workspace 
+            with other users for collaboration
+        </c-ui.text.muted>
+
+        <div class="flex flex-col">
+            <c-ui.text.label>Name</c-ui.text.label>
+            {{ form.name }}
+        </div>
+        
+        {% if show_module_field %}
+            <div class="flex flex-col">
+                <c-ui.text.label>Module</c-ui.text.label>
+                {{ form.module_id }}
+            </div>
+        {% else %}
+            {% if fixed_module_id %}
+                <input type="hidden" name="module_id" value="{{ fixed_module_id }}">
+            {% endif %}
+        {% endif %}
+
+        <div
+            data-submodule-wrapper
+            data-fixed-submodule="{{ fixed_sub_module_id|default:'' }}"
+            class="flex flex-col overflow-hidden transition-all duration-300 ease-out {% if not show_submodule_field %}max-h-0 opacity-0{% else %}max-h-28 opacity-100{% endif %}"
+        >
+            {% if fixed_sub_module_id %}
+                <input type="hidden" name="sub_module_id" value="{{ fixed_sub_module_id }}">
+            {% else %}
+                <c-ui.text.label>Submodule</c-ui.text.label>
+                {{ form.sub_module_id }}
+            {% endif %}
+        </div>
+
+        <div
+            data-generate-default-wrapper
+            class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition-all duration-300 ease-out {% if fixed_module_id or form.module_id.value %}max-h-32 opacity-100{% else %}max-h-0 opacity-0 border-transparent bg-transparent px-0 py-0{% endif %}"
+        >
+            <label class="flex items-start gap-3">
+                {{ form.generate_default }}
+                <span class="flex flex-col">
+                    <span class="text-sm font-medium text-slate-700">Generate default template</span>
+                    <c-ui.text.muted class="text-xs">
+                        Start this workspace with the module's default template and starter tiles.
+                    </c-ui.text.muted>
+                </span>
+            </label>
+        </div>
+
+        <div class="mt-3 flex gap-2">
+            <button class="btn btn-primary" type="submit">
+                Create
+            </button>
+        </div>
+    </form>
+</c-ui.container>
+
+<script>
+(() => {
+    const form = document.currentScript?.previousElementSibling?.querySelector?.('form') || document.currentScript?.parentElement?.querySelector?.('form');
+    if (!form) return;
+
+    const moduleSelect = form.querySelector('[data-workspace-module-select="true"]');
+    const submoduleSelect = form.querySelector('[data-workspace-submodule-select="true"]');
+    const submoduleWrapper = form.querySelector('[data-submodule-wrapper]');
+    const generateWrapper = form.querySelector('[data-generate-default-wrapper]');
+    const submoduleMap = {{ submodule_map_json|safe }};
+    const fixedSubmodule = submoduleWrapper?.dataset.fixedSubmodule || '';
+
+    const applyExpandedState = (element, expanded) => {
+        if (!element) return;
+        element.classList.toggle('max-h-0', !expanded);
+        element.classList.toggle('opacity-0', !expanded);
+        element.classList.toggle('max-h-28', expanded);
+        element.classList.toggle('opacity-100', expanded);
+    };
+
+    const applyGenerateState = (expanded) => {
+        if (!generateWrapper) return;
+        generateWrapper.classList.toggle('max-h-0', !expanded);
+        generateWrapper.classList.toggle('opacity-0', !expanded);
+        generateWrapper.classList.toggle('border-transparent', !expanded);
+        generateWrapper.classList.toggle('bg-transparent', !expanded);
+        generateWrapper.classList.toggle('px-0', !expanded);
+        generateWrapper.classList.toggle('py-0', !expanded);
+        generateWrapper.classList.toggle('max-h-32', expanded);
+        generateWrapper.classList.toggle('opacity-100', expanded);
+        generateWrapper.classList.toggle('border-slate-200', expanded);
+        generateWrapper.classList.toggle('bg-slate-50', expanded);
+        generateWrapper.classList.toggle('px-4', expanded);
+        generateWrapper.classList.toggle('py-3', expanded);
+    };
+
+    const updateSubmodules = () => {
+        if (!moduleSelect || !submoduleSelect || fixedSubmodule) return;
+        const moduleId = moduleSelect.value;
+        const submodules = submoduleMap[moduleId] || [];
+        submoduleSelect.innerHTML = '<option value="">All submodules</option>';
+        submodules.forEach((item) => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.name;
+            submoduleSelect.appendChild(option);
+        });
+        applyExpandedState(submoduleWrapper, submodules.length > 0);
+        applyGenerateState(Boolean(moduleId));
+    };
+
+    if (moduleSelect) {
+        moduleSelect.addEventListener('change', updateSubmodules);
+        updateSubmodules();
+    }
+})();
+</script>

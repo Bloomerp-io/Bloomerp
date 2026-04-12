@@ -20,6 +20,9 @@ export default class DropdownInput extends BaseComponent {
     private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
     private documentPointerDownHandler: ((event: PointerEvent) => void) | null = null;
     private optionHandlers: Array<{ option: DropdownOption; click: () => void; mouseDown: (event: MouseEvent) => void }> = [];
+    private originalOptionsParent: HTMLElement | null = null;
+    private originalNextSibling: ChildNode | null = null;
+    private repositionHandler: (() => void) | null = null;
 
     public initialize(): void {
         if (!this.element) return;
@@ -67,6 +70,13 @@ export default class DropdownInput extends BaseComponent {
 
         if (this.documentPointerDownHandler) {
             document.removeEventListener('pointerdown', this.documentPointerDownHandler);
+        }
+
+        // restore portaled options and remove any reposition handlers
+        try {
+            this.restoreOptionsContainer();
+        } catch (e) {
+            // ignore
         }
 
         this.optionHandlers.forEach(({ option, click, mouseDown }) => {
@@ -361,6 +371,9 @@ export default class DropdownInput extends BaseComponent {
                 if (this.inputElement) {
                     this.inputElement.setAttribute('aria-expanded', 'false');
                 }
+            } else {
+                // ensure portal position is updated when visible
+                this.positionOptionsContainer();
             }
         }
     }
@@ -368,12 +381,20 @@ export default class DropdownInput extends BaseComponent {
     private openDropdown(): void {
         if (!this.optionsContainer || this.getVisibleOptions().length === 0) return;
 
+        // Portal the options container to body to avoid modal overflow clipping
+        this.portalOptionsToBody();
+
         this.optionsContainer.classList.remove('hidden');
         this.inputElement?.setAttribute('aria-expanded', 'true');
+        this.positionOptionsContainer();
     }
 
     private closeDropdown(): void {
-        this.optionsContainer?.classList.add('hidden');
+        if (this.optionsContainer) {
+            this.optionsContainer.classList.add('hidden');
+            // restore into original DOM position if portaled
+            this.restoreOptionsContainer();
+        }
         this.inputElement?.setAttribute('aria-expanded', 'false');
     }
 
@@ -381,6 +402,68 @@ export default class DropdownInput extends BaseComponent {
         if (this.hiddenInputElement) {
             this.hiddenInputElement.value = value;
         }
+    }
+
+    private portalOptionsToBody(): void {
+        if (!this.optionsContainer || this.optionsContainer.parentElement === document.body) return;
+
+        this.originalOptionsParent = this.optionsContainer.parentElement;
+        this.originalNextSibling = this.optionsContainer.nextSibling;
+
+        // detach and append to body
+        document.body.appendChild(this.optionsContainer);
+
+        // add fixed positioning context
+        this.optionsContainer.style.position = 'absolute';
+        this.optionsContainer.style.zIndex = '9999';
+
+        // attach reposition handlers
+        this.repositionHandler = () => this.positionOptionsContainer();
+        window.addEventListener('resize', this.repositionHandler);
+        window.addEventListener('scroll', this.repositionHandler, true);
+    }
+
+    private restoreOptionsContainer(): void {
+        if (!this.optionsContainer || !this.originalOptionsParent) return;
+
+        // remove handlers
+        if (this.repositionHandler) {
+            window.removeEventListener('resize', this.repositionHandler);
+            window.removeEventListener('scroll', this.repositionHandler, true);
+            this.repositionHandler = null;
+        }
+
+        // remove inline styles we added
+        this.optionsContainer.style.position = '';
+        this.optionsContainer.style.zIndex = '';
+        this.optionsContainer.style.left = '';
+        this.optionsContainer.style.top = '';
+        this.optionsContainer.style.width = '';
+
+        // restore to original location
+        if (this.originalNextSibling && this.originalNextSibling.parentNode === this.originalOptionsParent) {
+            this.originalOptionsParent.insertBefore(this.optionsContainer, this.originalNextSibling as Node);
+        } else {
+            this.originalOptionsParent.appendChild(this.optionsContainer);
+        }
+
+        this.originalOptionsParent = null;
+        this.originalNextSibling = null;
+    }
+
+    private positionOptionsContainer(): void {
+        if (!this.optionsContainer || !this.inputElement) return;
+
+        const rect = this.inputElement.getBoundingClientRect();
+        const scrollY = window.scrollY || window.pageYOffset;
+        const scrollX = window.scrollX || window.pageXOffset;
+
+        // Prefer the input width so the dropdown aligns
+        const width = Math.max(rect.width, 160);
+
+        this.optionsContainer.style.left = `${rect.left + scrollX}px`;
+        this.optionsContainer.style.top = `${rect.bottom + scrollY}px`;
+        this.optionsContainer.style.width = `${width}px`;
     }
 
     private findExactMatch(rawValue: string): DropdownOption | null {

@@ -8,7 +8,7 @@
     </div>
 </div>
 
-
+{% if include_builder_section %}
 <div id="tile-builder-section" hx-swap-oob="innerHTML">
     <form
         class="border-b border-gray-200 p-3"
@@ -30,6 +30,7 @@
     </form>
     {% include tile_builder_template_name %}
 </div>
+{% endif %}
 
 {% if message %}
     <c-ui.message text="{{ message }}" type="{{ message_type }}" duration="5" />

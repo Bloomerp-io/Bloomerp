@@ -35,6 +35,7 @@ import { DetailViewCell } from './components/detail_view_components/DetailViewCe
 import DetailTabs from './components/detail_view_components/DetailTabs';
 import Workflow from './components/workflows/Workflow';
 import GlobalSearch from './components/GlobalSearch';
+import SearchSection from './components/SearchSection';
 import { initMessagesWebsocket } from './modules/messages';
 import WorkspaceContainer from './components/workspaces/WorkspaceContainer';
 import WorkspaceTile from './components/workspaces/WorkspaceTile';
@@ -43,6 +44,7 @@ import Canvas from './components/workspaces/tiles/Canvas';
 import FileBrowser from './components/files/FileBrowser';
 import DocumentTemplateDataViewContainer from './components/data_view_components/DocumentTemplateDataViewContainer';
 import { SidebarItem } from './components/sidebar/SidebarItem';
+import FocusIn from './components/inputs/FocusIn';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -104,6 +106,7 @@ registerComponent('workflow', Workflow);
 
 // Global search
 registerComponent('global-search-modal', GlobalSearch);
+registerComponent('search-section', SearchSection);
 
 // File browser
 registerComponent('file-browser', FileBrowser);
@@ -116,6 +119,7 @@ registerComponent('sql-query-editor', SqlQueryEditor);
 
 registerComponent('workspace-tile-canvas', Canvas);
 registerComponent('sidebar-item', SidebarItem)
+registerComponent('focus-in', FocusIn)
 
 // Auto init comonents
 setupComponentAutoInit();
