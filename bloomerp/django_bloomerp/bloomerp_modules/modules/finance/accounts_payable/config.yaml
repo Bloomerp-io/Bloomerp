@@ -1,0 +1,4 @@
+id: accounts_payable
+name: Accounts Payable
+code: AP
+description: Supplier bills, payments, vendor credits.

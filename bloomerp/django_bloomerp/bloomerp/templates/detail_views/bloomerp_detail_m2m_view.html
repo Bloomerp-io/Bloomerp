@@ -1,0 +1,50 @@
+{% load static %}
+{% load bloomerp %}
+{% load crispy_forms_tags %}
+
+<!--Card title-->
+<h5 class="card-title">{{ related_model_name_plural | title }} for {{ object }}</h5>
+<!--End card title-->
+
+<!--Datatable-->
+{% generate_uuid as uuid %}
+{% datatable content_type_id=foreign_content_type_id user=request.user initial_query=initial_query request=request datatable_id=uuid %}
+<!--End datatable-->
+
+{% if not reversed %}
+<!--Create-->
+<div class="flex justify-center">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+        Add {{ related_model_name_singular }} for {{ object }}
+    </button>
+</div>
+<!--End create-->
+
+<!--Create modal-->
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createModa  lLabel">Add {{ foreign_model_name }} for {{ object }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form 
+                hx-post="{% url "components_object_model_form" %}?content_type_id={{foreign_content_type_id}}&reset_on_submit=true"
+                hx-target="#createNewModalBody"
+                hx-swap="innerHTML"
+                hx-on::after-request="reloadDataTable('datatable-{{uuid}}'); showMessage('Successfully created {{related_model_name_singular}}', 'success')"
+                > 
+                {% csrf_token %}
+                <div class="modal-body" id="createNewModalBody">
+                    {{ form|crispy }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!--End create modal-->
+{% endif %}

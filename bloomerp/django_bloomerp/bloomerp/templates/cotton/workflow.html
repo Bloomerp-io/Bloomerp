@@ -1,0 +1,64 @@
+<div bloomerp-component="workflow" class="w-full">
+    <c-ui.text.title class="mb-2">Workflow Builder</c-ui.text.title>
+
+    <!-- Toolbar -->
+    <div class="flex gap-4">
+        <div class="flex gap-2">
+            <button 
+                class="btn btn-primary"
+                id="add-node-btn"
+                bloomerp-open-modal="workflow-modal"
+                ><c-blocktrans>Add Node</c-blocktrans>
+            </button>
+            <button id="zoom-in-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                </svg>
+            </button>
+            <button id="zoom-out-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <!-- DrawFlow Canvas -->
+    <div id="drawflow" class="border border-1 border-gray-200 mt-3 rounded-xl" style="height: calc(75vh);"></div>
+
+    <c-ui.modal id="workflow-modal" title="Add Node">
+        <c-ui.text.text class="mb-2">
+            Add a new node to the workflow by selecting a node type below.
+        </c-ui.text.text>
+
+        <div class="mb-2">
+            {% for node_type in node_types %}
+            <c-ui.text.label class="">
+                {{ node_type.value.name }}
+            </c-ui.text.label>
+            <c-ui.text.muted class="mb-4">
+                {{ node_type.value.description }}
+            </c-ui.text.muted>
+
+            <ul class="space-y-1">
+                {% for sub_type in node_type.value.types %}
+                <li>
+                    <button 
+                        class="btn btn-secondary w-full text-left workflow-node-btn"
+                        data-workflow-node-type="{{ node_type.value.id }}"
+                        data-workflow-node-subtype="{{ sub_type.name }}"
+                        bloomerp-close-modal="workflow-modal"
+                        >
+                        {{ sub_type.name }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% endfor %}
+        </div>
+    </c-ui.modal>
+
+    
+    <c-ui.modal title="Update node" id="update-node-modal"/>
+</div>

@@ -1,0 +1,11 @@
+{% comment %}
+An item inside a tabs container
+
+Parameters:
+- active (bool) : determines whether the tab is lit up or not
+- slot : the content within the tab
+{% endcomment %}
+
+<li class="relative px-6 py-3 cursor-pointer transition-all duration-200 ease-in-out hover:bg-gray-50 {% if active %}border-b-2 border-primary bg-primary/5 text-primary font-medium{% else %}border-b border-primary text-gray-600 hover:text-gray-800{% endif %}">
+    {{ slot }}
+</li>

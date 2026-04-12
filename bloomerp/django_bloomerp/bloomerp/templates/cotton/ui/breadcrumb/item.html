@@ -1,0 +1,86 @@
+{% comment %}
+Breadcrumb Item Component
+Parameters:
+- text: The text to display for the breadcrumb item
+- href: URL for the breadcrumb link (optional)
+- hx_get: HTMX GET URL (optional)
+- hx_target: HTMX target element (optional)
+- hx_swap: HTMX swap method (optional)
+- hx_push_url: Whether to push URL to history (optional)
+- icon: Icon class to display before text (optional)
+- active: Whether this is the current/active item (default: False)
+- class: Additional CSS classes for the item
+- show_separator: Show separator after this item (default: True)
+- separator: Type of separator - 'chevron', 'slash', 'arrow' (default: 'chevron')
+{% endcomment %}
+
+<li 
+    id="{{ id }}"
+    class="inline-flex items-center {{ class|default:'' }}">
+    {% if not active %}
+        {% if href %}
+            <!-- Regular link -->
+            <a 
+                href="{{ href }}" 
+                class="inline-flex items-center text-sm font-medium text-primary-900 hover:text-primary-600 transition-colors"
+            >
+                {% if icon %}
+                    <i class="{{ icon }} mr-2 text-sm"></i>
+                {% endif %}
+                {{ text }}
+            </a>
+        {% elif hx_get %}
+            <!-- HTMX link -->
+            <a 
+                href="#"
+                hx-get="{{ hx_get }}"
+                {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
+                {% if hx_swap %}hx-swap="{{ hx_swap }}"{% endif %}
+                {% if hx_push_url %}hx-push-url="{{ hx_push_url }}"{% endif %}
+                class="inline-flex items-center text-sm font-medium text-primary-900 hover:text-primary-600 transition-colors"
+            >
+                {% if icon %}
+                    <i class="{{ icon }} mr-2 text-sm"></i>
+                {% endif %}
+                {{ text }}
+            </a>
+        {% else %}
+            <!-- Plain text link -->
+            <span class="inline-flex items-center text-sm font-medium text-primary-900">
+                {% if icon %}
+                    <i class="{{ icon }} mr-2 text-sm"></i>
+                {% endif %}
+                {{ text }}
+            </span>
+        {% endif %}
+    {% else %}
+        <!-- Active/current item -->
+        <a 
+            href="#"
+            class="inline-flex items-center text-sm font-medium text-gray-400" aria-current="page"
+            hx-get="{{ hx_get }}"
+            {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
+            >
+            {% if icon %}
+                <i class="{{ icon }} mr-2 text-sm"></i>
+            {% endif %}
+            {{ text }}
+        </a>
+    {% endif %}
+
+    {% if show_separator|default:True and not active %}
+        <!-- Separator -->
+        {% if separator == 'slash' %}
+            <span class="mx-2 text-gray-400">/</span>
+        {% elif separator == 'arrow' %}
+            <svg class="w-4 h-4 mx-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+        {% else %}
+            <!-- Default chevron separator -->
+            <svg class="w-4 h-4 mx-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+            </svg>
+        {% endif %}
+    {% endif %}
+</li>

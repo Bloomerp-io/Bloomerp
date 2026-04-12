@@ -1,0 +1,54 @@
+name: Interview Feedback
+id: interview_feedback
+description: Feedback from interviewers
+name_plural: Interview Feedback
+string_representation: "{interview}"
+fields:
+  - id: interview
+    name: Interview
+    type: ForeignKey
+    options:
+      to: hrm.recruitment.interview
+      on_delete: CASCADE
+  - id: reviewer
+    name: Reviewer
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: rating
+    name: Rating
+    type: IntegerField
+    options:
+      null: true
+      blank: true
+  - id: recommendation
+    name: Recommendation
+    type: ChoiceField
+    options:
+      choices:
+        - ["hire", "Hire"]
+        - ["hold", "Hold"]
+        - ["no_hire", "No Hire"]
+      null: true
+      blank: true
+  - id: comments
+    name: Comments
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Feedback"
+      columns: 2
+      items:
+        - id: interview
+        - id: reviewer
+        - id: rating
+        - id: recommendation
+    - title: "Comments"
+      columns: 1
+      items:
+        - id: comments

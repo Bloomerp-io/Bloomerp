@@ -1,0 +1,57 @@
+name: Attendance Record
+id: attendance_record
+description: Daily attendance record
+name_plural: Attendance Records
+string_representation: "{employee} - {attendance_date}"
+fields:
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: CASCADE
+  - id: attendance_date
+    name: Attendance Date
+    type: DateField
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["present", "Present"]
+        - ["absent", "Absent"]
+        - ["late", "Late"]
+        - ["leave", "Leave"]
+      default: "present"
+  - id: check_in
+    name: Check In
+    type: TimeField
+    options:
+      null: true
+      blank: true
+  - id: check_out
+    name: Check Out
+    type: TimeField
+    options:
+      null: true
+      blank: true
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Attendance"
+      columns: 2
+      items:
+        - id: employee
+        - id: attendance_date
+        - id: status
+        - id: check_in
+        - id: check_out
+    - title: "Notes"
+      columns: 1
+      items:
+        - id: notes

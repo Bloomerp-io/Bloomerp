@@ -1,0 +1,107 @@
+{% load bloomerp %}
+
+{% if query %}
+	<div class="px-4 py-2 border-t text-xs text-gray-500 uppercase tracking-wide flex flex-wrap items-center gap-2">
+		<span class="font-semibold text-gray-700"><c-blocktrans>Searching:</c-blocktrans></span>
+		<span class="text-gray-700">{{ search_label }}</span>
+		<span class="text-gray-400">"{{ query }}"</span>
+		{% if search_scope.module %}
+			<span class="bg-gray-200 text-gray-700 rounded px-2 py-0.5">Module: {{ search_scope.module }}</span>
+		{% endif %}
+		{% if search_scope.model %}
+			<span class="bg-gray-200 text-gray-700 rounded px-2 py-0.5">Model: {{ search_scope.model }}</span>
+		{% endif %}
+	</div>
+
+	{% if search_type == "slash" and slash_error %}
+		<div class="px-4 py-4 text-sm text-gray-500">
+			<c-blocktrans>{{ slash_error }}</c-blocktrans>
+		</div>
+	{% elif search_type == "routes" %}
+		{% if route_results %}
+			{% for route in route_results %}
+				<div class="px-4 py-3 hover:bg-gray-50" data-global-search-row>
+					{% if route.url %}
+						<a
+							class="flex flex-col"
+							data-global-search-item
+							hx-get="{{ route.url }}"
+							hx-target="#main-content"
+							hx-swap="innerHTML"
+							hx-push-url="true"
+						>
+							<span class="text-sm font-medium text-gray-900">{{ route.name|highlight_query:highlight_query }}</span>
+							<span class="text-xs text-gray-500">{{ route.description }}</span>
+							{% if route.module %}
+								<span class="text-xs text-gray-400">{{ route.module }}</span>
+							{% endif %}
+						</a>
+					{% else %}
+						<div class="flex flex-col opacity-60">
+							<span class="text-sm font-medium text-gray-900">{{ route.name|highlight_query:highlight_query }}</span>
+							<span class="text-xs text-gray-500">{{ route.path }}</span>
+							{% if route.module %}
+								<span class="text-xs text-gray-400">{{ route.module }}</span>
+							{% endif %}
+						</div>
+					{% endif %}
+				</div>
+			{% endfor %}
+		{% else %}
+			<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>No routes found.</c-blocktrans></div>
+		{% endif %}
+	{% elif search_type == "users" %}
+		{% if user_results %}
+			{% for item in user_results %}
+				<div class="px-4 py-3 hover:bg-gray-50" data-global-search-row>
+					<a
+						class="flex flex-col"
+						data-global-search-item
+						hx-get="{{ item.user|detail_view_url }}"
+						hx-target="#main-content"
+						hx-swap="innerHTML"
+						hx-push-url="true"
+					>
+						<span class="text-sm font-medium text-gray-900">{{ item.display|highlight_query:highlight_query }}</span>
+						<span class="text-xs text-gray-500">@{{ item.user.username }}</span>
+					</a>
+				</div>
+			{% endfor %}
+		{% else %}
+			<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>No users found.</c-blocktrans></div>
+		{% endif %}
+	{% else %}
+		{% if object_results %}
+			{% for group in object_results %}
+				<div class="px-4 py-2 bg-gray-50 text-xs text-gray-600 flex flex-wrap items-center gap-2">
+					<span class="font-semibold text-gray-700">{{ group.model_label }}</span>
+					{% for module_label in group.module_labels %}
+						<span class="bg-gray-200 text-gray-700 rounded px-2 py-0.5">{{ module_label }}</span>
+					{% endfor %}
+				</div>
+				{% for obj in group.objects %}
+					<div class="px-4 py-3 hover:bg-gray-50" data-global-search-row>
+						<a
+							class="flex flex-col"
+							data-global-search-item
+							hx-get="{{ obj|detail_view_url }}"
+							hx-target="#main-content"
+							hx-swap="innerHTML"
+							hx-push-url="true"
+						>
+							<span class="text-sm font-medium text-gray-900">{{ obj|highlight_query:highlight_query }}</span>
+						</a>
+					</div>
+				{% endfor %}
+			{% endfor %}
+		{% else %}
+			<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>No results found.</c-blocktrans></div>
+		{% endif %}
+	{% endif %}
+
+	{% if results_truncated %}
+		<div class="px-4 py-2 text-xs text-gray-400"><c-blocktrans>Showing first {{ results_limit }} results.</c-blocktrans></div>
+	{% endif %}
+{% else %}
+	<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>Start typing to search.</c-blocktrans></div>
+{% endif %}

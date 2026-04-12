@@ -1,0 +1,124 @@
+{% comment %}
+Nested dropdown menu item.
+Parameters:
+- text : trigger text
+- icon : optional trigger icon class
+- class : additional classes for the trigger row
+- menu_class : additional classes for the nested menu
+- width : custom width class for the nested menu (default: w-56)
+- direction : "right", "left", or "auto" (default: "auto")
+- disabled : whether the submenu trigger is disabled
+- event_name : event name used to coordinate submenu open/close state (default: "dropdown-submenu-open")
+{% endcomment %}
+
+<div
+    class="relative"
+    x-data="{
+        open: false,
+        openDirection: '{{ direction|default:"auto" }}' === 'left' ? 'left' : 'right',
+        panelLeft: 0,
+        panelTop: 0,
+        submenuId: '{{ id|default:text|slugify|default:"submenu" }}',
+        resolvePlacement() {
+            const triggerRect = this.$refs.trigger.getBoundingClientRect();
+            const menuWidth = this.$refs.menu.offsetWidth || 224;
+            const menuHeight = this.$refs.menu.offsetHeight || 0;
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const viewportPadding = 16;
+
+            if ('{{ direction|default:"auto" }}' === 'left') {
+                this.openDirection = 'left';
+            } else if ('{{ direction|default:"auto" }}' === 'right') {
+                this.openDirection = 'right';
+            } else {
+                const availableRight = viewportWidth - triggerRect.right;
+                this.openDirection = availableRight >= menuWidth + 16 ? 'right' : 'left';
+            }
+
+            let nextLeft = this.openDirection === 'left'
+                ? triggerRect.left - menuWidth - 8
+                : triggerRect.right + 8;
+
+            if (nextLeft + menuWidth > viewportWidth - viewportPadding) {
+                nextLeft = viewportWidth - viewportPadding - menuWidth;
+            }
+
+            if (nextLeft < viewportPadding) {
+                nextLeft = viewportPadding;
+            }
+
+            let nextTop = triggerRect.top;
+            const menuBottom = nextTop + menuHeight;
+
+            if (menuBottom > viewportHeight - viewportPadding) {
+                nextTop = viewportHeight - viewportPadding - menuHeight;
+            }
+
+            if (nextTop < viewportPadding) {
+                nextTop = viewportPadding;
+            }
+
+            this.panelLeft = nextLeft;
+            this.panelTop = nextTop;
+        }
+    }"
+    @dropdown-close="open = false"
+    @dropdown-close.window="open = false"
+    @{{ event_name|default:'dropdown-submenu-open' }}.window="if ($event.detail !== submenuId) open = false"
+>
+    <button
+        {% if id %}id="{{ id }}"{% endif %}
+        type="button"
+        x-ref="trigger"
+        {% if not disabled %}
+            @click.stop="const nextOpen = !open; if (nextOpen) { open = true; $nextTick(() => resolvePlacement()); } else { open = false; } $dispatch('{{ event_name|default:'dropdown-submenu-open' }}', nextOpen ? submenuId : '')"
+        {% endif %}
+        class="
+            flex items-center justify-between px-4 py-2 text-sm w-full text-left transition-colors duration-150
+            {% if disabled %}
+                opacity-50 cursor-not-allowed text-gray-400
+            {% else %}
+                text-gray-700 hover:bg-gray-100 hover:text-primary-800 hover:cursor-pointer
+            {% endif %}
+            {{ class }}
+        "
+        aria-haspopup="true"
+        :aria-expanded="open.toString()"
+        {% if disabled %}disabled{% endif %}
+    >
+        <span class="flex min-w-0 items-center">
+            {% if icon %}
+                <i class="{{ icon }} mr-3 h-4 w-4 flex-shrink-0"></i>
+            {% endif %}
+            <span class="truncate">{{ text }}</span>
+        </span>
+        <i class="fa-solid fa-chevron-right ml-3 text-xs text-gray-400"></i>
+    </button>
+
+    <div
+        x-ref="menu"
+        x-show="open"
+        x-cloak
+        x-transition:enter="transition ease-out duration-100"
+        x-transition:enter-start="transform opacity-0 scale-95"
+        x-transition:enter-end="transform opacity-100 scale-100"
+        x-transition:leave="transition ease-in duration-75"
+        x-transition:leave-start="transform opacity-100 scale-100"
+        x-transition:leave-end="transform opacity-0 scale-95"
+        class="
+            fixed z-[100] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg
+            {{ width|default:'w-56' }}
+            {{ menu_class }}
+        "
+        :class="openDirection === 'left' ? 'origin-top-right' : 'origin-top-left'"
+        :style="{ left: `${panelLeft}px`, top: `${panelTop}px` }"
+        role="menu"
+        aria-orientation="vertical"
+        style="display: none;"
+    >
+        <div class="py-1" role="none">
+            {{ slot }}
+        </div>
+    </div>
+</div>

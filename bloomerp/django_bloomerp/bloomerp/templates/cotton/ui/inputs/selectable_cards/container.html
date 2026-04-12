@@ -1,0 +1,40 @@
+{% comment %}
+container
+
+A container for searchable cards. Each card can
+
+Parameters:
+- include_search (bool): whether it is searchable
+- value (any): the selected value
+- values (any): list of values (in case multiple selectable are possible)
+- allow_multiple (bool): whether it's possible to allow for multiple selected cards
+- name (str): the input name
+- items (list[dict]): optionally will create the items inside of the slot section. Dict has parameters for items
+
+{% endcomment %}
+
+
+
+<div
+    bloomerp-component="selectable-cards"
+    data-include-search="{{ include_search }}"
+    data-allow-multiple="{{ allow_multiple }}"
+    data-name="{{ name }}"
+    data-value="{{ value }}"
+    data-values="{{ values|default:'' }}"
+>
+<div class="flex">
+    {% if include_search %}
+        <input type="text" class="input" data-selectable-cards-search>
+    {% endif %}
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8 justify-center">
+    {{ slot }}
+</div>
+
+<div data-selectable-cards-values>
+    <input type="hidden" value="{{ value }}" name="{{ name }}">
+</div>
+
+</div>
+

@@ -1,0 +1,91 @@
+<div 
+    class="overflow-hidden bg-white focus:outline-none focus:ring-0"
+    >
+    <table 
+        id="data-table-{{ content_type_id }}" 
+        class="table-auto table w-full border-collapse outline-none"
+        >
+        <thead>
+            <tr>
+                <th>
+                    <c-blocktrans>URL</c-blocktrans>
+                </th>
+                <th>
+                    <c-blocktrans>Name</c-blocktrans>
+                </th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody >
+            {% for link in config.links %}
+                <tr>
+                    <td>
+                        {{ link.url }}
+                    </td>
+                    <td>
+                        {{ link.name }}
+                    </td>
+                    <td class="w-18">
+                        <button 
+                            class="btn btn-sm btn-secondary flex gap-2 items-center w-full justify-center" 
+                            type="button"
+                            hx-post="{% url 'preview_workspace_tile' %}"
+                            hx-vars='
+                                {
+                                    "csrfmiddlewaretoken": "{{ csrf_token }}",
+                                    "operation" : "remove_link",
+                                    "data" : {
+                                        "url" : "{{ link.url }}"
+                                    }
+                                }
+                            '
+                            hx-target="#tile-preview-section"
+                            hx-trigger="click"
+                            >
+                            <i class="fa fa-minus"></i>
+                            <c-blocktrans>Remove</c-blocktrans>
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+
+            <tr class="cursor-pointer">
+                <td
+                    >
+                    <input 
+                        type="text" 
+                        class="input input-sm w-full"
+                        data-link-url
+                        >
+                </td>
+                <td>
+                    <input 
+                        type="text" 
+                        class="input input-sm w-full"
+                        data-link-name
+                        >
+                </td>
+                <td>
+                    <button
+                        class="btn btn-secondary btn-sm flex gap-2 items-center w-full justify-center"
+                        type="button"
+                        hx-post="{% url 'preview_workspace_tile' %}"
+                        hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                        hx-vars='js:{
+                            operation: "add_link",
+                            data: {
+                                url: this.closest("tr").querySelector("[data-link-url]").value,
+                                name: this.closest("tr").querySelector("[data-link-name]").value
+                            }
+                        }'
+                        hx-target="#tile-preview-section"
+                        hx-trigger="click"
+                        >
+                        <i class="fa fa-plus"></i>
+                        <c-blocktrans>Add</c-blocktrans>
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>

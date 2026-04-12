@@ -1,0 +1,3 @@
+id: data_table
+name: Data Table Component
+description: A component that displays objects in a tabular format with features like sorting, filtering, and pagination.

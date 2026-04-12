@@ -1,0 +1,171 @@
+{% load bloomerp %}
+{% load crispy_forms_tags %}
+
+<div class="grid grid-cols-[148px_1fr]">
+    <div class="border-r border-gray-200 bg-white">
+        {% for type in types %}
+        <button
+            type="button"
+            hx-post="{% url 'preview_workspace_tile' %}"
+            hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+            hx-vars='js:{operation: "set_type", data: JSON.stringify({tile_type: "{{ type.0.value.key|escapejs }}"})}'
+            hx-target="#tile-preview-section"
+            hx-trigger="click"
+            class="flex w-full flex-col items-center gap-3 border-b border-gray-200 px-2 py-4 text-gray-700 hover:cursor-pointer {% if type.1 %}bg-primary/8{% endif %}"
+        >
+            <i class="fa {{ type.0.value.icon }} text-2xl text-primary/70"></i>
+            <span class="text-sm font-medium">{{ type.0.value.name }}</span>
+        </button>
+        {% endfor %}
+
+    </div>
+    <div>
+        <div class="border-b border-b-gray-200 p-3">
+            <div class="flex flex-col">
+                <c-ui.text.subtitle>
+                    Data
+                </c-ui.text.subtitle>
+                <c-ui.text.muted class="">
+                    Select the fields required to build your analytics tiles.
+                    They are based on the columns that were defined in your query.
+                </c-ui.text.muted>
+            </div>
+        </div>
+
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 mt-2 gap-4 p-3 border-b border-b-gray-200">
+            {% for draggable_field in tile_type_definition.fields %}
+            <div class="col-span-1">
+                <div class="flex flex-col gap-2">
+                    <div>
+
+                        <c-ui.tooltip :text="draggable_field.description" position="bottom">
+                            <c-ui.dropdown.body trigger_button_class=""
+                                trigger_class="btn btn-sm btn-secondary flex gap-2"
+                                trigger_icon_class="{{ draggable_field.icon }}"
+                                trigger_text="{{ draggable_field.label }}"
+                                menu_class="h-72 overflow-scroll"
+                                >
+                                <div class="p-1">
+                                    <input type="text" class="input w-full" placeholder="<c-blocktrans>Search fields</c-blocktrans>">
+                                </div>
+                                <c-ui.dropdown.divider />
+                                {% with selectable_fields=available_output_fields|get_item:draggable_field.key %}
+                                {% for field in selectable_fields %}
+                                <c-ui.dropdown.item>
+                                    <button
+                                        type="button"
+                                        hx-post="{% url 'preview_workspace_tile' %}"
+                                        hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                                        hx-vars='js:{operation: "add_field", data: JSON.stringify({field_id: "{{ field.name|escapejs }}", draggable_field_id: "{{ draggable_field.key|escapejs }}"})}'
+                                        hx-target="#tile-preview-section"
+                                        hx-trigger="click"
+                                        class="w-full text-left"
+                                    >
+                                        <div class="flex flex-col">
+                                            <div class="flex justify-between w-full items-center">
+                                                <span class="font-medium">{{ field.name }}</span>
+                                                <i class="{{ field.icon }}"></i>
+                                            </div>
+                                            <span class="text-muted">
+                                                {{ field.field_type}}
+                                            </span>
+                                        </div>                                        
+                                    </button>
+                                </c-ui.dropdown.item>
+                                {% empty %}
+                                <c-ui.text.muted class="p-2">No compatible fields found.</c-ui.text.muted>
+                                {% endfor %}
+                                {% endwith %}
+                            </c-ui.dropdown.body>
+                        </c-ui.tooltip>
+                    </div>
+
+                    <div class="border p-2 border rounded-xl border-gray-200">
+                        <div class="flex flex-wrap gap-2">
+                            {% with added_fields=config.fields|get_item:draggable_field.key %}
+                                {% for added_field in added_fields %}
+                                    <c-ui.dropdown.body
+                                        trigger_text="{{ added_field.name }}"
+                                        trigger_button_class="badge badge-primary"
+                                        trigger_icon_class="{{ draggable_field.icon }}"
+                                        position="left"
+                                        menu_class="min-w-72 p-2 max-h-72 overflow-y-auto"
+                                    >
+                                        {% with slot_forms=field_opts_forms|get_item:draggable_field.key %}
+                                            {% with field_opts_form=slot_forms|get_item:added_field.name %}
+                                                {% if field_opts_form %}
+                                                    <form
+                                                        
+                                                        hx-post="{% url 'preview_workspace_tile' %}"
+                                                        hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                                                        hx-vars='js:{operation: "set_field_opts", data: JSON.stringify({field_id: "{{ added_field.name|escapejs }}", draggable_field_id: "{{ draggable_field.key|escapejs }}", opts: Array.from(this.elements).filter((element) => element.name).reduce((acc, element) => { if (element.type === "checkbox") { acc[element.name] = element.checked ? (element.value || "on") : ""; return acc; } acc[element.name] = element.value; return acc; }, {})})}'
+                                                        hx-target="#tile-preview-section"
+                                                        hx-trigger="change delay:200ms"
+                                                    >
+                                                        {% for field in field_opts_form.visible_fields %}
+                                                            <div>
+                                                                {{ field|as_crispy_field }}
+                                                            </div>
+                                                        {% endfor %}
+                                                    </form>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endwith %}
+
+                                        <c-ui.dropdown.divider />
+                                        <c-ui.dropdown.item danger="true">
+                                            <button
+                                                type="button"
+                                                hx-post="{% url 'preview_workspace_tile' %}"
+                                                hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                                                hx-vars='js:{operation: "remove_field", data: JSON.stringify({field_id: "{{ added_field.name|escapejs }}", draggable_field_id: "{{ draggable_field.key|escapejs }}"})}'
+                                                hx-target="#tile-preview-section"
+                                                hx-trigger="click"
+                                                class="w-full text-left"
+                                            >
+                                                <c-blocktrans>Remove field</c-blocktrans>
+                                            </button>
+                                        </c-ui.dropdown.item>
+                                    </c-ui.dropdown.body>
+                                {% empty %}
+                                    <c-ui.text.muted>No fields selected yet.</c-ui.text.muted>
+                                {% endfor %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if has_global_opts %}
+        <div class="border-b border-b-gray-200 p-3">
+            <div class="flex flex-col">
+                <c-ui.text.subtitle>
+                    Options
+                </c-ui.text.subtitle>
+                <c-ui.text.muted class="">
+                    Global options for your tile. These may include things like chart type, colors, etc.
+                </c-ui.text.muted>
+            </div>
+            <form
+                class="mt-4"
+                hx-post="{% url 'preview_workspace_tile' %}"
+                hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                hx-vars='js:{operation: "set_opts", data: JSON.stringify({opts: Array.from(this.elements).filter((element) => element.name).reduce((acc, element) => { if (element.type === "checkbox") { acc[element.name] = element.checked ? (element.value || "on") : ""; return acc; } acc[element.name] = element.value; return acc; }, {})})}'
+                hx-target="#tile-preview-section"
+                hx-trigger="change delay:200ms"
+            >
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {% for field in global_opts_form.visible_fields %}
+                        <div>
+                            {{ field|as_crispy_field }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>

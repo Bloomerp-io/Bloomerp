@@ -1,0 +1,15 @@
+<div
+	hx-get="{% url 'components_data_view' content_type_id=content_type_id %}?content_type={{ model_content_type_id }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}&_component_id=document-templates-dataview"
+	hx-headers='{"X-Bloomerp-Sync-Url": "true"}'
+	hx-trigger="load"
+	hx-target="this"
+	hx-swap="outerHTML"
+>
+</div>
+
+<c-ui.modal 
+	title="Create document"
+	id="create-document-template-modal"
+	>
+	<div>hello</div>
+</c-ui.modal>

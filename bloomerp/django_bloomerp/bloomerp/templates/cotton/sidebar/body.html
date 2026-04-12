@@ -1,0 +1,212 @@
+{% load bloomerp %}
+{% load cotton %}
+{% load static %}
+
+
+<aside id="sidebar"
+    class="fixed left-0 top-0 h-screen w-64 transform -translate-x-full transition-transform duration-300 ease-in-out z-[70] overflow-visible bg-base"
+    bloomerp-component="sidebar">
+    <div class="px-4 pt-2 pb-6 flex flex-col h-full overflow-visible">
+        <div class="flex items-center justify-between">
+            <a hx-get="{% url "bloomerp_home_view" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+                class="flex items-center hover:cursor-pointer h-full overflow-hidden">
+                <span class="hidden md:block h-16 w-28 overflow-hidden">
+                    <img src="{% static 'bloomerp/img/logo.png' %}"
+                        class="h-full w-full object-cover scale-115 origin-center">
+                </span>
+                <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
+            </a>
+
+            <button id="sidebar-toggle" type="button"
+                class="hover:cursor-pointer flex h-10 w-10 items-center justify-center">
+                <c-icons.lines_horizontal size="24" />
+            </button>
+        </div>
+        <!-- End Logo -->
+
+
+        <!-- Logo -->
+
+
+        <!-- Search bar -->
+        <div bloomerp-component="global-search-modal" class="mt-2">
+            <button id="global-search-btn" type="button" aria-haspopup="dialog" aria-controls="global-search-modal"
+                class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-xl hover:cursor-pointer focus:outline-none w-full hover:bg-gray-200">
+                <i class="fa fa-magnifying-glass text-gray-500"></i>
+                <span class="text-sm text-gray-600">Search</span>
+                <span id="global-search-shortcut"
+                    class="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">⌘K</span>
+            </button>
+        </div>
+        <!-- End search bar -->
+
+        <!-- Inbox 
+        <div
+            hx-get="{% url 'inbox' %}"
+            hx-swap="innerHTML"
+            hx-trigger="click"
+            hx-target="#main-content"
+            hx-push-url="true"
+
+            class="flex justify-between px-3 mt-4 bg-white hover:bg-gray-200 border border-gray-200 rounded-lg py-1 hover:cursor-pointer">
+            <div class="flex items-center">
+                <i class="fa-solid fa-inbox text-gray-500"></i> <c-ui.text.muted class="ml-2">Inbox</c-ui.text.muted>
+            </div>
+
+            <div class="p-1 text-xs rounded-md bg-gray-100 text-gray-500">
+                65
+            </div>
+        </div>
+        End Inbox -->
+
+        <hr class="text-gray-300 my-4">
+
+        {% with request.user.selected_sidebar as sidebar %}
+        <div class="flex justify-between">
+            <span class="text-gray-500 text-sm  px-2">Sidebar</span>
+
+            <div>
+                <c-ui.dropdown.body
+                    trigger_icon_class="fa-solid fa-ellipsis"
+                    trigger_button_class="ml-auto p-1 text-xs rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer"
+                    size="sm" 
+                    direction="down"
+                    >
+
+                    <c-ui.dropdown.submenu 
+                        text="Select Sidebar" 
+                        icon="fa fa-bars" 
+                        id="select-sidebar-btn">
+                        <div
+                            hx-get="{% url 'components_workspaces_sidebar_select_menu' %}"
+                            hx-trigger="click from:#select-sidebar-btn"
+                            hx-target="this"
+                            hx-swap="innerHTML"
+                            class="min-w-48"
+                        >
+                            <div class="px-4 py-2 text-xs text-gray-500">Loading sidebars...</div>
+                        </div>
+                    </c-ui.dropdown.submenu>
+
+                    <c-ui.dropdown.submenu
+                        id="create-folder-btn" 
+                        text="Create Folder" 
+                        icon="fa fa-folder"
+                    >
+                        <div
+                            id="sidebar-create-folder-panel"
+                            hx-get="{% url 'components_workspaces_sidebar_create_folder' sidebar_id=sidebar.id %}"
+                            hx-trigger="click from:#create-folder-btn"
+                            hx-target="this"
+                            hx-swap="innerHTML"
+                            
+                        >
+                            Loading form...
+                        </div>
+                    </c-ui.dropdown.submenu>
+
+                    <c-ui.dropdown.submenu 
+                        text="Add Link"
+                        icon="fa-solid fa-link"
+                        id="add-link-btn"
+                    >
+                    <div
+                            id="sidebar-add-link-panel"
+                            hx-get="{% url 'components_workspaces_sidebar_create_link' sidebar_id=sidebar.id %}"
+                            hx-trigger="click from:#add-link-btn"
+                            hx-target="this"
+                            hx-swap="innerHTML"
+                            
+                        >
+                        Loading form...
+                    </div>
+
+                    </c-ui.dropdown.submenu>
+
+                    <c-ui.dropdown.divider />
+                    <c-ui.dropdown.submenu
+                        id="create-new-sidebar-btn"
+                        text="Create Sidebar"
+                        icon="fa-solid fa-plus"
+                    >
+                        <form 
+                            class="p-3" 
+                            hx-post="{% url 'components_workspaces_sidebar_create' %}"
+                            hx-target="#sidebar-content"
+                            hx-swap="outerHTML"
+                            >
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <c-ui.text.label>
+                                    Name
+                                </c-ui.text.label>
+                                <input type="text" name="name" class="input w-full" required>
+                            </div>
+                            <button class="btn btn-primary" type="submit">Create</button>
+                        </form>
+                    </c-ui.dropdown.submenu>
+                    <c-ui.dropdown.item 
+                        id="delete-sidebar-btn"
+                        text="Delete Sidebar"
+                        icon="fa-solid fa-trash"
+                        danger=True
+                        hx_post="{% url 'components_workspaces_sidebar_delete' sidebar_id=sidebar.id %}"
+                        hx_target="#sidebar-content"
+                        hx_swap="outerHTML"
+                        hx_vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                        close_menu=True
+                    />
+                </c-ui.dropdown.body>
+            </div>
+        </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto overflow-x-visible">
+                {% include "components/sidebar/content.html" with sidebar=sidebar %}
+            </div>
+        {% endwith %}
+
+        <!-- Profile -->
+        <div class="mt-auto pt-3">
+            <nav class="ml-auto">
+                <ul class="flex items-center space-x-4 mb-0">
+                    <li class="relative pr-3">
+                        <c-ui.dropdown.body
+                            trigger_text="{% avatar object=request.user class_name='rounded-full w-8 h-8' size=32 %}<span class='hidden md:block ml-2 text-sm font-medium text-gray-700'>{{request.user.first_name}} {{request.user.last_name}}</span>"
+                            position="right" size="md" direction="up" :icon="False">
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <h6 class="text-sm font-semibold text-primary-800">{{request.user.username}}</h6>
+                            </div>
+
+                            <c-ui.dropdown.item text="Account Settings" icon="bi bi-gear"
+                                hx_get="{% url 'users_my_profile_overview' %}" hx_target="#main-content"
+                                hx_swap="innerHTML" hx_push_url="true" />
+
+                            {% if request.user.is_staff %}
+                            <c-ui.dropdown.item text="Admin page" icon="bi bi-hammer" href="/admin/" />
+                            {% endif %}
+
+                            <c-ui.dropdown.item text="Bookmarks" icon="bi bi-bookmark"
+                                hx_get="{% url 'bookmarks_user_bookmarks' %}" hx_target="#main-content"
+                                hx_swap="innerHTML" hx_push_url="true" />
+
+                            <c-ui.dropdown.item type="divider" />
+
+                            <c-ui.dropdown.item text="Sign Out" icon="bi bi-box-arrow-right" danger=True
+                                onclick="document.getElementById('logoutForm').submit()" />
+
+                            <!-- Hidden logout form -->
+                            <form id="logoutForm" action="{% url 'logout' %}" method="post" style="display: none;">
+                                {% csrf_token %}
+                            </form>
+                        </c-ui.dropdown.body>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <!-- End Profile -->
+    </div>
+</aside>
+
+<!-- Mobile overlay -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/50 z-[50] lg:hidden hidden"></div>
+</div>

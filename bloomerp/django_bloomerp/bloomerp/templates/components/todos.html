@@ -1,0 +1,150 @@
+{% load static %}
+{% load crispy_forms_field %}
+
+<!--Buttons-->
+<div class="flex justify-between">
+    <button 
+        class="btn btn-sm btn-primary flex items-center gap-1"
+        hx-get="{% url 'components_project_management_create_todo' %}"
+        hx-target="#create-todo-modal-body"
+        bloomerp-open-modal="create-todo-modal"
+        >
+        <c-icons.add size="16" class="text-white"/>
+        <span>New</span>
+    </button>
+    
+
+    <div class="flex gap-2">
+        <button class="btn btn-sm btn-secondary">
+            All
+        </button>
+        <button class="btn btn-sm btn-secondary">
+            Active
+        </button>
+        <button class="btn btn-sm btn-secondary">
+            Created by me
+        </button>
+        <button class="btn btn-sm btn-secondary">
+            Assigned to me
+        </button>
+        <button class="btn btn-sm btn-secondary">
+            <c-icons.three_dots size="18" class="text-black" />
+        </button>
+    </div>
+</div>
+<!--End Buttons-->
+
+<!--List-->
+
+<div class="mt-4 rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div class="flex items-center justify-between px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+            <span class="w-4"></span>
+            <span class="w-16">Key</span>
+            <span>Title</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <span class="w-28 text-right">Status</span>
+            <span class="w-28 text-right">Assignee</span>
+            <span class="w-20 text-right">Priority</span>
+            <span class="w-20 text-right">Due</span>
+        </div>
+    </div>
+
+    <div class="divide-y divide-gray-100">
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1783</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Remove multi-zone AZ for dev kubernetes</span>
+                    <span class="text-[11px] rounded-full bg-purple-100 text-purple-700 px-2 py-0.5">User Story</span>
+                    <span class="text-[11px] rounded-full bg-gray-100 text-gray-600 px-2 py-0.5">#1121</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Active</span>
+                <span class="w-28 text-right">Alex Kim</span>
+                <span class="w-20 text-right">High</span>
+                <span class="w-20 text-right">Jan 16</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1782</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Vendor Balance Detail KPI View</span>
+                    <span class="text-[11px] rounded-full bg-blue-100 text-blue-700 px-2 py-0.5">Analytics</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Backlog</span>
+                <span class="w-28 text-right">Priya Shah</span>
+                <span class="w-20 text-right">Medium</span>
+                <span class="w-20 text-right">Jan 18</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1779</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Transaction Detail by Account Statement View</span>
+                    <span class="text-[11px] rounded-full bg-green-100 text-green-700 px-2 py-0.5">Reporting</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">In Review</span>
+                <span class="w-28 text-right">Jordan Lee</span>
+                <span class="w-20 text-right">High</span>
+                <span class="w-20 text-right">Jan 20</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1776</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Taxable Sales Detail KPI View</span>
+                    <span class="text-[11px] rounded-full bg-orange-100 text-orange-700 px-2 py-0.5">Finance</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Active</span>
+                <span class="w-28 text-right">Morgan Li</span>
+                <span class="w-20 text-right">Urgent</span>
+                <span class="w-20 text-right">Jan 21</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+                <span class="text-xs font-semibold text-gray-500">HER-1768</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-900">Sales by Customer Detail KPI View</span>
+                    <span class="text-[11px] rounded-full bg-slate-100 text-slate-700 px-2 py-0.5">Dashboard</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-gray-600">
+                <span class="w-28 text-right">Completed</span>
+                <span class="w-28 text-right">You</span>
+                <span class="w-20 text-right">Low</span>
+                <span class="w-20 text-right">Jan 12</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<c-ui.modal id="create-todo-modal" title="Create todo" size="lg"/>
+
+
+
+
+
+
+

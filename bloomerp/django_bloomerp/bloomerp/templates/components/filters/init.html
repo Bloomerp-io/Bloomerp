@@ -1,0 +1,41 @@
+<div
+    bloomerp-component="filter-container"
+    data-content-type-id="{{ content_type_id }}"
+    id="filter-container-{{ content_type_id }}"
+    >
+    <!--Fields section-->
+    <div class="flex items-center mb-2 gap-2">
+        <!--Field selector-->
+        <div id="field-selector-section" class="w-1/3">
+            {% if application_fields %}
+                <select class="select w-full">
+                    <option value="">
+                        <c-blocktrans>Select field</c-blocktrans>
+                    </option>
+                    {% for field in application_fields %}
+                    <option value="{{ field.id }}">
+                        {{ field.title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            {% elif selected_application_field %}
+                <div class="input">{{ selected_application_field.title }}</div>
+                <!-- Hidden field to store the selected field ID for AJAX requests -->
+                <input type="hidden" class="selected-field-id" value="{{ selected_application_field.id }}">
+            {% endif %}
+        </div>
+
+        <!--Operator selector-->
+        <div id="lookup-operator-section" class="w-1/3">
+            {% if html_content %}
+                {{ html_content | safe }}
+            {% endif %}
+        </div>
+
+        <!--Value input-->
+        <div id="value-input-section" class="w-1/3"></div>
+    </div>
+
+    <!--Add and remove buttons-->
+    <div class="flex gap-2"></div>
+</div>

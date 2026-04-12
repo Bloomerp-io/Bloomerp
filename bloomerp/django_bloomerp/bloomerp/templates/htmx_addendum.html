@@ -1,0 +1,35 @@
+<div id="htmx-addendum" {% if include_addendum_oob %}hx-swap-oob="outerHTML"{% endif %}>
+    <div class="flex justify-between items-center mb-4">
+        <c-ui.text.subtitle>
+            {{ route_title | title }}
+        </c-ui.text.subtitle>
+
+        <c-ui.breadcrumb.body>
+            {% for crumb in breadcrumbs %}
+                {% if crumb.active %}
+                <c-ui.breadcrumb.item
+                    text="{{ crumb.text | title }}"
+                    hx_get="{{ crumb.url }}"
+                    hx_target="#main-content"
+                    hx_swap="innerHTML"
+                    hx_push_url="true"
+                    separator="chevron"
+                    :active="True"
+                    />
+                {% else %}
+                <c-ui.breadcrumb.item
+                    text="{{ crumb.text | title }}"
+                    hx_get="{{ crumb.url }}"
+                    hx_target="#main-content"
+                    hx_swap="innerHTML"
+                    hx_push_url="true"
+                    separator="chevron"
+                    :active="False"
+                    />
+                {% endif %}
+            {% endfor %}
+        </c-ui.breadcrumb.body>
+    </div>
+</div>
+
+{% include template_name %}

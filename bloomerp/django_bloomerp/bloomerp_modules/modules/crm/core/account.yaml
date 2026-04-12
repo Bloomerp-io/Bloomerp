@@ -1,0 +1,96 @@
+name: CRM Account
+id: crm_account
+description: Company or organization record in CRM
+name_plural: CRM Accounts
+string_representation: "{account_name}"
+fields:
+  - id: account_name
+    name: Account Name
+    description: Legal or trading name of the account
+    type: CharField
+    options:
+      max_length: 200
+  - id: account_type
+    name: Account Type
+    description: Classification of the account relationship
+    type: ChoiceField
+    options:
+      choices:
+        - ["customer", "Customer"]
+        - ["prospect", "Prospect"]
+        - ["partner", "Partner"]
+        - ["vendor", "Vendor"]
+  - id: industry
+    name: Industry
+    description: Primary industry sector
+    type: CharField
+    options:
+      max_length: 120
+      null: true
+      blank: true
+  - id: website
+    name: Website
+    type: URLField
+    options:
+      null: true
+      blank: true
+  - id: primary_email
+    name: Primary Email
+    type: EmailField
+    options:
+      null: true
+      blank: true
+  - id: primary_phone
+    name: Primary Phone
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: billing_address
+    name: Billing Address
+    type: TextField
+    options:
+      null: true
+      blank: true
+  - id: shipping_address
+    name: Shipping Address
+    type: TextField
+    options:
+      null: true
+      blank: true
+  - id: rating
+    name: Rating
+    type: ChoiceField
+    options:
+      choices:
+        - ["hot", "Hot"]
+        - ["warm", "Warm"]
+        - ["cold", "Cold"]
+      null: true
+      blank: true
+  - id: is_active
+    name: Is Active
+    type: BooleanField
+    options:
+      default: true
+field_layout:
+  rows:
+    - title: "Account Details"
+      columns: 2
+      items:
+        - id: account_name
+        - id: account_type
+        - id: industry
+        - id: rating
+    - title: "Contact"
+      columns: 2
+      items:
+        - id: primary_email
+        - id: primary_phone
+        - id: website
+    - title: "Addresses"
+      columns: 1
+      items:
+        - id: billing_address
+        - id: shipping_address

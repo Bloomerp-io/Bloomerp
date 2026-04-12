@@ -1,0 +1,71 @@
+id: journal
+name: Journal
+description: Journal for grouping related transactions
+name_plural: Journals
+fields:
+  - id: journal_code
+    name: Journal Code
+    description: Unique identifier for the journal
+    type: CharField
+    options:
+      max_length: 20
+      unique: true
+      
+  - id: journal_name
+    name: Journal Name
+    description: Name of the journal
+    type: CharField
+    options:
+      max_length: 100
+      
+  - id: journal_type
+    name: Journal Type
+    description: Type of journal (General, Sales, Purchase, Cash, etc.)
+    type: CharField
+    options:
+      max_length: 20
+      choices:
+        GENERAL: "General Journal"
+        SALES: "Sales Journal"
+        PURCHASE: "Purchase Journal"
+        CASH_RECEIPTS: "Cash Receipts Journal"
+        CASH_DISBURSEMENTS: "Cash Disbursements Journal"
+        PAYROLL: "Payroll Journal"
+        ADJUSTING: "Adjusting Journal"
+        CLOSING: "Closing Journal"
+        
+  - id: description
+    name: Description
+    description: Description of the journal purpose
+    type: TextField
+    options:
+      "null": true
+      blank: true
+      
+  - id: is_active
+    name: Is Active
+    description: Whether the journal is active
+    type: BooleanField
+    options:
+      default: true
+      
+  - id: auto_numbering
+    name: Auto Numbering
+    description: Whether entries are automatically numbered
+    type: BooleanField
+    options:
+      default: true
+      
+  - id: next_entry_number
+    name: Next Entry Number
+    description: Next available entry number for auto numbering
+    type: IntegerField
+    options:
+      default: 1
+      
+  - id: requires_approval
+    name: Requires Approval
+    description: Whether entries in this journal require approval
+    type: BooleanField
+    options:
+      default: false

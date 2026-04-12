@@ -1,0 +1,25 @@
+{% load tailwind_field %}
+
+{% if field.is_hidden %}
+    {{ field }}
+{% else %}
+    <div class="min-w-[12rem] rounded-lg {% if field.errors or manual_errors %}bg-red-50 p-2{% endif %}">
+        {% if field|is_select %}
+            {% include 'tailwind/layout/select.html' %}
+        {% elif field|is_checkboxselectmultiple %}
+            {% include 'tailwind/layout/checkboxselectmultiple.html' %}
+        {% elif field|is_radioselect %}
+            {% include 'tailwind/layout/radioselect.html' %}
+        {% else %}
+            {% tailwind_field field %}
+        {% endif %}
+
+        {% for error in field.errors %}
+            <p class="mt-1 text-xs font-medium text-red-500">{{ error }}</p>
+        {% endfor %}
+
+        {% for error in manual_errors %}
+            <p class="mt-1 text-xs font-medium text-red-500">{{ error }}</p>
+        {% endfor %}
+    </div>
+{% endif %}

@@ -1,0 +1,43 @@
+{% with root_items=sidebar.root_items %}
+<div
+    id="sidebar-content"
+    data-sidebar-content
+    data-sidebar-id="{{ sidebar.id }}"
+    data-sidebar-refresh-url="{% url 'components_workspaces_sidebar_set_selected' sidebar_id=sidebar.id %}"
+    data-sidebar-move-url="{% url 'components_workspaces_sidebar_move_item' sidebar_id=sidebar.id %}"
+    data-sidebar-drop-link-url="{% url 'components_workspaces_sidebar_create_link_from_drop' sidebar_id=sidebar.id %}"
+>
+    <ul class="mt-2">
+        {% if not root_items %}
+        <li class="list-none">
+            <div
+                data-sidebar-dropzone
+                data-drop-parent-id=""
+                data-drop-position="0"
+                class="min-h-16 rounded-lg border border-dashed border-transparent transition-colors duration-150"
+            ></div>
+        </li>
+        {% endif %}
+
+        {% for item in root_items %}
+            <c-sidebar.item :sidebar="sidebar" :item="item" />
+        {% empty %}
+        <li class="px-2 py-3 text-sm text-gray-500">
+            Drop a link here or create your first item.
+        </li>
+        {% endfor %}
+
+        {% if root_items %}
+        <li class="list-none">
+            <div
+                data-sidebar-dropzone
+                data-sidebar-gap-dropzone
+                data-drop-parent-id=""
+                data-drop-position="{{ root_items|length }}"
+                class="h-1 my-0 rounded-lg border border-dashed border-transparent transition-all duration-200 ease-out"
+            ></div>
+        </li>
+        {% endif %}
+    </ul>
+</div>
+{% endwith %}

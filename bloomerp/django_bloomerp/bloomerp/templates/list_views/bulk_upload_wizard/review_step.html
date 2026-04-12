@@ -1,0 +1,93 @@
+{% load bloomerp %}
+
+<div class="space-y-4">
+    {% if review_page %}
+    {{ review_page.formset.management_form }}
+    <input type="hidden" name="review_page" value="{{ review_page.page }}">
+
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <p class="text-sm text-slate-600">
+            Showing rows {{ review_page.start_row }}-{{ review_page.end_row }} of {{ review_page.total_rows }}.
+            Continue when this page looks correct, or move between pages here before importing.
+        </p>
+        <div class="flex items-center gap-3 self-start lg:self-auto">
+            <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                Page {{ review_page.page }} of {{ review_page.total_pages }}
+            </div>
+            <div class="flex items-center gap-2">
+                {% if review_page.page > 1 %}
+                <button type="submit" name="review_action" value="previous_page" class="btn btn-secondary btn-sm">
+                    Previous page
+                </button>
+                {% endif %}
+                {% if review_page.page < review_page.total_pages %}
+                <button type="submit" name="review_action" value="next_page" class="btn btn-secondary btn-sm">
+                    Next page
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if review_page.page_row_errors %}
+    <div class="alert alert-danger">
+        {{ review_page.page_row_errors|length }} row{{ review_page.page_row_errors|length|pluralize }} on this page need attention. Rows with errors are shown first.
+    </div>
+    {% endif %}
+
+    <div class="table-responsive-wrapper overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white">
+        <table class="table table-hover">
+            <thead>
+                <tr class="sticky-header">
+                    <th width="80px">Row</th>
+                    {% for field in review_page.formset.empty_form.visible_fields %}
+                        {% if field.name != "row_index" %}
+                        <th>{{ field.label }}</th>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in review_page.formset.forms %}
+                {% with row_errors=review_page.page_row_errors|get_item:form.row_index.value %}
+                <tr class="{% if form.errors or form.non_field_errors or row_errors %}bg-red-50{% endif %}">
+                    <td class="align-top px-3 py-3 text-sm text-slate-500 {% if form.errors or form.non_field_errors or row_errors %}border-l-4 border-red-400 border-b-0{% endif %}">
+                        <div class="space-y-2">
+                            <div class="font-medium text-slate-700">{{ form.row_index.value|add:1 }}</div>
+                            {% for error in form.non_field_errors %}
+                            <p class="text-xs font-medium text-red-500">{{ error }}</p>
+                            {% endfor %}
+                            {% for error in row_errors|get_item:"__all__" %}
+                            <p class="text-xs font-medium text-red-500">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        {{ form.row_index }}
+                    </td>
+                    {% for field in form.visible_fields %}
+                        {% if field.name != "row_index" %}
+                        <td class="align-top {% if field.errors or row_errors|get_item:field.name %}bg-red-50/80{% endif %}">
+                            {% include "list_views/bulk_upload_wizard/review_field.html" with field=field manual_errors=row_errors|get_item:field.name %}
+                        </td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex items-center justify-between gap-3">
+        <div class="text-sm text-slate-500">
+            Edited rows are stored in the draft as you move through pages.
+        </div>
+        <div class="text-sm text-slate-500">
+            Use Continue when you are ready to move to confirmation.
+        </div>
+    </div>
+    {% else %}
+    <div class="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+        Upload a file before reviewing rows.
+    </div>
+    {% endif %}
+</div>

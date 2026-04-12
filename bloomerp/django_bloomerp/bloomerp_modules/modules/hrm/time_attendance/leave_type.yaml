@@ -1,0 +1,49 @@
+name: Leave Type
+id: leave_type
+description: Types of leave
+name_plural: Leave Types
+string_representation: "{name}"
+fields:
+  - id: name
+    name: Name
+    type: CharField
+    options:
+      max_length: 120
+  - id: code
+    name: Code
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: category
+    name: Category
+    type: ChoiceField
+    options:
+      choices:
+        - ["paid", "Paid"]
+        - ["unpaid", "Unpaid"]
+        - ["sick", "Sick"]
+        - ["other", "Other"]
+      null: true
+      blank: true
+  - id: requires_approval
+    name: Requires Approval
+    type: BooleanField
+    options:
+      default: true
+  - id: is_active
+    name: Is Active
+    type: BooleanField
+    options:
+      default: true
+field_layout:
+  rows:
+    - title: "Leave Type"
+      columns: 2
+      items:
+        - id: name
+        - id: code
+        - id: category
+        - id: requires_approval
+        - id: is_active

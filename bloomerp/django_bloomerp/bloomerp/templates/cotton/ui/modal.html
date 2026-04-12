@@ -1,0 +1,96 @@
+{% comment %}
+Modal component.
+Parameters:
+- id : unique identifier for the modal (required)
+- title : modal title (optional)
+- size : modal size - "sm", "md", "lg", "xl", "full" (default: "md")
+- closable : whether the modal can be closed (default: True)
+- backdrop_click_close : close modal when clicking backdrop (default: True)
+- show_header : whether to show the header (default: True)
+- show_footer : whether to show the footer (default: False)
+- header_class : additional CSS classes for header
+- body_class : additional CSS classes for body
+- footer_class : additional CSS classes for footer
+- slot : main content of the modal
+- footer_slot : footer content (buttons, etc.)
+{% endcomment %}
+
+<!-- Modal backdrop -->
+<div 
+    id="{{ id }}" 
+    class="fixed inset-0 bg-black/50 z-[100] hidden items-start justify-center pt-12 p-4 transition-opacity duration-200 ease-out"
+    bloomerp-component="modal"
+    data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
+>
+    <!-- Modal container -->
+    <div 
+        class="
+            bg-white rounded-xl shadow-xl max-h-full overflow-hidden
+            {% if size == 'sm' %}
+                max-w-sm w-full
+            {% elif size == 'lg' %}
+                max-w-4xl w-full
+            {% elif size == 'xl' %}
+                max-w-6xl w-full
+            {% elif size == 'full' %}
+                max-w-full w-full h-full rounded-none
+            {% else %}
+                max-w-2xl w-full
+            {% endif %}
+            transform transition-all duration-200 ease-out scale-95 opacity-0
+        " 
+        onclick="event.stopPropagation()" 
+        id="{{ id }}-container"
+    >
+        {% if show_header|default:True %}
+        <!-- Modal header -->
+        <div class="flex items-center justify-between p-3 border-b border-gray-200 {{ header_class }}">
+            <h3 class="text font-semibold text-primary-900" id="{{ id }}-title">
+                {{ title|default:"Modal" }}
+            </h3>
+            {% if closable|default:True %}
+            
+            <div class="flex space-x-2">
+                <c-ui.tooltip text="Toggle fullscreen" title="" position="bottom">
+                    <button 
+                        type="button" 
+                        bloomerp-full-screen-modal="{{ id }}"
+                        class="hover:cursor-pointer"
+                        title="Toggle fullscreen">
+                        <i class="fas fa-expand text-primary-900 font-medium"></i>
+                    </button>
+                </c-ui.tooltip>
+
+                <!--Close button-->
+                <c-ui.tooltip text="Close" title="" position="bottom">
+                    <button 
+                        type="button"
+                        class="hover:cursor-pointer"
+                        bloomerp-close-modal="{{ id }}">
+                        <i class="fas fa-times text-primary-900 font-medium"></i> 
+                    </button>
+                </c-ui.tooltip>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Modal body -->
+        <div class="
+            {% if size == 'full' %}
+                flex-1 overflow-y-auto
+            {% else %}
+                max-h-96 overflow-y-auto
+            {% endif %}
+            p-3 {{ body_class }}
+        " id="{{ id }}-body">
+            {{ slot }}
+        </div>        {% if show_footer|default:False %}
+        <!-- Modal footer -->
+        <div class="flex items-center justify-end space-x-3 p-3 border-t border-gray-200 {{ footer_class }}">
+            {{ footer_slot }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+

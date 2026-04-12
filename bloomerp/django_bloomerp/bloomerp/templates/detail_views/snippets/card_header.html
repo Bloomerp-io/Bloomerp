@@ -1,0 +1,50 @@
+{% load static %}
+
+<div class="flex justify-between">
+    <!--Comments and bookmark section-->
+    <div class="flex gap-3">
+
+        <!--Comments-->
+        <c-ui.tooltip text="Comment" position="bottom">
+            <a class="hover:cursor-pointer" id="dropdownCommentsMenu" bloomerp-open-modal='commentsModal'>
+                <c-icons.chat/>
+            </a>
+        </c-ui.tooltip>
+        <!--End Comments-->
+
+        <!--Bookmark-->
+        <c-ui.tooltip text="Bookmark" position="bottom">
+            <div id="bookmarkButton"
+                hx-get="{% url 'components_bookmark' %}?object_id={{object.pk}}&content_type_id={{content_type_id}}"
+                hx-trigger="load" hx-swap="this">
+            </div>
+        </c-ui.tooltip>
+        <!--End Bookmark-->
+    </div>
+
+    <!--Settings-->
+    <c-ui.tooltip text="Settings" position="bottom">
+        <c-ui.dropdown.body 
+            trigger_icon_class="fa fa-ellipsis-h"
+            trigger_button_class="btn-secondary"
+            trigger_class="gap-2"
+            size="sm"
+            >
+            <c-ui.dropdown.item text="Settings"/>
+            {% if not disable_tab_select %}
+            <c-ui.dropdown.item text="Update tabs" bloomerp-open-modal='updateTabsModal'/>
+            {% endif %}
+        </c-ui.dropdown.body>
+    </c-ui.tooltip>
+    <!--Settings-->
+</div>
+
+<!--Comments modal-->
+<c-ui.modal id="commentsModal" title="Comments">
+    <div hx-get="{% url 'components_comments' %}?content_type_id={{ content_type_id }}&object_id={{ object.pk }}"
+        hx-trigger="load" hx-target="this" hx-swap="innerHTML" id="commentsModalContent">
+    </div>
+
+    {% include 'detail_views/snippets/post_comment_snippet.html' with target="#commentsModalContent" object=object content_type_id=content_type_id%}
+</c-ui.modal>
+<!-- End Comments modal -->

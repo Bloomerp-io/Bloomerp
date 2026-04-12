@@ -1,0 +1,16 @@
+<c-workspaces.tile
+    icon="{{ icon }}"
+    title="{{ title }}"
+    tile_id="{{ tile_id }}"
+    tile_type="{{ tile_type }}"
+    colspan="{{ colspan }}"
+    max_cols="{{ max_cols }}"
+>
+    {% if not error %}
+    {{ content | safe }}
+    {% else %}
+    <div class="alert alert-danger">
+        {{ content }}
+    </div>
+    {% endif %}
+</c-workspaces.tile>

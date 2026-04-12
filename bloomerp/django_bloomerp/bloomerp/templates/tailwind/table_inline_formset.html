@@ -1,0 +1,55 @@
+{% load crispy_forms_tags %}
+{% load crispy_forms_utils %}
+{% load tailwind_field %}
+
+{% specialspaceless %}
+{% if formset_tag %}
+<form {{ flat_attrs|safe }} method="{{ form_method }}" {% if formset.is_multipart %} enctype="multipart/form-data"{% endif %}>
+{% endif %}
+    {% if formset_method|lower == 'post' and not disable_csrf %}
+        {% csrf_token %}
+    {% endif %}
+
+    <div>
+        {{ formset.management_form|crispy }}
+    </div>
+
+  {% include "tailwind/errors_formset.html" %}
+
+    <table{% if form_id %} id="{{ form_id }}_table"{% endif%} class="table-auto">
+        <thead>
+            {% if formset.readonly and not formset.queryset.exists %}
+            {% else %}
+                <tr>
+                    {% for field in formset.forms.0 %}
+                        {% if field.label and not field.is_hidden %}
+                            <th for="{{ field.auto_id }}" class="px-4 py-2">
+                                {{ field.label|safe }}{% if field.field.required and not field|is_checkbox %}<span class="asteriskField">*</span>{% endif %}
+                            </th>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            {% endif %}
+        </thead>
+
+        <tbody>
+
+            {% for form in formset %}
+                {% if form_show_errors and not form.is_extra %}
+                    {% include "tailwind/errors.html" %}
+                {% endif %}
+
+                <tr>
+                    {% for field in form %}
+                        {% include 'tailwind/field.html' with tag="td" form_show_labels=False field_class="border px-4 py-2" %}
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-3">
+    {% include "tailwind/inputs.html" %}
+    </div>
+{% if formset_tag %}</form>{% endif %}
+{% endspecialspaceless %}

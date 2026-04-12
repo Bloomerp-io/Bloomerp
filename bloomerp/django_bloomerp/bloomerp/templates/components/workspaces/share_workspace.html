@@ -1,0 +1,37 @@
+{% load crispy_forms_tags %}
+
+<div class="space-y-3">
+    <form
+        hx-post="{% url 'components_workspaces_share_workspace' workspace_id=workspace.id %}"
+        hx-target="#workspace-share-component-{{ workspace.id }}"
+        hx-swap="innerHTML"
+        class="space-y-3"
+    >
+        {% csrf_token %}
+
+        <div>
+            <div class="mb-1 text-sm font-medium text-slate-700">
+                <c-blocktrans>Share workspace</c-blocktrans>
+            </div>
+            <c-ui.text.muted class="text-xs">
+                <c-blocktrans>Only you can manage who has access to this workspace.</c-blocktrans>
+            </c-ui.text.muted>
+        </div>
+
+        <div>
+            {{ form.shared_with|as_crispy_field }}
+        </div>
+
+        {% if success %}
+            <div class="text-sm text-emerald-600">
+                <c-blocktrans>Workspace sharing updated.</c-blocktrans>
+            </div>
+        {% endif %}
+
+        <div class="flex justify-end">
+            <button type="submit" class="btn btn-sm btn-primary">
+                <c-blocktrans>Save</c-blocktrans>
+            </button>
+        </div>
+    </form>
+</div>

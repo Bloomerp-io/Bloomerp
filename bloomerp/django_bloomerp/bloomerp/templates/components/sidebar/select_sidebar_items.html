@@ -1,0 +1,12 @@
+{% for candidate in sidebars %}
+    <c-ui.dropdown.item
+        text="{{ candidate.name }}"
+        icon="{% if candidate.id == sidebar.id %}fa-solid fa-check{% endif %}"
+        hx_get="{% url 'components_workspaces_sidebar_set_selected' sidebar_id=candidate.id %}"
+        hx_target="#sidebar-content"
+        hx_swap="outerHTML"
+        close_menu=True
+    />
+{% empty %}
+    <c-ui.dropdown.item text="No sidebars available" disabled=True />
+{% endfor %}

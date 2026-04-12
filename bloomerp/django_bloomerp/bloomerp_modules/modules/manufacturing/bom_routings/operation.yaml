@@ -1,0 +1,29 @@
+name: Operation
+id: operation
+description: Operation definitions
+name_plural: Operations
+string_representation: "{name}"
+fields:
+  - id: name
+    name: Name
+    type: CharField
+    options:
+      max_length: 100
+  - id: code
+    name: Code
+    type: CharField
+    options:
+      max_length: 20
+      unique: true
+  - id: description
+    name: Description
+    type: TextField
+    options:
+      null: true
+      blank: true
+  - id: work_center
+    name: Work Center
+    type: ForeignKey
+    options:
+      to: manufacturing.bom_routings.work_center
+      on_delete: PROTECT

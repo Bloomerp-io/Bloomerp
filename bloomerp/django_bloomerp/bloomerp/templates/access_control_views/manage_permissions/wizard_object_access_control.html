@@ -1,0 +1,176 @@
+<div
+    bloomerp-component="permissions-table"
+    data-content-type-id="{{ content_type_id }}"
+    data-mode="wizard"
+    data-global-permissions-json="{{ selected_global_permissions_json|escapejs }}"
+>
+    <input type="hidden" name="row_policy_name" id="row-policy-name-hidden" value="{{ row_policy_name }}">
+    <input type="hidden" name="field_policy_name" id="field-policy-name-hidden" value="{{ field_policy_name }}">
+    <input type="hidden" name="row_policy_rules_json" id="row-policy-rules-json" value="{{ row_policy_rules_json }}">
+    <input type="hidden" name="field_policies_json" id="field-policies-json" value="{{ field_policies_json }}">
+
+    <div class="mb-4">
+        <div class="flex flex-wrap gap-2">
+            {% for permission in permissions %}
+                <span class="px-3 py-1 text-xs rounded-md border border-base bg-white text-gray-700">
+                    {{ permission.name }}
+                </span>
+            {% empty %}
+                <span class="text-sm text-gray-500">
+                    Select one or more global permissions in step 1 if you want to assign row or field permissions here.
+                </span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <c-ui.text.muted class="mb-4">
+            Drag fields into the row or column areas to build row-level and field-level access rules.
+        </c-ui.text.muted>
+
+        <div class="flex flex-wrap gap-2">
+            {% for field in application_fields %}
+                <span
+                    class="px-3 py-1 text-xs border rounded-md transition-all cursor-move border-base bg-white text-gray-700 hover:bg-base hover:shadow-md"
+                    draggable="true"
+                    data-field-draggable
+                    data-field-id="{{ field.id }}"
+                    data-field-name="{{ field.field }}"
+                    data-field-label="{{ field.title }}"
+                >
+                    {{ field.title }}
+                </span>
+            {% endfor %}
+            <span
+                class="px-3 py-1 text-xs border rounded-md transition-all cursor-move border-base bg-white text-gray-700 hover:bg-base hover:shadow-md"
+                draggable="true"
+                data-field-draggable
+                data-field-id="__all__"
+                data-field-name="__all__"
+                data-field-label="All"
+            >
+                <c-blocktrans>All</c-blocktrans>
+            </span>
+        </div>
+    </div>
+
+    <div class="mb-4 overflow-hidden rounded-xl border border-gray-300 bg-white">
+        <div class="grid grid-cols-[10rem_minmax(0,1fr)]">
+            <div class="border-b border-r border-gray-300 p-2"></div>
+            <div class="border-b border-gray-300 p-2 min-w-0">
+                <div class="flex justify-center w-full items-center">
+                    <input class="input mx-auto" placeholder="Field Policy" id="field-policy-name-input" value="{{ field_policy_name }}">
+                </div>
+            </div>
+
+            <div class="border-r border-gray-300 p-2 min-w-0">
+                <input class="input w-full min-w-0" placeholder="Row Policy" id="row-policy-name-input" value="{{ row_policy_name }}">
+            </div>
+            <div class="bg-white p-2 min-w-0">
+                <div
+                    class="min-h-[72px] w-full min-w-0 rounded-md border-1 border-dashed border-gray-300 p-2 transition-all"
+                    data-drop-zone="column"
+                    data-drop-index="0"
+                >
+                    <div class="text-center text-xs font-medium text-gray-500">
+                        <c-blocktrans>Drop fields here</c-blocktrans>
+                    </div>
+                    <div class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-start gap-2" data-field-policy-preview>
+                        {% for field in field_policy_fields %}
+                            <span class="badge badge-primary max-w-full" data-field-id="{{ field.id }}" data-drop-kind="column">
+                                <button type="button" class="badge-remove" data-remove-field aria-label="Remove field policy">
+                                    <i class="fa fa-x"></i>
+                                </button>
+                                <span class="min-w-0 truncate">{{ field.title }}</span>
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-r border-gray-300 bg-white p-2 ">
+                <div
+                    class="min-h-[72px] w-full min-w-0 rounded-md border-1 border-dashed border-gray-300 p-2 transition-all"
+                    data-drop-zone="row"
+                    data-drop-index="0"
+                >
+                    <div class="text-center text-xs font-medium text-gray-500">
+                        <c-blocktrans>Drop fields here</c-blocktrans>
+                    </div>
+                    <div class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-start gap-2" data-row-policy-preview>
+                        {% for field in row_policy_fields %}
+                            <span class="badge badge-primary max-w-full" data-field-id="{{ field.id }}" data-drop-kind="row">
+                                <button type="button" class="badge-remove" data-remove-field aria-label="Remove row policy">
+                                    <i class="fa fa-x"></i>
+                                </button>
+                                <span class="min-w-0 truncate">{{ field.title }}</span>
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-300 p-2 min-w-0">
+                <div id="permissions-table-preview" class="min-h-[72px] w-full min-w-0"></div>
+            </div>
+        </div>
+    </div>
+
+    <c-ui.modal id="row-policy-modal" title="Add Row Policy">
+        <div class="px-4 py-2">
+            <div id="row-policy-alert" class="mb-4"></div>
+
+            <c-ui.text.muted class="mb-4">
+                Define the conditions for the row policy by selecting fields, operators, and values.
+            </c-ui.text.muted>
+
+            <div class="my-4 flex flex-col">
+                <c-ui.text.label class="mb-3">
+                    Applicable Permissions
+                </c-ui.text.label>
+
+                <c-ui.inputs.permissions
+                    :permissions="permissions"
+                    name="row-policy-permissions-{{ content_type_id }}"
+                    id="row-policy-permissions-{{ content_type_id }}"
+                />
+            </div>
+
+            <div class="my-4">
+                <c-ui.text.label class="mb-2">
+                    Query
+                </c-ui.text.label>
+                <div id="permissions-modal-filter-target" class="mt-2"></div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button class="btn btn-primary" id="add-row-policy-btn" type="button">
+                    <c-blocktrans>Add Condition</c-blocktrans>
+                </button>
+            </div>
+        </div>
+    </c-ui.modal>
+
+    <c-ui.modal id="field-policy-modal" title="Add Field Policy">
+        <div class="px-4 py-2">
+            <div id="field-policy-alert" class="mb-4"></div>
+
+            <c-ui.text.muted>
+                Field policies provide granular control over which actions users can perform on specific fields.
+            </c-ui.text.muted>
+
+            <div class="my-2">
+                <c-ui.inputs.permissions
+                    :permissions="permissions"
+                    name="field-policy-permissions-{{ content_type_id }}"
+                    id="field-policy-permissions-{{ content_type_id }}"
+                />
+            </div>
+
+            <div class="mt-4 gap-2">
+                <button class="btn btn-primary" id="add-field-policy-btn" type="button">
+                    <c-blocktrans>Add Field Policy</c-blocktrans>
+                </button>
+            </div>
+        </div>
+    </c-ui.modal>
+</div>

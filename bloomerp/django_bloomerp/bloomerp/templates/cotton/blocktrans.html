@@ -1,0 +1,13 @@
+{% comment %}
+blocktrans
+
+A block translation component - note this has limitations
+as Django extracts translations at compile time.
+
+Usage in your templates:
+{% load i18n %}
+{% endcomment %}
+
+{% load i18n %}
+
+{% blocktrans %}{{ slot }}{% endblocktrans %}

@@ -1,0 +1,44 @@
+name: Production Time Entry
+id: production_time_entry
+description: Captures labor time on operations
+name_plural: Production Time Entries
+string_representation: "{manufacturing_order_operation} - {duration_minutes}"
+fields:
+  - id: manufacturing_order_operation
+    name: Manufacturing Order Operation
+    type: ForeignKey
+    options:
+      to: manufacturing.shop_floor.manufacturing_order_operation
+      on_delete: CASCADE
+  - id: employee
+    name: Employee
+    type: ForeignKey
+    options:
+      to: hrm.employees.employee
+      on_delete: PROTECT
+  - id: start_time
+    name: Start Time
+    type: DateTimeField
+  - id: end_time
+    name: End Time
+    type: DateTimeField
+  - id: duration_minutes
+    name: Duration (Minutes)
+    type: IntegerField
+    options:
+      default: 0
+  - id: time_type
+    name: Time Type
+    type: ChoiceField
+    options:
+      choices:
+        - ["setup", "Setup"]
+        - ["run", "Run"]
+        - ["cleanup", "Cleanup"]
+        - ["downtime", "Downtime"]
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true

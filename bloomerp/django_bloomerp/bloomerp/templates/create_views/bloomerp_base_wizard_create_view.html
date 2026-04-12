@@ -1,0 +1,32 @@
+{% load crispy_forms_tags %}
+{% load bloomerp %}
+
+{% breadcrumb title='Create widget' model=model %}
+
+<!-- Progress bar -->
+<c-ui.steps :steps="['Hello', 'World', 'man', 'ching']" :current_step="1"/>
+<!-- End Progress bar -->
+
+<form action="" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <table>
+        {{ wizard.management_form }}
+        {% if wizard.form.forms %}
+        {{ wizard.form.management_form }}
+        {% for form in wizard.form.forms %}
+        {{ form | crispy }}
+        {% endfor %}
+        {% else %}
+        {{ wizard.form | crispy }}
+        {% endif %}
+    </table>
+
+    <div class="btn-group" role="group">
+        {% if wizard.steps.prev %}
+        <button class="btn btn-primary" name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}">
+            Previous
+        </button>
+        {% endif %}
+        <button type="submit" class="btn btn-primary"> Next</button>
+    </div>
+</form>

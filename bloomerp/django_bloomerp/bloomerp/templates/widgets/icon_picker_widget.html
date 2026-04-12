@@ -1,0 +1,96 @@
+<div
+    bloomerp-component="icon-picker-widget"
+    data-disabled="{{ widget.attrs.disabled|yesno:'true,false' }}"
+    data-default-color="{{ widget.default_color }}"
+    class="relative"
+>
+    <input type="hidden" name="{{ widget.name }}" value="{{ widget.value|default_if_none:'' }}">
+
+    <button
+        type="button"
+        data-action="toggle"
+        class="{{ widget.attrs.class }} flex items-center gap-2 w-full {% if widget.invalid %}border-red-500 ring-1 ring-red-500{% endif %}"
+        {% if widget.attrs.disabled %}disabled{% endif %}
+    >
+        <span class="flex items-center justify-center" data-selected-preview>
+            {% if widget.selected_icon %}
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-full {{ widget.selected_color_bg_class|default:'bg-gray-100' }}">
+                    <i class="{{ widget.selected_icon }} {{ widget.selected_color_text_class|default:'text-gray-700' }}"></i>
+                </span>
+            {% else %}
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-400 text-xs">Icon</span>
+            {% endif %}
+        </span>
+        <span class="text-sm text-gray-700" data-selected-label>
+            {% if widget.selected_label %}
+                {{ widget.selected_label }}
+            {% else %}
+                Select icon
+            {% endif %}
+        </span>
+        <span class="ml-auto text-gray-400">
+            <i class="fa-solid fa-chevron-down"></i>
+        </span>
+    </button>
+
+    <div class="icon-picker-dropdown hidden fixed z-[140] w-72">
+        <div class="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-3 border-b border-gray-100 space-y-3">
+                <div class="flex items-center gap-2">
+                    <input
+                        type="text"
+                        class="input w-full text-sm"
+                        placeholder="Search icons"
+                        data-action="search"
+                        {% if widget.attrs.disabled %}disabled{% endif %}
+                    >
+                    <button
+                        type="button"
+                        class="text-xs text-primary px-2 py-1 rounded hover:bg-primary/10"
+                        data-action="clear"
+                        {% if widget.attrs.disabled %}disabled{% endif %}
+                    >
+                        Clear
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">Color</span>
+                        
+                    </div>
+                    <div class="grid grid-cols-6 gap-2" data-color-grid>
+                        {% for color in widget.colors %}
+                            <button
+                                type="button"
+                                class="icon-picker-color relative flex h-9 w-9 items-center justify-center rounded-full border-2 border-transparent transition-transform duration-150 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-gray-300"
+                                data-color-value="{{ color.value }}"
+                                data-bg-class="{{ color.bg_class }}"
+                                data-text-class="{{ color.text_class }}"
+                                data-color-label="{{ color.label }}"
+                                title="{{ color.label }}"
+                                {% if widget.attrs.disabled %}disabled{% endif %}
+                            >
+                                <span class="h-7 w-7 rounded-full {{ color.text_class }}" style="background-color: {{ color.value }};"></span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="p-2 grid grid-cols-6 gap-2 max-h-64 overflow-auto" data-icon-grid>
+                {% for icon in widget.icons %}
+                    <button
+                        type="button"
+                        class="icon-picker-item h-10 w-10 rounded-lg border border-transparent hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center"
+                        data-value="{{ icon.value }}"
+                        data-label="{{ icon.label }}"
+                        title="{{ icon.label }}"
+                    >
+                        <i class="{{ icon.value }} text-gray-700"></i>
+                    </button>
+                {% endfor %}
+            </div>
+            <div class="p-2 text-xs text-gray-500 hidden" data-no-results>No icons found</div>
+        </div>
+    </div>
+</div>

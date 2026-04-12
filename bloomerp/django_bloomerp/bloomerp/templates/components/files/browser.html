@@ -1,0 +1,450 @@
+{% load i18n %}
+
+{% if not is_data_section_target %}
+<div
+    id="file-browser-{{ render_id }}"
+    class="flex flex-col gap-3"
+    bloomerp-component="file-browser"
+    data-url="{{ current_url }}"
+    data-base-url="{{ base_url }}"
+    data-module-id="{{ module_id|default:'' }}"
+    data-content-type-id="{{ content_type_id|default:'' }}"
+    data-object-id="{{ object_id|default:'' }}"
+    data-folder-id="{% if current_folder %}{{ current_folder.id }}{% endif %}"
+    data-folder-options="{{ folder_options_json|escapejs }}"
+    data-preference-url="{% url 'components_files_preference' %}"
+    data-upload-url="{% url 'components_files_upload' %}"
+    data-create-folder-url="{% url 'components_files_create_folder' %}"
+    data-move-url="{% url 'components_files_move' %}"
+    data-rename-url="{% url 'components_files_rename' %}"
+    data-delete-preview-url="{% url 'components_files_delete_preview' %}"
+    data-delete-url="{% url 'components_files_delete' %}"
+    data-filter-content-type-id="{{ file_content_type_id }}"
+    data-sync-url="{{ sync_url|yesno:'true,false' }}"
+>
+    <input
+        type="file"
+        multiple
+        class="hidden"
+        data-upload-input
+    />
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div class="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-1 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary sm:max-w-80 sm:flex-none">
+                <span class="pointer-events-none shrink-0 text-gray-400">
+                    <i class="fa fa-search"></i>
+                </span>
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ search_query }}"
+                    placeholder="Search files and folders..."
+                    class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                    data-search-input
+                />
+            </div>
+
+            <div class="min-w-0 flex-1" data-applied-filters>
+                {% if applied_filters %}
+                    <div class="flex flex-wrap items-center gap-2">
+                        {% for filter in applied_filters %}
+                            <span class="badge badge-primary" data-filter-key="{{ filter.key }}" title="{{ filter.tooltip }}">
+                                <button type="button" class="badge-remove" data-filter-remove="true" aria-label="Remove filter">
+                                    <i class="fa fa-x"></i>
+                                </button>
+                                <span>{{ filter.label }}</span>
+                            </span>
+                        {% endfor %}
+                        <button type="button" class="badge badge-neutral badge-sm" data-clear-filters="true">
+                            Clear all
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+            <div class="w-full sm:w-auto">
+                <c-ui.dropdown.body
+                    trigger_text="Filter"
+                    trigger_icon_class="fa fa-filter"
+                    trigger_button_class="btn-secondary"
+                    trigger_class="w-full justify-center gap-2"
+                    wrapper_class="w-full"
+                    size="sm"
+                    width="w-128"
+                >
+                    <div class="p-3">
+                        <div class="mb-2">
+                            <c-ui.text.subtitle class="mb-2">
+                                Filter
+                            </c-ui.text.subtitle>
+                            <div id="filter-section-{{ file_content_type_id }}">
+                                {{ filter_section|safe }}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" data-apply-filters>
+                            Apply Filters
+                        </button>
+                    </div>
+                </c-ui.dropdown.body>
+            </div>
+
+            <div class="w-full sm:w-auto">
+                <c-ui.dropdown.body
+                    trigger_text="Display"
+                    trigger_icon_class="fa fa-sliders"
+                    trigger_button_class="btn-secondary"
+                    trigger_class="w-full justify-center gap-2"
+                    wrapper_class="w-full"
+                    size="sm"
+                    width="w-64"
+                >
+                    <div class="flex flex-col gap-2 p-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            View
+                        </p>
+                        {% for view_type in view_types %}
+                            <button
+                                type="button"
+                                class="btn btn-sm {% if preference.view_type == view_type %}btn-primary{% else %}btn-ghost justify-start{% endif %}"
+                                data-view-type="{{ view_type }}"
+                            >
+                                {% if view_type == "table" %}
+                                    <i class="fa fa-table"></i>
+                                    <span>Table</span>
+                                {% else %}
+                                    <i class="fa fa-table-cells-large"></i>
+                                    <span>Card</span>
+                                {% endif %}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </c-ui.dropdown.body>
+            </div>
+
+            <div class="w-full sm:w-auto">
+                <c-ui.dropdown.body
+                    trigger_text="Add"
+                    trigger_icon_class="fa fa-plus"
+                    trigger_button_class="btn-secondary"
+                    trigger_class="w-full justify-center gap-2"
+                    wrapper_class="w-full"
+                    size="sm"
+                    width="w-64"
+                >
+                    <div class="flex flex-col gap-2 p-3">
+                        <button type="button" class="btn btn-primary btn-sm justify-start" data-trigger-upload>
+                            <i class="fa fa-upload"></i>
+                            <span><c-blocktrans>Upload files</c-blocktrans></span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm justify-start" data-create-folder>
+                            <i class="fa fa-folder-plus"></i>
+                            <span><c-blocktrans>Create folder</c-blocktrans></span>
+                        </button>
+                    </div>
+                </c-ui.dropdown.body>
+            </div>
+        </div>
+    </div>
+
+    {% if breadcrumbs %}
+        <c-ui.breadcrumb.body>
+            {% for crumb in breadcrumbs %}
+                {% if crumb.active %}
+                    <c-ui.breadcrumb.item
+                        text="{{ crumb.label }}"
+                        separator="chevron"
+                        :active="True"
+                    />
+                {% else %}
+                    <c-ui.breadcrumb.item
+                        text="{{ crumb.label }}"
+                        hx_get="{{ crumb.url }}"
+                        hx_target="#file-browser-{{ render_id }}"
+                        hx_swap="outerHTML"
+                        separator="chevron"
+                        :active="False"
+                    />
+                {% endif %}
+            {% endfor %}
+        </c-ui.breadcrumb.body>
+    {% endif %}
+
+    {% endif %}
+    <div
+        id="{{ data_section_id }}"
+        data-upload-dropzone
+    >
+        {% if preference.view_type == "table" %}
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+                <table class="table table-auto w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Linked Object</th>
+                            <th>Folder</th>
+                            <th>Size</th>
+                            <th>Updated</th>
+                            <th class="w-48">{% trans "Actions" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in navigation_items %}
+                            <tr
+                                {% if item.is_dropzone %}
+                                    data-folder-dropzone="{{ item.id }}"
+                                    data-folder-id="{{ item.id }}"
+                                    draggable="true"
+                                    data-item-type="folder"
+                                {% endif %}
+                            >
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <i class="{{ item.icon_class }}"></i>
+                                        {% if item.open_folder_id %}
+                                            <button type="button" class="font-medium text-gray-800 hover:underline" data-open-folder="{{ item.open_folder_id }}">
+                                                {{ item.name }}
+                                            </button>
+                                        {% elif item.open_module_id %}
+                                            <button type="button" class="font-medium text-gray-800 hover:underline" data-open-module="{{ item.open_module_id }}">
+                                                {{ item.name }}
+                                            </button>
+                                        {% elif item.open_content_type_id %}
+                                            <button type="button" class="font-medium text-gray-800 hover:underline" data-open-model="{{ item.open_content_type_id }}">
+                                                {{ item.name }}
+                                            </button>
+                                        {% else %}
+                                            <span class="font-medium text-gray-800">{{ item.name }}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="text-sm text-gray-500">{{ item.kind_label }}</td>
+                                <td class="text-sm text-gray-500">{{ item.location_label }}</td>
+                                <td class="text-sm text-gray-500">-</td>
+                                <td class="text-sm text-gray-500">{% if item.folder %}{{ item.folder.datetime_updated }}{% else %}-{% endif %}</td>
+                                <td>
+                                    <div class="flex flex-wrap gap-2">
+                                        {% if item.open_folder_id %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-open-folder="{{ item.open_folder_id }}">
+                                                Open
+                                            </button>
+                                        {% elif item.open_module_id %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-open-module="{{ item.open_module_id }}">
+                                                Open
+                                            </button>
+                                        {% elif item.open_content_type_id %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-open-model="{{ item.open_content_type_id }}">
+                                                Open
+                                            </button>
+                                        {% endif %}
+                                        {% if item.rename_allowed and perms.bloomerp.change_filefolder %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-rename-folder="{{ item.id }}" data-current-name="{{ item.name }}">
+                                                Rename
+                                            </button>
+                                        {% endif %}
+                                        {% if item.delete_allowed and perms.bloomerp.delete_filefolder %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-delete-folder="{{ item.id }}">
+                                                Delete
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+
+                        {% for row in file_rows %}
+                            <tr
+                                data-file-item-id="{{ row.id }}"
+                                draggable="true"
+                                data-item-type="file"
+                            >
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <i class="fa fa-file text-gray-400"></i>
+                                        <span class="font-medium text-gray-800">{{ row.name }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-sm text-gray-500">
+                                    {% if row.content_object_url %}
+                                        <a href="{{ row.content_object_url }}" class="link link-hover">
+                                            {{ row.content_object_label }}
+                                        </a>
+                                    {% else %}
+                                        {{ row.content_object_label }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-sm text-gray-500">{{ row.folder_label }}</td>
+                                <td class="text-sm text-gray-500">{{ row.size }}</td>
+                                <td class="text-sm text-gray-500">{{ row.datetime_updated }}</td>
+                                <td>
+                                    <div class="flex flex-wrap gap-2">
+                                        {% if row.view_url %}
+                                            <a href="{{ row.view_url }}" class="btn btn-ghost btn-xs" target="_blank" rel="noreferrer">View</a>
+                                            <a href="{{ row.download_url }}" class="btn btn-ghost btn-xs" download>Download</a>
+                                        {% endif %}
+                                        {% if row.rename_allowed %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-rename-file="{{ row.id }}" data-current-name="{{ row.name }}">
+                                                Rename
+                                            </button>
+                                        {% endif %}
+                                        {% if row.move_allowed %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-move-file="{{ row.id }}">
+                                                Move
+                                            </button>
+                                        {% endif %}
+                                        {% if row.delete_allowed %}
+                                            <button type="button" class="btn btn-ghost btn-xs" data-delete-file="{{ row.id }}">
+                                                Delete
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+
+                        {% if not navigation_items and not file_rows %}
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-gray-500">
+                                    No files or folders found.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {% for item in navigation_items %}
+                    <div
+                        class="card border border-gray-200"
+                        {% if item.is_dropzone %}
+                            data-folder-dropzone="{{ item.id }}"
+                            data-folder-id="{{ item.id }}"
+                            draggable="true"
+                            data-item-type="folder"
+                        {% endif %}
+                    >
+                        <div class="mb-3 flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-xl">
+                                    <i class="{{ item.icon_class }}"></i>
+                                </span>
+                                <div>
+                                    <p class="font-semibold text-gray-900">{{ item.name }}</p>
+                                    <p class="text-xs text-gray-500">
+                                        {{ item.kind_label }} in {{ item.location_label }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-auto flex flex-wrap gap-2">
+                            {% if item.open_folder_id %}
+                                <button type="button" class="btn btn-primary btn-xs" data-open-folder="{{ item.open_folder_id }}">
+                                    Open
+                                </button>
+                            {% elif item.open_module_id %}
+                                <button type="button" class="btn btn-primary btn-xs" data-open-module="{{ item.open_module_id }}">
+                                    Open
+                                </button>
+                            {% elif item.open_content_type_id %}
+                                <button type="button" class="btn btn-primary btn-xs" data-open-model="{{ item.open_content_type_id }}">
+                                    Open
+                                </button>
+                            {% endif %}
+                            {% if item.rename_allowed and perms.bloomerp.change_filefolder %}
+                                <button type="button" class="btn btn-ghost btn-xs" data-rename-folder="{{ item.id }}" data-current-name="{{ item.name }}">
+                                    Rename
+                                </button>
+                            {% endif %}
+                            {% if item.delete_allowed and perms.bloomerp.delete_filefolder %}
+                                <button type="button" class="btn btn-ghost btn-xs" data-delete-folder="{{ item.id }}">
+                                    Delete
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+
+                {% for card in file_cards %}
+                    <div
+                        class="card border border-gray-200 bg-white"
+                        data-file-item-id="{{ card.id }}"
+                        draggable="true"
+                        data-item-type="file"
+                    >
+                        <div class="mb-3 flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-500">
+                                    <i class="fa fa-file"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="truncate font-semibold text-gray-900">{{ card.name }}</p>
+                                    <p class="text-xs text-gray-500">{{ card.size }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-1 text-sm text-gray-500">
+                            <p class="truncate">Object: {{ card.object_label }}</p>
+                            <p class="truncate">Folder: {{ card.folder_label }}</p>
+                            <p class="truncate">Updated: {{ card.updated_at }}</p>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            {% if card.view_url %}
+                                <a href="{{ card.view_url }}" class="btn btn-primary btn-xs" target="_blank" rel="noreferrer">View</a>
+                                <a href="{{ card.download_url }}" class="btn btn-ghost btn-xs" download>Download</a>
+                            {% endif %}
+                            {% if card.rename_allowed %}
+                                <button type="button" class="btn btn-ghost btn-xs" data-rename-file="{{ card.id }}" data-current-name="{{ card.name }}">
+                                    Rename
+                                </button>
+                            {% endif %}
+                            {% if card.move_allowed %}
+                                <button type="button" class="btn btn-ghost btn-xs" data-move-file="{{ card.id }}">
+                                    Move
+                                </button>
+                            {% endif %}
+                            {% if card.delete_allowed %}
+                                <button type="button" class="btn btn-ghost btn-xs" data-delete-file="{{ card.id }}">
+                                    Delete
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+
+                {% if not navigation_items and not file_cards %}
+                    <div class="col-span-full rounded-xl border border-dashed border-gray-200 py-10 text-center text-gray-500">
+                        No files or folders found.
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% if page_obj.paginator.num_pages > 1 %}
+            <div class="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-gray-500">
+                    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} files
+                </p>
+                <div class="join">
+                    {% for page_number in pagination_pages %}
+                        {% if page_number %}
+                            <button
+                                type="button"
+                                class="join-item btn btn-sm {% if page_number == page_obj.number %}btn-primary{% else %}btn-ghost{% endif %}"
+                                data-page="{{ page_number }}"
+                            >
+                                {{ page_number }}
+                            </button>
+                        {% else %}
+                            <span class="join-item btn btn-sm btn-ghost pointer-events-none">…</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+{% if not is_data_section_target %}
+</div>
+{% endif %}

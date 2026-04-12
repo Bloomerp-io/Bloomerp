@@ -1,0 +1,126 @@
+{% comment %}
+kanban
+
+A kanban view for displaying records from a queryset in a kanban board format.
+Supports drag-and-drop functionality for moving items between columns.
+
+Parameters:
+- content_type_id (int): The content type ID for the model being displayed.
+- queryset (QuerySet): The Django queryset containing the records to be displayed.
+- fields (list): The list of fields to display on each card.
+- preference (UserListViewPreference): The user's view preferences.
+- kanban_groups (list): List of groups with 'value', 'label', 'items', 'count' keys.
+- kanban_group_by_field (ApplicationField): The field used for grouping.
+
+{% endcomment %}
+
+{% load bloomerp %}
+
+<div 
+    id="kanban-board-{{ content_type_id }}" 
+    class="kanban-board flex gap-4 overflow-x-auto pb-4 h-full min-h-[400px] focus:outline-none focus:border-0 focus:ring-0"
+    data-content-type-id="{{ content_type_id }}"
+    data-group-by-field="{{ kanban_group_by_field.field|default:'' }}"
+    data-group-by-field-id="{{ kanban_group_by_field.id|default:'' }}"
+
+    bloomerp-component="kanban-board"
+
+>
+    {% if kanban_groups %}
+        {% for group in kanban_groups %}
+        <div 
+            class="kanban-column flex-shrink-0 w-72 bg-base rounded-lg border border-gray-200 flex flex-col max-h-full"
+            data-column-value="{{ group.value|default:'__none__' }}"
+        >
+            <!-- Column Header -->
+            <div class="kanban-column-header p-3 border-b border-gray-200 bg-base rounded-t-lg">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-medium text-gray-900 text-sm truncate" title="{{ group.label }}">
+                        {{ group.label }}
+                    </h3>
+                    <span class="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full" data-kanban-count>
+                        {{ group.count }}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Column Body (Drop Zone) -->
+            <div 
+                class="kanban-column-body flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]"
+                data-kanban-dropzone
+                data-column-value="{{ group.value|default:'__none__' }}"
+            >
+                {% for object in group.items %}
+                <div 
+                    class="kanban-card bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+                    draggable="true"
+                    data-object-id="{{ object.pk }}"
+                    hx-get="{{ object.get_absolute_url }}"
+                    hx-target="#main-content"
+                    hx-swap="innerHTML"
+                    hx-trigger="click"
+                    hx-push-url="true"
+
+                    bloomerp-component="kanban-card"
+                >
+                    <!-- Card Title -->
+                    <div class="font-medium text-gray-900 text-sm mb-2 truncate" title="{{ object }}">
+                        {{ object }}
+                    </div>
+                    
+                    <!-- Card Fields -->
+                    <div class="space-y-1">
+                        {% for field in fields %}
+                        <div class="flex items-center text-xs text-gray-600">
+                            <span class="text-gray-400 mr-1 truncate w-20">{{ field.field|title }}:</span>
+                            <span class="truncate flex-1">
+                                {% with value=object|getattr_filter:field.field %}
+                                    {{ value|default:"-" }}
+                                {% endwith %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4 text-gray-400 text-sm">
+                    No items
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <!-- No grouping selected state -->
+        <div class="flex-1 flex items-center justify-center text-gray-400">
+            <div class="text-center">
+                <c-icons.kanban size="48" class="mx-auto mb-2 opacity-50"/>
+                <p class="text-lg font-medium mb-1">No grouping selected</p>
+                <p class="text-sm">Select a field to group by in the display options</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+/* Kanban specific styles */
+.kanban-card.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
+}
+
+.kanban-column-body.drag-over {
+    background-color: rgb(219 234 254); /* blue-100 */
+    border: 2px dashed rgb(59 130 246); /* blue-500 */
+    border-radius: 0.375rem;
+}
+
+.kanban-card.drag-preview {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.9;
+    transform: rotate(3deg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+</style>

@@ -1,0 +1,75 @@
+name: Account Balance
+id: account_balance
+description: Period account balance summary
+name_plural: Account Balances
+string_representation: "{account} - {fiscal_period}"
+fields:
+  - id: account
+    name: Account
+    description: General ledger account
+    type: ForeignKey
+    options:
+      to: finance.general_ledger.account
+      on_delete: CASCADE
+  - id: fiscal_period
+    name: Fiscal Period
+    description: Fiscal period for this balance
+    type: ForeignKey
+    options:
+      to: finance.general_ledger.fiscal_period
+      on_delete: CASCADE
+  - id: opening_balance
+    name: Opening Balance
+    type: DecimalField
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+  - id: debit_total
+    name: Debit Total
+    type: DecimalField
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+  - id: credit_total
+    name: Credit Total
+    type: DecimalField
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+  - id: closing_balance
+    name: Closing Balance
+    type: DecimalField
+    options:
+      max_digits: 15
+      decimal_places: 2
+      default: 0
+  - id: as_of_date
+    name: As Of Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: is_locked
+    name: Locked
+    type: BooleanField
+    options:
+      default: false
+field_layout:
+  rows:
+    - title: "Balance Summary"
+      columns: 2
+      items:
+        - id: account
+        - id: fiscal_period
+        - id: opening_balance
+        - id: closing_balance
+    - title: "Activity"
+      columns: 2
+      items:
+        - id: debit_total
+        - id: credit_total
+        - id: as_of_date
+        - id: is_locked

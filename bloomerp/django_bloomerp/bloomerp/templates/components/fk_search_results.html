@@ -1,0 +1,34 @@
+{% load static %}
+
+{% for object in objects %}
+    <li class="flex align-items-center mx-2">
+
+        <a 
+            class="dropdown-item hover:cursor-pointer"
+            {% if type == "fk" %}
+            onclick="setForeignKeyValue('{{ object.pk }}', '{{ object | escapejs }}', '{{ field_name | escapejs }}')"
+            {% else %}
+            onclick="setM2MValue('{{ object.pk }}', '{{ object | escapejs }}', '{{ field_name | escapejs }}')"
+            {% endif %}
+            >
+            {{ object }}
+        </a>
+
+        <a
+            class="hover:cursor-pointer"
+            hx-get="{{ object.get_absolute_url }}"
+            hx-trigger="click"
+            hx-target="#main-content"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-history-push="true"
+        >
+            <img 
+                src="{% static 'bloomerp/icons/arrow-right.svg' %}" 
+                width="16" 
+                height="16"
+                >
+        </a>
+
+    </li>
+{% endfor %}

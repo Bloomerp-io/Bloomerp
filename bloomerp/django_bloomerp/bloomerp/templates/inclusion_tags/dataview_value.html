@@ -1,0 +1,42 @@
+<td 
+    class="cursor-context-menu" 
+    data-dropdown="cell-menu"
+    data-column-index="{{ column_index }}"
+    data-row-index="{{ row_index }}"
+    data-value="{{ value }}"
+    
+    data-object-id="{{ object.pk }}"
+    data-object-string="{{ object }}"
+    data-application-field-id="{{ application_field_id }}"
+    data-application-field-name="{{ application_field.field }}"
+
+    data-detail-url="{{ url }}"
+
+    bloomerp-component="datatable-cell"
+    >
+    {% if is_field_type.foreign_key %}
+        {% if value.get_absolute_url %}
+        <a 
+            hx-get="{{ value.get_absolute_url }}"
+            hx-swap="innerHTML"
+            hx-trigger="click"
+            hx-target="{% if split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
+            hx-push-url="true"
+            class="text-primary"
+            data-no-row-click
+            data-preview-object-id="{{ value.pk }}"
+            data-preview-content-type-id="{{ value_content_type_id }}"
+            >{{ value }}</a>
+        {% else %}
+            {{ value }}
+        {% endif %}
+    {% elif is_field_type.boolean_field %}
+        {% if value %}
+            <span class="badge bg-success">Yes</span>
+        {% else %}
+            <span class="badge bg-danger">No</span>
+        {% endif %}
+    {% else %}
+        {{ value }}
+    {% endif %}
+</td>

@@ -1,0 +1,64 @@
+{% extends "bloomerp_base.html" %}
+
+{% load static %}
+{% load crispy_forms_tags %}
+{% load globals %}
+{% load i18n %}
+
+{% block body %}
+
+<body class="bg-base min-h-screen">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-screen">
+        <!--Left side-->
+        <div class="h-full p-4 md:p-6 lg:p-8 flex flex-col justify-between">
+            <!--Top-->
+            <div class="flex justify-start">
+                <img src="{% static 'bloomerp/img/logo.png' %}" alt="Logo" class="h-24 w-auto">
+            </div>
+            <!--End top-->
+
+            <!--Center-->
+            <div class="flex flex-col items-center text-center lg:text-left">
+                <h1 class="font-bold text-3xl md:text-4xl mb-2 md:mb-4">Welcome back</h1>
+                <div class="pt-2 md:pt-4 mb-4 text-center">
+                    <h5 class="pb-0 text-lg md:text-xl">{% trans "Login to Your Account" %}</h5>
+                    <p class="text-gray-500 text-sm md:text-base">{% trans "Enter your username & password to login" %}</p>
+                </div>
+
+                <form class="w-full max-w-sm sm:max-w-md space-y-4 mx-auto" action="" method="POST">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+
+                    <div>
+                        <button class="w-full rounded-md bg-primary text-white py-2 px-4 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2" type="submit">
+                            {% trans "Login" %}
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-4 w-full border-gray-200">
+                <p class="text-gray-500 text-sm mt-2">{% trans "Forgot password?" %}</p>
+                <p class="mt-2">
+                    <a class="text-primary hover:underline" href="">{% trans "Reset password" %}</a>
+                    <span class="text-gray-500">{% trans "or contact your staff." %}</span>
+                </p>
+            </div>
+            <!--End center-->
+
+            <!--Bottom-->
+            <div class="flex justify-between items-center mt-6">
+                <p class="text-gray-500 text-xs md:text-sm">Copyright 2025 Bloomerp</p>
+            </div>
+            <!--End Bottom-->
+        </div>
+        <!--End left side-->
+
+        <!--Right side-->
+        <div class="hidden lg:flex bg-primary rounded-lg m-4 lg:m-8 items-center justify-center">
+            <img class="max-w-full  object-contain" src="{% static 'bloomerp/img/login-side-section.png' %}"/>
+        </div>
+        <!--End right side-->
+    </div>
+</body>
+
+{% endblock body %}

@@ -1,0 +1,98 @@
+<!--Signature snippet
+Variables:
+    - signature_field_name
+-->
+
+<div class="container my-4">
+    <canvas id="signatureCanvas" class="signature-canvas"></canvas>
+    <input type="hidden" id="signatureData" name="{{ signature_field_name }}" value="">
+    <div class="mt-3">
+        <button id="resetBtn" type="button" class="btn btn-warning">Reset</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let canvas = document.getElementById("signatureCanvas");
+        let ctx = canvas.getContext("2d");
+        let drawing = false;
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 200;
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        document.addEventListener('shown.bs.modal', resizeCanvas);
+
+        // Replace touch and mouse event listeners with hover:cursor-pointer events
+        canvas.addEventListener("pointerdown", startDraw);
+        canvas.addEventListener("pointerup", endDraw);
+        canvas.addEventListener("pointermove", draw);
+
+        function startDraw(e) {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(getX(e), getY(e));
+            e.preventDefault();
+        }
+
+        function endDraw(e) {
+            if (drawing) {
+                ctx.stroke();
+                ctx.closePath();
+                drawing = false;
+            }
+            e.preventDefault();
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "#000";
+            ctx.lineTo(getX(e), getY(e));
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(getX(e), getY(e));
+            e.preventDefault();
+        }
+
+        function getX(e) {
+            if (e.touches) {
+                return e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            } else {
+                return e.clientX - canvas.getBoundingClientRect().left;
+            }
+        }
+
+        function getY(e) {
+            if (e.touches) {
+                return e.touches[0].clientY - canvas.getBoundingClientRect().top;
+            } else {
+                return e.clientY - canvas.getBoundingClientRect().top;
+            }
+        }
+
+        document.getElementById("resetBtn").addEventListener("click", () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Clear the hidden input value
+            document.getElementById("signatureData").value = "";
+        });
+
+        
+        canvas.addEventListener("pointerup", () => {
+            const dataURL = canvas.toDataURL("image/png");
+            document.getElementById("signatureData").value = dataURL;
+        });
+        
+        // Add event listener for AHDMX swap to refresh the canvas
+        window.addEventListener("htmx:afterSwap", () => {
+            resizeCanvas();
+            // ...additional refresh logic if necessary...
+        });
+    })();
+</script>

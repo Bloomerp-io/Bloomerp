@@ -1,0 +1,135 @@
+{% if workspace %}
+<c-workspaces.container
+    :workspace="workspace"
+    workspace_id="{{ workspace.id }}"
+    layout_json="{{ workspace_layout_json }}"
+>
+    <c-ui.dropdown.body
+        trigger_text="My workspaces"
+        trigger_button_class="btn btn-sm btn-secondary"
+        trigger_icon_class="fa fa-display"
+        position="left"
+        width="w-72"
+    >
+    {% for item in available_workspaces %}
+        <a
+            href="{{ item.workspace.get_absolute_url }}"
+            hx-get="{{ item.workspace.get_absolute_url }}"
+            hx-target="#main-content"
+            hx-push-url="true"
+            class="flex w-full items-center justify-between gap-3 px-4 py-2 text-sm text-gray-700 transition-colors duration-150 hover:bg-gray-100 hover:text-primary-800"
+        >
+            <div class="flex min-w-0 flex-1 items-start gap-2">
+                {% if item.workspace.id == workspace.id %}
+                    <i class="fa fa-check pt-1 text-xs text-primary-700"></i>
+                {% else %}
+                    <span class="block w-3 pt-1"></span>
+                {% endif %}
+                <div class="min-w-0">
+                    <div class="truncate">{{ item.workspace.name }}</div>
+                    <div class="mt-1 flex flex-wrap items-center gap-1">
+                        {% for badge in item.badges %}
+                            <span class="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide {% if badge.tone == 'module' %}bg-blue-50 text-blue-700{% elif badge.tone == 'submodule' %}bg-amber-50 text-amber-700{% elif badge.tone == 'shared' %}bg-slate-100 text-slate-500{% else %}bg-gray-100 text-gray-500{% endif %}">
+                                {{ badge.label }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2"></div>
+        </a>
+    {% endfor %}
+    <c-ui.dropdown.divider />
+
+    <c-ui.dropdown.item 
+        text="Add workspace" 
+        hx_target="#create-new-workspace-modal-body"
+        hx_get="{{ create_url }}" 
+        hx_push_url="false"
+        :extra_attrs="{
+            'bloomerp-open-modal' : 'create-new-workspace-modal',
+        }"
+        icon="fa fa-plus"
+        />
+    <c-ui.dropdown.item
+        text="View all"
+        href="{{ my_workspaces_url }}"
+        hx_get="{{ my_workspaces_url }}"
+        hx_target="#main-content"
+        hx_push_url="true"
+        icon="fa fa-table-cells-large"
+        />
+    
+    </c-ui.dropdown.body>
+
+    {% if workspace.module_id and workspace.user_id == request.user.id %}
+        {% if workspace.is_default %}
+            <div class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-emerald-700">
+                Default workspace
+            </div>
+        {% else %}
+            <c-ui.tooltip
+                text="Use this workspace as the default for this module context."
+                position="bottom">
+                <form
+                    method="post"
+                    hx-post="{{ workspace.get_absolute_url }}"
+                    hx-target="#main-content"
+                    hx-push-url="true"
+                >
+                    {% csrf_token %}
+                    <button
+                        class="btn btn-dark btn-sm"
+                        type="submit"
+                        name="action"
+                        value="set_default"
+                    >
+                        <c-blocktrans>Set default</c-blocktrans>
+                    </button>
+                </form>
+            </c-ui.tooltip>
+        {% endif %}
+    {% endif %}
+</c-workspaces.container>
+{% else %}
+
+<c-ui.container class="h-full flex items-center justify-center">
+    <div class="flex max-w-xl flex-col space-y-5 text-center">
+        <c-ui.text.subtitle class="">No workspaces yet</c-ui.text.subtitle>
+        <c-ui.text.text class="">
+            Workspaces help you organize this module around the way you work. You can create your own space for the information, tiles, and shortcuts you want to see first, and switch between different workspaces when you need a different focus.
+        </c-ui.text.text>
+        <div class="flex justify-center gap-4">
+            {% if module_id %}
+            <form
+                method="post"
+                hx-post="."
+                hx-target="#main-content"
+                hx-push-url="false"
+            >
+                {% csrf_token %}
+                <button 
+                    class="btn btn-primary"
+                    type="submit"
+                    name="action"
+                    value="create_default"
+                >
+                    <c-blocktrans>Create default</c-blocktrans>
+                </button>
+            </form>
+            {% endif %}
+            <button 
+                class="btn btn-secondary"
+                bloomerp-open-modal="create-new-workspace-modal"
+                hx-get="{{ create_url }}"
+                hx-target="#create-new-workspace-modal-body"
+                >
+                <c-blocktrans>Start from scratch</c-blocktrans>
+            </button>
+        </div>
+    </div>
+</c-ui.container>
+
+{% endif %}
+
+<c-ui.modal id="create-new-workspace-modal" title="Create new workspace"/>

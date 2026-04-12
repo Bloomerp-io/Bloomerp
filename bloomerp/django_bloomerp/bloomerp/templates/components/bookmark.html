@@ -1,0 +1,20 @@
+{% load static %}
+<a 
+    class="hover:cursor-pointer"  
+    data-bs-toggle="dropdown" 
+    aria-expanded="false"
+    hx-post="{% url 'components_bookmark' %}?object_id={{object_id}}&content_type_id={{content_type_id}}"
+    hx-swap="innerHTML"
+    hx-target="#{{ target }}"
+    hx-trigger="click"
+    href="#"
+    >
+    {% if bookmarked %}
+        <c-icons.bookmark_fill/>
+    {% else %}
+        <c-icons.bookmark/>
+    {% endif %}
+</a>
+
+
+

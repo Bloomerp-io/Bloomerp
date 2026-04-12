@@ -48,7 +48,7 @@ class DocumentTemplateStyling(BloomerpModel):
 styling = DocumentTemplateStyling.objects.create(
     name="Hello World Script",
     styling="""
-.pointer {
+.hover:cursor-pointer {
     background-color:red;
 }
 """

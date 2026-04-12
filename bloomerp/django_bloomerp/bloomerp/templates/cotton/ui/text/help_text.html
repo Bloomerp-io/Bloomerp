@@ -1,0 +1,19 @@
+{% comment %}
+help_text
+
+Help text for a particular field
+
+Parameters:
+- class (str): Extra classes
+- slot (html): innersection
+
+Slots:
+- default: the text
+{% endcomment %}
+
+
+
+<p class="text-gray-600 text-sm text-xs mt-1 {{ class }}">
+    <c-blocktrans>{{ slot }}</c-blocktrans>
+</p>
+

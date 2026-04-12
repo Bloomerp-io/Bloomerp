@@ -1,0 +1,20 @@
+<div class="overflow-x-auto">
+    <table class="w-full text-left text-xs">
+        <thead>
+            <tr class="border-b border-slate-100 text-slate-500">
+                {% for column in payload.columns %}
+                    <th class="pb-1 font-medium">{{ column }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in payload.rows %}
+                <tr class="border-b border-slate-50 last:border-0">
+                    {% for cell in row %}
+                        <td class="py-1.5">{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

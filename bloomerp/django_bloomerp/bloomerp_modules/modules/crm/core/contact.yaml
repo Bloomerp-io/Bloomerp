@@ -1,0 +1,88 @@
+name: Contact
+id: contact
+description: Individual contact within an account
+name_plural: Contacts
+string_representation: "{first_name} {last_name}"
+fields:
+  - id: account
+    name: Account
+    type: ForeignKey
+    options:
+      to: crm.core.crm_account
+      on_delete: CASCADE
+  - id: first_name
+    name: First Name
+    type: CharField
+    options:
+      max_length: 100
+  - id: last_name
+    name: Last Name
+    type: CharField
+    options:
+      max_length: 100
+  - id: title
+    name: Job Title
+    type: CharField
+    options:
+      max_length: 120
+      null: true
+      blank: true
+  - id: department
+    name: Department
+    type: CharField
+    options:
+      max_length: 120
+      null: true
+      blank: true
+  - id: email
+    name: Email
+    type: EmailField
+    options:
+      null: true
+      blank: true
+  - id: phone
+    name: Phone
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: mobile_phone
+    name: Mobile Phone
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: is_primary
+    name: Primary Contact
+    type: BooleanField
+    options:
+      default: false
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Contact Info"
+      columns: 2
+      items:
+        - id: account
+        - id: is_primary
+        - id: first_name
+        - id: last_name
+        - id: title
+        - id: department
+    - title: "Communication"
+      columns: 2
+      items:
+        - id: email
+        - id: phone
+        - id: mobile_phone
+    - title: "Notes"
+      columns: 1
+      items:
+        - id: notes

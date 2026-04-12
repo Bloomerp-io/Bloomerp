@@ -1,0 +1,60 @@
+{% comment %}
+Drawer component.
+Parameters:
+- id : unique identifier for the drawer (required)
+- side : drawer side - "left", "right" (default: "right")
+- size : drawer size - "sm", "md", "lg", "xl", "full" (default: "md")
+- backdrop : whether to show the modal-style backdrop (default: True)
+- backdrop_click_close : close drawer when clicking backdrop (default: True)
+- slot : main content of the drawer
+{% endcomment %}
+
+<div
+    id="{{ id }}"
+    class="fixed inset-0 z-50 hidden items-stretch
+        {% with backdrop_value=backdrop|default:True %}
+            {% if backdrop_value == False or backdrop_value == 'False' or backdrop_value == 'false' %}
+                bg-transparent
+            {% else %}
+                bg-black/50
+            {% endif %}
+        {% endwith %}
+        {% if side == 'left' %}
+            justify-start
+        {% else %}
+            justify-end
+        {% endif %}
+    "
+    bloomerp-component="drawer"
+    data-side="{{ side|default:'right' }}"
+    data-backdrop="{{ backdrop|default:True|lower }}"
+    data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
+>
+    <div
+        id="{{ id }}-panel"
+        data-drawer-panel
+        class="
+            h-full bg-white shadow-xl overflow-y-auto
+            {% if size == 'sm' %}
+                max-w-sm w-full
+            {% elif size == 'lg' %}
+                max-w-lg w-full
+            {% elif size == 'xl' %}
+                max-w-xl w-full
+            {% elif size == 'full' %}
+                max-w-full w-full
+            {% else %}
+                max-w-md w-full
+            {% endif %}
+            transform transition-transform duration-200 ease-out
+            {% if side == 'left' %}
+                -translate-x-full
+            {% else %}
+                translate-x-full
+            {% endif %}
+        "
+        onclick="event.stopPropagation()"
+    >
+        {{ slot }}
+    </div>
+</div>

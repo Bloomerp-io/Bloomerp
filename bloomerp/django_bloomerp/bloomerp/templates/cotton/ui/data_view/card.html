@@ -1,0 +1,56 @@
+{% comment %}
+card
+
+A card view for displaying records from a queryset in a grid layout.
+
+Parameters:
+- content_type_id (int): The content type ID for the model being displayed.
+- queryset (QuerySet): The Django queryset containing the records to be displayed.
+- fields (list): The list of fields to display on each card.
+
+{% endcomment %}
+
+{% load bloomerp %}
+{% load i18n %}
+
+<div
+    class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 focus:outline-none focus:ring-0"
+    data-content-type-id="{{ content_type_id }}"
+    bloomerp-component="card-view"
+>
+    {% for object in queryset %}
+    <div
+        class="card bg-white hover:shadow-md transition-shadow cursor-pointer"
+        data-detail-url="{{ object.get_absolute_url }}"
+        data-object-id="{{ object.pk }}"
+        data-object-string="{{ object }}"
+        data-card-index="{{ forloop.counter0 }}"
+        bloomerp-component="card-view-card"
+    >
+        <div class="flex items-start gap-3">
+            {% avatar object size=40 class_name="rounded-full" %}
+            <div class="min-w-0 flex-1">
+                <div class="font-medium text-gray-900 truncate" title="{{ object }}">
+                    {{ object }}
+                </div>
+                <div class="mt-2 space-y-1">
+                    {% for field in fields %}
+                    <div class="flex items-center text-xs text-gray-600">
+                        <span class="text-gray-400 mr-1 truncate w-20">{{ field.field|title }}:</span>
+                        <span class="truncate flex-1">
+                            {% with value=object|getattr_filter:field.field %}
+                                {{ value|default:"-" }}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center text-gray-500 py-6">
+        <c-blocktrans>No records found.</c-blocktrans>
+    </div>
+    {% endfor %}
+</div>

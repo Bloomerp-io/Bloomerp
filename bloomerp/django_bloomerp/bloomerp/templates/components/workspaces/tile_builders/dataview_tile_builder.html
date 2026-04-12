@@ -1,0 +1,69 @@
+<div class="space-y-5 p-3">
+    <div class="space-y-2">
+        <c-ui.text.label>Model</c-ui.text.label>
+        <select
+            class="select select-sm w-full"
+            hx-post="{% url 'preview_workspace_tile' %}"
+            hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+            hx-vars='js:{operation: "set_content_type_id", data: JSON.stringify({content_type_id: parseInt(this.value, 10)})}'
+            hx-target="#tile-preview-section"
+            hx-trigger="change"
+        >
+            <option value="">Select a model</option>
+            {% for content_type_id, content_type_label in content_types %}
+                <option value="{{ content_type_id }}" {% if config.content_type_id == content_type_id %}selected{% endif %}>
+                    {{ content_type_label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {% if config.content_type_id %}
+        <div class="space-y-2">
+            <c-ui.text.label>View Type</c-ui.text.label>
+            <div class="flex flex-wrap gap-2">
+                {% for view_type, is_selected in view_types %}
+                    <button
+                        type="button"
+                        data-view-type="{{ view_type.value }}"
+                        class="btn btn-sm {% if is_selected %}btn-primary{% else %}btn-secondary{% endif %}"
+                        hx-post="{% url 'preview_workspace_tile' %}"
+                        hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                        hx-vars='js:{operation: "set_view_type", data: JSON.stringify({view_type: this.dataset.viewType})}'
+                        hx-target="#tile-preview-section"
+                    >
+                        {{ view_type.label }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <c-ui.text.label>Fields</c-ui.text.label>
+            <div class="space-y-2 rounded-xl border border-gray-200 p-3">
+                {% for field, is_visible in available_fields %}
+                    <label class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 hover:border-primary-300 hover:bg-primary/5">
+                        <div class="min-w-0">
+                            <div class="text-sm font-medium text-gray-900">{{ field.title }}</div>
+                            <div class="text-xs text-muted">{{ field.field }}</div>
+                        </div>
+                        <input
+                            type="checkbox"
+                            value="{{ field.id }}"
+                            {% if is_visible %}checked{% endif %}
+                            hx-post="{% url 'preview_workspace_tile' %}"
+                            hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+                            hx-vars='js:{operation: "toggle_field", data: JSON.stringify({field_id: parseInt(this.value, 10)})}'
+                            hx-target="#tile-preview-section"
+                            hx-trigger="change"
+                        >
+                    </label>
+                {% empty %}
+                    <c-ui.text.muted>No accessible fields were found for this model.</c-ui.text.muted>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <c-ui.text.muted>Select a model first, then choose a view type and visible fields.</c-ui.text.muted>
+    {% endif %}
+</div>

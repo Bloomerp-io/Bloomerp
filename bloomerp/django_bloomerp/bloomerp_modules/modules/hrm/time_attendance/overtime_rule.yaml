@@ -1,0 +1,39 @@
+name: Overtime Rule
+id: overtime_rule
+description: Overtime calculation rule
+name_plural: Overtime Rules
+string_representation: "{name}"
+fields:
+  - id: name
+    name: Name
+    type: CharField
+    options:
+      max_length: 120
+  - id: minimum_hours
+    name: Minimum Hours
+    type: DecimalField
+    options:
+      max_digits: 5
+      decimal_places: 2
+      default: 0
+  - id: rate_multiplier
+    name: Rate Multiplier
+    type: DecimalField
+    options:
+      max_digits: 5
+      decimal_places: 2
+      default: 1.0
+  - id: is_active
+    name: Is Active
+    type: BooleanField
+    options:
+      default: true
+field_layout:
+  rows:
+    - title: "Rule"
+      columns: 2
+      items:
+        - id: name
+        - id: minimum_hours
+        - id: rate_multiplier
+        - id: is_active

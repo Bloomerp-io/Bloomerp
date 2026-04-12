@@ -1,0 +1,314 @@
+<div class="dropdown">
+    <button class="btn btn-borderless dropdown-toggle bg-transparent text-dark" type="button" data-bs-toggle="dropdown"
+        data-bs-auto-close="outside" aria-expanded="false">
+        <i class="bi bi-funnel bi-lg"></i>
+    </button>
+
+    <ul class="dropdown-menu">
+        {% for field in application_fields %}
+        <li>
+            {% if field.field_type != 'Property' %}
+            <div class="btn-group dropend">
+                <a type="button" class="dropdown-item dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    {{field.title}}
+                </a>
+
+                {% if field.field_type == 'CharField' %}
+                <ul class="dropdown-menu p-4 nested-dropdown">
+                    <div class="col-sm-10">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="gridRadios{{field.field}}"
+                                id="gridRadios1{{field.field}}" value="equals" checked="">
+                            <label class="form-check-label" for="gridRadios1{{field.field}}">
+                                Equals
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="gridRadios{{field.field}}"
+                                id="gridRadios2{{field.field}}" value="contains">
+                            <label class="form-check-label" for="gridRadios2{{field.field}}">
+                                Contains
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="text" class="form-control" name="filterInput{{field.field}}"
+                            id="filterInput{{field.field}}" aria-describedby="helpId" autocomplete="off" />
+                    </div>
+
+                    <button class="btn btn-primary" type="button" onclick="applyFilter('{{field.field}}')">Apply
+                        filter</button>
+                </ul>
+
+                {% elif field.field_type == 'DateField' or field.field_type == 'DateTimeField' %}
+                <ul class="dropdown-menu p-4 nested-dropdown">
+                    <div class="col-sm-10">
+
+                        <div class="mb-3">
+                            <label for="" class="form-label">Input type</label>
+                            <select class="form-select" name="dateInputType{{field.field}}"
+                                id="dateInputType{{field.field}}" onchange="changeDateInputType('{{field.field}}')">
+                                <option value="date">Date</option>
+                                <option value="week">Week</option>
+                            </select>
+                        </div>
+
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}" value="equals" checked=""
+                                onclick="showDateEqualsInput('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                Equals
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}" value="dateInBetween"
+                                onclick="showDateRangeInput('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                In between
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+
+                        <div id="dateEqualsDiv{{field.field}}">
+                            <input type="date" class="form-control" name="dateEquals{{field.field}}"
+                                id="dateEquals{{field.field}}" aria-describedby="helpId" autocomplete="off" />
+                        </div>
+
+                        <div id="dateRangeDiv{{field.field}}" class="hidden">
+
+                            <div class="mb-3">
+                                <label for="" class="form-label">From</label>
+                                <input type="date" class="form-control" name="dateFrom{{field.field}}"
+                                    id="dateFrom{{field.field}}" placeholder="" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="" class="form-label">Until</label>
+                                <input type="date" class="form-control" name="dateUntil{{field.field}}"
+                                    id="dateUntil{{field.field}}" placeholder="" />
+                            </div>
+
+
+                        </div>
+
+                    </div>
+
+                    <button class="btn btn-primary" type="button" onclick="applyDateFilter('{{field.field}}')">Apply
+                        filter</button>
+                </ul>
+
+                {% elif field.field_type == 'BooleanField' %}
+                <ul class="dropdown-menu p-4 nested-dropdown">
+
+                    <div class="mb-3">
+                        <select class="form-select" name="booleanInput{{field.field}}" id="booleanInput{{field.field}}">
+                            <option selected value="True">True</option>
+                            <option value="False">False</option>
+                        </select>
+                    </div>
+
+
+                    <button class="btn btn-primary" type="button" onclick="applyBooleanFilter('{{field.field}}')">Apply
+                        filter</button>
+                </ul>
+
+                {% elif field.field_type == 'DecimalField' %}
+                <ul class="dropdown-menu p-4 nested-dropdown">
+                    <div class="col-sm-10">
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}" value="equals" checked=""
+                                onclick="changeInputDiv('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                Equals
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}" value="range" onclick="changeInputDiv('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                In between
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+
+                        <div id="equalsDiv{{field.field}}">
+                            <input type="number" class="form-control" name="input{{field.field}}"
+                                id="input{{field.field}}" aria-describedby="helpId" autocomplete="off" />
+                        </div>
+
+                        <div id="rangeDiv{{field.field}}" class="hidden">
+
+                            <div class="mb-3">
+                                <label for="" class="form-label">From</label>
+                                <input type="number" class="form-control" name="from{{field.field}}"
+                                    id="from{{field.field}}" placeholder="" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="" class="form-label">Until</label>
+                                <input type="number" class="form-control" name="until{{field.field}}"
+                                    id="until{{field.field}}" placeholder="" />
+                            </div>
+
+
+                        </div>
+
+                    </div>
+
+                    <button class="btn btn-primary" type="button" onclick="applyNumberFilter('{{field.field}}')">Apply
+                        filter</button>
+                </ul>
+
+                {% elif field.field_type == 'ForeignKey' or field.field_type == 'ManyToManyField' or field.field_type == 'OneToManyField' or field.field_type == 'ManyToOneField' %}
+                <ul class="dropdown-menu p-4 nested-dropdown">
+                    <div class="col-sm-10">
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}" value="equals"
+                                hx-get="{% url 'component_model_objects_select' %}?content_type_id={{field.meta.related_model}}&select_id={{field.field}}&select_type=equals"
+                                hx-target="#equalsDiv{{field.field}}" onclick="changeInputDiv('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                Equals
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}"
+                                hx-get="{% url 'component_model_objects_select' %}?content_type_id={{field.meta.related_model}}&select_id={{field.field}}&select_type=multiple"
+                                hx-target="#rangeDiv{{field.field}}" value="range"
+                                onclick="changeInputDiv('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                Multiple select
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}"
+                                hx-get="{% url 'component_model_objects_select' %}?content_type_id={{field.meta.related_model}}&select_id={{field.field}}&select_type=advanced"
+                                hx-target="#advancedDiv{{field.field}}" value="advanced"
+                                onclick="changeInputDiv('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                Advanced
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}" value="True" onclick="changeInputDiv('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                Has entries for this field
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radio{{field.field}}"
+                                id="radio{{field.field}}" value="False" onclick="changeInputDiv('{{field.field}}')">
+                            <label class="form-check-label" for="radio{{field.field}}">
+                                Has no entries for this field
+                            </label>
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <div id="equalsDiv{{field.field}}">
+
+
+
+
+                        </div>
+
+                        <div id="rangeDiv{{field.field}}" class="hidden">
+
+
+
+
+                        </div>
+
+                        <div id="advancedDiv{{field.field}}" class="hidden">
+
+
+
+
+                        </div>
+
+                    </div>
+
+                    <button class="btn btn-primary" type="button"
+                        onclick="applyForeignModelFilter('{{field.field}}')">Apply
+                        filter</button>
+                </ul>
+
+                {% endif %}
+
+
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+
+        <li>
+            <hr class="dropdown-divider">
+        </li>
+
+        <li>
+            <div class="btn-group dropend">
+                <a type="button" class="dropdown-item dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    Group by
+                </a>
+
+
+                <ul class="dropdown-menu p-4 nested-dropdown">
+
+                    <div class="mb-3">
+                        <label for="" class="form-label">Group by</label>
+                        <select class="form-select" name="groupBy" id="">
+                            {% for field in application_fields %}
+                            {% if field.field_type != 'Property' %}
+                            <option value="{{field.field}}">{{field.title}}</option>
+                            {% endif %}
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="" class="form-label">On value</label>
+                        <select class="form-select" name="onValue" id="">
+                            {% for field in application_fields %}
+                            {% if field.field_type != 'Property' %}
+                            <option value="{{field.field}}">{{field.title}}</option>
+                            {% endif %}
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="" class="form-label">Aggregation</label>
+                        <select class="form-select" name="" id="">
+                            <option selected>Select one</option>
+                            <option value="">Sum</option>
+                            <option value="">Min</option>
+                            <option value="">Max</option>
+                            <option value="">Count</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" type="button" onclick="applyFilter('{{field.field}}')">Apply
+                        filter</button>
+                </ul>
+        </li>
+
+    </ul>
+
+</div>

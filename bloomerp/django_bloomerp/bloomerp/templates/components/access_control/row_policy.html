@@ -1,0 +1,39 @@
+<p class="mb-3 font-medium">
+    <c-blocktrans>Define the row policy by selecting a lookup and value for the field.</c-blocktrans>
+</p>
+
+<div class="flex gap-2 items-center mb-3">
+    <c-ui.tooltip title="{{ application_field.field_type }}" text="" position="bottom">
+        <div class="input">
+            <span>{{ application_field.title }}</span>
+        </div>
+    </c-ui.tooltip>
+
+    <select 
+            class="input" 
+            hx-get="/components/application-fields/value-input/{{ application_field.id }}/" 
+            hx-target="#lookup-value-container-{{application_field.id}}" 
+            hx-trigger="change"
+            name="lookup_value"
+        >
+            <option disabled selected>Select lookup</option>
+        {% for lookup in field_type.lookups %}
+            <option value="{{ lookup.value.id }}">{{ lookup.value.display_name }}</option>
+        {% endfor %}
+    </select>
+
+    <div id="lookup-value-container-{{application_field.id}}">
+        <!-- Value input will be loaded here based on selected lookup -->
+    </div>
+</div>
+
+<div class="flex gap-2">
+    <button 
+        class="btn btn-primary"
+        >Add</button>
+
+    <button
+        class="btn btn-secondary"
+        bloomerp-close-modal="permissions-modal"
+        >Cancel</button>
+</div>

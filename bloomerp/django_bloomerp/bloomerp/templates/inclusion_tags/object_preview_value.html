@@ -1,0 +1,13 @@
+<div class="flex flex-col gap-1">
+    <div class="text-xs font-medium text-slate-700">
+        {{ application_field.title }}
+    </div>
+
+    {% if preview_field_error_message %}
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            {{ preview_field_error_message }}
+        </div>
+    {% else %}
+        {% include "inclusion_tags/layout_field.html" with application_field=application_field value=value input=input help_text=help_text errors=errors colspan=colspan is_required=is_required only %}
+    {% endif %}
+</div>

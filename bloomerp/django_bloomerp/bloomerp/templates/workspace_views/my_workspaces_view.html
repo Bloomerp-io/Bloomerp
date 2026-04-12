@@ -1,0 +1,120 @@
+
+<c-ui.search_section.container
+    type="grid"
+    >
+    <c-slot name="buttons">
+        <button 
+            bloomerp-open-modal="create-new-workspace-modal"
+            hx-get="{{ create_url }}"
+            hx-target="#create-new-workspace-modal-body"
+            class="btn btn-sm btn-secondary">
+            <i class="fa fa-plus"></i>
+            <c-blocktrans>Create</c-blocktrans>
+        </button>
+    </c-slot>
+
+    {% if workspaces %}
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {% for item in workspaces %}
+                <div 
+                    class="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-xs"
+                    search-item
+                    >
+                    <a
+                        href="{{ item.workspace.get_absolute_url }}"
+                        hx-get="{{ item.workspace.get_absolute_url }}"
+                        hx-target="#main-content"
+                        hx-push-url="true"
+                        class="flex-1"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div 
+                                    search-item-text
+                                    class="truncate text-base font-semibold text-slate-900">
+                                    {{ item.workspace.name }}
+                                </div>
+                                <div class="mt-3 flex flex-wrap items-center gap-1">
+                                    {% for badge in item.badges %}
+                                        <span class="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide {% if badge.tone == 'module' %}bg-blue-50 text-blue-700{% elif badge.tone == 'submodule' %}bg-amber-50 text-amber-700{% elif badge.tone == 'shared' %}bg-slate-100 text-slate-500{% else %}bg-gray-100 text-gray-500{% endif %}">
+                                            {{ badge.label }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% if item.workspace.is_default %}
+                                <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+                                    default
+                                </span>
+                            {% endif %}
+                        </div>
+                    </a>
+
+                    <div class="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                        <a
+                            href="{{ item.workspace.get_absolute_url }}"
+                            hx-get="{{ item.workspace.get_absolute_url }}"
+                            hx-target="#main-content"
+                            hx-push-url="true"
+                            class="text-sm font-medium text-primary-700 hover:text-primary-800"
+                        >
+                            Open workspace
+                        </a>
+
+                        {% if not item.is_shared %}
+                            <div class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-secondary"
+                                    bloomerp-open-modal="edit-workspace-modal"
+                                    hx-get="{% url 'components_workspaces_edit_workspace' workspace_id=item.workspace.id %}"
+                                    hx-target="#edit-workspace-modal-body"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-danger"
+                                    bloomerp-open-modal="delete-workspace-modal"
+                                    hx-get="{% url 'components_workspaces_delete_workspace' workspace_id=item.workspace.id %}"
+                                    hx-target="#delete-workspace-modal-body"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="rounded-2xl px-8 py-14 text-center">
+            <c-ui.text.subtitle>No workspaces yet</c-ui.text.subtitle>
+            <c-ui.text.muted class="mt-2">
+                Create your first workspace to start building a view that fits the way you work.
+            </c-ui.text.muted>
+            <div class="mt-6">
+                <button
+                    class="btn btn-primary"
+                    bloomerp-open-modal="create-new-workspace-modal"
+                    hx-get="{{ create_url }}"
+                    hx-target="#create-new-workspace-modal-body"
+                >
+                    Add new
+                </button>
+            </div>
+        </div>
+    {% endif %}
+
+
+</c-ui.search_section.container>
+
+<div class=" flex-col gap-6">
+
+    
+</div>
+
+
+<c-ui.modal id="create-new-workspace-modal" title="Create new workspace"/>
+<c-ui.modal id="edit-workspace-modal" title="Edit workspace"/>
+<c-ui.modal id="delete-workspace-modal" title="Delete workspace"/>

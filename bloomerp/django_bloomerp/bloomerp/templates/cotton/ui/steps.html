@@ -1,0 +1,51 @@
+{% comment %}
+The stepper component visually represents a multi-step process, indicating the current step and progress through the steps.
+
+Parameters:
+- class (str): Additional CSS classes for the container.
+- current_step (int): The current active step in the process (1-indexed).
+- steps (list): A list of step titles.
+
+{% endcomment %}
+
+<div class="w-full px-8 {{ class }}">
+    <div class="relative flex items-center justify-between w-full">
+        <!-- Progress Line -->
+        <div class="absolute top-[55%] left-0 w-full h-1 bg-base -translate-y-1/2 z-0 border border-gray-200">
+            <div class="bg-primary-100" style="width: calc(({{ current_step }} - 1) / ({{ steps|length }} - 1) * 100%)"></div>
+        </div>
+        
+        <!-- Steps -->
+        {% for step_title in steps %}
+            <div class="relative flex flex-col items-center text-center z-10">
+                <span class="flex items-center justify-center w-12 h-12 rounded-full shrink-0 border border-gray-200
+                    {% if forloop.counter < current_step %}
+                        bg-primary-100 text-primary-600
+                    {% elif forloop.counter == current_step %}
+                        bg-primary-100 text-primary ring-4 ring-primary
+                    {% else %}
+                        bg-base text-gray-500
+                    {% endif %}
+                    transition-all duration-300 ease-in-out mt-10
+                ">
+                    {% if forloop.counter < current_step %}
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                    {% else %}
+                        <span class="font-bold">{{ forloop.counter }}</span>
+                    {% endif %}
+                </span>
+                <h3 class="font-medium text-sm mt-2
+                    {% if forloop.counter == current_step %}
+                        text-primary-600
+                    {% elif forloop.counter > current_step %}
+                        text-gray-500
+                    {% else %}
+                        text-gray-900
+                    {% endif %}
+                    transition-all duration-300 ease-in-out
+                ">{{ step_title }}</h3>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+

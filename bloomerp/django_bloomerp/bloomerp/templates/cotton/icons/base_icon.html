@@ -1,0 +1,21 @@
+{% comment %}
+Modal component.
+Parameters:
+- size : the size of the icon
+- class : the extra class
+{% endcomment %}
+
+<svg 
+    width="{{ size | default:30}}" 
+    height="{{ size | default:30}}" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    {% if not class %}
+    class="hover:text-primary text-primary-900"
+    {% else %}
+    class = "{{class}}"
+    {% endif %}
+    >
+    {{ slot }}
+</svg>

@@ -1,0 +1,17 @@
+<div class="space-y-4">
+    <div class="grid md:grid-cols-2 grid-cols-1 gap-4">
+        <div class="flex flex-col col-span-1">
+            <c-ui.text.label>
+                Policy Name
+            </c-ui.text.label>
+            <input class="input" type="text" name="policy_name" value="{{ policy_name }}" placeholder="e.g., European Account Manager Policy">
+        </div>
+
+        <div class="flex flex-col col-span-1">
+            <c-ui.text.label>
+                Description
+            </c-ui.text.label>
+            <textarea class="input" name="policy_description" placeholder="e.g., Allows European account managers to view and edit customer records in EU countries...">{{ policy_description }}</textarea>
+        </div>
+    </div>
+</div>

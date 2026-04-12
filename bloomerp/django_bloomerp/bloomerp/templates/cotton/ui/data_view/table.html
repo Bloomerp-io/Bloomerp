@@ -1,0 +1,50 @@
+{% comment %}
+table
+
+A table
+
+Parameters:
+- content_type_id (): 
+
+{% endcomment %}
+
+{% load bloomerp %}
+{% load i18n %}
+
+<div 
+    class="rounded-xl border border-b-0 border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
+    bloomerp-component="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
+    data-content-type-id="{{ content_type_id }}"
+    >
+    <table 
+        id="data-table-{{ content_type_id }}" 
+        class="table-auto table-hover table w-full border-collapse outline-none"
+        >
+        <thead>
+            <tr>
+                {% for field in fields %}
+                <th >{{ field.title }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody id="data-table-body-{{ content_type_id }}">
+            {% if queryset %}
+            {% for object in queryset %}
+            <tr
+                class="cursor-pointer"
+            >
+                {% for field in fields %}
+                    {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="{{ fields|length|add:1 }}" class="text-center text-gray-500 py-6">
+                    <c-blocktrans>No records found.</c-blocktrans>
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

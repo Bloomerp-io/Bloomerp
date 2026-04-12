@@ -1,0 +1,11 @@
+<!-- ace_editor_widget.html -->
+
+<div
+    bloomerp-component="code-editor-widget"
+    data-language="{{ widget.language }}"
+>
+    <div id="{{ widget.editor_id }}" data-code-editor-container style="width: 100%; height: 300px;"></div>
+
+    <textarea id="{{ widget.attrs.id }}" name="{{ widget.name }}" data-code-editor-input hidden>{{ widget.value }}</textarea>
+    <p class="text-muted">Language: {{ widget.language }}</p>
+</div>

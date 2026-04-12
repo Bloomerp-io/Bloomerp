@@ -1,0 +1,5 @@
+id: manufacturing
+code: MAN
+name: Manufacturing
+description: Manufacturing module for Bloomerp
+icon: fa-industry

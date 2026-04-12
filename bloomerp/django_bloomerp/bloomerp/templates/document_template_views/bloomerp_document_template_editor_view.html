@@ -1,0 +1,276 @@
+{% load static %}
+
+<h5 class="card-title">Editor</h5>
+
+<form method="post">
+    {% csrf_token %}
+    <textarea id="template" name="template">{{object.template}}</textarea>
+
+    <div class="flex justify-center m-2">
+        <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+</form>
+
+<!-- Preview modal -->
+<div
+    class="modal fade"
+    id="previewModal"
+    tabindex="-1"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+    
+    role="dialog"
+    aria-labelledby="previewModalTitle"
+    aria-hidden="true"
+>
+    <div
+        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-xl"
+        role="document"
+    >
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalTitle">
+                    Preview
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+            <div class="modal-body" id="previewModalBody">
+                <form 
+					hx-post="{% url 'components_generate_document_template' %}"
+					hx-target="#form-container"
+					hx-swap="innerHTML"
+					hx-trigger="submit"
+					>
+					{% csrf_token %}
+					
+					<div 
+						id="form-container" 
+						hx-get="{% url "components_generate_document_template" %}?document_template_id={{ object.pk }}&add_persist_field=false"
+						hx-trigger="load"
+						hx-target="#form-container"
+						hx-swap="innerHTML"
+						>
+					</div>
+
+					<input type="hidden" name="add_persist_field" value="false"/>
+
+					<textarea class="hidden" name="preview_content" id="preview_content"></textarea>
+					
+					<button type="submit" class="btn btn-primary">Preview</button>
+				</form>
+            </div>
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End preview modal -->
+
+<!-- Variables modal -->
+<div
+    class="modal fade"
+    id="variablesModal"
+    tabindex="-1"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+    
+    role="dialog"
+    aria-labelledby="variablesModalTitle"
+    aria-hidden="true"
+>
+    <div
+        class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg"
+        role="document"
+    >
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="variablesModalTitle">
+                    Variables
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+            <div class="modal-body" id="variablesModalBody">
+				<p>Click on a variable to add it to the editor</p>
+
+                <div class="row">
+                    <div class="col">
+                        <h5>Application fields</h5>
+                        {% for field in object.application_fields %}
+                            <a 
+                                class="hover:cursor-pointer" 
+                                onclick="addVariable('{{field.field}}','{{field.field_type}}')"
+                                data-bs-dismiss="modal"
+                                >{{ field.field }}
+								<span class="mx-2"><img src="{% static 'bloomerp/icons/arrow-right.svg' %}" alt="Magic" width=16 height=16></span>
+                            </a>
+                            <br>
+                        {% endfor %}
+                    </div>
+
+                    <div class="col">
+                        <h5>Free variables</h5>
+                        {% for field in object.free_variables.all %}
+                            <a 
+                                class="hover:cursor-pointer" 
+                                onclick="addFreeVariable('{{field.slug}}', '{{field.variable_type}}')"
+                                data-bs-dismiss="modal"
+                                >{{ field }}
+								<span class="mx-2"><img src="{% static 'bloomerp/icons/arrow-right.svg' %}" alt="Magic" width=16 height=16></span>
+                            </a>
+                            <br>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End variables modal -->
+
+{% include "snippets/llm_modal_snippet.html" with id='document_template_ai' query_type="document_template" target="llm_output" args=args %}
+
+
+<script>
+	(function() {
+		let initialContent = `{{ object.template | safe }}`;
+
+		if (tinymce.get('template')) {
+			tinymce.get('template').remove();
+		}
+
+		// Initialize TinyMCE with custom button
+		tinymce.init({
+			selector: 'textarea#template',
+			plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table code',
+			toolbar: 'undo redo | blocks | bold italic underline | numlist bullist | table code media | preview-template variables ai',
+			setup: function (editor) {
+				// Add Preview Template button
+				editor.ui.registry.addButton('preview-template', {
+					text: 'Preview template',
+					onAction: function () {
+						// Show the modal
+						const modal = new bootstrap.Modal(document.getElementById("previewModal"));
+						modal.show();
+					}
+				});
+
+				// Add Variables button
+				editor.ui.registry.addButton('variables', {
+					text: 'Variables',
+					onAction: function () {
+						// Show the modal
+						const modal = new bootstrap.Modal(document.getElementById("variablesModal"));
+						modal.show();
+					}
+				});
+
+				// Magic happens here
+				editor.ui.registry.addButton('ai', {
+					text: 'AI',
+					onAction: function () {
+						// Show the modal
+						const modal = new bootstrap.Modal(document.getElementById("modal_document_template_ai"));
+						modal.show();
+					}
+				});
+			}
+		});
+	})();
+
+	
+	// Add variable to current cursor position
+	function addVariable(variable, type) {
+		if (!variable) {
+			return;
+		}
+
+		if (type === 'ManyToManyField') {
+			// We need to do some ninje stuff to make sure it doesn't trigger the for loop
+			content = `{${'%'} for item in object.${variable}.all %} {${'{'} item ${'}'}} {% endfor ${'%'}}`;
+		} else {
+			content = `{${'{'} object.${variable} ${'}'}}`;
+		}
+
+		let editor = tinymce.get('template');
+		editor.insertContent(content);
+	}
+
+	function addFreeVariable(variable, type) {
+		if (!variable) {
+			return;
+		}
+		// Types can be
+		// - date
+		// - boolean
+		// - integer
+		// - float
+		// - text
+		// - list
+		// - model
+		// If date, we need to add the format filter
+
+		if (type === 'date') {
+			content = `{${'{'} ${variable} ${'}'}}`;
+		} else if (type === 'boolean') {
+			content = `{${'{'} ${variable} ${'}'}}`;
+		} else if (type === 'integer') {
+			content = `{${'{'} ${variable} ${'}'}}`;
+		} else if (type === 'float') {
+			content = `{${'{'} ${variable} ${'}'}}`;
+		} else if (type === 'text') {
+			content = `{${'{'} ${variable} ${'}'}}`;
+		} else if (type === 'list') {
+			content = `{${'{'} ${variable} ${'}'}}`;
+		} else if (type === 'model') {
+			content = `{${'{'} ${variable} ${'}'}}`;
+		}
+		
+		let editor = tinymce.get('template');
+		editor.insertContent(content);
+	}
+
+	document.getElementById('previewModal').addEventListener('show.bs.modal', async function (event) {
+		// Get the content of the editor
+		let content = tinymce.get('template').getContent();
+		
+		// Set the content value of the text area
+		document.getElementById('preview_content').innerHTML = content
+
+	});
+
+	// Add content after llm query
+	llm_output_div = document.getElementById('llm_output_document_template_ai');
+
+	llm_output_div.addEventListener('llm-inserted', function(e) {
+		// Set the content to the widget
+		tinymce.get('template').setContent(llm_output_div.innerHTML);
+	});
+
+</script>

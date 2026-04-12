@@ -1,0 +1,111 @@
+id: account
+name: Account
+description: General ledger account
+name_plural: Accounts
+string_representation: "{account_code} - {account_name}"
+has_avatar: false
+fields:
+  - id: account_code
+    name: Account Code
+    description: Unique account code or number
+    type: CharField
+    options:
+      max_length: 20
+      unique: true
+      
+  - id: account_name
+    name: Account Name
+    description: Name of the account
+    type: CharField
+    options:
+      max_length: 200
+      
+  - id: account_type
+    name: Account Type
+    description: Type of account (Asset, Liability, Equity, Revenue, Expense)
+    type: CharField
+    options:
+      max_length: 20
+      choices:
+        ASSET: "Asset"
+        LIABILITY: "Liability" 
+        EQUITY: "Equity"
+        REVENUE: "Revenue"
+        EXPENSE: "Expense"
+        
+  - id: account_subtype
+    name: Account Subtype
+    description: Detailed account classification
+    type: CharField
+    options:
+      max_length: 50
+      "null": true
+      blank: true
+      choices:
+        CURRENT_ASSET: "Current Asset"
+        FIXED_ASSET: "Fixed Asset"
+        CURRENT_LIABILITY: "Current Liability"
+        LONG_TERM_LIABILITY: "Long Term Liability"
+        OWNER_EQUITY: "Owner's Equity"
+        RETAINED_EARNINGS: "Retained Earnings"
+        OPERATING_REVENUE: "Operating Revenue"
+        OTHER_REVENUE: "Other Revenue"
+        OPERATING_EXPENSE: "Operating Expense"
+        OTHER_EXPENSE: "Other Expense"
+        COST_OF_GOODS_SOLD: "Cost of Goods Sold"
+        
+  - id: parent_account
+    name: Parent Account
+    description: Parent account for hierarchical structure
+    type: ForeignKey
+    options:
+      to: "self"
+      "null": true
+      blank: true
+      on_delete: call(django.db.models.CASCADE)
+      
+  - id: is_active
+    name: Is Active
+    description: Whether the account is active
+    type: BooleanField
+    options:
+      default: true
+      
+  - id: is_system_account
+    name: Is System Account
+    description: Whether this is a system-controlled account
+    type: BooleanField
+    options:
+      default: false
+      
+  - id: description
+    name: Description
+    description: Detailed description of the account
+    type: TextField
+    options:
+      "null": true
+      blank: true
+      
+  - id: normal_balance
+    name: Normal Balance
+    description: Normal balance side for this account type
+    type: CharField
+    options:
+      max_length: 10
+      choices:
+        DEBIT: "Debit"
+        CREDIT: "Credit"
+      default: "DEBIT"
+      
+  - id: bank_account
+    name: Bank acount
+    description: Bank account associated to this account
+    type: ForeignKey
+    options:
+      to: "bloomerp_modules.BankAccount"
+      "null": true
+      blank: true
+      on_delete: "call(django.db.models.SET_NULL)"
+      
+
+      

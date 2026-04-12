@@ -1,0 +1,51 @@
+name: Leave Policy
+id: leave_policy
+description: Leave accrual policy
+name_plural: Leave Policies
+string_representation: "{name}"
+fields:
+  - id: name
+    name: Name
+    type: CharField
+    options:
+      max_length: 120
+  - id: leave_type
+    name: Leave Type
+    type: ForeignKey
+    options:
+      to: hrm.time_attendance.leave_type
+      on_delete: CASCADE
+  - id: accrual_rate
+    name: Accrual Rate
+    type: DecimalField
+    options:
+      max_digits: 6
+      decimal_places: 2
+      default: 0
+  - id: max_balance
+    name: Max Balance
+    type: DecimalField
+    options:
+      max_digits: 6
+      decimal_places: 2
+      null: true
+      blank: true
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Policy"
+      columns: 2
+      items:
+        - id: name
+        - id: leave_type
+        - id: accrual_rate
+        - id: max_balance
+    - title: "Notes"
+      columns: 1
+      items:
+        - id: notes

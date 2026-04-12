@@ -1,0 +1,4 @@
+interface:
+  display_name: "BloomERP Permissions"
+  short_description: "Permission model guidance for BloomERP"
+  default_prompt: "Use $bloomerp-permissions to inspect or change BloomERP permissions safely."

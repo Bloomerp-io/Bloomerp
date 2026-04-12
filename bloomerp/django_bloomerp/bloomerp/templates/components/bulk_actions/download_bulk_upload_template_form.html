@@ -1,0 +1,60 @@
+{% load crispy_forms_tags %}
+
+<div class="space-y-4">
+    <div class="rounded-lg border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900">
+        Choose the fields you want in the template, then download a CSV or Excel file to fill in offline.
+    </div>
+
+    <form method="post" action="{{ post_url }}">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="space-y-6">
+            <div>
+                {{ form.file_type|as_crispy_field }}
+                {{ form.content_type_id }}
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Included fields</h3>
+                    <p class="text-sm text-slate-600">Only fields that are editable and not auto-managed are shown here.</p>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                    {% for field in form.visible_fields %}
+                        {% if field.name != "file_type" %}
+                        <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 {% if field.field.disabled %}opacity-80{% else %}hover:border-primary hover:bg-primary-50/40{% endif %}">
+                            <span class="pt-0.5">{{ field }}</span>
+                            <span class="min-w-0">
+                                <span class="block text-sm font-medium text-slate-900">
+                                    {{ field.label }}
+                                    {% if field.field.disabled %}
+                                    <span class="ml-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-600">Required</span>
+                                    {% endif %}
+                                </span>
+                                {% if field.help_text %}
+                                <span class="mt-1 block text-xs leading-5 text-slate-500">{{ field.help_text }}</span>
+                                {% endif %}
+                                {% if field.errors %}
+                                <span class="mt-1 block text-xs text-red-700">{{ field.errors|striptags }}</span>
+                                {% endif %}
+                            </span>
+                        </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="btn btn-primary">Download template</button>
+        </div>
+    </form>
+</div>

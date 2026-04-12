@@ -1,0 +1,95 @@
+name: Activity
+id: activity
+description: Sales activity or customer interaction
+name_plural: Activities
+string_representation: "{subject}"
+fields:
+  - id: subject
+    name: Subject
+    type: CharField
+    options:
+      max_length: 200
+  - id: activity_type
+    name: Activity Type
+    type: ChoiceField
+    options:
+      choices:
+        - ["call", "Call"]
+        - ["email", "Email"]
+        - ["meeting", "Meeting"]
+        - ["task", "Task"]
+  - id: due_date
+    name: Due Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: completed
+    name: Completed
+    type: BooleanField
+    options:
+      default: false
+  - id: completed_at
+    name: Completed At
+    type: DateTimeField
+    options:
+      null: true
+      blank: true
+  - id: account
+    name: Account
+    type: ForeignKey
+    options:
+      to: crm.core.crm_account
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: contact
+    name: Contact
+    type: ForeignKey
+    options:
+      to: crm.core.contact
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: opportunity
+    name: Opportunity
+    type: ForeignKey
+    options:
+      to: crm.sales.opportunity
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: assigned_to
+    name: Assigned To
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Activity Details"
+      columns: 2
+      items:
+        - id: subject
+        - id: activity_type
+        - id: due_date
+        - id: completed
+        - id: completed_at
+    - title: "Related Records"
+      columns: 2
+      items:
+        - id: account
+        - id: contact
+        - id: opportunity
+        - id: assigned_to
+    - title: "Notes"
+      columns: 1
+      items:
+        - id: notes

@@ -1,0 +1,88 @@
+{% load static %}
+{% load static tailwind_tags %}
+
+<meta charset="utf-8" />
+<meta content="width=device-width, initial-scale=1.0" name="viewport" />
+
+<title>
+    Bloomerp {% block title %}{% endblock title %}
+</title>
+<meta content="" name="description" />
+<meta content="" name="keywords" />
+
+<!-- Favicons -->
+<link href="{% static 'bloomerp/img/logo-touch-icon.png' %}" rel="icon" />
+<link href="{% static 'bloomerp/img/logo-touch-icon.png' %}" rel="logo-touch-icon" />
+
+<!-- Icons (Font Awesome) -->
+<link href="{% static 'bloomerp/vendor/fontawesome/css/all.min.css' %}" rel="stylesheet" />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+<!-- Plotly (for server-rendered chart hydration) -->
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+
+<!--HTMX Download-->
+<script src="{% static 'bloomerp/js/htmx-download.js' %}"></script>
+
+<!-- Template Main CSS File -->
+<script src="https://cdn.tiny.cloud/1/l1pz8u8aljl0fdzkb4xxqtbnclu0po0sqsapa6yijzuideur/tinymce/6/tinymce.min.js"
+    referrerpolicy="origin"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.9.0/ace.js"
+    integrity="sha512-jZW/Y5ZrHGo7MsZjfcmajLQKN2ax6njLZ6tuiPkhGH3l2Y0FAsGXS6uWFf/ItiR6oGVeP4TXpGPXMGEqFl7WSA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+<!--JQuery-->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+<!--Quil editor-->
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.2/mode-html.min.js"
+    integrity="sha512-JSkDZ0Crk8+F/F/lCqh6LZ/mzPqhSrRanUC3TExEziPsbLPFIJQmR5R7p954sdM88cOL9+WlVR6XBFJa3nXcdA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.3/ext-beautify.min.js"
+    integrity="sha512-uXfi0GwpQZcHIhGOMMHeNYtBSjt7qDXjXHmjShWSp+RWMSmjdy69N7M/pufinvQLv6rSYlpbSXqSnLRzWE952w=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<!--Text editors-->
+<script src="{% static 'bloomerp/vendor/quill/image-drop.min.js' %}"></script>
+
+<script src="{% static 'bloomerp/vendor/quill/image-resize.min.js' %}"></script>
+
+<script src="{% static 'bloomerp/vendor/tinymce/tinymce.min.js' %}"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.2/mode-sql.min.js"
+    integrity="sha512-dABa+YCy/MOELLU5BKnJeR/pcORL8icJNR1TBZWrRmlFoWXZEFketX6Qx/DVBkewMZC8mUOGJMJ70fwxcpIDCw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.2/mode-json.min.js"
+    integrity="sha512-K+H+3WTfhwE9fnfv4makUYJxz4kwIadQPOjGHAmOT96FtMSPRnvnuGR/sZjuNB2MmmHQ94Mnc9zoDxTHKMMEww=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.2/mode-python.min.js"
+    integrity="sha512-DUdq0nHbbCHQMqQNALNivk5tAdpFWOpm3mplXDwBqIpXD6/vfgXp8fESbfsnePQT3jZKVI3mCbEQumz/S4IHPA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.2/mode-html.min.js"
+    integrity="sha512-JSkDZ0Crk8+F/F/lCqh6LZ/mzPqhSrRanUC3TExEziPsbLPFIJQmR5R7p954sdM88cOL9+WlVR6XBFJa3nXcdA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.2/mode-css.min.js"
+    integrity="sha512-/j2txHwfn9J3633V80jkkMDKbz0nq3hxhnrh2dZIKKQzFYuEVyMLx+wsbtgC2aViUYenhx1mb4EuZyGiluBwXA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.2/mode-javascript.min.js"
+    integrity="sha512-S5TwCMItd+YdNiTApqHt2QkA2sd90dgpWxHoYhulWm+Nb/i9GppPsve8IOraaTj56uNJgIOtmFQFggL1PuKkWA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+<!--Editor JS-->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/mention@latest"></script>
+
+{% tailwind_css %}

@@ -1,0 +1,43 @@
+name: Goal Progress
+id: goal_progress
+description: Progress update for a goal
+name_plural: Goal Progress Updates
+string_representation: "{goal}"
+fields:
+  - id: goal
+    name: Goal
+    type: ForeignKey
+    options:
+      to: hrm.performance.goal
+      on_delete: CASCADE
+  - id: progress_percent
+    name: Progress Percent
+    type: DecimalField
+    options:
+      max_digits: 5
+      decimal_places: 2
+      default: 0
+  - id: update_date
+    name: Update Date
+    type: DateField
+    options:
+      null: true
+      blank: true
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Progress"
+      columns: 2
+      items:
+        - id: goal
+        - id: progress_percent
+        - id: update_date
+    - title: "Notes"
+      columns: 1
+      items:
+        - id: notes

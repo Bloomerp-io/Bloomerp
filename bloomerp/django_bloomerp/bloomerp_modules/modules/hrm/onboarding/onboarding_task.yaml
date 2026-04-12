@@ -1,0 +1,47 @@
+name: Onboarding Task
+id: onboarding_task
+description: Task template for onboarding
+name_plural: Onboarding Tasks
+string_representation: "{name}"
+fields:
+  - id: name
+    name: Name
+    type: CharField
+    options:
+      max_length: 150
+  - id: category
+    name: Category
+    type: CharField
+    options:
+      max_length: 100
+      null: true
+      blank: true
+  - id: description
+    name: Description
+    type: TextField
+    options:
+      null: true
+      blank: true
+  - id: default_due_days
+    name: Default Due Days
+    type: IntegerField
+    options:
+      default: 0
+  - id: is_active
+    name: Is Active
+    type: BooleanField
+    options:
+      default: true
+field_layout:
+  rows:
+    - title: "Task"
+      columns: 2
+      items:
+        - id: name
+        - id: category
+        - id: default_due_days
+        - id: is_active
+    - title: "Description"
+      columns: 1
+      items:
+        - id: description

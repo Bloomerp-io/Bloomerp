@@ -17,7 +17,7 @@ global-exclude .git
 global-exclude .gitignore
 global-exclude .vscode
 global-exclude venv
-global-exclude test_environment
+global-exclude config
 global-exclude db.sqlite3
 global-exclude test_app
 global-exclude bloomerp/migrations

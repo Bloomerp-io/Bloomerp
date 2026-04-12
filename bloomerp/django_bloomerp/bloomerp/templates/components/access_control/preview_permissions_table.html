@@ -1,0 +1,119 @@
+{% load bloomerp %}
+
+<div class="space-y-3" data-preview-root>
+    <div class="flex items-center justify-between">
+        <c-ui.text.muted>
+            {% if has_row_rules %}
+                {{ total_count }} included {{ model_name|lower }}{{ total_count|pluralize }}
+            {% else %}
+                Add a row condition to preview included objects.
+            {% endif %}
+        </c-ui.text.muted>
+
+        {% if has_row_rules and total_pages > 1 %}
+            <c-ui.text.muted>
+                Page {{ page_number }} / {{ total_pages }}
+            </c-ui.text.muted>
+        {% endif %}
+    </div>
+
+    {% if has_row_rules %}
+        {% if page_obj.object_list %}
+            <div class="w-full min-w-0 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table class="table-auto table-hover table min-w-max border-collapse text-sm">
+                    <thead class="text-left text-gray-600">
+                        <tr>
+                            <th class="w-48 min-w-48">Object Permissions</th>
+                            {% if preview_columns %}
+                                {% for column in preview_columns %}
+                                    <th class="whitespace-nowrap">{{ column.title }}</th>
+                                {% endfor %}
+                            {% else %}
+                                <th class="px-3 py-2 font-medium">Object</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in preview_rows %}
+                            <tr>
+                                <td class="px-3 py-2 align-top">
+                                    <div class="min-w-48 text-gray-700">
+                                        {% for permission_label in row.row_permissions %}
+                                            {{ permission_label }}{% if not forloop.last %}, {% endif %}
+                                        {% empty %}
+                                            <span class="text-gray-400">-</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                {% if preview_columns %}
+                                    {% for cell in row.cells %}
+                                        <td class="cursor-context-menu whitespace-nowrap px-3 py-2 align-top">
+                                            <c-ui.tooltip title="" text="{{ cell.tooltip_text }}" position="top">
+                                                {% if cell.is_field_type.foreign_key %}
+                                                    {% if cell.value.get_absolute_url %}
+                                                        <a
+                                                            hx-get="{{ cell.value.get_absolute_url }}"
+                                                            hx-swap="innerHTML"
+                                                            hx-trigger="click"
+                                                            hx-target="#main-content"
+                                                            hx-push-url="true"
+                                                            class="text-primary"
+                                                        >
+                                                            {{ cell.value }}
+                                                        </a>
+                                                    {% else %}
+                                                        {{ cell.value }}
+                                                    {% endif %}
+                                                {% elif cell.is_field_type.boolean_field %}
+                                                    {% if cell.value %}
+                                                        <span class="badge bg-success">Yes</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">No</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    {{ cell.value }}
+                                                {% endif %}
+                                            </c-ui.tooltip>
+                                        </td>
+                                    {% endfor %}
+                                {% else %}
+                                    <td class="px-3 py-2 text-gray-700">{{ row.object }}</td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if total_pages > 1 %}
+                <div class="flex items-center justify-between">
+                    <button
+                        type="button"
+                        class="btn btn-secondary btn-sm"
+                        {% if previous_page_number %}data-preview-page="{{ previous_page_number }}"{% endif %}
+                        {% if not page_obj.has_previous %}disabled{% endif %}
+                    >
+                        Previous
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary btn-sm"
+                        {% if next_page_number %}data-preview-page="{{ next_page_number }}"{% endif %}
+                        {% if not page_obj.has_next %}disabled{% endif %}
+                    >
+                        Next
+                    </button>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="min-h-[120px] rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-500 flex items-center justify-center text-center">
+                No objects are included by the current row conditions.
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="min-h-[120px] rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-500 flex items-center justify-center text-center">
+            Add a row condition to preview included objects.
+        </div>
+    {% endif %}
+</div>

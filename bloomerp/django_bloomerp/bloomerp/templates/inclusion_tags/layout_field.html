@@ -1,0 +1,57 @@
+<div
+    bloomerp-component="detail-view-value"
+    class="detail-layout-item group relative flex flex-col gap-1{% if non_required_fields_visible|default:'true'|lower != 'true' and not is_required and not errors %} hidden{% endif %}"
+    data-value="{{ value|default:'' }}"
+    data-label="{{ application_field.title }}"
+    data-application-field-id="{{ application_field.id }}"
+    data-layout-item-id="{{ application_field.id }}"
+    data-colspan="{{ colspan|default:'1' }}"
+    data-is-required="{% if is_required %}true{% else %}false{% endif %}"
+    data-has-errors="{% if errors %}true{% else %}false{% endif %}"
+>
+    <div class="detail-layout-item__header flex items-center justify-between gap-2">
+        <label class="text-slate-700 font-medium text-sm my-2 mb-0" data-detail-label>
+            {{ application_field.title }}
+            {% if is_required %}
+                <span class="text-rose-500" aria-hidden="true">*</span>
+            {% endif %}
+        </label>
+
+        <div data-layout-item-controls class="hidden items-center gap-1">
+            <input
+                data-layout-colspan-input
+                type="number"
+                min="1"
+                value="{{ colspan|default:'1' }}"
+                class="w-12 rounded-md border border-slate-200 px-1 py-0.5 text-center text-xs"
+                title="Field width"
+            />
+            <button
+                data-layout-remove-item
+                type="button"
+                class="h-6 w-6 rounded-full border border-rose-200 text-rose-500 transition hover:bg-rose-50"
+                title="Remove field"
+            >
+                <i class="fa fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="detail-layout-item__body">
+        {{ input }}
+        {% for error in errors %}
+            <p class="mt-1 text-sm text-red-500">{{ error }}</p>
+        {% endfor %}
+        {% if help_text %}
+            <c-ui.text.help_text>{{ help_text|safe }}</c-ui.text.help_text>
+        {% endif %}
+    </div>
+
+    <button
+        data-layout-colspan-resize-handle
+        class="absolute right-0 top-1/2 hidden h-8 w-2 -translate-y-1/2 cursor-ew-resize rounded bg-slate-200/80 transition"
+        title="Drag to resize width"
+        aria-label="Drag to resize width"
+        type="button"
+    ></button>
+</div>

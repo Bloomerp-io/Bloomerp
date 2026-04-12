@@ -1,0 +1,54 @@
+name: Hiring Decision
+id: hiring_decision
+description: Decision for a candidate application
+name_plural: Hiring Decisions
+string_representation: "{application}"
+fields:
+  - id: application
+    name: Application
+    type: ForeignKey
+    options:
+      to: hrm.recruitment.application
+      on_delete: CASCADE
+  - id: decision
+    name: Decision
+    type: ChoiceField
+    options:
+      choices:
+        - ["hire", "Hire"]
+        - ["reject", "Reject"]
+        - ["hold", "Hold"]
+      null: true
+      blank: true
+  - id: decided_at
+    name: Decided At
+    type: DateTimeField
+    options:
+      null: true
+      blank: true
+  - id: decided_by
+    name: Decided By
+    type: UserField
+    options:
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Decision"
+      columns: 2
+      items:
+        - id: application
+        - id: decision
+        - id: decided_at
+        - id: decided_by
+    - title: "Notes"
+      columns: 1
+      items:
+        - id: notes

@@ -1,0 +1,102 @@
+{% load crispy_forms_tags %}
+{% load cotton %}
+
+{% if layout %}
+    {% if layout_has_form %}
+    <form
+        {% if layout_is_create %}
+            hx-post="{{ request.path }}"
+            hx-encoding="multipart/form-data"
+            hx-target="{{ form_hx_target|default:'#main-content' }}"
+            hx-swap="innerHTML"
+            hx-push-url="{{ form_hx_push_url|yesno:'true,false' }}"
+        {% else %}
+            hx-post="{{ request.path }}"
+            hx-encoding="multipart/form-data"
+            hx-target="{{ form_hx_target|default:'#detail-view-content' }}"
+            hx-swap="innerHTML"
+            hx-push-url="false"
+        {% endif %}
+    >
+        {% csrf_token %}
+        {% if foreign_field_widget_id %}
+            <input type="hidden" name="foreign_field_widget_id" value="{{ foreign_field_widget_id }}">
+        {% endif %}
+        {% for field_name, value in hidden_initial_fields %}
+            <input type="hidden" name="{{ field_name }}" value="{{ value }}">
+        {% endfor %}
+
+        <c-object_crud_container
+            {% if layout_is_create %}create=True{% else %}create=False{% endif %}
+            content_type_id="{{ content_type_id }}"
+            :layout="layout"
+            layout_save_url="{{ layout_save_url }}"
+            layout_available_items_url="{{ layout_available_items_url }}"
+            layout_render_item_url="{{ layout_render_item_url }}"
+            non_required_fields_visible="{{ non_required_fields_visible_attr|default:'true' }}"
+        >
+            {% if full_form_url %}
+                <c-slot name="buttons_right">
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-secondary"
+                        data-open-full-form
+                        data-full-form-url="{{ full_form_url }}"
+                    >
+                        <i class="fa fa-up-right-from-square"></i>
+                        Open Full Form
+                    </button>
+                </c-slot>
+            {% endif %}
+
+            {% if layout_non_field_errors %}
+                {% for error in layout_non_field_errors %}
+                    <div class="alert-message-error mb-4 rounded px-4 py-3" role="alert">
+                        <div class="alert-message">{{ error }}</div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if create_blocked_message %}
+                <div class="alert-message-error mb-4 rounded px-4 py-3" role="alert">
+                    <div class="alert-message">{{ create_blocked_message }}</div>
+                </div>
+            {% endif %}
+        </c-object_crud_container>
+
+        {% if layout_is_create %}
+        
+        {% endif %}
+    </form>
+    {% else %}
+    <c-object_crud_container
+        {% if layout_is_create %}create=True{% else %}create=False{% endif %}
+        content_type_id="{{ content_type_id }}"
+        :layout="layout"
+        layout_save_url="{{ layout_save_url }}"
+        layout_available_items_url="{{ layout_available_items_url }}"
+        layout_render_item_url="{{ layout_render_item_url }}"
+        non_required_fields_visible="{{ non_required_fields_visible_attr|default:'true' }}"
+    >
+    </c-object_crud_container>
+    {% endif %}
+{% else %}
+    {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+        <div class="alert-message-error mb-4 rounded px-4 py-3" role="alert">
+            <div class="alert-message">{{ error }}</div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" action="{{ request.path }}" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {% if form.helper %}{% crispy form %}{% else %}{{ form|crispy }}{% endif %}
+
+        <div class="flex justify-center gap-2 mt-2">
+            <button type="submit" class="btn btn-primary">Create {{ model_name }}</button>
+            <button type="reset" class="btn btn-secondary">Reset</button>
+        </div>
+    </form>
+{% endif %}

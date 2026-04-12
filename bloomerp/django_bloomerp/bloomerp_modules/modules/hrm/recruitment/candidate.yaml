@@ -1,0 +1,83 @@
+name: Candidate
+id: candidate
+description: Candidate profile
+name_plural: Candidates
+string_representation: "{first_name} {last_name}"
+fields:
+  - id: person
+    name: Person
+    type: ForeignKey
+    options:
+      to: hrm.core_people.person
+      null: true
+      blank: true
+      on_delete: SET_NULL
+  - id: first_name
+    name: First Name
+    type: CharField
+    options:
+      max_length: 100
+  - id: last_name
+    name: Last Name
+    type: CharField
+    options:
+      max_length: 100
+  - id: email
+    name: Email
+    type: EmailField
+    options:
+      null: true
+      blank: true
+  - id: phone
+    name: Phone
+    type: CharField
+    options:
+      max_length: 30
+      null: true
+      blank: true
+  - id: source
+    name: Source
+    type: ChoiceField
+    options:
+      choices:
+        - ["referral", "Referral"]
+        - ["job_board", "Job Board"]
+        - ["website", "Website"]
+        - ["agency", "Agency"]
+        - ["other", "Other"]
+      null: true
+      blank: true
+  - id: status
+    name: Status
+    type: ChoiceField
+    options:
+      choices:
+        - ["new", "New"]
+        - ["screening", "Screening"]
+        - ["interviewing", "Interviewing"]
+        - ["offered", "Offered"]
+        - ["hired", "Hired"]
+        - ["rejected", "Rejected"]
+      default: "new"
+  - id: notes
+    name: Notes
+    type: TextField
+    options:
+      null: true
+      blank: true
+field_layout:
+  rows:
+    - title: "Candidate Details"
+      columns: 2
+      items:
+        - id: person
+        - id: status
+        - id: first_name
+        - id: last_name
+        - id: email
+        - id: phone
+        - id: source
+    - title: "Notes"
+      columns: 1
+      items:
+        - id: notes

@@ -1,0 +1,21 @@
+{% load bloomerp %}
+
+<div class="flex space-x-2 items-center" data-no-row-click>
+    <c-ui.tooltip title="" text="Edit" position="bottom">
+        <button type="button" bloomerp-open-modal='edit-object-modal'>
+            <i class="fas fa-edit text-primary-900"></i>
+        </button>
+    </c-ui.tooltip>
+
+    <c-ui.tooltip title="" text="Delete" position="bottom">
+        <button
+            type="button"
+            bloomerp-open-modal="delete-object-modal"
+            hx-get="{% url 'components_delete_object' content_type_id=content_type_id object_id=object.pk %}"
+            hx-target="#delete-object-modal-body"
+            hx-swap="innerHTML"
+        >
+            <i class="fas fa-trash text-red-600"></i>
+        </button>
+    </c-ui.tooltip>
+</div>
