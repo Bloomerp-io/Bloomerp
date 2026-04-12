@@ -128,9 +128,7 @@ jobs:
 
       - name: Check distribution metadata
         if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
-        run: |
-          cd bloomerp/django_bloomerp
-          python -m twine check dist/*
+        run: python -m twine check dist/*
 
       - name: Publish to PyPI
         if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
