@@ -120,11 +120,17 @@ jobs:
 
       - name: Build distribution
         if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
-        run: python -m build
+        working-directory: .
+        run: |
+          cp README.md bloomerp/django_bloomerp/README.md
+          cd bloomerp/django_bloomerp
+          python -m build
 
       - name: Check distribution metadata
         if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
-        run: python -m twine check dist/*
+        run: |
+          cd bloomerp/django_bloomerp
+          python -m twine check dist/*
 
       - name: Publish to PyPI
         if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
