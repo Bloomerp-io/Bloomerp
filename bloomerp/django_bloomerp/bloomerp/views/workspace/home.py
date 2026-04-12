@@ -18,9 +18,7 @@ class BloomerpHomeView(HtmxMixin, LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["modules"] = module_registry.get_all().values()
-        
-        send_user_message(1, {"type": "toast", "message": "Hello from Channels", "level": "success"})
-        
+        #send_user_message(1, {"type": "toast", "message": "Hello from Channels", "level": "success"})
         return context
 
 

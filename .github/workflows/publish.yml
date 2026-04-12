@@ -1,35 +1,133 @@
-name: Publish Python Package
+name: Publish Bloomerp Package
 
 on:
   push:
-    tags:
-      - 'v*.*.*'  # Triggers the workflow on version tags
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish.yml"
+      - "bloomerp/django_bloomerp/pyproject.toml"
+      - "bloomerp/django_bloomerp/README.md"
+      - "bloomerp/django_bloomerp/bloomerp/**"
+      - "bloomerp/django_bloomerp/bloomerp_modules/**"
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: bloomerp/django_bloomerp
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
+      - name: Install build tooling
+        run: python -m pip install --upgrade build twine
 
-    - name: Build package
-      run: |
-        python setup.py sdist bdist_wheel
+      - name: Detect version change
+        id: version
+        working-directory: .
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
 
-    - name: Publish package to Test PyPI
-      env:
-        TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
-      run: |
-        twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+          try:
+              import tomllib
+          except ModuleNotFoundError:
+              import tomli as tomllib
+
+          pyproject_path = Path("bloomerp/django_bloomerp/pyproject.toml")
+          current = tomllib.loads(pyproject_path.read_text())
+          project = current["project"]["name"]
+          version = current["project"]["version"]
+
+          previous_version = ""
+          changed = "true"
+
+          try:
+              previous_text = subprocess.check_output(
+                  ["git", "show", "HEAD^:bloomerp/django_bloomerp/pyproject.toml"],
+                  text=True,
+              )
+          except subprocess.CalledProcessError:
+              previous_text = None
+
+          if previous_text:
+              previous = tomllib.loads(previous_text)
+              previous_version = previous["project"]["version"]
+              changed = str(previous_version != version).lower()
+
+          github_output = Path(__import__("os").environ["GITHUB_OUTPUT"])
+          with github_output.open("a", encoding="utf-8") as fh:
+              fh.write(f"project={project}\n")
+              fh.write(f"version={version}\n")
+              fh.write(f"previous_version={previous_version}\n")
+              fh.write(f"changed={changed}\n")
+          PY
+
+      - name: Stop when version is unchanged
+        if: steps.version.outputs.changed != 'true'
+        run: |
+          echo "Package version did not change. Skipping publish."
+
+      - name: Check whether this version already exists on PyPI
+        if: steps.version.outputs.changed == 'true'
+        id: pypi
+        working-directory: .
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+          import os
+
+          project = os.environ["PROJECT_NAME"]
+          version = os.environ["PROJECT_VERSION"]
+          url = f"https://pypi.org/pypi/{project}/{version}/json"
+
+          exists = "false"
+          try:
+              with urllib.request.urlopen(url) as response:
+                  if response.status == 200:
+                      json.load(response)
+                      exists = "true"
+          except urllib.error.HTTPError as exc:
+              if exc.code != 404:
+                  raise
+
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
+          with github_output.open("a", encoding="utf-8") as fh:
+              fh.write(f"exists={exists}\n")
+          PY
+        env:
+          PROJECT_NAME: ${{ steps.version.outputs.project }}
+          PROJECT_VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Build distribution
+        if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
+        run: python -m build
+
+      - name: Check distribution metadata
+        if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
+        run: python -m twine check dist/*
+
+      - name: Publish to PyPI
+        if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: bloomerp/django_bloomerp/dist
