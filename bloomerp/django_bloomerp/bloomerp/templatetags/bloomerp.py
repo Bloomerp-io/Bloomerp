@@ -2,7 +2,7 @@ from django import template
 from django.db.models.manager import Manager
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
-from bloomerp.utils.models import get_model_dashboard_view_url, get_list_view_url, get_initials, get_detail_view_url, get_delete_view_url
+from bloomerp.utils.models import get_initials, get_detail_view_url, get_delete_view_url
 from django.urls import reverse 
 from django.contrib.contenttypes.models import ContentType
 from django.utils.safestring import mark_safe

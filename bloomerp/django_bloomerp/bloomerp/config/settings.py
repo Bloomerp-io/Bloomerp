@@ -17,4 +17,3 @@ BLOOMERP_MIDDLEWARE = [
 ]
 
 BLOOMERP_USER_MODEL = "bloomerp.User"
-

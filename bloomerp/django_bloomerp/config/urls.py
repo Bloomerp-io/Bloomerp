@@ -16,11 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from bloomerp.urls import BLOOMERP_URLPATTERNS
+from bloomerp import urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     # endpoint for django-browser-reload
     path('__reload__/', include('django_browser_reload.urls')),
-    BLOOMERP_URLPATTERNS
+    path('', include(urls.urlpatterns))
 ]

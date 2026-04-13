@@ -13,7 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import sys
 
-from bloomerp.config import BLOOMERP_APPS, BLOOMERP_MIDDLEWARE, BLOOMERP_USER_MODEL
+from bloomerp.config.definition import BloomerpConfig
+from bloomerp.config.settings import BLOOMERP_APPS, BLOOMERP_MIDDLEWARE, BLOOMERP_USER_MODEL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -152,11 +153,6 @@ CHANNEL_LAYERS = {
     },
 }
 
-
-BLOOMERP_SETTINGS = {
-    "globals": {
-        "organization_name": "Test Org",
-    },
-    "BASE_URL": "",  # The base URL of the application
-    "OPENAI_API_KEY": "KEY",  # For LLM integration
-}
+BLOOMERP_CONFIG = BloomerpConfig(
+    auto_generate_api_endpoints=True
+)

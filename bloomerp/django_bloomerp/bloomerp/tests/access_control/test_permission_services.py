@@ -1,5 +1,11 @@
 from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import (
+    ApiFilterRule,
+    ApiSettings,
+    BloomerpModelConfig,
+    PublicAccessRule,
+)
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.utils.api import generate_model_viewset_class, generate_serializer
 from bloomerp.views.api_views import BloomerpModelViewSet
@@ -96,6 +102,25 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         if isinstance(response.data, dict) and "results" in response.data:
             return response.data["results"]
         return response.data
+
+    def _set_public_access(self, *rules: PublicAccessRule):
+        previous = getattr(self.CustomerModel, "bloomerp_config", None)
+        self.CustomerModel.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                public_access=list(rules),
+            )
+        )
+        return previous
+
+    def _restore_public_access(self, previous):
+        if previous is None:
+            try:
+                delattr(self.CustomerModel, "bloomerp_config")
+            except AttributeError:
+                pass
+            return
+        self.CustomerModel.bloomerp_config = previous
 
 
     def tearDown(self):
@@ -701,7 +726,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         self.assertNotIn("last_name", results[0])
         self.assertIn("first_name", results[0])
 
-
     def test_api_update_denies_disallowed_field(self):
         """
         PATCH should fail when writing to a field without change permission.
@@ -733,7 +757,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         response = view(request, pk=str(target.id))
 
         self.assertEqual(response.status_code, 403)
-
 
     def test_api_update_allows_allowed_field(self):
         """
@@ -776,16 +799,74 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         self.assertEqual(response.status_code, 200)
         target.refresh_from_db()
         self.assertEqual(target.first_name, "Allowed")
-            
+
+    # TODO: Review these test cases
+    def test_api_list_allows_anonymous_public_access_with_filtered_rows_and_fields(self):
+        previous = self._set_public_access(
+            PublicAccessRule(
+                actions=["list"],
+                fields=["id", "first_name"],
+                filters=[ApiFilterRule(field="age", operator="gte", value=8)],
+            )
+        )
+
+        try:
+            request = self.factory.get("/api/customers/")
+            view = self.ApiViewSet.as_view({"get": "list"})
+            response = view(request)
+
+            self.assertEqual(response.status_code, 200)
+            results = self._extract_results(response)
+            self.assertEqual(len(results), 2)
+            self.assertEqual({row["first_name"] for row in results}, {"Jaimy 8", "Jaimy 9"})
+            self.assertTrue(all("first_name" in row for row in results))
+            self.assertTrue(all("last_name" not in row for row in results))
+            self.assertTrue(all("age" not in row for row in results))
+        finally:
+            self._restore_public_access(previous)
+
+    def test_api_read_allows_anonymous_public_access_when_rule_uses_read_action(self):
+        allowed = self.CustomerModel.objects.get(age=0)
+        previous = self._set_public_access(
+            PublicAccessRule(
+                actions=["read"],
+                fields=["id", "first_name"],
+                filters=[ApiFilterRule(field="age", operator="exact", value=allowed.age)],
+            )
+        )
+
+        try:
+            request = self.factory.get(f"/api/customers/{allowed.pk}/")
+            view = self.ApiViewSet.as_view({"get": "retrieve"})
+            response = view(request, pk=str(allowed.pk))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["first_name"], allowed.first_name)
+            self.assertNotIn("last_name", response.data)
+            self.assertNotIn("age", response.data)
+        finally:
+            self._restore_public_access(previous)
+
+    def test_api_read_returns_404_for_anonymous_when_object_is_outside_public_access_filter(self):
+        allowed = self.CustomerModel.objects.get(age=0)
+        blocked = self.CustomerModel.objects.get(age=1)
+        previous = self._set_public_access(
+            PublicAccessRule(
+                actions=["read"],
+                fields=["id", "first_name"],
+                filters=[ApiFilterRule(field="age", operator="exact", value=allowed.age)],
+            )
+        )
+
+        try:
+            request = self.factory.get(f"/api/customers/{blocked.pk}/")
+            view = self.ApiViewSet.as_view({"get": "retrieve"})
+            response = view(request, pk=str(blocked.pk))
+
+            self.assertEqual(response.status_code, 404)
+        finally:
+            self._restore_public_access(previous)
     
-    # --------------------------------------
-    # SQL Query
-    # --------------------------------------
-    
-
-
-
-
     # --------------------------------------
     # Global permissions
     # --------------------------------------
@@ -821,4 +902,5 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         manager = UserPermissionManager(self.normal_user)
 
         self.assertTrue(manager.has_global_permission(self.CustomerModel, "add_customer"))
+    
     

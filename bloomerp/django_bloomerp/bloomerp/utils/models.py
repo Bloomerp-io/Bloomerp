@@ -10,79 +10,6 @@ from django.db.models import Q, Model, CharField, TextField
 from django.apps import apps
 
 
-def get_related_models(model:Model, relations:list[str] = ['ForeignKey','ManyToManyField']) -> list[Model]:
-    """
-    This function returns a list of related models for a given model
-    """
-    related_models = []
-    for field in model._meta.get_fields():
-        try:
-            if field.get_internal_type() in relations:
-                related_models.append(field.related_model)
-        except:
-            pass
-    return related_models 
-
-def get_foreign_occurences_for_model(model:Model) -> list[Model]:
-    """
-    This function returns a list of models that have a foreign key relationship with the given model
-    """
-    foreign_occurences = []
-    content_types = ContentType.objects.all()
-    for content_type in content_types:
-        if content_type.model_class():
-            related_models = get_related_models(content_type.model_class())
-            if model in related_models:
-                foreign_occurences.append(content_type.model_class())
-    return foreign_occurences
-
-def get_attribute_name_for_foreign_key(model:Model, related_model:Model) -> str:
-    """
-    This function returns the attribute name of the foreign key field of the related model in the model
-    """
-    for field in model._meta.get_fields():
-        try:
-            
-            if field.many_to_one and field.related_model == related_model:
-                return (field.name, "many_to_one")
-            if field.many_to_many and field.related_model == related_model:
-                return (field.name, "many_to_many")
-
-        except:
-            pass
-
-    return None, None
-
-def get_file_fields_dict_for_model(model:Model) -> list[dict[str, bool]]:
-    """
-    This function returns a list of file fields for a given model.
-
-    Example:
-    file_fields_dict_for_model(User) -> [{'name': 'profile_picture', 'allowed_extensions': ['__all__'], 'required': True}]
-
-    """
-    file_fields = []
-    for field in model._meta.get_fields():
-        try:
-            if field.get_internal_type() == 'FileField':
-                file_fields.append(
-                    {"name": field.name, 
-                     "allowed_extensions": ['__all__'],
-                     "required": not field.blank 
-                    }
-                )
-            elif field.get_internal_type() == 'BloomerpFileField':
-                file_fields.append(
-                    {
-                        "name": field.name,
-                        "allowed_extensions": field.allowed_extensions,
-                        "required": not field.blank
-                    }
-                )
-        except:
-            pass
-    return file_fields
-
 def model_name_singular_slug(model:Model) -> str:
     """
     This function returns the model name in a slug format.
@@ -370,69 +297,6 @@ def get_model_foreign_key_view_url(model:Model, foreign_model:Model, type='relat
         return model_name_plural_slug(model) + '/<int_or_uuid:pk>/' + model_name_plural_slug(foreign_model) + '/'
     
 
-# ---------------------------------
-# Search models
-# ---------------------------------
-def search_content_types_by_query(query:str) -> list[ContentType]:
-    """
-    This function returns a list of ContentTypes that contain the query in their verbose_name_plural.
-    """
-    content_types = ContentType.objects.all()
-    search_results = []
-
-    for content_type in content_types:
-        if query.lower() in content_type.model_class()._meta.verbose_name_plural.lower():
-            search_results.append(content_type)
-    return search_results
-
-def search_objects_by_content_types(query:str, content_types:list[ContentType], limit:int, user=None) -> list[dict[str, QuerySet]]:
-    '''Searches objects via content types
-    
-    Args:
-        query: the given query
-        content_types: list of content types which should be queries
-        limit: limit results to this number of objects
-
-    Returns:
-        list of dictionaries containing the model name and the matching objects
-    '''
-    results = []
-
-    for content_type in content_types:
-        model = content_type.model_class()
-
-        if model == ContentType:
-            continue
-
-        try:
-            if not user.has_perm(f'{model._meta.app_label}.view_{model._meta.model_name}'):
-                continue
-            
-            if issubclass(model, BloomerpModel) and getattr(model, 'allow_string_search', False):
-                    # Perform string search using the static method
-                matching_objects = model.string_search(query)
-            else:
-                if hasattr(model, 'allow_string_search') and not model.allow_string_search:
-                    continue
-
-                model.string_search = classmethod(string_search)
-
-                matching_objects = model.string_search(query)
-            
-            # If there are matching objects, add them to the results
-            if matching_objects.exists() and limit:
-                if len(matching_objects) > limit:
-                    matching_objects = matching_objects[0:limit]
-
-                results.append({
-                    "model_name": model._meta.verbose_name_plural,
-                    "objects": matching_objects
-                })
-        except:
-            pass
-
-    return results
-                
 
 # ---------------------------------
 # OTHER
@@ -442,51 +306,6 @@ def get_initials(object:Model) -> str:
     This function returns the initials of the object.
     """
     return ''.join([word[0].upper() for word in object.__str__().split()])[0:2]
-
-
-def stringify_object(object: Model) -> str:
-    """
-    Returns a robust string representation of a Django model instance, 
-    handling different field types and potential errors gracefully.
-
-    Parameters:
-    object (Model): A Django model instance.
-
-    Returns:
-    str: String representation of the object with field names and values.
-    """
-    object_string = ''
-
-    # Get model and fields
-    model = object._meta.model
-    fields = model._meta.fields
-
-    object_string += f'Object: {object.__str__()} | ID {object.pk}\n'
-    object_string += f'Object from model: {model._meta.verbose_name}\n'
-    object_string += f'Database table: {model._meta.db_table} \n\n'
-    object_string += 'Fields:\n'
-
-    for field in fields:
-        field_name = field.name
-        try:
-            # Get the field value
-            value = getattr(object, field_name)
-
-            # Handle special cases for field types
-            if hasattr(value, '__str__'):
-                # Convert to string with truncation if necessary
-                value_str = str(value)[:100] + ' (first 100 chars shown)' if len(str(value)) > 100 else str(value)
-            else:
-                value_str = str(value)
-
-            # Add field name and value to the output string
-            object_string += f'{field_name}: {value_str}\n'
-        except Exception as e:
-            # Log or include information about the error
-            object_string += f'{field_name}: [Error retrieving value: {str(e)}]\n'
-
-    return object_string
-
 
 def string_search_queryset(qs: QuerySet, search_value: str) -> QuerySet:
         model = qs.model
