@@ -5,13 +5,12 @@ from bloomerp.models.users.user_detail_view_preference import UserDetailViewPref
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
+from django.db.models import JSONField
 from uuid import UUID
 from bloomerp.utils.models import (
     get_bloomerp_file_fields_for_model,
     get_foreign_key_fields_for_model
     )
-from django.contrib.postgres.fields import JSONField
-from django.db.models import JSONField as DefaultJSONField
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from django.forms.widgets import DateInput, DateTimeInput
 from bloomerp.forms.layouts import BloomerpModelformHelper
@@ -127,7 +126,7 @@ class BloomerpModelForm(forms.ModelForm):
             # Check if the field is a JSONField
             model_field = self._meta.model._meta.get_field(field_name)
             
-            if isinstance(model_field, (JSONField, DefaultJSONField)):
+            if isinstance(model_field, JSONField):
                 # Apply the CodeEditorWidget for JSON fields
                 self.fields[field_name].widget = CodeEditorWidget(language='json')
 

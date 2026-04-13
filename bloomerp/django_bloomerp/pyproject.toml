@@ -1,6 +1,6 @@
 [project]
 name = "Bloomerp"
-version = "1.0.0.dev5"
+version = "1.0.0.dev6"
 description = "Bloomerp is an open-source Business Management Software framework that lets you create fully functional business management applications just by defining your Django database models."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -168,6 +168,7 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.packages.find]
+namespaces = true
 include = ["bloomerp", "bloomerp.*"]
 exclude = ["bloomerp.tests", "bloomerp.tests.*"]
 
