@@ -29,7 +29,6 @@ SECRET_KEY = 'django-insecure-tv$m7syy_=7e&airoxc=ge&kyo37=fq=pe+(sa+#ut(9y*!3hz
 DEBUG = True
 
 ALLOWED_HOSTS = []
-LOGIN_URL = 'login'
 
 # Application definition
 AUTH_USER_MODEL = BLOOMERP_USER_MODEL
@@ -144,7 +143,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
-UPLOAD_MAX_NUMBER_FIELDS = 100000
+
 
 # Development-friendly in-memory channel layer (swap for Redis in production).
 CHANNEL_LAYERS = {
@@ -159,8 +158,5 @@ BLOOMERP_SETTINGS = {
         "organization_name": "Test Org",
     },
     "BASE_URL": "",  # The base URL of the application
-    "ROUTERS": [
-        # More on routers later; leave blank for now
-    ],
     "OPENAI_API_KEY": "KEY",  # For LLM integration
 }

@@ -4,19 +4,19 @@
 {% comment %}
 Loads bundled JavaScript from Vite build.
 
-In development mode (DEBUG=True):
+In development mode with an explicit Vite dev server URL configured:
 - Loads from Vite dev server with HMR support
 - Requires Vite dev server to be running: npm run dev:js
 
-In production mode (DEBUG=False):
+Otherwise:
 - Loads from built static files
 - Files should be built with: npm run build:js
 {% endcomment %}
 
-{% if DEBUG %}
+{% if DEBUG and BLOOMERP_VITE_DEV_SERVER_URL %}
     <!-- Development mode: Vite dev server with HMR -->
-    <script type="module" src="http://localhost:5173/@vite/client"></script>
-    <script type="module" src="http://localhost:5173/ts/main.ts"></script>
+    <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/@vite/client"></script>
+    <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/ts/main.ts"></script>
 {% else %}
     <!-- Production mode: Built bundle -->
     <script type="module" src="{% static 'bloomerp/js/dist/main.js' %}"></script>

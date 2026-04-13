@@ -34,6 +34,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Install build tooling
         run: python -m pip install --upgrade build twine
 
@@ -124,6 +129,10 @@ jobs:
         run: |
           cp README.md bloomerp/django_bloomerp/README.md
           cd bloomerp/django_bloomerp
+          cd bloomerp/static_src
+          npm install
+          npm run build
+          cd ../..
           python -m build
 
       - name: Check distribution metadata

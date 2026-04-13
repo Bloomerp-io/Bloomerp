@@ -7,7 +7,8 @@ def debug_mode(request: HttpRequest) -> dict:
     Usage in templates: {% if DEBUG %}...{% endif %}
     """
     return {
-        'DEBUG': settings.DEBUG
+        'DEBUG': settings.DEBUG,
+        'BLOOMERP_VITE_DEV_SERVER_URL': settings.BLOOMERP_SETTINGS.get('VITE_DEV_SERVER_URL', 'http://localhost:5173').rstrip('/'),
     }
     
 def htmx_main_content_div(request: HttpRequest) -> dict:
