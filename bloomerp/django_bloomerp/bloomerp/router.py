@@ -284,6 +284,27 @@ class BloomerpRouteRegistry:
 
     def route(self, *args, **kwargs):
         return self.register(*args, **kwargs)
+
+    def _import_module(self, module_name: str) -> None:
+        """Import a module while keeping route loading resilient."""
+        try:
+            importlib.import_module(module_name)
+            logger.debug(f"Successfully imported: {module_name}")
+        except (ImportError, AttributeError, ModuleNotFoundError) as e:
+            # Keep startup resilient, but surface route-load failures clearly.
+            logger.warning(
+                "Skipping auto-import for module '%s' due to import error: %s",
+                module_name,
+                e,
+                exc_info=True,
+            )
+        except Exception as e:
+            logger.warning(
+                "Skipping auto-import for module '%s' due to unexpected error: %s",
+                module_name,
+                e,
+                exc_info=True,
+            )
     
     def _auto_import_views(self):
         """
@@ -307,6 +328,14 @@ class BloomerpRouteRegistry:
                     if os.path.exists(dir_path) and os.path.isdir(dir_path):
                         # Find all Python files recursively in the directory
                         for root, dirs, files in os.walk(dir_path):
+                            # Import package __init__.py modules as well so projects can
+                            # register routes from views/__init__.py or components/__init__.py.
+                            if '__init__.py' in files:
+                                package_relative_path = os.path.relpath(root, app_path)
+                                package_module_path = package_relative_path.replace(os.path.sep, '.')
+                                module_name = f"{app_config.name}.{package_module_path}"
+                                self._import_module(module_name)
+
                             for file in files:
                                 if not file.endswith('.py') or file == '__init__.py':
                                     continue
@@ -317,48 +346,14 @@ class BloomerpRouteRegistry:
                                 relative_path = os.path.relpath(file_path, app_path)
                                 module_path = relative_path.replace(os.path.sep, '.').replace('.py', '')
                                 module_name = f"{app_config.name}.{module_path}"
-
-                                try:
-                                    importlib.import_module(module_name)
-                                    logger.debug(f"Successfully imported: {module_name}")
-                                except (ImportError, AttributeError, ModuleNotFoundError) as e:
-                                    # Keep startup resilient, but surface route-load failures clearly.
-                                    logger.warning(
-                                        "Skipping auto-import for module '%s' due to import error: %s",
-                                        module_name,
-                                        e,
-                                        exc_info=True,
-                                    )
-                                except Exception as e:
-                                    logger.warning(
-                                        "Skipping auto-import for module '%s' due to unexpected error: %s",
-                                        module_name,
-                                        e,
-                                        exc_info=True,
-                                    )
+                                self._import_module(module_name)
 
 
                     # Also check for direct file (e.g., views.py, components.py)
                     direct_file = os.path.join(app_path, f'{dir_name}.py')
                     if os.path.exists(direct_file):
-                        try:
-                            module_name = f"{app_config.name}.{dir_name}"
-                            importlib.import_module(module_name)
-                            logger.debug(f"Successfully imported: {module_name}")
-                        except (ImportError, AttributeError, ModuleNotFoundError) as e:
-                            logger.warning(
-                                "Skipping auto-import for module '%s' due to import error: %s",
-                                module_name,
-                                e,
-                                exc_info=True,
-                            )
-                        except Exception as e:
-                            logger.warning(
-                                "Skipping auto-import for module '%s' due to unexpected error: %s",
-                                module_name,
-                                e,
-                                exc_info=True,
-                            )
+                        module_name = f"{app_config.name}.{dir_name}"
+                        self._import_module(module_name)
 
             self._auto_imported = True
             logger.info(f"Auto-import completed. Registered {len(self.routes)} routes.")
@@ -753,4 +748,3 @@ router = BloomerpRouteRegistry(
         "components",
     ]
 )
-
