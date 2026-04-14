@@ -1,7 +1,7 @@
+from django.apps import apps
 from django.urls import include, path,  register_converter
 from django.urls import NoReverseMatch
 from django.contrib.auth import views as auth_views
-from django.contrib.contenttypes.models import ContentType
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from bloomerp.config.definition import BloomerpConfig
@@ -75,6 +75,46 @@ class PublicApiRootRouter(DefaultRouter):
 register_converter(IntOrUUIDConverter, 'int_or_uuid') # Register the custom URL converter
 drf_router = PublicApiRootRouter()
 
+
+def get_api_models() -> list[type[Model]]:
+    api_models: list[type[Model]] = []
+
+    for model in apps.get_models():
+        if model is Policy:
+            continue
+        if model._meta.abstract or model._meta.proxy:
+            continue
+        api_models.append(model)
+
+    return api_models
+
+
+def register_model_with_admin(model: type[Model]) -> None:
+    try:
+        admin.site.register(model)
+    except AlreadyRegistered:
+        pass
+
+
+def register_model_api(model: type[Model]) -> None:
+    serializer_class = generate_serializer(model)
+    ApiViewSet = generate_model_viewset_class(
+        model=model,
+        serializer=serializer_class,
+        base_viewset=BloomerpModelViewSet
+    )
+
+    config = getattr(model, "bloomerp_config", None)
+    if isinstance(config, BloomerpModelConfig):
+        if not config.should_enable_api_auto_generation():
+            return
+
+    drf_router.register(
+        prefix=model_name_plural_underline(model),
+        viewset=ApiViewSet,
+        basename=model_name_plural_underline(model)
+    )
+
 # Get the config
 bloomerp_config : BloomerpConfig = getattr(settings, "BLOOMERP_CONFIG", None)
 
@@ -88,51 +128,14 @@ urlpatterns = [
     path('logout/',auth_views.LogoutView.as_view(next_page=reverse_lazy('login')), name='logout'),
 ]
 
-# Get the content types
-try:
-    content_types = list(ContentType.objects.all())
-except Exception:
-    # Database might not be ready yet (e.g., during initial migrations)
-    content_types = []
+for model in get_api_models():
+    register_model_with_admin(model)
 
-# Loop through all the content types
-for content_type in content_types:
-    if content_type.model_class():
-        model : Model = content_type.model_class()
-        
-        if not model:
-            continue
-
-        if model is Policy:
-            continue
-        
-        try:
-            admin.site.register(model)
-        except AlreadyRegistered:
-            pass
-
-        serializer_class = generate_serializer(model)
-        ApiViewSet = generate_model_viewset_class(
-            model=model,
-            serializer=serializer_class,
-            base_viewset=BloomerpModelViewSet
-        )
-
-        try:
-            config = getattr(model, "bloomerp_config", None)
-            if isinstance(config, BloomerpModelConfig):
-                if not config.should_enable_api_auto_generation():
-                    continue
-                
-            drf_router.register(
-                prefix = model_name_plural_underline(model), 
-                viewset = ApiViewSet, 
-                basename=model_name_plural_underline(model)
-            )
-            
-        except Exception as e:
-            # Don't fail URL loading if a single model registration errors
-            pass
+    try:
+        register_model_api(model)
+    except Exception:
+        # Don't fail URL loading if a single model registration errors
+        pass
 
 # Register models
 drf_router.register(

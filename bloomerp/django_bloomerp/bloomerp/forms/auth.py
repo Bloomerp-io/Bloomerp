@@ -54,8 +54,14 @@ class UserSelectionForm(forms.Form):
 # User Creation Form
 # ---------------------------------
 from django.contrib.auth.forms import UserCreationForm
+
+
+def get_user_creation_fields(user_model:type[AbstractBloomerpUser]) -> tuple[str, ...]:
+    ordered_fields = [user_model.USERNAME_FIELD, *getattr(user_model, "REQUIRED_FIELDS", [])]
+    return tuple(dict.fromkeys(ordered_fields))
+
+
 class BloomerpUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = UserCreationForm.Meta.fields + ('email',)
-
+        fields = get_user_creation_fields(User)
