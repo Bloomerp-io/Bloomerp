@@ -903,4 +903,126 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
 
         self.assertTrue(manager.has_global_permission(self.CustomerModel, "add_customer"))
     
+
+    # ---------------------------------------
+    # Assign creator permission tests
+    # ---------------------------------------
+    def test_assign_creator_permission(self):
+        """
+        This test tests whether the assign creator permission allows the user to actually view the objects 
+        that he or she has created.
+        """
+        # 1. Create a object
+        obj = self.CustomerModel.objects.create(
+            first_name="Creator",
+            last_name="Person",
+            age=30,
+            country=self.CountryModel.objects.first(),
+            created_by=self.normal_user
+        )
+
+        other_obj = self.CustomerModel.objects.create(
+            first_name="Other",
+            last_name="Person",
+            age=30,
+            country=self.CountryModel.objects.first(),
+            created_by=self.admin_user
+        )
+
+        # 2. Assign the creator permission
+        manager = UserPermissionManager(self.normal_user)
+        manager.assign_creator_permission(
+            self.CustomerModel,
+            field_policy={"__all__": "__all__"},
+            row_permissions="__all__"
+        )
+        
+        # 3. Check if the user has access to the object
+        for perm in self.CustomerModel._meta.default_permissions:
+            self.assertTrue(manager.has_access_to_object(obj, perm))
+
+        for perm in self.CustomerModel._meta.default_permissions:
+            self.assertFalse(manager.has_access_to_object(other_obj, perm))
+
+    def test_assign_creator_permission_can_add_field_without_change_permission(self):
+        """
+        This test tests whether assign creator permission can allow a field
+        on create without also allowing that field on change.
+        """
+        # 1. Create an owned object
+        obj = self.CustomerModel.objects.create(
+            first_name="Creator",
+            last_name="Person",
+            age=30,
+            country=self.CountryModel.objects.first(),
+            created_by=self.normal_user
+        )
+
+        # 2. Assign add access to age, but no change access to age
+        manager = UserPermissionManager(self.normal_user)
+        manager.assign_creator_permission(
+            self.CustomerModel,
+            field_policy={
+                "first_name": ["add", "view", "change"],
+                "last_name": ["add", "view", "change"],
+                "country": ["add", "view", "change"],
+                "age": ["add", "view"],
+            },
+            row_permissions=["add", "view", "change"]
+        )
+
+        # 3. Check if the field can be used on add
+        self.assertTrue(manager.has_field_permission(self.age_field, "add_customer"))
+
+        # 4. Check if the same field cannot be changed later
+        self.assertFalse(manager.has_field_permission(self.age_field, "change_customer"))
+
+        # 5. Check if the user still has row-level change access to the object
+        self.assertTrue(manager.has_access_to_object(obj, "change"))
+
+        # 6. Check if another field can still be changed
+        self.assertTrue(manager.has_field_permission(self.first_name_field, "change_customer"))
+
+    def test_assign_creator_permission_reuses_existing_policy(self):
+        """
+        This test tests whether assign creator permission reuses the existing
+        creator policy instead of creating duplicates.
+        """
+        # 1. Construct the manager
+        manager = UserPermissionManager(self.normal_user)
+
+        # 2. Assign the creator permission twice
+        manager.assign_creator_permission(
+            self.CustomerModel,
+            field_policy={
+                "first_name": ["view"],
+            },
+            row_permissions=["view"]
+        )
+        manager.assign_creator_permission(
+            self.CustomerModel,
+            field_policy={
+                "first_name": ["change"],
+            },
+            row_permissions=["change"]
+        )
+
+        # 3. Get the policies assigned to the user for this model
+        policies = manager.get_user_policies().filter(
+            row_policy__content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            name__startswith="Creator policy "
+        )
+
+        # 4. Check that there is only one creator policy
+        self.assertEqual(policies.count(), 1)
+
+        # 5. Check that the creator rule only exists once
+        creator_policy = policies.first()
+        self.assertEqual(creator_policy.row_policy.rules.count(), 1)
+
+        # 6. Check that permissions from both calls are applied
+        self.assertTrue(manager.has_field_permission(self.first_name_field, "view_customer"))
+        self.assertTrue(manager.has_field_permission(self.first_name_field, "change_customer"))
+
+
     

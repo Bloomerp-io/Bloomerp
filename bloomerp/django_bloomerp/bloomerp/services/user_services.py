@@ -114,22 +114,6 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
     )
 
 
-def clear_user_list_view_preference_cache(user: AbstractBloomerpUser, content_type: ContentType) -> None:
-    """Clears the cached list view preference for a user and content type.
-    
-    Call this function when:
-    - User updates their field preferences
-    - Admin modifies ApplicationField records
-    - Model schema changes
-    
-    Args:
-        user (AbstractBloomerpUser): The user whose cache to clear.
-        content_type (ContentType): The content type to clear cache for.
-    """
-    cache_key = f'list_view_pref:{user.id}:{content_type.id}'
-    cache.delete(cache_key)
-
-
 def get_user_list_view_preference(user: AbstractBloomerpUser, content_type: ContentType) -> UserListViewPreference:
     """Gets the UserListViewPreference for a user and content type, creating a default if none exists.
     

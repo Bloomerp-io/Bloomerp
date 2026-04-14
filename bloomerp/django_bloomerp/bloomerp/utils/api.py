@@ -36,7 +36,5 @@ def generate_model_viewset_class(
         'serializer_class': serializer,
         'filterset_class': dynamic_filterset_factory(model)
     })
-
-
-
+    
     return Class

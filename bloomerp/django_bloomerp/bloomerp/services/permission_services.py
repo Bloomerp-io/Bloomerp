@@ -20,7 +20,8 @@ from bloomerp.models.access_control import Policy
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from django.contrib.contenttypes.models import ContentType
-from typing import Type
+from django.contrib.auth.models import Permission
+from typing import Literal, Type
 from django.db.models import Q
 from bloomerp.field_types import Lookup
 from django.core.exceptions import FieldDoesNotExist
@@ -46,8 +47,6 @@ class UserPermissionManager:
         self.is_anonymous = not user or user.is_anonymous
         
         self.policies = self.get_user_policies()
-        
-
     
     def get_user_policies(self) -> QuerySet[Policy]:
         """Retrieve all policies associated with the user.
@@ -432,18 +431,22 @@ class UserPermissionManager:
         Returns:
             bool: whether the user has access to the object
         """
+        normalized_permission = str(permission_str or "").strip()
+        if normalized_permission and "_" not in normalized_permission and "." not in normalized_permission:
+            normalized_permission = create_permission_str(object, normalized_permission)
+
         if check_global:
             has_global_permission = self.has_global_permission(
                 object._meta.model,
-                permission_str
+                normalized_permission
             )
         else:
             has_global_permission = True
 
-        has_obj_permission = self.get_queryset(object._meta.model, permission_str).filter(
+        has_obj_permission = self.get_queryset(object._meta.model, normalized_permission).filter(
                     id=object.id
                 ).exists()
-        
+
         return (has_global_permission and has_obj_permission)
     
     def get_queryset(self, model_or_content_type:Type[models.Model]|ContentType, permission_str:str) -> QuerySet[models.Model]:
@@ -609,5 +612,223 @@ class UserPermissionManager:
             return normalized_actual != normalized_expected
         return False
     
-    
-        
+    def assign_creator_permission(
+            self, 
+            model: Type[models.Model],
+            field_policy: dict[str|ApplicationField, list[str]|Literal["__all__"]],
+            row_permissions: list[str]|Literal["__all__"],
+            ):
+        """Get or create a reusable "creator" policy for the current user.
+
+        The created policy combines:
+
+        1. field-level permissions from ``field_policy``
+        2. row-level permissions on records where ``created_by == current user``
+        3. matching global permissions so the granted actions can pass global checks
+
+        This is useful when a user should be allowed to work with records they
+        created themselves, while still keeping field-level access more
+        restrictive than row-level access.
+
+        Args:
+            model (Type[models.Model]): the model to give creator permission for
+            field_policy (dict[str|ApplicationField, list[str]|Literal["__all__"]]):
+                Dictionary mapping fields to permission lists.
+
+                Keys can be:
+                - a field name such as ``"age"``
+                - an ``ApplicationField`` instance
+                - ``"__all__"`` to apply the same permissions to all fields
+
+                Values can be:
+                - a list like ``["add", "view"]`` or ``["add_customer"]``
+                - ``"__all__"`` to grant all default model permissions for that
+                  field
+
+                Bare permissions like ``"add"`` are normalized to model
+                codenames like ``"add_customer"``.
+
+            row_permissions (list[str]|Literal["__all__"]):
+                Permissions to grant on rows owned by the current user. These
+                are attached to the implicit creator rule
+                ``created_by == $user``.
+
+                This is independent from ``field_policy``. For example, a user
+                may have row-level ``change`` access to their own records, while
+                still being blocked from changing a specific field.
+
+        Usage:
+        ```python
+        manager.assign_creator_permission(
+            Customer,
+            field_policy={"__all__": "__all__"},
+            row_permissions="__all__",
+        )
+        ```
+
+        Give full field access and full creator row access for the model.
+
+        ```python
+        manager.assign_creator_permission(
+            Customer,
+            field_policy={
+                "first_name": ["add", "view", "change"],
+                "last_name": ["add", "view", "change"],
+                "age": ["add", "view"],
+            },
+            row_permissions=["add", "view", "change"],
+        )
+        ```
+
+        In this example, the user can create and view ``age`` on their own
+        records, but cannot change it later because ``change`` is omitted from
+        the field-level permission list for that field.
+
+        Repeated calls are additive. Existing creator policies for the same
+        user/model are reused and updated instead of duplicated.
+        """
+        if not isinstance(model, type) or not issubclass(model, models.Model):
+            raise TypeError("model must be a Django model class")
+
+        if self.is_anonymous:
+            raise ValueError("Cannot assign creator permissions to an anonymous user")
+
+        content_type = ContentType.objects.get_for_model(model)
+        creator_field = ApplicationField.get_for_model(model).filter(field="created_by").first()
+        if not creator_field:
+            raise ValueError("Model must have a created_by application field")
+
+        def normalize_permissions(permissions_value: list[str] | Literal["__all__"]) -> list[str]:
+            if permissions_value == "__all__":
+                return [
+                    create_permission_str(model, permission)
+                    for permission in model._meta.default_permissions
+                ]
+
+            normalized_permissions = []
+            for permission in permissions_value:
+                permission_value = str(permission or "").strip()
+                if not permission_value:
+                    continue
+
+                if "." in permission_value:
+                    permission_value = permission_value.split(".", 1)[-1]
+                elif "_" not in permission_value:
+                    permission_value = create_permission_str(model, permission_value)
+
+                normalized_permissions.append(permission_value)
+
+            return list(dict.fromkeys(normalized_permissions))
+
+        normalized_row_permissions = normalize_permissions(row_permissions)
+        if not normalized_row_permissions:
+            raise ValueError("At least one row permission must be provided")
+
+        if not isinstance(field_policy, dict) or not field_policy:
+            raise ValueError("field_policy must be a non-empty dictionary")
+
+        normalized_field_policy: dict[str, list[str]] = {}
+
+        for field, permissions in field_policy.items():
+            normalized_field_permissions = normalize_permissions(permissions)
+            if not normalized_field_permissions:
+                continue
+
+            if field == "__all__":
+                field_key = "__all__"
+            elif isinstance(field, ApplicationField):
+                if field.content_type_id != content_type.id:
+                    raise ValueError("All fields must belong to the given model")
+                field_key = str(field.id)
+            else:
+                field_name = str(field or "").strip()
+                if not field_name:
+                    continue
+
+                application_field = ApplicationField.get_for_model(model).filter(field=field_name).first()
+                if not application_field:
+                    raise ValueError(f"Unknown field '{field_name}' for model '{model._meta.model_name}'")
+                field_key = str(application_field.id)
+
+            existing_permissions = normalized_field_policy.get(field_key, [])
+            normalized_field_policy[field_key] = list(
+                dict.fromkeys([*existing_permissions, *normalized_field_permissions])
+            )
+
+        if not normalized_field_policy:
+            raise ValueError("At least one field permission must be provided")
+
+        all_field_permissions = list(
+            dict.fromkeys(
+                permission
+                for permissions in normalized_field_policy.values()
+                for permission in permissions
+            )
+        )
+        all_policy_permissions = list(
+            dict.fromkeys([*normalized_row_permissions, *all_field_permissions])
+        )
+
+        policy_key = f"{content_type.app_label}.{content_type.model}.{self.user.pk}"
+
+        field_policy_obj, _ = FieldPolicy.objects.get_or_create(
+            content_type=content_type,
+            name=f"Creator field policy {policy_key}",
+            defaults={"rule": {}},
+        )
+
+        field_rule = field_policy_obj.rule if isinstance(field_policy_obj.rule, dict) else {}
+        field_rule = dict(field_rule)
+
+        for field_key, permissions in normalized_field_policy.items():
+            existing_permissions = field_rule.get(field_key, [])
+            field_rule[field_key] = list(dict.fromkeys([*existing_permissions, *permissions]))
+
+        if field_policy_obj.rule != field_rule:
+            field_policy_obj.rule = field_rule
+            field_policy_obj.save(update_fields=["rule"])
+
+        row_policy, _ = RowPolicy.objects.get_or_create(
+            content_type=content_type,
+            name=f"Creator row policy {policy_key}",
+        )
+
+        row_rule_definition = {
+            "application_field_id": str(creator_field.id),
+            "operator": Lookup.EQUALS_USER.value.id,
+            "value": "$user",
+        }
+        row_rule = row_policy.rules.filter(rule=row_rule_definition).first()
+        if not row_rule:
+            row_rule = row_policy.rules.create(rule=row_rule_definition)
+        row_rule.add_permissions(normalized_row_permissions)
+
+        policy, _ = Policy.objects.get_or_create(
+            name=f"Creator policy {policy_key}",
+            defaults={
+                "description": f"Creator permissions for {content_type.app_label}.{content_type.model}",
+                "row_policy": row_policy,
+                "field_policy": field_policy_obj,
+            },
+        )
+
+        fields_to_update = []
+        if policy.row_policy_id != row_policy.id:
+            policy.row_policy = row_policy
+            fields_to_update.append("row_policy")
+        if policy.field_policy_id != field_policy_obj.id:
+            policy.field_policy = field_policy_obj
+            fields_to_update.append("field_policy")
+        if fields_to_update:
+            policy.save(update_fields=fields_to_update)
+
+        policy.assign_user(self.user)
+        policy.global_permissions.add(
+            *Permission.objects.filter(
+                content_type=content_type,
+                codename__in=all_policy_permissions,
+            )
+        )
+
+        self.policies = self.get_user_policies()
+        return policy

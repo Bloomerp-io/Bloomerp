@@ -258,57 +258,6 @@ def resolve_detail_layout_rows(
     return rows
 
 
-def resolve_create_layout_rows(
-    *,
-    layout: FieldLayout | dict[str, Any] | None,
-    content_type: ContentType,
-    user,
-    form,
-) -> list[dict[str, Any]]:
-    manager = UserPermissionManager(user)
-    model = content_type.model_class()
-    permission_str = f"add_{model._meta.model_name}"
-
-    normalized = normalize_layout_payload(layout)
-    rows: list[dict[str, Any]] = []
-
-    for row in normalized.rows:
-        resolved_items: list[dict[str, Any]] = []
-        for item in row.items:
-            application_field = ApplicationField.objects.filter(
-                id=item.id,
-                content_type=content_type,
-            ).first()
-            if not application_field:
-                continue
-            if application_field.field not in form.fields:
-                continue
-            if not manager.has_field_permission(application_field, permission_str):
-                continue
-
-            resolved_items.append(
-                {
-                    "id": application_field.pk,
-                    "colspan": clamp_layout_colspan(item.colspan, row.columns),
-                    "application_field": application_field,
-                    **build_crud_layout_field_context(
-                        application_field=application_field,
-                        bound_field=form[application_field.field],
-                    ),
-                }
-            )
-
-        rows.append(
-            {
-                "title": row.title,
-                "columns": row.columns,
-                "items": resolved_items,
-            }
-        )
-
-    return rows
-
-
 def get_layout_widget_attrs(*, widget: forms.Widget) -> dict[str, str]:
     widget_choices = getattr(widget, "get_choices", lambda *_args, **_kwargs: getattr(widget, "choices", []))()
     is_select_widget = isinstance(widget, forms.Select) or bool(widget_choices)
