@@ -195,11 +195,13 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         if not rules:
             return None
 
+        public_action = self._get_public_action_name(action)
         allowed_fields: set[str] = set()
         for rule in rules:
-            if rule.fields == "__all__":
+            rule_fields = rule.get_accessible_fields(public_action)
+            if rule_fields is None:
                 return None
-            allowed_fields.update(rule.fields)
+            allowed_fields.update(rule_fields)
         return allowed_fields
 
     def _get_user_accessible_field_names(self, action: str | None = None) -> set[str] | None:

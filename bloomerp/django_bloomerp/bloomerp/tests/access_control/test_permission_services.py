@@ -815,8 +815,11 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
     def test_api_list_allows_anonymous_public_access_with_filtered_rows_and_fields(self):
         previous = self._set_public_access(
             PublicAccessRule(
-                actions=["list"],
-                fields=["id", "first_name"],
+                row_actions=["list"],
+                field_actions={
+                    "id": ["list"],
+                    "first_name": ["list"],
+                },
                 filters=[ApiFilterRule(field="age", operator=Lookup.GREATER_THAN_OR_EQUAL.value.id, value=8)],
             )
         )
@@ -840,8 +843,11 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         allowed = self.CustomerModel.objects.get(age=0)
         previous = self._set_public_access(
             PublicAccessRule(
-                actions=["read"],
-                fields=["id", "first_name"],
+                row_actions=["read"],
+                field_actions={
+                    "id": ["read"],
+                    "first_name": ["read"],
+                },
                 filters=[ApiFilterRule(field="age", operator=Lookup.EQUALS.value.id, value=allowed.age)],
             )
         )
@@ -863,8 +869,11 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         blocked = self.CustomerModel.objects.get(age=1)
         previous = self._set_public_access(
             PublicAccessRule(
-                actions=["read"],
-                fields=["id", "first_name"],
+                row_actions=["read"],
+                field_actions={
+                    "id": ["read"],
+                    "first_name": ["read"],
+                },
                 filters=[ApiFilterRule(field="age", operator=Lookup.EQUALS.value.id, value=allowed.age)],
             )
         )

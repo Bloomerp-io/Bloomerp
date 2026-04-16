@@ -19,11 +19,87 @@ class ApiFilterRule(BaseModel):
 
 
 class PublicAccessRule(BaseModel):
-    actions: list[Literal["list", "read"]] = Field(
+    """A public access rule defines in which cases objects can be accessed via the
+    auto generated API without authentication.
+
+    For example, we might want to expose a `BlogPost` model publicly so that
+    anonymous users can list and read published posts, while drafts remain
+    private. That would look something like this:
+    ```python
+    rule = PublicAccessRule(
+        field_actions={
+            "title": ["list", "read"],
+            "slug": ["list", "read"],
+            "summary": ["list", "read"],
+            "content": ["read"],
+        },
+        row_actions=["list", "read"],
+        filters=[
+            ApiFilterRule(
+                field="status",
+                operator="equals",
+                value="published",
+            )
+        ],
+    )
+    ```
+    In the above case, anonymous users are able to list and read blog posts
+    whose `status == "published"`, while only the configured fields are exposed
+    for each action.
+
+    In the case that we want to expose a narrower public listing than the public
+    detail view, that would look something like this:
+    ```python
+    rule = PublicAccessRule(
+        field_actions={
+            "title": ["list", "read"],
+            "slug": ["list", "read"],
+            "summary": ["list"],
+            "content": ["read"],
+        },
+        row_actions=["list", "read"],
+        filters=[
+            ApiFilterRule(
+                field="is_archived",
+                operator="not_equals",
+                value=True,
+            )
+        ],
+    )
+    ```
+    In the above case, anonymous users can still list and read the object, but
+    the list response is limited to `title`, `slug`, and `summary`, while the
+    read response can additionally include `content`. The filter ensures that
+    archived objects stay out of the public API.
+    """
+    row_actions: list[Literal["list", "read"]] = Field(
         default_factory=lambda: ["list", "read"]
     )
-    fields: list[str] | Literal["__all__"] = "__all__"
+    field_actions: dict[str | Literal["__all__"], list[Literal["list", "read"]] | Literal["__all__"]] = Field(
+        default_factory=lambda: {"__all__": "__all__"}
+    )
     filters: list[ApiFilterRule] = Field(default_factory=list)
+
+    def get_row_actions(self) -> list[str]:
+        return list(self.row_actions)
+
+    def get_accessible_fields(self, action: str) -> set[str] | None:
+        normalized_action = str(action or "").strip().lower()
+        wildcard_actions = self.field_actions.get("__all__")
+        if wildcard_actions == "__all__" or (
+            isinstance(wildcard_actions, list) and normalized_action in wildcard_actions
+        ):
+            return None
+
+        allowed_fields: set[str] = set()
+        for field_name, actions in self.field_actions.items():
+            if field_name == "__all__":
+                continue
+            if actions == "__all__" or (
+                isinstance(actions, list) and normalized_action in actions
+            ):
+                allowed_fields.add(field_name)
+        return allowed_fields
 
 class UserAccessRule(BaseModel):
     """A user access rule defines in which cases users can access an object via the api. The through field serves as the entry point for the user access definition. Note that user access rules only apply to the auto generated API's.
@@ -84,7 +160,7 @@ class ApiSettings(BaseModel):
         return [
             rule
             for rule in self.public_access
-            if normalized_action in rule.actions
+            if normalized_action in rule.get_row_actions()
         ]
 
     def get_user_access_rules(self, action: str) -> list[UserAccessRule]:
