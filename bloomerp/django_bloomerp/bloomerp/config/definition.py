@@ -1,6 +1,59 @@
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class SessionAuthSettings(BaseModel):
+    enabled: bool = True
+    login_identifier: Literal["username", "email", "custom"] = "username"
+    custom_identifier_field: str | None = None
+    user_fields: list[str] = Field(
+        default_factory=lambda: ["id", "username", "email", "first_name", "last_name"]
+    )
+
+    def get_identifier_field_name(self) -> str:
+        if self.login_identifier == "custom":
+            return str(self.custom_identifier_field or "identifier")
+        return self.login_identifier
+
+
+class BearerAuthSettings(BaseModel):
+    enabled: bool = False
+
+
+class ApiKeyAuthSettings(BaseModel):
+    enabled: bool = False
+    header_name: str = "X-API-Key"
+
+
+class AuthorizationAuthSettings(BaseModel):
+    enabled: bool = False
+
+
+class CustomAuthSettings(BaseModel):
+    enabled: bool = False
+    name: str = "custom"
+
+
+class BloomerpAuthSettings(BaseModel):
+    session: SessionAuthSettings = Field(default_factory=SessionAuthSettings)
+    bearer: BearerAuthSettings = Field(default_factory=BearerAuthSettings)
+    api_key: ApiKeyAuthSettings = Field(default_factory=ApiKeyAuthSettings)
+    authorization: AuthorizationAuthSettings = Field(default_factory=AuthorizationAuthSettings)
+    custom: CustomAuthSettings = Field(default_factory=CustomAuthSettings)
+
+    def enabled_strategy_types(self) -> list[str]:
+        strategies: list[tuple[str, bool]] = [
+            ("session", self.session.enabled),
+            ("bearer", self.bearer.enabled),
+            ("apiKey", self.api_key.enabled),
+            ("authorization", self.authorization.enabled),
+            ("custom", self.custom.enabled),
+        ]
+        return [strategy_type for strategy_type, enabled in strategies if enabled]
+
+    def is_strategy_enabled(self, strategy_type: str) -> bool:
+        return strategy_type in self.enabled_strategy_types()
 
 class BloomerpConfig(BaseModel):
     """
@@ -23,7 +76,8 @@ class BloomerpConfig(BaseModel):
     auto_generate_api_endpoints : bool = True
 
     vite_dev_server_url : Optional[str] = 'http://localhost:5173'
-    
 
+    auth: BloomerpAuthSettings = Field(default_factory=BloomerpAuthSettings)
+    
 
 

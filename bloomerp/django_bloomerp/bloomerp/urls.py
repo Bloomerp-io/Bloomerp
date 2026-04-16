@@ -20,6 +20,7 @@ from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 from django.urls import reverse_lazy
 from django.conf import settings
+from bloomerp.views.api.auth import csrf_view, login_view, logout_view, session_view
 
 class PublicApiRootRouter(DefaultRouter):
     def _should_include_api_root_entry(self, request, viewset) -> bool:
@@ -146,6 +147,20 @@ drf_router.register(
 
 # Add api's to url patterns
 urlpatterns += [
+    path(
+        "api/auth/",
+        include(
+            (
+                [
+                    path("session/", session_view, name="session"),
+                    path("csrf/", csrf_view, name="csrf"),
+                    path("login/", login_view, name="api_login"),
+                    path("logout/", logout_view, name="api_logout"),
+                ],
+                "bloomerp_auth",
+            )
+        ),
+    ),
     path('api/', include(drf_router.urls)),
 ]
 

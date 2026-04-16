@@ -38,11 +38,18 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             # 3. Confirm the generated SDK includes auth, model typing, and field metadata.
             index_contents = index_file.read_text(encoding="utf-8")
 
-            self.assertIn('type: "basic"', index_contents)
+            self.assertIn('type: "session"', index_contents)
+            self.assertIn("export class AuthApi", index_contents)
+            self.assertIn("export class BloomerpHttpError", index_contents)
             self.assertIn("export interface Customer", index_contents)
             self.assertIn("export class CustomerApi", index_contents)
             self.assertIn("customersFields", index_contents)
+            self.assertIn("customersPublicAccess", index_contents)
+            self.assertIn("bloomerpAuthStrategyTypes", index_contents)
             self.assertIn('"/api/customers/"', index_contents)
+            self.assertIn("login(payload: BloomerpAuthLoginPayload", index_contents)
+            self.assertIn("fetchOptions?: Record<string, unknown>", index_contents)
+            self.assertIn("return normalizeListResponse(response);", index_contents)
 
     def test_create_sdk_generates_javascript_sdk_file(self):
         """
@@ -69,8 +76,13 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             # 3. Confirm the generated file exposes auth, field metadata, and model clients.
             sdk_contents = sdk_file.read_text(encoding="utf-8")
             self.assertIn("export class BloomerpHttpClient", sdk_contents)
+            self.assertIn("export class AuthApi", sdk_contents)
+            self.assertIn("this.auth = new AuthApi(this.client);", sdk_contents)
+            self.assertIn("listResults(query = undefined, options = undefined)", sdk_contents)
+            self.assertIn("export const bloomerpAuthStrategyTypes", sdk_contents)
             self.assertIn("export class CustomerApi", sdk_contents)
             self.assertIn("export const customersFields", sdk_contents)
+            self.assertIn("export const customersPublicAccess", sdk_contents)
             self.assertIn('super(client, "/api/customers/");', sdk_contents)
 
     def test_create_sdk_generates_python_sdk_file(self):
@@ -98,8 +110,14 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             # 3. Confirm the generated file exposes typed models, metadata, and model clients.
             sdk_contents = sdk_file.read_text(encoding="utf-8")
             self.assertIn("class BloomerpHttpClient:", sdk_contents)
+            self.assertIn("class AuthApi:", sdk_contents)
+            self.assertIn("self.auth = AuthApi(self.client)", sdk_contents)
             self.assertIn("class Customer(TypedDict, total=False):", sdk_contents)
+            self.assertIn("class ModelApi(Generic[TModel, TId, TCreate, TUpdate]):", sdk_contents)
+            self.assertIn("def retrieve(self, object_id: TId, options: BloomerpRequestOptions | None = None) -> TModel:", sdk_contents)
+            self.assertIn("def list_results(", sdk_contents)
             self.assertIn("customers_fields: dict[str, BloomerpFieldMetadata]", sdk_contents)
+            self.assertIn("customers_public_access: dict[str, Any]", sdk_contents)
             self.assertIn('super().__init__(client, "/api/customers/")', sdk_contents)
 
     def test_create_sdk_uses_language_default_filename_when_filename_is_omitted(self):
@@ -150,13 +168,12 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
 
             # 3. Confirm the README explains the main CRUD and filtering flows.
             readme_contents = readme_file.read_text(encoding="utf-8")
+            self.assertIn("## Session Auth", readme_contents)
             self.assertIn("## Read One", readme_contents)
             self.assertIn("## Create", readme_contents)
-            self.assertIn("## Update", readme_contents)
-            self.assertIn("## Delete", readme_contents)
             self.assertIn("## Filter / List", readme_contents)
-            self.assertIn('await sdk.customers.retrieve(1);', readme_contents)
-            self.assertIn('await sdk.customers.list({', readme_contents)
+            self.assertIn("await sdk.auth.login({", readme_contents)
+            self.assertIn('const page = await sdk.customers.list({', readme_contents)
 
     def test_create_sdk_rejects_unsupported_languages(self):
         """

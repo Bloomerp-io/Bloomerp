@@ -74,6 +74,13 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
             return False
         if not self._get_public_access_rules(action):
             return False
+        config = self._get_bloomerp_config()
+        if config is not None and not getattr(
+            getattr(config, "api_settings", None),
+            "public_access_for_authenticated_fallback",
+            True,
+        ):
+            return bool(getattr(self.request, "user", None) and self.request.user.is_anonymous)
         permission_str = self._get_permission_str(action)
         return not self._has_internal_access(permission_str)
 

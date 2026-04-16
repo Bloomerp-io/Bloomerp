@@ -5,8 +5,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from django.apps import apps
+from django.conf import settings
 from django.db import models
 
+from bloomerp.config.definition import BloomerpConfig
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.utils.models import model_name_plural_underline
@@ -36,6 +38,8 @@ class SdkModelDefinition:
     pk_type: str
     python_pk_type: str
     fields: list[SdkFieldDefinition]
+    capabilities: dict
+    public_access: dict
 
 
 class BaseSdkGenerator(ABC):
@@ -88,6 +92,15 @@ class BaseSdkGenerator(ABC):
     def get_model_definitions(self) -> list[SdkModelDefinition]:
         return [self.build_model_definition(model) for model in self.get_api_models()]
 
+    def get_bloomerp_config(self) -> BloomerpConfig:
+        config = getattr(settings, "BLOOMERP_CONFIG", None)
+        if isinstance(config, BloomerpConfig):
+            return config
+        return BloomerpConfig()
+
+    def get_enabled_auth_strategy_types(self) -> list[str]:
+        return self.get_bloomerp_config().auth.enabled_strategy_types()
+
     def get_api_models(self) -> list[type[models.Model]]:
         api_models: list[type[models.Model]] = []
         for model in apps.get_models():
@@ -104,6 +117,8 @@ class BaseSdkGenerator(ABC):
         return api_models
 
     def build_model_definition(self, model: type[models.Model]) -> SdkModelDefinition:
+        config = getattr(model, "bloomerp_config", None)
+        public_access = self.build_public_access_metadata(config)
         return SdkModelDefinition(
             class_name=model.__name__,
             variable_name=self.to_camel_case(model_name_plural_underline(model)),
@@ -111,6 +126,15 @@ class BaseSdkGenerator(ABC):
             pk_type=self.get_ts_type_for_field(model._meta.pk),
             python_pk_type=self.get_python_type_for_field(model._meta.pk),
             fields=self.get_field_definitions(model),
+            capabilities={
+                "list": True,
+                "retrieve": True,
+                "create": True,
+                "update": True,
+                "partialUpdate": True,
+                "destroy": True,
+            },
+            public_access=public_access,
         )
 
     def get_field_definitions(self, model: type[models.Model]) -> list[SdkFieldDefinition]:
@@ -255,6 +279,38 @@ class BaseSdkGenerator(ABC):
             "requiredOnCreate": payload["required_on_create"],
             "tsType": payload["ts_type"],
         }
+
+    def build_public_access_metadata(self, config: BloomerpModelConfig | None) -> dict:
+        list_fields = self.get_public_accessible_fields(config, "list")
+        read_fields = self.get_public_accessible_fields(config, "read")
+        return {
+            "listAllowed": bool(config and config.get_public_access_rules("list")),
+            "readAllowed": bool(config and config.get_public_access_rules("read")),
+            "listFields": list_fields,
+            "readFields": read_fields,
+            "authenticatedFallbackEnabled": bool(
+                getattr(getattr(config, "api_settings", None), "public_access_for_authenticated_fallback", True)
+            ),
+        }
+
+    def get_public_accessible_fields(
+        self, config: BloomerpModelConfig | None, action: str
+    ) -> list[str] | None:
+        if config is None:
+            return []
+
+        rules = config.get_public_access_rules(action)
+        if not rules:
+            return []
+
+        allowed_fields: set[str] = set()
+        for rule in rules:
+            rule_fields = rule.get_accessible_fields(action)
+            if rule_fields is None:
+                return None
+            allowed_fields.update(rule_fields)
+
+        return sorted(allowed_fields)
 
     def to_camel_case(self, value: str) -> str:
         parts = [part for part in value.replace("-", "_").split("_") if part]

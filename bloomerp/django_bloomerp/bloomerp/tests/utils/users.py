@@ -5,6 +5,7 @@ def create_admin() -> User:
     return User.objects.create_superuser(
         username="admin",
         password=make_password("testpass123"),
+        email="admin@example.com",
         first_name="Supreme",
         last_name="Leader"
     )
@@ -13,6 +14,7 @@ def create_normal_user() -> User:
     return User.objects.create(
         username="johndoe",
         password=make_password("testpass123"),
+        email="johndoe@example.com",
         first_name="John",
         last_name="Doe"
     )
