@@ -5,6 +5,7 @@ from bloomerp.models.definition import (
     ApiSettings,
     BloomerpModelConfig,
     PublicAccessRule,
+    UserAccessRule,
 )
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.utils.api import generate_model_viewset_class, generate_serializer
@@ -121,6 +122,16 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
                 pass
             return
         self.CustomerModel.bloomerp_config = previous
+
+    def _set_user_access(self, *rules: UserAccessRule):
+        previous = getattr(self.CustomerModel, "bloomerp_config", None)
+        self.CustomerModel.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                user_access=list(rules),
+            )
+        )
+        return previous
 
 
     def tearDown(self):
@@ -806,7 +817,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             PublicAccessRule(
                 actions=["list"],
                 fields=["id", "first_name"],
-                filters=[ApiFilterRule(field="age", operator="gte", value=8)],
+                filters=[ApiFilterRule(field="age", operator=Lookup.GREATER_THAN_OR_EQUAL.value.id, value=8)],
             )
         )
 
@@ -831,7 +842,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             PublicAccessRule(
                 actions=["read"],
                 fields=["id", "first_name"],
-                filters=[ApiFilterRule(field="age", operator="exact", value=allowed.age)],
+                filters=[ApiFilterRule(field="age", operator=Lookup.EQUALS.value.id, value=allowed.age)],
             )
         )
 
@@ -854,7 +865,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             PublicAccessRule(
                 actions=["read"],
                 fields=["id", "first_name"],
-                filters=[ApiFilterRule(field="age", operator="exact", value=allowed.age)],
+                filters=[ApiFilterRule(field="age", operator=Lookup.EQUALS.value.id, value=allowed.age)],
             )
         )
 
@@ -864,6 +875,174 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             response = view(request, pk=str(blocked.pk))
 
             self.assertEqual(response.status_code, 404)
+        finally:
+            self._restore_public_access(previous)
+
+    def test_api_list_uses_user_access_for_authenticated_users_without_internal_permissions(self):
+        """
+        Authenticated users without normal BloomERP permissions should still be able
+        to list only their own rows and only the fields granted by a user access rule.
+        """
+        previous = self._set_user_access(
+            UserAccessRule(
+                through_field="created_by",
+                field_actions={
+                    "id": ["view"],
+                    "first_name": ["view"],
+                },
+                row_actions=["view"],
+            )
+        )
+
+        try:
+            # 1. Call the auto-generated list endpoint as a normal authenticated user.
+            request = self.factory.get("/api/customers/")
+            force_authenticate(request, user=self.normal_user)
+
+            view = self.ApiViewSet.as_view({"get": "list"})
+            response = view(request)
+
+            # 2. Confirm only owned rows are returned.
+            self.assertEqual(response.status_code, 200)
+            results = self._extract_results(response)
+            self.assertEqual(len(results), 2)
+            self.assertEqual({row["first_name"] for row in results}, {"Jaimy 0", "Jaimy 1"})
+
+            # 3. Confirm only the allowed fields are exposed.
+            self.assertTrue(all("first_name" in row for row in results))
+            self.assertTrue(all("last_name" not in row for row in results))
+            self.assertTrue(all("age" not in row for row in results))
+        finally:
+            self._restore_public_access(previous)
+
+    def test_api_list_user_access_filters_narrow_results_within_through_field_scope(self):
+        """
+        Authenticated users without normal BloomERP permissions should have their
+        user access results filtered first by the through field and then further
+        narrowed by any extra user access filters.
+        """
+        previous = self._set_user_access(
+            UserAccessRule(
+                through_field="created_by",
+                field_actions={
+                    "id": ["view"],
+                    "first_name": ["view"],
+                },
+                row_actions=["view"],
+                filters=[ApiFilterRule(field="first_name", operator=Lookup.NOT_EQUALS.value.id, value="Jaimy 0")],
+            )
+        )
+
+        try:
+            # 1. Call the auto-generated list endpoint as a normal authenticated user.
+            request = self.factory.get("/api/customers/")
+            force_authenticate(request, user=self.normal_user)
+
+            view = self.ApiViewSet.as_view({"get": "list"})
+            response = view(request)
+
+            # 2. Confirm the through field limits results to owned rows first.
+            self.assertEqual(response.status_code, 200)
+            results = self._extract_results(response)
+
+            # 3. Confirm the extra filter removes the excluded owned record.
+            self.assertEqual(len(results), 1)
+            self.assertEqual(results[0]["first_name"], "Jaimy 1")
+            self.assertNotIn("last_name", results[0])
+            self.assertNotIn("age", results[0])
+        finally:
+            self._restore_public_access(previous)
+
+    def test_api_create_uses_user_access_for_authenticated_users_without_internal_permissions(self):
+        """
+        Authenticated users without normal BloomERP permissions should be able to
+        create objects through the auto-generated API when the submitted values
+        satisfy a user access rule's ownership and filter constraints.
+        """
+        previous = self._set_user_access(
+            UserAccessRule(
+                through_field="created_by",
+                field_actions={
+                    "first_name": ["add", "view"],
+                    "last_name": ["add", "view"],
+                    "age": ["add"],
+                    "country": ["add", "view"],
+                    "created_by": ["add"],
+                },
+                row_actions=["add", "view"],
+                filters=[ApiFilterRule(field="age", operator=Lookup.GREATER_THAN_OR_EQUAL.value.id, value=18)],
+            )
+        )
+
+        try:
+            # 1. Submit a create request that matches the user access rule.
+            request = self.factory.post(
+                "/api/customers/",
+                {
+                    "first_name": "Owned",
+                    "last_name": "Record",
+                    "age": 21,
+                    "country": self.CountryModel.objects.get(name="Belgium").pk,
+                    "created_by": self.normal_user.pk,
+                },
+                format="json",
+            )
+            force_authenticate(request, user=self.normal_user)
+
+            view = self.ApiViewSet.as_view({"post": "create"})
+            response = view(request)
+
+            # 2. Confirm the object is created.
+            self.assertEqual(response.status_code, 201)
+            created = self.CustomerModel.objects.get(first_name="Owned")
+            self.assertEqual(created.created_by, self.normal_user)
+            self.assertEqual(created.age, 21)
+
+            # 3. Confirm add-time field filtering still applies to the response.
+            self.assertIn("first_name", response.data)
+            self.assertIn("last_name", response.data)
+            self.assertIn("age", response.data)
+            self.assertIn("country", response.data)
+            self.assertIn("created_by", response.data)
+        finally:
+            self._restore_public_access(previous)
+
+    def test_api_update_rejects_user_access_changes_that_move_object_outside_scope(self):
+        """
+        Authenticated users without normal BloomERP permissions should not be able
+        to update an object in a way that breaks the user access rule that granted
+        access in the first place.
+        """
+        target = self.CustomerModel.objects.get(age=0)
+        previous = self._set_user_access(
+            UserAccessRule(
+                through_field="created_by",
+                field_actions={
+                    "created_by": ["change"],
+                    "first_name": ["change", "view"],
+                },
+                row_actions=["view", "change"],
+            )
+        )
+
+        try:
+            # 1. Attempt to move an owned object outside the user's ownership scope.
+            request = self.factory.patch(
+                f"/api/customers/{target.pk}/",
+                {"created_by": self.admin_user.pk},
+                format="json",
+            )
+            force_authenticate(request, user=self.normal_user)
+
+            view = self.ApiViewSet.as_view({"patch": "partial_update"})
+            response = view(request, pk=str(target.pk))
+
+            # 2. Confirm the update is rejected.
+            self.assertEqual(response.status_code, 403)
+
+            # 3. Confirm the object remains unchanged.
+            target.refresh_from_db()
+            self.assertEqual(target.created_by, self.normal_user)
         finally:
             self._restore_public_access(previous)
     

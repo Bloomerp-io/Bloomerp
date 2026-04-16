@@ -1,6 +1,6 @@
 [project]
 name = "Bloomerp"
-version = "1.0.0.dev11"
+version = "1.0.0.dev12"
 description = "Bloomerp is an open-source Business Management Software framework that lets you create fully functional business management applications just by defining your Django database models."
 readme = "README.md"
 requires-python = ">=3.12"
