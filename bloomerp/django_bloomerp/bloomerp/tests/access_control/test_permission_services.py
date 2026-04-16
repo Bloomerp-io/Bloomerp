@@ -10,6 +10,7 @@ from bloomerp.models.definition import (
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.utils.api import generate_model_viewset_class, generate_serializer
 from bloomerp.views.api_views import BloomerpModelViewSet
+from bloomerp.models.users import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Group, Permission
 from bloomerp.field_types import Lookup
@@ -132,6 +133,25 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             )
         )
         return previous
+
+    def _set_model_user_access(self, model, *rules: UserAccessRule):
+        previous = getattr(model, "bloomerp_config", None)
+        model.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                user_access=list(rules),
+            )
+        )
+        return previous
+
+    def _restore_model_config(self, model, previous):
+        if previous is None:
+            try:
+                delattr(model, "bloomerp_config")
+            except AttributeError:
+                pass
+            return
+        model.bloomerp_config = previous
 
 
     def tearDown(self):
@@ -1054,6 +1074,49 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             self.assertEqual(target.created_by, self.normal_user)
         finally:
             self._restore_public_access(previous)
+
+    def test_api_user_access_supports_self_through_field_for_user_model(self):
+        """
+        User access rules that scope the User model via the Self wildcard should
+        only grant access to the authenticated user's own record.
+        """
+        previous = self._set_model_user_access(
+            User,
+            UserAccessRule(
+                through_field="Self",
+                field_actions={
+                    "email": ["view", "change"],
+                },
+                row_actions=["view", "change"],
+            ),
+        )
+
+        user_viewset = generate_model_viewset_class(
+            model=User,
+            serializer=generate_serializer(User),
+            base_viewset=BloomerpModelViewSet,
+        )
+
+        try:
+            # 1. Update the authenticated user through a Self-scoped user access rule.
+            request = self.factory.patch(
+                f"/api/users/{self.normal_user.pk}/",
+                {"email": "updated@example.com"},
+                format="json",
+            )
+            force_authenticate(request, user=self.normal_user)
+
+            view = user_viewset.as_view({"patch": "partial_update"})
+            response = view(request, pk=str(self.normal_user.pk))
+
+            # 2. Confirm the request succeeds for the authenticated user's own record.
+            self.assertEqual(response.status_code, 200)
+
+            # 3. Confirm the requested change is persisted.
+            self.normal_user.refresh_from_db()
+            self.assertEqual(self.normal_user.email, "updated@example.com")
+        finally:
+            self._restore_model_config(User, previous)
     
     # --------------------------------------
     # Global permissions

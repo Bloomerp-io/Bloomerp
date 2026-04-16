@@ -126,7 +126,7 @@ export class BloomerpHttpClient {{
     this.baseUrl = String(config.baseUrl || "").replace(/\\/+$/, "");
     this.auth = config.auth || {{ type: "none" }};
     this.headers = config.headers || {{}};
-    this.fetchImpl = config.fetch || fetch;
+    this.fetchImpl = config.fetch || ((input, init) => globalThis.fetch(input, init));
     this.csrfToken = null;
   }}
 

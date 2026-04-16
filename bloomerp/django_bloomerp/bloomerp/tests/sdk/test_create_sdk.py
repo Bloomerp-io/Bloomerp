@@ -49,6 +49,7 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn('"/api/customers/"', index_contents)
             self.assertIn("login(payload: BloomerpAuthLoginPayload", index_contents)
             self.assertIn("fetchOptions?: Record<string, unknown>", index_contents)
+            self.assertIn("globalThis.fetch(input, init)", index_contents)
             self.assertIn("return normalizeListResponse(response);", index_contents)
 
     def test_create_sdk_generates_javascript_sdk_file(self):
@@ -84,6 +85,7 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("export const customersFields", sdk_contents)
             self.assertIn("export const customersPublicAccess", sdk_contents)
             self.assertIn('super(client, "/api/customers/");', sdk_contents)
+            self.assertIn("globalThis.fetch(input, init)", sdk_contents)
 
     def test_create_sdk_generates_python_sdk_file(self):
         """

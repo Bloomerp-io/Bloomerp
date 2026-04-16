@@ -4,7 +4,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, QuerySet
 from django.contrib.auth.models import Permission
 from django.utils.translation import gettext as _
-from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.mixins import (
     AbsoluteUrlModelMixin,
     AvatarModelMixin,
@@ -12,6 +13,11 @@ from bloomerp.models.mixins import (
 )
 from bloomerp.models.workspaces.sidebar_item import Sidebar
 
+
+
+USER_CONFIG = BloomerpModelConfig(
+    layout=FieldLayout()
+)
 
 class AbstractBloomerpUser(
     AbstractUser, 

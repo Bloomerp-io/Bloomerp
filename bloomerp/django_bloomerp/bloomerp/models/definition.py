@@ -104,6 +104,10 @@ class PublicAccessRule(BaseModel):
 class UserAccessRule(BaseModel):
     """A user access rule defines in which cases users can access an object via the api. The through field serves as the entry point for the user access definition. Note that user access rules only apply to the auto generated API's.
 
+    The special value `Self` can be used as a wildcard when the object being
+    accessed is the authenticated user itself. In that case, the rule matches
+    when `object.pk == request.user.pk`.
+
     For example, we might want to give API access to a `Project` model so that users can create particular and manage particular projects of their own, whilst the integrity of other people's projects stay the same. That would look something like this:
     ```python
     rule = UserAccessRule(
@@ -133,6 +137,20 @@ class UserAccessRule(BaseModel):
     )
     ```
     In the below case, the user is only able to create, view, add, and change objects (as defined in the row actions) with the condition of project_task.project.owner == user
+
+    For the `User` model itself, that would look like:
+    ```python
+    rule = UserAccessRule(
+        through_field="Self",
+        field_actions={
+            "avatar": ["view", "change"],
+            "has_seen_tutorial": ["view", "change"],
+        },
+        row_actions=["view", "change", "delete"],
+    )
+    ```
+    In that case, the authenticated user can only access their own user record
+    via the generated API.
 
     """
     through_field: str

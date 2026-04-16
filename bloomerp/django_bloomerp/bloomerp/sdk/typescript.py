@@ -202,14 +202,14 @@ export class BloomerpHttpClient {{
   private readonly baseUrl: string;
   private readonly auth: BloomerpAuth;
   private readonly headers: Record<string, string>;
-  private readonly fetchImpl: typeof fetch;
+  private readonly fetchImpl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   private csrfToken: string | null = null;
 
   constructor(config: BloomerpSdkConfig) {{
     this.baseUrl = config.baseUrl.replace(/\\/+$/, "");
     this.auth = config.auth ?? {{ type: "none" }};
     this.headers = config.headers ?? {{}};
-    this.fetchImpl = config.fetch ?? fetch;
+    this.fetchImpl = config.fetch ?? ((input, init) => globalThis.fetch(input, init));
   }}
 
   async request<T>(path: string, options: BloomerpRequestOptions = {{}}): Promise<T> {{

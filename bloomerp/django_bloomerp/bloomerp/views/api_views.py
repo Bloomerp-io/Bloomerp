@@ -127,12 +127,20 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
     def _normalize_user_access_path(self, field_path: str | None) -> str:
         return str(field_path or "").replace(".", "__").strip("_")
 
-    def _build_user_rule_q(self, rule) -> Q | None:
-        through_field = self._normalize_user_access_path(getattr(rule, "through_field", ""))
-        if not through_field:
-            return None
+    def _is_self_user_access_path(self, field_path: str | None) -> bool:
+        return str(field_path or "").strip().lower() == "self"
 
-        rule_q = Q(**{through_field: self.request.user})
+    def _build_user_rule_q(self, rule) -> Q | None:
+        raw_through_field = getattr(rule, "through_field", "")
+        through_field = self._normalize_user_access_path(raw_through_field)
+
+        if self._is_self_user_access_path(raw_through_field):
+            rule_q = Q(pk=self.request.user.pk)
+        else:
+            if not through_field:
+                return None
+            rule_q = Q(**{through_field: self.request.user})
+
         for filter_rule in getattr(rule, "filters", []):
             field_name = self._normalize_user_access_path(filter_rule.field)
             if not field_name:
@@ -380,8 +388,14 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         return candidate_data
 
     def _candidate_matches_user_rule(self, candidate: Model, rule) -> bool:
-        through_value = self._resolve_candidate_value(candidate, getattr(rule, "through_field", ""))
-        if self._normalize_compare_value(through_value) != self._normalize_compare_value(self.request.user):
+        through_field = getattr(rule, "through_field", "")
+        if self._is_self_user_access_path(through_field):
+            through_value = candidate
+            expected_value = self.request.user
+        else:
+            through_value = self._resolve_candidate_value(candidate, through_field)
+            expected_value = self.request.user
+        if self._normalize_compare_value(through_value) != self._normalize_compare_value(expected_value):
             return False
 
         for filter_rule in getattr(rule, "filters", []):
