@@ -612,6 +612,7 @@ class UserPermissionManager:
         if lookup_enum == Lookup.EQUALS_USER or str(expected_value) == "$user":
             return self._normalize_compare_value(resolved_value) == self._normalize_compare_value(self.user)
 
+
         if operator_str.startswith("__"):
             return self._matches_lookup(resolved_value, expected_value, lookup)
 
