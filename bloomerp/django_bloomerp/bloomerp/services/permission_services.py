@@ -8,6 +8,7 @@ Functions:
 """
 
 """Services regarding permissions"""
+import logging
 from django.db import models
 from django.db.models import Model
 from bloomerp.models.users.user import AbstractBloomerpUser, User
@@ -25,6 +26,10 @@ from typing import Literal, Type
 from django.db.models import Q
 from bloomerp.field_types import Lookup
 from django.core.exceptions import FieldDoesNotExist
+from time import perf_counter
+from django.utils import timezone
+
+logger = logging.getLogger(__name__)
     
 # --------------------------
 # Service Functions
@@ -42,11 +47,25 @@ def create_permission_str(obj_or_model: Model, permission: str) -> str:
 class UserPermissionManager:
     policies : QuerySet[Policy]
     
-    def __init__(self, user: AbstractBloomerpUser):
+    def __init__(self, user: AbstractBloomerpUser, trace_label: str | None = None):
         self.user = user
         self.is_anonymous = not user or user.is_anonymous
+        self.trace_label = trace_label or f"user_id={getattr(user, 'pk', 'anonymous')}"
         
         self.policies = self.get_user_policies()
+
+    def _log_timing(self, phase: str, started_at: float, **details):
+        elapsed_ms = (perf_counter() - started_at) * 1000
+        detail_str = " ".join(f"{key}={value}" for key, value in details.items() if value is not None)
+        suffix = f" {detail_str}" if detail_str else ""
+        logger.info(
+            "api_timing ts=%s %s component=permission_manager phase=%s elapsed_ms=%.2f%s",
+            timezone.now().isoformat(),
+            self.trace_label,
+            phase,
+            elapsed_ms,
+            suffix,
+        )
     
     def get_user_policies(self) -> QuerySet[Policy]:
         """Retrieve all policies associated with the user.
@@ -54,15 +73,19 @@ class UserPermissionManager:
         Returns:
             QuerySet[Policy]: queryset of policies linked to the user.
         """
+        timer = perf_counter()
         if self.is_anonymous:
+            self._log_timing("get_user_policies", timer, policy_count=0, anonymous=True)
             return Policy.objects.none()
 
-        return (
+        queryset = (
             Policy.objects.filter(
                 models.Q(users=self.user) | models.Q(groups__in=self.user.groups.all())
             )
             .distinct()
         )
+        self._log_timing("get_user_policies", timer)
+        return queryset
         
     def get_field_policies(self) -> QuerySet[FieldPolicy]:
         """Retrieve field policies associated with the user.
@@ -70,9 +93,12 @@ class UserPermissionManager:
         Returns:
             QuerySet[FieldPolicy]: queryset of field policies linked to the user.
         """
-        return FieldPolicy.objects.filter(
+        timer = perf_counter()
+        queryset = FieldPolicy.objects.filter(
             policies__in=self.policies
         ).distinct()
+        self._log_timing("get_field_policies", timer)
+        return queryset
     
     def get_row_policies(self) -> QuerySet[RowPolicy]:
         """Retrieve row policies associated with the user.
@@ -80,13 +106,16 @@ class UserPermissionManager:
         Returns:
             QuerySet[RowPolicy]: queryset of row policies linked to the user.
         """
-        return (
+        timer = perf_counter()
+        queryset = (
             RowPolicy.objects.filter(
                 policies__in=self.policies
             )
             .prefetch_related("rules__permissions")
             .distinct()
         )
+        self._log_timing("get_row_policies", timer)
+        return queryset
 
     def _resolve_lookup(self, application_field: ApplicationField, operator_str: str) -> Lookup | None:
         if not application_field or not operator_str:
@@ -216,10 +245,13 @@ class UserPermissionManager:
             TypeError: If ``model_or_content_type`` is not a model, model
                 class, or ContentType.
         """
+        timer = perf_counter()
         if self.is_anonymous:
+            self._log_timing("has_global_permission", timer, allowed=False, anonymous=True)
             return False
 
         if getattr(self.user, "is_superuser", False):
+            self._log_timing("has_global_permission", timer, allowed=True, superuser=True)
             return True
 
         if isinstance(model_or_content_type, ContentType):
@@ -234,23 +266,29 @@ class UserPermissionManager:
 
         permission_value = str(permission_str or "").strip()
         if not permission_value:
+            self._log_timing("has_global_permission", timer, allowed=False, empty_permission=True)
             return False
 
         if "." in permission_value and self.user.has_perm(permission_value):
+            self._log_timing("has_global_permission", timer, allowed=True, source="django_qualified")
             return True
 
         permission_codename = permission_value.split(".", 1)[-1]
 
         if self.user.has_perm(f"{content_type.app_label}.{permission_codename}"):
+            self._log_timing("has_global_permission", timer, allowed=True, source="django_content_type")
             return True
 
-        return self.policies.filter(
+        allowed = self.policies.filter(
             global_permissions__content_type=content_type,
             global_permissions__codename=permission_codename,
         ).exists()
+        self._log_timing("has_global_permission", timer, allowed=allowed, source="policy")
+        return allowed
 
     def get_row_policy_rules(self, model_or_content_type: Type[models.Model] | ContentType, permission_str: str):
         # TODO: Add method description
+        timer = perf_counter()
         if isinstance(model_or_content_type, ContentType):
             content_type = model_or_content_type
         elif issubclass(model_or_content_type, models.Model):
@@ -259,6 +297,7 @@ class UserPermissionManager:
             raise TypeError("model_or_content_type must be a Django model class or a ContentType")
 
         if getattr(self.user, "is_superuser", False):
+            self._log_timing("get_row_policy_rules", timer, rule_count=0, superuser=True)
             return []
 
         applicable_rules = []
@@ -269,6 +308,7 @@ class UserPermissionManager:
                     continue
                 if permission_str in {p.codename for p in perms.all()}:
                     applicable_rules.append(rule_obj)
+        self._log_timing("get_row_policy_rules", timer, rule_count=len(applicable_rules), permission=permission_str)
         return applicable_rules
 
     def has_row_level_access(self, model_or_content_type: Type[models.Model] | ContentType, permission_str: str) -> bool:
@@ -324,17 +364,21 @@ class UserPermissionManager:
         Returns:
             bool: True if the user has the permission on the field, False otherwise
         """
+        timer = perf_counter()
         if not field:
+            self._log_timing("has_field_permission", timer, allowed=False, missing_field=True)
             return False
 
         # Superusers always have field access
         if getattr(self.user, "is_superuser", False):
+            self._log_timing("has_field_permission", timer, allowed=True, superuser=True, field_id=field.id)
             return True
 
         permission_value = str(permission_str)
 
         policies = self.get_field_policies().filter(content_type=field.content_type)
         if not policies.exists():
+            self._log_timing("has_field_permission", timer, allowed=False, field_id=field.id, permission=permission_str)
             return False
 
         for policy in policies:
@@ -356,11 +400,13 @@ class UserPermissionManager:
 
                 try:
                     if str(field_id) == str(field.id) and permission_value in permissions:
+                        self._log_timing("has_field_permission", timer, allowed=True, field_id=field.id, permission=permission_str)
                         return True
                 except Exception:
                     # Defensive: skip malformed keys
                     continue
 
+        self._log_timing("has_field_permission", timer, allowed=False, field_id=field.id, permission=permission_str)
         return False
     
     def get_accessible_fields(self, model_or_content_type: models.Model | ContentType, permission_str:str) -> QuerySet[ApplicationField]:
@@ -373,7 +419,9 @@ class UserPermissionManager:
         Returns:
             QuerySet[ApplicationField]: Queryset of application fields with the specified permission.
         """
+        timer = perf_counter()
         if not model_or_content_type:
+            self._log_timing("get_accessible_fields", timer, field_count=0, missing_content_type=True)
             return ApplicationField.objects.none()
 
         if isinstance(model_or_content_type, ContentType):
@@ -385,13 +433,16 @@ class UserPermissionManager:
         
         # Return all fields if user is superuser
         if self.user.is_superuser:
-            return ApplicationField.objects.filter(content_type=content_type)
+            queryset = ApplicationField.objects.filter(content_type=content_type)
+            self._log_timing("get_accessible_fields", timer, field_count="all", superuser=True)
+            return queryset
         
         permission_value = str(permission_str)
 
         policies = self.get_field_policies().filter(content_type=content_type)
         
         if not policies.exists():
+            self._log_timing("get_accessible_fields", timer, field_count=0, permission=permission_str)
             return ApplicationField.objects.none()
 
         allowed_field_ids: set[str] = set()
@@ -408,17 +459,22 @@ class UserPermissionManager:
                     continue
 
                 if field_id == "__all__":
-                    return ApplicationField.objects.filter(content_type=content_type)
+                    queryset = ApplicationField.objects.filter(content_type=content_type)
+                    self._log_timing("get_accessible_fields", timer, field_count="all", permission=permission_str)
+                    return queryset
 
                 allowed_field_ids.add(str(field_id))
 
         if not allowed_field_ids:
+            self._log_timing("get_accessible_fields", timer, field_count=0, permission=permission_str)
             return ApplicationField.objects.none()
 
-        return ApplicationField.objects.filter(
+        queryset = ApplicationField.objects.filter(
             content_type=content_type,
             id__in=allowed_field_ids
         )
+        self._log_timing("get_accessible_fields", timer, field_count=len(allowed_field_ids), permission=permission_str)
+        return queryset
         
     def has_access_to_object(self, object:models.Model, permission_str:str, check_global:bool=True) -> bool:
         """Returns a boolean that checks whether a user has access to a particular object
@@ -458,6 +514,7 @@ class UserPermissionManager:
         Returns:
             QuerySet[models.Model]: _description_
         """
+        timer = perf_counter()
         if isinstance(model_or_content_type, ContentType):
             content_type = model_or_content_type
             model = content_type.model_class()
@@ -468,20 +525,25 @@ class UserPermissionManager:
             raise TypeError("model_or_content_type must be a Django model class or a ContentType")
 
         if model is None:
+            self._log_timing("get_queryset", timer, permission=permission_str, result="none_model")
             return models.QuerySet(model=None).none()  # defensive; should not happen
 
         if not self.user:
+            self._log_timing("get_queryset", timer, permission=permission_str, result="no_user")
             return model.objects.none()
 
         # Superusers always see the full queryset
         if getattr(self.user, "is_superuser", False):
-            return model.objects.all()
+            queryset = model.objects.all()
+            self._log_timing("get_queryset", timer, permission=permission_str, result="superuser")
+            return queryset
 
         permission_value = str(permission_str)
 
         # Find row policies applicable to this content type
         row_policies = self.get_row_policies().filter(content_type=content_type)
         if not row_policies.exists():
+            self._log_timing("get_queryset", timer, permission=permission_str, rule_count=0, result="no_row_policies")
             return model.objects.none()
 
         applicable_rule_dicts: list[dict] = []
@@ -500,7 +562,9 @@ class UserPermissionManager:
                 if isinstance(rule_dict, dict):
                     applicable_rule_dicts.append(rule_dict)
 
-        return self.build_queryset_from_rule_dicts(content_type, applicable_rule_dicts)
+        queryset = self.build_queryset_from_rule_dicts(content_type, applicable_rule_dicts)
+        self._log_timing("get_queryset", timer, permission=permission_str, rule_count=len(applicable_rule_dicts), result="filtered")
+        return queryset
 
     def candidate_matches_rule_dict(self, candidate: models.Model, rule_dict: dict) -> bool:
         if not isinstance(rule_dict, dict):
