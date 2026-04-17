@@ -22,6 +22,7 @@ def _get_detail_url(obj) -> str:
         except Exception:
             return ""
 
+
 @router.register(
     path="components/create-object/<int:content_type_id>/",
     name="components_create_object",
