@@ -1,7 +1,4 @@
-import logging
 from collections.abc import Mapping
-from time import perf_counter
-from uuid import uuid4
 
 from rest_framework import viewsets, status
 from django_filters import rest_framework as filters
@@ -11,7 +8,6 @@ from rest_framework.response import Response
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Model, Q
-from django.utils import timezone
 
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig
@@ -19,9 +15,6 @@ from bloomerp.services.permission_services import (
     UserPermissionManager,
     create_permission_str,
 )
-
-logger = logging.getLogger(__name__)
-
 
 class BloomerpModelViewSet(viewsets.ModelViewSet):
     # The model will be injected dynamically when the viewset is initialized
@@ -40,50 +33,7 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
     }
 
     def _get_permission_manager(self) -> UserPermissionManager:
-        return UserPermissionManager(self.request.user, trace_label=self._request_log_label())
-
-    def _get_request_trace_id(self) -> str:
-        request = getattr(self, "request", None)
-        if request is None:
-            return "no-request"
-
-        trace_id = getattr(request, "_bloomerp_api_trace_id", None)
-        if trace_id:
-            return trace_id
-
-        header_trace_id = ""
-        if hasattr(request, "headers"):
-            header_trace_id = request.headers.get("X-Request-ID", "") or request.headers.get("X-Correlation-ID", "")
-
-        trace_id = header_trace_id or uuid4().hex[:12]
-        request._bloomerp_api_trace_id = trace_id
-        return trace_id
-
-    def _request_log_label(self, action: str | None = None) -> str:
-        request = getattr(self, "request", None)
-        method = getattr(request, "method", "-")
-        path = getattr(request, "path", "-")
-        model_label = self.model._meta.label_lower if getattr(self, "model", None) else "unknown-model"
-        action_name = action or getattr(self, "action", None) or "unknown-action"
-        user = getattr(request, "user", None)
-        user_id = getattr(user, "pk", "anonymous") if user and not getattr(user, "is_anonymous", True) else "anonymous"
-        return (
-            f"trace_id={self._get_request_trace_id()} method={method} action={action_name} "
-            f"model={model_label} user_id={user_id} path={path}"
-        )
-
-    def _log_timing(self, phase: str, started_at: float, action: str | None = None, **details):
-        elapsed_ms = (perf_counter() - started_at) * 1000
-        detail_str = " ".join(f"{key}={value}" for key, value in details.items() if value is not None)
-        suffix = f" {detail_str}" if detail_str else ""
-        logger.info(
-            "api_timing ts=%s %s phase=%s elapsed_ms=%.2f%s",
-            timezone.now().isoformat(),
-            self._request_log_label(action),
-            phase,
-            elapsed_ms,
-            suffix,
-        )
+        return UserPermissionManager(self.request.user)
 
     def _get_bloomerp_config(self) -> BloomerpModelConfig | None:
         config = getattr(self.model, "bloomerp_config", None)
@@ -211,11 +161,9 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         return rule_q
 
     def _get_public_queryset(self, action: str | None = None):
-        timer = perf_counter()
         queryset = self.model.objects.all()
         rules = self._get_public_access_rules(action)
         if not rules:
-            self._log_timing("public_queryset", timer, action, rules=0, result_count=0)
             return queryset.none()
 
         object_ids: set = set()
@@ -233,21 +181,15 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
             )
 
         if unrestricted:
-            self._log_timing("public_queryset", timer, action, rules=len(rules), unrestricted=True)
             return queryset
         if not object_ids:
-            self._log_timing("public_queryset", timer, action, rules=len(rules), result_count=0)
             return queryset.none()
-        filtered_queryset = queryset.filter(pk__in=object_ids)
-        self._log_timing("public_queryset", timer, action, rules=len(rules), result_count=len(object_ids))
-        return filtered_queryset
+        return queryset.filter(pk__in=object_ids)
 
     def _get_user_queryset(self, action: str | None = None):
-        timer = perf_counter()
         queryset = self.model.objects.all()
         rules = self._get_user_access_rules(action)
         if not rules:
-            self._log_timing("user_queryset", timer, action, rules=0, result_count=0)
             return queryset.none()
 
         object_ids: set = set()
@@ -260,11 +202,8 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
             )
 
         if not object_ids:
-            self._log_timing("user_queryset", timer, action, rules=len(rules), result_count=0)
             return queryset.none()
-        filtered_queryset = queryset.filter(pk__in=object_ids)
-        self._log_timing("user_queryset", timer, action, rules=len(rules), result_count=len(object_ids))
-        return filtered_queryset
+        return queryset.filter(pk__in=object_ids)
 
     def _get_public_accessible_field_names(self, action: str | None = None) -> set[str] | None:
         rules = self._get_public_access_rules(action)
@@ -315,48 +254,19 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         return create_permission_str(self.model, permission)
 
     def _get_accessible_field_names(self, permission_str: str, action: str | None = None) -> set[str] | None:
-        timer = perf_counter()
         if self._should_use_user_access(action):
-            allowed_fields = self._get_user_accessible_field_names(action)
-            self._log_timing(
-                "resolve_accessible_fields",
-                timer,
-                action,
-                permission=permission_str,
-                mode="user_access",
-                field_count="all" if allowed_fields is None else len(allowed_fields),
-            )
-            return allowed_fields
+            return self._get_user_accessible_field_names(action)
 
         if self._should_use_public_access(action):
-            allowed_fields = self._get_public_accessible_field_names(action)
-            self._log_timing(
-                "resolve_accessible_fields",
-                timer,
-                action,
-                permission=permission_str,
-                mode="public_access",
-                field_count="all" if allowed_fields is None else len(allowed_fields),
-            )
-            return allowed_fields
+            return self._get_public_accessible_field_names(action)
 
         manager = self._get_permission_manager()
         if not self.model or getattr(manager.user, "is_superuser", False):
-            self._log_timing("resolve_accessible_fields", timer, action, permission=permission_str, mode="full_access")
             return None
 
         content_type = ContentType.objects.get_for_model(self.model)
         accessible_fields = manager.get_accessible_fields(content_type, permission_str)
-        allowed_fields = set(accessible_fields.values_list("field", flat=True))
-        self._log_timing(
-            "resolve_accessible_fields",
-            timer,
-            action,
-            permission=permission_str,
-            mode="policy_access",
-            field_count=len(allowed_fields),
-        )
-        return allowed_fields
+        return set(accessible_fields.values_list("field", flat=True))
 
     def get_permissions(self):
         if self._should_use_user_access():
@@ -366,38 +276,23 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         return [permission() for permission in self.permission_classes]
 
     def _apply_field_permissions(self, serializer, permission_str: str, action: str | None = None):
-        timer = perf_counter()
         allowed_fields = self._get_accessible_field_names(permission_str, action)
         if allowed_fields is None:
-            self._log_timing("apply_field_permissions", timer, action, permission=permission_str, removed=0, remaining="all")
             return serializer
 
         target = serializer.child if hasattr(serializer, "child") else serializer
-        removed_fields = 0
         for field_name in list(target.fields.keys()):
             if field_name not in allowed_fields:
                 target.fields.pop(field_name)
-                removed_fields += 1
-        self._log_timing(
-            "apply_field_permissions",
-            timer,
-            action,
-            permission=permission_str,
-            removed=removed_fields,
-            remaining=len(target.fields),
-        )
         return serializer
 
     def _enforce_write_field_permissions(self, permission_str: str, action: str | None = None):
-        timer = perf_counter()
         if self._should_use_user_access(action):
             allowed_fields = self._get_user_accessible_field_names(action)
             if allowed_fields is None:
-                self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=0, mode="user_access_all")
                 return
 
             if not isinstance(self.request.data, Mapping):
-                self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=0, mode="user_access_non_mapping")
                 return
 
             denied_fields = [
@@ -407,18 +302,14 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
             ]
             if denied_fields:
                 denied = ", ".join(sorted(denied_fields))
-                self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=len(self.request.data.keys()), denied=len(denied_fields), mode="user_access")
                 raise PermissionDenied(f"Permission denied for fields: {denied}")
-            self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=len(self.request.data.keys()), denied=0, mode="user_access")
             return
 
         manager = self._get_permission_manager()
         if getattr(manager.user, "is_superuser", False):
-            self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=0, mode="superuser")
             return
 
         if not isinstance(self.request.data, Mapping):
-            self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=0, mode="non_mapping")
             return
 
         denied_fields: list[str] = []
@@ -431,9 +322,7 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
 
         if denied_fields:
             denied = ", ".join(sorted(denied_fields))
-            self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=len(self.request.data.keys()), denied=len(denied_fields), mode="policy_access")
             raise PermissionDenied(f"Permission denied for fields: {denied}")
-        self._log_timing("enforce_write_field_permissions", timer, action, permission=permission_str, checked=len(self.request.data.keys()), denied=0, mode="policy_access")
 
     def _resolve_candidate_value(self, candidate: Model, field_path: str):
         current = candidate
@@ -516,9 +405,7 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         return True
 
     def _enforce_user_row_permissions(self, serializer, action: str | None = None, instance=None):
-        timer = perf_counter()
         if not self._should_use_user_access(action):
-            self._log_timing("enforce_user_row_permissions", timer, action, mode="skipped")
             return
 
         candidate = self.model(**self._build_candidate_data(serializer, instance))
@@ -529,143 +416,74 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
 
         for rule in self._get_user_access_rules(action):
             if self._candidate_matches_user_rule(candidate, rule):
-                self._log_timing("enforce_user_row_permissions", timer, action, mode="matched_rule")
                 return
 
-        self._log_timing("enforce_user_row_permissions", timer, action, mode="denied")
         raise PermissionDenied("You do not have permission to use this object with these values.")
 
     def get_queryset(self):
-        timer = perf_counter()
         if self._should_use_user_access():
-            queryset = self._get_user_queryset()
-            self._log_timing("get_queryset", timer, self.action, mode="user_access")
-            return queryset
+            return self._get_user_queryset()
 
         if self._should_use_public_access():
-            queryset = self._get_public_queryset()
-            self._log_timing("get_queryset", timer, self.action, mode="public_access")
-            return queryset
+            return self._get_public_queryset()
 
         permission_str = self._get_permission_str()
         manager = self._get_permission_manager()
-        queryset = manager.get_queryset(self.model, permission_str)
-        self._log_timing("get_queryset", timer, self.action, mode="policy_access", permission=permission_str)
-        return queryset
+        return manager.get_queryset(self.model, permission_str)
 
     def get_serializer_class(self):
         return self.serializer_class
 
     def list(self, request, *args, **kwargs):
-        request_timer = perf_counter()
-        logger.info(
-            "api_timing ts=%s %s phase=request_start",
-            timezone.now().isoformat(),
-            self._request_log_label("list"),
-        )
-        filter_timer = perf_counter()
         queryset = self.filter_queryset(self.get_queryset())
-        self._log_timing("filter_queryset", filter_timer, "list")
         permission_str = self._get_permission_str("list")
 
-        pagination_timer = perf_counter()
         page = self.paginate_queryset(queryset)
-        self._log_timing("paginate_queryset", pagination_timer, "list", paginated=page is not None)
         if page is not None:
-            serializer_timer = perf_counter()
             serializer = self.get_serializer(page, many=True)
             self._apply_field_permissions(serializer, permission_str, "list")
-            data = serializer.data
-            self._log_timing("serialize_response", serializer_timer, "list", paginated=True, item_count=len(data))
-            self._log_timing("request_complete", request_timer, "list", status=200, paginated=True, item_count=len(data))
-            return self.get_paginated_response(data)
+            return self.get_paginated_response(serializer.data)
 
-        serializer_timer = perf_counter()
         serializer = self.get_serializer(queryset, many=True)
         self._apply_field_permissions(serializer, permission_str, "list")
-        data = serializer.data
-        self._log_timing("serialize_response", serializer_timer, "list", paginated=False, item_count=len(data))
-        self._log_timing("request_complete", request_timer, "list", status=200, paginated=False, item_count=len(data))
-        return Response(data)
+        return Response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
-        request_timer = perf_counter()
-        logger.info(
-            "api_timing ts=%s %s phase=request_start",
-            timezone.now().isoformat(),
-            self._request_log_label("retrieve"),
-        )
-        object_timer = perf_counter()
         instance = self.get_object()
-        self._log_timing("get_object", object_timer, "retrieve")
-        serializer_timer = perf_counter()
         serializer = self.get_serializer(instance)
         permission_str = self._get_permission_str("retrieve")
         self._apply_field_permissions(serializer, permission_str, "retrieve")
-        data = serializer.data
-        self._log_timing("serialize_response", serializer_timer, "retrieve", item_count=1)
-        self._log_timing("request_complete", request_timer, "retrieve", status=200, item_count=1)
-        return Response(data)
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        request_timer = perf_counter()
-        logger.info(
-            "api_timing ts=%s %s phase=request_start",
-            timezone.now().isoformat(),
-            self._request_log_label("create"),
-        )
         permission_str = self._get_permission_str("create")
         self._enforce_write_field_permissions(permission_str, "create")
 
-        validate_timer = perf_counter()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self._log_timing("validate_request", validate_timer, "create")
         self._enforce_user_row_permissions(serializer, "create")
-        save_timer = perf_counter()
         self.perform_create(serializer)
-        self._log_timing("perform_create", save_timer, "create")
 
         headers = self.get_success_headers(serializer.data)
-        response_timer = perf_counter()
         output_serializer = self.get_serializer(serializer.instance)
         self._apply_field_permissions(output_serializer, permission_str, "create")
-        data = output_serializer.data
-        self._log_timing("serialize_response", response_timer, "create", item_count=1)
-        self._log_timing("request_complete", request_timer, "create", status=201, item_count=1)
-        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
-        action_name = "partial_update" if partial else "update"
-        request_timer = perf_counter()
-        logger.info(
-            "api_timing ts=%s %s phase=request_start",
-            timezone.now().isoformat(),
-            self._request_log_label(action_name),
-        )
-        object_timer = perf_counter()
         instance = self.get_object()
-        self._log_timing("get_object", object_timer, action_name)
         permission_str = self._get_permission_str("partial_update" if partial else "update")
+        action_name = "partial_update" if partial else "update"
         self._enforce_write_field_permissions(permission_str, action_name)
 
-        validate_timer = perf_counter()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        self._log_timing("validate_request", validate_timer, action_name, partial=partial)
         self._enforce_user_row_permissions(serializer, action_name, instance)
-        save_timer = perf_counter()
         self.perform_update(serializer)
-        self._log_timing("perform_update", save_timer, action_name, partial=partial)
 
-        response_timer = perf_counter()
         output_serializer = self.get_serializer(serializer.instance)
         self._apply_field_permissions(output_serializer, permission_str, action_name)
-        data = output_serializer.data
-        self._log_timing("serialize_response", response_timer, action_name, item_count=1, partial=partial)
-        self._log_timing("request_complete", request_timer, action_name, status=200, item_count=1, partial=partial)
-        return Response(data)
+        return Response(output_serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
         kwargs["partial"] = True
