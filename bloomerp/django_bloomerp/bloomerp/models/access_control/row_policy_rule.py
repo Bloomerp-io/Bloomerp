@@ -6,7 +6,7 @@ from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
-from bloomerp.models.mixins import AbsoluteUrlModelMixin
+from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 
 class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
     """

@@ -4,15 +4,15 @@ from bloomerp.automation.defintion import WorkflowNodeType
 from bloomerp.automation.defintion import NodeTypeDefinition
 from bloomerp.automation.defintion import NodeSubTypeDefinition
 from bloomerp.automation.base_executor import NodeExecutionError
-from bloomerp.models.mixins import UserStampedModelMixin
-from bloomerp.models.mixins import TimestampedModelMixin
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
+from bloomerp.models.mixins import TimestampModelMixin
 from django.utils.translation import gettext_lazy as _
 from django.db.models import QuerySet
 from django.core.exceptions import ValidationError
 
 class WorkflowNode(
-    UserStampedModelMixin,
-    TimestampedModelMixin,
+    UserStampModelMixin,
+    TimestampModelMixin,
     models.Model):
     
     class Meta:

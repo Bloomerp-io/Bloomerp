@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from django.db import models
-from bloomerp.models.mixins import UserStampedModelMixin
-from bloomerp.models.mixins import TimestampedModelMixin
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
+from bloomerp.models.mixins import TimestampModelMixin
 from django.utils.translation import gettext_lazy as _
 from bloomerp.automation.defintion import WorkflowNodeType
 
@@ -10,8 +10,8 @@ if TYPE_CHECKING:
     from bloomerp.models.automation.workflow_edge import WorkflowEdge
 
 class Workflow(
-    UserStampedModelMixin,
-    TimestampedModelMixin,
+    UserStampModelMixin,
+    TimestampModelMixin,
     models.Model):
     """
     A workflow is a model for automation.

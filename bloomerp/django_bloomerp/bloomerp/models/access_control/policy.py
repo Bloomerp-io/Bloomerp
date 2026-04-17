@@ -6,17 +6,17 @@ from django.conf import settings
 
 from bloomerp.models.access_control import RowPolicy
 from bloomerp.models.access_control.field_policy import FieldPolicy
-from bloomerp.models.mixins import TimestampedModelMixin, UserStampedModelMixin, SkipApiCreationMixin
+from bloomerp.models.mixins import TimestampModelMixin
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models.users.user import AbstractBloomerpUser
-from bloomerp.models import mixins
+from bloomerp.models.mixins import absolute_url_model_mixin
 
 class Policy(
-    TimestampedModelMixin,
-    UserStampedModelMixin,
-    SkipApiCreationMixin,
-    mixins.AbsoluteUrlModelMixin,
+    TimestampModelMixin,
+    UserStampModelMixin,
+    absolute_url_model_mixin.AbsoluteUrlModelMixin,
     models.Model):
     """
     Represents an access control policy, which combines row-level and field-level policies.

@@ -15,9 +15,9 @@ The `BloomerpModel` class is the base model for all models in the Bloomerp frame
 
 The `BloomerpModel` class inherits from several mixins that provide additional functionalities:
 
-- **TimestampedModelMixin**: Adds `created_at` and `updated_at` fields to track the creation and modification times.
+- **TimestampModelMixin**: Adds `created_at` and `updated_at` fields to track the creation and modification times.
 - **StringSearchModelMixin**: Provides methods for performing string-based searches on the specified fields.
-- **UserStampedModelMixin**: Adds `created_by` and `updated_by` fields to track the user who created and last modified the record.
+- **UserStampModelMixin**: Adds `created_by` and `updated_by` fields to track the user who created and last modified the record.
 - **AbsoluteUrlModelMixin**: Provides a method to get the absolute URL of the model instance.
 
 ### Meta Options

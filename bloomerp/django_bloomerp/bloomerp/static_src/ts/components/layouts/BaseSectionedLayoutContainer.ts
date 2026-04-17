@@ -5,7 +5,7 @@ import BaseSectionedLayoutItem from "./BaseSectionedLayoutItem";
 import { getCsrfToken } from "../../utils/cookies";
 
 export type SectionedLayoutItemPayload = {
-    id: number;
+    id: string;
     colspan: number;
 };
 
@@ -34,7 +34,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     protected isRowFocused = false;
     protected draggedItem: HTMLElement | null = null;
     protected draggedRow: HTMLElement | null = null;
-    protected draggedSidebarItemId: number | null = null;
+    protected draggedSidebarItemId: string | null = null;
     protected layoutRows: SectionedLayoutRowPayload[] = [];
     protected openSidebarButtons: HTMLElement[] = [];
     protected itemLoadQueue: Promise<void> = Promise.resolve();
@@ -44,8 +44,14 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
 
     protected abstract getItemComponent(element: HTMLElement): TItem | null;
     protected abstract getItemSelector(): string;
-    protected abstract renderItem(itemId: number, rowIndex: number, position?: number): Promise<void>;
+    protected abstract renderItem(itemId: string, rowIndex: number, position?: number): Promise<void>;
     protected abstract getSavePayload(): SavePayload;
+
+    protected normalizeLayoutItemId(value: unknown): string | null {
+        if (value === null || value === undefined) return null;
+        const normalized = String(value).trim();
+        return normalized ? normalized : null;
+    }
 
     protected async loadInitialItems(): Promise<void> {
         return Promise.resolve();
@@ -140,10 +146,10 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
                 items: Array.isArray(row.items)
                     ? row.items
                         .map((item) => ({
-                            id: Number.parseInt(String(item.id), 10),
+                            id: this.normalizeLayoutItemId(item.id),
                             colspan: this.clampColspan(item.colspan, row.columns),
                         }))
-                        .filter((item) => Number.isFinite(item.id))
+                        .filter((item): item is SectionedLayoutItemPayload => item.id !== null)
                     : [],
             }));
         } catch {
@@ -438,11 +444,12 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
 
         const sidebarItem = target.closest<HTMLElement>("[data-layout-sidebar-item]");
         if (sidebarItem) {
-            this.draggedSidebarItemId = Number.parseInt(sidebarItem.dataset.layoutItemId ?? "-1", 10);
+            this.draggedSidebarItemId = this.normalizeLayoutItemId(sidebarItem.dataset.layoutItemId);
+            if (!this.draggedSidebarItemId) return;
             if (event.dataTransfer) {
                 event.dataTransfer.effectAllowed = "copy";
-                event.dataTransfer.setData("text/plain", String(this.draggedSidebarItemId));
-                event.dataTransfer.setData("application/x-bloomerp-layout-item", String(this.draggedSidebarItemId));
+                event.dataTransfer.setData("text/plain", this.draggedSidebarItemId);
+                event.dataTransfer.setData("application/x-bloomerp-layout-item", this.draggedSidebarItemId);
             }
             return;
         }
@@ -667,9 +674,9 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             title: rowEl.dataset.rowTitle?.trim() || null,
             columns: this.clampRowCols(Number.parseInt(rowEl.dataset.rowColumns ?? "4", 10)),
             items: Array.from(rowEl.querySelectorAll<HTMLElement>(this.getItemSelector())).map((itemEl) => ({
-                id: Number.parseInt(itemEl.dataset.layoutItemId ?? "-1", 10),
+                id: this.normalizeLayoutItemId(itemEl.dataset.layoutItemId),
                 colspan: this.clampColspan(Number.parseInt(itemEl.dataset.colspan ?? "1", 10), this.clampRowCols(Number.parseInt(rowEl.dataset.rowColumns ?? "4", 10))),
-            })).filter((item) => Number.isFinite(item.id) && item.id > 0),
+            })).filter((item): item is SectionedLayoutItemPayload => item.id !== null),
         }));
         this.bindRows();
         this.reindexItems();
@@ -802,10 +809,10 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             const title = rowEl.dataset.rowTitle?.trim() || null;
             const items = Array.from(rowEl.querySelectorAll<HTMLElement>(this.getItemSelector()))
                 .map((itemEl) => ({
-                    id: Number.parseInt(itemEl.dataset.layoutItemId ?? "-1", 10),
+                    id: this.normalizeLayoutItemId(itemEl.dataset.layoutItemId),
                     colspan: this.clampColspan(Number.parseInt(itemEl.dataset.colspan ?? "1", 10), columns),
                 }))
-                .filter((item) => Number.isFinite(item.id) && item.id > 0);
+                .filter((item): item is SectionedLayoutItemPayload => item.id !== null);
 
             return { title, columns, items };
         });
@@ -833,8 +840,8 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
                 item.addEventListener("dragend", () => this.onDragEnd());
                 item.addEventListener("click", () => {
                     if (!this.editMode) return;
-                    const itemId = Number.parseInt(item.dataset.layoutItemId ?? "-1", 10);
-                    if (!Number.isFinite(itemId) || itemId <= 0) return;
+                    const itemId = this.normalizeLayoutItemId(item.dataset.layoutItemId);
+                    if (!itemId) return;
                     if (this.items.some((layoutItem) => layoutItem.getLayoutItemId() === itemId)) return;
                     const targetRowIndex = this.isRowFocused ? this.focusedRowIndex : Math.max(0, this.getRowIndexForItem(this.items[this.focusedItemIndex]));
                     void this.renderItem(itemId, targetRowIndex).then(() => {
@@ -851,8 +858,8 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         const usedIds = new Set(this.items.map((item) => item.getLayoutItemId()));
         const sidebarItems = this.element?.querySelectorAll<HTMLElement>("[data-layout-sidebar-item]") ?? [];
         sidebarItems.forEach((sidebarItem) => {
-            const itemId = Number.parseInt(sidebarItem.dataset.layoutItemId ?? "-1", 10);
-            const used = usedIds.has(itemId);
+            const itemId = this.normalizeLayoutItemId(sidebarItem.dataset.layoutItemId);
+            const used = itemId !== null && usedIds.has(itemId);
             sidebarItem.classList.toggle("opacity-50", used);
             sidebarItem.toggleAttribute("disabled", used);
             sidebarItem.setAttribute("draggable", used ? "false" : "true");
@@ -944,7 +951,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         display.classList.toggle("workspace-row__title--empty", !hasTitle);
     }
 
-    protected getDraggedSidebarItemId(event: DragEvent): number | null {
+    protected getDraggedSidebarItemId(event: DragEvent): string | null {
         if (this.draggedSidebarItemId !== null) {
             return this.draggedSidebarItemId;
         }
@@ -952,8 +959,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         const rawItemId = event.dataTransfer?.getData("application/x-bloomerp-layout-item")
             || event.dataTransfer?.getData("text/plain")
             || "";
-        const parsedItemId = Number.parseInt(rawItemId, 10);
-        return Number.isFinite(parsedItemId) && parsedItemId > 0 ? parsedItemId : null;
+        return this.normalizeLayoutItemId(rawItemId);
     }
 
     protected onGridDragOver(event: DragEvent, rowEl: HTMLElement): void {

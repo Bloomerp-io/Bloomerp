@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.urls import reverse
 from bloomerp.models.base_bloomerp_model import BloomerpModel
-from bloomerp.models.mixins import AbsoluteUrlModelMixin
+from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from django.utils.translation import gettext_lazy as _
 
 class Workspace(AbsoluteUrlModelMixin, models.Model):

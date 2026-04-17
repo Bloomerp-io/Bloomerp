@@ -68,6 +68,11 @@ class Command(BaseCommand):
                             meta = {}
                             field_type = field.get_internal_type()
 
+                            # UUID-backed primary keys should not become selectable
+                            # ApplicationFields for CRUD layouts or permissions.
+                            if getattr(field, "primary_key", False):
+                                continue
+
                             try:
                                 # Get database column for field
                                 if hasattr(field, 'db_column') or hasattr(field, 'column'):
@@ -205,4 +210,3 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('ApplicationField model synced successfully'))
         
-

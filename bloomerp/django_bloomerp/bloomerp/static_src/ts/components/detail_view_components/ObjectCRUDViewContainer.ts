@@ -181,7 +181,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
     }
 
-    protected async renderItem(itemId: number, rowIndex: number, position?: number): Promise<void> {
+    protected async renderItem(itemId: string, rowIndex: number, position?: number): Promise<void> {
         if (!this.element) return;
 
         const rowEl = this.rowElements[rowIndex];
@@ -208,7 +208,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         initComponents(targetGrid);
         if (typeof position === "number") {
             const renderedElements = Array.from(targetGrid.querySelectorAll<HTMLElement>(this.getItemSelector()));
-            const renderedElement = renderedElements.find((element) => Number.parseInt(element.dataset.layoutItemId ?? "-1", 10) === itemId)
+            const renderedElement = renderedElements.find((element) => this.normalizeLayoutItemId(element.dataset.layoutItemId) === itemId)
                 ?? renderedElements[renderedElements.length - 1];
             const anchor = renderedElements[position] ?? null;
             if (renderedElement && anchor && anchor !== renderedElement) {

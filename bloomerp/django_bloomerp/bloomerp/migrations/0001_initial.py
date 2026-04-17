@@ -325,7 +325,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Access Control Policies',
                 'db_table': 'bloomerp_access_control_policy',
             },
-            bases=(bloomerp.models.mixins.SkipApiCreationMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='RowPolicyRule',

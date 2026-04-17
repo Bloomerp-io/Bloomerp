@@ -3,15 +3,17 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 import os
 import uuid
-from bloomerp.models import mixins
 from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.mixins.string_search_model_mixin import StringSearchModelMixin
+from bloomerp.models.mixins.timestamp_model_mixin import TimestampModelMixin
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from django.db.models.query import QuerySet
 from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
 
 class File(
-    mixins.TimestampedModelMixin, 
-    mixins.StringSearchModelMixin,
-    mixins.UserStampedModelMixin,
+    TimestampModelMixin,
+    StringSearchModelMixin,
+    UserStampModelMixin,
     models.Model,
 ):
     class Meta(BloomerpModel.Meta):

@@ -23,14 +23,14 @@ def _get_preference_model(*, scope: str):
     return UserCreateViewPreference if scope == "create" else UserDetailViewPreference
 
 
-def _get_valid_field_ids(request: HttpRequest, *, content_type: ContentType, scope: str) -> set[int]:
+def _get_valid_field_ids(request: HttpRequest, *, content_type: ContentType, scope: str) -> set[str]:
     if scope == "create":
         return {
-            field.pk
+            str(field.pk)
             for field in get_addable_fields(content_type=content_type, user=request.user)
         }
     return {
-        int(item["id"])
+        str(item["id"])
         for item in get_available_layout_fields(
             content_type=content_type,
             user=request.user,
@@ -67,10 +67,9 @@ def _save_layout_preference(request: HttpRequest, *, scope: str | None = None) -
     layout = normalize_layout_payload(payload.get("layout"))
     valid_ids = _get_valid_field_ids(request, content_type=content_type, scope=scope)
     submitted_ids = {
-        int(item.id)
+        str(item.id)
         for row in layout.rows
         for item in row.items
-        if str(item.id).isdigit()
     }
     if not submitted_ids.issubset(valid_ids):
         return HttpResponse("Unknown field id in layout", status=400)

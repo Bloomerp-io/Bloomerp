@@ -32,12 +32,11 @@ def save_workspace_layout(request: HttpRequest) -> HttpResponse:
         return HttpResponse("Permission denied", status=403)
 
     layout = normalize_layout_payload(payload.get("layout"))
-    valid_ids = set(Tile.objects.values_list("id", flat=True))
+    valid_ids = {str(tile_id) for tile_id in Tile.objects.values_list("id", flat=True)}
     requested_ids = {
-        int(item.id)
+        str(item.id)
         for row in layout.rows
         for item in row.items
-        if str(item.id).isdigit()
     }
     if not requested_ids.issubset(valid_ids):
         return HttpResponse("Unknown tile id in layout", status=400)

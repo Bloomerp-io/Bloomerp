@@ -5,9 +5,9 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.models import mixins
+from bloomerp.models.mixins import absolute_url_model_mixin
 
-class RowPolicy(mixins.AbsoluteUrlModelMixin, models.Model):
+class RowPolicy(absolute_url_model_mixin.AbsoluteUrlModelMixin, models.Model):
     """
     A policy that limits which rows (records) are visible/mutable for a subject.
     """

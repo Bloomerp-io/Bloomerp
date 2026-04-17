@@ -4,7 +4,7 @@ from bloomerp.field_types import Lookup
 from bloomerp.models import ContentType, User
 from django.urls import reverse
 
-from .base import BaseBloomerpModelTestCase
+from ..base import BaseBloomerpModelTestCase
 from bloomerp.components.global_search import global_search
 from bs4 import BeautifulSoup
 from bloomerp.models import Policy, RowPolicy, FieldPolicy, RowPolicyRule

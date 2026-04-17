@@ -1,13 +1,13 @@
-from bloomerp.models import TimestampedModelMixin
-from bloomerp.models import UserStampedModelMixin
+from bloomerp.models import TimestampModelMixin
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models import BloomerpModel
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
 class Comment(
-    TimestampedModelMixin,
-    UserStampedModelMixin,
+    TimestampModelMixin,
+    UserStampModelMixin,
     models.Model,
 ):
     class Meta(BloomerpModel.Meta):

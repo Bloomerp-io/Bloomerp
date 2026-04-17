@@ -111,7 +111,10 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
     def test_detail_layout_save_persists_row_item_shape(self):
         self.client.force_login(self.admin_user)
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        field = ApplicationField.objects.filter(content_type=content_type).first()
+        field = ApplicationField.objects.filter(
+            content_type=content_type,
+            field="first_name",
+        ).first()
 
         response = self.client.post(
             "/components/workspaces/detail_layout_preference/",
@@ -133,7 +136,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(response.status_code, 200)
         preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
         self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, field.pk)
+        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
         self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
 
     def test_detail_layout_render_field_returns_fragment(self):
@@ -198,13 +201,13 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         response = self.client.post(
             "/components/workspaces/save_workspace_layout/",
             data=json.dumps({
-                "workspace_id": workspace.pk,
+                "workspace_id": str(workspace.pk),
                 "layout": {
                     "rows": [
                         {
                             "title": "Metrics",
                             "columns": 4,
-                            "items": [{"id": tile.pk, "colspan": 2}],
+                            "items": [{"id": str(tile.pk), "colspan": 2}],
                         }
                     ]
                 },
@@ -215,7 +218,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(response.status_code, 200)
         workspace.refresh_from_db()
         self.assertEqual(workspace.layout_obj.rows[0].title, "Metrics")
-        self.assertEqual(workspace.layout_obj.rows[0].items[0].id, tile.pk)
+        self.assertEqual(workspace.layout_obj.rows[0].items[0].id, str(tile.pk))
 
     def test_workspace_layout_save_deduplicates_duplicate_item_ids(self):
         self.client.force_login(self.admin_user)
@@ -225,21 +228,21 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         response = self.client.post(
             "/components/workspaces/save_workspace_layout/",
             data=json.dumps({
-                "workspace_id": workspace.pk,
+                "workspace_id": str(workspace.pk),
                 "layout": {
                     "rows": [
                         {
                             "title": "Metrics",
                             "columns": 4,
                             "items": [
-                                {"id": tile.pk, "colspan": 2},
-                                {"id": tile.pk, "colspan": 1},
+                                {"id": str(tile.pk), "colspan": 2},
+                                {"id": str(tile.pk), "colspan": 1},
                             ],
                         },
                         {
                             "title": "Duplicate row",
                             "columns": 4,
-                            "items": [{"id": tile.pk, "colspan": 3}],
+                            "items": [{"id": str(tile.pk), "colspan": 3}],
                         },
                     ]
                 },
@@ -250,7 +253,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(response.status_code, 200)
         workspace.refresh_from_db()
         item_ids = [item.id for row in workspace.layout_obj.rows for item in row.items]
-        self.assertEqual(item_ids, [tile.pk])
+        self.assertEqual(item_ids, [str(tile.pk)])
 
     def test_existing_empty_detail_layout_is_seeded_with_default_items(self):
         content_type = ContentType.objects.get_for_model(self.CustomerModel)

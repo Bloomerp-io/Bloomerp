@@ -1,7 +1,7 @@
 import BaseComponent from "../BaseComponent";
 
 export default abstract class BaseSectionedLayoutItem extends BaseComponent {
-    protected itemId = -1;
+    protected itemId = "";
     protected colspan = 1;
     protected maxCols = 4;
     protected isEditMode = false;
@@ -9,8 +9,7 @@ export default abstract class BaseSectionedLayoutItem extends BaseComponent {
     public initialize(): void {
         if (!this.element) return;
 
-        const parsedItemId = Number.parseInt(this.element.dataset.layoutItemId ?? "-1", 10);
-        this.itemId = Number.isFinite(parsedItemId) ? parsedItemId : -1;
+        this.itemId = this.element.dataset.layoutItemId ?? "";
 
         const parsedColspan = Number.parseInt(this.element.dataset.colspan ?? "1", 10);
         this.colspan = Number.isFinite(parsedColspan) ? parsedColspan : 1;
@@ -23,7 +22,7 @@ export default abstract class BaseSectionedLayoutItem extends BaseComponent {
         this.initializeResizeHandle();
     }
 
-    public getLayoutItemId(): number {
+    public getLayoutItemId(): string {
         return this.itemId;
     }
 

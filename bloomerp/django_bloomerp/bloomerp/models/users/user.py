@@ -7,10 +7,10 @@ from django.utils.translation import gettext as _
 from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.mixins import (
-    AbsoluteUrlModelMixin,
-    AvatarModelMixin,
     StringSearchModelMixin,
 )
+from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
+from bloomerp.models.mixins.avatar_model_mixin import AvatarModelMixin
 from bloomerp.models.workspaces.sidebar_item import Sidebar
 
 

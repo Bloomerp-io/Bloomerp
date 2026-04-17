@@ -17,7 +17,7 @@ class BloomerpModelIO:
         fields = self.model._meta.get_fields()
 
         # Filter out fields that are not editable and id fields
-        return [field for field in fields if field.editable and not isinstance(field, models.AutoField)]
+        return [field for field in fields if field.editable and not getattr(field, "primary_key", False)]
 
     def get_model_fields_as_str(self) -> list[str]:
         """
@@ -94,6 +94,8 @@ class BloomerpModelIO:
                     # Perform type validation based on Django field type
                     if isinstance(field, (models.IntegerField, models.AutoField)):
                         int(value)  # Try to cast to int
+                    elif isinstance(field, models.UUIDField):
+                        str(value)
                     elif isinstance(field, models.FloatField):
                         float(value)  # Try to cast to float
                     elif isinstance(field, models.BooleanField):

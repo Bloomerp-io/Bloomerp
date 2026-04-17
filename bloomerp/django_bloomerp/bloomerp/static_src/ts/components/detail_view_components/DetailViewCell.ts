@@ -48,9 +48,8 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         this.label = this.element.getAttribute("data-label") ?? null;
         this.applicationFieldId = this.element.getAttribute("data-application-field-id") ?? null;
 
-        const applicationFieldId = Number.parseInt(this.applicationFieldId ?? "-1", 10);
-        if (Number.isFinite(applicationFieldId)) {
-            this.itemId = applicationFieldId;
+        if (this.applicationFieldId) {
+            this.itemId = this.applicationFieldId;
         }
 
         this.setupContextMenu();

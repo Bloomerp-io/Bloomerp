@@ -52,7 +52,7 @@ def search_objects(request:HttpRequest, content_type_id:int) -> HttpResponse:
     resp = {
         'objects' : [
             {
-                'id': obj.pk,
+                'id': str(obj.pk),
                 'string_representation': str(obj),
                 'detail_url': _get_detail_url(obj),
             } for obj in results
@@ -63,4 +63,3 @@ def search_objects(request:HttpRequest, content_type_id:int) -> HttpResponse:
         json.dumps(resp),
         content_type="application/json"
     )
-

@@ -2,7 +2,12 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 from pydantic import BaseModel, Field
 from typing import Optional
-from bloomerp.models import mixins
+from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
+from bloomerp.models.mixins.avatar_model_mixin import AvatarModelMixin
+from bloomerp.models.mixins.string_search_model_mixin import StringSearchModelMixin
+from bloomerp.models.mixins.timestamp_model_mixin import TimestampModelMixin
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
+from bloomerp.models.mixins.uuid_model_mixin import UuidModelMixin
 
 
 class LayoutItem(BaseModel):
@@ -19,13 +24,13 @@ class LayoutRow(BaseModel):
 class FieldLayout(BaseModel):
     rows: list[LayoutRow] = Field(default_factory=list)
 
-
 class BloomerpModel(
-    mixins.TimestampedModelMixin,
-    mixins.StringSearchModelMixin,
-    mixins.UserStampedModelMixin,
-    mixins.AbsoluteUrlModelMixin,
-    mixins.AvatarModelMixin,
+    UuidModelMixin,
+    TimestampModelMixin,
+    StringSearchModelMixin,
+    UserStampModelMixin,
+    AbsoluteUrlModelMixin,
+    AvatarModelMixin,
     models.Model,
 ):
     class Meta:
@@ -40,7 +45,6 @@ class BloomerpModel(
             'bulk_add', 
             'export'
         )
-    
     files = GenericRelation("bloomerp.File")
     comments = GenericRelation("bloomerp.Comment")
 

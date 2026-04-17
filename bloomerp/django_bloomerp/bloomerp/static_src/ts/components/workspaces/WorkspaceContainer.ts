@@ -26,10 +26,14 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             if (!targetGrid) continue;
 
             const expectedIds = new Set(row.items.map((item) => item.id));
-            const seenIds = new Set<number>();
+            const seenIds = new Set<string>();
 
             Array.from(targetGrid.querySelectorAll<HTMLElement>(this.getItemSelector())).forEach((element) => {
-                const itemId = Number.parseInt(element.dataset.layoutItemId ?? "-1", 10);
+                const itemId = this.normalizeLayoutItemId(element.dataset.layoutItemId);
+                if (!itemId) {
+                    element.remove();
+                    return;
+                }
                 if (!expectedIds.has(itemId) || seenIds.has(itemId)) {
                     element.remove();
                     return;
@@ -51,7 +55,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         }
     }
 
-    protected async renderItem(itemId: number, rowIndex: number, position?: number): Promise<void> {
+    protected async renderItem(itemId: string, rowIndex: number, position?: number): Promise<void> {
         if (!this.element) return;
 
         const row = this.layoutRows[rowIndex];
@@ -62,7 +66,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         if (!row || !targetGrid || !renderUrl) return;
 
         const existingElement = Array.from(targetGrid.querySelectorAll<HTMLElement>(this.getItemSelector()))
-            .find((element) => Number.parseInt(element.dataset.layoutItemId ?? "-1", 10) === itemId);
+            .find((element) => this.normalizeLayoutItemId(element.dataset.layoutItemId) === itemId);
         if (existingElement) {
             const existingItem = this.getItemComponent(existingElement);
             existingItem?.setMaxCols(row.columns);
@@ -92,7 +96,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
 
         initComponents(targetGrid);
         const renderedElements = Array.from(targetGrid.querySelectorAll<HTMLElement>(this.getItemSelector()));
-        const renderedElement = renderedElements.find((element) => Number.parseInt(element.dataset.layoutItemId ?? "-1", 10) === itemId)
+        const renderedElement = renderedElements.find((element) => this.normalizeLayoutItemId(element.dataset.layoutItemId) === itemId)
             ?? renderedElements[renderedElements.length - 1];
 
         if (!renderedElement) return;
@@ -112,9 +116,9 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         this.reindexItems();
     }
 
-    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; workspace_id: number | null } {
+    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; workspace_id: string | null } {
         return {
-            workspace_id: Number.parseInt(this.element?.dataset.workspaceId ?? "", 10) || null,
+            workspace_id: this.normalizeLayoutItemId(this.element?.dataset.workspaceId),
             layout: {
                 rows: this.serializeRows(),
             },

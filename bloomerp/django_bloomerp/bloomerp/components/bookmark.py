@@ -16,7 +16,7 @@ def bookmark(request:HttpRequest) -> HttpResponse:
     # Get the content_type_id and object_id from the request
     try:
         content_type_id = int(request.GET.get('content_type_id'))
-        object_id = int(request.GET.get('object_id'))
+        object_id = str(request.GET.get('object_id') or '').strip()
     except:
         return HttpResponse(status=400)
 

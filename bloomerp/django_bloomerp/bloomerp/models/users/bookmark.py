@@ -21,7 +21,7 @@ class Bookmark(models.Model):
         to=ContentType, 
         on_delete=models.CASCADE
         )
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=255)
     object : models.Model = GenericForeignKey(
         ct_field="content_type", 
         fk_field="object_id"

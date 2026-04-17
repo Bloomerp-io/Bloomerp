@@ -104,12 +104,19 @@ class BloomerpLayoutFormMixin(ABC):
             return context["form"]
         return self.build_layout_form()
 
+    def normalize_layout_application_field_id(self, value: Any) -> int | None:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+        return None
+
     def get_layout_application_fields(self, *, layout: FieldLayout) -> dict[int, ApplicationField]:
         item_ids = [
-            item.id
+            normalized_id
             for row in layout.rows
             for item in row.items
-            if isinstance(item.id, int)
+            if (normalized_id := self.normalize_layout_application_field_id(item.id)) is not None
         ]
         if not item_ids:
             return {}
@@ -173,10 +180,11 @@ class BloomerpLayoutFormMixin(ABC):
         for row in layout.rows:
             items: list[dict[str, Any]] = []
             for item in row.items:
-                if not isinstance(item.id, int):
+                item_id = self.normalize_layout_application_field_id(item.id)
+                if item_id is None:
                     continue
 
-                application_field = application_fields.get(item.id)
+                application_field = application_fields.get(item_id)
                 if application_field is None:
                     continue
 

@@ -91,9 +91,8 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
            resolve those URLs.
         """
         from bloomerp.modules.definition import module_registry
-        from bloomerp.router import router, ViewType
+        from bloomerp.router import router
         import bloomerp.urls as bloomerp_urls
-        from django.urls import path as django_path
 
         # Re-scan so model→module mappings include the new test models
         module_registry._register_models_from_apps()
@@ -114,26 +113,7 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
                 continue
             if route.url_name in existing_names:
                 continue
-
-            args = dict(route.args) if route.args else {}
-            if route.model:
-                args["model"] = route.model
-            if route.module:
-                args["module"] = route.module
-
-            if route.view_type == ViewType.CLASS:
-                pattern = django_path(
-                    route.path.lstrip('/'),
-                    route.view.as_view(**args),
-                    name=route.url_name,
-                )
-            else:
-                pattern = django_path(
-                    route.path.lstrip('/'),
-                    route.view,
-                    name=route.url_name,
-                    kwargs=args,
-                )
+            pattern = router.build_url_pattern(route)
             bloomerp_urls.urlpatterns.append(pattern)
             existing_names.add(route.url_name)
 

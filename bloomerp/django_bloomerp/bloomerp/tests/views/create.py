@@ -336,7 +336,7 @@ class TestCreateView(CrudViewTestMixin):
         self.assertEqual(response.status_code, 200)
         preference = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
         self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, field.pk)
+        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
         self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
 
     def test_empty_create_layout_is_repaired_with_default_items(self):

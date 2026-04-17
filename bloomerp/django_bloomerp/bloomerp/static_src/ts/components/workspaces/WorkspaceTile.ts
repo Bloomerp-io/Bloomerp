@@ -8,8 +8,8 @@ export default class WorkspaceTile extends BaseSectionedLayoutItem {
         super.initialize();
         if (!this.element) return;
 
-        const tileId = Number.parseInt(this.element.dataset.tileId ?? "-1", 10);
-        if (Number.isFinite(tileId)) {
+        const tileId = this.element.dataset.tileId ?? "";
+        if (tileId) {
             this.itemId = tileId;
         }
     }
@@ -34,7 +34,7 @@ export default class WorkspaceTile extends BaseSectionedLayoutItem {
         }
     }
 
-    public getTileId(): number {
+    public getTileId(): string {
         return this.getLayoutItemId();
     }
 }

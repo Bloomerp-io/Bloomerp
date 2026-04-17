@@ -17,7 +17,7 @@ MAX_LAYOUT_COLUMNS = 12
 
 @dataclass
 class AvailableLayoutItem:
-    id:str|int
+    id:str
     title:str
     description:str
     icon:str
@@ -70,7 +70,9 @@ def normalize_layout_payload(payload: dict[str, Any] | FieldLayout | None) -> Fi
                     item_id = raw_item.get("id")
                     if item_id in (None, ""):
                         continue
-                    normalized_item_id = int(item_id) if str(item_id).isdigit() else item_id
+                    normalized_item_id = str(item_id).strip()
+                    if not normalized_item_id:
+                        continue
                     if normalized_item_id in seen_item_ids:
                         continue
                     seen_item_ids.add(normalized_item_id)

@@ -2,15 +2,18 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
-from bloomerp.models import mixins
 from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
+from bloomerp.models.mixins.string_search_model_mixin import StringSearchModelMixin
+from bloomerp.models.mixins.timestamp_model_mixin import TimestampModelMixin
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 
 
 class FileFolder(
-    mixins.TimestampedModelMixin,
-    mixins.UserStampedModelMixin,
-    mixins.AbsoluteUrlModelMixin,
-    mixins.StringSearchModelMixin,
+    TimestampModelMixin,
+    UserStampModelMixin,
+    AbsoluteUrlModelMixin,
+    StringSearchModelMixin,
     models.Model,
 ):
     class Meta(BloomerpModel.Meta):

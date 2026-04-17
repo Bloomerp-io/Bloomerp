@@ -1,12 +1,12 @@
 from django.db import models
 from bloomerp.models.automation import workflow
-from bloomerp.models.mixins import UserStampedModelMixin
-from bloomerp.models.mixins import TimestampedModelMixin
+from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
+from bloomerp.models.mixins import TimestampModelMixin
 from django.utils.translation import gettext_lazy as _
 
 class WorkflowRun(
-    UserStampedModelMixin,
-    TimestampedModelMixin,
+    UserStampModelMixin,
+    TimestampModelMixin,
     models.Model):
     
     class Meta:

@@ -15,6 +15,7 @@ from django.db.models import (
     BigAutoField,
     AutoField,
     DecimalField,
+    UUIDField,
     Field
 )
 from bloomerp.model_fields.status_field import StatusField
@@ -63,6 +64,13 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
             filter_overrides[f'{field_name}'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='exact')
             filter_overrides[f'{field_name}__equals'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='exact')
             filter_overrides[f'{field_name}__exact'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='exact')
+            return
+
+        if isinstance(field, UUIDField):
+            filter_overrides[f'{field_name}'] = django_filters.UUIDFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__equals'] = django_filters.UUIDFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__exact'] = django_filters.UUIDFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
             return
 
         if isinstance(field, DateField) or isinstance(field, DateTimeField):

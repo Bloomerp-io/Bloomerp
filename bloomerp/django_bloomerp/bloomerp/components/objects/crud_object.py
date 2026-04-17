@@ -74,7 +74,7 @@ class CreateObjectComponentView(BloomerpCreateView):
                     "bloomerp:foreign-field-object-created": {
                         "foreign_field_widget_id": foreign_field_widget_id,
                         "content_type_id": self.content_type.pk,
-                        "object_id": self.object.pk,
+                        "object_id": str(self.object.pk),
                         "object_label": str(self.object),
                         "object_detail_url": _get_detail_url(self.object),
                     }

@@ -89,7 +89,7 @@ def todos(request: HttpRequest) -> HttpResponse:
 
 
 
-def filter_todos(user: AbstractBloomerpUser, content_type_id: int, object_id: int):
+def filter_todos(user: AbstractBloomerpUser, content_type_id: int, object_id: str):
     """
     Filter todos based on the user, content type, and object id.
     """
@@ -104,6 +104,6 @@ def initialize_form(user, content_type_id=None, object_id=None, data=None):
         """Helper function to create and initialize the form."""
         initial = {'assigned_to': user, 'requested_by' : user}
         if content_type_id and object_id:
-            initial.update({'content_type': int(content_type_id), 'object_id': int(object_id)})
+            initial.update({'content_type': int(content_type_id), 'object_id': str(object_id)})
         Form = modelform_factory(Todo, form=BloomerpModelForm, exclude=['completed', 'datetime_completed'])
         return Form(model=Todo, user=user, initial=initial, data=data)
