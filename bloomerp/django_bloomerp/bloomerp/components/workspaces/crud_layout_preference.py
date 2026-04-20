@@ -72,8 +72,15 @@ def _save_layout_preference(request: HttpRequest, *, scope: str | None = None) -
         for item in row.items
     }
     if not submitted_ids.issubset(valid_ids):
-        return HttpResponse("Unknown field id in layout", status=400)
-
+        invalid_ids = sorted(submitted_ids - valid_ids)
+        return JsonResponse(
+            {
+                "error": "Unknown field id in layout",
+                "invalid_ids": invalid_ids,
+            },
+            status=400,
+        )
+    
     preference_model = _get_preference_model(scope=scope)
     preference = preference_model.get_or_create_for_user(request.user, content_type)
     preference.field_layout = layout.model_dump()

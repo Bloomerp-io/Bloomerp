@@ -322,9 +322,9 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
     for field in fields:
         if not permission_manager.has_field_permission(field, permission_str):
             continue
-        
+
         field_type = field.get_field_type_enum().value
-        if not field_type.allow_in_model:
+        if layout_kind == "create" and not field_type.allow_in_model:
             continue
 
         available.append(

@@ -128,6 +128,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
     }
 
     public override destroy(): void {
+        super.destroy();
         if (this.focusInHandler && this.element) {
             this.element.removeEventListener("focusin", this.focusInHandler);
         }

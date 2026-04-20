@@ -563,6 +563,14 @@
     @apply opacity-80 scale-[0.99];
   }
 
+  .workspace-row--drag-ghost {
+    @apply opacity-35;
+  }
+
+  .workspace-row--drag-chosen {
+    @apply ring-2 ring-slate-200;
+  }
+
   .workspace-row__header {
     @apply relative z-10 mb-2 flex items-center justify-between gap-3;
   }
@@ -585,6 +593,30 @@
 
   .workspace-edit-mode .workspace-row--focused .workspace-row__controls {
     @apply flex;
+  }
+
+  .workspace-tile--dragging {
+    @apply opacity-90 scale-[0.99] shadow-lg;
+  }
+
+  .workspace-tile--drag-ghost {
+    @apply opacity-35;
+  }
+
+  .workspace-tile--drag-chosen {
+    @apply ring-2 ring-slate-200;
+  }
+
+  .workspace-sidebar-item--dragging {
+    @apply opacity-90 shadow-lg;
+  }
+
+  .workspace-sidebar-item--drag-ghost {
+    @apply opacity-35;
+  }
+
+  .workspace-sidebar-item--drag-chosen {
+    @apply ring-2 ring-slate-200;
   }
 
   .workspace-row__input {

@@ -55,6 +55,7 @@
     "grapesjs": "^0.22.14",
     "grapesjs-preset-webpage": "^1.0.3",
     "htmx.org": "^2.0.3",
-    "lexical": "^0.18.0"
+    "lexical": "^0.18.0",
+    "sortablejs": "^1.15.7"
   }
 }

@@ -69,7 +69,7 @@ export default abstract class BaseSectionedLayoutItem extends BaseComponent {
 
         this.isEditMode = typeof isEditMode === "boolean" ? isEditMode : !this.isEditMode;
         this.element.classList.toggle("workspace-tile--editing", this.isEditMode);
-        this.element.setAttribute("draggable", this.isEditMode ? "true" : "false");
+        this.element.setAttribute("draggable", "false");
 
         const controls = this.element.querySelector<HTMLElement>("[data-layout-item-controls]");
         if (controls) {

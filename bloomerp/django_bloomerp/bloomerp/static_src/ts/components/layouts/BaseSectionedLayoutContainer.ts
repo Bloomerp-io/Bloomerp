@@ -1,4 +1,5 @@
 import htmx from "htmx.org";
+import Sortable, { type SortableEvent } from "sortablejs";
 
 import BaseComponent, { componentIdentifier, getComponent, initComponents } from "../BaseComponent";
 import BaseSectionedLayoutItem from "./BaseSectionedLayoutItem";
@@ -24,6 +25,8 @@ type SavePayload = {
 
 export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSectionedLayoutItem> extends BaseComponent {
     private static readonly SAVE_DEBOUNCE_MS = 120;
+    private static readonly DRAG_START_TOLERANCE_PX = 8;
+    private static readonly DRAG_SWAP_THRESHOLD = 0.8;
 
     protected layoutRoot: HTMLElement | null = null;
     protected editMode = false;
@@ -32,15 +35,15 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     protected focusedItemIndex = 0;
     protected focusedRowIndex = 0;
     protected isRowFocused = false;
-    protected draggedItem: HTMLElement | null = null;
-    protected draggedRow: HTMLElement | null = null;
-    protected draggedSidebarItemId: string | null = null;
     protected layoutRows: SectionedLayoutRowPayload[] = [];
     protected openSidebarButtons: HTMLElement[] = [];
     protected itemLoadQueue: Promise<void> = Promise.resolve();
     protected saveTimeoutId: number | null = null;
     protected saveInFlight: Promise<void> | null = null;
     protected pendingSaveAfterFlight = false;
+    protected rowSortable: Sortable | null = null;
+    protected gridSortables: Sortable[] = [];
+    protected sidebarSortable: Sortable | null = null;
 
     protected abstract getItemComponent(element: HTMLElement): TItem | null;
     protected abstract getItemSelector(): string;
@@ -105,16 +108,22 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         this.itemLoadQueue = this.loadInitialItems().then(() => {
             this.reindexItems();
             this.syncAvailableItemsState();
+            this.refreshSortables();
             if (!this.editMode && this.items.length > 0) {
                 this.focusItemByIndex(0);
             }
         });
     }
 
+    public override destroy(): void {
+        this.destroySortables();
+    }
+
     protected toggleEditMode(): void {
         this.editMode = !this.editMode;
         this.items.forEach((item) => item.setEditMode(this.editMode));
         this.updateRowControlVisibility();
+        this.updateSortableDisabledState();
 
         if (this.editMode) {
             if (this.rowElements.length > 0) {
@@ -212,11 +221,9 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             header?.setAttribute("draggable", "false");
 
             const dragHandle = rowEl.querySelector<HTMLElement>("[data-row-drag-handle]");
-            dragHandle?.setAttribute("draggable", "true");
+            dragHandle?.setAttribute("draggable", "false");
             if (dragHandle && !dragHandle.dataset.bound) {
                 dragHandle.dataset.bound = "true";
-                dragHandle.addEventListener("dragstart", (event: DragEvent) => this.onDragStart(event));
-                dragHandle.addEventListener("dragend", () => this.onDragEnd());
                 dragHandle.addEventListener("mousedown", () => {
                     this.focusRowByIndex(this.getRowIndexFromElement(dragHandle));
                 });
@@ -266,12 +273,11 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             const grid = rowEl.querySelector<HTMLElement>("[data-layout-grid]");
             if (grid && !grid.dataset.bound) {
                 grid.dataset.bound = "true";
-                grid.addEventListener("dragover", (event: DragEvent) => this.onGridDragOver(event, rowEl));
-                grid.addEventListener("drop", (event: DragEvent) => this.onGridDrop(event, rowEl));
             }
         });
 
         this.updateRowControlVisibility();
+        this.refreshSortables();
     }
 
     protected onClick(event: MouseEvent): void {
@@ -356,6 +362,21 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             return;
         }
 
+        const removeCombo = event.altKey && !event.shiftKey && !event.metaKey && !event.ctrlKey && ["Backspace", "Delete"].includes(event.key);
+        if (removeCombo) {
+            event.preventDefault();
+            if (this.isRowFocused) {
+                this.removeRow(this.focusedRowIndex);
+                return;
+            }
+
+            const item = this.items[this.focusedItemIndex];
+            if (item) {
+                this.removeItem(item);
+            }
+            return;
+        }
+
         if (event.altKey || event.metaKey || event.shiftKey) return;
 
         if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
@@ -379,112 +400,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     }
 
     protected setupDnD(): void {
-        if (!this.layoutRoot) return;
-
-        this.layoutRoot.addEventListener("dragover", (event: DragEvent) => {
-            if (!this.editMode) return;
-            event.preventDefault();
-            if (event.dataTransfer) {
-                event.dataTransfer.dropEffect = this.draggedRow ? "move" : "copy";
-            }
-
-            if (this.draggedRow) {
-                const afterRow = this.getRowAfterElement(event.clientY);
-                if (!afterRow) {
-                    this.layoutRoot?.appendChild(this.draggedRow);
-                } else {
-                    this.layoutRoot?.insertBefore(this.draggedRow, afterRow);
-                }
-                return;
-            }
-
-            const rowTarget = this.getRowForPoint(event.clientY);
-            const rowGrid = rowTarget?.querySelector<HTMLElement>("[data-layout-grid]");
-            if (!rowGrid || !this.draggedItem) return;
-
-            const afterItem = this.getItemAfterElement(rowGrid, event.clientX, event.clientY);
-            if (!afterItem) {
-                rowGrid.appendChild(this.draggedItem);
-            } else {
-                rowGrid.insertBefore(this.draggedItem, afterItem);
-            }
-        });
-
-        this.layoutRoot.addEventListener("drop", (event: DragEvent) => {
-            if (!this.editMode) return;
-            event.preventDefault();
-
-            if (this.draggedRow) {
-                this.draggedRow.classList.remove("workspace-row--dragging");
-                this.draggedRow = null;
-                this.reindexRows();
-                void this.requestSave();
-                return;
-            }
-
-            this.draggedItem?.classList.remove("workspace-tile--dragging");
-            this.draggedItem = null;
-            this.reindexItems();
-            this.syncItemMaxColumns();
-            void this.requestSave();
-        });
-
-        this.layoutRoot.addEventListener("dragstart", (event: DragEvent) => this.onDragStart(event));
-        this.layoutRoot.addEventListener("dragend", () => this.onDragEnd());
-    }
-
-    protected onDragStart(event: DragEvent): void {
-        if (!this.editMode) {
-            event.preventDefault();
-            return;
-        }
-
-        const target = event.target as HTMLElement | null;
-        if (!target) return;
-
-        const sidebarItem = target.closest<HTMLElement>("[data-layout-sidebar-item]");
-        if (sidebarItem) {
-            this.draggedSidebarItemId = this.normalizeLayoutItemId(sidebarItem.dataset.layoutItemId);
-            if (!this.draggedSidebarItemId) return;
-            if (event.dataTransfer) {
-                event.dataTransfer.effectAllowed = "copy";
-                event.dataTransfer.setData("text/plain", this.draggedSidebarItemId);
-                event.dataTransfer.setData("application/x-bloomerp-layout-item", this.draggedSidebarItemId);
-            }
-            return;
-        }
-
-        const itemTarget = target.closest<HTMLElement>(this.getItemSelector());
-        if (itemTarget) {
-            this.draggedItem = itemTarget;
-            itemTarget.classList.add("workspace-tile--dragging");
-            if (event.dataTransfer) {
-                event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData("text/plain", itemTarget.dataset.layoutItemId ?? "");
-            }
-            return;
-        }
-
-        const rowHandle = target.closest<HTMLElement>("[data-row-drag-handle]");
-        const rowTarget = rowHandle?.closest<HTMLElement>("[data-layout-row]") ?? target.closest<HTMLElement>("[data-layout-row]");
-        if (rowTarget && rowHandle) {
-            const rowIndex = Number.parseInt(rowTarget.dataset.rowIndex ?? "0", 10);
-            this.focusRowByIndex(rowIndex);
-            this.draggedRow = rowTarget;
-            rowTarget.classList.add("workspace-row--dragging");
-            if (event.dataTransfer) {
-                event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData("text/plain", rowTarget.dataset.rowIndex ?? "");
-            }
-        }
-    }
-
-    protected onDragEnd(): void {
-        this.draggedItem?.classList.remove("workspace-tile--dragging");
-        this.draggedRow?.classList.remove("workspace-row--dragging");
-        this.draggedItem = null;
-        this.draggedRow = null;
-        this.draggedSidebarItemId = null;
+        this.refreshSortables();
     }
 
     protected reindexItems(): void {
@@ -662,8 +578,12 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     }
 
     protected removeItem(item: TItem): void {
+        const removedIndex = this.items.indexOf(item);
         item.element?.remove();
         this.reindexItems();
+        if (this.items.length > 0) {
+            this.focusItemByIndex(Math.max(0, Math.min(removedIndex, this.items.length - 1)));
+        }
         this.syncAvailableItemsState();
         void this.requestSave();
     }
@@ -836,8 +756,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         items.forEach((item) => {
             if (!item.dataset.bound) {
                 item.dataset.bound = "true";
-                item.addEventListener("dragstart", (event: DragEvent) => this.onDragStart(event));
-                item.addEventListener("dragend", () => this.onDragEnd());
+                item.setAttribute("draggable", "false");
                 item.addEventListener("click", () => {
                     if (!this.editMode) return;
                     const itemId = this.normalizeLayoutItemId(item.dataset.layoutItemId);
@@ -852,6 +771,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
                 });
             }
         });
+        this.refreshSortables();
     }
 
     protected syncAvailableItemsState(): void {
@@ -862,8 +782,159 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             const used = itemId !== null && usedIds.has(itemId);
             sidebarItem.classList.toggle("opacity-50", used);
             sidebarItem.toggleAttribute("disabled", used);
-            sidebarItem.setAttribute("draggable", used ? "false" : "true");
+            sidebarItem.setAttribute("aria-disabled", used ? "true" : "false");
+            sidebarItem.setAttribute("draggable", "false");
         });
+    }
+
+    protected destroySortables(): void {
+        this.rowSortable?.destroy();
+        this.rowSortable = null;
+
+        this.gridSortables.forEach((sortable) => sortable.destroy());
+        this.gridSortables = [];
+
+        this.sidebarSortable?.destroy();
+        this.sidebarSortable = null;
+    }
+
+    protected refreshSortables(): void {
+        if (!this.layoutRoot) return;
+
+        this.destroySortables();
+        this.rowSortable = Sortable.create(this.layoutRoot, {
+            animation: 180,
+            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+            draggable: "[data-layout-row]",
+            handle: "[data-row-drag-handle]",
+            forceFallback: true,
+            fallbackOnBody: true,
+            fallbackTolerance: BaseSectionedLayoutContainer.DRAG_START_TOLERANCE_PX,
+            swapThreshold: BaseSectionedLayoutContainer.DRAG_SWAP_THRESHOLD,
+            disabled: !this.editMode,
+            ghostClass: "workspace-row--drag-ghost",
+            chosenClass: "workspace-row--drag-chosen",
+            dragClass: "workspace-row--dragging",
+            onEnd: (event) => this.onRowSortEnd(event),
+        });
+
+        this.gridSortables = this.rowElements
+            .map((rowEl) => {
+                const grid = rowEl.querySelector<HTMLElement>("[data-layout-grid]");
+                if (!grid) return null;
+
+                return Sortable.create(grid, {
+                    group: "layout-items",
+                    animation: 180,
+                    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+                    draggable: this.getItemSelector(),
+                    handle: "[data-layout-item-drag-handle]",
+                    forceFallback: true,
+                    fallbackOnBody: true,
+                    fallbackTolerance: BaseSectionedLayoutContainer.DRAG_START_TOLERANCE_PX,
+                    emptyInsertThreshold: 24,
+                    swapThreshold: BaseSectionedLayoutContainer.DRAG_SWAP_THRESHOLD,
+                    invertSwap: true,
+                    disabled: !this.editMode,
+                    ghostClass: "workspace-tile--drag-ghost",
+                    chosenClass: "workspace-tile--drag-chosen",
+                    dragClass: "workspace-tile--dragging",
+                    onAdd: (event) => this.onItemSortAdd(event, rowEl),
+                    onEnd: (event) => this.onItemSortEnd(event),
+                });
+            })
+            .filter((sortable): sortable is Sortable => sortable !== null);
+
+        const sidebarList = this.element?.querySelector<HTMLElement>("[data-layout-available-items-list]");
+        if (sidebarList) {
+            this.sidebarSortable = Sortable.create(sidebarList, {
+                group: {
+                    name: "layout-items",
+                    pull: "clone",
+                    put: false,
+                },
+                sort: false,
+                animation: 180,
+                easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+                draggable: "[data-layout-sidebar-item]",
+                filter: "[disabled]",
+                forceFallback: true,
+                fallbackOnBody: true,
+                fallbackTolerance: BaseSectionedLayoutContainer.DRAG_START_TOLERANCE_PX,
+                disabled: !this.editMode,
+                ghostClass: "workspace-sidebar-item--drag-ghost",
+                chosenClass: "workspace-sidebar-item--drag-chosen",
+                dragClass: "workspace-sidebar-item--dragging",
+                onMove: (event) => this.canDragSidebarItem(event.dragged as HTMLElement | null),
+            });
+        }
+    }
+
+    protected updateSortableDisabledState(): void {
+        this.rowSortable?.option("disabled", !this.editMode);
+        this.gridSortables.forEach((sortable) => sortable.option("disabled", !this.editMode));
+        this.sidebarSortable?.option("disabled", !this.editMode);
+    }
+
+    protected onRowSortEnd(event: SortableEvent): void {
+        if (typeof event.oldIndex !== "number" || typeof event.newIndex !== "number" || event.oldIndex === event.newIndex) {
+            return;
+        }
+
+        this.reindexRows();
+        this.focusRowByIndex(event.newIndex);
+        void this.requestSave();
+    }
+
+    protected onItemSortAdd(event: SortableEvent, rowEl: HTMLElement): void {
+        if (!this.isSidebarList(event.from)) return;
+
+        const placeholder = event.item as HTMLElement | null;
+        const itemId = this.normalizeLayoutItemId(placeholder?.dataset.layoutItemId);
+        const position = typeof event.newIndex === "number" ? event.newIndex : undefined;
+        placeholder?.remove();
+
+        if (!itemId || this.items.some((item) => item.getLayoutItemId() === itemId)) {
+            this.syncAvailableItemsState();
+            return;
+        }
+
+        const rowIndex = this.getRowIndexFromElement(rowEl);
+        void this.renderItem(itemId, rowIndex, position).then(() => {
+            this.reindexRows();
+            this.syncAvailableItemsState();
+            const insertedIndex = this.items.findIndex((item) => item.getLayoutItemId() === itemId);
+            if (insertedIndex >= 0) {
+                this.focusItemByIndex(insertedIndex);
+            }
+            void this.requestSave();
+        });
+    }
+
+    protected onItemSortEnd(event: SortableEvent): void {
+        if (this.isSidebarList(event.from)) return;
+
+        const itemEl = event.item as HTMLElement | null;
+        if (!itemEl?.matches(this.getItemSelector())) return;
+        if (typeof event.oldIndex !== "number" || typeof event.newIndex !== "number") return;
+        if (event.from === event.to && event.oldIndex === event.newIndex) return;
+
+        this.reindexRows();
+        this.syncAvailableItemsState();
+        const movedItem = this.getItemComponent(itemEl);
+        const movedIndex = movedItem ? this.items.indexOf(movedItem) : -1;
+        if (movedIndex >= 0) {
+            this.focusItemByIndex(movedIndex);
+        }
+        void this.requestSave();
+    }
+
+    protected isSidebarList(element: HTMLElement | null | undefined): boolean {
+        return Boolean(element?.matches("[data-layout-available-items-list]"));
+    }
+
+    protected canDragSidebarItem(item: HTMLElement | null): boolean {
+        return Boolean(item && !item.hasAttribute("disabled"));
     }
 
     protected getInsertPosition(rowEl: HTMLElement | null, x: number, y: number): number {
@@ -949,67 +1020,6 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         const hasTitle = Boolean(title);
         display.textContent = hasTitle ? (title ?? "") : " ";
         display.classList.toggle("workspace-row__title--empty", !hasTitle);
-    }
-
-    protected getDraggedSidebarItemId(event: DragEvent): string | null {
-        if (this.draggedSidebarItemId !== null) {
-            return this.draggedSidebarItemId;
-        }
-
-        const rawItemId = event.dataTransfer?.getData("application/x-bloomerp-layout-item")
-            || event.dataTransfer?.getData("text/plain")
-            || "";
-        return this.normalizeLayoutItemId(rawItemId);
-    }
-
-    protected onGridDragOver(event: DragEvent, rowEl: HTMLElement): void {
-        if (!this.editMode) return;
-        event.preventDefault();
-        if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = this.draggedItem ? "move" : "copy";
-        }
-
-        if (!this.draggedItem) return;
-
-        const rowGrid = rowEl.querySelector<HTMLElement>("[data-layout-grid]");
-        if (!rowGrid) return;
-
-        const afterItem = this.getItemAfterElement(rowGrid, event.clientX, event.clientY);
-        if (!afterItem) {
-            rowGrid.appendChild(this.draggedItem);
-        } else {
-            rowGrid.insertBefore(this.draggedItem, afterItem);
-        }
-    }
-
-    protected onGridDrop(event: DragEvent, rowEl: HTMLElement): void {
-        if (!this.editMode) return;
-        event.preventDefault();
-        event.stopPropagation();
-
-        const rowIndex = this.getRowIndexFromElement(rowEl);
-        const rowGrid = rowEl.querySelector<HTMLElement>("[data-layout-grid]");
-        if (!rowGrid) return;
-
-        const sidebarItemId = this.getDraggedSidebarItemId(event);
-        if (sidebarItemId !== null && !this.items.some((item) => item.getLayoutItemId() === sidebarItemId)) {
-            const insertPosition = this.getInsertPosition(rowEl, event.clientX, event.clientY);
-            this.draggedSidebarItemId = null;
-            void this.renderItem(sidebarItemId, rowIndex, insertPosition).then(() => {
-                this.reindexItems();
-                this.syncAvailableItemsState();
-                void this.requestSave();
-            });
-            return;
-        }
-
-        if (this.draggedItem) {
-            this.draggedItem.classList.remove("workspace-tile--dragging");
-            this.draggedItem = null;
-            this.reindexItems();
-            this.syncItemMaxColumns();
-            void this.requestSave();
-        }
     }
 
     protected async insertRenderedItem(targetGrid: HTMLElement, position: number | undefined): Promise<void> {

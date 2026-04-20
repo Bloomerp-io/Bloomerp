@@ -18,6 +18,16 @@
         </label>
 
         <div data-layout-item-controls class="hidden items-center gap-1">
+            {% comment %}# TODO: This is also there in tile.html and should be refactored into a separate template or component{% endcomment %}
+            <button
+                data-layout-item-drag-handle
+                type="button"
+                class="h-6 w-6 cursor-grab rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 active:cursor-grabbing"
+                title="Drag field"
+                aria-label="Drag field"
+            >
+                <i class="fa fa-grip-vertical"></i>
+            </button>
             <input
                 data-layout-colspan-input
                 type="number"
