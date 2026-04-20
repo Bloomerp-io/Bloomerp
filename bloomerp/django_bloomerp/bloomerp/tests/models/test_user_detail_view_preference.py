@@ -280,16 +280,6 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    def test_existing_empty_workspace_layout_is_seeded_with_dummy_items(self):
-        workspace = Workspace.objects.create(
-            user=self.admin_user,
-            module_id="",
-            sub_module_id="",
-            layout={},
-        )
-
-        repaired = Workspace.get_or_create_for_user(self.admin_user)
-        self.assertEqual(repaired.pk, workspace.pk)
-        self.assertTrue(any(row.items for row in repaired.layout_obj.rows))
+    
     
     

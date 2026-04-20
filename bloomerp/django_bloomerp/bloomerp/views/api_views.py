@@ -15,6 +15,7 @@ from bloomerp.services.permission_services import (
     UserPermissionManager,
     create_permission_str,
 )
+from bloomerp.utils.api import apply_queryset_nesting
 
 class BloomerpModelViewSet(viewsets.ModelViewSet):
     # The model will be injected dynamically when the viewset is initialized
@@ -422,14 +423,29 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self._should_use_user_access():
-            return self._get_user_queryset()
+            return apply_queryset_nesting(
+                self._get_user_queryset(),
+                self.model,
+                self.request,
+                self.action,
+            )
 
         if self._should_use_public_access():
-            return self._get_public_queryset()
+            return apply_queryset_nesting(
+                self._get_public_queryset(),
+                self.model,
+                self.request,
+                self.action,
+            )
 
         permission_str = self._get_permission_str()
         manager = self._get_permission_manager()
-        return manager.get_queryset(self.model, permission_str)
+        return apply_queryset_nesting(
+            manager.get_queryset(self.model, permission_str),
+            self.model,
+            self.request,
+            self.action,
+        )
 
     def get_serializer_class(self):
         return self.serializer_class

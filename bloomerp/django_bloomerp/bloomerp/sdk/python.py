@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+from django.apps import apps
+
 from bloomerp.sdk.base import BaseSdkGenerator, SdkModelDefinition
 
 
@@ -380,10 +382,7 @@ bloomerp_auth_strategy_types: tuple[str, ...] = tuple({auth_strategy_types})
 """
 
     def render_model_section(self, model_definition: SdkModelDefinition) -> str:
-        model_fields = [
-            f"    {field.name}: {field.python_type}"
-            for field in model_definition.fields
-        ] or ["    pass"]
+        model_fields = self.render_model_fields(model_definition) or ["    pass"]
         create_fields = [
             f"    {field.name}: {field.python_type}"
             for field in model_definition.fields
@@ -413,6 +412,60 @@ bloomerp_auth_strategy_types: tuple[str, ...] = tuple({auth_strategy_types})
             f'        super().__init__(client, "/api/{model_definition.endpoint_name}/")',
         ]
         return "\n".join(lines)
+
+    def render_model_fields(self, model_definition: SdkModelDefinition) -> list[str]:
+        field_types = {
+            field.name: {
+                "type": field.python_type,
+                "optional": False,
+            }
+            for field in model_definition.fields
+        }
+
+        for relation_name, relation_type in self.get_top_level_nested_types(model_definition).items():
+            if relation_name in field_types:
+                current_type = field_types[relation_name]["type"]
+                field_types[relation_name]["type"] = f"{current_type} | {relation_type}"
+            else:
+                field_types[relation_name] = {
+                    "type": relation_type,
+                    "optional": True,
+                }
+
+        lines: list[str] = []
+        for field_name in sorted(field_types.keys()):
+            lines.append(f"    {field_name}: {field_types[field_name]['type']}")
+        return lines
+
+    def get_top_level_nested_types(self, model_definition: SdkModelDefinition) -> dict[str, str]:
+        model = apps.get_model(model_definition.app_label, model_definition.model_name)
+        nested_types: dict[str, str] = {}
+
+        for nesting_rule in model_definition.public_access.get("nesting", []):
+            path = str(nesting_rule.get("forField", "") or "").strip()
+            if not path or "." in path:
+                continue
+
+            relation = self.resolve_relation(model, path)
+            if relation is None or relation.related_model is None:
+                continue
+
+            related_type = relation.related_model.__name__
+            if getattr(relation, "many_to_one", False) or getattr(relation, "one_to_one", False):
+                nested_types[path] = related_type
+            else:
+                nested_types[path] = f"list[{related_type}]"
+
+        return nested_types
+
+    def resolve_relation(self, model, relation_name: str):
+        for field in model._meta.get_fields():
+            accessor_name = getattr(field, "get_accessor_name", lambda: None)()
+            if field.name == relation_name or accessor_name == relation_name:
+                if not getattr(field, "is_relation", False):
+                    return None
+                return field
+        return None
 
     def render_sdk_class(self, model_definitions: list[SdkModelDefinition]) -> str:
         metadata_lines: list[str] = [

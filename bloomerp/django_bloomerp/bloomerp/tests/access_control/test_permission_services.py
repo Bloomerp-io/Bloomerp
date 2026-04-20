@@ -2,6 +2,7 @@ from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import (
     ApiFilterRule,
+    ApiNesting,
     ApiSettings,
     BloomerpModelConfig,
     PublicAccessRule,
@@ -79,11 +80,18 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         
         # Ensure permissions exist for the dynamically created model
         self._ensure_permissions_for_model(self.CustomerModel)
+        self._ensure_permissions_for_model(self.CountryModel)
+        self._ensure_permissions_for_model(self.PlanetModel)
 
         # Build an API viewset + request factory for API-level tests
         self.ApiViewSet = generate_model_viewset_class(
             model=self.CustomerModel,
             serializer=generate_serializer(self.CustomerModel),
+            base_viewset=BloomerpModelViewSet,
+        )
+        self.CountryApiViewSet = generate_model_viewset_class(
+            model=self.CountryModel,
+            serializer=generate_serializer(self.CountryModel),
             base_viewset=BloomerpModelViewSet,
         )
         self.factory = APIRequestFactory()
@@ -134,6 +142,17 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         )
         return previous
 
+    def _set_model_public_access(self, model, *rules: PublicAccessRule, nesting=None):
+        previous = getattr(model, "bloomerp_config", None)
+        model.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                public_access=list(rules),
+                nesting=list(nesting or []),
+            )
+        )
+        return previous
+
     def _set_model_user_access(self, model, *rules: UserAccessRule):
         previous = getattr(model, "bloomerp_config", None)
         model.bloomerp_config = BloomerpModelConfig(
@@ -153,7 +172,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             return
         model.bloomerp_config = previous
 
-
     def tearDown(self):
         # The dynamic Customer model is created under an app_label that isn't
         # in INSTALLED_APPS, so Django's flush won't clear its table. If it
@@ -164,7 +182,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         finally:
             super().tearDown()
         
-
     def test_admin_has_access_to_field(self):
         """
         This test is there to show that an admin/superuser always has
@@ -178,7 +195,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             for field in self.customer_model_fields:
                 self.assertTrue(manager.has_field_permission(field, f"{perm}_customer"))
 
-        
     def test_normal_user_has_access_to_field(self):
         """
         This test is there to check whether a regular user has access to a
@@ -191,8 +207,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         for perm in self.CustomerModel._meta.default_permissions:
             for field in self.customer_model_fields:
                 self.assertFalse(manager.has_field_permission(self.first_name_field, f"{perm}_customer"))
-    
-    
+        
     def test_normal_user_has_access_to_field_after_assignment(self):
         """
         This test is there to check if a user has access to a
@@ -219,7 +234,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             for field in custom_qs:
                 self.assertFalse(manager.has_field_permission(field, f"{perm}_customer"))
         
-
     def test_normal_user_has_access_to_field_after_group_assignment(self):
         """
         This test checks whether a user has access to 
@@ -253,7 +267,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             for field in custom_qs:
                 self.assertFalse(manager.has_field_permission(field, f"{perm}_customer"))
         
-        
     def test_admin_accessible_fields(self):
         """
         This test checks whether the admin permission manager
@@ -271,7 +284,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         # 3. Check that all fields are returned
         self.assertEqual(accessible_fields.count(), self.customer_model_fields.count())
     
-        
     def test_normal_user_accessible_fields(self):
         """
         This test checks whether the user permission manager
@@ -906,6 +918,294 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             self.assertEqual(response.status_code, 404)
         finally:
             self._restore_public_access(previous)
+
+    def test_api_read_nests_foreign_key_when_declared_and_related_model_is_public(self):
+        """
+        Tests whether the api nests foreign key value when that is specifically set.
+        """
+        target = self.CustomerModel.objects.get(age=0)
+        previous_customer = self._set_public_access(
+            PublicAccessRule(
+                row_actions=["read"],
+                field_actions={
+                    "id": ["read"],
+                    "first_name": ["read"],
+                    "country": ["read"],
+                },
+                filters=[ApiFilterRule(field="age", operator=Lookup.EQUALS.value.id, value=target.age)],
+            )
+        )
+        previous_country = self._set_model_public_access(
+            self.CountryModel,
+            PublicAccessRule(
+                row_actions=["read"],
+                field_actions={
+                    "id": ["read"],
+                    "name": ["read"],
+                },
+            ),
+        )
+        self.CustomerModel.bloomerp_config.api_settings.nesting = [
+            ApiNesting(for_field="country", fields=["name"], on_action=["read"])
+        ]
+
+        try:
+            request = self.factory.get(f"/api/customers/{target.pk}/")
+            view = self.ApiViewSet.as_view({"get": "retrieve"})
+            response = view(request, pk=str(target.pk))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["first_name"], target.first_name)
+            self.assertEqual(
+                response.data["country"],
+                {
+                    self.CountryModel._meta.pk.name: target.country.pk,
+                    "name": target.country.name,
+                },
+            )
+        finally:
+            self._restore_public_access(previous_customer)
+            self._restore_model_config(self.CountryModel, previous_country)
+
+    def test_api_read_nests_foreign_key_as_dict_when_calling_with_admin_user(self):
+        """
+        Tests whether a nested foreign key is serialized as a dictionary for
+        an authenticated admin user.
+        """
+        target = self.CustomerModel.objects.get(age=0)
+        previous_customer = getattr(self.CustomerModel, "bloomerp_config", None)
+        self.CustomerModel.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                nesting=[
+                    ApiNesting(for_field="country", fields=["name"], on_action=["read"])
+                ],
+            )
+        )
+
+        try:
+            request = self.factory.get(f"/api/customers/{target.pk}/")
+            force_authenticate(request, user=self.admin_user)
+
+            view = self.ApiViewSet.as_view({"get": "retrieve"})
+            response = view(request, pk=str(target.pk))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIsInstance(response.data["country"], dict)
+            self.assertEqual(
+                response.data["country"],
+                {
+                    self.CountryModel._meta.pk.name: target.country.pk,
+                    "name": target.country.name,
+                },
+            )
+        finally:
+            self._restore_model_config(self.CustomerModel, previous_customer)
+
+    def test_api_read_omits_nested_reverse_relation_when_parent_field_not_publicly_allowed(self):
+        """
+        This tests whether public access for nesting is ommited when it's not
+        specifically set on the model (check field actions for the customer model)
+
+        """
+        target = self.CountryModel.objects.get(name="Belgium")
+        previous_country = self._set_model_public_access(
+            self.CountryModel,
+            PublicAccessRule(
+                row_actions=["read"],
+                field_actions={
+                    "id": ["read"],
+                    "name": ["read"],
+                },
+                filters=[ApiFilterRule(field="name", operator=Lookup.EQUALS.value.id, value=target.name)],
+            ),
+            nesting=[
+                ApiNesting(for_field="customer_set", fields=["id", "first_name"], on_action=["read"])
+            ],
+        )
+        previous_customer = self._set_model_public_access(
+            self.CustomerModel,
+            PublicAccessRule(
+                row_actions=["read"],
+                field_actions={
+                    "id": ["read"],
+                    "first_name": ["read"],
+                },
+            ),
+        )
+
+        try:
+            request = self.factory.get(f"/api/countries/{target.pk}/")
+            view = self.CountryApiViewSet.as_view({"get": "retrieve"})
+            response = view(request, pk=str(target.pk))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["name"], target.name)
+            self.assertNotIn("customer_set", response.data)
+        finally:
+            self._restore_model_config(self.CountryModel, previous_country)
+            self._restore_model_config(self.CustomerModel, previous_customer)
+
+    def test_api_read_nests_reverse_relation_when_calling_with_admin_user(self):
+        """
+        This tests whether a user with the correct permission can view the nested fields
+        """
+        target = self.CountryModel.objects.get(name="Belgium")
+        previous_country = getattr(self.CountryModel, "bloomerp_config", None)
+        self.CountryModel.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                nesting=[
+                    ApiNesting(
+                        for_field="customer_set",
+                        fields=["id", "first_name"],
+                        on_action=["read"],
+                    )
+                ],
+            )
+        )
+        try:
+            request = self.factory.get(f"/api/countries/{target.pk}/")
+            force_authenticate(request, user=self.admin_user)
+            view = self.CountryApiViewSet.as_view({"get": "retrieve"})
+            response = view(request, pk=str(target.pk))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["name"], target.name)
+            self.assertIsInstance(response.data["customer_set"], list)
+            self.assertGreater(len(response.data["customer_set"]), 0)
+            self.assertTrue(
+                all(isinstance(item, dict) for item in response.data["customer_set"])
+            )
+            self.assertTrue(
+                all(set(item.keys()) == {"id", "first_name"} for item in response.data["customer_set"])
+            )
+        finally:
+            self._restore_model_config(self.CountryModel, previous_country)
+            
+    def test_user_with_partial_permission_can_only_see_specific_nested_fields(self):
+        """Tests whether users with partial permission can only see specific nested
+        fields.
+        """
+        target = self.CountryModel.objects.get(name="Belgium")
+        previous_country = getattr(self.CountryModel, "bloomerp_config", None)
+        self.CountryModel.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                nesting=[
+                    ApiNesting(
+                        for_field="customer_set",
+                        fields=["id", "first_name", "last_name", "age"],
+                        on_action=["read"],
+                    )
+                ],
+            )
+        )
+
+        country_content_type = ContentType.objects.get_for_model(self.CountryModel)
+        customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+
+        customer_set_field, _ = ApplicationField.objects.update_or_create(
+            content_type=country_content_type,
+            field="customer_set",
+            defaults={
+                "field_type": "OneToManyField",
+                "meta": {
+                    "auto_created": True,
+                    "related_model": customer_content_type.pk,
+                },
+                "related_model": customer_content_type,
+                "db_column": None,
+                "db_table": None,
+                "db_field_type": None,
+            },
+        )
+
+        country_fields = {
+            field.field: field for field in ApplicationField.get_for_model(self.CountryModel)
+        }
+        country_fields["customer_set"] = customer_set_field
+
+        country_field_policy = FieldPolicy.objects.create(
+            content_type=country_content_type,
+            name="Country nested field policy",
+            rule={
+                str(country_fields["name"].id): ["view_country"],
+                str(country_fields["customer_set"].id): ["view_country"],
+            },
+        )
+        country_row_policy = RowPolicy.objects.create(
+            content_type=country_content_type,
+            name="Country nested row policy",
+        )
+        country_row_rule = RowPolicyRule.objects.create(
+            row_policy=country_row_policy,
+            rule={
+                "application_field_id": str(country_fields["name"].id),
+                "operator": Lookup.EQUALS.value.id,
+                "value": target.name,
+            },
+        )
+        country_row_rule.add_permission("view_country")
+        country_policy = Policy.objects.create(
+            name="Country nested policy",
+            description="Allows viewing Belgium with nested customers.",
+            row_policy=country_row_policy,
+            field_policy=country_field_policy,
+        )
+
+        customer_fields = {
+            field.field: field for field in ApplicationField.get_for_model(self.CustomerModel)
+        }
+        customer_field_policy = FieldPolicy.objects.create(
+            content_type=customer_content_type,
+            name="Customer nested field policy",
+            rule={
+                str(customer_fields["first_name"].id): ["view_customer"],
+            },
+        )
+        customer_row_policy = RowPolicy.objects.create(
+            content_type=customer_content_type,
+            name="Customer nested row policy",
+        )
+        customer_row_rule = RowPolicyRule.objects.create(
+            row_policy=customer_row_policy,
+            rule={
+                "application_field_id": str(customer_fields["created_by"].id),
+                "operator": Lookup.EQUALS_USER.value.id,
+                "value": "$user",
+            },
+        )
+        customer_row_rule.add_permission("view_customer")
+        customer_policy = Policy.objects.create(
+            name="Customer nested policy",
+            description="Allows viewing owned customer first names only.",
+            row_policy=customer_row_policy,
+            field_policy=customer_field_policy,
+        )
+
+        country_policy.assign_user(self.normal_user)
+        customer_policy.assign_user(self.normal_user)
+
+        try:
+            request = self.factory.get(f"/api/countries/{target.pk}/")
+            force_authenticate(request, user=self.normal_user)
+
+            view = self.CountryApiViewSet.as_view({"get": "retrieve"})
+            response = view(request, pk=str(target.pk))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("customer_set", response.data)
+            self.assertEqual(len(response.data["customer_set"]), 2)
+            self.assertEqual(
+                {item["first_name"] for item in response.data["customer_set"]},
+                {"Jaimy 0", "Jaimy 1"},
+            )
+            self.assertTrue(
+                all(set(item.keys()) == {"first_name"} for item in response.data["customer_set"])
+            )
+        finally:
+            self._restore_model_config(self.CountryModel, previous_country)
 
     def test_api_list_uses_user_access_for_authenticated_users_without_internal_permissions(self):
         """

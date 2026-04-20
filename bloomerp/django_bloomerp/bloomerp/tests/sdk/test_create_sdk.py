@@ -4,17 +4,53 @@ from tempfile import TemporaryDirectory
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
+from bloomerp.models.definition import ApiNesting, ApiSettings, BloomerpModelConfig, PublicAccessRule
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 
 
 class TestCreateSdkCommand(BaseBloomerpModelTestCase):
     create_foreign_models = True
 
+    def _set_nested_sdk_config(self):
+        self.CustomerModel.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                public_access=[
+                    PublicAccessRule(
+                        row_actions=["list", "read"],
+                        field_actions={
+                            "id": ["list", "read"],
+                            "first_name": ["list", "read"],
+                            "country": ["read"],
+                        },
+                    )
+                ],
+                nesting=[
+                    ApiNesting(for_field="country", fields=["name"], on_action=["read"]),
+                ],
+            )
+        )
+        self.CountryModel.bloomerp_config = BloomerpModelConfig(
+            api_settings=ApiSettings(
+                enable_auto_generation=True,
+                public_access=[
+                    PublicAccessRule(
+                        row_actions=["read"],
+                        field_actions={
+                            "id": ["read"],
+                            "name": ["read"],
+                        },
+                    )
+                ],
+            )
+        )
+
     def test_create_sdk_generates_typescript_sdk_files(self):
         """
         The create_sdk management command should generate a typed TypeScript SDK
         with authentication support, model clients, and field metadata.
         """
+        self._set_nested_sdk_config()
         with TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "sdk"
 
@@ -45,6 +81,9 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("export class CustomerApi", index_contents)
             self.assertIn("customersFields", index_contents)
             self.assertIn("customersPublicAccess", index_contents)
+            self.assertIn("nesting: BloomerpModelNestingMetadata[]", index_contents)
+            self.assertIn('country: number | null | Country;', index_contents)
+            self.assertIn('"forField": "country"', index_contents)
             self.assertIn("bloomerpAuthStrategyTypes", index_contents)
             self.assertIn('"/api/customers/"', index_contents)
             self.assertIn("login(payload: BloomerpAuthLoginPayload", index_contents)
@@ -92,6 +131,7 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
         The create_sdk management command should generate a Python SDK with
         typed dictionaries, auth support, and model clients.
         """
+        self._set_nested_sdk_config()
         with TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "sdk"
 
@@ -118,6 +158,8 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("class ModelApi(Generic[TModel, TId, TCreate, TUpdate]):", sdk_contents)
             self.assertIn("def retrieve(self, object_id: TId, options: BloomerpRequestOptions | None = None) -> TModel:", sdk_contents)
             self.assertIn("def list_results(", sdk_contents)
+            self.assertIn("country: int | None | Country", sdk_contents)
+            self.assertIn("'forField': 'country'", sdk_contents)
             self.assertIn("customers_fields: dict[str, BloomerpFieldMetadata]", sdk_contents)
             self.assertIn("customers_public_access: dict[str, Any]", sdk_contents)
             self.assertIn('super().__init__(client, "/api/customers/")', sdk_contents)

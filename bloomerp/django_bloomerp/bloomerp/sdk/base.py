@@ -35,6 +35,8 @@ class SdkModelDefinition:
     class_name: str
     variable_name: str
     endpoint_name: str
+    app_label: str
+    model_name: str
     pk_type: str
     python_pk_type: str
     fields: list[SdkFieldDefinition]
@@ -123,6 +125,8 @@ class BaseSdkGenerator(ABC):
             class_name=model.__name__,
             variable_name=self.to_camel_case(model_name_plural_underline(model)),
             endpoint_name=model_name_plural_underline(model),
+            app_label=model._meta.app_label,
+            model_name=model._meta.model_name,
             pk_type=self.get_ts_type_for_field(model._meta.pk),
             python_pk_type=self.get_python_type_for_field(model._meta.pk),
             fields=self.get_field_definitions(model),
@@ -288,10 +292,28 @@ class BaseSdkGenerator(ABC):
             "readAllowed": bool(config and config.get_public_access_rules("read")),
             "listFields": list_fields,
             "readFields": read_fields,
+            "nesting": self.get_nesting_metadata(config),
             "authenticatedFallbackEnabled": bool(
                 getattr(getattr(config, "api_settings", None), "public_access_for_authenticated_fallback", True)
             ),
         }
+
+    def get_nesting_metadata(self, config: BloomerpModelConfig | None) -> list[dict]:
+        if config is None:
+            return []
+
+        rules = getattr(getattr(config, "api_settings", None), "nesting", [])
+        metadata: list[dict] = []
+        for rule in rules:
+            metadata.append(
+                {
+                    "forField": getattr(rule, "for_field", ""),
+                    "fields": list(getattr(rule, "fields", [])),
+                    "onAction": list(getattr(rule, "on_action", [])),
+                    "autoPk": bool(getattr(rule, "auto_pk", True)),
+                }
+            )
+        return metadata
 
     def get_public_accessible_fields(
         self, config: BloomerpModelConfig | None, action: str

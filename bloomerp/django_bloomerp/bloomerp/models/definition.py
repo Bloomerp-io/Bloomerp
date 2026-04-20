@@ -159,6 +159,29 @@ class UserAccessRule(BaseModel):
     filters:list[ApiFilterRule] = Field(default_factory=list)
 
 
+class ApiNesting(BaseModel):
+    for_field: str
+    fields: list[str | Literal["__all__"]] = Field(default_factory=lambda: ["__all__"])
+    on_action: list[Literal["list", "read"]] = Field(
+        default_factory=lambda: ["list", "read"]
+    )
+    auto_pk: bool = True
+
+    def get_accessible_fields(self, action: str) -> set[str] | None:
+        normalized_action = str(action or "").strip().lower()
+        if normalized_action not in self.on_action:
+            return set()
+
+        if "__all__" in self.fields:
+            return None
+
+        return {
+            field_name
+            for field_name in self.fields
+            if field_name != "__all__"
+        }
+
+
 class ApiSettings(BaseModel):
     """
     Configures how Bloomerp API's are set up.
@@ -173,6 +196,7 @@ class ApiSettings(BaseModel):
     enable_auto_generation: bool = False
     public_access: list[PublicAccessRule] = Field(default_factory=list)
     user_access:list[UserAccessRule] = Field(default_factory=list)
+    nesting: list[ApiNesting] = Field(default_factory=list)
     public_access_for_authenticated_fallback: bool = True
 
     def get_public_access_rules(self, action: str) -> list[PublicAccessRule]:
@@ -196,6 +220,14 @@ class ApiSettings(BaseModel):
 
     def has_user_access(self) -> bool:
         return len(self.user_access) > 0
+
+    def get_nesting_rules(self, action: str) -> list[ApiNesting]:
+        normalized_action = str(action or "").strip().lower()
+        return [
+            rule
+            for rule in self.nesting
+            if normalized_action in rule.on_action
+        ]
 
 
 class BloomerpModelConfig(BaseModel):
@@ -246,6 +278,11 @@ class BloomerpModelConfig(BaseModel):
         if self.api_settings is None:
             return False
         return self.api_settings.has_user_access()
+
+    def get_nesting_rules(self, action: str):
+        if self.api_settings is None:
+            return []
+        return self.api_settings.get_nesting_rules(action)
 
     def should_enable_api_auto_generation(self) -> bool:
         bloomerp_config : BloomerpConfig = getattr(settings, "BLOOMERP_CONFIG")
