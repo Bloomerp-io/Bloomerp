@@ -217,11 +217,14 @@ class Lookup(Enum):
     
 @dataclass
 class FieldOption:
-    id:str
-    label:str
-    primitive_input_type:Literal['text', 'number', 'bool', 'list']
-    description:Optional[str] = None
+    id: str
+    label: str
+    primitive_input_type: Literal['text', 'number', 'bool', 'list', 'model', 'choices', 'callable']
+    description: Optional[str] = None
     required: bool = False
+    default_value: Any = None
+    choices: list[str] | None = None  # valid values when primitive_input_type='choices'
+    mutually_exclusive_with: list[str] = dataclass_field(default_factory=list)
 
 NULL_FIELD_OPTION = FieldOption(
     "null",
@@ -300,14 +303,16 @@ AUTO_NOW_FIELD_OPTION = FieldOption(
     "auto_now",
     "Auto Update On Save",
     "bool",
-    "Automatically update this field to the current date/time on each save."
+    "Automatically update this field to the current date/time on each save.",
+    mutually_exclusive_with=["auto_now_add"],
 )
 
 AUTO_NOW_ADD_FIELD_OPTION = FieldOption(
     "auto_now_add",
     "Auto Set On Create",
     "bool",
-    "Automatically set this field to the current date/time when the object is created."
+    "Automatically set this field to the current date/time when the object is created.",
+    mutually_exclusive_with=["auto_now"],
 )
 
 RELATED_NAME_FIELD_OPTION = FieldOption(
@@ -317,7 +322,33 @@ RELATED_NAME_FIELD_OPTION = FieldOption(
     "Optional related_name used on the reverse side of relationships."
 )
 
+VERBOSE_NAME_FIELD_OPTION = FieldOption(
+    "verbose_name",
+    "Label",
+    "text",
+    "Human-readable name shown as the field label in forms and admin."
+)
+
+TO_FIELD_OPTION = FieldOption(
+    "to",
+    "Related Model",
+    "model",
+    "The model this field points to.",
+    required=True,
+)
+
+ON_DELETE_FIELD_OPTION = FieldOption(
+    "on_delete",
+    "On Delete Behaviour",
+    "choices",
+    "What happens to this object when the related object is deleted.",
+    required=True,
+    default_value="CASCADE",
+    choices=["CASCADE", "PROTECT", "SET_NULL", "SET_DEFAULT", "DO_NOTHING"],
+)
+
 COMMON_FIELD_OPTIONS = [
+    VERBOSE_NAME_FIELD_OPTION,
     NULL_FIELD_OPTION,
     BLANK_FIELD_OPTION,
     UNIQUE_FIELD_OPTION,
@@ -332,8 +363,11 @@ COMMON_TEXT_FIELD_OPTIONS = [
 ]
 
 COMMON_RELATION_FIELD_OPTIONS = [
+    TO_FIELD_OPTION,
+    VERBOSE_NAME_FIELD_OPTION,
     NULL_FIELD_OPTION,
     BLANK_FIELD_OPTION,
+    DB_INDEX_FIELD_OPTION,
     RELATED_NAME_FIELD_OPTION,
     HELP_TEXT_FIELD_OPTION,
 ]
@@ -755,7 +789,10 @@ class FieldType(Enum):
         default_model_field_args={
             "on_delete": models.CASCADE,
         },
-        field_options=COMMON_RELATION_FIELD_OPTIONS,
+        field_options=[
+            *COMMON_RELATION_FIELD_OPTIONS,
+            ON_DELETE_FIELD_OPTION,
+        ],
     )
     
     ONE_TO_ONE_FIELD = FieldTypeDefinition(
@@ -773,6 +810,7 @@ class FieldType(Enum):
         },
         field_options=[
             *COMMON_RELATION_FIELD_OPTIONS,
+            ON_DELETE_FIELD_OPTION,
             UNIQUE_FIELD_OPTION,
         ],
     )
@@ -792,6 +830,8 @@ class FieldType(Enum):
             "is_m2m": True
         },
         field_options=[
+            TO_FIELD_OPTION,
+            VERBOSE_NAME_FIELD_OPTION,
             BLANK_FIELD_OPTION,
             RELATED_NAME_FIELD_OPTION,
             HELP_TEXT_FIELD_OPTION,
@@ -819,7 +859,10 @@ class FieldType(Enum):
             Lookup.EQUALS_USER,
             Lookup.FOREIGN_EQUALS
         ],
-        field_options=COMMON_RELATION_FIELD_OPTIONS,
+        field_options=[
+            *COMMON_RELATION_FIELD_OPTIONS,
+            ON_DELETE_FIELD_OPTION,
+        ],
     )
     
     # Other Fields
