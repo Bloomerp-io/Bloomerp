@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field as dataclass_field
-from typing import Optional, Callable, Any, Type
+from typing import Literal, Optional, Callable, Any, Type
+from unittest.util import _MAX_LENGTH
 from django.db import models
 from enum import Enum
 from django.forms import Widget
@@ -214,6 +215,128 @@ class Lookup(Enum):
         render_func=render_advanced_lookup
     )
     
+@dataclass
+class FieldOption:
+    id:str
+    label:str
+    primitive_input_type:Literal['text', 'number', 'bool', 'list']
+    description:Optional[str] = None
+    required: bool = False
+
+NULL_FIELD_OPTION = FieldOption(
+    "null",
+    "Nullable",
+    "bool",
+    "Whether this field can be set to null"
+)
+
+BLANK_FIELD_OPTION = FieldOption(
+    "blank",
+    "Allow Empty Input",
+    "bool",
+    "Whether this field can be left empty in forms."
+)
+
+UNIQUE_FIELD_OPTION = FieldOption(
+    "unique",
+    "Unique",
+    "bool",
+    "Whether values for this field must be unique."
+)
+
+DB_INDEX_FIELD_OPTION = FieldOption(
+    "db_index",
+    "Indexed",
+    "bool",
+    "Whether to create a database index for this field."
+)
+
+DEFAULT_FIELD_OPTION = FieldOption(
+    "default",
+    "Default Value",
+    "text",
+    "Default value used when no value is provided."
+)
+
+HELP_TEXT_FIELD_OPTION = FieldOption(
+    "help_text",
+    "Help Text",
+    "text",
+    "Optional helper text shown to end users on forms."
+)
+
+MAX_LENGTH_FIELD_OPTION = FieldOption(
+    "max_length",
+    "Maximum Length",
+    "number",
+    "Maximum number of characters allowed.",
+    required=True,
+)
+
+MAX_DIGITS_FIELD_OPTION = FieldOption(
+    "max_digits",
+    "Max Digits",
+    "number",
+    "Maximum number of digits stored by this decimal field.",
+    required=True,
+)
+
+DECIMAL_PLACES_FIELD_OPTION = FieldOption(
+    "decimal_places",
+    "Decimal Places",
+    "number",
+    "Number of decimal places stored by this decimal field.",
+    required=True,
+)
+
+UPLOAD_TO_FIELD_OPTION = FieldOption(
+    "upload_to",
+    "Upload Folder",
+    "text",
+    "Storage path prefix used when uploading files."
+)
+
+AUTO_NOW_FIELD_OPTION = FieldOption(
+    "auto_now",
+    "Auto Update On Save",
+    "bool",
+    "Automatically update this field to the current date/time on each save."
+)
+
+AUTO_NOW_ADD_FIELD_OPTION = FieldOption(
+    "auto_now_add",
+    "Auto Set On Create",
+    "bool",
+    "Automatically set this field to the current date/time when the object is created."
+)
+
+RELATED_NAME_FIELD_OPTION = FieldOption(
+    "related_name",
+    "Reverse Relation Name",
+    "text",
+    "Optional related_name used on the reverse side of relationships."
+)
+
+COMMON_FIELD_OPTIONS = [
+    NULL_FIELD_OPTION,
+    BLANK_FIELD_OPTION,
+    UNIQUE_FIELD_OPTION,
+    DB_INDEX_FIELD_OPTION,
+    DEFAULT_FIELD_OPTION,
+    HELP_TEXT_FIELD_OPTION,
+]
+
+COMMON_TEXT_FIELD_OPTIONS = [
+    *COMMON_FIELD_OPTIONS,
+    MAX_LENGTH_FIELD_OPTION,
+]
+
+COMMON_RELATION_FIELD_OPTIONS = [
+    NULL_FIELD_OPTION,
+    BLANK_FIELD_OPTION,
+    RELATED_NAME_FIELD_OPTION,
+    HELP_TEXT_FIELD_OPTION,
+]
 
 @dataclass(frozen=True)
 class FieldTypeDefinition:
@@ -236,10 +359,12 @@ class FieldTypeDefinition:
     default_widget_args: dict = dataclass_field(default_factory=dict)
     widget_init_kwargs: dict = dataclass_field(default_factory=dict)
     
-    
     lookups: list[Lookup] = dataclass_field(default_factory=list)
     allow_in_model: bool = True
     
+    # Field options
+    field_options: list[FieldOption] = dataclass_field(default_factory=list)
+
     def get_widget_cls(self) -> Type[Widget]:
         """Returns the widget_cls for the field type."""
         if self.widget_cls:
@@ -355,6 +480,7 @@ class FieldType(Enum):
             "max_length": 100,
         },
         lookups=TEXT_LOOKUPS,
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     CHOICE_FIELD = FieldTypeDefinition(
@@ -367,6 +493,7 @@ class FieldType(Enum):
         default_model_field_args={
             "max_length": 50,
         },
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     TEXT_FIELD = FieldTypeDefinition(
@@ -375,7 +502,8 @@ class FieldType(Enum):
         icon="fa-solid fa-paragraph",
         model_field_cls=models.TextField,
         lookups=TEXT_LOOKUPS,
-        widget_cls=forms.Textarea
+        widget_cls=forms.Textarea,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     EMAIL_FIELD = FieldTypeDefinition(
@@ -387,6 +515,7 @@ class FieldType(Enum):
         default_model_field_args={
             "max_length": 254,
         },
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     URL_FIELD = FieldTypeDefinition(
@@ -398,6 +527,7 @@ class FieldType(Enum):
         default_model_field_args={
             "max_length": 200,
         },
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     SLUG_FIELD = FieldTypeDefinition(
@@ -409,6 +539,7 @@ class FieldType(Enum):
         default_model_field_args={
             "max_length": 50,
         },
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     # Numeric Fields
@@ -417,7 +548,8 @@ class FieldType(Enum):
         display_name="Integer Field",
         icon="fa-solid fa-hashtag",
         model_field_cls=models.IntegerField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     FLOAT_FIELD = FieldTypeDefinition(
@@ -425,7 +557,8 @@ class FieldType(Enum):
         display_name="Float Field",
         icon="fa-solid fa-calculator",
         model_field_cls=models.FloatField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     DECIMAL_FIELD = FieldTypeDefinition(
@@ -438,6 +571,11 @@ class FieldType(Enum):
             "max_digits": 10,
             "decimal_places": 2,
         },
+        field_options=[
+            *COMMON_FIELD_OPTIONS,
+            MAX_DIGITS_FIELD_OPTION,
+            DECIMAL_PLACES_FIELD_OPTION,
+        ],
     )
     
     POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
@@ -445,7 +583,8 @@ class FieldType(Enum):
         display_name="Positive Integer Field",
         icon="fa-solid fa-plus",
         model_field_cls=models.PositiveIntegerField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     POSITIVE_SMALL_INTEGER_FIELD = FieldTypeDefinition(
@@ -453,7 +592,8 @@ class FieldType(Enum):
         display_name="Positive Small Integer Field",
         icon="fa-solid fa-plus",
         model_field_cls=models.PositiveSmallIntegerField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     BIG_INTEGER_FIELD = FieldTypeDefinition(
@@ -461,7 +601,8 @@ class FieldType(Enum):
         display_name="Big Integer Field",
         icon="fa-solid fa-hashtag",
         model_field_cls=models.BigIntegerField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     SMALL_INTEGER_FIELD = FieldTypeDefinition(
@@ -469,7 +610,8 @@ class FieldType(Enum):
         display_name="Small Integer Field",
         icon="fa-solid fa-hashtag",
         model_field_cls=models.SmallIntegerField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     # Boolean Fields
@@ -482,6 +624,12 @@ class FieldType(Enum):
         default_model_field_args={
             "default": False,
         },
+        field_options=[
+            NULL_FIELD_OPTION,
+            BLANK_FIELD_OPTION,
+            DEFAULT_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+        ],
     )
     
     NULL_BOOLEAN_FIELD = FieldTypeDefinition(
@@ -494,6 +642,12 @@ class FieldType(Enum):
             "null": True,
             "blank": True,
         },
+        field_options=[
+            NULL_FIELD_OPTION,
+            BLANK_FIELD_OPTION,
+            DEFAULT_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+        ],
     )
     
     # Date/Time Fields  
@@ -506,7 +660,12 @@ class FieldType(Enum):
         widget_cls=forms.widgets.DateInput,
         default_widget_args={
             "type" : "date"
-        }
+        },
+        field_options=[
+            *COMMON_FIELD_OPTIONS,
+            AUTO_NOW_FIELD_OPTION,
+            AUTO_NOW_ADD_FIELD_OPTION,
+        ],
     )
     
     DATE_TIME_FIELD = FieldTypeDefinition(
@@ -518,7 +677,12 @@ class FieldType(Enum):
         widget_cls=forms.widgets.DateTimeInput,
         default_widget_args={
             "type": "datetime-local"
-        }
+        },
+        field_options=[
+            *COMMON_FIELD_OPTIONS,
+            AUTO_NOW_FIELD_OPTION,
+            AUTO_NOW_ADD_FIELD_OPTION,
+        ],
     )
     
     TIME_FIELD = FieldTypeDefinition(
@@ -527,7 +691,8 @@ class FieldType(Enum):
         icon="fa-solid fa-clock",
         model_field_cls=models.TimeField,
         lookups=DATE_LOOKUPS,
-        widget_cls=forms.widgets.TimeInput
+        widget_cls=forms.widgets.TimeInput,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     DURATION_FIELD = FieldTypeDefinition(
@@ -535,7 +700,8 @@ class FieldType(Enum):
         display_name="Duration Field",
         icon="fa-solid fa-hourglass-half",
         model_field_cls=models.DurationField,
-        lookups=NUMERIC_LOOKUPS
+        lookups=NUMERIC_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     FILE_FIELD = FieldTypeDefinition(
@@ -546,6 +712,12 @@ class FieldType(Enum):
         default_model_field_args={
             "upload_to": "uploads/",
         },
+        field_options=[
+            NULL_FIELD_OPTION,
+            BLANK_FIELD_OPTION,
+            UPLOAD_TO_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+        ],
     )
     
     IMAGE_FIELD = FieldTypeDefinition(
@@ -556,6 +728,12 @@ class FieldType(Enum):
         default_model_field_args={
             "upload_to": "images/",
         },
+        field_options=[
+            NULL_FIELD_OPTION,
+            BLANK_FIELD_OPTION,
+            UPLOAD_TO_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+        ],
     )
     
     FOREIGN_KEY = FieldTypeDefinition(
@@ -577,6 +755,7 @@ class FieldType(Enum):
         default_model_field_args={
             "on_delete": models.CASCADE,
         },
+        field_options=COMMON_RELATION_FIELD_OPTIONS,
     )
     
     ONE_TO_ONE_FIELD = FieldTypeDefinition(
@@ -592,6 +771,10 @@ class FieldType(Enum):
         default_model_field_args={
             "on_delete": models.CASCADE,
         },
+        field_options=[
+            *COMMON_RELATION_FIELD_OPTIONS,
+            UNIQUE_FIELD_OPTION,
+        ],
     )
     
     MANY_TO_MANY_FIELD = FieldTypeDefinition(
@@ -607,7 +790,12 @@ class FieldType(Enum):
         widget_cls=ForeignFieldWidget,
         default_widget_args={
             "is_m2m": True
-        }
+        },
+        field_options=[
+            BLANK_FIELD_OPTION,
+            RELATED_NAME_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+        ],
     )
     
     ONE_TO_MANY_FIELD = FieldTypeDefinition(
@@ -631,6 +819,7 @@ class FieldType(Enum):
             Lookup.EQUALS_USER,
             Lookup.FOREIGN_EQUALS
         ],
+        field_options=COMMON_RELATION_FIELD_OPTIONS,
     )
     
     # Other Fields
@@ -639,7 +828,8 @@ class FieldType(Enum):
         display_name="UUID Field",
         icon="fa-solid fa-fingerprint",
         model_field_cls=models.UUIDField,
-        lookups=[Lookup.EQUALS, Lookup.IN, Lookup.IS_NULL]
+        lookups=[Lookup.EQUALS, Lookup.IN, Lookup.IS_NULL],
+        field_options=COMMON_FIELD_OPTIONS,
     )
     
     BINARY_FIELD = FieldTypeDefinition(
@@ -654,7 +844,8 @@ class FieldType(Enum):
         display_name="IP Address Field",
         icon="fa-solid fa-network-wired",
         model_field_cls=models.GenericIPAddressField,
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     GENERIC_IP_ADDRESS_FIELD = FieldTypeDefinition(
@@ -662,7 +853,8 @@ class FieldType(Enum):
         display_name="Generic IP Address Field",
         icon="fa-solid fa-network-wired",
         model_field_cls=models.GenericIPAddressField,
-        lookups=TEXT_LOOKUPS
+        lookups=TEXT_LOOKUPS,
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     JSON_FIELD = FieldTypeDefinition(
@@ -677,6 +869,12 @@ class FieldType(Enum):
         widget_init_kwargs={
             "language": "json",
         },
+        field_options=[
+            NULL_FIELD_OPTION,
+            BLANK_FIELD_OPTION,
+            DEFAULT_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+        ],
     )
     
     ARRAY_FIELD = FieldTypeDefinition(
@@ -731,6 +929,7 @@ class FieldType(Enum):
         form_field_cls=IconFormField,
         widget_cls=IconPickerWidget,
         lookups=TEXT_LOOKUPS,
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
     
     BLOOMERP_FILE_FIELD = FieldTypeDefinition(
@@ -764,6 +963,11 @@ class FieldType(Enum):
     def lookups(self) -> list[Lookup]:
         """Returns the list of supported lookups for this field type."""
         return self.value.lookups
+
+    @property
+    def field_options(self) -> list[FieldOption]:
+        """Returns the end-user configurable options for this field type."""
+        return self.value.field_options
     
     @property
     def filter_config(self) -> dict:
