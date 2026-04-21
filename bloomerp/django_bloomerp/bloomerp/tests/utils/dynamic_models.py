@@ -2,13 +2,14 @@ from django.apps import apps
 from django.db import connection, models
 
 from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.definition import BloomerpModelConfig
 
 
 def create_test_models(
     app_label: str, 
     model_defs: dict, 
     use_bloomerp_base: bool = False,
-    bloomerp_meta_class: type = None
+    bloomerp_config: BloomerpModelConfig | None = None,
     ) -> dict[str, models.Model | BloomerpModel]:
     """
     model_defs = {
@@ -33,9 +34,8 @@ def create_test_models(
         Meta = type("Meta", (), {"app_label": app_label})
         attrs["Meta"] = Meta
 
-        # Add Bloomerp class if specified
-        if bloomerp_meta_class:
-            attrs["Bloomerp"] = bloomerp_meta_class
+        if bloomerp_config:
+            attrs["bloomerp_config"] = bloomerp_config
         
         base = BloomerpModel if use_bloomerp_base else models.Model
 

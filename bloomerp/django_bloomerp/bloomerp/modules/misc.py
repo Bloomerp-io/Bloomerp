@@ -1,9 +1,9 @@
-from .definition import ModuleConfig
+from .definition import BloomerpModule
 
-class MiscModule(ModuleConfig):
-    id: str = "misc"
-    code: str = "misc"
-    icon: str = "fa-solid fa-ellipsis-h"
-    name: str = "Miscellaneous"
-    description: str = "A collection of miscellaneous features and tools that don't fit into other specific modules."
+class MiscModule(BloomerpModule):
+    id = "misc"
+    code = "misc"
+    icon = "fa-solid fa-ellipsis-h"
+    name = "Miscellaneous"
+    description = "A collection of miscellaneous features and tools that don't fit into other specific modules."
     

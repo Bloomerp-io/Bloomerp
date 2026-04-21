@@ -32,54 +32,50 @@ class Command(BaseCommand):
 
     def _validate_modules_directory(self, modules_dir: Path) -> list[ValidationIssue]:
         issues: list[ValidationIssue] = []
-        for module_dir in sorted(modules_dir.iterdir()):
-            if not module_dir.is_dir():
-                continue
-            module_id = module_dir.name
-            module_config_path = module_dir / "config.yaml"
-            if not module_config_path.exists():
-                issues.append(ValidationIssue(module_id, "Missing module config.yaml"))
-                continue
-
-            module_data = self._load_yaml(module_config_path, module_id, issues)
-            if not isinstance(module_data, dict):
-                continue
-
-            self._require_keys(module_data, ["id", "name", "code", "icon"], module_id, issues, "module config")
-            module_id = module_data.get("id", module_id)
-
-            for item in sorted(module_dir.iterdir()):
-                if not item.is_dir():
-                    continue
-                submodule_config_path = item / "config.yaml"
-                if not submodule_config_path.exists():
-                    issues.append(
-                        ValidationIssue(module_id, f"Submodule '{item.name}' missing config.yaml")
-                    )
-                    continue
-
-                submodule_data = self._load_yaml(submodule_config_path, module_id, issues)
-                if not isinstance(submodule_data, dict):
-                    continue
-
-                self._require_keys(
-                    submodule_data, ["id", "name", "code"], module_id, issues, f"submodule '{item.name}'"
-                )
-                submodule_id = submodule_data.get("id", item.name)
-
-                for model_file in sorted(item.iterdir()):
-                    if not (model_file.is_file() and model_file.suffix == ".yaml"):
-                        continue
-                    if model_file.name == "config.yaml":
-                        continue
-                    self._validate_model_file(module_id, submodule_id, model_file, issues)
-
+        for module_dir in sorted(item for item in modules_dir.iterdir() if item.is_dir()):
+            self._validate_module_tree(module_dir, None, issues)
         return issues
+
+    def _validate_module_tree(
+        self,
+        module_dir: Path,
+        parent_module_id: str | None,
+        issues: list[ValidationIssue],
+    ) -> None:
+        config_path = module_dir / "config.yaml"
+        module_id = module_dir.name
+
+        if not config_path.exists():
+            issues.append(ValidationIssue(module_id, f"Module '{module_dir.name}' missing config.yaml"))
+            return
+
+        module_data = self._load_yaml(config_path, module_id, issues)
+        if not isinstance(module_data, dict):
+            return
+
+        self._require_keys(module_data, ["id", "name", "code"], module_id, issues, "module config")
+        module_id = module_data.get("id", module_id)
+
+        declared_parent = module_data.get("parent_module_id")
+        if parent_module_id and declared_parent and declared_parent != parent_module_id:
+            issues.append(
+                ValidationIssue(
+                    module_id,
+                    f"module config parent_module_id '{declared_parent}' does not match directory parent '{parent_module_id}'",
+                )
+            )
+
+        for model_file in sorted(module_dir.glob("*.yaml")):
+            if model_file.name == "config.yaml":
+                continue
+            self._validate_model_file(module_id, model_file, issues)
+
+        for child_dir in sorted(item for item in module_dir.iterdir() if item.is_dir()):
+            self._validate_module_tree(child_dir, module_id, issues)
 
     def _validate_model_file(
         self,
         module_id: str,
-        submodule_id: str,
         model_file: Path,
         issues: list[ValidationIssue],
     ) -> None:
@@ -87,12 +83,7 @@ class Command(BaseCommand):
         if model_data is None:
             return
         if not isinstance(model_data, dict):
-            issues.append(
-                ValidationIssue(
-                    module_id,
-                    f"Model '{submodule_id}/{model_file.name}' is not a mapping",
-                )
-            )
+            issues.append(ValidationIssue(module_id, f"Model '{model_file.name}' is not a mapping"))
             return
 
         self._require_keys(
@@ -100,36 +91,24 @@ class Command(BaseCommand):
             ["id", "name", "fields"],
             module_id,
             issues,
-            f"model '{submodule_id}/{model_file.stem}'",
+            f"model '{model_file.stem}'",
         )
         fields = model_data.get("fields")
         if not isinstance(fields, list):
-            issues.append(
-                ValidationIssue(
-                    module_id,
-                    f"Model '{submodule_id}/{model_file.stem}' fields must be a list",
-                )
-            )
+            issues.append(ValidationIssue(module_id, f"Model '{model_file.stem}' fields must be a list"))
             return
 
         for index, field in enumerate(fields):
-            field_context = f"model '{submodule_id}/{model_file.stem}' field #{index + 1}"
+            field_context = f"model '{model_file.stem}' field #{index + 1}"
             if not isinstance(field, dict):
-                issues.append(
-                    ValidationIssue(
-                        module_id,
-                        f"{field_context} is not a mapping",
-                    )
-                )
+                issues.append(ValidationIssue(module_id, f"{field_context} is not a mapping"))
                 continue
             self._require_keys(field, ["id", "name", "type"], module_id, issues, field_context)
             field_type = field.get("type")
             if isinstance(field_type, str):
                 self._validate_field_type(field_type, module_id, issues, field_context)
             else:
-                issues.append(
-                    ValidationIssue(module_id, f"{field_context} type must be a string")
-                )
+                issues.append(ValidationIssue(module_id, f"{field_context} type must be a string"))
             self._validate_validator_paths(field, module_id, issues, field_context)
 
     def _validate_field_type(
@@ -146,12 +125,7 @@ class Command(BaseCommand):
             return
 
         if not field_definition.allow_in_model:
-            issues.append(
-                ValidationIssue(
-                    module_id,
-                    f"{context} type '{field_type}' is not allowed in models",
-                )
-            )
+            issues.append(ValidationIssue(module_id, f"{context} type '{field_type}' is not allowed in models"))
 
     def _validate_validator_paths(
         self,
@@ -172,38 +146,18 @@ class Command(BaseCommand):
                 issues.append(ValidationIssue(module_id, f"{context} validator must be a string"))
                 continue
             if "." not in validator_path:
-                issues.append(
-                    ValidationIssue(
-                        module_id,
-                        f"{context} validator '{validator_path}' must be a dotted path",
-                    )
-                )
+                issues.append(ValidationIssue(module_id, f"{context} validator '{validator_path}' must be a dotted path"))
                 continue
             module_path, function_name = validator_path.rsplit(".", 1)
             try:
                 validator_module = importlib.import_module(module_path)
             except ImportError as exc:
-                issues.append(
-                    ValidationIssue(
-                        module_id,
-                        f"{context} validator '{validator_path}' import failed: {exc}",
-                    )
-                )
+                issues.append(ValidationIssue(module_id, f"{context} validator '{validator_path}' import failed: {exc}"))
                 continue
             if not hasattr(validator_module, function_name):
-                issues.append(
-                    ValidationIssue(
-                        module_id,
-                        f"{context} validator '{validator_path}' not found",
-                    )
-                )
+                issues.append(ValidationIssue(module_id, f"{context} validator '{validator_path}' not found"))
 
-    def _load_yaml(
-        self,
-        path: Path,
-        module_id: str,
-        issues: list[ValidationIssue],
-    ) -> Any:
+    def _load_yaml(self, path: Path, module_id: str, issues: list[ValidationIssue]) -> Any:
         try:
             with path.open("r") as file:
                 data = yaml.safe_load(file)

@@ -16,6 +16,7 @@ from bloomerp.models.workspaces.sidebar_item import Sidebar
 
 
 USER_CONFIG = BloomerpModelConfig(
+    module="users",
     layout=FieldLayout()
 )
 
@@ -32,9 +33,6 @@ class AbstractBloomerpUser(
     string_search_fields = ['first_name+last_name', 'username']
     allow_string_search = True
 
-    class Bloomerp:
-        modules = ["users"]
-    
     # ------------------------------------------------
     # User Preferences
     # ------------------------------------------------
@@ -125,6 +123,8 @@ class AbstractBloomerpUser(
         )
     
 class User(AbstractBloomerpUser):
+    bloomerp_config = USER_CONFIG
+
     class Meta(BloomerpModel.Meta):
         db_table = "auth_user"
         swappable = "AUTH_USER_MODEL"

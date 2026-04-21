@@ -22,9 +22,6 @@ class MyWorkspacesView(BaseWorkspaceView, LoginRequiredMixin, HtmxMixin, Templat
     def get_module_id(self) -> str | None:
         return None
 
-    def get_sub_module_id(self) -> str | None:
-        return None
-
     def get_workspace(self) -> Workspace | None:
         return None
 

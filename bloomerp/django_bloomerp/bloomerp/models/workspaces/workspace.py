@@ -11,7 +11,7 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
         db_table = 'bloomerp_workspace'
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "module_id", "sub_module_id"],
+                fields=["user", "module_id"],
                 condition=models.Q(is_default=True),
                 name="unique_default_workspace_per_user_module_context",
             ),
@@ -24,10 +24,6 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE
-        )
-    sub_module_id = models.CharField(
-        max_length=255, 
-        default=""
         )
     module_id = models.CharField(
         max_length=255, 
@@ -47,22 +43,20 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
         return self.name
 
     @classmethod
-    def get_default_for_user(cls, user, module_id: str = "", sub_module_id: str = ""):
+    def get_default_for_user(cls, user, module_id: str = ""):
         return cls.objects.filter(
             user=user,
             module_id=module_id,
-            sub_module_id=sub_module_id,
             is_default=True,
         ).order_by("pk").first()
 
     @classmethod
-    def get_or_create_for_user(cls, user, module_id: str = "", sub_module_id: str = ""):
+    def get_or_create_for_user(cls, user, module_id: str = ""):
         from bloomerp.services.sectioned_layout_services import get_default_workspace_layout, layout_has_items
 
         workspace = cls.get_default_for_user(
             user=user,
             module_id=module_id,
-            sub_module_id=sub_module_id,
         )
         if workspace:
             if not layout_has_items(workspace.layout):
@@ -73,7 +67,6 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
             name=str(_("Default")),
             user=user,
             module_id=module_id,
-            sub_module_id=sub_module_id,
             layout=get_default_workspace_layout().model_dump(),
             is_default=True,
         )

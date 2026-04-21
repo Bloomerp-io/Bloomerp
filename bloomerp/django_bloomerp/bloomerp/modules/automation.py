@@ -1,11 +1,10 @@
-from .definition import ModuleConfig
+from .definition import BloomerpModule
 
-class AutomationModule(ModuleConfig):
-    id: str = "automation"
-    code: str = "automation"
-    icon: str = "fa-solid fa-robot"
-    name: str = "Automation"
-    description: str = "With automation, streamline and optimize your business processes by creating automated workflows."
+class AutomationModule(BloomerpModule):
+    id = "automation"
+    code = "automation"
+    icon = "fa-solid fa-robot"
+    name = "Automation"
+    description = "With automation, streamline and optimize your business processes by creating automated workflows."
 
   
-

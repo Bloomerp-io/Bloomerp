@@ -8,6 +8,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import ValidationError
 
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
+from bloomerp.models.definition import BloomerpModelConfig
 
 class TodoPriority(models.TextChoices):
     URGENT = ('urgent', 'Urgent')
@@ -38,12 +39,9 @@ class Todo(BloomerpModel):
     """
     The todo model is for Bloomerp's internal project management module.
     """
-    class Meta(BloomerpModel.Meta):
-        managed = True
-        db_table = 'bloomerp_todo'
-
-    class Bloomerp:
-        field_layout = FieldLayout(
+    bloomerp_config = BloomerpModelConfig(
+        module="misc",
+        layout=FieldLayout(
             rows=[
                 LayoutRow(
                     title="Details",
@@ -55,8 +53,8 @@ class Todo(BloomerpModel):
                         LayoutItem(id="priority", colspan=1),
                         LayoutItem(id="assigned_to", colspan=1),
                         LayoutItem(id="assigned_to", colspan=1),
-                        LayoutItem(id="content", colspan=4)
-                    ]
+                        LayoutItem(id="content", colspan=4),
+                    ],
                 ),
                 LayoutRow(
                     title="Users",
@@ -64,10 +62,15 @@ class Todo(BloomerpModel):
                     items=[
                         LayoutItem(id="requested_by"),
                         LayoutItem(id="requested_by"),
-                    ]
-                )
+                    ],
+                ),
             ]
-        )
+        ),
+    )
+
+    class Meta(BloomerpModel.Meta):
+        managed = True
+        db_table = 'bloomerp_todo'
 
     avatar = None
     allow_string_search = False # Do not allow string search for todos (we dont want to-do's to be searchable in the search bar)

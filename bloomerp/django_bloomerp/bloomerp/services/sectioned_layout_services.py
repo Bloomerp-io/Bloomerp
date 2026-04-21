@@ -105,9 +105,9 @@ def layout_has_items(layout: FieldLayout | dict[str, Any] | None) -> bool:
 
 
 def get_model_field_layout(model: Type[Model]) -> FieldLayout | None:
-    bloomerp_config = getattr(model, "Bloomerp", None)
+    bloomerp_config = getattr(model, "bloomerp_config", None)
     if bloomerp_config is not None:
-        bloomerp_layout = getattr(bloomerp_config, "field_layout", None)
+        bloomerp_layout = getattr(bloomerp_config, "layout", None)
         if bloomerp_layout:
             return normalize_layout_payload(bloomerp_layout)
 

@@ -1,9 +1,9 @@
-from .definition import ModuleConfig
+from .definition import BloomerpModule
 
-class UsersModule(ModuleConfig):
-    id: str = "users"
-    code: str = "users"
-    icon: str = "fa-solid fa-users"
-    name: str = "Users"
-    description: str = "Manage users, roles, and permissions within the ERP system."
+class UsersModule(BloomerpModule):
+    id = "users"
+    code = "users"
+    icon = "fa-solid fa-users"
+    name = "Users"
+    description = "Manage users, roles, and permissions within the ERP system."
     

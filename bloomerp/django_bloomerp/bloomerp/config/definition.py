@@ -74,10 +74,10 @@ class BloomerpConfig(BaseModel):
     """
 
     auto_generate_api_endpoints : bool = True
+    require_staff_for_access: bool = True
 
     vite_dev_server_url : Optional[str] = 'http://localhost:5173'
 
     auth: BloomerpAuthSettings = Field(default_factory=BloomerpAuthSettings)
     
-
 

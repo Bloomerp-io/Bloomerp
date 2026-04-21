@@ -1,8 +1,9 @@
-from typing import Literal, Optional
+import inspect
+from typing import Any, Literal, Optional
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.models.base_bloomerp_model import FieldLayout
 from bloomerp.field_types import Lookup
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from django.conf import settings
 
 class ApiFilterRule(BaseModel):
@@ -235,7 +236,7 @@ class BloomerpModelConfig(BaseModel):
     Used to define certain bloomerp related meta data on a model. 
 
     Settings are:
-        - modules: a list of modules to which this model belongs.
+        - module: the canonical module to which this model belongs.
         - layout: a layout object defining how the default CRUD layout for users is.
 
     Usage
@@ -249,7 +250,7 @@ class BloomerpModelConfig(BaseModel):
     ``` 
     """
 
-    modules: Optional[list[str]] = None
+    module: str | type | None = None
 
     layout: Optional[FieldLayout] = None
 
@@ -258,6 +259,34 @@ class BloomerpModelConfig(BaseModel):
     is_internal: bool = False
 
     api_settings: Optional[ApiSettings] = None
+
+    @field_validator("module", mode="before")
+    @classmethod
+    def normalize_module(cls, value: Any) -> str | None:
+        if value in (None, ""):
+            return None
+
+        if isinstance(value, str):
+            return value
+
+        try:
+            from bloomerp.modules.definition import BloomerpModule, ModuleConfig
+        except Exception:
+            return value
+
+        if isinstance(value, ModuleConfig):
+            return value.full_id or value.id
+
+        if inspect.isclass(value):
+            if issubclass(value, ModuleConfig):
+                module = value()
+                return module.full_id or module.id
+
+            if issubclass(value, BloomerpModule):
+                module = value.to_config()
+                return module.full_id or module.id
+
+        return value
 
     def get_public_access_rules(self, action: str) -> list[PublicAccessRule]:
         if self.api_settings is None:

@@ -48,9 +48,6 @@ class BloomerpModuleHomeView(BaseWorkspaceView, HtmxMixin, LoginRequiredMixin, T
     def get_module_id(self) -> str | None:
         return self.module.id if self.module else None
 
-    def get_sub_module_id(self) -> str | None:
-        return None
-
     def get_workspace(self) -> Workspace | None:
         module_id = self.get_module_id() or ""
         workspace = Workspace.get_default_for_user(self.request.user, module_id=module_id)

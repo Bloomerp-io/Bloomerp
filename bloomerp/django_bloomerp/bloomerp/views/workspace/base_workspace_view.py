@@ -18,10 +18,6 @@ class BaseWorkspaceView:
         pass
 
     @abstractmethod
-    def get_sub_module_id(self) -> Optional[str]:
-        pass
-
-    @abstractmethod
     def get_workspace(self) -> Optional[Workspace]:
         pass
 
@@ -35,21 +31,16 @@ class BaseWorkspaceView:
 
     def get_workspace_badges(self, workspace: Workspace) -> list[dict[str, str]]:
         module = module_registry.get_all().get(workspace.module_id) if workspace.module_id else None
-        submodule = None
-        if module and workspace.sub_module_id:
-            submodule = next(
-                (item for item in module.sub_modules if item.id == workspace.sub_module_id),
-                None,
-            )
+        lineage = module_registry.get_lineage(workspace.module_id) if module else []
 
         badges: list[dict[str, str]] = []
-        if module:
-            badges.append({"label": module.name, "tone": "module"})
+        if lineage:
+            badges.append({"label": lineage[0].name, "tone": "module"})
         else:
             badges.append({"label": "General", "tone": "general"})
 
-        if submodule:
-            badges.append({"label": submodule.name, "tone": "submodule"})
+        for nested_module in lineage[1:]:
+            badges.append({"label": nested_module.name, "tone": "nested"})
 
         if workspace.user_id != self.request.user.id:
             badges.append({"label": "Shared", "tone": "shared"})
@@ -68,12 +59,9 @@ class BaseWorkspaceView:
         params = []
 
         module_id = self.get_module_id()
-        sub_module_id = self.get_sub_module_id()
 
         if module_id:
             params.append(f"module_id={module_id}")
-        if sub_module_id:
-            params.append(f"sub_module_id={sub_module_id}")
 
         if params:
             return f"{url}?{'&'.join(params)}"
@@ -89,7 +77,6 @@ class BaseWorkspaceView:
             "create_url": self.get_create_url(),
             "my_workspaces_url": reverse("my_workspaces"),
             "module_id": self.get_module_id(),
-            "sub_module_id": self.get_sub_module_id(),
         }
 
         if workspace:

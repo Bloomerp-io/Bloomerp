@@ -164,11 +164,11 @@ def _collect_object_results(
             truncated = True
             matching_objects = matching_objects[:remaining_slots]
 
-        modules = module_registry.get_modules_for_model(model)
+        module = module_registry.get_module_for_model(model)
         results.append(
             {
                 "model_label": model._meta.verbose_name_plural.title(),
-                "module_labels": [module.name for module in modules] if modules else [],
+                "module_labels": [item.name for item in module_registry.get_lineage(module.full_id or module.id)] if module else [],
                 "objects": matching_objects,
             }
         )
@@ -388,7 +388,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                         context["slash_error"] = "Module not found."
                     else:
                         context["search_scope"] = {"module": module.name}
-                        models = module_registry.get_models_for_module(module.id)
+                        models = module_registry.get_models_for_module(module.id, include_descendants=True)
                         context["object_results"], truncated = _collect_object_results(
                             request,
                             permission_manager,
@@ -416,7 +416,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                             models = [
                                 model
                                 for model in models
-                                if model in module_registry.get_models_for_module(module.id)
+                                if model in module_registry.get_models_for_module(module.id, include_descendants=True)
                             ]
                             context["search_scope"] = {
                                 "module": module.name,

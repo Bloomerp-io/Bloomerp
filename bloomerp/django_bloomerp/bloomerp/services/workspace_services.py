@@ -51,13 +51,12 @@ def set_default_workspace(workspace: Workspace, user: User) -> Workspace:
         raise PermissionError("Only the workspace owner can set a default workspace.")
 
     if not workspace.module_id:
-        raise ValueError("Only module or submodule workspaces can be set as default.")
+        raise ValueError("Only module workspaces can be set as default.")
 
     with transaction.atomic():
         Workspace.objects.filter(
             user=user,
             module_id=workspace.module_id,
-            sub_module_id=workspace.sub_module_id,
             is_default=True,
         ).exclude(pk=workspace.pk).update(is_default=False)
 
@@ -73,34 +72,50 @@ def ensure_default_workspace_tiles_for_module(user, module_id: str) -> None:
     if not module:
         return
 
-    if module.sub_modules and len(module.sub_modules) > 1:
-        for sub_module in module.sub_modules:
-            links = []
-            models = module_registry.get_models_for_submodule(module_id, sub_module.id)
-
-            for model in models:
-                url = reverse(get_list_view_url(model))
-                name = model._meta.verbose_name_plural
-                links.append(
-                    Link(
-                        url=url,
-                        name=name,
-                        is_internal=True
-                    )
-                )
-            
+    child_modules = module_registry.get_children(module.full_id or module.id)
+    if child_modules:
+        for child_module in child_modules:
+            links = [
+                Link(url=f"/{child_module.route_path}/", name=child_module.name, is_internal=True)
+            ]
             config = LinkTileConfig(links=links).model_dump()
-            description = f"Links to the different models of the '{sub_module.name}' module."
+            description = f"Navigate to the '{child_module.name}' module."
 
             Tile.objects.get_or_create(
                 created_by=user,
                 updated_by=user,
-                name=sub_module.name,
+                name=child_module.name,
                 type=TileType.LINKS_TILE.name,
                 description=description,
                 schema=config,
-                auto_generated=True
+                auto_generated=True,
             )
+        return
+
+    links = []
+    for model in module_registry.get_models_for_module(module_id):
+        links.append(
+            Link(
+                url=reverse(get_list_view_url(model)),
+                name=model._meta.verbose_name_plural,
+                is_internal=True,
+            )
+        )
+
+    if not links:
+        return
+
+    config = LinkTileConfig(links=links).model_dump()
+    description = f"Links to the different models of the '{module.name}' module."
+    Tile.objects.get_or_create(
+        created_by=user,
+        updated_by=user,
+        name=module.name,
+        type=TileType.LINKS_TILE.name,
+        description=description,
+        schema=config,
+        auto_generated=True,
+    )
 
 
 def create_default_sidebar(

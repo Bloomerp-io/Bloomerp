@@ -1,7 +1,9 @@
 from django.test import TransactionTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
 from django.db import models
-from bloomerp.modules.definition import module_registry
+from bloomerp.modules.definition import BloomerpModule, module_registry
+from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.modules.users import UsersModule
 
 class TestModules(TransactionTestCase):
     @classmethod
@@ -17,13 +19,9 @@ class TestModules(TransactionTestCase):
                 }
             },
             use_bloomerp_base=True,
-            bloomerp_meta_class=None, # Should be added to 'misc' modules
+            bloomerp_config=None, # Should be added to 'misc' module
         )["Customer"]
-        
-        # Create meta class
-        class OrderBloomerpMeta:
-            modules = ["data"]
-        
+
         cls.OrderModel = create_test_models(
             app_label="bloomerp",
             model_defs={
@@ -37,7 +35,7 @@ class TestModules(TransactionTestCase):
                 }
             },
             use_bloomerp_base=True,
-            bloomerp_meta_class=OrderBloomerpMeta # Should be added to 'data' module
+            bloomerp_config=BloomerpModelConfig(module="data"), # Should be added to 'data' module
         )["Order"]
         
         module_registry.refresh()
@@ -64,13 +62,33 @@ class TestModules(TransactionTestCase):
     
     def test_get_module_for_model(self):
         """Tests whether get_module_for_model returns the correct module for a given model."""
-        customer_module = module_registry.get_modules_for_model(self.CustomerModel)[0]
-        order_module = module_registry.get_modules_for_model(self.OrderModel)[0]
+        customer_module = module_registry.get_module_for_model(self.CustomerModel)
+        order_module = module_registry.get_module_for_model(self.OrderModel)
         
         # Check if CustomerModel is in misc module
         self.assertIsNotNone(customer_module)
-        self.assertEqual(customer_module.name, "misc")
+        self.assertEqual(customer_module.id, "misc")
         
         # Check if OrderModel is in data module
         self.assertIsNotNone(order_module)
-        self.assertEqual(order_module.name, "data")
+        self.assertEqual(order_module.id, "data")
+
+    def test_module_subclass_allows_plain_class_attributes(self):
+        """Module subclasses should not need repeated type annotations."""
+
+        class PlainModule(BloomerpModule):
+            id = "plain"
+            name = "Plain"
+            code = "plain"
+
+        module = PlainModule.to_config()
+
+        self.assertEqual(module.id, "plain")
+        self.assertEqual(module.name, "Plain")
+        self.assertEqual(module.code, "plain")
+
+    def test_bloomerp_model_config_accepts_module_class(self):
+        """Model config can reference a module authoring class directly."""
+        config = BloomerpModelConfig(module=UsersModule)
+
+        self.assertEqual(config.module, "users")

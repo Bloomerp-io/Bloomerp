@@ -19,8 +19,9 @@ from typing import Any
 from django.views.generic.edit import ModelFormMixin
 from bloomerp.models import BloomerpModel
 from bloomerp.forms.model_form import bloomerp_modelform_factory
-from bloomerp.router import router
 from bloomerp.router import RouteType
+from bloomerp.router import router
+from bloomerp.modules.definition import module_registry
 
 
 class HtmxMixin:
@@ -103,22 +104,27 @@ class HtmxMixin:
         module = getattr(route, "module", None)
         model = getattr(route, "model", None)
         route_name = route.name or "Route"
-        module_url = f"/{module.id.lower()}/" if module else None
+        module_key = (module.full_id or module.id) if module else None
+        module_lineage = module_registry.get_lineage(module_key) if module_key else []
+        module_url = f"/{module.route_path}/" if module and module.route_path else None
 
         if route_type == RouteType.APP.value:
             items.append({"text": route_name, "url": self.request.path, "active": True})
             return items
 
-        if module:
-            is_module_home = bool(route.path and route.path == module_url)
-            items.append(
-                {
-                    "text": module.name,
-                    "url": module_url,
-                    "active": is_module_home,
-                }
-            )
-            if is_module_home:
+        if module_lineage:
+            for index, lineage_module in enumerate(module_lineage):
+                lineage_url = f"/{lineage_module.route_path}/" if lineage_module.route_path else self.request.path
+                is_active = bool(route.path and route.path == lineage_url and index == len(module_lineage) - 1)
+                items.append(
+                    {
+                        "text": lineage_module.name,
+                        "url": lineage_url,
+                        "active": is_active,
+                    }
+                )
+            if route_type == RouteType.MODULE.value:
+                items[-1]["active"] = True
                 return items
 
         if route_type == RouteType.MODULE.value:
@@ -126,9 +132,9 @@ class HtmxMixin:
             return items
 
         if model:
-            model_text = model._meta.verbose_name.title()
+            model_text = (model._meta.verbose_name_plural or model._meta.verbose_name).title()
             try:
-                model_url = get_list_view_url(model)
+                model_url = reverse(get_list_view_url(model))
             except Exception:
                 model_url = self.request.path
             items.append({"text": model_text, "url": model_url, "active": False})

@@ -34,8 +34,9 @@ def ensure_folder_hierarchy_for_object(
     if model is None:
         return None
 
-    modules = module_registry.get_modules_for_model(model)
-    module_name = modules[0].name if modules else content_type.app_label
+    module = module_registry.get_module_for_model(model)
+    root_module = module_registry.get_root(module.full_id or module.id) if module else None
+    module_name = root_module.name if root_module else content_type.app_label
     model_name = model._meta.verbose_name_plural
     object_name = str(linked_object)
 
