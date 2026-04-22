@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from enum import Enum
 from optparse import Option
 from sre_constants import LITERAL
+from django.conf import settings
+from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
 from django.views import View
 from typing import Union
 import logging
@@ -13,8 +16,31 @@ from functools import wraps
 from typing import Callable, List, Literal
 
 from regex import B
+from bloomerp.config.definition import BloomerpConfig
 from bloomerp.modules.definition import ModuleConfig, module_registry
 logger = logging.getLogger(__name__)
+
+
+def get_bloomerp_config() -> BloomerpConfig:
+    config = getattr(settings, "BLOOMERP_CONFIG", None)
+    if isinstance(config, BloomerpConfig):
+        return config
+    return BloomerpConfig()
+
+
+def require_bloomerp_staff_access(view_func: Callable) -> Callable:
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        user = getattr(request, "user", None)
+
+        if user is not None and getattr(user, "is_authenticated", False):
+            if getattr(user, "is_active", True) and getattr(user, "is_staff", False):
+                return view_func(request, *args, **kwargs)
+            raise PermissionDenied
+
+        return redirect_to_login(request.get_full_path(), settings.LOGIN_URL)
+
+    return _wrapped_view
 
 def _generate_description(
     name: Optional[str] = None,
@@ -160,6 +186,7 @@ class BloomerpRoute:
     description: str = None
     override: bool = False
     args : Optional[dict] = None
+    require_staff_for_access: Optional[bool] = None
 
     
     def nr_of_args(self) -> int:
@@ -220,22 +247,24 @@ def _generate_path(path: str, route_type: RouteType, model: Optional[Model] = No
         return path if path else "/app-route/"
 
     elif route_type == RouteType.MODULE:
-        module_path = f"/{module.id.lower()}/"
+        module_path = f"/{(module.route_path or module.id.lower()).strip('/')}/"
         return module_path + path.lstrip('/') if path else module_path
     
     elif route_type == RouteType.MODEL:
         # Get model plural name and convert to URL-friendly format
         model_plural = model._meta.verbose_name_plural.lower().replace(' ', '-')
+        module_path = (module.route_path or module.id.lower()).strip("/")
         if path:
-            return f"/{module.id.lower()}/{model_plural}{path}"
-        return f"/{module.id.lower()}/{model_plural}/"
+            return f"/{module_path}/{model_plural}{path}"
+        return f"/{module_path}/{model_plural}/"
 
     elif route_type == RouteType.DETAIL:
         # Get model plural name and convert to URL-friendly format
         model_name = model._meta.verbose_name_plural.lower().replace(' ', '-')
+        module_path = (module.route_path or module.id.lower()).strip("/")
         if path:
-            return f"/{module.id.lower()}/{model_name}/<int_or_uuid:pk>{path}"
-        return f"/{module.id.lower()}/{model_name}/<int_or_uuid:pk>/"
+            return f"/{module_path}/{model_name}/<int_or_uuid:pk>{path}"
+        return f"/{module_path}/{model_name}/<int_or_uuid:pk>/"
     else:
         return path if path else "/auto-route/"
 
@@ -374,6 +403,7 @@ class BloomerpRouteRegistry:
         description: Optional[str] = None,
         url_name: Optional[str] = None,
         override: bool = False,
+        require_staff_for_access: Optional[bool] = None,
     ):
         """
         Decorator for registering routes with the registry.
@@ -448,7 +478,8 @@ class BloomerpRouteRegistry:
                             view_type=view_type,
                             module=None,
                             description=_generate_description(actual_description, None, registered_view, None),
-                            override=override
+                            override=override,
+                            require_staff_for_access=require_staff_for_access,
                         )
                     )
 
@@ -486,7 +517,8 @@ class BloomerpRouteRegistry:
                                 view_type=view_type,
                                 module=module,
                                 description=_generate_description(actual_description, None, registered_view, module),
-                                override=override
+                                override=override,
+                                require_staff_for_access=require_staff_for_access,
                             )
                         )
 
@@ -499,6 +531,7 @@ class BloomerpRouteRegistry:
                         'description': _description,
                         'url_name': _url_name,
                         'override': override,
+                        'require_staff_for_access': require_staff_for_access,
                         'view': view,
                         'view_type': view_type,
                         'registered_view': registered_view,
@@ -507,9 +540,10 @@ class BloomerpRouteRegistry:
                     for model in _retrieve_models(models, exclude_models, _route_type):
                         actual_path = _auto_path()
 
-                        modules_list = module_registry.get_modules_for_model(model) if model else []
-
-                        for module in modules_list:
+                        module = module_registry.get_module_for_model(model) if model else None
+                        if not module:
+                            continue
+                        for module in [module]:
                             actual_name = _generate_name(_name, model, registered_view, module)
                             actual_description = _auto_description(actual_name)
                             actual_url_name = _url_name if _url_name else actual_name
@@ -523,7 +557,8 @@ class BloomerpRouteRegistry:
                                 view=registered_view,
                                 view_type=view_type,
                                 description=_generate_description(actual_description, model, registered_view, module),
-                                override=override
+                                override=override,
+                                require_staff_for_access=require_staff_for_access,
                             )
 
                             self.routes.append(route)
@@ -547,8 +582,10 @@ class BloomerpRouteRegistry:
         existing_url_names = {r.url_name for r in self.routes}
 
         for template in self._model_route_templates:
-            modules_list = module_registry.get_modules_for_model(model)
-            for module in modules_list:
+            module = module_registry.get_module_for_model(model)
+            if not module:
+                continue
+            for module in [module]:
                 actual_path = template['path']
                 actual_name = _generate_name(template['name'], model, template['view'], module)
 
@@ -579,6 +616,7 @@ class BloomerpRouteRegistry:
                     view_type=template['view_type'],
                     description=_generate_description(actual_description, model, template['view'], module),
                     override=template['override'],
+                    require_staff_for_access=template['require_staff_for_access'],
                 )
                 self.routes.append(route)
                 existing_url_names.add(url_name)
@@ -615,35 +653,60 @@ class BloomerpRouteRegistry:
         """
         self._auto_import_views()  # Ensure views are imported before creating patterns
 
-        from django.urls import path as django_path
-
         patterns = []
         for route in self.routes:
-            args = route.args if route.args else {}
-            if route.model:
-                args["model"] = route.model
-            
-            if route.module:
-                args["module"] = route.module
-
-            if route.view_type == ViewType.CLASS:
-                # For class-based views, use as_view()
-                pattern = django_path(
-                    route.path.lstrip('/'),
-                    route.view.as_view(**args),
-                    name=route.url_name
-                )
-            else:
-                # For function-based views, use the view directly
-                pattern = django_path(
-                    route.path.lstrip('/'),
-                    route.view,
-                    name=route.url_name,
-                    kwargs=args
-                )
-            patterns.append(pattern)
+            patterns.append(self.build_url_pattern(route))
 
         return patterns
+
+    def _get_route_kwargs(self, route: BloomerpRoute) -> dict:
+        args = dict(route.args) if route.args else {}
+        if route.model:
+            args["model"] = route.model
+        if route.module:
+            args["module"] = route.module
+        return args
+
+    def _route_requires_staff_access(self, route: BloomerpRoute) -> bool:
+        if route.require_staff_for_access is not None:
+            return route.require_staff_for_access
+
+        view_requirement = getattr(route.view, "require_staff_for_access", None)
+        if view_requirement is not None:
+            return bool(view_requirement)
+
+        return get_bloomerp_config().require_staff_for_access
+
+    def _build_view_callable(self, route: BloomerpRoute, args: dict) -> Callable:
+        if route.view_type == ViewType.CLASS:
+            view_callable = route.view.as_view(**args)
+        else:
+            view_callable = route.view
+
+        if self._route_requires_staff_access(route):
+            return require_bloomerp_staff_access(view_callable)
+
+        return view_callable
+
+    def build_url_pattern(self, route: BloomerpRoute):
+        from django.urls import path as django_path
+
+        args = self._get_route_kwargs(route)
+        view_callable = self._build_view_callable(route, args)
+
+        if route.view_type == ViewType.CLASS:
+            return django_path(
+                route.path.lstrip('/'),
+                view_callable,
+                name=route.url_name,
+            )
+
+        return django_path(
+            route.path.lstrip('/'),
+            view_callable,
+            name=route.url_name,
+            kwargs=args,
+        )
 
     def clear_routes(self):
         """Clear all registered routes."""
