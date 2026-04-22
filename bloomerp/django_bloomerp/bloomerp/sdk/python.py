@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 import json
 
 from django.apps import apps
