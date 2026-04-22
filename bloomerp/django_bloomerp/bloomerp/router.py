@@ -2,9 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 from optparse import Option
 from sre_constants import LITERAL
-from django.conf import settings
-from django.contrib.auth.views import redirect_to_login
-from django.core.exceptions import PermissionDenied
 from django.views import View
 from typing import Union
 import logging
@@ -16,31 +13,8 @@ from functools import wraps
 from typing import Callable, List, Literal
 
 from regex import B
-from bloomerp.config.definition import BloomerpConfig
 from bloomerp.modules.definition import ModuleConfig, module_registry
 logger = logging.getLogger(__name__)
-
-
-def get_bloomerp_config() -> BloomerpConfig:
-    config = getattr(settings, "BLOOMERP_CONFIG", None)
-    if isinstance(config, BloomerpConfig):
-        return config
-    return BloomerpConfig()
-
-
-def require_bloomerp_staff_access(view_func: Callable) -> Callable:
-    @wraps(view_func)
-    def _wrapped_view(request, *args, **kwargs):
-        user = getattr(request, "user", None)
-
-        if user is not None and getattr(user, "is_authenticated", False):
-            if getattr(user, "is_active", True) and getattr(user, "is_staff", False):
-                return view_func(request, *args, **kwargs)
-            raise PermissionDenied
-
-        return redirect_to_login(request.get_full_path(), settings.LOGIN_URL)
-
-    return _wrapped_view
 
 def _generate_description(
     name: Optional[str] = None,
@@ -186,7 +160,6 @@ class BloomerpRoute:
     description: str = None
     override: bool = False
     args : Optional[dict] = None
-    require_staff_for_access: Optional[bool] = None
 
     
     def nr_of_args(self) -> int:
@@ -403,7 +376,6 @@ class BloomerpRouteRegistry:
         description: Optional[str] = None,
         url_name: Optional[str] = None,
         override: bool = False,
-        require_staff_for_access: Optional[bool] = None,
     ):
         """
         Decorator for registering routes with the registry.
@@ -479,7 +451,6 @@ class BloomerpRouteRegistry:
                             module=None,
                             description=_generate_description(actual_description, None, registered_view, None),
                             override=override,
-                            require_staff_for_access=require_staff_for_access,
                         )
                     )
 
@@ -518,7 +489,6 @@ class BloomerpRouteRegistry:
                                 module=module,
                                 description=_generate_description(actual_description, None, registered_view, module),
                                 override=override,
-                                require_staff_for_access=require_staff_for_access,
                             )
                         )
 
@@ -531,7 +501,6 @@ class BloomerpRouteRegistry:
                         'description': _description,
                         'url_name': _url_name,
                         'override': override,
-                        'require_staff_for_access': require_staff_for_access,
                         'view': view,
                         'view_type': view_type,
                         'registered_view': registered_view,
@@ -558,7 +527,6 @@ class BloomerpRouteRegistry:
                                 view_type=view_type,
                                 description=_generate_description(actual_description, model, registered_view, module),
                                 override=override,
-                                require_staff_for_access=require_staff_for_access,
                             )
 
                             self.routes.append(route)
@@ -616,7 +584,6 @@ class BloomerpRouteRegistry:
                     view_type=template['view_type'],
                     description=_generate_description(actual_description, model, template['view'], module),
                     override=template['override'],
-                    require_staff_for_access=template['require_staff_for_access'],
                 )
                 self.routes.append(route)
                 existing_url_names.add(url_name)
@@ -667,24 +634,11 @@ class BloomerpRouteRegistry:
             args["module"] = route.module
         return args
 
-    def _route_requires_staff_access(self, route: BloomerpRoute) -> bool:
-        if route.require_staff_for_access is not None:
-            return route.require_staff_for_access
-
-        view_requirement = getattr(route.view, "require_staff_for_access", None)
-        if view_requirement is not None:
-            return bool(view_requirement)
-
-        return get_bloomerp_config().require_staff_for_access
-
     def _build_view_callable(self, route: BloomerpRoute, args: dict) -> Callable:
         if route.view_type == ViewType.CLASS:
             view_callable = route.view.as_view(**args)
         else:
             view_callable = route.view
-
-        if self._route_requires_staff_access(route):
-            return require_bloomerp_staff_access(view_callable)
 
         return view_callable
 
