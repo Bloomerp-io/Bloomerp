@@ -1,6 +1,6 @@
 from bloomerp.router import router
 from bloomerp.models.users.user import User
-from bloomerp.views.mixins import BloomerpModelContextMixin, BloomerpModelFormViewMixin, HtmxMixin
+from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 
 
 from django.contrib import messages
@@ -12,6 +12,8 @@ from django.views.generic.edit import UpdateView
 
 from typing import Any
 
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
+from bloomerp.views.mixins.model_form_view_mixin import BloomerpModelFormViewMixin
 from bloomerp.views.user.base import ProfileMixin
 
 

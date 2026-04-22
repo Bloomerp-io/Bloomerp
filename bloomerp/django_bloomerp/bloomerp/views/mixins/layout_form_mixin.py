@@ -1,19 +1,15 @@
-from __future__ import annotations
-
-from abc import ABC, abstractmethod
-from typing import Any
-
-from django.contrib.contenttypes.models import ContentType
-
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
 from bloomerp.models.base_bloomerp_model import FieldLayout
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
-from bloomerp.services.sectioned_layout_services import (
-    build_crud_layout_field_context,
-    clamp_layout_colspan,
-    get_object_field_value,
-)
+from bloomerp.services.sectioned_layout_services import build_crud_layout_field_context, clamp_layout_colspan, get_object_field_value
+
+
+from django.contrib.contenttypes.models import ContentType
+
+
+from abc import ABC, abstractmethod
+from typing import Any
 
 
 class BloomerpLayoutFormMixin(ABC):

@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.files import File
-from bloomerp.views.mixins import HtmxMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.router import router
 
 

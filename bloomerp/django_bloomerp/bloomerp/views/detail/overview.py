@@ -14,7 +14,7 @@ from bloomerp.services.detail_view_services import get_default_layout
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
-from bloomerp.views.view_mixins.form import BloomerpLayoutFormMixin
+from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
 
 
 @router.register(

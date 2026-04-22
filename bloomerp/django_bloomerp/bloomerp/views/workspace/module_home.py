@@ -6,8 +6,6 @@ from bloomerp.router import router
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.services.workspace_services import create_default_workspace
 from bloomerp.views.workspace.base_workspace_view import BaseWorkspaceView
-from bloomerp.views.mixins import HtmxMixin
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
 
@@ -18,7 +16,7 @@ from django.views.generic import TemplateView
     route_type='module',
     modules="__all__"
 )
-class BloomerpModuleHomeView(BaseWorkspaceView, HtmxMixin, LoginRequiredMixin, TemplateView):
+class BloomerpModuleHomeView(BaseWorkspaceView, TemplateView):
     template_name = 'workspace_views/bloomerp_workspace_view.html'
 
     def get_visible_workspaces(self):

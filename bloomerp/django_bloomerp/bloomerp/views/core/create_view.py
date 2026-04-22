@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 
+from anyio import Condition
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
@@ -21,8 +22,10 @@ from bloomerp.services.create_view_services import (
 )
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_detail_view_url
-from bloomerp.views.mixins import BloomerpModelFormViewMixin, HtmxMixin
-from bloomerp.views.view_mixins.form import BloomerpLayoutFormMixin
+from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
+from bloomerp.views.mixins.model_form_view_mixin import BloomerpModelFormViewMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
+from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
 
 
 User = get_user_model()
@@ -37,6 +40,7 @@ User = get_user_model()
     exclude_models=[File, Tile, SqlQuery, User, Workspace],
 )
 class BloomerpCreateView(
+    ConditionalStaffRequiredMixin,
     PermissionRequiredMixin,
     SuccessMessageMixin,
     HtmxMixin,

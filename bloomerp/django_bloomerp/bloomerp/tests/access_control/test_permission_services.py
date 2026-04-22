@@ -10,7 +10,7 @@ from bloomerp.models.definition import (
 )
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.utils.api import generate_model_viewset_class, generate_serializer
-from bloomerp.views.api_views import BloomerpModelViewSet
+from bloomerp.views.api.api_views import BloomerpModelViewSet
 from bloomerp.models.users import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Group, Permission

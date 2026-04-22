@@ -1,7 +1,16 @@
 {% extends "bloomerp_base.html" %}
 
-{% block main %}
+{% block body %}
+<body class="bg-base min-h-screen" id="bloomerpBody" x-data>
+    <main class="flex min-h-screen items-center justify-center px-6 py-10">
+        <div class="w-full max-w-3xl">
+            {% include 'snippets/403.html' %}
+        </div>
+    </main>
 
-{% include 'snippets/403.html' %}
+    {% include 'snippets/vite_bundle.html' %}
 
-{% endblock main %}
+    {% block scripts %}
+    {% endblock scripts %}
+</body>
+{% endblock body %}

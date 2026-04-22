@@ -1,18 +1,22 @@
-from typing import Any, Callable, Type
 from dataclasses import dataclass
+
+
+
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 
 
+from typing import Any, Callable, Type
+
 
 class BaseStateOrchestrator:
     session_key: str
-    
+
     def __init__(self, request: HttpRequest, session_key: str):
         self.request = request
         self.user = request.user
         self.session_key = session_key
-    
+
     def _get_state(self) -> dict[str, Any]:
         session_state = self.request.session.get(self.session_key, {})
         if not isinstance(session_state, dict):
@@ -20,18 +24,18 @@ class BaseStateOrchestrator:
             self.request.session[self.session_key] = session_state
             self.request.session.modified = True
         return session_state
-    
+
     def _set_state(self, state: dict[str, Any]) -> None:
         self.request.session[self.session_key] = state
         self.request.session.modified = True
-        
+
     def clear_state(self):
         """Clears the state of the wizard
         """
         if self.session_key in self.request.session:
             self.request.session.pop(self.session_key)
             self.request.session.modified = True
-    
+
     def set_session_data(self, key:str, value:Any) -> None:
         """Sets the session data
 
@@ -42,22 +46,23 @@ class BaseStateOrchestrator:
         state = self._get_state()
         state[key] = value
         self._set_state(state)
-    
+
     def get_session_data(self, key:str) -> Any:
         """Retrieves session data based on the key
 
         Args:
             key (str): the key
-            
+
         Returns:
             Any: the actual stored value
         """
         state = self._get_state()
         return state.get(key)
-    
+
     def get_all_session_data(self) -> dict[str, Any]:
         return self._get_state().copy()
-    
+
+
 @dataclass
 class WizardStep:
     name: str
@@ -72,9 +77,8 @@ class WizardError:
     message: str
     step: int | None = None
     title: str = ""
-    
 
-    
+
 class WizardMixin:
     state_orchestrator_cls : Type[BaseStateOrchestrator] = BaseStateOrchestrator
     steps : list[WizardStep] = None
@@ -92,7 +96,7 @@ class WizardMixin:
         if request.GET.get("reset_wizard") == "true":
             self.clear_state()
 
-    
+
     def clear_state(self):
         """Clears the state of the wizard
         """
@@ -231,7 +235,7 @@ class WizardMixin:
 
     def done(self) -> HttpResponse | WizardError | None:
         raise NotImplementedError("Implement done() on WizardMixin subclass")
-            
+
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         step_index = kwargs.pop("step", self.get_current_step_index())
@@ -252,7 +256,7 @@ class WizardMixin:
         context["wizard_error"] = self.get_wizard_error(step_index)
         context["wizard_has_data"] = self.wizard_has_data()
         return context
-    
+
     def get_wizard_step(self, step:int) -> WizardStep | None:
         """Returns the steps of the wizard.
         If it returns none, it means that 
@@ -262,7 +266,7 @@ class WizardMixin:
 
         if self.steps is None:
             return self.get_step(step)
-        
+
         if isinstance(self.steps, list):
             if len(self.steps) == 0:
                 raise NotImplementedError("At least one step required when creating a wizard")
@@ -278,15 +282,15 @@ class WizardMixin:
             return wizard_step
 
         raise ValueError("steps needs to be a list[WizardStep] when provided")
-            
+
     def wizard_has_data(self) -> bool:
         """Returns true if the wizard has any data in the session, false otherwise
         """
         state = self.orchestrator.get_all_session_data()
         state.pop(self.wizard_step_state_key, None)
-        
+
         return bool(state)
-    
+
     def get_htmx_include_addendum(self) -> bool:
         htmx_request = self.request.htmx
         if htmx_request:
@@ -296,4 +300,3 @@ class WizardMixin:
             return False
 
         return True
-        

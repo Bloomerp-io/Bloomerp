@@ -3,8 +3,7 @@ from bloomerp.router import router
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.services.workspace_services import set_default_workspace
 from bloomerp.views.workspace.base_workspace_view import BaseWorkspaceView
-from bloomerp.views.mixins import HtmxMixin
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import DetailView
 from django_htmx.http import HttpResponseClientRedirect
 
@@ -16,8 +15,6 @@ from django_htmx.http import HttpResponseClientRedirect
 class BloomerpModuleWorkspace(
     BaseWorkspaceView,
     PermissionRequiredMixin, 
-    HtmxMixin, 
-    LoginRequiredMixin, 
     DetailView
     ):
     

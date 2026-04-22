@@ -1,6 +1,6 @@
 from bloomerp.router import router
 from django.views.generic import TemplateView
-from bloomerp.views.mixins import HtmxMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
 @router.register(
     'create-website',

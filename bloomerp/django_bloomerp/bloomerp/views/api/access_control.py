@@ -4,7 +4,7 @@ from bloomerp.serializers.access_control import (
     PolicySerializer,
 )
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.db import transaction
 
 class PolicyViewSet(viewsets.ModelViewSet):
@@ -26,7 +26,7 @@ class PolicyViewSet(viewsets.ModelViewSet):
     )
 
     serializer_class = PolicySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get_queryset(self):
         """

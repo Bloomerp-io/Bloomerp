@@ -11,7 +11,8 @@ from bloomerp.modules.definition import module_registry
 from bloomerp.router import router
 from bloomerp.services.workspace_services import ensure_default_workspace_tiles_for_module
 from bloomerp.utils.models import get_create_view_url
-from bloomerp.views.mixins import HtmxMixin
+from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
 
 def _module_choice_label(module) -> str:
@@ -67,7 +68,7 @@ class CreateWorkspaceForm(forms.Form):
     models=[Workspace],
     override=True,
 )
-class CreateWorkspaceView(LoginRequiredMixin, PermissionRequiredMixin, HtmxMixin, FormView):
+class CreateWorkspaceView(LoginRequiredMixin, ConditionalStaffRequiredMixin, PermissionRequiredMixin, HtmxMixin, FormView):
     model = Workspace
     template_name = "workspace_views/create_workspace_view.html"
     form_class = CreateWorkspaceForm

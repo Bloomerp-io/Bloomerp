@@ -14,8 +14,11 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.router import router
 from bloomerp.serializers.access_control import PolicySerializer
-from bloomerp.views.mixins import HtmxMixin
-from bloomerp.views.view_mixins.wizard import BaseStateOrchestrator, WizardError, WizardMixin, WizardStep
+from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
+from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardMixin, WizardStep
+from bloomerp.views.mixins.wizard_mixin import WizardError
+from django.contrib.auth.mixins import UserPassesTestMixin
 
 GLOBAL_PERMISSIONS_KEY = "global_permissions"
 ROW_POLICY_NAME_KEY = "row_policy_name"
@@ -264,7 +267,7 @@ def pcs_policy_details(request: HttpRequest, view, orchestrator: BaseStateOrches
     name="Create Policy for {model}",
     description="Create an access control policies for {model}",
 )
-class ManageAccessControlForModelView(WizardMixin, HtmxMixin, TemplateView):
+class ManageAccessControlForModelView(ConditionalStaffRequiredMixin, UserPassesTestMixin, WizardMixin, HtmxMixin, TemplateView):
     template_name = "base_wizard.html"
     model: type[Model] = None
 
@@ -358,3 +361,6 @@ class ManageAccessControlForModelView(WizardMixin, HtmxMixin, TemplateView):
         if self.request.htmx:
             return HttpResponseClientRedirect(policy.get_absolute_url())
         return redirect(policy.get_absolute_url())
+
+    def test_func(self):
+        return self.request.user.is_superuser

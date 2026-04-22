@@ -10,7 +10,7 @@ from bloomerp.views.api.access_control import PolicyViewSet
 from django.db.models import Model
 from bloomerp.utils.models import (model_name_plural_underline)
 from bloomerp.utils.api import generate_serializer, generate_model_viewset_class
-from bloomerp.views.api_views import BloomerpModelViewSet
+from bloomerp.views.api.api_views import BloomerpModelViewSet
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.urls import IntOrUUIDConverter
@@ -119,14 +119,30 @@ def register_model_api(model: type[Model]) -> None:
 # Get the config
 bloomerp_config : BloomerpConfig = getattr(settings, "BLOOMERP_CONFIG", None)
 
+# Get the login URL
+login_url = settings.LOGIN_URL
+
+# Derive the logout URL from the login URL if not explicitly set
+logout_url = getattr(settings, "LOGOUT_URL", None)
+if logout_url is None:
+    if login_url.endswith('/login/'):
+        logout_url = login_url[:-len('login/')] + 'logout/'
+    else:
+        logout_url = '/logout/'
+
+if login_url.startswith('/'):
+    login_url = login_url[1:]
+if logout_url.startswith('/'):
+    logout_url = logout_url[1:]
+
 # Get the base URL from the settings
 urlpatterns = [
     # login URL
-    path('login/', auth_views.LoginView.as_view(
+    path(login_url, auth_views.LoginView.as_view(
             template_name='auth_views/login_view.html',
             next_page=reverse_lazy('bloomerp_home_view')
             ), name='login'),
-    path('logout/',auth_views.LogoutView.as_view(next_page=reverse_lazy('login')), name='logout'),
+    path(logout_url, auth_views.LogoutView.as_view(next_page=reverse_lazy('login')), name='logout'),
 ]
 
 for model in get_api_models():

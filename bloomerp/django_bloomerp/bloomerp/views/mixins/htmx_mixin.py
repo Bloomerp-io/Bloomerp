@@ -1,27 +1,14 @@
-from bloomerp.forms.core import BloomerpModelForm
-from django.shortcuts import redirect
-from django.http import HttpResponse
-from django.forms.models import modelform_factory
-from bloomerp.models import ApplicationField
-from django.views.generic import DetailView, UpdateView
-from bloomerp.modules.definition import ModuleConfig
+from bloomerp.modules.definition import ModuleConfig, module_registry
+from bloomerp.router import RouteType, router
+from bloomerp.utils.models import get_detail_view_url, get_list_view_url
+
+
 from django.urls import reverse
-from bloomerp.utils.models import (
-    get_create_view_url,
-    get_update_view_url,
-    get_list_view_url,
-    get_model_dashboard_view_url,
-    get_detail_view_url,
-    get_bulk_upload_view_url
-)
-from django.contrib.contenttypes.models import ContentType
+from django.views.generic import DetailView, UpdateView
+
+
+import random
 from typing import Any
-from django.views.generic.edit import ModelFormMixin
-from bloomerp.models import BloomerpModel
-from bloomerp.forms.model_form import bloomerp_modelform_factory
-from bloomerp.router import RouteType
-from bloomerp.router import router
-from bloomerp.modules.definition import module_registry
 
 
 class HtmxMixin:
@@ -34,7 +21,7 @@ class HtmxMixin:
     htmx_include_addendum = True
     is_detail_view = False
     include_padding = True
-    
+
     # Some other args
     module : ModuleConfig = None
 
@@ -158,10 +145,10 @@ class HtmxMixin:
 
         items.append({"text": route_name, "url": self.request.path, "active": True})
         return items
-    
-    
+
+
     def get_context_data(self, **kwargs:Any) -> dict:
-        import random 
+        import random
         try:
             context = super().get_context_data(**kwargs)
         except AttributeError:
@@ -171,8 +158,8 @@ class HtmxMixin:
         base_template_name = self.template_name
         is_detail_request = self.is_detail_view or isinstance(self, DetailView) or isinstance(self, UpdateView)
 
-        
-        
+
+
         # ---------------------
         # NORMAL REQUEST
         # ---------------------
@@ -184,7 +171,7 @@ class HtmxMixin:
             else:
                 context['template_name'] = base_template_name
             self.template_name = self.htmx_template
-        
+
         # ---------------------
         # HTMX REQUEST
         # ---------------------
@@ -215,137 +202,10 @@ class HtmxMixin:
                 context['template_name'] = base_template_name
 
             self.template_name = self.htmx_addendum_template
-                
-        
+
+
         context["rand_int"] = random.randint(0,10000)
         context["route_title"] = self._resolve_route_title()
         context["breadcrumbs"] = self._build_breadcrumb_items(context)
-        
+
         return context
-    
-
-class BloomerpModelFormViewMixin(ModelFormMixin):
-    '''
-    A mixin that provides a form view for a model.
-
-    It includes the following features:
-
-        - It uses the BloomerpModelForm form class
-        - It sets the user and model attributes on the form
-        - It saves the form instance to the database
-        - It sets the updated_by attribute on the instance if it exists
-        - It sets the created_by attribute on the instance if it exists
-    '''
-    exclude = []
-    form_class = BloomerpModelForm
-
-    # TODO: this needs to be changed becauauas
-    
-    def get_form_kwargs(self) -> dict:
-        kwargs = super().get_form_kwargs()
-        return kwargs
-    
-    def form_valid(self, form: BloomerpModelForm) -> HttpResponse:
-        # Call form valid on super class to make sure messages are displayed
-        super().form_valid(form)
-        
-        # Save the form instance but don't commit to the database yet
-        obj = form.save(commit=False)
-
-        # Check if the instance has 'last_updated_by' attribute and set it
-        if hasattr(obj, "updated_by"):
-            obj.updated_by = self.request.user
-
-        # Check if the instance has 'created_by' attribute and set it
-        if hasattr(obj, "created_by") and not obj.created_by:
-            obj.created_by = self.request.user
-
-        # Now save the object to the database
-        obj.save()
-
-        # Check if the form has a save_m2m method and call it
-        if hasattr(form, "save_m2m"):
-            form.save_m2m()
-        
-        # Check if the form has an update_file_fields method and call it
-        if hasattr(obj, "save_file_fields"):
-            obj.save_file_fields()
-
-        return redirect(self.get_success_url())
-    
-    def get_form(self, form_class=None) -> BloomerpModelForm:
-        form = super().get_form(form_class)
-
-        if "updated_by" in form.fields:
-            del form.fields["updated_by"]
-
-        if "created_by" in form.fields:
-            del form.fields["created_by"]
-        
-        return form
-
-    def get_form_class(self) -> BloomerpModelForm:
-        return self.get_form_class_for_fields("__all__")
-
-    def get_form_class_for_fields(self, fields: list[str] | str) -> BloomerpModelForm:
-        return bloomerp_modelform_factory(
-            model_cls=self.model,
-            fields=fields,
-        )
-
-
-class BloomerpModelContextMixin:
-    '''
-    A mixin that provides context data whenever rendering a model view.
-    This mixin provides the following context data:
-        - user
-        - model_name
-        - model_name_plural
-        - content_type_id
-        - model_dashboard_url
-        - create_view_url
-        - update_view_url
-        - list_view_url
-        - detail_view_url
-        - llm_args
-
-    Note: consider splitting this mixin into list and detail mixins.
-    '''
-    model: BloomerpModel = None
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Check if the model attribute is set
-        if not self.model:
-            raise NotImplementedError("You must provide a model attribute to the view.")
-
-        # init content type
-        content_type = ContentType.objects.get_for_model(self.model)
-        self.view_content_type = content_type
-
-        # User context data
-        context["user"] = self.request.user
-
-        # Model context data
-        context["model_name"] = self.model._meta.verbose_name
-        context["model_name_plural"] = self.model._meta.verbose_name_plural
-        context["content_type_id"] = ContentType.objects.get_for_model(self.model).pk
-        context["model"] = self.model
-
-        # URL context data
-        context["model_dashboard_url"] = get_model_dashboard_view_url(self.model)
-        context["create_view_url"] = get_create_view_url(self.model)
-        context['update_view_url'] = get_update_view_url(self.model)
-        context['list_view_url'] = get_list_view_url(self.model)
-        context['detail_view_url'] = get_detail_view_url(self.model)
-        context['bulk_upload_url'] = get_bulk_upload_view_url(self.model)
-
-        
-        # Application fields context data
-        context['application_fields'] = ApplicationField.objects.filter(content_type_id=context['content_type_id'])
-        
-        # Tabs
-        return context
-    
-    

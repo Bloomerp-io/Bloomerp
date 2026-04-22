@@ -10,7 +10,7 @@ from bloomerp.router import router
 from bloomerp.services.sql_services import DatabaseTable
 from bloomerp.services.user_services import get_data_view_fields, get_user_list_view_preference
 from bloomerp.utils.requests import parse_bool_parameter
-from bloomerp.views.view_mixins.wizard import BaseStateOrchestrator
+from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator
 from bloomerp.views.workspace.create_tile import (
     CREATE_TILE_SESSION_KEY,
     TILE_DESCRIPTION_SESSION_KEY,

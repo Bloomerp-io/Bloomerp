@@ -2,7 +2,7 @@ from bloomerp.forms.auth import BloomerpUserCreationForm
 from bloomerp.router import router
 from bloomerp.utils.models import model_name_plural_underline
 from bloomerp.models.users.user import User
-from bloomerp.views.mixins import HtmxMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
 
 from django.contrib.auth.mixins import PermissionRequiredMixin

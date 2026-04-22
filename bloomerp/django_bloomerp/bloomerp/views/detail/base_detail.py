@@ -2,14 +2,17 @@ from typing import Any
 from django.views.generic.detail import DetailView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
-from bloomerp.views.mixins import BloomerpModelContextMixin, HtmxMixin
+from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
+from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.services.detail_view_services import resolve_tabs_with_state
 from django.contrib.auth.mixins import PermissionRequiredMixin
 
-class BloomerpBaseDetailView(HtmxMixin, PermissionRequiredMixin, BloomerpModelContextMixin, DetailView):
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
+
+class BloomerpBaseDetailView(HtmxMixin, ConditionalStaffRequiredMixin, PermissionRequiredMixin, BloomerpModelContextMixin, DetailView):
     htmx_template = "bloomerp_htmx_base_view.html"
     tabs = None
     exclude_header = False

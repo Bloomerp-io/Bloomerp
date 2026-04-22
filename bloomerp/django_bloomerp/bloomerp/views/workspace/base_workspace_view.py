@@ -3,6 +3,7 @@
 from abc import abstractmethod
 from typing import Optional
 
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.urls import reverse
 
@@ -10,8 +11,11 @@ from bloomerp.modules.definition import module_registry
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.services.sectioned_layout_services import dump_layout_json
 from bloomerp.utils.models import get_create_view_url
+from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
-class BaseWorkspaceView:
+
+class BaseWorkspaceView(LoginRequiredMixin, ConditionalStaffRequiredMixin, HtmxMixin):
 
     @abstractmethod
     def get_module_id(self) -> Optional[str]:

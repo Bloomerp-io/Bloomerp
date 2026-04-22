@@ -1,17 +1,19 @@
 from bloomerp.router import router
 from django.views.generic import TemplateView
-from bloomerp.views.mixins import HtmxMixin
+from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from django.db.models import Model
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.models import ApplicationField
+from django.contrib.auth.mixins import UserPassesTestMixin
+from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 
 @router.register(
     path='access-control/policies/',
     route_type='model',
     models='__all__',
 )
-class ManageAccessControlForModelView(HtmxMixin, TemplateView):
+class ManageAccessControlForModelView(ConditionalStaffRequiredMixin, UserPassesTestMixin, HtmxMixin, TemplateView):
     template_name = "access_control_views/policy_list.html"
     model : Model = None
     
@@ -30,3 +32,6 @@ class ManageAccessControlForModelView(HtmxMixin, TemplateView):
         
         return context
     
+
+    def test_func(self):
+        return self.request.user.is_superuser
