@@ -1,14 +1,12 @@
 from bloomerp.router import router
 from bloomerp.models.users.user import User
-from bloomerp.views.core import BloomerpBaseDetailView
+from bloomerp.views.core import BaseBloomerpDetailView
 
 
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.urls import reverse_lazy
 from django.views.generic.edit import FormView
-
-from bloomerp.views.user.base import ProfileMixin
 
 
 @router.register(
@@ -19,10 +17,11 @@ from bloomerp.views.user.base import ProfileMixin
     description="Reset password for a user",
     url_name="my_profile_change_password"
 )
-class BloomerpProfilePasswordResetView(ProfileMixin, BloomerpBaseDetailView, FormView):
+class BloomerpProfilePasswordResetView(BaseBloomerpDetailView, FormView):
     template_name = 'auth_views/profile_password_reset.html'
     form_class = PasswordChangeForm
     success_url = reverse_lazy('users_my_profile_overview')
+    model = None
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

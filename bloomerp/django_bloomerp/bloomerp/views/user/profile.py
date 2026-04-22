@@ -1,5 +1,7 @@
 from bloomerp.router import router
 from bloomerp.models.users.user import User
+from bloomerp.views.base import BaseBloomerpView
+from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 
 
@@ -14,8 +16,6 @@ from typing import Any
 
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.views.mixins.model_form_view_mixin import BloomerpModelFormViewMixin
-from bloomerp.views.user.base import ProfileMixin
-
 
 @router.register(
     path="my-profile/",
@@ -25,7 +25,7 @@ from bloomerp.views.user.base import ProfileMixin
     description="Overview of profile",
     url_name="my_profile_overview"
 )
-class BloomerpProfileView(BloomerpModelFormViewMixin, ProfileMixin, HtmxMixin, BloomerpModelContextMixin, UpdateView):
+class BloomerpProfileView(BaseBloomerpDetailView, UpdateView):
     template_name = 'auth_views/profile_overview.html'
     fields = ['first_name', 'last_name', 'date_view_preference', 'datetime_view_preference', 'avatar']
     success_url = reverse_lazy('users_my_profile_overview')

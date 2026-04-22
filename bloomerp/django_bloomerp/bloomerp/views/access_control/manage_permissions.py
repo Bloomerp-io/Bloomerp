@@ -14,6 +14,7 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.router import router
 from bloomerp.serializers.access_control import PolicySerializer
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardMixin, WizardStep
@@ -267,7 +268,7 @@ def pcs_policy_details(request: HttpRequest, view, orchestrator: BaseStateOrches
     name="Create Policy for {model}",
     description="Create an access control policies for {model}",
 )
-class ManageAccessControlForModelView(ConditionalStaffRequiredMixin, UserPassesTestMixin, WizardMixin, HtmxMixin, TemplateView):
+class ManageAccessControlForModelView(BaseBloomerpView, WizardMixin, TemplateView):
     template_name = "base_wizard.html"
     model: type[Model] = None
 
@@ -362,5 +363,5 @@ class ManageAccessControlForModelView(ConditionalStaffRequiredMixin, UserPassesT
             return HttpResponseClientRedirect(policy.get_absolute_url())
         return redirect(policy.get_absolute_url())
 
-    def test_func(self):
+    def has_permission(self):
         return self.request.user.is_superuser

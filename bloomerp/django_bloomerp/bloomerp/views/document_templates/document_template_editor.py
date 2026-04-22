@@ -1,6 +1,6 @@
 from bloomerp.models.document_templates import DocumentTemplate
 from bloomerp.router import router
-from bloomerp.views.core import BloomerpBaseDetailView
+from bloomerp.views.core import BaseBloomerpDetailView
 
 
 from django.views.generic.edit import UpdateView
@@ -14,7 +14,7 @@ from django.views.generic.edit import UpdateView
     url_name="editor",
     description="Document Template Editor"
     )
-class BloomerpDocumentTemplateEditorView(BloomerpBaseDetailView, UpdateView):
+class BloomerpDocumentTemplateEditorView(BaseBloomerpDetailView, UpdateView):
     model = DocumentTemplate
     template_name = "document_template_views/bloomerp_document_template_editor_view.html"
     fields = ["template"]

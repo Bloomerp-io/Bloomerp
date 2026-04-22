@@ -13,7 +13,7 @@ from bloomerp.services.create_view_services import AUTO_MANAGED_FIELD_NAMES, get
 from bloomerp.services.detail_view_services import get_default_layout
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_detail_view_url
-from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
+from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
 
 
@@ -25,7 +25,7 @@ from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
     route_type="detail",
     models="__all__",
 )
-class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BloomerpBaseDetailView):
+class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView):
     template_name = "mixins/bloomerp_layout_form_mixin.html"
     settings = None
     layout_mode = "detail"

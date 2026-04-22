@@ -398,7 +398,7 @@ Suppose we want to send an email to a specific employee or customer without sele
 In `views.py`:
 
 ```python
-from bloomerp.views.detail import BloomerpBaseDetailView
+from bloomerp.views.detail import BaseBloomerpDetailView
 
 @router.bloomerp_route(
     path='send-email',  # Becomes /employees/{pk}/send-email & /customers/{pk}/send-email
@@ -408,7 +408,7 @@ from bloomerp.views.detail import BloomerpBaseDetailView
     url_name='send_email',  # Becomes employees_detail_send_email & customers_detail_send_email
     models=[Employee, Customer],
 )
-class SendEmailView(BloomerpBaseDetailView):
+class SendEmailView(BaseBloomerpDetailView):
     template_name = 'send_email.html'
     model: BloomerpModel = None
 
@@ -441,7 +441,7 @@ Create the HTML template `send_email.html`:
 </form>
 ```
 
-Since we inherited from `BloomerpBaseDetailView`, all necessary context data (like `object`, `model`, and more) is already included.
+Since we inherited from `BaseBloomerpDetailView`, all necessary context data (like `object`, `model`, and more) is already included.
 
 This will produce the following result:
 

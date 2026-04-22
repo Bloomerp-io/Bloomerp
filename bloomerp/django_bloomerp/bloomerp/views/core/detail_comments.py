@@ -1,6 +1,6 @@
 from bloomerp.models.communication import Comment
 from bloomerp.router import router
-from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
+from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 
 
 @router.register(
@@ -11,7 +11,7 @@ from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
     route_type="detail",
     models="__all__",
 )
-class BloomerpDetailCommentsView(BloomerpBaseDetailView):
+class BloomerpDetailCommentsView(BaseBloomerpDetailView):
     template_name = "detail_views/bloomerp_detail_comments_view.html"
     model = None
     permissions = ["view"]

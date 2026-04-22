@@ -15,6 +15,7 @@ from bloomerp.services.bulk_services import (
     BulkCrudService,
 )
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardMixin, WizardStep
@@ -203,7 +204,7 @@ def ctx_confirm_step(request: HttpRequest, view:"BloomerpBulkUploadView", orches
     route_type="model",
     exclude_models=[File],
 )
-class BloomerpBulkUploadView(PermissionRequiredMixin, ConditionalStaffRequiredMixin, WizardMixin, HtmxMixin, TemplateView):
+class BloomerpBulkUploadView(BaseBloomerpView, WizardMixin, TemplateView):
     model = None
     module = None
     state_orchestrator_cls = BaseStateOrchestrator

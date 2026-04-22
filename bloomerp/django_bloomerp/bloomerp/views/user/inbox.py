@@ -1,4 +1,5 @@
 from bloomerp.router import router
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from django.views.generic import TemplateView
 
@@ -10,6 +11,6 @@ from django.views.generic import TemplateView
     url_name="inbox",
     route_type="app"
 )
-class InboxView(HtmxMixin, TemplateView):
+class InboxView(BaseBloomerpView, TemplateView):
     template_name = "user_views/inbox_view.html"
     

@@ -1,7 +1,7 @@
 
 from bloomerp.models.files import File
 from django.urls import reverse
-from .base_detail import BloomerpBaseDetailView
+from .base_detail import BaseBloomerpDetailView
 from bloomerp.router import router
 from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
 
@@ -13,7 +13,7 @@ from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
     route_type="detail",
     exclude_models=[File],
 )
-class BloomerpDetailFileListView(BloomerpBaseDetailView):
+class BloomerpDetailFileListView(BaseBloomerpDetailView):
     template_name = "detail_views/bloomerp_detail_files_view.html"
     modules = None
     permission_fields = [("files", "view")]
@@ -31,6 +31,7 @@ class BloomerpDetailFileListView(BloomerpBaseDetailView):
         context["folder"] = folder
         context["file_browser_url"] = f"{reverse('components_files')}?{params.urlencode()}"
         return context
+
 
     
 

@@ -13,8 +13,7 @@ from django_htmx.http import HttpResponseClientRedirect
     route_type="app",
 )
 class BloomerpModuleWorkspace(
-    BaseWorkspaceView,
-    PermissionRequiredMixin, 
+    BaseWorkspaceView, 
     DetailView
     ):
     

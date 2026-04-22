@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.files import File
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.router import router
 
@@ -16,7 +17,7 @@ from bloomerp.router import router
     url_name="app",
     description="List of all files across the application.",
 )
-class BloomerpFileListView(PermissionRequiredMixin, HtmxMixin, TemplateView):
+class BloomerpFileListView(BaseBloomerpView, TemplateView):
     template_name = "list_views/bloomerp_file_list_view.html"
     model = File
     module = None

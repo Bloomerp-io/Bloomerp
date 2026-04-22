@@ -2,6 +2,7 @@ from typing import Any
 from django.views.generic.detail import DetailView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 from bloomerp.router import router
@@ -12,7 +13,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
-class BloomerpBaseDetailView(HtmxMixin, ConditionalStaffRequiredMixin, PermissionRequiredMixin, BloomerpModelContextMixin, DetailView):
+class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, DetailView):
     htmx_template = "bloomerp_htmx_base_view.html"
     tabs = None
     exclude_header = False

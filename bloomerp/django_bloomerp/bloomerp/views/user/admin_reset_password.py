@@ -1,6 +1,7 @@
 from bloomerp.router import router
 from bloomerp.models.users.user import User
-from bloomerp.views.core import BloomerpBaseDetailView
+from bloomerp.views.base import BaseBloomerpView
+from bloomerp.views.core import BaseBloomerpDetailView
 
 
 from django.contrib.auth.forms import AdminPasswordChangeForm
@@ -16,11 +17,12 @@ from django.views.generic.edit import FormView
     url_name='reset_password_for_user',
     description='Reset password for a user'
 )
-class UserAdminPasswordResetView(UserPassesTestMixin, BloomerpBaseDetailView, FormView):
+class UserAdminPasswordResetView(BaseBloomerpView, FormView):
     template_name = 'auth_views/profile_password_reset.html'
     form_class = AdminPasswordChangeForm
+    model = None
 
-    def test_func(self):
+    def has_permission(self):
         return self.request.user.is_superuser
 
     def get_success_url(self):

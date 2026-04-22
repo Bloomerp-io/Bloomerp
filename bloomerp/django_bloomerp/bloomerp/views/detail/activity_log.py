@@ -1,6 +1,6 @@
 from typing import Any, Dict
 from bloomerp.router import router
-from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
+from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 from bloomerp.models.activity_log import ActivityLog
 
 # @router.register(
@@ -11,7 +11,7 @@ from bloomerp.models.activity_log import ActivityLog
 #     route_type="detail",
 #     models="__all__",
 # )
-# class BloomerpDetailActivityView(BloomerpBaseDetailView):
+# class BloomerpDetailActivityView(BaseBloomerpDetailView):
 #     template_name = "detail_views/bloomerp_detail_activity_view.html"
     
 #     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:

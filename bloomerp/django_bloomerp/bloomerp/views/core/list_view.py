@@ -1,9 +1,10 @@
 from typing import Any
 from django.db.models import Model
-from django.views.generic.list import ListView
+from django.views.generic import TemplateView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from bloomerp.models.files import File
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 from bloomerp.router import router
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
@@ -17,7 +18,7 @@ from bloomerp.views.mixins.htmx_mixin import HtmxMixin
     route_type="model",
     exclude_models=[File],
 )
-class BloomerpListView(PermissionRequiredMixin, BloomerpModelContextMixin, HtmxMixin, ListView):
+class BloomerpListView(BaseBloomerpView, BloomerpModelContextMixin, TemplateView):
     model: Model = None
     module = None
     template_name: str = "list_views/bloomerp_list_view.html"

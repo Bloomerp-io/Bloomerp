@@ -1,7 +1,9 @@
 from bloomerp.forms.auth import BloomerpUserCreationForm
 from bloomerp.router import router
+from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.utils.models import model_name_plural_underline
 from bloomerp.models.users.user import User
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
 
@@ -19,11 +21,7 @@ from django.views.generic.edit import FormView
     route_type="model",
     models=User
 )
-class UserCreateView(
-        PermissionRequiredMixin,
-        SuccessMessageMixin,
-        HtmxMixin,
-        FormView):
+class UserCreateView(BaseBloomerpView, SuccessMessageMixin, FormView):
     template_name = "create_views/bloomerp_create_view.html"
     fields = None
     model = None
@@ -42,8 +40,13 @@ class UserCreateView(
         form.save()
         return super().form_valid(form)
 
-    def get_permission_required(self):
-        return [f"{self.model._meta.app_label}.add_{self.model._meta.model_name}"]
+    def has_permission(self):
+        manager = UserPermissionManager(self.request.user)
+
+        return manager.has_global_permission(
+            self.model,
+            "add_user"
+        )
 
     def get_success_message(self, cleaned_data):
         return f"User was created successfully."

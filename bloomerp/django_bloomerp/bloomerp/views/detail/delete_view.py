@@ -15,7 +15,7 @@ from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.permission_services import create_permission_str
 from bloomerp.utils.models import get_delete_view_url
 from bloomerp.utils.models import get_list_view_url
-from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
+from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 
 
 User = get_user_model()
@@ -30,7 +30,7 @@ User = get_user_model()
     route_type="detail",
     exclude_models=[File, Tile, SqlQuery, User],
 )
-class BloomerpDeleteView(BloomerpBaseDetailView):
+class BloomerpDeleteView(BaseBloomerpDetailView):
     template_name = "delete_views/bloomerp_delete_view.html"
 
     def get_delete_permission(self) -> str:

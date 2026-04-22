@@ -6,10 +6,10 @@ from bloomerp.models.communication import Comment
 from bloomerp.models.files import File
 from bloomerp.router import router
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
-from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
+from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 from django.contrib.contenttypes.models import ContentType
 
-class ForeignRelationshipView(BloomerpBaseDetailView):
+class ForeignRelationshipView(BaseBloomerpDetailView):
     template_name: str = "detail_views/bloomerp_foreign_relationship_view.html"
     model = None
     related_model = None 

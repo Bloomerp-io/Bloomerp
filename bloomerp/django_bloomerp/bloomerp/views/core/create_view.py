@@ -22,6 +22,7 @@ from bloomerp.services.create_view_services import (
 )
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_detail_view_url
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 from bloomerp.views.mixins.model_form_view_mixin import BloomerpModelFormViewMixin
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
@@ -40,10 +41,8 @@ User = get_user_model()
     exclude_models=[File, Tile, SqlQuery, User, Workspace],
 )
 class BloomerpCreateView(
-    ConditionalStaffRequiredMixin,
-    PermissionRequiredMixin,
+    BaseBloomerpView,
     SuccessMessageMixin,
-    HtmxMixin,
     BloomerpModelFormViewMixin,
     BloomerpLayoutFormMixin,
     CreateView,

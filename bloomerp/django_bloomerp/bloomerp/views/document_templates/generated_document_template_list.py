@@ -1,7 +1,7 @@
 from bloomerp.models.document_templates import DocumentTemplate
 from bloomerp.models.files import File
 from bloomerp.router import router
-from bloomerp.views.core import BloomerpBaseDetailView
+from bloomerp.views.core import BaseBloomerpDetailView
 
 
 @router.register(
@@ -12,7 +12,7 @@ from bloomerp.views.core import BloomerpBaseDetailView
     url_name="generated_documents",
     description="List of generated documents for the document template"
     )
-class BloomerpDocumentTemplateGeneratedDocumentsView(BloomerpBaseDetailView):
+class BloomerpDocumentTemplateGeneratedDocumentsView(BaseBloomerpDetailView):
     model = DocumentTemplate
     template_name = "document_template_views/bloomerp_document_template_generated_documents_view.html"
 

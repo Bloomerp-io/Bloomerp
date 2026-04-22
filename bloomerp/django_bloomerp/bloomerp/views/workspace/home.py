@@ -1,5 +1,6 @@
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.router import router
@@ -13,7 +14,7 @@ from bloomerp.utils.realtime import send_user_message
     route_type='app',
     url_name='bloomerp_home_view'
 )
-class BloomerpHomeView(HtmxMixin, LoginRequiredMixin, ConditionalStaffRequiredMixin, TemplateView):
+class BloomerpHomeView(BaseBloomerpView, TemplateView):
     template_name = 'workspace_views/bloomerp_home_view.html'
 
     def get_context_data(self, **kwargs):

@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 from bloomerp.forms.workspaces import DEFAULT_TILE_ICON, TileMetadataForm
 from bloomerp.services.sql_services import SqlExecutor
+from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardMixin, WizardStep
 from bloomerp.workspaces.tiles import TileType
@@ -171,7 +172,7 @@ BUILDER_STEP = WizardStep(
     name="Create Tile",
     description="Create a new tile for the workspace",
 )
-class CreateTileView(ConditionalStaffRequiredMixin, WizardMixin, HtmxMixin, TemplateView):
+class CreateTileView(BaseBloomerpView, WizardMixin, TemplateView):
     template_name = "base_wizard.html"
     session_key = CREATE_TILE_SESSION_KEY
     

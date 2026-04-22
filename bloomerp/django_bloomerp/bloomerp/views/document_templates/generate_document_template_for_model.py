@@ -3,7 +3,7 @@ from bloomerp.models.document_templates import DocumentTemplate
 from bloomerp.models.files import File
 from bloomerp.router import router
 from bloomerp.utils.document_templates import DocumentController
-from bloomerp.views.core import BloomerpBaseDetailView
+from bloomerp.views.core import BaseBloomerpDetailView
 from bloomerp.views.document_templates import EXCLUDE_MODELS
 
 
@@ -20,7 +20,7 @@ from django.shortcuts import redirect
     description="Document Template for {model}",
     exclude_models=EXCLUDE_MODELS
     )
-class BloomerpDetailDocumentTemplateGenerateView(BloomerpBaseDetailView):
+class BloomerpDetailDocumentTemplateGenerateView(BaseBloomerpDetailView):
     template_name = "document_template_views/bloomerp_detail_document_generator_view.html"
     model = None
 

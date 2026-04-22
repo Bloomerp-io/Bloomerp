@@ -1,7 +1,7 @@
 from bloomerp.forms.document_templates import GenerateDocumentForm
 from bloomerp.models.document_templates import DocumentTemplate
 from bloomerp.router import router
-from bloomerp.views.core import BloomerpBaseDetailView
+from bloomerp.views.core import BaseBloomerpDetailView
 
 
 @router.register(
@@ -12,7 +12,7 @@ from bloomerp.views.core import BloomerpBaseDetailView
     url_name="generate_document",
     description="Generate document for the document template"
     )
-class BloomerpDocumentTemplateGenerateView(BloomerpBaseDetailView):
+class BloomerpDocumentTemplateGenerateView(BaseBloomerpDetailView):
     model = DocumentTemplate
     template_name = "document_template_views/bloomerp_document_template_generate_view.html"
 

@@ -5,6 +5,7 @@ same mechanism as the create view, but with the data pre-filled.
 A lot of the logic is therefore reused.
 """
 
+from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.models.access_control.policy import Policy
@@ -19,7 +20,6 @@ from bloomerp.views.access_control.manage_permissions import (
     ROW_POLICY_RULES_KEY,
     ManageAccessControlForModelView,
 )
-from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
 
 @router.register(
     path="update",
@@ -28,8 +28,11 @@ from bloomerp.views.detail.base_detail import BloomerpBaseDetailView
     route_type="detail",
     models=Policy,
 )
-class UpdatePolicyView(ManageAccessControlForModelView, BloomerpBaseDetailView):
+class UpdatePolicyView(ManageAccessControlForModelView):
     model = Policy
+
+    def get_object(self) -> Policy:
+        return get_object_or_404(self.model, pk=self.kwargs["pk"])
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
