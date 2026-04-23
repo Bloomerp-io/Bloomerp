@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.db import IntegrityError
 from django.http import HttpRequest, JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.http import require_GET, require_POST
 
 from bloomerp.config.definition import BloomerpConfig, SessionAuthSettings
+from bloomerp.forms.auth import get_user_creation_fields
 
 
 def get_bloomerp_config() -> BloomerpConfig:
@@ -24,6 +27,15 @@ def _session_auth_settings() -> SessionAuthSettings:
 
 def _session_auth_enabled() -> bool:
     return _session_auth_settings().enabled
+
+
+def _interactive_auth_settings():
+    return get_bloomerp_config().auth.interactive
+
+
+def _registration_endpoint_enabled() -> bool:
+    interactive = _interactive_auth_settings()
+    return bool(interactive.signup_enabled)
 
 
 def _json_not_found(message: str) -> JsonResponse:
@@ -46,6 +58,64 @@ def _serialize_user(user) -> dict:
         if hasattr(user, field_name):
             payload[field_name] = getattr(user, field_name)
     return payload
+
+
+def _uses_case_insensitive_lookup(field_name: str) -> bool:
+    user_model = get_user_model()
+    try:
+        field = user_model._meta.get_field(field_name)
+    except Exception:
+        return False
+
+    internal_type = getattr(field, "get_internal_type", lambda: "")()
+    return internal_type in {"CharField", "EmailField", "TextField"}
+
+
+def _get_registration_payload(data: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    user_model = get_user_model()
+    required_fields = get_user_creation_fields(user_model)
+    username_field = getattr(user_model, "USERNAME_FIELD", "username")
+    registration_data: dict[str, Any] = {}
+    missing_fields: list[str] = []
+
+    for field_name in required_fields:
+        value = data.get(field_name)
+        if field_name == username_field and value is None:
+            value = data.get("identifier")
+
+        if value in (None, ""):
+            missing_fields.append(field_name)
+            continue
+
+        registration_data[field_name] = value
+
+    for field_name, value in data.items():
+        if field_name in {"password", "passwordConfirm", "password_confirmation", "identifier"}:
+            continue
+        if field_name in registration_data:
+            continue
+        if hasattr(user_model, field_name):
+            registration_data[field_name] = value
+
+    return registration_data, missing_fields
+
+
+def _find_existing_unique_field(field_name: str, value: Any):
+    user_model = get_user_model()
+    try:
+        field = user_model._meta.get_field(field_name)
+    except Exception:
+        return None
+
+    if not getattr(field, "unique", False):
+        return None
+
+    lookup = (
+        {f"{field_name}__iexact": value}
+        if isinstance(value, str) and _uses_case_insensitive_lookup(field_name)
+        else {field_name: value}
+    )
+    return user_model._default_manager.filter(**lookup).first()
 
 
 def _get_login_credentials(data: dict) -> dict[str, object]:
@@ -122,6 +192,64 @@ def login_view(request: HttpRequest) -> JsonResponse:
             "authenticated": True,
             "user": _serialize_user(user),
         }
+    )
+
+
+@require_POST
+def register_view(request: HttpRequest) -> JsonResponse:
+    if not _registration_endpoint_enabled():
+        return _json_not_found("Registration endpoints are disabled.")
+
+    data = _parse_request_data(request)
+    password = data.get("password")
+    password_confirmation = data.get("passwordConfirm", data.get("password_confirmation"))
+
+    if not password:
+        return JsonResponse({"detail": "Password is required."}, status=400)
+
+    if password_confirmation is not None and password != password_confirmation:
+        return JsonResponse({"detail": "Passwords do not match."}, status=400)
+
+    user_model = get_user_model()
+    registration_data, missing_fields = _get_registration_payload(data)
+    if missing_fields:
+        field_list = ", ".join(missing_fields)
+        return JsonResponse(
+            {"detail": f"Missing required registration fields: {field_list}."},
+            status=400,
+        )
+
+    for field_name, value in registration_data.items():
+        existing_user = _find_existing_unique_field(field_name, value)
+        if existing_user is not None:
+            return JsonResponse(
+                {"detail": f"An account with this {field_name} already exists."},
+                status=400,
+            )
+
+    try:
+        user = user_model._default_manager.create_user(
+            password=password,
+            **registration_data,
+        )
+    except TypeError as exc:
+        return JsonResponse(
+            {"detail": f"Registration payload is incompatible with the configured user model: {exc}."},
+            status=400,
+        )
+    except IntegrityError:
+        return JsonResponse(
+            {"detail": "Unable to create account with the provided credentials."},
+            status=400,
+        )
+
+    login(request, user)
+    return JsonResponse(
+        {
+            "authenticated": True,
+            "user": _serialize_user(user),
+        },
+        status=201,
     )
 
 

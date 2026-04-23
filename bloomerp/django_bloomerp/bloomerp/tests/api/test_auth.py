@@ -1,6 +1,11 @@
 from django.test import override_settings
 
-from bloomerp.config.definition import BloomerpAuthSettings, BloomerpConfig, SessionAuthSettings
+from bloomerp.config.definition import (
+    BloomerpAuthSettings,
+    BloomerpConfig,
+    InteractiveAuthSettings,
+    SessionAuthSettings,
+)
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 
 
@@ -43,6 +48,16 @@ class TestBloomerpAuthApi(BaseBloomerpModelTestCase):
         self.assertEqual(logout_response.status_code, 200)
         self.assertJSONEqual(logout_response.content, {"authenticated": False})
 
+    def test_register_endpoint_is_disabled_by_default(self):
+        response = self.client.post(
+            "/api/auth/register/",
+            data={"username": "janedoe", "email": "jane@example.com", "password": "testpass123"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Registration endpoints are disabled.")
+
     @override_settings(
         BLOOMERP_CONFIG=BloomerpConfig(
             auto_generate_api_endpoints=True,
@@ -73,3 +88,73 @@ class TestBloomerpAuthApi(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["authenticated"])
+
+    @override_settings(
+        BLOOMERP_CONFIG=BloomerpConfig(
+            auto_generate_api_endpoints=True,
+            auth=BloomerpAuthSettings(
+                interactive=InteractiveAuthSettings(
+                    signup_enabled=True,
+                ),
+            ),
+        )
+    )
+    def test_register_endpoint_can_create_and_login_user(self):
+        response = self.client.post(
+            "/api/auth/register/",
+            data={
+                "username": "janedoe",
+                "email": "jane@example.com",
+                "password": "testpass123",
+                "first_name": "Jane",
+                "last_name": "Doe",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertTrue(payload["authenticated"])
+        self.assertEqual(payload["user"]["username"], "janedoe")
+        self.assertEqual(payload["user"]["email"], "jane@example.com")
+
+        session_response = self.client.get("/api/auth/session/")
+        self.assertTrue(session_response.json()["authenticated"])
+
+    @override_settings(
+        BLOOMERP_CONFIG=BloomerpConfig(
+            auto_generate_api_endpoints=True,
+            auth=BloomerpAuthSettings(
+                interactive=InteractiveAuthSettings(
+                    signup_enabled=True,
+                ),
+            ),
+        )
+    )
+    def test_register_endpoint_requires_all_user_creation_fields(self):
+        response = self.client.post(
+            "/api/auth/register/",
+            data={"username": "janedoe", "password": "testpass123"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("email", response.json()["detail"])
+
+    @override_settings(
+        BLOOMERP_CONFIG=BloomerpConfig(
+            auto_generate_api_endpoints=True,
+            auth=BloomerpAuthSettings(
+                interactive=InteractiveAuthSettings(login_identifier="email"),
+            ),
+        )
+    )
+    def test_browser_login_can_use_email_identifier(self):
+        response = self.client.post(
+            "/login/",
+            data={"username": "johndoe@example.com", "password": "testpass123"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        session_response = self.client.get("/api/auth/session/")
+        self.assertTrue(session_response.json()["authenticated"])

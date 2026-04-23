@@ -1,7 +1,7 @@
 from django.apps import apps
+from django.contrib.auth import views as auth_views
 from django.urls import include, path,  register_converter
 from django.urls import NoReverseMatch
-from django.contrib.auth import views as auth_views
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from bloomerp.config.definition import BloomerpConfig
@@ -20,7 +20,9 @@ from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 from django.urls import reverse_lazy
 from django.conf import settings
-from bloomerp.views.api.auth import csrf_view, login_view, logout_view, session_view
+from bloomerp.views.api.auth import csrf_view, login_view, logout_view, register_view, session_view
+from bloomerp.auth import allauth_is_enabled
+from bloomerp.views.auth import BloomerpLoginView
 
 class PublicApiRootRouter(DefaultRouter):
     def _should_include_api_root_entry(self, request, viewset) -> bool:
@@ -120,7 +122,7 @@ def register_model_api(model: type[Model]) -> None:
 bloomerp_config : BloomerpConfig = getattr(settings, "BLOOMERP_CONFIG", None)
 
 # Get the login URL
-login_url = settings.LOGIN_URL
+login_url = getattr(settings, "LOGIN_URL", "/login/")
 
 # Derive the logout URL from the login URL if not explicitly set
 logout_url = getattr(settings, "LOGOUT_URL", None)
@@ -138,12 +140,12 @@ if logout_url.startswith('/'):
 # Get the base URL from the settings
 urlpatterns = [
     # login URL
-    path(login_url, auth_views.LoginView.as_view(
-            template_name='auth_views/login_view.html',
-            next_page=reverse_lazy('bloomerp_home_view')
-            ), name='login'),
+    path(login_url, BloomerpLoginView.as_view(), name='login'),
     path(logout_url, auth_views.LogoutView.as_view(next_page=reverse_lazy('login')), name='logout'),
 ]
+
+if allauth_is_enabled():
+    urlpatterns.append(path("accounts/", include("allauth.urls")))
 
 for model in get_api_models():
     register_model_with_admin(model)
@@ -172,6 +174,7 @@ urlpatterns += [
                     path("csrf/", csrf_view, name="csrf"),
                     path("login/", login_view, name="api_login"),
                     path("logout/", logout_view, name="api_logout"),
+                    path("register/", register_view, name="api_register"),
                 ],
                 "bloomerp_auth",
             )

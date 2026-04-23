@@ -61,15 +61,19 @@ if __name__ == "__main__":
 def _settings_py(project_package: str, app_name: str, organization_name: str) -> str:
     return f"""from pathlib import Path
 
-from bloomerp.config import BLOOMERP_APPS, BLOOMERP_MIDDLEWARE, BLOOMERP_USER_MODEL
+from bloomerp.config import (
+    BLOOMERP_APPS,
+    BLOOMERP_AUTHENTICATION_BACKENDS,
+    BLOOMERP_MIDDLEWARE,
+    BLOOMERP_SITE_ID,
+    BLOOMERP_USER_MODEL,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "change-me"
 DEBUG = True
 ALLOWED_HOSTS = []
-
-LOGIN_URL = "/login"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -132,6 +136,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = BLOOMERP_USER_MODEL
+AUTHENTICATION_BACKENDS = BLOOMERP_AUTHENTICATION_BACKENDS
+SITE_ID = BLOOMERP_SITE_ID
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"

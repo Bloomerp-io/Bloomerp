@@ -15,6 +15,7 @@ from tenacity import retry_if_not_exception_message
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.modules.definition import module_registry
 
 logger = logging.getLogger(__name__)
@@ -236,6 +237,66 @@ class BloomerpConfigurationValidator:
                     message="The BloomERP module registry is empty.",
                     hint="Ensure module definitions are imported and module_registry.refresh() runs at startup.",
                     subject="module_registry",
+                )
+            )
+
+        return responses
+
+    def validate_user_model(self) -> list[ValidatorResponse]:
+        """Checks whether the configured AUTH_USER_MODEL follows the Bloomerp user contract."""
+        responses: list[ValidatorResponse] = []
+
+        user_model_label = getattr(self.settings, "AUTH_USER_MODEL", None)
+        subject = "AUTH_USER_MODEL"
+
+        if not user_model_label:
+            responses.append(
+                ValidatorResponse(
+                    validation_type=ValidationType.ERROR,
+                    code="user_model.missing_auth_user_model",
+                    message="AUTH_USER_MODEL setting is not set.",
+                    hint=(
+                        "Set AUTH_USER_MODEL to Bloomerp's built-in user model or to a custom "
+                        "model that inherits from AbstractBloomerpUser."
+                    ),
+                    subject=subject,
+                )
+            )
+            return responses
+
+        try:
+            user_model = apps.get_model(user_model_label)
+        except (LookupError, ValueError) as exc:
+            responses.append(
+                ValidatorResponse(
+                    validation_type=ValidationType.ERROR,
+                    code="user_model.invalid_auth_user_model",
+                    message=(
+                        f"AUTH_USER_MODEL '{user_model_label}' could not be resolved: {exc}."
+                    ),
+                    hint=(
+                        "Ensure AUTH_USER_MODEL points to an installed model, for example "
+                        "'bloomerp.User' or a custom subclass of AbstractBloomerpUser."
+                    ),
+                    subject=subject,
+                )
+            )
+            return responses
+
+        if not issubclass(user_model, AbstractBloomerpUser):
+            responses.append(
+                ValidatorResponse(
+                    validation_type=ValidationType.ERROR,
+                    code="user_model.invalid_base_class",
+                    message=(
+                        f"AUTH_USER_MODEL '{user_model._meta.label}' must inherit from "
+                        "AbstractBloomerpUser."
+                    ),
+                    hint=(
+                        "Use Bloomerp's provided User model or define a custom user model that "
+                        "inherits from AbstractBloomerpUser."
+                    ),
+                    subject=f"model {user_model._meta.label}",
                 )
             )
 

@@ -3,6 +3,28 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class SocialProviderSettings(BaseModel):
+    provider: str
+    enabled: bool = True
+    client_id: str | None = None
+    client_secret: str | None = None
+    allow_login: bool = True
+    allow_signup: bool = True
+    scopes: list[str] = Field(default_factory=list)
+    label: str | None = None
+
+
+class InteractiveAuthSettings(BaseModel):
+    enabled: bool = True
+    login_identifier: Literal["username", "email"] = "username"
+    signup_enabled: bool = False
+    password_reset_enabled: bool = True
+    email_verification: Literal["none", "optional", "required"] = "none"
+    use_allauth: bool = False
+    social_providers: list[SocialProviderSettings] = Field(default_factory=list)
+    allow_non_staff_bloomerp_access: bool = False
+
+
 class SessionAuthSettings(BaseModel):
     enabled: bool = True
     login_identifier: Literal["username", "email", "custom"] = "username"
@@ -36,6 +58,7 @@ class CustomAuthSettings(BaseModel):
 
 
 class BloomerpAuthSettings(BaseModel):
+    interactive: InteractiveAuthSettings = Field(default_factory=InteractiveAuthSettings)
     session: SessionAuthSettings = Field(default_factory=SessionAuthSettings)
     bearer: BearerAuthSettings = Field(default_factory=BearerAuthSettings)
     api_key: ApiKeyAuthSettings = Field(default_factory=ApiKeyAuthSettings)
@@ -80,4 +103,3 @@ class BloomerpConfig(BaseModel):
 
     auth: BloomerpAuthSettings = Field(default_factory=BloomerpAuthSettings)
     
-

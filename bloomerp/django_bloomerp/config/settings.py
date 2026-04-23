@@ -14,7 +14,13 @@ from pathlib import Path
 import sys
 
 from bloomerp.config.definition import BloomerpConfig
-from bloomerp.config.settings import BLOOMERP_APPS, BLOOMERP_MIDDLEWARE, BLOOMERP_USER_MODEL
+from bloomerp.config.settings import (
+    BLOOMERP_APPS,
+    BLOOMERP_AUTHENTICATION_BACKENDS,
+    BLOOMERP_MIDDLEWARE,
+    BLOOMERP_SITE_ID,
+    BLOOMERP_USER_MODEL,
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +38,12 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 # Application definition
+LOGIN_URL = "/login/"
+LOGOUT_URL = "/logout/"
+
 AUTH_USER_MODEL = BLOOMERP_USER_MODEL
+AUTHENTICATION_BACKENDS = BLOOMERP_AUTHENTICATION_BACKENDS
+SITE_ID = BLOOMERP_SITE_ID
 
 INSTALLED_APPS = [
     'daphne',

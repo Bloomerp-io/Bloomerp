@@ -121,7 +121,13 @@ class AbstractBloomerpUser(
             user=self,
             selected=True,
         )
-    
+
+class AbstractBloomerpEmailUser(AbstractBloomerpUser):
+    email = models.EmailField(unique=True)
+
+    class Meta:
+        abstract = True
+
 class User(AbstractBloomerpUser):
     bloomerp_config = USER_CONFIG
 

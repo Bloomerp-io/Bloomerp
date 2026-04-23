@@ -2,7 +2,7 @@ from django.conf import settings
 from django.template.response import TemplateResponse
 from django.urls import reverse_lazy
 
-from bloomerp.config.definition import BloomerpConfig
+from bloomerp.auth import get_bloomerp_config
 
 
 class ConditionalStaffRequiredMixin:
@@ -14,14 +14,12 @@ class ConditionalStaffRequiredMixin:
     staff_only_title = "Staff Access Required"
     staff_only_message = "This page is only available to staff members."
 
-    def get_bloomerp_config(self) -> BloomerpConfig:
-        config = getattr(settings, "BLOOMERP_CONFIG", None)
-        if isinstance(config, BloomerpConfig):
-            return config
-        return BloomerpConfig()
-
     def staff_access_required(self) -> bool:
-        return bool(self.get_bloomerp_config().require_staff_for_access)
+        config = get_bloomerp_config()
+        interactive_auth = config.auth.interactive
+        return bool(
+            config.require_staff_for_access and not interactive_auth.allow_non_staff_bloomerp_access
+        )
 
     def get_staff_only_template_name(self, request) -> str:
         if request.headers.get("HX-Request"):
@@ -29,13 +27,20 @@ class ConditionalStaffRequiredMixin:
         return self.staff_only_template_name
 
     def render_staff_only_response(self, request):
+        is_authenticated = bool(getattr(request.user, "is_authenticated", False))
         return TemplateResponse(
             request,
             self.get_staff_only_template_name(request),
             {
                 "title": self.staff_only_title,
-                "message": self.staff_only_message,
+                "message": (
+                    "You are signed in, but this page is only available to staff members."
+                    if is_authenticated
+                    else self.staff_only_message
+                ),
                 "login_url": getattr(settings, "LOGIN_URL", None) or reverse_lazy("login"),
+                "logout_url": getattr(settings, "LOGOUT_URL", None) or reverse_lazy("logout"),
+                "is_authenticated": is_authenticated,
             },
             status=403,
         )

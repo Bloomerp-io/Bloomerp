@@ -22,7 +22,7 @@
                 <h1 class="font-bold text-3xl md:text-4xl mb-2 md:mb-4">Welcome back</h1>
                 <div class="pt-2 md:pt-4 mb-4 text-center">
                     <h5 class="pb-0 text-lg md:text-xl">{% trans "Login to Your Account" %}</h5>
-                    <p class="text-gray-500 text-sm md:text-base">{% trans "Enter your username & password to login" %}</p>
+                    <p class="text-gray-500 text-sm md:text-base">{{ login_help_text }}</p>
                 </div>
 
                 <form class="w-full max-w-sm sm:max-w-md space-y-4 mx-auto" action="" method="POST">
@@ -36,12 +36,49 @@
                     </div>
                 </form>
 
+                {% if social_login_enabled %}
+                    <div class="my-4 w-full max-w-sm sm:max-w-md">
+                        <div class="relative">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-gray-200"></div>
+                            </div>
+                            <div class="relative flex justify-center text-xs uppercase">
+                                <span class="bg-base px-2 text-gray-500">{% trans "Or continue with" %}</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid gap-3">
+                            {% for provider in social_login_providers %}
+                                {% if provider.is_available %}
+                                    <a
+                                        href="{{ provider.login_url }}"
+                                        class="inline-flex w-full items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                    >
+                                        {% blocktrans with provider_name=provider.name %}Continue with {{ provider_name }}{% endblocktrans %}
+                                    </a>
+                                {% else %}
+                                    <div class="inline-flex w-full items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-500">
+                                        {% blocktrans with provider_name=provider.name %}{{ provider_name }} login requires django-allauth and provider setup{% endblocktrans %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
                 <hr class="my-4 w-full border-gray-200">
-                <p class="text-gray-500 text-sm mt-2">{% trans "Forgot password?" %}</p>
-                <p class="mt-2">
-                    <a class="text-primary hover:underline" href="">{% trans "Reset password" %}</a>
-                    <span class="text-gray-500">{% trans "or contact your staff." %}</span>
-                </p>
+                {% if interactive_auth.password_reset_enabled %}
+                    <p class="text-gray-500 text-sm mt-2">{% trans "Forgot password?" %}</p>
+                    <p class="mt-2">
+                        <a class="text-primary hover:underline" href="">{% trans "Reset password" %}</a>
+                        <span class="text-gray-500">{% trans "or contact your staff." %}</span>
+                    </p>
+                {% endif %}
+
+                {% if interactive_auth.email_verification == "required" %}
+                    <p class="mt-4 text-xs text-gray-500">
+                        {% trans "Email verification is required before this account can access protected flows." %}
+                    </p>
+                {% endif %}
             </div>
             <!--End center-->
 
