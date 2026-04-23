@@ -5,8 +5,8 @@ from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 
 class BaseBloomerpView(
-    ConditionalStaffRequiredMixin,
     LoginRequiredMixin,
+    ConditionalStaffRequiredMixin,
     PermissionRequiredMixin,
     HtmxMixin,
 ):
