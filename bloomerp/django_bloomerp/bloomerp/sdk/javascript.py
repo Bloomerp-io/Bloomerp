@@ -63,6 +63,38 @@ for (const item of page.results) {{
   console.log(item.{filter_key});
 }}
 ```
+
+## Inspect Field Options
+
+```js
+const statusChoices = sdk.metadata.models.todos?.fields.status.choices || [];
+
+for (const option of statusChoices) {{
+  console.log(option.value, option.label);
+}}
+```
+
+## Handle Validation Errors
+
+```js
+import BloomerpSdk, {{ BloomerpHttpError }} from "./{self.filename}";
+
+const sdk = new BloomerpSdk({{
+  baseUrl: "https://example.com",
+}});
+
+try {{
+  await sdk.{client_name}.create({{
+    // invalid payload
+  }});
+}} catch (error) {{
+  if (error instanceof BloomerpHttpError && error.status === 400) {{
+    console.log(error.body);
+  }} else {{
+    throw error;
+  }}
+}}
+```
 """
 
     def render_prelude(self) -> str:
@@ -108,16 +140,56 @@ for (const item of page.results) {{
  *   credentials?: RequestCredentials,
  *   csrf?: SessionCsrfConfig
  * }} BloomerpAuth
+ * @typedef {{ value: string | number | boolean | null, label: string }} BloomerpFieldChoice
+ * @typedef {{
+ *   name: string,
+ *   title: string,
+ *   fieldType: string,
+ *   dbFieldType: string | null,
+ *   nullable: boolean,
+ *   many: boolean,
+ *   relatedModel: string | null,
+ *   editable: boolean,
+ *   requiredOnCreate: boolean,
+ *   tsType: string,
+ *   choices: BloomerpFieldChoice[] | null
+ * }} BloomerpFieldMetadata
  */
 
 export class BloomerpHttpError extends Error {{
   constructor(response, body = undefined) {{
-    super(`Bloomerp request failed with status ${{response.status}}: ${{response.statusText}}`);
+    super(BloomerpHttpError.buildMessage(response, body));
     this.name = "BloomerpHttpError";
     this.status = response.status;
     this.statusText = response.statusText;
     this.body = body;
     this.headers = response.headers;
+  }}
+
+  static buildMessage(response, body = undefined) {{
+    if (typeof body === "string" && body.trim()) {{
+      return body;
+    }}
+
+    if (body && typeof body === "object") {{
+      const payload = body;
+
+      if (typeof payload.detail === "string" && payload.detail.trim()) {{
+        return payload.detail;
+      }}
+
+      const firstEntry = Object.values(payload).find(
+        (value) => value !== undefined && value !== null,
+      );
+      if (typeof firstEntry === "string" && firstEntry.trim()) {{
+        return firstEntry;
+      }}
+      if (Array.isArray(firstEntry) && typeof firstEntry[0] === "string") {{
+        return firstEntry[0];
+      }}
+    }}
+
+    return `Bloomerp request failed with status ${{response.status}}: ${{response.statusText}}`;
   }}
 }}
 

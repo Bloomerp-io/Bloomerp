@@ -78,12 +78,46 @@ const page = await sdk.{client_name}.list({{
 const results = page.results;
 ```
 
+## Inspect Field Options
+
+```ts
+const statusChoices = sdk.metadata.models.todos?.fields.status.choices ?? [];
+
+for (const option of statusChoices) {{
+  console.log(option.value, option.label);
+}}
+```
+
+## Handle Validation Errors
+
+```ts
+import BloomerpSdk, {{ BloomerpHttpError }} from "./{self.filename}";
+
+const sdk = new BloomerpSdk({{
+  baseUrl: "https://example.com",
+}});
+
+try {{
+  await sdk.{client_name}.create({{
+    // invalid payload
+  }});
+}} catch (error) {{
+  if (error instanceof BloomerpHttpError && error.status === 400) {{
+    const fieldErrors = error.body as Record<string, string[]>;
+    console.log(fieldErrors);
+  }} else {{
+    throw error;
+  }}
+}}
+```
+
 ## Notes
 
 - `sdk.auth.*` targets Bloomerp's built-in `/api/auth/*` endpoints.
 - `list()` always returns a paginated shape with `results`, `count`, `next`, and `previous`.
 - Per-request options flow through to `fetch`, including `cache`, `credentials`, `headers`, `signal`, and framework-specific fetch options.
 - Structured failures throw `BloomerpHttpError`.
+- Choice fields expose `{{ value, label }}` metadata under `sdk.metadata.models.<model>.fields.<field>.choices`.
 - Example model shown above: `{model_name}`.
 """
 
@@ -126,6 +160,11 @@ export interface BloomerpAuthLoginPayload {{
   [key: string]: unknown;
 }}
 
+export interface BloomerpFieldChoiceMetadata {{
+  value: string | number | boolean | null;
+  label: string;
+}}
+
 export interface BloomerpFieldMetadata {{
   name: string;
   title: string;
@@ -137,6 +176,7 @@ export interface BloomerpFieldMetadata {{
   editable: boolean;
   requiredOnCreate: boolean;
   tsType: string;
+  choices: BloomerpFieldChoiceMetadata[] | null;
 }}
 
 export interface BloomerpModelPublicAccessMetadata {{
@@ -199,12 +239,38 @@ export class BloomerpHttpError<TBody = unknown> extends Error {{
   public readonly headers: Headers;
 
   constructor(response: Response, body?: TBody) {{
-    super(`Bloomerp request failed with status ${{response.status}}: ${{response.statusText}}`);
+    super(BloomerpHttpError.buildMessage(response, body));
     this.name = "BloomerpHttpError";
     this.status = response.status;
     this.statusText = response.statusText;
     this.body = body;
     this.headers = response.headers;
+  }}
+
+  private static buildMessage<TBody>(response: Response, body?: TBody) {{
+    if (typeof body === "string" && body.trim()) {{
+      return body;
+    }}
+
+    if (body && typeof body === "object") {{
+      const payload = body as Record<string, unknown>;
+
+      if (typeof payload.detail === "string" && payload.detail.trim()) {{
+        return payload.detail;
+      }}
+
+      const firstEntry = Object.values(payload).find(
+        (value) => value !== undefined && value !== null,
+      );
+      if (typeof firstEntry === "string" && firstEntry.trim()) {{
+        return firstEntry;
+      }}
+      if (Array.isArray(firstEntry) && typeof firstEntry[0] === "string") {{
+        return firstEntry[0];
+      }}
+    }}
+
+    return `Bloomerp request failed with status ${{response.status}}: ${{response.statusText}}`;
   }}
 }}
 

@@ -77,11 +77,15 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn('type: "session"', index_contents)
             self.assertIn("export class AuthApi", index_contents)
             self.assertIn("export class BloomerpHttpError", index_contents)
+            self.assertIn("super(BloomerpHttpError.buildMessage(response, body));", index_contents)
+            self.assertIn("private static buildMessage<TBody>(response: Response, body?: TBody)", index_contents)
             self.assertIn("export interface Customer", index_contents)
             self.assertIn("export class CustomerApi", index_contents)
             self.assertIn("customersFields", index_contents)
             self.assertIn("customersPublicAccess", index_contents)
             self.assertIn("nesting: BloomerpModelNestingMetadata[]", index_contents)
+            self.assertIn("export interface BloomerpFieldChoiceMetadata", index_contents)
+            self.assertIn('"choices": [', index_contents)
             self.assertIn('country: number | null | Country;', index_contents)
             self.assertIn('"forField": "country"', index_contents)
             self.assertIn("bloomerpAuthStrategyTypes", index_contents)
@@ -123,6 +127,8 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("export class CustomerApi", sdk_contents)
             self.assertIn("export const customersFields", sdk_contents)
             self.assertIn("export const customersPublicAccess", sdk_contents)
+            self.assertIn("choices: BloomerpFieldChoice[] | null", sdk_contents)
+            self.assertIn('"choices":[', sdk_contents.replace(" ", ""))
             self.assertIn('super(client, "/api/customers/");', sdk_contents)
             self.assertIn("globalThis.fetch(input, init)", sdk_contents)
 
@@ -161,6 +167,8 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("country: int | None | Country", sdk_contents)
             self.assertIn("'forField': 'country'", sdk_contents)
             self.assertIn("customers_fields: dict[str, BloomerpFieldMetadata]", sdk_contents)
+            self.assertIn("choices: list[dict[str, Any]] | None", sdk_contents)
+            self.assertIn("'choices': [", sdk_contents)
             self.assertIn("customers_public_access: dict[str, Any]", sdk_contents)
             self.assertIn('super().__init__(client, "/api/customers/")', sdk_contents)
 
@@ -216,8 +224,12 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("## Read One", readme_contents)
             self.assertIn("## Create", readme_contents)
             self.assertIn("## Filter / List", readme_contents)
+            self.assertIn("## Inspect Field Options", readme_contents)
+            self.assertIn("## Handle Validation Errors", readme_contents)
             self.assertIn("await sdk.auth.login({", readme_contents)
             self.assertIn('const page = await sdk.customers.list({', readme_contents)
+            self.assertIn("sdk.metadata.models.<model>.fields.<field>.choices", readme_contents)
+            self.assertIn("BloomerpHttpError", readme_contents)
 
     def test_create_sdk_rejects_unsupported_languages(self):
         """

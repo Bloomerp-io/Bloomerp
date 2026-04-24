@@ -15,6 +15,12 @@ from bloomerp.utils.models import model_name_plural_underline
 
 
 @dataclass(frozen=True)
+class SdkFieldChoiceDefinition:
+    value: str | int | float | bool | None
+    label: str
+
+
+@dataclass(frozen=True)
 class SdkFieldDefinition:
     name: str
     field_type: str
@@ -28,6 +34,7 @@ class SdkFieldDefinition:
     ts_type: str
     js_doc_type: str
     python_type: str
+    choices: list[SdkFieldChoiceDefinition] | None
 
 
 @dataclass(frozen=True)
@@ -162,6 +169,7 @@ class BaseSdkGenerator(ABC):
                     ts_type=self.get_ts_type_for_field(model_field),
                     js_doc_type=self.get_js_doc_type_for_field(model_field),
                     python_type=self.get_python_type_for_field(model_field),
+                    choices=self.get_field_choices(model_field),
                 )
             )
 
@@ -190,6 +198,28 @@ class BaseSdkGenerator(ABC):
         if related_model is None:
             return None
         return related_model.__name__
+
+    def get_field_choices(self, field: models.Field) -> list[SdkFieldChoiceDefinition] | None:
+        if not getattr(field, "choices", None):
+            return None
+
+        resolved_choices = getattr(field, "flatchoices", None) or field.choices
+        choices: list[SdkFieldChoiceDefinition] = []
+        for value, label in resolved_choices:
+            normalized_value = value
+            if isinstance(normalized_value, str | int | float | bool) or normalized_value is None:
+                pass
+            else:
+                normalized_value = str(normalized_value)
+
+            choices.append(
+                SdkFieldChoiceDefinition(
+                    value=normalized_value,
+                    label=str(label),
+                )
+            )
+
+        return choices or None
 
     def get_ts_type_for_field(self, field: models.Field) -> str:
         if isinstance(field, (models.ForeignKey, models.OneToOneField)):
@@ -282,6 +312,7 @@ class BaseSdkGenerator(ABC):
             "editable": payload["editable"],
             "requiredOnCreate": payload["required_on_create"],
             "tsType": payload["ts_type"],
+            "choices": payload["choices"],
         }
 
     def build_public_access_metadata(self, config: BloomerpModelConfig | None) -> dict:

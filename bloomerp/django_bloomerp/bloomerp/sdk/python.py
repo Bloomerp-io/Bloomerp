@@ -72,6 +72,32 @@ page = sdk.{client_name}.list({{
 for item in page["results"]:
     print(item["{filter_key}"])
 ```
+
+## Inspect Field Options
+
+```python
+status_field = sdk.metadata["models"].get("todos", {{}}).get("fields", {{}}).get("status")
+for option in (status_field.choices if status_field else []):
+    print(option["value"], option["label"])
+```
+
+## Handle Validation Errors
+
+```python
+from {self.filename.removesuffix('.py')} import BloomerpHttpError, BloomerpSdk
+
+sdk = BloomerpSdk(base_url="https://example.com")
+
+try:
+    sdk.{client_name}.create({{
+        # invalid payload
+    }})
+except BloomerpHttpError as error:
+    if error.status == 400 and isinstance(error.body, dict):
+        print(error.body)
+    else:
+        raise
+```
 """
 
     def render_prelude(self) -> str:
@@ -158,6 +184,7 @@ class BloomerpFieldMetadata:
     editable: bool
     required_on_create: bool
     ts_type: str
+    choices: list[dict[str, Any]] | None
 
 
 @dataclass(frozen=True)
@@ -518,4 +545,5 @@ bloomerp_auth_strategy_types: tuple[str, ...] = tuple({auth_strategy_types})
             "editable": metadata["editable"],
             "required_on_create": metadata["requiredOnCreate"],
             "ts_type": metadata["tsType"],
+            "choices": metadata["choices"],
         }
