@@ -172,7 +172,7 @@ BUILDER_STEP = WizardStep(
     name="Create Tile",
     description="Create a new tile for the workspace",
 )
-class CreateTileView(BaseBloomerpView, WizardMixin, TemplateView):
+class CreateTileView(WizardMixin, BaseBloomerpView, TemplateView):
     template_name = "base_wizard.html"
     session_key = CREATE_TILE_SESSION_KEY
     

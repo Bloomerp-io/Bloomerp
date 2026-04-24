@@ -204,7 +204,7 @@ def ctx_confirm_step(request: HttpRequest, view:"BloomerpBulkUploadView", orches
     route_type="model",
     exclude_models=[File],
 )
-class BloomerpBulkUploadView(BaseBloomerpView, WizardMixin, TemplateView):
+class BloomerpBulkUploadView(WizardMixin, BaseBloomerpView, TemplateView):
     model = None
     module = None
     state_orchestrator_cls = BaseStateOrchestrator

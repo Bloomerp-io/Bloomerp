@@ -292,6 +292,7 @@ class WizardMixin:
         return bool(state)
 
     def get_htmx_include_addendum(self) -> bool:
+        
         htmx_request = self.request.htmx
         if htmx_request:
             if htmx_request.target == "main-content":

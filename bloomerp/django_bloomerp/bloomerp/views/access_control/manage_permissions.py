@@ -268,7 +268,7 @@ def pcs_policy_details(request: HttpRequest, view, orchestrator: BaseStateOrches
     name="Create Policy for {model}",
     description="Create an access control policies for {model}",
 )
-class ManageAccessControlForModelView(BaseBloomerpView, WizardMixin, TemplateView):
+class ManageAccessControlForModelView(WizardMixin, BaseBloomerpView, TemplateView):
     template_name = "base_wizard.html"
     model: type[Model] = None
 
