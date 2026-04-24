@@ -347,6 +347,15 @@ ON_DELETE_FIELD_OPTION = FieldOption(
     choices=["CASCADE", "PROTECT", "SET_NULL", "SET_DEFAULT", "DO_NOTHING"],
 )
 
+CHOICES_FIELD_OPTION = FieldOption(
+    "choices",
+    "Choices",
+    "choices",
+    "Fixed options available for this field.",
+    required=True,
+    default_value=[],
+)
+
 COMMON_FIELD_OPTIONS = [
     VERBOSE_NAME_FIELD_OPTION,
     NULL_FIELD_OPTION,
@@ -359,6 +368,12 @@ COMMON_FIELD_OPTIONS = [
 
 COMMON_TEXT_FIELD_OPTIONS = [
     *COMMON_FIELD_OPTIONS,
+    MAX_LENGTH_FIELD_OPTION,
+]
+
+COMMON_CHOICE_FIELD_OPTIONS = [
+    *COMMON_FIELD_OPTIONS,
+    CHOICES_FIELD_OPTION,
     MAX_LENGTH_FIELD_OPTION,
 ]
 
@@ -527,7 +542,7 @@ class FieldType(Enum):
         default_model_field_args={
             "max_length": 50,
         },
-        field_options=COMMON_TEXT_FIELD_OPTIONS,
+        field_options=COMMON_CHOICE_FIELD_OPTIONS,
     )
     
     TEXT_FIELD = FieldTypeDefinition(
