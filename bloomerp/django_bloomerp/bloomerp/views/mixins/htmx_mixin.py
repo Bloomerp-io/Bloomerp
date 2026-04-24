@@ -147,6 +147,7 @@ class HtmxMixin:
         return items
 
 
+
     def get_context_data(self, **kwargs:Any) -> dict:
         import random
         try:
