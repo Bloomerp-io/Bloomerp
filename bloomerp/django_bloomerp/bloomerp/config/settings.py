@@ -149,7 +149,6 @@ if _has_allauth():
         "allauth.account",
         "allauth.socialaccount",
     ]
-    BLOOMERP_APPS += get_bloomerp_social_provider_apps()
 
 BLOOMERP_MIDDLEWARE = [
     "bloomerp.middleware.HTMXPermissionDeniedMiddleware",
