@@ -19,7 +19,7 @@ class HtmxMixin:
     htmx_detail_target = 'detail-view-content'
     htmx_main_target = 'main-content'
     htmx_include_addendum = True
-    is_detail_view = False
+    is_detail_view = None
     include_padding = True
 
     # Some other args
@@ -156,10 +156,13 @@ class HtmxMixin:
             context = {}
 
         base_template_name = self.template_name
-        is_detail_request = self.is_detail_view or isinstance(self, DetailView) or isinstance(self, UpdateView)
 
-
-
+        # Check if we should add the detail view layout
+        if isinstance(self.is_detail_view, bool):
+            is_detail_request = self.is_detail_view
+        else:
+            is_detail_request = isinstance(self, DetailView) or isinstance(self, UpdateView)
+        
         # ---------------------
         # NORMAL REQUEST
         # ---------------------
