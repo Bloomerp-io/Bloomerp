@@ -6,6 +6,7 @@ from typing import Any
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.db import IntegrityError
+from django.db.models.fields.files import FieldFile
 from django.http import HttpRequest, JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.http import require_GET, require_POST
@@ -61,7 +62,7 @@ def _serialize_user(user) -> dict:
 
 
 def _serialize_user_field_value(value: Any) -> object:
-    if hasattr(value, "url") and hasattr(value, "name"):
+    if isinstance(value, FieldFile):
         if not value:
             return None
         try:
