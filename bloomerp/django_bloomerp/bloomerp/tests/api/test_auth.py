@@ -24,6 +24,27 @@ class TestBloomerpAuthApi(BaseBloomerpModelTestCase):
         self.assertEqual(payload["user"]["username"], "johndoe")
         self.assertEqual(payload["user"]["email"], "johndoe@example.com")
 
+    @override_settings(
+        MEDIA_URL="/media/",
+        BLOOMERP_CONFIG=BloomerpConfig(
+            auto_generate_api_endpoints=True,
+            auth=BloomerpAuthSettings(
+                session=SessionAuthSettings(user_fields=["id", "avatar"]),
+            ),
+        ),
+    )
+    def test_session_endpoint_serializes_file_fields_as_urls(self):
+        self.normal_user.avatar = "avatars/profile.png"
+        self.normal_user.save(update_fields=["avatar"])
+
+        self.client.force_login(self.normal_user)
+        response = self.client.get("/api/auth/session/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["authenticated"])
+        self.assertEqual(payload["user"]["avatar"], "/media/avatars/profile.png")
+
     def test_csrf_endpoint_returns_token_and_sets_cookie(self):
         response = self.client.get("/api/auth/csrf/")
 

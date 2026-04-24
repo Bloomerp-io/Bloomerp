@@ -19,9 +19,12 @@ class BloomerpApp(AppConfig):
     def ready(self) -> None:
         from django.core.exceptions import ImproperlyConfigured
         from django.db.utils import OperationalError, ProgrammingError
+        from bloomerp.config.settings import configure_bloomerp_allauth_settings
         from bloomerp.config.validator import validate_runtime_configuration
         from bloomerp.signals.automations import setup_automation_signals
         from bloomerp.modules.definition import module_registry
+
+        configure_bloomerp_allauth_settings()
 
         try:
             setup_automation_signals()

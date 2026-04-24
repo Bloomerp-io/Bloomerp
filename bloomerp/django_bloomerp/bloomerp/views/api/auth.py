@@ -56,8 +56,23 @@ def _serialize_user(user) -> dict:
     payload: dict[str, object] = {}
     for field_name in _session_auth_settings().user_fields:
         if hasattr(user, field_name):
-            payload[field_name] = getattr(user, field_name)
+            payload[field_name] = _serialize_user_field_value(getattr(user, field_name))
     return payload
+
+
+def _serialize_user_field_value(value: Any) -> object:
+    if hasattr(value, "url") and hasattr(value, "name"):
+        if not value:
+            return None
+        try:
+            return value.url
+        except ValueError:
+            return None
+
+    if hasattr(value, "pk") and not isinstance(value, (str, bytes)):
+        return value.pk
+
+    return value
 
 
 def _uses_case_insensitive_lookup(field_name: str) -> bool:

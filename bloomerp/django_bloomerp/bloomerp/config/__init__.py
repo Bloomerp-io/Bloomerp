@@ -16,6 +16,9 @@ from .settings import (
     BLOOMERP_MIDDLEWARE,
     BLOOMERP_SITE_ID,
     BLOOMERP_USER_MODEL,
+    configure_bloomerp_allauth_settings,
+    get_bloomerp_social_provider_apps,
+    get_bloomerp_socialaccount_providers,
 )
 
 __all__ = [
@@ -34,4 +37,7 @@ __all__ = [
     "BLOOMERP_MIDDLEWARE",
     "BLOOMERP_SITE_ID",
     "BLOOMERP_USER_MODEL",
+    "configure_bloomerp_allauth_settings",
+    "get_bloomerp_social_provider_apps",
+    "get_bloomerp_socialaccount_providers",
 ]

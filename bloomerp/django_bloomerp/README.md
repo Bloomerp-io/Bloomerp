@@ -131,8 +131,8 @@ BLOOMERP_CONFIG = BloomerpConfig(
 And then provide secrets through environment variables, for example:
 
 ```bash
-export GITHUB_CLIENT_ID="..."
-export GITHUB_CLIENT_SECRET="..."
+export BLOOMERP_GITHUB_CLIENT_ID="..."
+export BLOOMERP_GITHUB_CLIENT_SECRET="..."
 ```
 
 ### 5. What Bloomerp should own
@@ -171,24 +171,21 @@ The frontend can then:
 4. let Bloomerp complete OAuth and set the session
 5. verify login through `/api/auth/session/`
 
-### 6. Current state vs target state
+### 6. What Bloomerp derives for allauth
 
-Current state in Bloomerp:
+When `use_allauth=True`, Bloomerp derives the internal allauth wiring from `BLOOMERP_CONFIG`.
 
-- Bloomerp has a central auth config shape in `BLOOMERP_CONFIG.auth`
-- browser login can already switch between username and email
-- the registration API endpoint can already be enabled or disabled from config
-- the login page can already render configured social providers
-- `django-allauth` is treated as an optional engine when installed
+That includes:
 
-Target state for frictionless provider support:
+- allauth core apps
+- configured social provider apps
+- allauth authentication backend
+- allauth account middleware
+- `SITE_ID`
+- `ACCOUNT_*` defaults
+- `SOCIALACCOUNT_PROVIDERS`
 
-- provider metadata is declared in `BLOOMERP_CONFIG`
-- Bloomerp auto-derives the internal `allauth` configuration
-- Bloomerp auto-exposes provider start/callback endpoints
-- the frontend only talks to Bloomerp auth endpoints, never directly to `allauth`
-
-That target state is the recommended direction for Bloomerp if `django-allauth` becomes the standard interactive auth engine.
+The consuming Django project should not need to hand-build provider settings or duplicate provider declarations outside `BLOOMERP_CONFIG`.
 
 ## Authentication
 
