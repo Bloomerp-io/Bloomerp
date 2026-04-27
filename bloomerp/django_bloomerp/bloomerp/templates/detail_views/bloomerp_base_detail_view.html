@@ -26,6 +26,7 @@
 	<div class="relative overflow-x-auto no-scrollbar border-b border-gray-200 bg-white" style="overflow-y: visible;" data-tabs-strip-container>
 		<ul class="flex min-w-max items-end gap-1 px-1 pt-1" role="tablist" data-tabs-strip>
 			{% for tab in tabs_top_level %}
+				{% if not tab.is_delete %}
 				{% if tab.requires_pk %}
 					{% url tab.url object.pk as tab_href %}
 				{% else %}
@@ -58,6 +59,7 @@
 						{{ tab.name }}
 					</button>
 				</li>
+				{% endif %}
 			{% endfor %}
 
 			{% for folder in tab_folders %}
@@ -109,6 +111,43 @@
 						{% endif %}
 					</div>
 				</li>
+			{% endfor %}
+
+			{% for tab in tabs_top_level %}
+				{% if tab.is_delete %}
+				{% if tab.requires_pk %}
+					{% url tab.url object.pk as tab_href %}
+				{% else %}
+					{% url tab.url as tab_href %}
+				{% endif %}
+				<li
+					data-tab-item
+					data-tab-type="tab"
+					data-tab-key="{{ tab.key|default:tab.url }}"
+					data-tab-name="{{ tab.name }}"
+					data-tab-url="{{ tab.url }}"
+					data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
+					data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+					draggable="true"
+					class="shrink-0 rounded-t-xl border-b-2 border-transparent cursor-pointer select-none"
+				>
+					<button
+						type="button"
+						data-tab-link
+						role="tab"
+						aria-selected="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+						hx-get="{{ tab_href }}"
+						hx-swap="innerHTML"
+						hx-trigger="click"
+						hx-target="#detail-view-content"
+						hx-push-url="true"
+						id="{{ tab_href }}"
+						class="h-full w-full rounded-t-xl px-3 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
+					>
+						{{ tab.name }}
+					</button>
+				</li>
+				{% endif %}
 			{% endfor %}
 		</ul>
 	</div>

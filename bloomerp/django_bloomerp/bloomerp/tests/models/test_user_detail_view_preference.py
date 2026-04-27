@@ -58,7 +58,6 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
             content_type=ContentType.objects.get_for_model(self.CustomerModel),
             field_layout={},
             tab_state={
-                "version": 2,
                 "top_level_order": ["non_existant_tab"],
                 "folders": [],
                 "active": None,
@@ -77,21 +76,6 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         
         self.assertEqual(response.status_code, 200)
 
-    def test_tab_state_obj_normalizes_legacy_v1_shape(self):
-        detail_view_preference = UserDetailViewPreference.objects.create(
-            user=self.admin_user,
-            content_type=ContentType.objects.get_for_model(self.CustomerModel),
-            field_layout={},
-            tab_state={
-                "order": ["overview"],
-                "active": "overview",
-            },
-        )
-
-        self.assertEqual(detail_view_preference.tab_state_obj.get("version"), 2)
-        self.assertEqual(detail_view_preference.tab_state_obj.get("top_level_order"), ["overview"])
-        self.assertEqual(detail_view_preference.tab_state_obj.get("folders"), [])
-
     def test_tab_state_obj_defaults_for_invalid_state(self):
         detail_view_preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
@@ -100,7 +84,6 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
             tab_state="invalid",
         )
 
-        self.assertEqual(detail_view_preference.tab_state_obj.get("version"), 2)
         self.assertEqual(detail_view_preference.tab_state_obj.get("top_level_order"), [])
         self.assertEqual(detail_view_preference.tab_state_obj.get("folders"), [])
         self.assertIsNone(detail_view_preference.tab_state_obj.get("active"))
@@ -262,7 +245,6 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
             content_type=content_type,
             field_layout={},
             tab_state={
-                "version": 2,
                 "top_level_order": [],
                 "folders": [],
                 "active": None,

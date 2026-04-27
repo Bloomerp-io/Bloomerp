@@ -8,8 +8,8 @@ from bloomerp.services.sectioned_layout_services import normalize_layout_payload
 
 
 def get_default_tab_state() -> dict:
-    from bloomerp.services.detail_view_services import get_default_tab_state_v2
-    return get_default_tab_state_v2()
+    from bloomerp.services.detail_view_services import get_default_tab_state
+    return get_default_tab_state()
 
 class UserDetailViewPreference(models.Model):
     """
@@ -60,10 +60,15 @@ class UserDetailViewPreference(models.Model):
         )
         if qs.exists():
             preference = qs.first()
+            update_fields: list[str] = []
+
             if not preference.field_layout_obj.rows or not any(row.items for row in preference.field_layout_obj.rows):
                 from bloomerp.services.detail_view_services import get_default_layout
                 preference.field_layout = get_default_layout(content_type=content_type, user=user).model_dump()
-                preference.save(update_fields=["field_layout"])
+                update_fields.append("field_layout")
+
+            if update_fields:
+                preference.save(update_fields=update_fields)
             return preference
 
         return UserDetailViewPreference.create_default_for_user(user, content_type)
@@ -102,7 +107,10 @@ class UserDetailViewPreference(models.Model):
         from bloomerp.services.detail_view_services import normalize_detail_tab_state
         if not isinstance(self.tab_state, dict):
             return get_default_tab_state()
-        return normalize_detail_tab_state(self.tab_state)
+        try:
+            return normalize_detail_tab_state(self.tab_state)
+        except ValueError:
+            return get_default_tab_state()
     
     
     

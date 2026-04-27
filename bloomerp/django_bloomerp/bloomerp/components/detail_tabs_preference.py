@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.router import router
 from bloomerp.services.detail_view_services import (
+    build_default_tab_state_from_tabs,
     get_ordered_tab_keys_from_state,
     get_router_detail_tabs,
     save_detail_tab_state,
@@ -38,14 +39,18 @@ def detail_tabs_preference(request: HttpRequest) -> HttpResponse:
 
     state_raw = request.POST.get('state')
     if not state_raw:
-        return HttpResponse('Missing state', status=400)
+        state = build_default_tab_state_from_tabs(available_tabs)
+    else:
+        try:
+            state = json.loads(state_raw)
+        except json.JSONDecodeError:
+            state = build_default_tab_state_from_tabs(available_tabs)
 
     try:
-        state = json.loads(state_raw)
-    except json.JSONDecodeError:
-        return HttpResponse('Invalid state payload', status=400)
-
-    requested_keys = get_ordered_tab_keys_from_state(state)
+        requested_keys = get_ordered_tab_keys_from_state(state)
+    except ValueError:
+        state = build_default_tab_state_from_tabs(available_tabs)
+        requested_keys = get_ordered_tab_keys_from_state(state)
 
     existing_keys = {str(tab.get('key')) for tab in available_tabs if tab.get('key')}
     for key in requested_keys:

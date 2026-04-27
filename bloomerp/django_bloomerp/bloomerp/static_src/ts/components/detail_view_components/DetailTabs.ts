@@ -97,6 +97,12 @@ export default class DetailTabs extends BaseComponent {
     }
 
     private initializeActiveKey(): void {
+        const currentLocationKey = this.getActiveKeyForCurrentLocation();
+        if (currentLocationKey) {
+            this.activeKey = currentLocationKey;
+            return;
+        }
+
         const activeTopLevel = this.getTopLevelItems().find((item) => item.dataset.tabActive === 'true');
         if (activeTopLevel) {
             this.activeKey = activeTopLevel.dataset.tabKey || null;
@@ -113,6 +119,43 @@ export default class DetailTabs extends BaseComponent {
         }
 
         this.activeKey = this.getTopLevelTabItems()[0]?.dataset.tabKey || null;
+    }
+
+    private getActiveKeyForCurrentLocation(): string | null {
+        if (typeof window === 'undefined') return null;
+
+        const currentPath = this.normalizePath(window.location.pathname);
+        if (!currentPath) return null;
+
+        for (const item of this.getTopLevelTabItems()) {
+            const link = item.querySelector<HTMLElement>('[data-tab-link]');
+            const href = link?.getAttribute('hx-get') || '';
+            if (this.normalizePath(href) === currentPath) {
+                return item.dataset.tabKey || null;
+            }
+        }
+
+        for (const folder of this.getFolderItems()) {
+            for (const button of this.getFolderTabButtons(folder)) {
+                const href = button.getAttribute('hx-get') || '';
+                if (this.normalizePath(href) === currentPath) {
+                    return button.dataset.tabKey || null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private normalizePath(value: string): string | null {
+        if (!value) return null;
+
+        try {
+            const url = new URL(value, window.location.origin);
+            return url.pathname.replace(/\/+$/, '') || '/';
+        } catch {
+            return null;
+        }
     }
 
     private bindAllTopLevelItems(): void {
@@ -159,7 +202,6 @@ export default class DetailTabs extends BaseComponent {
             const key = item.dataset.tabKey || null;
             this.setActiveKey(key);
             this.closeAllFolderPanels();
-            this.scheduleSave();
         });
 
         item.addEventListener('contextmenu', (event: MouseEvent) => {
@@ -502,7 +544,7 @@ export default class DetailTabs extends BaseComponent {
         const folderTabsContainer = folderItem.querySelector<HTMLElement>('[data-folder-tabs]');
         if (!folderTabsContainer) return;
 
-        const tabMeta = this.extractTabMetaFromTopLevelItem(tabItem);
+        const tabMeta = this.extractTabMeta(tabItem, '[data-tab-link]');
         if (!tabMeta) return;
 
         const existing = this.getFolderTabButtons(folderItem).find((button) => button.dataset.tabKey === tabMeta.key);
@@ -529,7 +571,7 @@ export default class DetailTabs extends BaseComponent {
         const folderTabButton = this.getFolderTabButtons(folderItem).find((button) => button.dataset.tabKey === tabKey);
         if (!folderTabButton) return;
 
-        const meta = this.extractTabMetaFromFolderButton(folderTabButton);
+        const meta = this.extractTabMeta(folderTabButton);
         if (!meta) return;
 
         const topLevelItem = this.createTopLevelTabItem(meta);
@@ -587,7 +629,7 @@ export default class DetailTabs extends BaseComponent {
         const insertionAnchor = folderItem.nextSibling;
 
         for (const button of folderButtons) {
-            const meta = this.extractTabMetaFromFolderButton(button);
+            const meta = this.extractTabMeta(button);
             if (!meta) continue;
             const topLevelItem = this.createTopLevelTabItem(meta);
             if (insertionAnchor) {
@@ -726,19 +768,7 @@ export default class DetailTabs extends BaseComponent {
         li.setAttribute('draggable', 'true');
         li.className = 'shrink-0 border-b-2 border-transparent hover:bg-gray-50 cursor-pointer select-none';
 
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.setAttribute('data-tab-link', '');
-        button.setAttribute('role', 'tab');
-        button.setAttribute('aria-selected', meta.isActive ? 'true' : 'false');
-        button.setAttribute('hx-get', meta.hxGet);
-        button.setAttribute('hx-swap', 'innerHTML');
-        button.setAttribute('hx-trigger', 'click');
-        button.setAttribute('hx-target', '#detail-view-content');
-        button.setAttribute('hx-push-url', 'true');
-        button.id = meta.elementId;
-        button.className = 'w-full h-full px-4 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500';
-        button.textContent = meta.name;
+        const button = this.createTabButton(meta, 'top-level');
 
         li.appendChild(button);
         this.bindTopLevelItem(li);
@@ -746,9 +776,12 @@ export default class DetailTabs extends BaseComponent {
     }
 
     private createFolderTabButton(meta: TabMeta): HTMLButtonElement {
+        return this.createTabButton(meta, 'folder');
+    }
+
+    private createTabButton(meta: TabMeta, variant: 'top-level' | 'folder'): HTMLButtonElement {
         const button = document.createElement('button');
         button.type = 'button';
-        button.setAttribute('data-folder-tab-item', '');
         button.setAttribute('data-tab-key', meta.key);
         button.setAttribute('data-tab-name', meta.name);
         button.setAttribute('data-tab-url', meta.url);
@@ -759,7 +792,16 @@ export default class DetailTabs extends BaseComponent {
         button.setAttribute('hx-trigger', 'click');
         button.setAttribute('hx-target', '#detail-view-content');
         button.setAttribute('hx-push-url', 'true');
-        button.className = 'block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500';
+        if (variant === 'top-level') {
+            button.setAttribute('data-tab-link', '');
+            button.setAttribute('role', 'tab');
+            button.setAttribute('aria-selected', meta.isActive ? 'true' : 'false');
+            button.id = meta.elementId;
+            button.className = 'w-full h-full px-4 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500';
+        } else {
+            button.setAttribute('data-folder-tab-item', '');
+            button.className = 'block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500';
+        }
         button.textContent = meta.name;
 
         return button;
@@ -822,18 +864,17 @@ export default class DetailTabs extends BaseComponent {
             const key = button.dataset.tabKey || null;
             this.setActiveKey(key);
             this.closeAllFolderPanels();
-            this.scheduleSave();
         });
     }
 
-    private extractTabMetaFromTopLevelItem(tabItem: HTMLElement): TabMeta | null {
-        const button = tabItem.querySelector<HTMLElement>('[data-tab-link]');
-        const key = tabItem.dataset.tabKey || '';
-        const name = tabItem.dataset.tabName || button?.textContent?.trim() || '';
-        const url = tabItem.dataset.tabUrl || '';
-        const requiresPk = tabItem.dataset.tabRequiresPk === 'true';
-        const hxGet = button?.getAttribute('hx-get') || '';
-        const elementId = button?.id || hxGet;
+    private extractTabMeta(source: HTMLElement, triggerSelector?: string): TabMeta | null {
+        const trigger = triggerSelector ? source.querySelector<HTMLElement>(triggerSelector) : source;
+        const key = source.dataset.tabKey || '';
+        const name = source.dataset.tabName || trigger?.textContent?.trim() || '';
+        const url = source.dataset.tabUrl || '';
+        const requiresPk = source.dataset.tabRequiresPk === 'true';
+        const hxGet = trigger?.getAttribute('hx-get') || '';
+        const elementId = trigger?.id || hxGet;
 
         if (!key || !name || !url || !hxGet) return null;
 
@@ -842,28 +883,7 @@ export default class DetailTabs extends BaseComponent {
             name,
             url,
             requiresPk,
-            isActive: tabItem.dataset.tabActive === 'true',
-            hxGet,
-            elementId,
-        };
-    }
-
-    private extractTabMetaFromFolderButton(button: HTMLElement): TabMeta | null {
-        const key = button.dataset.tabKey || '';
-        const name = button.dataset.tabName || button.textContent?.trim() || '';
-        const url = button.dataset.tabUrl || '';
-        const requiresPk = button.dataset.tabRequiresPk === 'true';
-        const hxGet = button.getAttribute('hx-get') || '';
-        const elementId = hxGet;
-
-        if (!key || !name || !url || !hxGet) return null;
-
-        return {
-            key,
-            name,
-            url,
-            requiresPk,
-            isActive: button.dataset.tabActive === 'true',
+            isActive: source.dataset.tabActive === 'true',
             hxGet,
             elementId,
         };
