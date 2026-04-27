@@ -81,16 +81,53 @@
 				</div>
 				{% for obj in group.objects %}
 					<div class="px-4 py-3 hover:bg-gray-50" data-global-search-row>
-						<a
-							class="flex flex-col"
-							data-global-search-item
-							hx-get="{{ obj|detail_view_url }}"
-							hx-target="#main-content"
-							hx-swap="innerHTML"
-							hx-push-url="true"
-						>
-							<span class="text-sm font-medium text-gray-900">{{ obj|highlight_query:highlight_query }}</span>
-						</a>
+						<div class="flex items-center justify-between gap-3">
+							<a
+								class="flex min-w-0 flex-1 flex-col"
+								data-global-search-item
+								data-global-search-parent-item
+								hx-get="{{ obj|detail_view_url }}"
+								hx-target="#main-content"
+								hx-swap="innerHTML"
+								hx-push-url="true"
+							>	
+								<span class="text-sm font-medium text-gray-900">{{ obj|highlight_query:highlight_query }}</span>
+							</a>
+							<button
+								type="button"
+								class="flex h-8 w-8 items-center justify-center rounded text-primary-400 transition hover:bg-primary-50 hover:text-primary-700"
+								data-global-search-toggle
+								data-global-search-submenu-id="global-search-submenu-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}"
+								aria-expanded="false"
+								aria-label="Toggle quick routes"
+							>
+								<i class="fa fa-chevron-down transition-transform" data-global-search-toggle-icon></i>
+							</button>
+						</div>
+					</div>
+					<div
+						id="global-search-submenu-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}"
+						class="hidden border-b border-gray-100 bg-primary-50/40"
+						data-global-search-submenu
+					>
+						{% for route in group.detail_routes%}
+							{% if route.nr_of_args == 1 %}
+							<div class="px-4 py-2 hover:bg-primary-50" data-global-search-row>
+								<a
+									class="flex items-center gap-2 pl-6 text-sm text-gray-700"
+									data-global-search-item
+									data-global-search-subitem
+									hx-get="{% url route.url_name obj.pk %}"
+									hx-target="#main-content"
+									hx-swap="innerHTML"
+									hx-push-url="true"
+									>
+									<i class="fa fa-arrow-turn-down-right text-xs text-primary-400"></i>
+									{{ route.name }}
+								</a>
+							</div>
+							{% endif %}
+						{% endfor %}
 					</div>
 				{% endfor %}
 			{% endfor %}

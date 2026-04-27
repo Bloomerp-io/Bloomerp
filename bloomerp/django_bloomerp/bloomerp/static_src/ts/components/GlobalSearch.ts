@@ -12,6 +12,7 @@ export default class GlobalSearch extends BaseComponent {
     private inputHandler: ((e: InputEvent) => void) | null = null;
     private inputKeyHandler: ((e: KeyboardEvent) => void) | null = null;
     private afterSwapHandler: ((e: Event) => void) | null = null;
+    private resultsClickHandler: ((e: MouseEvent) => void) | null = null;
     private debounceTimer: number | null = null;
     private resultItems: HTMLElement[] = [];
     private activeIndex: number = -1;
@@ -87,6 +88,14 @@ export default class GlobalSearch extends BaseComponent {
                 } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     this.moveSelection(-1);
+                } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    const activeItem = this.getActiveItem();
+                    if (!activeItem) return;
+
+                    const toggled = this.toggleSubmenuForItem(activeItem);
+                    if (toggled) {
+                        e.preventDefault();
+                    }
                 } else if (e.key === 'Enter') {
                     const activeItem = this.getActiveItem();
                     if (activeItem) {
@@ -109,16 +118,42 @@ export default class GlobalSearch extends BaseComponent {
 
         this.keyHandler = (e: KeyboardEvent) => {
             const key = (e.key || '').toLowerCase();
-            if ((isMac && e.metaKey && key === 'k') || (!isMac && e.ctrlKey && key === 'k')) {
+            const openRouteSearch = ((isMac && e.metaKey) || (!isMac && e.ctrlKey)) && e.shiftKey && key === 'k';
+            const openSearch = ((isMac && e.metaKey) || (!isMac && e.ctrlKey)) && !e.shiftKey && key === 'k';
+
+            if (openRouteSearch) {
                 e.preventDefault();
-                if (this.searchModal) {
-                    this.searchModal.open();
-                    setTimeout(() => this.modalInput?.focus(), 80);
-                }
+                this.openSearchModal('>');
+                return;
+            }
+
+            if (openSearch) {
+                e.preventDefault();
+                this.openSearchModal();
             }
         };
 
         document.addEventListener('keydown', this.keyHandler);
+
+        if (this.resultsContainer) {
+            this.resultsClickHandler = (event: MouseEvent) => {
+                const target = event.target as HTMLElement | null;
+                const toggleButton = target?.closest<HTMLElement>('[data-global-search-toggle]');
+                if (toggleButton) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    this.toggleSubmenu(toggleButton, true);
+                    return;
+                }
+
+                const clickedItem = target?.closest<HTMLElement>('[data-global-search-item]');
+                if (clickedItem) {
+                    this.searchModal?.close();
+                }
+            };
+
+            this.resultsContainer.addEventListener('click', this.resultsClickHandler);
+        }
 
         this.afterSwapHandler = (event: Event) => {
             const detail = (event as CustomEvent).detail;
@@ -157,6 +192,11 @@ export default class GlobalSearch extends BaseComponent {
             this.afterSwapHandler = null;
         }
 
+        if (this.resultsClickHandler && this.resultsContainer) {
+            this.resultsContainer.removeEventListener('click', this.resultsClickHandler);
+            this.resultsClickHandler = null;
+        }
+
         super.destroy();
     }
 
@@ -165,7 +205,7 @@ export default class GlobalSearch extends BaseComponent {
 
         this.resultItems = Array.from(
             this.resultsContainer.querySelectorAll<HTMLElement>('[data-global-search-item]')
-        );
+        ).filter((item) => this.isItemVisible(item));
         this.activeIndex = this.resultItems.length > 0 ? 0 : -1;
         this.updateActiveStyles();
     }
@@ -205,5 +245,84 @@ export default class GlobalSearch extends BaseComponent {
         if (!activeItem) return;
         const row = activeItem.closest('[data-global-search-row]') as HTMLElement | null;
         row?.scrollIntoView({ block: 'nearest' });
+    }
+
+    private openSearchModal(initialValue?: string): void {
+        if (!this.searchModal) return;
+
+        this.searchModal.open();
+        setTimeout(() => {
+            if (!this.modalInput) return;
+
+            if (typeof initialValue === 'string') {
+                this.modalInput.value = initialValue;
+                this.modalInput.dispatchEvent(new InputEvent('input', { bubbles: true }));
+            }
+
+            this.modalInput.focus();
+            const cursorPosition = this.modalInput.value.length;
+            this.modalInput.setSelectionRange(cursorPosition, cursorPosition);
+        }, 80);
+    }
+
+    private isItemVisible(item: HTMLElement): boolean {
+        return !item.closest('.hidden');
+    }
+
+    private toggleSubmenuForItem(item: HTMLElement): boolean {
+        const parentItem = item.closest<HTMLElement>('[data-global-search-parent-item]');
+        if (!parentItem) return false;
+
+        const row = parentItem.closest('[data-global-search-row]') as HTMLElement | null;
+        const toggleButton = row?.querySelector<HTMLElement>('[data-global-search-toggle]') || null;
+        if (!toggleButton) return false;
+
+        return this.toggleSubmenu(toggleButton, true);
+    }
+
+    private toggleSubmenu(toggleButton: HTMLElement, focusFirstChild: boolean): boolean {
+        if (!this.resultsContainer) return false;
+
+        const submenuId = toggleButton.dataset.globalSearchSubmenuId;
+        if (!submenuId) return false;
+
+        const submenu = this.resultsContainer.querySelector<HTMLElement>(`#${submenuId}`);
+        if (!submenu) return false;
+
+        const submenuItems = Array.from(
+            submenu.querySelectorAll<HTMLElement>('[data-global-search-item]')
+        );
+        if (submenuItems.length === 0) return false;
+
+        const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+        const nextExpanded = !isExpanded;
+
+        toggleButton.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+        submenu.classList.toggle('hidden', !nextExpanded);
+
+        const toggleIcon = toggleButton.querySelector<HTMLElement>('[data-global-search-toggle-icon]');
+        toggleIcon?.classList.toggle('rotate-180', nextExpanded);
+
+        const parentItem = toggleButton
+            .closest('[data-global-search-row]')
+            ?.querySelector<HTMLElement>('[data-global-search-parent-item]') || null;
+
+        this.resultItems = Array.from(
+            this.resultsContainer.querySelectorAll<HTMLElement>('[data-global-search-item]')
+        ).filter((item) => this.isItemVisible(item));
+
+        if (nextExpanded && focusFirstChild) {
+            this.activeIndex = this.resultItems.findIndex((item) => item === submenuItems[0]);
+        } else if (parentItem) {
+            this.activeIndex = this.resultItems.findIndex((item) => item === parentItem);
+        }
+
+        if (this.activeIndex < 0 && this.resultItems.length > 0) {
+            this.activeIndex = 0;
+        }
+
+        this.updateActiveStyles();
+        this.scrollActiveItemIntoView();
+        return true;
     }
 }

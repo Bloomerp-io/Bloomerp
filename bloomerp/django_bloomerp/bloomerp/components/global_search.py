@@ -34,10 +34,16 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.urls import NoReverseMatch
 
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.router import router
 from bloomerp.modules.definition import module_registry
-from bloomerp.services.permission_services import UserPermissionManager
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import string_search_queryset
+
+from django.contrib.auth.models import Permission
+from django.contrib.sessions.models import Session
 
 # -------------------------------
 # Helper functions
@@ -108,6 +114,27 @@ def _resolve_models_by_name(model_key: str) -> list:
                 matched.append(model)
     return matched
 
+def _ignore_model(model) -> bool:
+    """Determines whether a model should be ignored in the search results."""
+    internal_models = [
+        ContentType,
+        ApplicationField,
+        Permission,
+        Session
+    ]
+
+    if not model or model in internal_models:
+        return True
+    if getattr(model._meta, "swapped", None):
+        return True
+    
+    if hasattr(model, "bloomerp_config") and isinstance(getattr(model, "bloomerp_config"), BloomerpModelConfig):
+        config : BloomerpModelConfig = getattr(model, "bloomerp_config")
+        if config.is_internal:
+            return True
+
+    return False
+
 def _collect_object_results(
     request: HttpRequest,
     permission_manager: UserPermissionManager,
@@ -116,6 +143,19 @@ def _collect_object_results(
     per_model_limit: int,
     total_limit: int,
 ) -> tuple[list, bool]:
+    """Collects the results for objects in a way that is accesible to the template
+
+    Args:
+        request (HttpRequest): the request object
+        permission_manager (UserPermissionManager): the permissions manager
+        models (list): the list of models
+        search_value (str): the search value
+        per_model_limit (int): limit per model
+        total_limit (int): total limit
+
+    Returns:
+        tuple[list, bool]: a tuple containing the list of results and a boolean indicating if the results were truncated
+    """
     results = []
     total_results = 0
     truncated = False
@@ -124,26 +164,11 @@ def _collect_object_results(
         return results, truncated
 
     for model in models:
-        if not model or model == ContentType:
+        if _ignore_model(model):
             continue
-        if getattr(model._meta, "swapped", None):
-            continue
-
-        content_type = ContentType.objects.get_for_model(model)
-        row_policies_exist = permission_manager.get_row_policies().filter(
-            content_type=content_type
-        ).exists()
-
-        permission_name = f"{model._meta.app_label}.view_{model._meta.model_name}"
-
-        if request.user.is_superuser:
-            base_qs = model.objects.all()
-        elif row_policies_exist:
-            base_qs = permission_manager.get_queryset(model, f"view_{model._meta.model_name}")
-        elif request.user.has_perm(permission_name):
-            base_qs = model.objects.all()
-        else:
-            continue
+        
+        # Get the objects
+        base_qs = permission_manager.get_queryset(model, create_permission_str(model, "view"))
 
         remaining_slots = total_limit - total_results
         if remaining_slots <= 0:
@@ -169,7 +194,11 @@ def _collect_object_results(
             {
                 "model_label": model._meta.verbose_name_plural.title(),
                 "module_labels": [item.name for item in module_registry.get_lineage(module.full_id or module.id)] if module else [],
-                "objects": matching_objects,
+                "objects": matching_objects, 
+                "detail_routes" : router.filter(
+                    route_type="detail",
+                    model=model,
+                )
             }
         )
 
@@ -179,7 +208,6 @@ def _collect_object_results(
             break
 
     return results, truncated
-
 
 def _get_accessible_models(
     request: HttpRequest,
@@ -262,6 +290,12 @@ def global_search(request: HttpRequest) -> HttpResponse:
                 matched_routes = []
                 for route in router.get_routes():
                     if route.name.startswith("components_"):
+                        continue
+                    if route.path.startswith("/api/"):
+                        continue
+                    
+                    # We don't want to include routes that require arguments in the global search, as they cannot be directly navigated to without additional input. This is because the global search is designed for quick navigation, and including routes with required arguments could lead to confusion or dead ends in the search results.
+                    if route.nr_of_args() > 0:
                         continue
 
                     route_name = route.name or ""
@@ -455,6 +489,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                     TOTAL_LIMIT,
                 )
                 context["results_truncated"] = context["results_truncated"] or truncated
+                
 
     return render(request, "components/global_search.html", context)
     
