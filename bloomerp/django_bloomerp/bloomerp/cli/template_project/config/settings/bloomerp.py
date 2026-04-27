@@ -1,0 +1,29 @@
+from .base import *
+
+from bloomerp.config.settings import (
+    BLOOMERP_APPS,
+    BLOOMERP_AUTHENTICATION_BACKENDS,
+    BLOOMERP_MIDDLEWARE,
+    BLOOMERP_SITE_ID,
+    BLOOMERP_USER_MODEL,
+)
+from bloomerp.config import BloomerpConfig
+
+INSTALLED_APPS += BLOOMERP_APPS
+MIDDLEWARE += BLOOMERP_MIDDLEWARE
+AUTHENTICATION_BACKENDS = BLOOMERP_AUTHENTICATION_BACKENDS
+AUTH_USER_MODEL = BLOOMERP_USER_MODEL
+SITE_ID = BLOOMERP_SITE_ID
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
+CRISPY_TEMPLATE_PACK = "tailwind"
+
+BLOOMERP_CONFIG = BloomerpConfig()
+
+BLOOMERP_SETTINGS = {
+    "globals": {
+        "organization_name": "__PROJECT_NAME__",
+    },
+    "BASE_URL": "",
+    "ROUTERS": [],
+}

@@ -158,7 +158,7 @@ postgres = [
 ]
 
 [project.scripts]
-bloomerp = "bloomerp.cli:main"
+bloomerp = "bloomerp.cli.main:main"
 
 [build-system]
 requires = ["setuptools>=75", "wheel"]

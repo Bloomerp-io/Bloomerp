@@ -1,0 +1,14 @@
+[project]
+name = "__DISTRIBUTION_NAME__"
+version = "0.1.0"
+description = "Bloomerp starter project"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.1,<6.0",
+    "Bloomerp>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
