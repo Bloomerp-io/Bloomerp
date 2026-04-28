@@ -143,6 +143,38 @@ class TestBloomerpAuthApi(BaseBloomerpModelTestCase):
         self.assertTrue(session_response.json()["authenticated"])
 
     @override_settings(
+        AUTHENTICATION_BACKENDS=[
+            "django.contrib.auth.backends.ModelBackend",
+            "django.contrib.auth.backends.ModelBackend",
+        ],
+        BLOOMERP_CONFIG=BloomerpConfig(
+            auto_generate_api_endpoints=True,
+            auth=BloomerpAuthSettings(
+                interactive=InteractiveAuthSettings(
+                    signup_enabled=True,
+                ),
+            ),
+        )
+    )
+    def test_register_endpoint_can_login_with_multiple_backends_configured(self):
+        response = self.client.post(
+            "/api/auth/register/",
+            data={
+                "username": "janedoe2",
+                "email": "jane2@example.com",
+                "password": "testpass123",
+                "first_name": "Jane",
+                "last_name": "Doe",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.json()["authenticated"])
+        session_response = self.client.get("/api/auth/session/")
+        self.assertTrue(session_response.json()["authenticated"])
+
+    @override_settings(
         BLOOMERP_CONFIG=BloomerpConfig(
             auto_generate_api_endpoints=True,
             auth=BloomerpAuthSettings(

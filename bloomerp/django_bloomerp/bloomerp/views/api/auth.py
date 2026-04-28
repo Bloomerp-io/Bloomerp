@@ -244,7 +244,7 @@ def register_view(request: HttpRequest) -> JsonResponse:
             )
 
     try:
-        user = user_model._default_manager.create_user(
+        user_model._default_manager.create_user(
             password=password,
             **registration_data,
         )
@@ -257,6 +257,14 @@ def register_view(request: HttpRequest) -> JsonResponse:
         return JsonResponse(
             {"detail": "Unable to create account with the provided credentials."},
             status=400,
+        )
+
+    credentials = _get_login_credentials(data)
+    user = authenticate(request, **credentials)
+    if user is None:
+        return JsonResponse(
+            {"detail": "Account created, but automatic sign-in failed."},
+            status=201,
         )
 
     login(request, user)
