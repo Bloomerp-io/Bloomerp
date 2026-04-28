@@ -11,7 +11,7 @@
     data-layout-render-item-url="{{ layout_render_item_url }}"
     data-non-required-fields-visible="{{ non_required_fields_visible|default:'true'|lower }}"
 >
-    <div class="mb-4 flex justify-between">
+    <div class="sticky top-0 z-30 mb-4 flex justify-between bg-white/95 py-2 backdrop-blur-sm">
         <div class="flex gap-3">
             <c-ui.tooltip title="" text="Allows you to edit the layout of the form" position="bottom">
                 <button type="button" class="btn btn-sm btn-secondary{% if create and create_blocked %} hidden{% endif %}" data-layout-edit-toggle>

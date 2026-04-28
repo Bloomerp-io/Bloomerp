@@ -466,6 +466,13 @@ class BulkCrudService:
             ``queued`` or ``completed``, and ``count`` is either the queued row
             count or the number of created objects.
         """
+        rows, fields = self.get_source_rows(file_id)
+        effective_rows = self.apply_changes_to_rows(rows=rows, changes=changes or {})
+        validation_summary = self.build_validation_summary(file_id=file_id, changes=changes)
+
+        if not validation_summary.is_valid:
+            raise ValidationError("The uploaded data contains validation errors.")
+
         if is_celery_available():
             try:
                 from bloomerp.tasks.bulk_upload_task import process_bulk_upload_submission
@@ -474,14 +481,14 @@ class BulkCrudService:
                     content_type_id=self.content_type.pk,
                     user_id=self.user.pk,
                     file_id=file_id,
-                    changes=changes or {},
+                    rows=effective_rows,
+                    fields=fields,
                 )
-                total_rows = self.build_validation_summary(file_id=file_id, changes=changes).total_rows
-                return "queued", total_rows
+                return "queued", validation_summary.total_rows
             except Exception:
                 pass
 
-        created_count = self._process_draft_impl(file_id=file_id, changes=changes)
+        created_count = self._process_rows_impl(rows=effective_rows, fields=fields)
         return "completed", created_count
 
     def _process_draft_impl(self, *, file_id: str, changes: dict[str, dict[str, Any]] | None) -> int:
@@ -495,18 +502,18 @@ class BulkCrudService:
         Returns:
             int: Number of objects created from the effective draft rows.
         """
-        # TODO: Add support for async success messages
         rows, fields = self.get_source_rows(file_id)
         effective_rows = self.apply_changes_to_rows(rows=rows, changes=changes or {})
-        summary = self.build_validation_summary(file_id=file_id, changes=changes)
-        if not summary.is_valid:
-            raise ValidationError("The uploaded data contains validation errors.")
+        return self._process_rows_impl(rows=effective_rows, fields=fields)
+
+    def _process_rows_impl(self, *, rows: list[dict[str, Any]], fields: list[str]) -> int:
+        """Persist already-prepared bulk upload rows."""
 
         form_class = self.get_review_model_form_class(fields=fields)
         created_count = 0
 
         with transaction.atomic():
-            for row_data in effective_rows:
+            for row_data in rows:
                 form = form_class(data=self.row_to_querydict(row_data))
                 if not form.is_valid():
                     raise ValidationError("The uploaded data contains validation errors.")
