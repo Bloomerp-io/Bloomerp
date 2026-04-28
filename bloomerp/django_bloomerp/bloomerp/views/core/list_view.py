@@ -9,7 +9,6 @@ from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 from bloomerp.router import router
 from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
-
 @router.register(
     path="/",
     name="{model} List",
