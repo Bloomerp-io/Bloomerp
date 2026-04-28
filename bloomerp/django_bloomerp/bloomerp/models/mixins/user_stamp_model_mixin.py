@@ -11,11 +11,15 @@ class UserStampModelMixin(models.Model):
     created_by = UserField(
         on_delete=models.SET_NULL,
         related_name='%(class)s_created',
-        null=True)
+        null=True,
+        blank=True,
+        )
     updated_by = UserField(
         on_delete=models.SET_NULL,
         related_name='%(class)s_updated',
-        null=True)
+        null=True,
+        blank=True,
+        )
 
     class Meta:
         abstract = True
