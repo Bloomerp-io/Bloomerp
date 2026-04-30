@@ -1,0 +1,43 @@
+{% comment %}
+shortcut_tooltip
+
+Component that allows you to create shortcuts which has tooltips
+
+Parameters:
+- shortcut (string): the actual shortcut (ex. mod+k)
+- action (string): focus | click | ... (more tbd)
+- position (string): bottom | top | right | left
+- text (string): optional text
+- target (string): optional query selector for the element that should receive the initial action
+- focus_target (string): optional query selector for the element that should be focused after the action runs
+- focus_scope (string): where to search for `focus_target`
+  - `self` (default): search inside the shortcut tooltip wrapper
+  - `target`: search inside the action target matched by `target`
+  - `document`: search anywhere in the document
+  - any other value: treated as a custom query selector for the scope container
+
+Examples:
+- Open a dropdown and focus its first input inside the wrapper:
+  `focus_target="#filter-section input"`
+- Open something elsewhere and focus globally:
+  `focus_target="[data-command-palette-input]" focus_scope="document"`
+
+Slots:
+- default: 
+{% endcomment %}
+
+
+
+<div 
+    bloomerp-component="shortcut-tooltip"
+    data-shortcut="{{ shortcut }}"
+    data-action="{{ action }}"
+    data-position="{{ position }}"
+    data-text="{{ text }}"
+    data-target="{{ target }}"
+    data-focus-target="{{ focus_target }}"
+    data-focus-scope="{{ focus_scope }}"
+    class="relative"
+    >
+    {{ slot }}
+</div>

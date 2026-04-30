@@ -59,24 +59,31 @@
     <!--Search inputs-->
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <div class="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-1 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary sm:max-w-80 sm:flex-none">
-                <span class="pointer-events-none shrink-0 text-gray-400">
-                    <i class="fa fa-search"></i>
-                </span>
-                <input
-                    type="text"
-                    name="q"
-                    value="{{ search_query }}"
-                    placeholder="Search..."
-                    class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-                    hx-get="{% url 'components_data_view' content_type_id=content_type_id %}{% if search_querystring %}?{{ search_querystring }}{% endif %}"
-                    hx-trigger="keyup changed delay:200ms"
-                    hx-target="#data-view-data-section"
-                    hx-swap="outerHTML"
-                    hx-animation-target="#data-table-body-{{ content_type_id }}"
-                    id="data-view-search-input-{{ content_type_id }}"
-                />
-            </div>
+            
+            <c-ui.shortcut_tooltip 
+                shortcut="mod+/" 
+                action="focus" 
+                position="bottom" 
+                target="#data-view-search-input-{{ content_type_id }}">
+                <div class="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-1 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary sm:max-w-80 sm:flex-none">
+                    <span class="pointer-events-none shrink-0 text-gray-400">
+                        <i class="fa fa-search"></i>
+                    </span>
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ search_query }}"
+                        placeholder="Search..."
+                        class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                        hx-get="{% url 'components_data_view' content_type_id=content_type_id %}{% if search_querystring %}?{{ search_querystring }}{% endif %}"
+                        hx-trigger="keyup changed delay:200ms"
+                        hx-target="#data-view-data-section"
+                        hx-swap="outerHTML"
+                        hx-animation-target="#data-table-body-{{ content_type_id }}"
+                        id="data-view-search-input-{{ content_type_id }}"
+                    />
+                </div>
+            </c-ui.shortcut_tooltip>
 
             <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex-1">
                 {% if applied_filters %}
@@ -102,7 +109,11 @@
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
             <!--Filter-->
             <div class="w-full sm:w-auto">
-                <c-ui.tooltip position="bottom" text="Filter">
+                <c-ui.shortcut_tooltip 
+                    position="bottom" 
+                    shortcut="mod+1"
+                    focus_target="select"
+                    >
                     <c-ui.dropdown.body 
                         trigger_text="Filter"
                         trigger_icon_class="fa fa-filter"
@@ -129,15 +140,14 @@
                             </div>
                         </div>
                     </c-ui.dropdown.body>
-                </c-ui.tooltip>
+                </c-ui.shortcut_tooltip>
             </div>
 
             <!--Add button-->
             <c-ui.shortcut_tooltip 
-                position="bottom" 
-                text="Add object"
+                position="bottom"
                 action="click"
-                shortcut="'cmd' + '1'"
+                shortcut="mod+2"
                 >
                 <button 
                     class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
@@ -154,7 +164,9 @@
             </c-ui.shortcut_tooltip>
             
             <!--Export button-->
-            <c-ui.tooltip position="bottom" text="Export">
+            <c-ui.shortcut_tooltip 
+                position="bottom"  
+                shortcut="mod+3">
                 <button 
                     class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
                     data-dataview-add-button="true"
@@ -167,11 +179,13 @@
                     <i class="fa-solid fa-download"></i>
                     Export
                 </button>
-            </c-ui.tooltip>
+            </c-ui.shortcut_tooltip>
 
             <!--Display options-->
             <div class="w-full sm:w-auto">
-                <c-ui.tooltip position="bottom" text="Display options">
+                <c-ui.shortcut_tooltip 
+                    position="bottom" 
+                    shortcut="mod+4">
                     <c-ui.dropdown.body 
                         trigger_text="Display"
                         trigger_icon_class="fa fa-sliders"
@@ -197,12 +211,15 @@
                     </div>
                     
                     </c-ui.dropdown.body>
-                </c-ui.tooltip>
+                </c-ui.shortcut_tooltip>
             </div>
             
-            <c-ui.tooltip position="bottom" text="Add object">
+            <c-ui.shortcut_tooltip 
+                position="bottom" 
+                shortcut="mod+5"
+                >
                 <c-ui.dropdown.body trigger_selector="" trigger_html="" trigger_button_class="btn btn-secondary btn-sm" trigger_class="" trigger_icon_class="fa fa-ellipsis" trigger_text="" width="" menu_class="" icon="" size="" disabled="" trigger_icon="" direction="" position=""></c-ui.dropdown.body>
-            </c-ui.tooltip>
+            </c-ui.shortcut_tooltip>
         </div>
     </div>
 {% endif %}
@@ -367,8 +384,6 @@
 
 </div>
 {% endif %}
-
-
 
 
 

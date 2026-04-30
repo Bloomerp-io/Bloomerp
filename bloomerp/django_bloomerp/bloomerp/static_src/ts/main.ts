@@ -45,6 +45,7 @@ import FileBrowser from './components/files/FileBrowser';
 import DocumentTemplateDataViewContainer from './components/data_view_components/DocumentTemplateDataViewContainer';
 import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
+import ShortcutTooltip from './components/ShortcutTooltip';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -120,6 +121,7 @@ registerComponent('sql-query-editor', SqlQueryEditor);
 registerComponent('workspace-tile-canvas', Canvas);
 registerComponent('sidebar-item', SidebarItem)
 registerComponent('focus-in', FocusIn)
+registerComponent('shortcut-tooltip', ShortcutTooltip);
 
 // Auto init comonents
 setupComponentAutoInit();

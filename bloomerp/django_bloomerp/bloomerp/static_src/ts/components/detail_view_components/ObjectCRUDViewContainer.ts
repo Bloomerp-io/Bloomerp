@@ -20,6 +20,11 @@ type PendingCellChange = {
     snapshot: DetailViewCellSnapshot;
 };
 
+type FormSearchMatch = {
+    cell: DetailViewCell;
+    label: string;
+};
+
 export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContainer<DetailViewCell> {
     private currentItem: DetailViewCell | null = null;
     private focusInHandler: ((event: FocusEvent) => void) | null = null;
@@ -37,6 +42,16 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
     private backButtonHandler: (() => void) | null = null;
     private resetButtonHandler: (() => void) | null = null;
     private undoShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
+    private searchButton: HTMLButtonElement | null = null;
+    private searchPanel: HTMLElement | null = null;
+    private searchInput: HTMLInputElement | null = null;
+    private searchStatus: HTMLElement | null = null;
+    private searchButtonHandler: (() => void) | null = null;
+    private searchInputHandler: (() => void) | null = null;
+    private formSearchKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
+    private formSearchActive = false;
+    private formSearchMatches: FormSearchMatch[] = [];
+    private activeFormSearchMatchIndex: number | null = null;
 
     protected getItemSelector(): string {
         return `[${componentIdentifier}="detail-view-value"]`;
@@ -76,6 +91,13 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.resetButtonHandler = () => this.resetChanges();
         this.backBtn?.addEventListener("click", this.backButtonHandler);
         this.resetBtn?.addEventListener("click", this.resetButtonHandler);
+        this.cacheFormSearchElements();
+        this.searchButtonHandler = () => this.openFormSearch();
+        this.searchInputHandler = () => this.refreshFormSearchMatches();
+        this.formSearchKeydownHandler = (event: KeyboardEvent) => this.onFormSearchKeyDown(event);
+        this.searchButton?.addEventListener("click", this.searchButtonHandler);
+        this.searchInput?.addEventListener("input", this.searchInputHandler);
+        this.element.addEventListener("keydown", this.formSearchKeydownHandler, true);
         this.undoShortcutHandler = (event: KeyboardEvent) => {
             const isUndoShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "z";
             if (!isUndoShortcut) return;
@@ -147,6 +169,15 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         if (this.resetButtonHandler) {
             this.resetBtn?.removeEventListener("click", this.resetButtonHandler);
         }
+        if (this.searchButtonHandler) {
+            this.searchButton?.removeEventListener("click", this.searchButtonHandler);
+        }
+        if (this.searchInputHandler) {
+            this.searchInput?.removeEventListener("input", this.searchInputHandler);
+        }
+        if (this.formSearchKeydownHandler) {
+            this.element.removeEventListener("keydown", this.formSearchKeydownHandler, true);
+        }
         if (this.undoShortcutHandler && this.element) {
             this.element.removeEventListener("keydown", this.undoShortcutHandler, true);
         }
@@ -156,6 +187,9 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.detailViewCellChangeHandler = null;
         this.backButtonHandler = null;
         this.resetButtonHandler = null;
+        this.searchButtonHandler = null;
+        this.searchInputHandler = null;
+        this.formSearchKeydownHandler = null;
         this.undoShortcutHandler = null;
         this.toggleVisibilityBtn = null;
         this.toggleVisibilityLabel = null;
@@ -163,6 +197,10 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.btnContainer = null;
         this.backBtn = null;
         this.resetBtn = null;
+        this.searchButton = null;
+        this.searchPanel = null;
+        this.searchInput = null;
+        this.searchStatus = null;
     }
 
     public override onAfterSwap(): void {
@@ -171,9 +209,13 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             item.element.setAttribute("tabindex", "0");
         });
         this.cacheChangeActionButtons();
+        this.cacheFormSearchElements();
         this.syncChangeButtonsVisibility();
         this.syncToggleVisibility();
         this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
+        if (this.formSearchActive) {
+            this.refreshFormSearchMatches();
+        }
     }
 
     protected override toggleEditMode(): void {
@@ -293,8 +335,131 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.resetBtn = this.element.querySelector<HTMLButtonElement>("#object-crud-container-reset-button");
     }
 
+    private cacheFormSearchElements(): void {
+        this.searchButton = this.element.querySelector<HTMLButtonElement>("[data-search-button]");
+        this.searchPanel = this.element.querySelector<HTMLElement>("[data-form-search-panel]");
+        this.searchInput = this.element.querySelector<HTMLInputElement>("[data-form-search-input]");
+        this.searchStatus = this.element.querySelector<HTMLElement>("[data-form-search-status]");
+    }
+
     private syncChangeButtonsVisibility(): void {
         this.btnContainer?.classList.toggle("hidden", this.pendingChanges.length === 0);
+    }
+
+    private openFormSearch(): void {
+        this.formSearchActive = true;
+        this.searchPanel?.classList.remove("hidden");
+        this.searchPanel?.setAttribute("aria-hidden", "false");
+        this.searchButton?.setAttribute("aria-pressed", "true");
+        this.refreshFormSearchMatches();
+        this.searchInput?.focus();
+        this.searchInput?.select();
+    }
+
+    private closeFormSearch(): void {
+        const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const focusWasInsideSearchPanel = !!(activeElement && this.searchPanel?.contains(activeElement));
+
+        this.formSearchActive = false;
+        this.activeFormSearchMatchIndex = null;
+        this.formSearchMatches = [];
+        this.searchPanel?.classList.add("hidden");
+        this.searchPanel?.setAttribute("aria-hidden", "true");
+        this.searchButton?.setAttribute("aria-pressed", "false");
+        this.updateFormSearchStatus();
+
+        if (focusWasInsideSearchPanel) {
+            if (this.currentItem) {
+                this.focusFormSearchMatch(this.currentItem);
+            } else {
+                this.searchButton?.focus();
+            }
+        }
+    }
+
+    private onFormSearchKeyDown(event: KeyboardEvent): void {
+        if (!this.formSearchActive) return;
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            this.closeFormSearch();
+            return;
+        }
+
+        if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            this.focusNextFormSearchMatch();
+        }
+    }
+
+    private refreshFormSearchMatches(): void {
+        const query = this.normalizeFormSearchQuery(this.searchInput?.value ?? "");
+        const visibleItems = this.getAllItems();
+
+        this.activeFormSearchMatchIndex = null;
+        this.formSearchMatches = query
+            ? visibleItems
+                .map((cell) => ({
+                    cell,
+                    label: this.normalizeFormSearchQuery(cell.label ?? ""),
+                }))
+                .filter((match) => match.label.includes(query))
+            : [];
+
+        this.updateFormSearchStatus();
+    }
+
+    private focusNextFormSearchMatch(): void {
+        if (this.formSearchMatches.length === 0) {
+            this.updateFormSearchStatus();
+            return;
+        }
+
+        const nextIndex = this.activeFormSearchMatchIndex === null
+            ? 0
+            : (this.activeFormSearchMatchIndex + 1) % this.formSearchMatches.length;
+        const nextMatch = this.formSearchMatches[nextIndex];
+
+        this.activeFormSearchMatchIndex = nextIndex;
+        this.focusFormSearchMatch(nextMatch.cell);
+        this.updateFormSearchStatus();
+    }
+
+    private focusFormSearchMatch(cell: DetailViewCell): void {
+        cell.element?.scrollIntoView({ block: "center", inline: "nearest" });
+        this.focusReadModeItem(cell);
+        this.currentItem = cell;
+    }
+
+    private updateFormSearchStatus(): void {
+        if (!this.searchStatus) return;
+
+        const totalMatches = this.formSearchMatches.length;
+        if (!this.formSearchActive) {
+            this.searchStatus.textContent = "0 results";
+            return;
+        }
+
+        if (totalMatches === 0) {
+            this.searchStatus.textContent = "0 results";
+            return;
+        }
+
+        if (this.activeFormSearchMatchIndex === null) {
+            this.searchStatus.textContent = `? of ${totalMatches}`;
+            return;
+        }
+
+        this.searchStatus.textContent = `${this.activeFormSearchMatchIndex + 1} of ${totalMatches}`;
+    }
+
+    private normalizeFormSearchQuery(value: string): string {
+        return value.trim().toLowerCase();
     }
 
     private undoLastChange(): void {

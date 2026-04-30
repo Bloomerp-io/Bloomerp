@@ -17,10 +17,12 @@
                 <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
             </a>
 
-            <button id="sidebar-toggle" type="button"
-                class="hover:cursor-pointer flex h-10 w-10 items-center justify-center">
-                <c-icons.lines_horizontal size="24" />
-            </button>
+            <c-ui.shortcut_tooltip shortcut="mod+b" action="click" position="right" text="Toggle sidebar    ">
+                <button id="sidebar-toggle" type="button"
+                    class="hover:cursor-pointer flex h-10 w-10 items-center justify-center">
+                    <c-icons.lines_horizontal size="24" />
+                </button>
+            </c-ui.shortcut_tooltip>
         </div>
         <!-- End Logo -->
 
@@ -29,35 +31,19 @@
 
 
         <!-- Search bar -->
-        <div bloomerp-component="global-search-modal" class="mt-2">
-            <button id="global-search-btn" type="button" aria-haspopup="dialog" aria-controls="global-search-modal"
-                class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-xl hover:cursor-pointer focus:outline-none w-full hover:bg-gray-200">
-                <i class="fa fa-magnifying-glass text-gray-500"></i>
-                <span class="text-sm text-gray-600">Search</span>
-                <span id="global-search-shortcut"
-                    class="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">⌘K</span>
-            </button>
-        </div>
+         <c-ui.shortcut_tooltip shortcut="mod+k" action="click" position="right">
+            <div bloomerp-component="global-search-modal" class="mt-2">
+                <button id="global-search-btn" type="button" aria-haspopup="dialog" aria-controls="global-search-modal"
+                    class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-xl hover:cursor-pointer focus:outline-none w-full hover:bg-gray-200">
+                    <i class="fa fa-magnifying-glass text-gray-500"></i>
+                    <span class="text-sm text-gray-600">Search</span>
+                    <span id="global-search-shortcut"
+                        class="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">⌘K</span>
+                </button>
+            </div>
+        </c-ui.shortcut_tooltip>
         <!-- End search bar -->
 
-        <!-- Inbox 
-        <div
-            hx-get="{% url 'inbox' %}"
-            hx-swap="innerHTML"
-            hx-trigger="click"
-            hx-target="#main-content"
-            hx-push-url="true"
-
-            class="flex justify-between px-3 mt-4 bg-white hover:bg-gray-200 border border-gray-200 rounded-lg py-1 hover:cursor-pointer">
-            <div class="flex items-center">
-                <i class="fa-solid fa-inbox text-gray-500"></i> <c-ui.text.muted class="ml-2">Inbox</c-ui.text.muted>
-            </div>
-
-            <div class="p-1 text-xs rounded-md bg-gray-100 text-gray-500">
-                65
-            </div>
-        </div>
-        End Inbox -->
 
         <hr class="text-gray-300 my-4">
 
