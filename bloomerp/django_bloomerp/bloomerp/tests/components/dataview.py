@@ -7,6 +7,7 @@ from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.services.user_services import get_data_view_fields
 
+
 class TestDataView(BaseBloomerpModelTestCase):
     create_foreign_models = True
 
