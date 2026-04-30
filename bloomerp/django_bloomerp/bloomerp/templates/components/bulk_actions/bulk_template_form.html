@@ -2,10 +2,10 @@
 
 <div class="space-y-4">
     <div class="rounded-lg border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900">
-        Choose the fields you want in the template, then download a CSV or Excel file to fill in offline.
+        {{ form.intro_text }}
     </div>
 
-    <form method="post" action="{{ post_url }}">
+    <form method="post" action="{{ post_url }}" id="bloomerp-bulk-form-{{ content_type_id }}">
         {% csrf_token %}
         {% if form.non_field_errors %}
         <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -22,9 +22,20 @@
             </div>
 
             <div class="space-y-3">
-                <div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <h3 class="text-sm font-semibold text-slate-900">Included fields</h3>
-                    <p class="text-sm text-slate-600">Only fields that are editable and not auto-managed are shown here.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bulk-select-all="true">
+                            Select all
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bulk-clear-all="true">
+                            Clear all
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-sm text-slate-600">{{ form.selection_help_text }}</p>
                 </div>
 
                 <div class="grid gap-3 sm:grid-cols-2">
@@ -53,8 +64,35 @@
             </div>
         </div>
 
-        <div class="flex justify-end">
-            <button type="submit" class="btn btn-primary">Download template</button>
+        <div class="flex justify-start mt-4">
+            <button type="submit" class="btn btn-primary">{{ form.submit_label }}</button>
         </div>
     </form>
 </div>
+
+<script>
+(() => {
+    const form = document.getElementById("bloomerp-bulk-form-{{ content_type_id }}");
+    if (!form) {
+        return;
+    }
+
+    const checkboxes = Array.from(
+        form.querySelectorAll('input[type="checkbox"]:not([disabled])')
+    );
+    const selectAllButton = form.querySelector("[data-bulk-select-all='true']");
+    const clearAllButton = form.querySelector("[data-bulk-clear-all='true']");
+
+    selectAllButton?.addEventListener("click", () => {
+        checkboxes.forEach((checkbox) => {
+            checkbox.checked = true;
+        });
+    });
+
+    clearAllButton?.addEventListener("click", () => {
+        checkboxes.forEach((checkbox) => {
+            checkbox.checked = false;
+        });
+    });
+})();
+</script>

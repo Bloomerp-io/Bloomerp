@@ -74,8 +74,8 @@ def get_object_from_request(
 def render_blank_form(
         request : HttpRequest, 
         form:Form, 
-        hidden_args:dict, 
         url:str,
+        hidden_args:dict={}, 
         submit_label:str="Submit",
         form_args:dict=None
         ) -> HttpResponse:

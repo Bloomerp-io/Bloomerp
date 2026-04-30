@@ -17,27 +17,7 @@ from bloomerp.forms.layouts import BloomerpModelformHelper
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.models import UserDetailViewPreference
 
-# ---------------------------------
-# Bloomerp Bulk Upload Form
-# ---------------------------------
-class BulkUploadForm(forms.Form):
-    def __init__(self, *args, **kwargs):
-        super(BulkUploadForm, self).__init__(*args, **kwargs)
-        for name, field in self.fields.items():
-            if isinstance(field, forms.BooleanField):
-                self.fields[name].widget = forms.Select(choices=[(True, 'True'), (False, 'False')])
 
-        # Add delete all objects
-        self.fields['delete_all'] = forms.BooleanField(required=False, label='Delete all selected objects',initial=False)
-
-        # Remove last_updated_by field
-        if 'last_updated_by' in self.fields:
-            del self.fields['last_updated_by']
-
-
-# ---------------------------------
-# Bloomerp Model Form
-# ---------------------------------
 class BloomerpModelForm(forms.ModelForm):
     model:Model = None
     user:AbstractBloomerpUser = None
@@ -193,11 +173,6 @@ class BloomerpModelForm(forms.ModelForm):
             # Default behavior: use superclass method with hyphen separator
             return super().add_prefix(field_name)
     
-# ---------------------------------
-# Links select form
-# ---------------------------------
-
-
 
 
 

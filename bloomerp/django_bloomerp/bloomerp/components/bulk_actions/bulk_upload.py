@@ -39,7 +39,7 @@ def bulk_upload_form(request: HttpRequest, content_type_id: int):
         form = service.build_template_form()
         return render(
             request,
-            "components/bulk_actions/download_bulk_upload_template_form.html",
+            "components/bulk_actions/bulk_template_form.html",
             {
                 "form": form,
                 "content_type_id": content_type_id,
@@ -52,7 +52,7 @@ def bulk_upload_form(request: HttpRequest, content_type_id: int):
         if not form.is_valid():
             return render(
                 request,
-                "components/bulk_actions/download_bulk_upload_template_form.html",
+                "components/bulk_actions/bulk_template_form.html",
                 {
                     "form": form,
                     "content_type_id": content_type_id,
@@ -70,7 +70,7 @@ def bulk_upload_form(request: HttpRequest, content_type_id: int):
             form.add_error(None, _validation_error_to_text(exc))
             return render(
                 request,
-                "components/bulk_actions/download_bulk_upload_template_form.html",
+                "components/bulk_actions/bulk_template_form.html",
                 {
                     "form": form,
                     "content_type_id": content_type_id,

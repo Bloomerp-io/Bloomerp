@@ -516,6 +516,10 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     create_querystring.pop('page', None)
     create_querystring.pop('q', None)
     create_querystring.pop('calendar_page', None)
+    export_querystring = request.GET.copy()
+    export_querystring.pop('page', None)
+    export_querystring.pop('calendar_page', None)
+    export_querystring.pop('_component_id', None)
     sync_url = request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
     component_id = request.GET.get('_component_id')
 
@@ -533,6 +537,7 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'search_query': query or '',
         'search_querystring': search_querystring.urlencode(),
         'create_querystring': create_querystring.urlencode(),
+        'export_querystring': export_querystring.urlencode(),
         'sync_url': sync_url,
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),

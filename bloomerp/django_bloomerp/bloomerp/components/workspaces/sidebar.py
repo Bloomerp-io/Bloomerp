@@ -98,8 +98,8 @@ def _render_sidebar_item_form(
     return render_blank_form(
         request,
         form,
-        hidden_args,
         url,
+        hidden_args,
         submit_label,
     )
 

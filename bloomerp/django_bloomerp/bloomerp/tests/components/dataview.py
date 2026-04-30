@@ -113,6 +113,33 @@ class TestDataView(BaseBloomerpModelTestCase):
 
         self.assertContains(response, f'hx-get="{dataview_url}?first_name=xyz"', html=False)
 
+    def test_list_view_export_button_includes_active_filters(self):
+        self.client.force_login(self.admin_user)
+
+        content_type_id = ContentType.objects.get_for_model(self.CustomerModel).id
+        url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type_id},
+        ) + "?first_name=xyz&q=alice&page=3"
+
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+
+        export_url = reverse(
+            viewname="components_export_objects",
+            kwargs={"content_type_id": content_type_id},
+        )
+
+        self.assertContains(
+            response,
+            f'hx-get="{export_url}?first_name=xyz&amp;q=alice"',
+            html=False,
+        )
+        self.assertNotContains(
+            response,
+            f'{export_url}?first_name=xyz&amp;q=alice&amp;page=3',
+            html=False,
+        )
+
     def test_list_view_with_init_filters_includes_filter_box(self):
         """
         This tests whether the list view bootstraps a dataview response

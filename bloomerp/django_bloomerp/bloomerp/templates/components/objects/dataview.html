@@ -132,7 +132,43 @@
                 </c-ui.tooltip>
             </div>
 
+            <!--Add button-->
+            <c-ui.shortcut_tooltip 
+                position="bottom" 
+                text="Add object"
+                action="click"
+                shortcut="'cmd' + '1'"
+                >
+                <button 
+                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+                    data-dataview-add-button="true"
+                    hx-push-url="false"
+                    bloomerp-open-modal="create-object-modal"
+                    hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
+                    hx-target="#create-object-modal-body"
+                    hx-swap="innerHTML"
+                >
+                    <i class="fa fa-plus"></i>
+                    <span>Add</span>
+                </button>
+            </c-ui.shortcut_tooltip>
             
+            <!--Export button-->
+            <c-ui.tooltip position="bottom" text="Export">
+                <button 
+                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+                    data-dataview-add-button="true"
+                    hx-push-url="false"
+                    bloomerp-open-modal="export-objects-modal"
+                    hx-get="{% url 'components_export_objects' content_type_id=content_type_id %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
+                    hx-target="#export-objects-modal-body"
+                    hx-swap="innerHTML"
+                >
+                    <i class="fa-solid fa-download"></i>
+                    Export
+                </button>
+            </c-ui.tooltip>
+
             <!--Display options-->
             <div class="w-full sm:w-auto">
                 <c-ui.tooltip position="bottom" text="Display options">
@@ -164,20 +200,8 @@
                 </c-ui.tooltip>
             </div>
             
-            <!--Add button-->
             <c-ui.tooltip position="bottom" text="Add object">
-                <button 
-                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
-                    data-dataview-add-button="true"
-                    hx-push-url="false"
-                    bloomerp-open-modal="create-object-modal"
-                    hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
-                    hx-target="#create-object-modal-body"
-                    hx-swap="innerHTML"
-                >
-                    <i class="fa fa-plus"></i>
-                    <span>Add</span>
-                </button>
+                <c-ui.dropdown.body trigger_selector="" trigger_html="" trigger_button_class="btn btn-secondary btn-sm" trigger_class="" trigger_icon_class="fa fa-ellipsis" trigger_text="" width="" menu_class="" icon="" size="" disabled="" trigger_icon="" direction="" position=""></c-ui.dropdown.body>
             </c-ui.tooltip>
         </div>
     </div>
@@ -339,10 +363,10 @@
     <!--Modals-->
     <c-ui.modal id="edit-object-modal" header_class="" title="Edit object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
     <c-ui.modal id="delete-object-modal" header_class="" title="Delete object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
+    <c-ui.modal id="export-objects-modal" title="Export"/>
 
 </div>
 {% endif %}
-
 
 
 

@@ -19,7 +19,7 @@ from django.http import QueryDict
 
 from bloomerp.forms.bulk_upload_form import (
     AUTO_MANAGED_FIELD_NAMES,
-    BloomerpDownloadBulkUploadTemplateForm,
+    BloomerpBulkForm,
 )
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
@@ -137,7 +137,7 @@ class BulkCrudService:
             allowed_names.append(field_name)
         return allowed_names
 
-    def build_template_form(self, data=None) -> BloomerpDownloadBulkUploadTemplateForm:
+    def build_template_form(self, data=None) -> BloomerpBulkForm:
         """
         Build the template form for the bulk upload process.
 
@@ -145,12 +145,13 @@ class BulkCrudService:
             data: Optional data to populate the form.
 
         Returns:
-            BloomerpDownloadBulkUploadTemplateForm: The form instance.
+            BloomerpBulkForm: The form instance.
         """
-        return BloomerpDownloadBulkUploadTemplateForm(
+        return BloomerpBulkForm(
             content_type=self.content_type,
             application_fields=self.get_allowed_application_fields(),
             data=data,
+            mode="import",
         )
 
     def create_template_bytes(self, *, fields: list[str], file_type: str) -> tuple[bytes, str, str]:
