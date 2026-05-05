@@ -2,13 +2,11 @@ import json
 from typing import Any
 
 from django.http import HttpRequest
-from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.forms.workspaces import DEFAULT_TILE_ICON, TileMetadataForm
 from bloomerp.router import router
 from bloomerp.services.sql_services import DatabaseTable
-from bloomerp.services.user_services import get_data_view_fields, get_user_list_view_preference
 from bloomerp.utils.requests import parse_bool_parameter
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator
 from bloomerp.views.workspace.create_tile import (
@@ -27,11 +25,10 @@ from bloomerp.workspaces.analytics_tile.model import (
 )
 from bloomerp.workspaces.analytics_tile.utils import get_primitive_field_icon
 from bloomerp.workspaces.base import BaseTileConfig
-from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig, build_preview_preference
+from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
 from bloomerp.workspaces.links_tile.model import LinkTileConfig
 from bloomerp.workspaces.text_tile.model import TextTileConfig
 from bloomerp.workspaces.tiles import TileType
-from bloomerp.models.users.user_list_view_preference import ViewType
 from django.views.generic import TemplateView
 
 @router.register(
@@ -230,23 +227,6 @@ class PreviewWorkspaceTile(TemplateView):
 
             case TileType.LINKS_TILE:
                 pass
-            # TODO
-            # case TileType.DATAVIEW_TILE:
-            #     extra_context["content_types"] = [
-            #         (ct.id, f"{ct.app_label}.{ct.model}")
-            #         for ct in ContentType.objects.all().order_by("app_label", "model")
-            #     ]
-
-            #     if config.content_type_id:
-            #         content_type = ContentType.objects.filter(id=config.content_type_id).first()
-            #         if content_type:
-            #             base_preference = get_user_list_view_preference(self.request.user, content_type)
-                        
-            #             extra_context["view_types"] = [
-            #                 (view_type, view_type.value == config.view_type)
-            #                 for view_type in ViewType
-            #             ]
-                        
 
             case _:
                 return {}

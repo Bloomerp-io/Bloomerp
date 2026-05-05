@@ -27,6 +27,7 @@ import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
 import SelectableCards from './components/inputs/SelectableCards';
 import ForeignFieldWidget from './components/widgets/ForeignFieldWidget';
+import OneToManyFieldWidget from './components/widgets/OneToManyFieldWidget';
 import CodeEditorWidget from './components/widgets/CodeEditorWidget';
 import IconPickerWidget from './components/widgets/IconPickerWidget';
 import UiMessage from './components/UiMessage';
@@ -46,6 +47,7 @@ import DocumentTemplateDataViewContainer from './components/data_view_components
 import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
 import ShortcutTooltip from './components/ShortcutTooltip';
+import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -91,6 +93,7 @@ registerComponent('selectable-cards', SelectableCards);
 
 // Form widgets
 registerComponent('foreign-field-widget', ForeignFieldWidget);
+registerComponent('one-to-many-field-widget', OneToManyFieldWidget);
 registerComponent('code-editor-widget', CodeEditorWidget);
 registerComponent('icon-picker-widget', IconPickerWidget);
 
@@ -122,6 +125,7 @@ registerComponent('workspace-tile-canvas', Canvas);
 registerComponent('sidebar-item', SidebarItem)
 registerComponent('focus-in', FocusIn)
 registerComponent('shortcut-tooltip', ShortcutTooltip);
+registerComponent('ordered-field-select', OrderedFieldSelect);
 
 // Auto init comonents
 setupComponentAutoInit();

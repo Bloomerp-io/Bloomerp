@@ -4,9 +4,12 @@ from functools import cached_property
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import redirect
 
 from bloomerp.models import ApplicationField
+from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.router import router
 from bloomerp.services.create_view_services import AUTO_MANAGED_FIELD_NAMES, get_disallowed_submitted_fields
@@ -36,6 +39,9 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
     def get_layout_object(self):
         return self.layout_preference.field_layout_obj
 
+    def get_layout_preference_object(self):
+        return self.layout_preference
+
     @cached_property
     def layout_preference(self) -> UserDetailViewPreference:
         content_type = self.get_layout_content_type()
@@ -49,10 +55,10 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         return preference
 
     def get_layout_available_items_url(self) -> str:
-        return "/components/workspaces/detail_layout_available_fields/?content_type_id=%s" % self.get_layout_content_type_id()
+        return ""
 
     def get_layout_save_url(self) -> str:
-        return "/components/workspaces/detail_layout_preference/"
+        return ""
 
     def can_change_layout(self) -> bool:
         return True
@@ -122,8 +128,21 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         ):
             form.add_error(None, "You do not have permission to update this object with these values.")
             return self.form_invalid(form)
+        try:
+            with transaction.atomic():
+                self.object = form.save()
+                save_submitted_one_to_many_fields(
+                    parent_object=self.object,
+                    layout=self.layout_preference.field_layout_obj,
+                    submitted_data=self.request.POST,
+                    user=self.request.user,
+                )
+        except ValidationError as exc:
+            print(self.request.POST)
+            for message in exc.messages:
+                form.add_error(None, message)
+            return self.form_invalid(form)
 
-        self.object = form.save()
         if getattr(self.request, "htmx", False):
             return self.render_to_response(self.get_context_data())
         return redirect(get_detail_view_url(self.model), pk=self.object.pk)
@@ -138,6 +157,7 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
             return redirect(get_detail_view_url(self.model), pk=self.object.pk)
         if form.is_valid():
             return self.form_valid(form)
+        
         return self.form_invalid(form)
 
     def get_context_data(self, **kwargs: Any) -> dict:

@@ -19,6 +19,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     }
 
     protected override async loadInitialItems(): Promise<void> {
+        
         for (let rowIndex = 0; rowIndex < this.layoutRows.length; rowIndex += 1) {
             const row = this.layoutRows[rowIndex];
             const rowEl = this.rowElements[rowIndex];
@@ -116,7 +117,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         this.reindexItems();
     }
 
-    protected getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; workspace_id: string | null } {
+    protected override getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; workspace_id: string | null } {
         return {
             workspace_id: this.normalizeLayoutItemId(this.element?.dataset.workspaceId),
             layout: {

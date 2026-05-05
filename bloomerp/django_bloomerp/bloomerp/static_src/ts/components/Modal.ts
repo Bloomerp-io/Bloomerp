@@ -33,6 +33,8 @@ export class Modal extends BaseComponent {
     private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
     private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
     private tabKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+    private delegatedTriggerHandler: ((e: MouseEvent) => void) | null = null;
+    private closeEventHandler: ((e: Event) => void) | null = null;
     private readonly triggerBoundAttribute = 'data-modal-trigger-bound';
 
     public initialize(): void {
@@ -73,6 +75,8 @@ export class Modal extends BaseComponent {
         this.setupBackdropClickHandler();
         this.setupEscapeKeyHandler();
         this.setupTabKeyHandler();
+        this.setupDelegatedTriggerHandler();
+        this.setupCloseEventHandler();
         this.setupTriggerButtons();
     }
 
@@ -137,6 +141,47 @@ export class Modal extends BaseComponent {
             });
             (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:fullscreen`);
         })
+    }
+
+    private setupDelegatedTriggerHandler(): void {
+        if (this.delegatedTriggerHandler) return;
+
+        this.delegatedTriggerHandler = (event: MouseEvent) => {
+            const target = event.target instanceof HTMLElement ? event.target : null;
+            if (!target) return;
+
+            const openTrigger = target.closest<HTMLElement>(`[${OPEN_MODAL_ATTRIBUTE}="${this.modalId}"]`);
+            if (openTrigger) {
+                this.open();
+                return;
+            }
+
+            const closeTrigger = target.closest<HTMLElement>(`[${CLOSE_MODAL_ATTRIBUTE}="${this.modalId}"]`);
+            if (closeTrigger) {
+                this.close();
+                return;
+            }
+
+            const fullscreenTrigger = target.closest<HTMLElement>(`[${TOGGLE_FULL_SCREEN_ATTRIBUTE}="${this.modalId}"]`);
+            if (fullscreenTrigger) {
+                this.toggleFullscreen();
+            }
+        };
+
+        document.addEventListener('click', this.delegatedTriggerHandler);
+    }
+
+    private setupCloseEventHandler(): void {
+        if (this.closeEventHandler) return;
+
+        this.closeEventHandler = (event: Event) => {
+            const customEvent = event as CustomEvent<{ modalId?: string }>;
+            if (customEvent.detail?.modalId === this.modalId) {
+                this.close();
+            }
+        };
+
+        document.body.addEventListener('bloomerp:close-modal', this.closeEventHandler);
     }
 
     /**
@@ -420,6 +465,14 @@ export class Modal extends BaseComponent {
 
         if (this.tabKeyHandler) {
             document.removeEventListener('keydown', this.tabKeyHandler);
+        }
+
+        if (this.delegatedTriggerHandler) {
+            document.removeEventListener('click', this.delegatedTriggerHandler);
+        }
+
+        if (this.closeEventHandler) {
+            document.body.removeEventListener('bloomerp:close-modal', this.closeEventHandler);
         }
     }
 

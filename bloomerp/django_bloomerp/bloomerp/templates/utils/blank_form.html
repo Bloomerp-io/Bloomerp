@@ -21,10 +21,19 @@
     {% endfor %}
     {% endif %}
 
+    {% if text %}
+    <p class="mb-4 text-sm text-gray-600">{{ text }}</p>
+    {% endif %}
+
     <div class="mt-4 flex justify-start gap-2">
         <button 
             type="submit" 
             class="btn btn-primary"
+            {% if button_attrs %}
+            {% for attr,value in button_attrs.items%}
+            {{ attr }}="{{ value }}"
+            {% endfor %}
+            {% endif %}
             >
             <c-blocktrans>
                 {{ submit_label|default:"Submit" }}

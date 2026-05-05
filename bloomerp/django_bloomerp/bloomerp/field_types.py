@@ -5,11 +5,14 @@ from django.db import models
 from enum import Enum
 from django.forms import Widget
 import django_filters
+from bloomerp.form_fields.ordered_multiple_choice_field import OrderedMultipleChoiceField
 from bloomerp.model_fields.user_field import UserField
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django import forms
+from bloomerp.widgets.ordered_field_select_widget import OrderedFieldSelectWidget
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
+from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.model_fields.icon_field import IconField
 from bloomerp.form_fields.icon_field import IconFormField
 from bloomerp.widgets.icon_picker_widget import IconPickerWidget
@@ -214,7 +217,10 @@ class Lookup(Enum):
         django_representation="",
         render_func=render_advanced_lookup
     )
-    
+   
+# -------------------------
+# Field options
+# ------------------------- 
 @dataclass
 class FieldOption:
     id: str
@@ -387,6 +393,89 @@ COMMON_RELATION_FIELD_OPTIONS = [
     HELP_TEXT_FIELD_OPTION,
 ]
 
+def _is_parent_link_field(application_field: "ApplicationField", parent_model: type[models.Model] | None) -> bool:
+    if parent_model is None:
+        return False
+    try:
+        model_field = application_field._get_model_field()
+    except Exception:
+        return False
+    remote_field = getattr(model_field, "remote_field", None)
+    return getattr(remote_field, "model", None) == parent_model
+
+
+def _is_required_inline_field(application_field: "ApplicationField") -> bool:
+    try:
+        model_field = application_field._get_model_field()
+    except Exception:
+        return False
+    return (
+        not getattr(model_field, "blank", False)
+        and not getattr(model_field, "null", False)
+        and not getattr(model_field, "auto_created", False)
+    )
+
+
+def get_related_model_field_choices(application_field: "ApplicationField") -> dict[str, Any]:
+    from bloomerp.models import ApplicationField
+
+    related_model = application_field.get_related_model()
+    if related_model is None:
+        return {"choices": []}
+
+    content_type = ContentType.objects.get_for_model(related_model)
+    choices = []
+    required_values = []
+    parent_model = application_field.get_model()
+    for related_field in ApplicationField.objects.filter(content_type=content_type).order_by("field"):
+        if _is_parent_link_field(related_field, parent_model):
+            continue
+        try:
+            model_field = related_field._get_model_field()
+        except Exception:
+            continue
+        if getattr(model_field, "auto_created", False):
+            continue
+        if not getattr(model_field, "editable", True):
+            continue
+        if not getattr(model_field, "concrete", True):
+            continue
+        choices.append((related_field.field, related_field.title))
+        if _is_required_inline_field(related_field):
+            required_values.append(related_field.field)
+    return {
+        "choices": choices,
+        "widget": OrderedFieldSelectWidget(
+            choices=choices,
+            required_values=required_values,
+        ),
+        "required_values": required_values,
+    }
+
+@dataclass
+class FieldDisplayOption:
+    id: str
+    label: str
+    form_field_cls: type[forms.Field]
+    required: bool = False
+    default: Any = None
+    help_text: str = ""
+    form_field_kwargs: dict[str, Any] = dataclass_field(default_factory=dict)
+    get_form_field_kwargs: Optional[Callable[["ApplicationField"], dict[str, Any]]] = None
+
+    def build_form_field(self, application_field: "ApplicationField") -> forms.Field:
+        kwargs = {
+            "label": self.label,
+            "required": self.required,
+            "help_text": self.help_text,
+            **self.form_field_kwargs,
+        }
+        if self.get_form_field_kwargs:
+            kwargs.update(self.get_form_field_kwargs(application_field))
+        return self.form_field_cls(**kwargs)
+    
+
+
 @dataclass(frozen=True)
 class FieldTypeDefinition:
     """Definition of a field type with its metadata."""
@@ -407,6 +496,10 @@ class FieldTypeDefinition:
     widget_cls:Optional[Widget|Callable] = None
     default_widget_args: dict = dataclass_field(default_factory=dict)
     widget_init_kwargs: dict = dataclass_field(default_factory=dict)
+    widget_related_model_attr: str | None = "model"
+    widget_layout_config_attr: str | None = None
+    widget_parent_model_attr: str | None = None
+    editable_without_form_field: bool = False
     
     lookups: list[Lookup] = dataclass_field(default_factory=list)
     allow_in_model: bool = True
@@ -414,6 +507,9 @@ class FieldTypeDefinition:
     # Field options
     field_options: list[FieldOption] = dataclass_field(default_factory=list)
 
+    # Display options
+    field_display_options : list[FieldDisplayOption] = dataclass_field(default_factory=list)
+    
     def get_widget_cls(self) -> Type[Widget]:
         """Returns the widget_cls for the field type."""
         if self.widget_cls:
@@ -433,6 +529,48 @@ class FieldTypeDefinition:
             return self.model_field_cls.form_field_cls
         
         return forms.CharField
+
+    def build_widget(self, application_field: "ApplicationField", layout_config: dict[str, Any] | None = None) -> forms.Widget:
+        """Build the widget for this field type and application field."""
+        attrs = {}
+        attrs.update(self.default_widget_args)
+        if application_field.meta:
+            attrs.update(application_field.meta)
+        if layout_config and self.widget_layout_config_attr:
+            attrs[self.widget_layout_config_attr] = layout_config
+
+        related_model = application_field.get_related_model()
+        if related_model and self.widget_related_model_attr:
+            attrs[self.widget_related_model_attr] = related_model
+        if self.widget_parent_model_attr:
+            attrs[self.widget_parent_model_attr] = application_field.get_model()
+
+        if self.widget_cls:
+            return self.get_widget_cls()(
+                attrs=attrs,
+                **self.widget_init_kwargs.copy(),
+            )
+
+        try:
+            model_field = application_field._get_model_field()
+        except Exception:
+            return self.get_widget_cls()(
+                attrs=attrs,
+            )
+
+        if not hasattr(model_field, "formfield"):
+            return self.get_widget_cls()(
+                attrs=attrs,
+            )
+
+        form_field = model_field.formfield()
+        if form_field is not None and form_field.widget is not None:
+            form_field.widget.attrs.update(attrs)
+            return form_field.widget
+
+        return self.get_widget_cls()(
+            attrs=attrs,
+        )
 
 TEXT_LOOKUPS = [
     Lookup.EQUALS,
@@ -530,6 +668,14 @@ class FieldType(Enum):
         },
         lookups=TEXT_LOOKUPS,
         field_options=COMMON_TEXT_FIELD_OPTIONS,
+        field_display_options=[
+            FieldDisplayOption(
+                id="label",
+                label="Label",
+                form_field_cls=forms.CharField,
+                required=False,
+            )
+        ]
     )
     
     CHOICE_FIELD = FieldTypeDefinition(
@@ -857,7 +1003,28 @@ class FieldType(Enum):
         id="OneToManyField",
         display_name="One To Many Field",
         icon="fa-solid fa-share-nodes",
+        widget_cls=OneToManyFieldWidget,
+        widget_related_model_attr="related_model",
+        widget_layout_config_attr="layout_config",
+        widget_parent_model_attr="parent_model",
+        editable_without_form_field=True,
         allow_in_model=False,
+        field_display_options=[
+            FieldDisplayOption(
+                id="label",
+                label="Label",
+                form_field_cls=forms.CharField,
+                required=False,
+            ),
+            FieldDisplayOption(
+                id="inline_fields",
+                label="Inline fields",
+                form_field_cls=OrderedMultipleChoiceField,
+                required=False,
+                help_text="Choose which related fields appear as editable columns.",
+                get_form_field_kwargs=get_related_model_field_choices,
+            ),
+        ],
     )
     
     USER_FIELD = FieldTypeDefinition(

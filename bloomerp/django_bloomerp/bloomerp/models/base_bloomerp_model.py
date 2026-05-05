@@ -13,6 +13,7 @@ from bloomerp.models.mixins.uuid_model_mixin import UuidModelMixin
 class LayoutItem(BaseModel):
     id: int | str
     colspan: int = 1
+    config: dict = Field(default_factory=dict)
 
 
 class LayoutRow(BaseModel):

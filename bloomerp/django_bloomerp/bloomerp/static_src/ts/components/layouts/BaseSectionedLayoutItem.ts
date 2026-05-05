@@ -95,6 +95,12 @@ export default abstract class BaseSectionedLayoutItem extends BaseComponent {
         this.element?.focus();
     }
 
+    public getSearchText(): string {
+        const explicitText = this.element?.dataset.layoutSearchText?.trim();
+        const keywordText = this.element?.dataset.layoutSearchKeywords?.trim();
+        return [explicitText, keywordText].filter(Boolean).join(" ");
+    }
+
     public getReadModeActions(): string[] {
         return [];
     }

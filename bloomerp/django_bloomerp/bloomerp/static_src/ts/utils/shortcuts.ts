@@ -27,6 +27,8 @@ const KEY_ALIASES: Record<string, string> = {
     left: "arrowleft",
     right: "arrowright",
     plus: "+",
+    delete: "delete",
+    del: "delete",
 };
 
 export function isMacPlatform(): boolean {

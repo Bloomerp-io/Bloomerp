@@ -1,48 +1,71 @@
-{% comment %}
-table
-
-A table
-
-Parameters:
-- content_type_id (): 
-
-{% endcomment %}
-
-{% load bloomerp %}
 {% load i18n %}
 
-<div 
-    class="rounded-lg border-l border-r border-gray-200"
-    >
-    <table 
-        id="data-table-{{ content_type_id }}" 
+<div
+    class="one-to-many-field-widget rounded-xl border border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
+    bloomerp-component="one-to-many-field-widget"
+>
+    <table
+        id="data-table-{{ content_type_id }}"
         class="table-auto table-hover table w-full border-collapse outline-none"
-        >
+    >
         <thead>
             <tr>
-                {% for field in fields %}
-                    <th >{{ field | title }}</th>
+                <th>
+                    <input type="checkbox" data-one-to-many-select-all {% if not can_edit %}disabled{% endif %}>
+                </th>
+                {% for column in columns %}
+                    <th>{{ column.title }}</th>
                 {% endfor %}
             </tr>
         </thead>
-        <tbody id="data-table-body-{{ content_type_id }}">
-            {% for obj in related_objects %}
-            <tr
-                class="cursor-pointer"
-            >
-                {% for field in fields %}
-                <td class="w-32" data-no-row-click>
-                    {{ obj }}
+        <tbody id="data-table-body-{{ content_type_id }}" data-one-to-many-body>
+            {% for row in rows %}
+            <tr class="cursor-pointer" data-one-to-many-row>
+                <td>
+                    {{ row.id_input }}
+                    <input type="checkbox" data-one-to-many-row-checkbox {% if not can_edit %}disabled{% endif %}>
                 </td>
+                {% for cell in row.cells %}
+                    <td data-no-row-click>
+                        {{ cell.input }}
+                    </td>
                 {% endfor %}
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="{{ fields|length }}" class="text-center text-gray-500">
-                    No related objects found.
+            <tr data-one-to-many-empty-row>
+                <td colspan="{{ columns|length|add:'1' }}" class="text-center text-gray-500 py-6">
+                    {% trans "No related objects found." %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    <template data-one-to-many-row-template>
+        <tr class="cursor-pointer" data-one-to-many-row>
+            <td>
+                {{ empty_row.id_input }}
+                <input type="checkbox" data-one-to-many-row-checkbox {% if not can_edit %}disabled{% endif %}>
+            </td>
+            {% for cell in empty_row.cells %}
+                <td data-no-row-click>
+                    {{ cell.input }}
+                </td>
+            {% endfor %}
+        </tr>
+    </template>
+    <template data-one-to-many-empty-row-template>
+        <tr data-one-to-many-empty-row>
+            <td colspan="{{ columns|length|add:'1' }}" class="text-center text-gray-500 py-6">
+                {% trans "No related objects found." %}
+            </td>
+        </tr>
+    </template>
+    <div class="border-t border-gray-200 bg-white px-3 py-2 flex items-center gap-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-one-to-many-add-row {% if not can_edit %}disabled{% endif %}>
+            <c-blocktrans>Add row</c-blocktrans>
+        </button>
+        <button type="button" class="btn btn-sm btn-danger hidden" data-one-to-many-delete-rows {% if not can_edit %}disabled{% endif %}>
+            <c-blocktrans>Remove selected</c-blocktrans>
+        </button>
+    </div>
 </div>

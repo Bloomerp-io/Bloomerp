@@ -1,0 +1,43 @@
+<div class="space-y-2" bloomerp-component="ordered-field-select">
+    {% for option in widget.options %}
+        <div
+            class="flex items-center gap-2 rounded border border-gray-200 bg-white px-2 py-2"
+            data-ordered-field-option
+        >
+            <div class="flex gap-1">
+                <button
+                    type="button"
+                    class="btn btn-xs btn-ghost"
+                    data-ordered-field-move="up"
+                    title="Move up"
+                >
+                    <i class="fa-solid fa-arrow-up"></i>
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-xs btn-ghost"
+                    data-ordered-field-move="down"
+                    title="Move down"
+                >
+                    <i class="fa-solid fa-arrow-down"></i>
+                </button>
+            </div>
+            {% if option.required %}
+                <input type="hidden" name="{{ option.name }}" value="{{ option.value }}">
+            {% endif %}
+            <label class="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-700">
+                <input
+                    type="checkbox"
+                    name="{{ option.name }}"
+                    value="{{ option.value }}"
+                    {% if option.selected %}checked{% endif %}
+                    {% if option.required %}disabled{% endif %}
+                >
+                <span class="truncate">{{ option.label }}</span>
+                {% if option.required %}
+                    <span class="rounded bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-700">Required</span>
+                {% endif %}
+            </label>
+        </div>
+    {% endfor %}
+</div>

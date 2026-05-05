@@ -7,7 +7,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages.views import SuccessMessageMixin
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.views.generic.edit import CreateView
 
@@ -20,6 +22,7 @@ from bloomerp.services.create_view_services import (
     get_create_access_state,
     get_disallowed_submitted_fields,
 )
+from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.base import BaseBloomerpView
@@ -68,20 +71,22 @@ class BloomerpCreateView(
         return self.layout_content_type
 
     def get_layout_object(self):
-        preference = UserCreateViewPreference.get_or_create_for_user(
+        return self.get_layout_preference_object().field_layout_obj
+
+    def get_layout_preference_object(self):
+        return UserCreateViewPreference.get_or_create_for_user(
             self.request.user,
             self.model,
         )
-        return preference.field_layout_obj
 
     def get_layout_editable_field_names(self) -> list[str]:
         return list(self.create_access_state.addable_fields.values_list("field", flat=True))
 
     def get_layout_available_items_url(self) -> str:
-        return "/components/workspaces/create_layout_available_fields/?content_type_id=%s" % self.get_layout_content_type_id()
+        return ""
 
     def get_layout_save_url(self) -> str:
-        return "/components/workspaces/create_layout_preference/"
+        return ""
 
     def can_change_layout(self) -> bool:
         return True
@@ -178,4 +183,27 @@ class BloomerpCreateView(
                 "You do not have permission to create an object with these values.",
             )
 
-        return super().form_valid(form)
+        try:
+            with transaction.atomic():
+                self.object = form.save(commit=False)
+                if hasattr(self.object, "updated_by"):
+                    self.object.updated_by = self.request.user
+                if hasattr(self.object, "created_by") and not self.object.created_by:
+                    self.object.created_by = self.request.user
+                self.object.save()
+                if hasattr(form, "save_m2m"):
+                    form.save_m2m()
+                if hasattr(self.object, "save_file_fields"):
+                    self.object.save_file_fields()
+                save_submitted_one_to_many_fields(
+                    parent_object=self.object,
+                    layout=self.get_layout_preference_object().field_layout_obj,
+                    submitted_data=self.request.POST,
+                    user=self.request.user,
+                )
+        except ValidationError as exc:
+            for message in exc.messages:
+                form.add_error(None, message)
+            return self.form_invalid(form)
+
+        return redirect(self.get_success_url())

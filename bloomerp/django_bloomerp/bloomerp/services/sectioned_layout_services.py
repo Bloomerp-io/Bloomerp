@@ -21,6 +21,7 @@ class AvailableLayoutItem:
     title:str
     description:str
     icon:str
+    search_keywords: str = ""
 
 def clamp_layout_columns(value: Any) -> int:
     try:
@@ -76,10 +77,14 @@ def normalize_layout_payload(payload: dict[str, Any] | FieldLayout | None) -> Fi
                     if normalized_item_id in seen_item_ids:
                         continue
                     seen_item_ids.add(normalized_item_id)
+                    config = raw_item.get("config", {})
+                    if not isinstance(config, dict):
+                        config = {}
                     items.append(
                         LayoutItem(
                             id=normalized_item_id,
                             colspan=clamp_layout_colspan(raw_item.get("colspan"), columns),
+                            config=config,
                         )
                     )
 
@@ -181,7 +186,9 @@ def build_crud_layout_field_context(
     bound_field: BoundField | None = None,
     value: Any = None,
     can_edit: bool = True,
+    layout_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    layout_config = layout_config or {}
     if bound_field is not None:
         widget = bound_field.field.widget
         attrs = get_layout_widget_attrs(widget=widget)
@@ -195,9 +202,10 @@ def build_crud_layout_field_context(
             help_text=bound_field.help_text,
             errors=list(bound_field.errors),
             field=bound_field,
+            config=layout_config,
         )
 
-    widget = application_field.get_widget()
+    widget = application_field.get_widget(layout_config=layout_config)
     attrs = get_layout_widget_attrs(widget=widget) if can_edit else _get_readonly_layout_widget_attrs(widget=widget)
     return build_layout_field_context(
         application_field=application_field,
@@ -208,6 +216,7 @@ def build_crud_layout_field_context(
             attrs=attrs,
         ),
         help_text=get_application_field_help_text(application_field),
+        config=layout_config,
     )
 
 
@@ -294,14 +303,19 @@ def build_layout_field_context(
     help_text: str = "",
     errors: Optional[list[str]] = None,
     field=None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    config = config or {}
     return {
         "value": value,
         "application_field": application_field,
+        "display_label": str(config.get("label") or application_field.title),
         "field": field,
         "input": input,
         "help_text": help_text,
         "errors": errors or [],
+        "config": config,
+        "config_json": json.dumps(config),
         "is_required": bool(getattr(field, "field", None) and field.field.required) if field is not None else get_application_field_is_required(application_field),
     }
 
@@ -317,14 +331,24 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
     permission_prefix = "add" if layout_kind == "create" else "view"
     permission_str = f"{permission_prefix}_{model._meta.model_name}"
 
+    if layout_kind == "create":
+        from bloomerp.services.create_view_services import AUTO_MANAGED_FIELD_NAMES
+    else:
+        AUTO_MANAGED_FIELD_NAMES = frozenset()
+
     fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
     available: list[dict[str, Any]] = []
     for field in fields:
+        if field.field in AUTO_MANAGED_FIELD_NAMES:
+            continue
+
         if not permission_manager.has_field_permission(field, permission_str):
             continue
 
         field_type = field.get_field_type_enum().value
-        if layout_kind == "create" and not field_type.allow_in_model:
+        if layout_kind == "create" and not (
+            field_type.allow_in_model or field_type.editable_without_form_field
+        ):
             continue
 
         available.append(
@@ -333,6 +357,7 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
                 "title": field.title,
                 "description": field_type.display_name,
                 "icon": field_type.icon,
+                "is_required": get_application_field_is_required(field),
             }
         )
     return available

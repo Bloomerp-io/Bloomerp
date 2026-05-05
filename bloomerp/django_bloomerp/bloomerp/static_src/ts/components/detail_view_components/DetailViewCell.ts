@@ -36,7 +36,8 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
     public value: DetailViewCellValue = null;
     public label: string | null = null;
     public applicationFieldId: string | null = null;
-    private changeCleanupFns: Array<() => void> = [];
+    private nativeFieldChangeHandler: ((event: Event) => void) | null = null;
+    private widgetFieldChangeHandler: ((event: Event) => void) | null = null;
     private suppressChangeTracking = false;
     private lastSnapshot: DetailViewCellSnapshot | null = null;
 
@@ -65,72 +66,54 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
     private setUpOnChangeHandler(): void {
         if (!this.element) return;
 
-        const widgetRoots: HTMLElement[] = [];
-        const componentElements = this.element.querySelectorAll<HTMLElement>(`[${componentIdentifier}]`);
+        this.widgetFieldChangeHandler = (event: Event): void => {
+            const customEvent = event as CustomEvent<BaseWidgetChangeDetail>;
+            const target = event.target as HTMLElement | null;
+            if (!target || !this.element?.contains(target)) return;
+            if (target === this.element) return;
 
-        componentElements.forEach((componentElement) => {
-            const component = getComponent(componentElement);
-            if (!(component instanceof BaseWidget)) return;
+            const previousSnapshot = this.cloneSnapshot(this.lastSnapshot ?? this.captureSnapshot());
+            const nextValue = this.readCurrentValue();
+            const previousValue = this.cloneValue(this.value);
+            this.value = nextValue;
+            const nextSnapshot = this.captureSnapshot();
+            this.lastSnapshot = this.cloneSnapshot(nextSnapshot);
+            console.log("Change detected in DetailViewCell widget:", customEvent.detail?.widget, nextValue);
+            this.emitCellChange(previousValue, nextValue, target, previousSnapshot, nextSnapshot);
+        };
 
-            widgetRoots.push(componentElement);
+        this.nativeFieldChangeHandler = (event: Event): void => {
+            const target = event.target as HTMLElement | null;
+            if (!this.isTrackableField(target)) return;
+            if (!this.element?.contains(target)) return;
+            if (this.isInsideCustomWidget(target)) return;
 
-            const handler = (event: Event): void => {
-                const customEvent = event as CustomEvent<BaseWidgetChangeDetail>;
-                const previousSnapshot = this.cloneSnapshot(this.lastSnapshot ?? this.captureSnapshot());
-                const nextValue = this.normalizeValue(customEvent.detail?.value);
-                const previousValue = this.cloneValue(this.value);
-                this.value = nextValue;
-                const nextSnapshot = this.captureSnapshot();
-                this.lastSnapshot = this.cloneSnapshot(nextSnapshot);
-                console.log("Change detected in DetailViewCell widget:", customEvent.detail?.widget, nextValue);
-                this.emitCellChange(previousValue, nextValue, componentElement, previousSnapshot, nextSnapshot);
-            };
+            const previousSnapshot = this.cloneSnapshot(this.lastSnapshot ?? this.captureSnapshot());
+            const nextValue = this.readCurrentValue();
+            const previousValue = this.cloneValue(this.value);
+            this.value = nextValue;
+            const nextSnapshot = this.captureSnapshot();
+            this.lastSnapshot = this.cloneSnapshot(nextSnapshot);
+            console.log("Change detected in DetailViewCell input:", target, nextValue);
+            this.emitCellChange(previousValue, nextValue, target, previousSnapshot, nextSnapshot);
+        };
 
-            componentElement.addEventListener(BaseWidget.changeEventName, handler);
-            this.changeCleanupFns.push(() => {
-                componentElement.removeEventListener(BaseWidget.changeEventName, handler);
-            });
-        });
-
-        const inputElements = this.element.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-            ".detail-layout-item__body input, .detail-layout-item__body textarea, .detail-layout-item__body select",
-        );
-        inputElements.forEach((inputElement) => {
-            if (widgetRoots.some((widgetRoot) => widgetRoot.contains(inputElement))) {
-                return;
-            }
-
-            const handler = (event: Event): void => {
-                const target = event.target as HTMLElement | null;
-                if (!this.isTrackableField(target)) return;
-
-                const previousSnapshot = this.cloneSnapshot(this.lastSnapshot ?? this.captureSnapshot());
-                const nextValue = this.getFieldValue(target);
-                const previousValue = this.cloneValue(this.value);
-                this.value = nextValue;
-                const nextSnapshot = this.captureSnapshot();
-                this.lastSnapshot = this.cloneSnapshot(nextSnapshot);
-                console.log("Change detected in DetailViewCell input:", target, nextValue);
-                this.emitCellChange(previousValue, nextValue, target, previousSnapshot, nextSnapshot);
-            };
-
-            const eventNames = this.getFieldEventNames(inputElement);
-            eventNames.forEach((eventName) => {
-                inputElement.addEventListener(eventName, handler);
-            });
-
-            this.changeCleanupFns.push(() => {
-                eventNames.forEach((eventName) => {
-                    inputElement.removeEventListener(eventName, handler);
-                });
-            });
-        });
+        this.element.addEventListener(BaseWidget.changeEventName, this.widgetFieldChangeHandler);
+        this.element.addEventListener("input", this.nativeFieldChangeHandler);
+        this.element.addEventListener("change", this.nativeFieldChangeHandler);
     }
 
     public destroy(): void {
         if (!this.element) return;
-        this.changeCleanupFns.forEach((cleanup) => cleanup());
-        this.changeCleanupFns = [];
+        if (this.widgetFieldChangeHandler) {
+            this.element.removeEventListener(BaseWidget.changeEventName, this.widgetFieldChangeHandler);
+        }
+        if (this.nativeFieldChangeHandler) {
+            this.element.removeEventListener("input", this.nativeFieldChangeHandler);
+            this.element.removeEventListener("change", this.nativeFieldChangeHandler);
+        }
+        this.widgetFieldChangeHandler = null;
+        this.nativeFieldChangeHandler = null;
         this.element.removeEventListener("contextmenu", this.onContextMenu, true);
     }
 
@@ -281,22 +264,6 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         return target.value ?? "";
     }
 
-    private getFieldEventNames(target: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): Array<"input" | "change"> {
-        if (target instanceof HTMLTextAreaElement) {
-            return ["input", "change"];
-        }
-
-        if (target instanceof HTMLSelectElement) {
-            return ["change"];
-        }
-
-        if (target.type === "checkbox" || target.type === "radio" || target.type === "file") {
-            return ["change"];
-        }
-
-        return ["input", "change"];
-    }
-
     private normalizeValue(value: unknown): DetailViewCellValue {
         if (Array.isArray(value)) {
             return value.map((item) => String(item));
@@ -311,6 +278,14 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         }
 
         return String(value);
+    }
+
+    private isInsideCustomWidget(target: HTMLElement): boolean {
+        const widgetRoot = target.closest<HTMLElement>(`[${componentIdentifier}]`);
+        if (!widgetRoot || widgetRoot === this.element) return false;
+
+        const component = getComponent(widgetRoot);
+        return component instanceof BaseWidget;
     }
 
     private emitCellChange(

@@ -108,6 +108,17 @@ export function initComponents(container: Document | HTMLElement = document): vo
  * Initialize components on DOM ready and after HTMX swaps
  */
 export function setupComponentAutoInit(): void {
+    const runAfterSwapCallbacks = (container: Document | HTMLElement): void => {
+        const scope = container instanceof Document ? document : container;
+        const instances = scope.querySelectorAll<HTMLElement>(`[${componentIdentifier}][data-component-initialized="true"]`);
+        instances.forEach((el) => {
+            const instance = getComponent(el);
+            if (instance) {
+                instance.onAfterSwap();
+            }
+        });
+    };
+
     // Initialize on DOM ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => initComponents());
@@ -129,15 +140,29 @@ export function setupComponentAutoInit(): void {
 
             initComponents(container);
 
-            // Call onAfterSwap on all component instances in the swapped container
-            // This allows components to react to dynamically loaded content
-            const instances = (container instanceof Document ? document : container).querySelectorAll<HTMLElement>(`[${componentIdentifier}][data-component-initialized="true"]`);
-            instances.forEach((el) => {
-                const instance = getComponent(el);
-                if (instance) {
-                    instance.onAfterSwap();
-                }
-            });
+            // Call onAfterSwap on all component instances in the swapped container.
+            // This allows components to react to dynamically loaded content.
+            runAfterSwapCallbacks(container);
+        });
+
+        document.body.addEventListener('htmx:oobAfterSwap', (event: Event) => {
+            const customEvent = event as CustomEvent;
+            const target = (customEvent.detail?.target ?? null) as HTMLElement | null;
+            const container: Document | HTMLElement = target && target.isConnected ? target : document;
+
+            initComponents(container);
+            // OOB swaps often update a child outside the normal target, so let
+            // parent containers refresh their item registry and edit-mode state.
+            runAfterSwapCallbacks(document);
+        });
+
+        document.body.addEventListener('htmx:load', (event: Event) => {
+            const customEvent = event as CustomEvent;
+            const target = (customEvent.detail?.elt ?? customEvent.target ?? null) as HTMLElement | null;
+            const container: Document | HTMLElement = target && target.isConnected ? target : document;
+
+            initComponents(container);
+            runAfterSwapCallbacks(container);
         });
 
         // When navigating back/forward with HTMX history, the DOM can be restored

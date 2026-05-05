@@ -3,7 +3,6 @@
 from abc import abstractmethod
 from typing import Optional
 
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.urls import reverse
 
@@ -12,9 +11,7 @@ from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.services.sectioned_layout_services import dump_layout_json
 from bloomerp.utils.models import get_create_view_url
 from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
-from bloomerp.views.mixins.htmx_mixin import HtmxMixin
-
+from django.contrib.contenttypes.models import ContentType
 
 class BaseWorkspaceView(BaseBloomerpView):
 
@@ -82,6 +79,7 @@ class BaseWorkspaceView(BaseBloomerpView):
             "create_url": self.get_create_url(),
             "my_workspaces_url": reverse("my_workspaces"),
             "module_id": self.get_module_id(),
+            "workspace_content_type_id" : ContentType.objects.get_for_model(Workspace),
         }
 
         if workspace:

@@ -5,7 +5,7 @@ from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.models.base_bloomerp_model import FieldLayout
 from bloomerp.services.sectioned_layout_services import normalize_layout_payload
-
+from django.utils.translation import gettext_lazy as _
 
 def get_default_tab_state() -> dict:
     from bloomerp.services.detail_view_services import get_default_tab_state

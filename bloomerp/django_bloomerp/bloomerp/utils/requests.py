@@ -1,9 +1,11 @@
+import re
 from typing import Any, Literal
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
 from django.forms import Form
 from django.shortcuts import render
+from django.template.loader import render_to_string
 
 def parse_bool_parameter(value : Any, default_value=False) -> bool:
     """
@@ -77,7 +79,9 @@ def render_blank_form(
         url:str,
         hidden_args:dict={}, 
         submit_label:str="Submit",
-        form_args:dict=None
+        form_args:dict=None,
+        button_attrs:dict=None,
+        text:str|None=None,
         ) -> HttpResponse:
     """
     Render a small standalone form fragment used for HTMX panel inserts.
@@ -95,6 +99,7 @@ def render_blank_form(
         submit_label: Optional label for the submit button.
         form_args: Optional dictionary of additional rendering arguments for
             the template.
+        button_attrs: the attrs on the particular button
 
     Returns:
         HttpResponse: The rendered blank form fragment.
@@ -107,7 +112,9 @@ def render_blank_form(
             "hidden_args":hidden_args,
             "url":url,
             "submit_label": submit_label,
-            "form_args" : form_args if form_args else {}
+            "form_args" : form_args if form_args else {},
+            "button_attrs" : button_attrs if isinstance(button_attrs, dict) else {},
+            "text": text,
         }
     )
     
@@ -186,6 +193,7 @@ def render_template_and_message(
         context=context
     )
 
+
 def render_message(
         request:HttpRequest,
         message:str,
@@ -206,3 +214,34 @@ def render_page_refresh() -> HttpResponse:
     """Returns a HTMX page refresh"""
     from django_htmx.http import HttpResponseClientRefresh
     return HttpResponseClientRefresh()
+
+
+def render_oob_swap(
+        request: HttpRequest,
+        template_name: str,
+        context: dict[str, Any] | None = None,
+        target_id: str | None = None,
+        swap: str = "outerHTML",
+        content: str = "",
+) -> HttpResponse:
+    """Render an HTMX out-of-band swap fragment.
+
+    Either provide `template_name` plus context or a pre-rendered `content`.
+    `target_id` is the DOM id HTMX should replace.
+    """
+    if not target_id:
+        raise ValueError("target_id is required for an out-of-band swap")
+
+    rendered = content or render_to_string(template_name, context or {}, request=request)
+    if swap in {"outerHTML", "true"}:
+        pattern = rf'(<[a-zA-Z][^>]*\bid=["\']{re.escape(target_id)}["\'][^>]*)(>)'
+        rendered_with_oob, count = re.subn(
+            pattern,
+            rf'\1 hx-swap-oob="{swap}"\2',
+            rendered.strip(),
+            count=1,
+        )
+        if count:
+            return HttpResponse(rendered_with_oob)
+
+    return HttpResponse(f'<div id="{target_id}" hx-swap-oob="{swap}">{rendered}</div>')

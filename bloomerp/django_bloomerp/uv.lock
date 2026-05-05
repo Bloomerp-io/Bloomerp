@@ -232,7 +232,7 @@ wheels = [
 
 [[package]]
 name = "bloomerp"
-version = "1.0.0.dev37"
+version = "1.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
@@ -375,6 +375,7 @@ dependencies = [
     { name = "tzlocal" },
     { name = "uritools" },
     { name = "urllib3" },
+    { name = "vulture" },
     { name = "webencodings" },
     { name = "websocket-client" },
     { name = "xhtml2pdf" },
@@ -530,6 +531,7 @@ requires-dist = [
     { name = "tzlocal", specifier = "==5.2" },
     { name = "uritools", specifier = "==4.0.3" },
     { name = "urllib3", specifier = "==2.2.3" },
+    { name = "vulture", specifier = ">=2.16" },
     { name = "webencodings", specifier = "==0.5.1" },
     { name = "websocket-client", specifier = "==1.8.0" },
     { name = "xhtml2pdf", specifier = "==0.2.16" },
@@ -2740,6 +2742,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bd/e4/d07b5f29d283596b9727dd5275ccbceb63c44a1a82aa9e4bfd20426762ac/vine-5.1.0.tar.gz", hash = "sha256:8b62e981d35c41049211cf62a0a1242d8c1ee9bd15bb196ce38aefd6799e61e0", size = 48980, upload-time = "2023-11-05T08:46:53.857Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/03/ff/7c0c86c43b3cbb927e0ccc0255cb4057ceba4799cd44ae95174ce8e8b5b2/vine-5.1.0-py3-none-any.whl", hash = "sha256:40fdf3c48b2cfe1c38a49e9ae2da6fda88e4794c810050a728bd7413811fb1dc", size = 9636, upload-time = "2023-11-05T08:46:51.205Z" },
+]
+
+[[package]]
+name = "vulture"
+version = "2.16"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/3e/4d08c5903b2c0c70cad583c170cc4a663fc6a61e2ad00b711fcda61358cd/vulture-2.16.tar.gz", hash = "sha256:f8d9f6e2af03011664a3c6c240c9765b3f392917d3135fddca6d6a68d359f717", size = 52680, upload-time = "2026-03-25T14:41:27.141Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f5/be/f935130312330614811dae2ea9df3f395f6d63889eb6c2e68c14507152ee/vulture-2.16-py3-none-any.whl", hash = "sha256:6e0f1c312cef1c87856957e5c2ca9608834a7c794c2180477f30bf0e4cc58eee", size = 26993, upload-time = "2026-03-25T14:41:26.21Z" },
 ]
 
 [[package]]

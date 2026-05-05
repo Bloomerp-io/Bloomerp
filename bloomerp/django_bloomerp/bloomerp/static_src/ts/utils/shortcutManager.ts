@@ -135,9 +135,9 @@ class ShortcutManager {
 
     private isRevealKeyEvent(event: KeyboardEvent): boolean {
         return (
-            normalizeKeyboardEventKey(event) === "alt" &&
+            normalizeKeyboardEventKey(event) === "meta" &&
             !event.ctrlKey &&
-            !event.metaKey &&
+            !event.altKey &&
             !event.shiftKey
         );
     }

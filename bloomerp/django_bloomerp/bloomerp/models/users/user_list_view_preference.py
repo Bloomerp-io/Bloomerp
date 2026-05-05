@@ -173,34 +173,7 @@ class UserListViewPreference(models.Model):
         self.display_fields[view_type] = current_fields
         return is_visible
     
-    def is_field_visible(self, view_type: str, field_id: int) -> bool:
-        """Checks if a field is visible for a specific view type.
-
-        Args:
-            view_type: The view type to check.
-            field_id: The ApplicationField ID to check.
-        Returns:
-            bool: True if the field is visible.
-        """
-        return field_id in self.display_fields.get(view_type, [])
     
-    def get_visible_fields_queryset(self, view_type: str = None) -> models.QuerySet:
-        """Returns an ordered QuerySet of visible ApplicationFields.
-
-        Args:
-            view_type: The view type to get fields for. Defaults to current view_type.
-        Returns:
-            QuerySet[ApplicationField]: Ordered queryset of visible fields.
-        """
-        view_type = view_type or self.view_type
-        field_ids = self.get_visible_field_ids(view_type)
-        
-        if not field_ids:
-            return ApplicationField.objects.none()
-        
-        # Preserve ordering using CASE/WHEN
-        ordering = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(field_ids)])
-        return ApplicationField.objects.filter(pk__in=field_ids).order_by(ordering)
     
     
 

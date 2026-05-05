@@ -17,6 +17,8 @@ AUTO_MANAGED_FIELD_NAMES = {
     "datetime_updated",
     "created_by",
     "updated_by",
+    "comments",
+    "files",
 }
 
 

@@ -8,6 +8,7 @@ import { getCsrfToken } from "../../utils/cookies";
 export type SectionedLayoutItemPayload = {
     id: string;
     colspan: number;
+    config: Record<string, unknown>;
 };
 
 export type SectionedLayoutRowPayload = {
@@ -21,6 +22,11 @@ type SavePayload = {
         rows: SectionedLayoutRowPayload[];
     };
     [key: string]: unknown;
+};
+
+type SearchMatch<TItem extends BaseSectionedLayoutItem> = {
+    item: TItem;
+    text: string;
 };
 
 export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSectionedLayoutItem> extends BaseComponent {
@@ -44,11 +50,33 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     protected rowSortable: Sortable | null = null;
     protected gridSortables: Sortable[] = [];
     protected sidebarSortable: Sortable | null = null;
+    protected searchButton: HTMLButtonElement | null = null;
+    protected searchPanel: HTMLElement | null = null;
+    protected searchInput: HTMLInputElement | null = null;
+    protected searchStatus: HTMLElement | null = null;
+    protected searchButtonHandler: (() => void) | null = null;
+    protected searchInputHandler: (() => void) | null = null;
+    protected searchKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
+    protected searchActive = false;
+    protected searchMatches: SearchMatch<TItem>[] = [];
+    protected activeSearchMatchIndex: number | null = null;
 
     protected abstract getItemComponent(element: HTMLElement): TItem | null;
     protected abstract getItemSelector(): string;
     protected abstract renderItem(itemId: string, rowIndex: number, position?: number): Promise<void>;
-    protected abstract getSavePayload(): SavePayload;
+    
+
+    protected getSavePayload():SavePayload {
+        // Get the content type id of the object
+        
+
+        return {
+            content_type_id: Number.parseInt(this.element?.dataset.contentTypeId ?? "", 10) || null,
+            layout: {
+                rows: this.serializeRows(),
+            },
+        };
+    }
 
     protected normalizeLayoutItemId(value: unknown): string | null {
         if (value === null || value === undefined) return null;
@@ -56,8 +84,55 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         return normalized ? normalized : null;
     }
 
+    protected normalizeLayoutItemConfig(value: unknown): Record<string, unknown> {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+        return value as Record<string, unknown>;
+    }
+
+    protected parseLayoutItemConfig(value: string | undefined): Record<string, unknown> {
+        if (!value) return {};
+        try {
+            return this.normalizeLayoutItemConfig(JSON.parse(value));
+        } catch {
+            return {};
+        }
+    }
+
     protected async loadInitialItems(): Promise<void> {
-        return Promise.resolve();
+        for (let rowIndex = 0; rowIndex < this.layoutRows.length; rowIndex += 1) {
+            const row = this.layoutRows[rowIndex];
+            const rowEl = this.rowElements[rowIndex];
+            const targetGrid = rowEl?.querySelector<HTMLElement>("[data-layout-grid]");
+            if (!targetGrid) continue;
+
+            const expectedIds = new Set(row.items.map((item) => item.id));
+            const seenIds = new Set<string>();
+
+            Array.from(targetGrid.querySelectorAll<HTMLElement>(this.getItemSelector())).forEach((element) => {
+                const itemId = this.normalizeLayoutItemId(element.dataset.layoutItemId);
+                if (!itemId) {
+                    element.remove();
+                    return;
+                }
+                if (!expectedIds.has(itemId) || seenIds.has(itemId)) {
+                    element.remove();
+                    return;
+                }
+
+                seenIds.add(itemId);
+                const component = this.getItemComponent(element);
+                component?.setMaxCols(row.columns);
+            });
+
+            for (const item of row.items) {
+                if (seenIds.has(item.id)) {
+                    continue;
+                }
+                // eslint-disable-next-line no-await-in-loop
+                await this.renderItem(item.id, rowIndex);
+                seenIds.add(item.id);
+            }
+        }
     }
 
     protected handleReadModeKeyDown(_event: KeyboardEvent): void {
@@ -94,15 +169,30 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             void this.requestSave();
         });
 
+        // Add event listener to edit button
         const editToggle = this.element.querySelector<HTMLElement>("[data-layout-edit-toggle]");
         editToggle?.addEventListener("click", () => this.toggleEditMode());
 
+        // Add event listener to open sidebar button
         this.openSidebarButtons = Array.from(this.element.querySelectorAll<HTMLElement>("[data-layout-open-sidebar]"));
         this.openSidebarButtons.forEach((button) => {
             button.addEventListener("click", () => {
-                void this.loadAvailableItems();
+                void this.loadAvailableItems({ focusFirstItem: true });
             });
         });
+        this.cacheSearchElements();
+        this.searchButtonHandler = () => {
+            if (this.searchActive) {
+                this.closeSearch();
+                return;
+            }
+            this.openSearch();
+        };
+        this.searchInputHandler = () => this.refreshSearchMatches();
+        this.searchKeydownHandler = (event: KeyboardEvent) => this.onSearchKeyDown(event);
+        this.searchButton?.addEventListener("click", this.searchButtonHandler);
+        this.searchInput?.addEventListener("input", this.searchInputHandler);
+        this.element.addEventListener("keydown", this.searchKeydownHandler, true);
 
         this.setupDnD();
         this.itemLoadQueue = this.loadInitialItems().then(() => {
@@ -112,11 +202,38 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             if (!this.editMode && this.items.length > 0) {
                 this.focusItemByIndex(0);
             }
+            if (this.searchActive) {
+                this.refreshSearchMatches();
+            }
         });
     }
 
     public override destroy(): void {
         this.destroySortables();
+        if (this.searchButtonHandler) {
+            this.searchButton?.removeEventListener("click", this.searchButtonHandler);
+        }
+        if (this.searchInputHandler) {
+            this.searchInput?.removeEventListener("input", this.searchInputHandler);
+        }
+        if (this.searchKeydownHandler && this.element) {
+            this.element.removeEventListener("keydown", this.searchKeydownHandler, true);
+        }
+        this.searchButton = null;
+        this.searchPanel = null;
+        this.searchInput = null;
+        this.searchStatus = null;
+        this.searchButtonHandler = null;
+        this.searchInputHandler = null;
+        this.searchKeydownHandler = null;
+        this.searchMatches = [];
+    }
+
+    public override onAfterSwap(): void {
+        this.cacheSearchElements();
+        if (this.searchActive) {
+            this.refreshSearchMatches();
+        }
     }
 
     protected toggleEditMode(): void {
@@ -157,6 +274,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
                         .map((item) => ({
                             id: this.normalizeLayoutItemId(item.id),
                             colspan: this.clampColspan(item.colspan, row.columns),
+                            config: this.normalizeLayoutItemConfig(item.config),
                         }))
                         .filter((item): item is SectionedLayoutItemPayload => item.id !== null)
                     : [],
@@ -596,6 +714,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             items: Array.from(rowEl.querySelectorAll<HTMLElement>(this.getItemSelector())).map((itemEl) => ({
                 id: this.normalizeLayoutItemId(itemEl.dataset.layoutItemId),
                 colspan: this.clampColspan(Number.parseInt(itemEl.dataset.colspan ?? "1", 10), this.clampRowCols(Number.parseInt(rowEl.dataset.rowColumns ?? "4", 10))),
+                config: this.parseLayoutItemConfig(itemEl.dataset.layoutItemConfig),
             })).filter((item): item is SectionedLayoutItemPayload => item.id !== null),
         }));
         this.bindRows();
@@ -731,6 +850,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
                 .map((itemEl) => ({
                     id: this.normalizeLayoutItemId(itemEl.dataset.layoutItemId),
                     colspan: this.clampColspan(Number.parseInt(itemEl.dataset.colspan ?? "1", 10), columns),
+                    config: this.parseLayoutItemConfig(itemEl.dataset.layoutItemConfig),
                 }))
                 .filter((item): item is SectionedLayoutItemPayload => item.id !== null);
 
@@ -738,7 +858,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         });
     }
 
-    protected async loadAvailableItems(): Promise<void> {
+    protected async loadAvailableItems(options?: { focusFirstItem?: boolean }): Promise<void> {
         const container = this.element?.querySelector<HTMLElement>("[data-layout-available-items]");
         const url = this.element?.dataset.layoutAvailableItemsUrl;
         if (!container || !url) return;
@@ -746,9 +866,39 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         await htmx.ajax("get", url, {
             target: container,
             swap: "innerHTML",
+            values: this.element?.dataset.contentTypeId
+                ? { content_type_id: this.element.dataset.contentTypeId }
+                : undefined,
         });
         this.bindSidebarItems(container);
         this.syncAvailableItemsState();
+
+        if (options?.focusFirstItem) {
+            this.focusFirstAvailableSidebarItem();
+        }
+    }
+
+    protected focusFirstAvailableSidebarItem(): void {
+        let attemptsRemaining = 12;
+
+        const tryFocus = () => {
+            const firstAvailableItem = this.element?.querySelector<HTMLElement>(
+                "[data-layout-sidebar-item]:not([disabled]):not([aria-disabled='true'])",
+            );
+
+            if (firstAvailableItem && this.isFocusableElement(firstAvailableItem) && this.isActionableElement(firstAvailableItem)) {
+                firstAvailableItem.focus();
+                if (document.activeElement === firstAvailableItem) {
+                    return;
+                }
+            }
+
+            attemptsRemaining -= 1;
+            if (attemptsRemaining <= 0) return;
+            window.requestAnimationFrame(tryFocus);
+        };
+
+        window.requestAnimationFrame(tryFocus);
     }
 
     protected bindSidebarItems(container: HTMLElement): void {
@@ -769,9 +919,38 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         void this.requestSave();
                     });
                 });
+                item.addEventListener("keydown", (event: KeyboardEvent) => {
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        this.moveSidebarItemFocus(item, event.key === "ArrowDown" ? 1 : -1);
+                        return;
+                    }
+
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        item.click();
+                    }
+                });
             }
         });
         this.refreshSortables();
+    }
+
+    protected moveSidebarItemFocus(currentItem: HTMLElement, delta: number): void {
+        const focusableSidebarItems = Array.from(
+            this.element?.querySelectorAll<HTMLElement>("[data-layout-sidebar-item]:not([disabled]):not([aria-disabled='true'])") ?? [],
+        );
+        if (focusableSidebarItems.length === 0) return;
+
+        const currentIndex = focusableSidebarItems.indexOf(currentItem);
+        if (currentIndex < 0) {
+            focusableSidebarItems[0]?.focus();
+            return;
+        }
+
+        const nextIndex = Math.max(0, Math.min(focusableSidebarItems.length - 1, currentIndex + delta));
+        focusableSidebarItems[nextIndex]?.focus();
     }
 
     protected syncAvailableItemsState(): void {
@@ -933,6 +1112,131 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         return Boolean(element?.matches("[data-layout-available-items-list]"));
     }
 
+    protected getSearchableItems(): TItem[] {
+        return this.items.filter((item) => !item.element?.classList.contains("hidden"));
+    }
+
+    protected focusSearchMatch(item: TItem): void {
+        const itemIndex = this.items.indexOf(item);
+        if (itemIndex < 0) return;
+
+        item.element?.scrollIntoView({ block: "center", inline: "nearest" });
+        this.focusItemByIndex(itemIndex);
+    }
+
+    protected openSearch(): void {
+        this.searchActive = true;
+        this.searchPanel?.classList.remove("hidden");
+        this.searchPanel?.setAttribute("aria-hidden", "false");
+        this.searchButton?.setAttribute("aria-pressed", "true");
+        this.refreshSearchMatches();
+        this.searchInput?.focus();
+        this.searchInput?.select();
+    }
+
+    protected closeSearch(): void {
+        const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const focusWasInsideSearchPanel = !!(activeElement && this.searchPanel?.contains(activeElement));
+
+        this.searchActive = false;
+        this.activeSearchMatchIndex = null;
+        this.searchMatches = [];
+        this.searchPanel?.classList.add("hidden");
+        this.searchPanel?.setAttribute("aria-hidden", "true");
+        this.searchButton?.setAttribute("aria-pressed", "false");
+        this.updateSearchStatus();
+
+        if (focusWasInsideSearchPanel) {
+            const currentItem = this.items[this.focusedItemIndex];
+            if (currentItem) {
+                this.focusSearchMatch(currentItem);
+            } else {
+                this.searchButton?.focus();
+            }
+        }
+    }
+
+    protected refreshSearchMatches(): void {
+        const query = this.normalizeSearchQuery(this.searchInput?.value ?? "");
+        const visibleItems = this.getSearchableItems();
+
+        this.activeSearchMatchIndex = null;
+        this.searchMatches = query
+            ? visibleItems
+                .map((item) => ({
+                    item,
+                    text: this.normalizeSearchQuery(item.getSearchText()),
+                }))
+                .filter((match) => match.text.includes(query))
+            : [];
+
+        this.updateSearchStatus();
+    }
+
+    protected focusNextSearchMatch(): void {
+        if (this.searchMatches.length === 0) {
+            this.updateSearchStatus();
+            return;
+        }
+
+        const nextIndex = this.activeSearchMatchIndex === null
+            ? 0
+            : (this.activeSearchMatchIndex + 1) % this.searchMatches.length;
+        const nextMatch = this.searchMatches[nextIndex];
+
+        this.activeSearchMatchIndex = nextIndex;
+        this.focusSearchMatch(nextMatch.item);
+        this.updateSearchStatus();
+    }
+
+    protected normalizeSearchQuery(value: string): string {
+        return value.trim().toLowerCase();
+    }
+
+    protected onSearchKeyDown(event: KeyboardEvent): void {
+        if (!this.searchActive) return;
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            this.closeSearch();
+            return;
+        }
+
+        if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            this.focusNextSearchMatch();
+        }
+    }
+
+    protected updateSearchStatus(): void {
+        if (!this.searchStatus) return;
+
+        const totalMatches = this.searchMatches.length;
+        if (!this.searchActive || totalMatches === 0) {
+            this.searchStatus.textContent = "0 results";
+            return;
+        }
+
+        if (this.activeSearchMatchIndex === null) {
+            this.searchStatus.textContent = `? of ${totalMatches}`;
+            return;
+        }
+
+        this.searchStatus.textContent = `${this.activeSearchMatchIndex + 1} of ${totalMatches}`;
+    }
+
+    protected cacheSearchElements(): void {
+        this.searchButton = this.element?.querySelector<HTMLButtonElement>("[data-search-button]") ?? null;
+        this.searchPanel = this.element?.querySelector<HTMLElement>("[data-form-search-panel]") ?? null;
+        this.searchInput = this.element?.querySelector<HTMLInputElement>("[data-form-search-input]") ?? null;
+        this.searchStatus = this.element?.querySelector<HTMLElement>("[data-form-search-status]") ?? null;
+    }
+
     protected canDragSidebarItem(item: HTMLElement | null): boolean {
         return Boolean(item && !item.hasAttribute("disabled"));
     }
@@ -1002,9 +1306,23 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     protected isInteractiveTarget(target: HTMLElement): boolean {
         return Boolean(
             target.closest(
-                "input, textarea, select, option, button, a, [contenteditable=\"true\"], [data-row-controls], [data-layout-item-controls]",
+                "input, textarea, select, option, button, a, [contenteditable=\"true\"], [data-row-controls], [data-layout-item-controls], [data-layout-sidebar-item]",
             ),
         );
+    }
+
+    protected isFocusableElement(element: HTMLElement): boolean {
+        if (typeof element.focus !== "function") return false;
+        if (element.tabIndex >= 0) return true;
+        return /^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/.test(element.tagName);
+    }
+
+    protected isActionableElement(element: HTMLElement): boolean {
+        if (!element.isConnected) return false;
+        if (element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true") return false;
+
+        const style = window.getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
     }
 
     protected getRowIndexFromElement(element: HTMLElement | null): number {

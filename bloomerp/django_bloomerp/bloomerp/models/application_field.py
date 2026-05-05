@@ -3,10 +3,9 @@ from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models.query import QuerySet
-from typing import Optional, Type
+from typing import Any, Optional, Type
 from django.utils.translation import gettext_lazy as _
 from bloomerp.field_types import FieldType
-from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 
 class ApplicationField(models.Model):
     """
@@ -224,55 +223,12 @@ class ApplicationField(models.Model):
         field_type = self.get_field_type_enum().value
         return field_type.form_field_cls
            
-    def get_widget(self) -> forms.Widget:
+    def get_widget(self, layout_config: dict[str, Any] | None = None) -> forms.Widget:
         """Retursn the widget for this application field
 
         Returns:
             forms.Widget: the widget object
         """
         field_type = self.get_field_type_enum().value
-        default_attrs = field_type.default_widget_args
-        widget_init_kwargs = field_type.widget_init_kwargs.copy()
-
-        attrs = {}
-        attrs.update(default_attrs)
-        if self.meta:
-            attrs.update(self.meta)
-
-        related_model = self.get_related_model()
-        if related_model:
-            attrs['model'] = related_model
-
-        if field_type.id == "OneToManyField":
-            if related_model:
-                attrs['related_model'] = related_model
-            attrs.pop('model', None)
-            return OneToManyFieldWidget(attrs=attrs)
-
-        if field_type.widget_cls:
-            return field_type.get_widget_cls()(
-                attrs=attrs,
-                **widget_init_kwargs,
-            )
-
-        try:
-            model_field = self._get_model_field()
-        except FieldDoesNotExist:
-            return field_type.get_widget_cls()(
-                attrs=attrs
-            )
-
-        if not hasattr(model_field, "formfield"):
-            return field_type.get_widget_cls()(
-                attrs=attrs
-            )
-
-        form_field = model_field.formfield()
-        if form_field is not None and form_field.widget is not None:
-            form_field.widget.attrs.update(attrs)
-            return form_field.widget
-
-        return field_type.get_widget_cls()(
-            attrs=attrs
-        )
+        return field_type.build_widget(self, layout_config=layout_config)
         

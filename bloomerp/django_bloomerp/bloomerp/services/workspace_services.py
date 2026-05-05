@@ -166,10 +166,13 @@ class UserWorkspaceService:
         )
         return [
             AvailableLayoutItem(
-            id=tile.id,
-            title=tile.name,
-            description=tile.description,
-            icon=tile.icon
-        ) for tile in tiles]
+                id=tile.id,
+                title=tile.name,
+                description=tile.description,
+                icon=tile.icon,
+                search_keywords=tile.get_type_display(),
+            )
+            for tile in tiles
+        ]
 
         

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from django.test import RequestFactory
 
 from bloomerp.tests.base import BaseBloomerpModelTestCase
-from bloomerp.models import ApplicationField, UserDetailViewPreference
+from bloomerp.models import ApplicationField, FieldPolicy, UserDetailViewPreference
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.router import router
 from bloomerp.models.workspaces.workspace import Workspace
@@ -121,6 +121,226 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
         self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
         self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
+
+    def test_detail_layout_save_persists_item_config(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        field = ApplicationField.objects.filter(
+            content_type=content_type,
+            field="first_name",
+        ).first()
+
+        response = self.client.post(
+            "/components/workspaces/detail_layout_preference/",
+            data=json.dumps({
+                "content_type_id": content_type.pk,
+                "layout": {
+                    "rows": [
+                        {
+                            "title": "Primary",
+                            "columns": 3,
+                            "items": [
+                                {
+                                    "id": field.pk,
+                                    "colspan": 2,
+                                    "config": {
+                                        "display": "compact",
+                                        "inline_fields": ["activity_type", "hours"],
+                                    },
+                                }
+                            ],
+                        }
+                    ]
+                },
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
+        item = preference.field_layout_obj.rows[0].items[0]
+        self.assertEqual(item.config["display"], "compact")
+        self.assertEqual(item.config["inline_fields"], ["activity_type", "hours"])
+
+    def test_field_display_options_updates_layout_item_config(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="first_name",
+        )
+        preference = UserDetailViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            field_layout={
+                "rows": [
+                    {
+                        "title": "Primary",
+                        "columns": 2,
+                        "items": [{"id": field.pk, "colspan": 1, "config": {}}],
+                    }
+                ]
+            },
+        )
+
+        response = self.client.post(
+            f"/components/field_display_options/{field.pk}/",
+            {
+                "preference_id": preference.pk,
+                "preference_scope": "detail",
+                "label": "Preferred name",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        preference.refresh_from_db()
+        item = preference.field_layout_obj.rows[0].items[0]
+        self.assertEqual(item.config["label"], "Preferred name")
+
+    def test_field_display_options_returns_oob_field_swap_for_detail_object(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="first_name",
+        )
+        obj = self.CustomerModel.objects.first()
+        preference = UserDetailViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            field_layout={
+                "rows": [
+                    {
+                        "title": "Primary",
+                        "columns": 2,
+                        "items": [{"id": field.pk, "colspan": 1, "config": {}}],
+                    }
+                ]
+            },
+        )
+
+        response = self.client.post(
+            f"/components/field_display_options/{field.pk}/",
+            {
+                "preference_id": preference.pk,
+                "preference_scope": "detail",
+                "object_id": obj.pk,
+                "label": "Preferred name",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="layout-field-{field.pk}"', html=False)
+        self.assertContains(response, 'hx-swap-oob="outerHTML"', html=False)
+        self.assertContains(response, "Preferred name", html=False)
+        trigger = response.headers.get("HX-Trigger-After-Swap", "")
+        self.assertIn("bloomerp:close-modal", trigger)
+        self.assertIn("bloomerp:layout-field-updated", trigger)
+
+    def test_one_to_many_display_options_show_required_fields(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(FieldPolicy)
+        field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="policies",
+        )
+        preference = UserDetailViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            field_layout={
+                "rows": [
+                    {
+                        "title": "Primary",
+                        "columns": 1,
+                        "items": [{"id": field.pk, "colspan": 1, "config": {}}],
+                    }
+                ]
+            },
+        )
+
+        response = self.client.get(
+            f"/components/field_display_options/{field.pk}/",
+            {
+                "preference_id": preference.pk,
+                "preference_scope": "detail",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Name", html=False)
+        self.assertContains(response, "Row Policy", html=False)
+        self.assertContains(response, "Required", html=False)
+        self.assertNotContains(response, "Field Policy", html=False)
+
+    def test_one_to_many_display_options_preserve_inline_field_order(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(FieldPolicy)
+        field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="policies",
+        )
+        preference = UserDetailViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            field_layout={
+                "rows": [
+                    {
+                        "title": "Primary",
+                        "columns": 1,
+                        "items": [{"id": field.pk, "colspan": 1, "config": {}}],
+                    }
+                ]
+            },
+        )
+
+        response = self.client.post(
+            f"/components/field_display_options/{field.pk}/",
+            {
+                "preference_id": preference.pk,
+                "preference_scope": "detail",
+                "inline_fields": ["description", "name", "row_policy"],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        preference.refresh_from_db()
+        item = preference.field_layout_obj.rows[0].items[0]
+        self.assertEqual(item.config["inline_fields"], ["description", "name", "row_policy"])
+
+    def test_one_to_many_display_options_keep_required_fields_selected(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(FieldPolicy)
+        field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="policies",
+        )
+        preference = UserDetailViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            field_layout={
+                "rows": [
+                    {
+                        "title": "Primary",
+                        "columns": 1,
+                        "items": [{"id": field.pk, "colspan": 1, "config": {}}],
+                    }
+                ]
+            },
+        )
+
+        response = self.client.post(
+            f"/components/field_display_options/{field.pk}/",
+            {
+                "preference_id": preference.pk,
+                "preference_scope": "detail",
+                "inline_fields": ["description"],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        preference.refresh_from_db()
+        item = preference.field_layout_obj.rows[0].items[0]
+        self.assertEqual(item.config["inline_fields"], ["description", "name", "row_policy"])
 
     def test_detail_layout_render_field_returns_fragment(self):
         self.client.force_login(self.admin_user)

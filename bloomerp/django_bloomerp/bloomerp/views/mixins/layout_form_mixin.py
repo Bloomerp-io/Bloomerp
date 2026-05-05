@@ -20,6 +20,9 @@ class BloomerpLayoutFormMixin(ABC):
     def get_layout_object(self) -> FieldLayout:
         raise NotImplementedError
 
+    def get_layout_preference_object(self):
+        return None
+
     def is_create_layout(self) -> bool:
         return self.layout_mode == "create"
 
@@ -31,6 +34,21 @@ class BloomerpLayoutFormMixin(ABC):
 
     def get_layout_content_type_id(self) -> int:
         return self.get_layout_content_type().pk
+
+    def get_layout_object_content_type(self) -> ContentType:
+        layout_preference_object = self.get_layout_preference_object()
+        target = layout_preference_object if layout_preference_object is not None else self.get_layout_bound_object()
+        if target is None:
+            raise ValueError("Layout object content type requires a layout-backed object")
+        return ContentType.objects.get_for_model(target.__class__)
+
+    def get_layout_object_content_type_id(self) -> int:
+        return self.get_layout_object_content_type().pk
+
+    def get_layout_object_id(self):
+        layout_preference_object = self.get_layout_preference_object()
+        target = layout_preference_object if layout_preference_object is not None else self.get_layout_bound_object()
+        return getattr(target, "pk", None)
 
     def get_layout_permission_manager(self) -> UserPermissionManager | None:
         user = getattr(getattr(self, "request", None), "user", None)
@@ -46,7 +64,7 @@ class BloomerpLayoutFormMixin(ABC):
         return create_permission_str(self.model, "change")
 
     def get_layout_render_item_url(self) -> str:
-        return "/components/workspaces/crud_layout_render_field/"
+        return ""
 
     def get_layout_available_items_url(self) -> str:
         return ""
@@ -138,6 +156,7 @@ class BloomerpLayoutFormMixin(ABC):
         *,
         application_field: ApplicationField,
         colspan: int,
+        config: dict[str, Any] | None = None,
         form=None,
     ) -> dict[str, Any] | None:
         if not self.can_view_application_field(application_field):
@@ -145,19 +164,30 @@ class BloomerpLayoutFormMixin(ABC):
 
         bound_object = self.get_layout_bound_object()
         has_bound_field = bool(form and application_field.field in form.fields)
-        can_edit = has_bound_field and self.can_edit_application_field(application_field)
+        has_edit_permission = self.can_edit_application_field(application_field)
+        field_type = application_field.get_field_type_enum().value
+        can_edit = has_bound_field and has_edit_permission
 
         if has_bound_field:
             field_context = build_crud_layout_field_context(
                 application_field=application_field,
                 bound_field=form[application_field.field],
                 can_edit=True,
+                layout_config=config,
             )
         elif bound_object is not None:
             field_context = build_crud_layout_field_context(
                 application_field=application_field,
                 value=get_object_field_value(obj=bound_object, application_field=application_field),
-                can_edit=False,
+                can_edit=has_edit_permission and field_type.editable_without_form_field,
+                layout_config=config,
+            )
+        elif self.is_create_layout() and field_type.editable_without_form_field:
+            field_context = build_crud_layout_field_context(
+                application_field=application_field,
+                value=None,
+                can_edit=True,
+                layout_config=config,
             )
         else:
             return None
@@ -187,6 +217,7 @@ class BloomerpLayoutFormMixin(ABC):
                 item_context = self.build_layout_item_context(
                     application_field=application_field,
                     colspan=clamp_layout_colspan(item.colspan, row.columns),
+                    config=item.config,
                     form=form,
                 )
                 if item_context is None:
@@ -215,7 +246,10 @@ class BloomerpLayoutFormMixin(ABC):
 
         context = {
             "content_type_id": self.get_layout_content_type_id(),
+            "layout_object_content_type_id": self.get_layout_object_content_type_id(),
+            "layout_object_id": self.get_layout_object_id(),
             "layout_object": layout_object,
+            "layout_preference_object": self.get_layout_preference_object(),
             "layout": layout,
             "layout_mode": self.get_layout_mode(),
             "layout_available_items_url": self.get_layout_available_items_url(),
@@ -224,7 +258,14 @@ class BloomerpLayoutFormMixin(ABC):
             "layout_render_item_url": self.get_layout_render_item_url(),
             "layout_is_create": self.is_create_layout(),
             "non_required_fields_visible_attr": self.get_non_required_fields_visible_attr(),
+            "layout_container_extra_attrs": {
+                "data-content-type-id": self.get_layout_content_type_id(),
+                "data-non-required-fields-visible": self.get_non_required_fields_visible_attr(),
+            },
         }
+        bound_object = self.get_layout_bound_object()
+        if bound_object is not None:
+            context["layout_container_extra_attrs"]["data-object-id"] = bound_object.pk
         context.update(self.get_layout_context_extras(layout=layout_object, form=form))
         return context
 
