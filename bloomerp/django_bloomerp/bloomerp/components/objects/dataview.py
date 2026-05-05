@@ -34,7 +34,12 @@ RESERVED_FILTER_KEYS = {
     "q",
     "page",
     "calendar_page",
+    "sort",
+    "direction",
+    "_component_id",
 }
+
+SORT_DIRECTIONS = {"asc", "desc"}
 
 LOOKUP_LABELS = {
     "exact": "is",
@@ -144,6 +149,34 @@ def _build_pagination_range(page_obj, window: int = 2) -> list[int | None]:
     add_page(total_pages)
 
     return pages
+
+
+def _apply_table_sorting(queryset: QuerySet, request: HttpRequest, data_view_fields) -> tuple[QuerySet, dict]:
+    sort_field = request.GET.get("sort")
+    sort_direction = request.GET.get("direction", "asc")
+    visible_fields_by_name = {
+        field.field: field
+        for field in data_view_fields.visible_fields
+    }
+
+    context = {
+        "current_sort_field": "",
+        "current_sort_direction": "",
+    }
+
+    if not sort_field or sort_direction not in SORT_DIRECTIONS:
+        return queryset, context
+
+    if sort_field not in visible_fields_by_name:
+        return queryset, context
+
+    sort_expression = sort_field if sort_direction == "asc" else f"-{sort_field}"
+    queryset = queryset.order_by(sort_expression, "pk")
+    context.update({
+        "current_sort_field": sort_field,
+        "current_sort_direction": sort_direction,
+    })
+    return queryset, context
 
 
 def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset:QuerySet, request:HttpRequest) -> dict:
@@ -490,7 +523,17 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         queryset = string_search_on_queryset(queryset, query)
 
     # The model
-    queryset = filter_model(Model, request.GET, queryset)
+    filter_querydict = request.GET.copy()
+    filter_querydict.pop('page', None)
+    filter_querydict.pop('calendar_page', None)
+    filter_querydict.pop('sort', None)
+    filter_querydict.pop('direction', None)
+    filter_querydict.pop('_component_id', None)
+    queryset = filter_model(Model, filter_querydict, queryset)
+
+    sort_context = {}
+    if preference.view_type == ViewType.TABLE:
+        queryset, sort_context = _apply_table_sorting(queryset, request, data_view_fields)
     
     # Apply pagination
     page_size = preference.page_size
@@ -508,6 +551,10 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     # TODO: take a look at this logic, it looks a little bit weird
     page_querystring = request.GET.copy()
     page_querystring.pop('page', None)
+    table_sort_querystring = request.GET.copy()
+    table_sort_querystring.pop('page', None)
+    table_sort_querystring.pop('sort', None)
+    table_sort_querystring.pop('direction', None)
     search_querystring = request.GET.copy()
     search_querystring.pop('page', None)
     search_querystring.pop('q', None)
@@ -541,10 +588,12 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'sync_url': sync_url,
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),
+        'table_sort_querystring': table_sort_querystring.urlencode(),
         'pagination_pages': _build_pagination_range(page_obj),
         'applied_filters': _format_applied_filters(request.GET),
         'component_id': component_id,
     }
+    context.update(sort_context)
     context.update(_get_extra_context_for_view_type(preference, queryset, request))
     
     return render(request, 'components/objects/dataview.html', context)

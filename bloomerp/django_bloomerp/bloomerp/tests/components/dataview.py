@@ -258,7 +258,7 @@ class TestDataView(BaseBloomerpModelTestCase):
         response = self.client.get(url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<th >First Name</th>", html=False)
+        self.assertContains(response, "First Name", html=False)
         self.assertNotContains(response, "<th >Last Name</th>", html=False)
 
         data_view_fields = get_data_view_fields(preference, "table")
@@ -293,6 +293,56 @@ class TestDataView(BaseBloomerpModelTestCase):
         # Check if the response contains Alice and not Bob
         self.assertContains(response, "Alice")
         self.assertNotContains(response, "Bob")
+
+    def test_table_dataview_sorts_by_visible_column(self):
+        self.client.force_login(self.admin_user)
+        self.CustomerModel.objects.all().delete()
+        self.create_customer("Charlie", "Middle", 30)
+        self.create_customer("Alice", "First", 20)
+        self.create_customer("Bob", "Last", 25)
+
+        content_type_id = ContentType.objects.get_for_model(self.CustomerModel).id
+        url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type_id},
+        ) + "?sort=first_name&direction=asc"
+
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+
+        content = response.content.decode()
+        self.assertLess(content.index("Alice"), content.index("Bob"))
+        self.assertLess(content.index("Bob"), content.index("Charlie"))
+        self.assertContains(response, 'aria-sort="ascending"', html=False)
+
+    def test_table_sort_links_preserve_filters_and_reset_page(self):
+        self.client.force_login(self.admin_user)
+
+        content_type_id = ContentType.objects.get_for_model(self.CustomerModel).id
+        url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type_id},
+        ) + "?first_name__icontains=a&q=a&page=3&sort=first_name&direction=asc"
+
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+
+        dataview_url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type_id},
+        )
+        content = response.content.decode()
+        self.assertIn(f'hx-get="{dataview_url}?', content)
+        self.assertIn("first_name__icontains=a", content)
+        self.assertIn("q=a", content)
+        first_name_sort_urls = [
+            part.split('"', 1)[0]
+            for part in content.split('hx-get="')[1:]
+            if "sort=first_name" in part
+        ]
+        self.assertTrue(
+            any("direction=desc" in url and "page=3" not in url for url in first_name_sort_urls)
+        )
 
     def test_filter_dataview_with_foreign_key_field(self):
         """

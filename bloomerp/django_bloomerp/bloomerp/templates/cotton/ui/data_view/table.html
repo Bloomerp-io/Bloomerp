@@ -23,7 +23,26 @@ Parameters:
         <thead>
             <tr>
                 {% for field in fields %}
-                <th >{{ field.title }}</th>
+                <th {% if current_sort_field == field.field %}aria-sort="{% if current_sort_direction == 'desc' %}descending{% else %}ascending{% endif %}"{% endif %}>
+                    <button
+                        type="button"
+                        class="flex w-full items-center gap-2 text-left font-semibold hover:text-primary focus:outline-none focus:ring-0"
+                        hx-get="{{ request.path }}{% if table_sort_querystring %}?{{ table_sort_querystring }}&sort={{ field.field }}&direction={% if current_sort_field == field.field and current_sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% else %}?sort={{ field.field }}&direction={% if current_sort_field == field.field and current_sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% endif %}"
+                        hx-target="#data-view-data-section"
+                        hx-swap="innerHTML"
+                    >
+                        <span>{{ field.title }}</span>
+                        {% if current_sort_field == field.field %}
+                            {% if current_sort_direction == 'desc' %}
+                                <i class="fa fa-sort-down text-xs text-primary" aria-hidden="true"></i>
+                            {% else %}
+                                <i class="fa fa-sort-up text-xs text-primary" aria-hidden="true"></i>
+                            {% endif %}
+                        {% else %}
+                            <i class="fa fa-sort text-xs text-gray-300" aria-hidden="true"></i>
+                        {% endif %}
+                    </button>
+                </th>
                 {% endfor %}
             </tr>
         </thead>
@@ -32,7 +51,8 @@ Parameters:
             {% for object in queryset %}
             <tr
                 class="cursor-pointer"
-            >
+            >   
+                
                 {% for field in fields %}
                     {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
                 {% endfor %}
