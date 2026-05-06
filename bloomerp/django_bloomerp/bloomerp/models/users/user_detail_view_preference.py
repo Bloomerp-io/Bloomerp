@@ -1,17 +1,17 @@
-from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from django.conf import settings
+from django.db import models
+from django.db.models import Q
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.models.users.base_view_preference import BaseViewPreference
 from bloomerp.models.base_bloomerp_model import FieldLayout
 from bloomerp.services.sectioned_layout_services import normalize_layout_payload
-from django.utils.translation import gettext_lazy as _
 
 def get_default_tab_state() -> dict:
     from bloomerp.services.detail_view_services import get_default_tab_state
     return get_default_tab_state()
 
-class UserDetailViewPreference(models.Model):
+class UserDetailViewPreference(BaseViewPreference):
     """
     A model to store the detail view prefernces for
     a particular model.
@@ -19,16 +19,13 @@ class UserDetailViewPreference(models.Model):
     class Meta(BloomerpModel.Meta):
         managed = True
         db_table = 'bloomerp_user_detail_view_preference'
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE,
-        related_name = 'detail_view_preference'
-        )
-    content_type = models.ForeignKey(
-        to=ContentType, 
-        on_delete=models.CASCADE
-        )
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type"],
+                condition=Q(selected=True),
+                name="unique_selected_detail_view_preference",
+            ),
+        ]
     
     field_layout = models.JSONField(
         default=dict
@@ -39,60 +36,24 @@ class UserDetailViewPreference(models.Model):
     )
     
     @classmethod
-    def get_or_create_for_user(cls, user:AbstractBloomerpUser, content_type_or_model:ContentType|models.Model) -> "UserDetailViewPreference":
-        """Returns the detail view preference for a certain user.
-
-        Args:
-            user (AbstractBloomerpUser): the user
-            content_type_or_model (models.Model | ContentType): the content type or model
-
-        Returns:
-            UserDetailViewPreference: the detail view object
-        """
-        if isinstance(content_type_or_model, ContentType):
-            content_type = content_type_or_model
-        else:
-            content_type = ContentType.objects.get_for_model(content_type_or_model)
-
-        qs = UserDetailViewPreference.objects.filter(
-            content_type=content_type,
-            user=user,
-        )
-        if qs.exists():
-            preference = qs.first()
-            update_fields: list[str] = []
-
-            if not preference.field_layout_obj.rows or not any(row.items for row in preference.field_layout_obj.rows):
-                from bloomerp.services.detail_view_services import get_default_layout
-                preference.field_layout = get_default_layout(content_type=content_type, user=user).model_dump()
-                update_fields.append("field_layout")
-
-            if update_fields:
-                preference.save(update_fields=update_fields)
-            return preference
-
-        return UserDetailViewPreference.create_default_for_user(user, content_type)
-    
-    @classmethod
     def create_default_for_user(cls, user:AbstractBloomerpUser, content_type_or_model:ContentType|models.Model) -> "UserDetailViewPreference":
-        """Creates a default detail view preference for a certain user.
-
-        Args:
-            user (AbstractBloomerpUser): the user
-            content_type_or_model (models.Model | ContentType): the content type or model
-
-        Returns:
-            UserDetailViewPreference: the detail view object
-        """
-        if isinstance(content_type_or_model, ContentType):
-            content_type = content_type_or_model
-        else:
-            content_type = ContentType.objects.get_for_model(content_type_or_model)
-
+        """Creates a default detail view preference for a certain user."""
+        content_type = cls.resolve_content_type(content_type_or_model)
         from bloomerp.services.detail_view_services import create_default_detail_view_preference
         return create_default_detail_view_preference(content_type=content_type, user=user)
-    
-    
+
+    def ensure_default_state(self, *, user, content_type: ContentType) -> None:
+        update_fields: list[str] = []
+
+        if not self.field_layout_obj.rows or not any(row.items for row in self.field_layout_obj.rows):
+            from bloomerp.services.detail_view_services import get_default_layout
+
+            self.field_layout = get_default_layout(content_type=content_type, user=user).model_dump()
+            update_fields.append("field_layout")
+
+        if update_fields:
+            self.save(update_fields=update_fields)
+
     def validate_field_layout(self):
         normalize_layout_payload(self.field_layout)
         

@@ -5,7 +5,7 @@ from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.models import ApplicationField
 from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
-from bloomerp.services.user_services import get_data_view_fields
+from bloomerp.services.user_services import get_data_view_fields, get_user_list_view_preference
 
 
 class TestDataView(BaseBloomerpModelTestCase):
@@ -266,6 +266,29 @@ class TestDataView(BaseBloomerpModelTestCase):
 
         preference.refresh_from_db()
         self.assertEqual(preference.get_visible_field_ids("table"), [first_name_field.id])
+
+    def test_get_user_list_view_preference_returns_selected_saved_view(self):
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        first = UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Default",
+        )
+        second = UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Compact",
+            selected=True,
+        )
+
+        resolved = get_user_list_view_preference(self.admin_user, content_type)
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+
+        self.assertEqual(resolved.pk, second.pk)
+        self.assertFalse(first.selected)
+        self.assertTrue(second.selected)
         
     def test_filter_dataview_with_string_field(self):
         """
@@ -447,4 +470,153 @@ class TestDataView(BaseBloomerpModelTestCase):
         # Check if the response contains only the customer that has both Alice and Johnson in their name
         self.assertNotContains(response, "Alice Smith")
         self.assertNotContains(response, "Bob Johnson")
-        self.assertContains(response, "Alice Johnson")    
+        self.assertContains(response, "Alice Johnson")
+
+    def test_select_preference_component_renders_available_preferences(self):
+        self.client.force_login(self.admin_user)
+
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        selected_preference = UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Team view",
+            selected=True,
+        )
+        UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Compact view",
+        )
+
+        url = reverse(
+            viewname="components_select_preference",
+            kwargs={"content_type_id": content_type.id, "type": "list"},
+        )
+
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Team view")
+        self.assertContains(response, "Compact view")
+        self.assertContains(response, "Selected")
+        self.assertEqual(
+            UserListViewPreference.get_selected_for_user(self.admin_user, content_type).pk,
+            selected_preference.pk,
+        )
+
+    def test_select_preference_component_selects_preference_and_requests_refresh(self):
+        self.client.force_login(self.admin_user)
+
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        first = UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Default",
+            selected=True,
+        )
+        second = UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Board",
+        )
+
+        url = reverse(
+            viewname="components_select_preference",
+            kwargs={"content_type_id": content_type.id, "type": "list"},
+        )
+
+        response = self.client.post(
+            url,
+            data={"action": "select", "preference_id": second.id},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["HX-Refresh"], "true")
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertFalse(first.selected)
+        self.assertTrue(second.selected)
+
+    def test_select_preference_component_creates_selected_clone(self):
+        self.client.force_login(self.admin_user)
+
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        source = UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Default",
+            selected=True,
+            view_type="kanban",
+            page_size=50,
+            display_fields={
+                "table": [],
+                "kanban": [1, 2, 3],
+                "card": [],
+                "calendar": [],
+                "gant": [],
+                "pivot_table": [],
+            },
+        )
+
+        url = reverse(
+            viewname="components_select_preference",
+            kwargs={"content_type_id": content_type.id, "type": "list"},
+        )
+
+        response = self.client.post(
+            url,
+            data={"action": "create", "name": "Ops board"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["HX-Refresh"], "true")
+
+        source.refresh_from_db()
+        created = UserListViewPreference.objects.get(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Ops board",
+        )
+        self.assertFalse(source.selected)
+        self.assertTrue(created.selected)
+        self.assertEqual(created.view_type, "kanban")
+        self.assertEqual(created.page_size, 50)
+        self.assertEqual(created.display_fields, source.display_fields)
+
+    def test_change_data_view_preference_uses_selected_preference_when_multiple_exist(self):
+        self.client.force_login(self.admin_user)
+
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Old default",
+            view_type="table",
+        )
+        selected = UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            name="Current",
+            selected=True,
+            view_type="table",
+            page_size=25,
+        )
+
+        url = reverse(
+            viewname="components_change_data_view_preference",
+            kwargs={"content_type_id": content_type.id},
+        )
+
+        response = self.client.post(
+            url,
+            data={"page_size": "50"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        selected.refresh_from_db()
+        self.assertEqual(selected.page_size, 50)

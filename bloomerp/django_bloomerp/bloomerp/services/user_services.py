@@ -123,11 +123,7 @@ def get_user_list_view_preference(user: AbstractBloomerpUser, content_type: Cont
     Returns:
         UserListViewPreference: The user's list view preference.
     """
-    preference, _ = UserListViewPreference.objects.get_or_create(
-        user=user,
-        content_type=content_type
-    )
-    return preference
+    return UserListViewPreference.get_or_create_for_user(user, content_type)
 
 
 def toggle_field_visibility(
@@ -146,7 +142,7 @@ def toggle_field_visibility(
     Returns:
         tuple: (is_now_visible, preference)
     """
-    preference = get_user_list_view_preference(user, content_type)
+    preference = UserListViewPreference.get_or_create_for_user(user, content_type)
     view_type = view_type or preference.view_type
 
     manager = UserPermissionManager(user)

@@ -131,9 +131,9 @@ def _hydrate_legacy_querystring(request: HttpRequest, legacy_query: str | None =
 
 
 def _get_file_preference(user, content_type: ContentType) -> UserListViewPreference:
-    preference, _ = UserListViewPreference.objects.get_or_create(
+    preference = UserListViewPreference.get_or_create_for_user(
         user=user,
-        content_type=content_type,
+        content_type_or_model=content_type,
     )
     if preference.view_type not in FILE_BROWSER_VIEW_TYPES:
         preference.view_type = FILE_BROWSER_VIEW_TYPES[0]

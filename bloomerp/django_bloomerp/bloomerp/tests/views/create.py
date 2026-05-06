@@ -362,6 +362,25 @@ class TestCreateView(CrudViewTestMixin):
         self.assertEqual(repaired.pk, preference.pk)
         self.assertTrue(any(row.items for row in repaired.field_layout_obj.rows))
 
+    def test_selected_create_preference_unselects_previous_preference(self):
+        first = UserCreateViewPreference.objects.create(
+            user=self.normal_user,
+            content_type=self.content_type,
+            field_layout={},
+        )
+        second = UserCreateViewPreference.objects.create(
+            user=self.normal_user,
+            content_type=self.content_type,
+            field_layout={},
+            selected=True,
+        )
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+
+        self.assertFalse(first.selected)
+        self.assertTrue(second.selected)
+
     def test_shared_layout_available_fields_route_returns_create_items(self):
         self.grant_policy(
             user=self.normal_user,

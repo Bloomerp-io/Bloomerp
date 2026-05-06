@@ -1,0 +1,23 @@
+
+<c-ui.dropdown.body
+    trigger_text="{{ selected_preference_name|default:'Preference' }}"
+    trigger_icon_class="fa fa-bookmark"
+    trigger_button_class="btn-secondary"
+    trigger_class="w-full justify-center gap-2 sm:w-auto"
+    wrapper_class="w-full sm:w-auto"
+    position="right"
+    size="sm"
+    width="w-80"
+>
+    <div
+        id="select-preference-dropdown-{{ content_type_id }}-{{ type|default:'list' }}"
+        hx-get="{% url 'components_select_preference' content_type_id=content_type_id type=type|default:'list' %}"
+        hx-trigger="revealed once"
+        hx-target="this"
+        hx-swap="innerHTML"
+    >
+        <div class="px-4 py-3 text-sm text-gray-500">
+            Loading preferences...
+        </div>
+    </div>
+</c-ui.dropdown.body>

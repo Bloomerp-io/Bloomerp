@@ -214,12 +214,14 @@
                 </c-ui.shortcut_tooltip>
             </div>
             
-            <c-ui.shortcut_tooltip 
-                position="bottom" 
-                shortcut="mod+5"
-                >
-                <c-ui.dropdown.body trigger_selector="" trigger_html="" trigger_button_class="btn btn-secondary btn-sm" trigger_class="" trigger_icon_class="fa fa-ellipsis" trigger_text="" width="" menu_class="" icon="" size="" disabled="" trigger_icon="" direction="" position=""></c-ui.dropdown.body>
-            </c-ui.shortcut_tooltip>
+            <!--Select-->
+            <c-select_preference_button
+                type="list"
+                :content_type_id="content_type_id"
+                selected_preference_name="{{ preference.name }}"
+            />
+
+            <!--Context menu-->
         </div>
     </div>
 {% endif %}
@@ -390,6 +392,5 @@
 
 </div>
 {% endif %}
-
 
 

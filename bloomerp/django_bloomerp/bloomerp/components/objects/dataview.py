@@ -619,9 +619,10 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
     # Get the content type, user, and list view preference
     content_type = get_object_or_404(ContentType, id=content_type_id)
     user = request.user
-    preference, _ = UserListViewPreference.objects.get_or_create(
+    preference = UserListViewPreference.get_or_create_for_user(
         user=user,
-        content_type=content_type)
+        content_type_or_model=content_type,
+    )
     
     
     if "view_type" in request.POST:

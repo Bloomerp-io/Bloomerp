@@ -88,6 +88,20 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(detail_view_preference.tab_state_obj.get("folders"), [])
         self.assertIsNone(detail_view_preference.tab_state_obj.get("active"))
 
+    def test_get_or_create_promotes_existing_preference_when_none_selected(self):
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        preference = UserDetailViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            field_layout={},
+        )
+        UserDetailViewPreference.objects.filter(pk=preference.pk).update(selected=False)
+
+        resolved = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
+
+        self.assertEqual(resolved.pk, preference.pk)
+        self.assertTrue(resolved.selected)
+
     # -------------------
     # DETAIL VIEWS
     # -------------------

@@ -1,0 +1,60 @@
+<div class="max-h-80 overflow-y-auto">
+    {% for preference in preferences %}
+        <form
+            hx-post="{% url 'components_select_preference' content_type_id=content_type_id type=type %}"
+            hx-target="#select-preference-dropdown-{{ content_type_id }}-{{ type }}"
+            hx-swap="innerHTML"
+        >
+            {% csrf_token %}
+            <input type="hidden" name="action" value="select">
+            <input type="hidden" name="preference_id" value="{{ preference.id }}">
+
+            <button
+                type="submit"
+                class="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors duration-150 hover:bg-gray-100 hover:text-primary-800"
+            >
+                <span class="truncate">{{ preference.name }}</span>
+                {% if preference.selected %}
+                    <span class="text-xs font-medium text-primary-600">Selected</span>
+                {% endif %}
+            </button>
+        </form>
+    {% empty %}
+        <div class="px-4 py-3 text-sm text-gray-500">
+            No preferences available yet.
+        </div>
+    {% endfor %}
+</div>
+
+<div class="border-t border-gray-200 px-4 py-3">
+    <div class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+        New preference
+    </div>
+
+    {% if error %}
+        <div class="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form
+        class="flex items-center gap-2"
+        hx-post="{% url 'components_select_preference' content_type_id=content_type_id type=type %}"
+        hx-target="#select-preference-dropdown-{{ content_type_id }}-{{ type }}"
+        hx-swap="innerHTML"
+    >
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <input
+            type="text"
+            name="name"
+            class="input input-sm w-full"
+            placeholder="Preference name"
+            maxlength="255"
+            value=""
+        >
+        <button type="submit" class="btn btn-primary btn-sm shrink-0">
+            Save
+        </button>
+    </form>
+</div>
