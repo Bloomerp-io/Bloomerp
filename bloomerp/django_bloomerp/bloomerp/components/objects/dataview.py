@@ -73,7 +73,7 @@ def _format_applied_filters(query_params) -> list[dict]:
     applied = []
 
     for key in query_params.keys():
-        if key in RESERVED_FILTER_KEYS:
+        if key in RESERVED_FILTER_KEYS or key.startswith("_arg_"):
             continue
 
         values = query_params.getlist(key)
@@ -480,6 +480,24 @@ def _build_kanban_groups(queryset, group_by_field: ApplicationField) -> list:
     return groups
 
 
+def _get_component_args(request:HttpRequest) -> dict[str, str]:
+    """Returns the component args
+
+    Args:
+        request (HttpRequest): the request object
+
+    Returns:
+        dict[str, str]: the parsed arguments
+    """
+    args = {}
+    for arg, value in request.GET.items():
+        if arg.startswith("_arg_"):
+            cleaned_arg = arg[5:].lower().replace("_","-")
+            args[cleaned_arg] = value
+    
+    return args
+
+
 # -----------------------------------
 # Components
 # -----------------------------------
@@ -529,6 +547,9 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     filter_querydict.pop('sort', None)
     filter_querydict.pop('direction', None)
     filter_querydict.pop('_component_id', None)
+    for key in list(filter_querydict.keys()):
+        if key.startswith("_arg_"):
+            filter_querydict.pop(key, None)
     queryset = filter_model(Model, filter_querydict, queryset)
 
     sort_context = {}
@@ -592,6 +613,7 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'pagination_pages': _build_pagination_range(page_obj),
         'applied_filters': _format_applied_filters(request.GET),
         'component_id': component_id,
+        'component_args' : _get_component_args(request)
     }
     context.update(sort_context)
     context.update(_get_extra_context_for_view_type(preference, queryset, request))
