@@ -2,5 +2,12 @@
 Avatar component.
 
 Parameters:
-- image_url
+- object
+- avatar_attribute
+- size
+- class_name
 {% endcomment %}
+
+{% load bloomerp %}
+
+{% avatar object avatar_attribute|default:"avatar" size|default:30 class_name|default:"" %}

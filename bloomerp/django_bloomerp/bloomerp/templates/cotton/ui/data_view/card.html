@@ -28,7 +28,9 @@ Parameters:
         bloomerp-component="card-view-card"
     >
         <div class="flex items-start gap-3">
-            {% avatar object size=40 class_name="rounded-full" %}
+            {% if avatar_field %}
+                <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="40" class_name="rounded-full object-cover" />
+            {% endif %}
             <div class="min-w-0 flex-1">
                 <div class="font-medium text-gray-900 truncate" title="{{ object }}">
                     {{ object }}

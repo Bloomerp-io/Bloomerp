@@ -4,7 +4,7 @@
 
 <!--Picture-->
 <div class="flex justify-center mb-3">
-	{% avatar object=object size="6em" class_name="rounded-circle" %}
+	{% include "components/objects/avatar_upload.html" with content_type_id=detail_view_content_type_id %}
 </div>
 <!--End Picture-->
 
@@ -163,5 +163,4 @@
 	{% endblock content %}
 </div>
 <!--End Content-->
-
 

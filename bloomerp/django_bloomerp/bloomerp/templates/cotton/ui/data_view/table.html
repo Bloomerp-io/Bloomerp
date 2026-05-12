@@ -22,6 +22,11 @@ Parameters:
         >
         <thead>
             <tr>
+                {% if avatar_field %}
+                <th class="w-14">
+                    <span class="sr-only">{{ avatar_field.title }}</span>
+                </th>
+                {% endif %}
                 {% for field in fields %}
                 <th {% if current_sort_field == field.field %}aria-sort="{% if current_sort_direction == 'desc' %}descending{% else %}ascending{% endif %}"{% endif %}>
                     <button
@@ -52,9 +57,29 @@ Parameters:
             <tr
                 class="cursor-pointer"
             >   
-                
+                {% if avatar_field %}
+                <td
+                    class="cursor-context-menu w-14"
+                    data-dropdown="cell-menu"
+                    data-column-index="0"
+                    data-row-index="{{ forloop.counter0 }}"
+                    data-value=""
+                    data-object-id="{{ object.pk }}"
+                    data-object-string="{{ object }}"
+                    data-application-field-id="{{ avatar_field.id }}"
+                    data-application-field-name="{{ avatar_field.field }}"
+                    data-detail-url="{{ object.get_absolute_url }}"
+                    bloomerp-component="datatable-cell"
+                >
+                    <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover" />
+                </td>
+                {% endif %}
                 {% for field in fields %}
-                    {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+                    {% if avatar_field %}
+                        {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0|add:1 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+                    {% else %}
+                        {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+                    {% endif %}
                 {% endfor %}
             </tr>
             {% endfor %}

@@ -7,6 +7,7 @@ from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalSt
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.services.detail_view_services import resolve_tabs_with_state
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -19,6 +20,35 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
     exclude_header = False
     permissions : list[str] = ["view"]
     permission_fields : list[tuple[str, str]] = []
+
+    def _can_change_avatar(self, content_type: ContentType) -> bool:
+        """Whether the user can change the avatar field
+
+        Args:
+            content_type (ContentType): the content type
+
+        Returns:
+            bool: response
+        """
+        obj = self.object
+        try:
+            obj._meta.get_field("avatar")
+        except FieldDoesNotExist:
+            return False
+
+        avatar_field = ApplicationField.objects.filter(
+            content_type=content_type,
+            field="avatar",
+        ).first()
+        if not avatar_field:
+            return False
+
+        permission_manager = UserPermissionManager(self.request.user)
+        permission_str = create_permission_str(obj, "change")
+        return (
+            permission_manager.has_access_to_object(obj, permission_str)
+            and permission_manager.has_field_permission(avatar_field, permission_str)
+        )
 
     def has_permission(self) -> bool:
         """
@@ -64,6 +94,7 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
 
         content_type = ContentType.objects.get_for_model(self.model)
         context["detail_view_content_type_id"] = content_type.pk
+        context["can_change_avatar"] = self._can_change_avatar(content_type)
         preference = UserDetailViewPreference.get_or_create_for_user(self.request.user, content_type)
         resolved_tabs, normalized_state = resolve_tabs_with_state(tabs=tabs, state=preference.tab_state_obj)
         if normalized_state != preference.tab_state_obj:

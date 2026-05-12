@@ -55,6 +55,13 @@
     class="flex flex-col"
     bloomerp-component="{{ component_id | default:'dataview-container' }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
+
+    {% if component_args %}
+    {% for arg, value in component_args.items %}
+    data-{{ arg }}="{{ value }}"
+    {% endfor %}
+    {% endif %}
+
     >
     <!--Search inputs-->
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -229,12 +236,13 @@
     <!--Table section-->
     <div id="data-view-data-section" class="h-full">
         {% if preference.split_view_enabled %}
-        <div class="flex h-[calc(100vh-200px)] rounded-lg" data-split-view-container>
+        <div class="flex h-[calc(100vh-200px)] rounded-xl" data-split-view-container>
             <div class="flex-none resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane" data-split-view-list-pane>
                 {% if preference.view_type == 'table' %}
                 <c-ui.data_view.table 
                         :content_type_id="content_type_id" 
-                        :fields="fields.visible_fields" 
+                        :fields="data_view_render_fields"
+                        :avatar_field="avatar_field"
                         :queryset="queryset"
                         :preference="preference"
                         :current_sort_field="current_sort_field"
@@ -244,7 +252,8 @@
                 {% elif preference.view_type == 'kanban' %}
                     <c-ui.data_view.kanban 
                         :content_type_id="content_type_id" 
-                        :fields="fields.visible_fields" 
+                        :fields="data_view_render_fields"
+                        :avatar_field="avatar_field"
                         :queryset="queryset"
                         :preference="preference"
                         :kanban_groups="kanban_groups"
@@ -253,7 +262,8 @@
                 {% elif preference.view_type == 'card' %}
                     <c-ui.data_view.card
                         :content_type_id="content_type_id"
-                        :fields="fields.visible_fields"
+                        :fields="data_view_render_fields"
+                        :avatar_field="avatar_field"
                         :queryset="queryset"
                     />
                 {% elif preference.view_type == 'calendar' %}
@@ -274,7 +284,8 @@
             {% if preference.view_type == 'table' %}
                 <c-ui.data_view.table 
                     :content_type_id="content_type_id" 
-                    :fields="fields.visible_fields" 
+                    :fields="data_view_render_fields"
+                    :avatar_field="avatar_field"
                     :queryset="queryset"
                     :preference="preference"
                     :current_sort_field="current_sort_field"
@@ -284,14 +295,16 @@
             {% elif preference.view_type == 'kanban' %}
                 <c-ui.data_view.kanban 
                     :content_type_id="content_type_id" 
-                    :fields="fields.visible_fields"
+                    :fields="data_view_render_fields"
+                    :avatar_field="avatar_field"
                     :kanban_groups="kanban_groups"
                     :kanban_group_by_field="kanban_group_by_field"
                 />
             {% elif preference.view_type == 'card' %}
                 <c-ui.data_view.card
                     :content_type_id="content_type_id"
-                    :fields="fields.visible_fields"
+                    :fields="data_view_render_fields"
+                    :avatar_field="avatar_field"
                     :queryset="queryset"
                 />
             {% elif preference.view_type == 'calendar' %}
@@ -379,7 +392,7 @@
 
 {% if not request.htmx.target == 'data-view-data-section' %}
     <!-- Context Menu Dropdown -->
-    <div id="data-table-{{ content_type_id }}-context-menu" class="hidden fixed bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[160px]">
+    <div id="data-table-{{ content_type_id }}-context-menu" class="hidden fixed bg-white shadow-lg rounded-xl border border-gray-200 z-50 min-w-[160px]">
         <ul class="py-1">
             
         </ul>
@@ -392,5 +405,3 @@
 
 </div>
 {% endif %}
-
-

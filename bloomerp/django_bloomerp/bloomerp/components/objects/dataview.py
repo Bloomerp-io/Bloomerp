@@ -179,6 +179,19 @@ def _apply_table_sorting(queryset: QuerySet, request: HttpRequest, data_view_fie
     return queryset, context
 
 
+def _split_avatar_field(data_view_fields) -> tuple[ApplicationField | None, list[ApplicationField]]:
+    avatar_field = None
+    fields = []
+
+    for field in data_view_fields.visible_fields:
+        if field.field == "avatar":
+            avatar_field = field
+            continue
+        fields.append(field)
+
+    return avatar_field, fields
+
+
 def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset:QuerySet, request:HttpRequest) -> dict:
     """Returns the extra context for a particular view type.
 
@@ -535,6 +548,7 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     
     # Get fields for the user (visible + accessible)
     data_view_fields = get_data_view_fields(preference)
+    avatar_field, data_view_render_fields = _split_avatar_field(data_view_fields)
     
     # Apply string search if query is present
     if query:
@@ -596,6 +610,8 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'queryset': page_obj,
         'page_obj': page_obj,
         'fields': data_view_fields,
+        'data_view_render_fields': data_view_render_fields,
+        'avatar_field': avatar_field,
         'preference': preference,
         'view_types': ViewType,
         'page_types': PageType,

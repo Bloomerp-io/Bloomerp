@@ -1,0 +1,36 @@
+{% load bloomerp %}
+
+{% if can_change_avatar %}
+<form
+    method="post"
+    enctype="multipart/form-data"
+    hx-post="{% url 'components_save_avatar' content_type_id object.pk %}"
+    hx-target="this"
+    hx-swap="outerHTML"
+    hx-encoding="multipart/form-data"
+    class="inline-flex flex-col items-center gap-2"
+>
+    {% csrf_token %}
+    <label
+        class="group relative inline-flex cursor-pointer items-center justify-center rounded-full focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2"
+        title="Change avatar"
+    >
+        {% avatar object=object size="6em" class_name="rounded-full object-cover" %}
+        <span class="absolute inset-0 hidden items-center justify-center rounded-full bg-black/45 text-xs font-medium text-white group-hover:flex">
+            Change
+        </span>
+        <input
+            type="file"
+            name="avatar"
+            accept="image/*"
+            class="sr-only"
+            onchange="if (this.files.length) this.form.requestSubmit()"
+        >
+    </label>
+    {% if avatar_error %}
+    <p class="max-w-48 text-center text-xs text-red-600">{{ avatar_error }}</p>
+    {% endif %}
+</form>
+{% else %}
+    {% avatar object=object size="6em" class_name="rounded-full object-cover" %}
+{% endif %}
