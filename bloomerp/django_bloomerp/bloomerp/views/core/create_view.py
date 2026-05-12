@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from functools import cached_property
 
-from anyio import Condition
 from django.contrib.auth import get_user_model
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic.edit import CreateView
 
 from bloomerp.models import UserCreateViewPreference
+from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.files import File
 from bloomerp.models.workspaces import SqlQuery, Tile
 from bloomerp.models.workspaces.workspace import Workspace
@@ -26,9 +25,8 @@ from bloomerp.services.one_to_many_field_services import save_submitted_one_to_m
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
+from bloomerp.views.mixins.message_mixin import MessageMixin
 from bloomerp.views.mixins.model_form_view_mixin import BloomerpModelFormViewMixin
-from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
 
 
@@ -41,19 +39,18 @@ User = get_user_model()
     url_name="add",
     description="Create a new object from {model}",
     route_type="model",
-    exclude_models=[File, Tile, SqlQuery, User, Workspace],
+    exclude_models=[File, Tile, SqlQuery, User, Workspace, DocumentTemplate],
 )
 class BloomerpCreateView(
     BaseBloomerpView,
-    SuccessMessageMixin,
     BloomerpModelFormViewMixin,
     BloomerpLayoutFormMixin,
+    MessageMixin,
     CreateView,
 ):
     template_name = "mixins/bloomerp_layout_form_mixin.html"
     fields = None
     exclude = []
-    success_message = "Object was created successfully."
     layout_mode = "create"
 
     @cached_property
@@ -123,6 +120,20 @@ class BloomerpCreateView(
         if getattr(self, "object", None) is None:
             return self.request.path
         return reverse(get_detail_view_url(self.model), kwargs={"pk": self.object.pk})
+
+    def get_save_and_create_new_url(self) -> str | None:
+        next_url = self.request.POST.get("next")
+        if not next_url:
+            return None
+
+        if url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={self.request.get_host()},
+            require_https=self.request.is_secure(),
+        ):
+            return next_url
+
+        return self.request.path
 
     def get_form_hx_target(self) -> str:
         return "#main-content"
@@ -206,4 +217,26 @@ class BloomerpCreateView(
                 form.add_error(None, message)
             return self.form_invalid(form)
 
+        save_and_create_new_url = self.get_save_and_create_new_url()
+        
+        # Construct success message
+        success_message = "Object successfully created: "
+        if hasattr(self.object, 'get_absolute_url'):
+            url = self.object.get_absolute_url()
+        else:
+            url = None
+        
+        if url:
+            success_message += f" <a hx-get='{url}' hx-target='#main-content' hx-push-url='true'><b>{self.object}</b></a>"
+        
+        
+        self.add_message(
+            f"Object successfully created: <a href='{url}'>{self.object}</a>",
+            "success"
+        )
+        
+        if save_and_create_new_url:
+            return redirect(save_and_create_new_url)
+        
         return redirect(self.get_success_url())
+

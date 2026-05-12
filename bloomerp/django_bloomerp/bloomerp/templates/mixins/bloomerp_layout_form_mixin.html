@@ -102,6 +102,20 @@
                             </c-blocktrans>
                         </button>
                     </c-ui.shortcut_tooltip>
+                    {% if layout_is_create %}
+                    <button
+                        type="submit"
+                        name="next"
+                        value="{{ request.path }}"
+                        class="btn btn-sm btn-secondary"
+                        id="object-crud-container-save-and-create-new-button"
+                    >
+                        <i class="fa fa-plus"></i>
+                        <c-blocktrans>
+                            Save and Create New
+                        </c-blocktrans>
+                    </button>
+                    {% endif %}
                 </div>
 
                 <button
@@ -146,6 +160,20 @@
                             </c-blocktrans>
                         </button>
                     </c-ui.shortcut_tooltip>
+                    {% if layout_is_create %}
+                    <button
+                        type="submit"
+                        name="next"
+                        value="{{ request.path }}"
+                        class="btn btn-sm btn-secondary"
+                        id="object-crud-container-save-and-create-new-button"
+                    >
+                        <i class="fa fa-plus"></i>
+                        <c-blocktrans>
+                            Save and Create New
+                        </c-blocktrans>
+                    </button>
+                    {% endif %}
                 </div>
             </c-slot>
             {% endif %}

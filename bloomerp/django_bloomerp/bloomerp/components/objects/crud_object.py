@@ -83,6 +83,9 @@ class CreateObjectComponentView(BloomerpCreateView):
             )
             return htmx_response
 
+        if self.request.POST.get("next"):
+            return response
+
         htmx_response = HttpResponse(status=204)
         htmx_response["HX-Refresh"] = "true"
         return htmx_response

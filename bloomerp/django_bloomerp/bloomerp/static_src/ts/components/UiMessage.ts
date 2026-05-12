@@ -75,7 +75,7 @@ export default class UiMessage extends BaseComponent {
 
         const textElem = document.createElement('div');
         textElem.classList.add('ml-3');
-        textElem.textContent = this.messageText;
+        textElem.innerHTML = this.messageText;
 
         left.appendChild(iconElem);
         left.appendChild(textElem);

@@ -92,6 +92,37 @@ class TestCreateView(CrudViewTestMixin):
         
         self.assertTrue(self.field_has_value(response, "first_name", "XYZ"))
 
+    def test_get_renders_save_and_create_new_button_next_to_save(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(self.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="object-crud-container-save-button"', html=False)
+        self.assertContains(response, 'id="object-crud-container-save-and-create-new-button"', html=False)
+        self.assertContains(response, 'name="next"', html=False)
+        self.assertContains(response, f'value="{self.get_url()}"', html=False)
+
+    def test_post_with_next_creates_object_and_redirects_to_create_view(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "Another",
+                "last_name": "Customer",
+                "age": 30,
+                "next": self.get_url(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], self.get_url())
+        self.assertEqual(self.CustomerModel.objects.count(), 1)
+        created = self.CustomerModel.objects.get()
+        self.assertEqual(created.first_name, "Another")
+        self.assertEqual(created.last_name, "Customer")
+
     def test_get_without_add_permission_returns_403(self):
         """
         This tests whether the user can access the page without
@@ -298,6 +329,26 @@ class TestCreateView(CrudViewTestMixin):
             trigger["bloomerp:foreign-field-object-created"]["object_label"],
             "Created From Widget",
         )
+
+    def test_component_post_with_next_redirects_to_create_component(self):
+        self.client.force_login(self.admin_user)
+        component_url = reverse("components_create_object", kwargs={"content_type_id": self.content_type.pk})
+
+        response = self.client.post(
+            component_url,
+            {
+                "first_name": "Modal",
+                "last_name": "Customer",
+                "age": 30,
+                "next": component_url,
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], component_url)
+        self.assertNotIn("HX-Refresh", response)
+        self.assertEqual(self.CustomerModel.objects.count(), 1)
 
     def test_create_layout_preference_save_persists_shape(self):
         self.grant_policy(
