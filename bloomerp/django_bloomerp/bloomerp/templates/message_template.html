@@ -1,0 +1,7 @@
+{% include xyz_template_name %}
+
+{% if messages %}
+    {% for message in messages %}
+        <c-ui.message text="{{ message | safe }}" :type="message.tags" :duration="10" />
+    {% endfor %}
+{% endif %}

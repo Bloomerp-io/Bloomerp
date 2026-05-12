@@ -48,6 +48,8 @@ import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
 import ShortcutTooltip from './components/ShortcutTooltip';
 import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
+import TemplateBuilder from './components/template_builder/TemplateBuilder';
+import FocusOnForm from './components/FocusOnForm';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -81,6 +83,7 @@ registerComponent('text-editor', TextEditor)
 
 // Website builder
 registerComponent('website-builder', WebsiteBuilder)
+registerComponent('template-builder', TemplateBuilder)
 
 // Permission checkboxes
 registerComponent('permission-checkboxes', PermissionCheckboxes)
@@ -126,6 +129,8 @@ registerComponent('sidebar-item', SidebarItem)
 registerComponent('focus-in', FocusIn)
 registerComponent('shortcut-tooltip', ShortcutTooltip);
 registerComponent('ordered-field-select', OrderedFieldSelect);
+
+registerComponent('focus-on-form', FocusOnForm);
 
 // Auto init comonents
 setupComponentAutoInit();

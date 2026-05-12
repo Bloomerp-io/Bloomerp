@@ -14,7 +14,7 @@ function createAlertMessage(message: string): HTMLElement {
 
 export function createInlineAlert(message: string, title = ""): HTMLElement {
     const alert = document.createElement("div");
-    alert.className = "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700";
+    alert.className = "rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700";
 
     if (title.trim()) {
         alert.appendChild(createAlertTitle(title));

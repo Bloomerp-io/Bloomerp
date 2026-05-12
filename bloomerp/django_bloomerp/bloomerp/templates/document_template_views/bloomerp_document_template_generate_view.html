@@ -1,19 +1,2 @@
-{% load crispy_forms_tags %}
-
-<h5 class="card-title">Generate Document for {{ object }}</h5>
-
-<form 
-    hx-post="{% url 'components_generate_document_template' %}"
-    hx-target="#form-container"
-    hx-swap="innerHTML"
-    hx-trigger="submit"
-    >
-    {% csrf_token %}
-    
-    <div id="form-container">
-        {{ form | crispy }}
-    </div>
-
-    <button type="submit" class="btn btn-primary">Generate</button>
-</form>
+<div hx-get="{% url 'components_generate_document_template' id=object.id%}" hx-target="this" hx-trigger="load"></div>
 

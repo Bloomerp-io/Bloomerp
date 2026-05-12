@@ -20,8 +20,6 @@ class File(
         managed = True
         db_table = "bloomerp_file"
 
-    search_fields = ['name']
-    allow_string_search = True
 
     def upload_to(self, filename):
         '''Returns the upload path for the file'''

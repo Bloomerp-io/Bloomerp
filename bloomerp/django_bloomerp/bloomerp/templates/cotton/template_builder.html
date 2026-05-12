@@ -1,0 +1,237 @@
+{% load crispy_forms_tags %}
+
+{% with field_config_id=id|add:"-fields" variable_catalog_id=id|add:"-variable-catalog" %}
+{{ template_builder_fields|json_script:field_config_id }}
+{{ template_builder_variable_catalog|json_script:variable_catalog_id }}
+
+<div
+    bloomerp-component="template-builder"
+    id="{{ id }}"
+    data-content-type-id="{{ content_type_id }}"
+    data-field-config-id="{{ field_config_id }}"
+    data-variable-catalog-id="{{ variable_catalog_id }}"
+    data-page-size="{{ page_size|default:'A4' }}"
+    data-page-orientation="{{ page_orientation|default:'portrait' }}"
+    data-page-margin="{{ page_margin|default:'1.0' }}"
+    data-initial-html="{{ content|default:''|escape }}"
+    data-initial-free-variables="{{ free_variables_json|default:'[]'|escape }}"
+
+    class="rounded-xl border border-gray-200 bg-white shadow-sm"
+    >
+    <input
+        type="hidden"
+        name="{{ input_name|default:'template_content' }}"
+        value="{{ content|default:'' }}"
+        data-template-builder-input
+    >
+    <input
+        type="hidden"
+        name="free_variables_json"
+        value="{{ free_variables_json|default:'[]' }}"
+        data-template-builder-free-variables-input
+    >
+
+    <div class="border-b border-gray-200 px-4 py-3">
+        <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-sm font-medium text-slate-900">Document builder</p>
+                <p class="text-sm text-slate-500">
+                    {{ name }}
+                </p>
+            </div>
+            <div class="gap-2">
+                <button type="reset" class="btn btn-secondary btn-sm">
+                    Reset
+                </button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-4 p-4">
+        <section class="rounded-xl border border-gray-200 px-3 py-2">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div class="flex flex-wrap items-center gap-2" data-template-builder-toolbar></div>
+            <div class="lg:w-[260px]">
+                <input
+                    type="text"
+                    class="input w-full"
+                    name="name"
+                    placeholder="Template name"
+                    value="{{ name|default:'' }}"
+                    required
+                >
+            </div>
+            </div>
+        </section>
+
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <section class="min-w-0">
+                <div
+                    class="overflow-hidden rounded-2xl border border-gray-200 bg-slate-200/60 p-4 xl:min-h-[72vh]"
+                    data-template-builder-canvas-shell
+                >
+                    <div class="w-full overflow-auto" data-template-builder-canvas>
+                        <div data-template-builder-page>
+                            <div
+                                data-template-builder-editor-root
+                                contenteditable="true"
+                                role="textbox"
+                                aria-multiline="true"
+                                spellcheck="false"
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="space-y-4">
+                <section class="rounded-xl border border-gray-200 bg-slate-50 p-3 xl:sticky xl:top-4">
+                    <div class="mb-3 flex items-center gap-2 flex-wrap" data-template-builder-tabs>
+                        <button
+                            type="button"
+                            class="btn btn-dark btn-sm"
+                            data-template-builder-tab-button="blocks"
+                        >
+                            Blocks
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-dark btn-sm"
+                            data-template-builder-tab-button="styles"
+                        >
+                            Styles
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-dark btn-sm"
+                            data-template-builder-tab-button="layers"
+                        >
+                            Layers
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-dark btn-sm"
+                            data-template-builder-tab-button="settings"
+                        >
+                            Settings
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-dark btn-sm"
+                            data-template-builder-tab-button="variables"
+                        >
+                            Variables
+                        </button>
+                    </div>
+
+                    <div data-template-builder-tab-panel="blocks" class="space-y-2">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Blocks</h3>
+                            <p class="mt-1 text-xs text-slate-500">Drag headings, text, headers, tables, and fields into the page.</p>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search blocks or fields"
+                            class="input w-full"
+                            data-template-builder-block-search
+                        >
+                        <div class="max-h-[60vh] overflow-y-auto pr-1" data-template-builder-blocks></div>
+                    </div>
+
+                    <div data-template-builder-tab-panel="styles" class="hidden space-y-2">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Styles</h3>
+                            
+                        </div>
+                        <div class="max-h-[60vh] overflow-y-auto pr-1" data-template-builder-styles>
+                            Hello
+                        </div>
+                    </div>
+
+                    <div data-template-builder-tab-panel="layers" class="hidden space-y-2">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Layers</h3>
+                            <p class="mt-1 text-xs text-slate-500">Use layers to select and reorder document sections.</p>
+                        </div>
+                        <div class="max-h-[60vh] overflow-y-auto pr-1" data-template-builder-layers></div>
+                    </div>
+                    <div data-template-builder-tab-panel="settings" class="hidden space-y-2">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Settings</h3>
+                            <c-ui.text.muted class="">
+                                Set page size, margins, and other document settings.
+                            </c-ui.text.muted>
+                        </div>
+                        <div class="max-h-[60vh] overflow-y-auto pr-1" data-template-builder-settings>
+                            <div class="space-y-3">
+                                <label class="block">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">Page size</span>
+                                    <select
+                                        name="page_size"
+                                        class="input w-full"
+                                        data-template-builder-page-size
+                                    >
+                                        <option value="A4" {% if page_size|default:'A4' == 'A4' %}selected{% endif %}>A4</option>
+                                        <option value="Letter" {% if page_size|default:'A4' == 'Letter' %}selected{% endif %}>Letter</option>
+                                        <option value="A3" {% if page_size|default:'A4' == 'A3' %}selected{% endif %}>A3</option>
+                                    </select>
+                                </label>
+                                <label class="block">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">Orientation</span>
+                                    <select
+                                        name="page_orientation"
+                                        class="input w-full"
+                                        data-template-builder-page-orientation
+                                    >
+                                        <option value="portrait" {% if page_orientation|default:'portrait' == 'portrait' %}selected{% endif %}>Portrait</option>
+                                        <option value="landscape" {% if page_orientation|default:'portrait' == 'landscape' %}selected{% endif %}>Landscape</option>
+                                    </select>
+                                </label>
+                                <label class="block">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">Page margin</span>
+                                    <input
+                                        type="number"
+                                        name="page_margin"
+                                        class="input w-full"
+                                        min="0"
+                                        max="3"
+                                        step="0.1"
+                                        value="{{ page_margin|default:'1.0' }}"
+                                        data-template-builder-page-margin
+                                    >
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        name="include_page_numbers"
+                                        value="true"
+                                        class="checkbox"
+                                        {% if include_page_numbers != False %}checked{% endif %}
+                                    >
+                                    <span>Include page numbers</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-template-builder-tab-panel="variables" class="hidden space-y-2">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Variables</h3>
+                            <p class="mt-1 text-xs text-slate-500">Manage document variables and placeholders.</p>
+                        </div>
+                        <label class="block rounded-xl border border-slate-200 bg-white p-2">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">Content types</span>
+                            <div data-template-builder-content-types>
+                                {{ builder_form.content_types }}
+                            </div>
+                        </label>
+                        <div class="max-h-[60vh] overflow-y-auto overflow-x-hidden pr-1" data-template-builder-variables></div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+</div>
+{% endwith %}

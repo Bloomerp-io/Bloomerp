@@ -8,6 +8,7 @@ Parameters:
 - content_type_id (int): The content type ID for the model being displayed.
 - queryset (QuerySet): The Django queryset containing the records to be displayed.
 - fields (list): The list of fields to display on each card.
+- avatar_field (ApplicationField): The selected avatar field, when visible.
 - preference (UserListViewPreference): The user's view preferences.
 - kanban_groups (list): List of groups with 'value', 'label', 'items', 'count' keys.
 - kanban_group_by_field (ApplicationField): The field used for grouping.
@@ -29,7 +30,7 @@ Parameters:
     {% if kanban_groups %}
         {% for group in kanban_groups %}
         <div 
-            class="kanban-column flex-shrink-0 w-72 bg-base rounded-lg border border-gray-200 flex flex-col max-h-full"
+            class="kanban-column flex-shrink-0 w-72 bg-base rounded-xl border border-gray-200 flex flex-col max-h-full"
             data-column-value="{{ group.value|default:'__none__' }}"
         >
             <!-- Column Header -->
@@ -52,7 +53,7 @@ Parameters:
             >
                 {% for object in group.items %}
                 <div 
-                    class="kanban-card bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+                    class="kanban-card bg-white rounded-xl border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
                     draggable="true"
                     data-object-id="{{ object.pk }}"
                     hx-get="{{ object.get_absolute_url }}"
@@ -64,8 +65,13 @@ Parameters:
                     bloomerp-component="kanban-card"
                 >
                     <!-- Card Title -->
-                    <div class="font-medium text-gray-900 text-sm mb-2 truncate" title="{{ object }}">
-                        {{ object }}
+                    <div class="mb-2 flex items-center gap-2">
+                        {% if avatar_field %}
+                            <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover shrink-0" />
+                        {% endif %}
+                        <div class="min-w-0 flex-1 font-medium text-gray-900 text-sm truncate" title="{{ object }}">
+                            {{ object }}
+                        </div>
                     </div>
                     
                     <!-- Card Fields -->

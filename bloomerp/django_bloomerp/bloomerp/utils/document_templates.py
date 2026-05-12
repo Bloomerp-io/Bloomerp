@@ -38,9 +38,7 @@ class DocumentController:
         if instance:
             data['object'] = instance
     	
-        #Add free variable data
-        if free_variables:
-            data.update(free_variables)
+        data["vars"] = free_variables or {}
 
         #Create metadata variable
         meta_data = {}
@@ -50,7 +48,7 @@ class DocumentController:
         
         #Format HTML       
         django_engine = engines["django"]
-        temp = django_engine.from_string(document_template.template)
+        temp = django_engine.from_string("{% load document_template_tags %}" + document_template.template)
         formatted_html = temp.render(data)        
 
         # Get the styling
@@ -142,7 +140,8 @@ class DocumentController:
         '''
         #Format HTML
         django_engine = engines["django"]
-        temp = django_engine.from_string(document_template.template)
+        data.setdefault("vars", {})
+        temp = django_engine.from_string("{% load document_template_tags %}" + document_template.template)
         formatted_html = temp.render(data)
         
 
@@ -250,6 +249,5 @@ class DocumentController:
 
         return signed_file_obj
         
-
 
 

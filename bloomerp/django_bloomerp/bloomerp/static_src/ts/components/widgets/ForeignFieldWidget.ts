@@ -514,7 +514,7 @@ export default class ForeignFieldWidget extends BaseWidget {
 
     private createOverflowItem(id: string, label: string, url: string): HTMLElement {
         const row = document.createElement('div');
-        row.className = 'flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm hover:bg-gray-50';
+        row.className = 'flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm hover:bg-gray-50';
 
         const labelEl = document.createElement(url ? 'a' : 'span');
         labelEl.className = 'min-w-0 flex-1 truncate text-gray-700';

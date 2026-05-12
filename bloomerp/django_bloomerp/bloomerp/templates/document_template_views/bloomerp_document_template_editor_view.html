@@ -126,12 +126,12 @@
 
                     <div class="col">
                         <h5>Free variables</h5>
-                        {% for field in object.free_variables.all %}
+                        {% for field in object.get_free_variable_configs %}
                             <a 
                                 class="hover:cursor-pointer" 
-                                onclick="addFreeVariable('{{field.slug}}', '{{field.variable_type}}')"
+                                onclick="addFreeVariable('{{field.normalized_slug}}', '{{field.type}}')"
                                 data-bs-dismiss="modal"
-                                >{{ field }}
+                                >{{ field.label }}
 								<span class="mx-2"><img src="{% static 'bloomerp/icons/arrow-right.svg' %}" alt="Magic" width=16 height=16></span>
                             </a>
                             <br>
@@ -237,19 +237,19 @@
 		// If date, we need to add the format filter
 
 		if (type === 'date') {
-			content = `{${'{'} ${variable} ${'}'}}`;
+			content = `{${'{'} vars.${variable} ${'}'}}`;
 		} else if (type === 'boolean') {
-			content = `{${'{'} ${variable} ${'}'}}`;
+			content = `{${'{'} vars.${variable} ${'}'}}`;
 		} else if (type === 'integer') {
-			content = `{${'{'} ${variable} ${'}'}}`;
+			content = `{${'{'} vars.${variable} ${'}'}}`;
 		} else if (type === 'float') {
-			content = `{${'{'} ${variable} ${'}'}}`;
+			content = `{${'{'} vars.${variable} ${'}'}}`;
 		} else if (type === 'text') {
-			content = `{${'{'} ${variable} ${'}'}}`;
+			content = `{${'{'} vars.${variable} ${'}'}}`;
 		} else if (type === 'list') {
-			content = `{${'{'} ${variable} ${'}'}}`;
+			content = `{${'{'} vars.${variable} ${'}'}}`;
 		} else if (type === 'model') {
-			content = `{${'{'} ${variable} ${'}'}}`;
+			content = `{${'{'} vars.${variable} ${'}'}}`;
 		}
 		
 		let editor = tinymce.get('template');

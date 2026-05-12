@@ -1,108 +1,119 @@
+import base64
+
 from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
-from bloomerp.utils.document_templates import DocumentController
 from bloomerp.models.document_templates import DocumentTemplate
-from bloomerp.models.files import File
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from bloomerp.forms.document_templates import GenerateDocumentForm
-import base64
-from bloomerp.utils.requests import parse_bool_parameter
+from bloomerp.services.document_services import DocumentTemplateService
+from django.contrib.contenttypes.models import ContentType
 
-@router.register(path='components/generate_document_template/', name='components_generate_document_template')
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+
+@router.register(
+    path='components/document_templates/generate/<str:id>/', 
+    name='components_generate_document_template'
+    )
 @login_required
-def generate_document_template(request:HttpRequest) -> HttpResponse:
-    '''
-    Component that generates a document template.
+def generate_document_template(
+    request:HttpRequest, 
+    id:str,
+    ) -> HttpResponse:
+    """Component to generate document templates
 
-    GET Arguments:
-        - document_template_id : The document template ID
-        - add_persist_field : Whether to add the option to persist the document
+    Args:
+        request (HttpRequest): the request object
+        id (str): the ID of the document template
+        
+    GET Args:
+        content_type_id (str, optional): the content type ID of the object to generate the document template for. Defaults to None.
+        object_id (str, optional): the object ID of the object to generate the document template for. Defaults to None.
+
+    Returns:
+        HttpResponse: response containing a form
+    """
+    # Get the document template
+    document_template = get_object_or_404(
+        DocumentTemplate,
+        id=id
+    )
+    service = DocumentTemplateService(document_template, request.user)
     
-    POST Arguments:
-        - form : The form data
-        - preview_content : Content to preview for the document template (optional)
-        - add_persist_field : add_persist_field (optional)
-        
-
-    '''
-    # Some permissions check
-    if not request.user.has_perm('bloomerp.view_documenttemplate'):
-        return HttpResponse('User does not have permission to view document templates')
-
-    if request.method == 'POST':
-        # Get document template from the form
-        document_template_id = request.POST.get('document_template_id')
-        document_template = get_object_or_404(DocumentTemplate, id=document_template_id)
-
-        # Check whether there is preview content
-        preview_content = request.POST.get('preview_content', None)
-        
-        # Get add persist field for later form creation
-        add_persist_field = parse_bool_parameter(request.POST.get('add_persist_field'), True)
-
-        if preview_content:
-            document_template.template = preview_content
-
-        # Get the form data
-        form = GenerateDocumentForm(
-            document_template=document_template, 
-            data = request.POST, 
-            files = request.FILES,
-            add_persist_field=add_persist_field
+    # Perform permission check
+    # TODO: We need a more elaborate permission system that checks the fields here
+    permission_manager = UserPermissionManager(request.user)
+    for content_type in list(document_template.content_types.all()) + [ContentType.objects.get_for_model(DocumentTemplate)]:
+        if not permission_manager.has_global_permission(
+            content_type,
+            create_permission_str(
+                content_type.model_class(),
+                "view"
             )
+        ):
+            return HttpResponse("You do not have permission to view this document template.", status=403)
+    
+    # Conditionally get the object ID and template ID
+    content_type_id = request.GET.get("content_type_id")
+    object_id = request.GET.get("object_id")
+    instance = None
+    if content_type_id and object_id:
+        content_type : ContentType = get_object_or_404(
+            ContentType,
+            id=content_type_id
+        )
+        instance = get_object_or_404(
+            content_type.model_class(),
+            id=object_id
+        )
+    
+    # Get the form instance
+    form = service.get_form(
+        instance=instance
+    )(
+        data=request.POST if request.method == "POST" else None,
+    )
+    
+    context = {
+        "form" : form,
+        "id" : id,
+        "form_action": request.get_full_path(),
+        "files" : service.get_files(instance).order_by("-datetime_created")
+    }
+    
+    match request.method:
+        case "GET":
+            return render(
+                request,
+                "components/document_templates/generate_document_template.html",
+                context
+            )    
         
-        # If form is not valid return from
-        if not form.is_valid():
-            return render(request, 'components/generate_document_template.html', context={'form': form})
-        else:
-            try:
-                # Get the cleaned data from the form
-                data = form.cleaned_data
-
-                # Initialize the document controller
-                document_controller = DocumentController(document_template, request.user)
-
-                # Generate the document without persisting
-                file: File = document_controller.create_document(
-                    document_template=document_template,
-                    free_variables = data, 
-                    instance=form.instance,
-                    persist=form.persist
+        case "POST":
+            if form.is_valid():
+                pdf_bytes = service.generate(form)
+                generated_file = None
+                if form.cleaned_data.get("persist"):
+                    generated_file = service.create_file(
+                        pdf_bytes,
+                        instance=getattr(form, "instance", None),
+                    )
+                
+                # Add extra context
+                context["file_bytes"] = base64.b64encode(pdf_bytes).decode("ascii")
+                context["generated_file"] = generated_file
+                
+                # Reload the files in case a new one was generated
+                context["files"] = service.get_files(getattr(form, "instance", instance)).order_by("-datetime_created")
+                
+                return render(
+                    request,
+                    "components/document_templates/generate_document_template.html",
+                    context
                 )
-
-                # Ensure the file is associated
-                if not file.file:
-                    return HttpResponse('File not associated correctly', status=500)
-
-                # Get the bytes of the file
-                file_bytes = file.file.read()
-                file_base64 = base64.b64encode(file_bytes).decode('utf-8')
-
-                return render(request, 'components/generate_document_template.html', context={'file_bytes': file_base64, 'form':form})
-            except TypeError as e:
-                if 'RelatedManager' in str(e):
-                    form.add_error(None, "Please make sure that when using a for-loop, '.all' is used at the end.")
-                else:
-                    form.add_error(None, str(e))
-                return render(request, 'components/generate_document_template.html', context={'form': form})
-            except Exception as e:
-                form.add_error(None, str(e))
-                return render(request, 'components/generate_document_template.html', context={'form': form})
-            
-    else:
-        # Get the document template from the GET request
-        document_template_id = request.GET.get('document_template_id')
-        
-        # Get the persist option
-        add_persist_field = parse_bool_parameter(request.GET.get('add_persist_field'), False)
-
-        # Get the document template
-        document_template = get_object_or_404(DocumentTemplate, id=document_template_id)
-
-        # Create the form
-        form = GenerateDocumentForm(document_template=document_template, add_persist_field=add_persist_field)
-
-        return render(request, 'components/generate_document_template.html', context={'form': form})
+            else:
+                return render(
+                    request,
+                    "components/document_templates/generate_document_template.html",
+                    context
+                )

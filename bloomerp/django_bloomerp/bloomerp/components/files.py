@@ -2,6 +2,7 @@ import json
 import uuid
 from urllib.parse import parse_qs
 from dataclasses import dataclass
+from pathlib import Path
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
@@ -22,6 +23,8 @@ from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.permission_services import create_permission_str
 from bloomerp.utils.filters import filter_model
 
+
+__path__ = [str(Path(__file__).with_name("files"))]
 
 FILE_BROWSER_VIEW_TYPES = ("table", "card")
 FILE_BROWSER_FIXED_COLUMNS = (

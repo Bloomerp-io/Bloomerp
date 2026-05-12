@@ -372,4 +372,22 @@ def string_search_queryset(qs: QuerySet, search_value: str) -> QuerySet:
 
         return working_qs.filter(query_filter)
 
+def get_object_from_content_type(content_type_id:int, object_id:str) -> Model | None:
+    """
+    This function returns an object based on the content type id and object id.
 
+    Args:
+        content_type_id (int): the content type id of the object
+        object_id (str): the id of the object
+
+    Returns:
+        the object or None if not found
+    """
+    try:
+        ct = ContentType.objects.get(id=content_type_id)
+        model_class = ct.model_class()
+        if model_class is None:
+            return None
+        return model_class.objects.filter(id=object_id).first()
+    except ContentType.DoesNotExist:
+        return None

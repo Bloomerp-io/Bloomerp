@@ -23,7 +23,7 @@ export type ContextMenuController = {
 };
 
 const DEFAULT_MENU_CLASS =
-	'fixed hidden bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[160px]';
+	'fixed hidden bg-white shadow-lg rounded-xl border border-gray-200 z-50 min-w-[160px]';
 
 const menuCache = new Map<string, ContextMenuController>();
 
