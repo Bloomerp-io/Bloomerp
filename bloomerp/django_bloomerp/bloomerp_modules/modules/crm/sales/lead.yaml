@@ -69,7 +69,7 @@ fields:
       blank: true
   - id: phone
     name: Phone
-    type: CharField
+    type: PhoneNumberField
     options:
       max_length: 30
       null: true

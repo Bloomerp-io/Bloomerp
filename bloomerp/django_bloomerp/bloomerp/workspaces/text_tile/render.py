@@ -57,7 +57,7 @@ TAG_CLASSES = {
     "ol": ["my-3", "list-decimal", "pl-5", "space-y-1"],
     "li": ["leading-7", "text-slate-700"],
     "blockquote": ["my-4", "border-l-2", "border-slate-200", "pl-4", "italic", "text-slate-600"],
-    "pre": ["my-4", "overflow-x-auto", "rounded-lg", "bg-slate-950", "p-3", "text-sm", "text-slate-100"],
+    "pre": ["my-4", "overflow-x-auto", "rounded-xl", "bg-slate-950", "p-3", "text-sm", "text-slate-100"],
     "code": ["rounded", "bg-slate-100", "px-1", "py-0.5", "text-[0.95em]"],
     "table": ["my-4", "w-full", "border-collapse", "text-left", "text-sm"],
     "thead": ["bg-slate-50"],

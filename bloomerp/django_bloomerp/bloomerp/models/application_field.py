@@ -73,7 +73,38 @@ class ApplicationField(models.Model):
 
     def get_field_type_enum(self) -> FieldType:
         """Returns the FieldType enum for this application field."""
-        return FieldType.from_id(self.field_type)
+        declared_field_type = None
+        try:
+            declared_field_type = FieldType.from_id(self.field_type)
+        except ValueError:
+            declared_field_type = None
+
+        try:
+            model_field = self._get_model_field()
+        except FieldDoesNotExist:
+            if declared_field_type is None:
+                raise
+            return declared_field_type
+
+        model_backed_field_type = FieldType.from_model_field_cls(model_field.__class__)
+
+        if (
+            model_backed_field_type is not None
+            and model_backed_field_type.model_field_cls == model_field.__class__
+            and (
+                declared_field_type is None
+                or declared_field_type.model_field_cls != model_field.__class__
+            )
+        ):
+            return model_backed_field_type
+
+        if declared_field_type is not None:
+            return declared_field_type
+
+        if model_backed_field_type is not None:
+            return model_backed_field_type
+
+        raise ValueError(f"Unknown field type: {self.field_type}")
 
 
     def get_for_model(model:models.Model) -> QuerySet['ApplicationField']:
@@ -231,4 +262,8 @@ class ApplicationField(models.Model):
         """
         field_type = self.get_field_type_enum().value
         return field_type.build_widget(self, layout_config=layout_config)
+    
+    @property
+    def icon(self):
+        return self.get_field_type_enum().value.icon
         

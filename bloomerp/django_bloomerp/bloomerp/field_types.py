@@ -14,8 +14,11 @@ from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.model_fields.icon_field import IconField
+from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.form_fields.icon_field import IconFormField
+from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
 from bloomerp.widgets.icon_picker_widget import IconPickerWidget
+from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
 from bloomerp.widgets.select_widget import InputSelectWidget
 from typing import TYPE_CHECKING
 from django.contrib.contenttypes.models import ContentType
@@ -724,6 +727,20 @@ class FieldType(Enum):
         },
         field_options=COMMON_TEXT_FIELD_OPTIONS,
     )
+
+    PHONE_NUMBER_FIELD = FieldTypeDefinition(
+        id="PhoneNumberField",
+        display_name="Phone Number Field",
+        icon="fa-solid fa-phone",
+        model_field_cls=PhoneNumberField,
+        form_field_cls=PhoneNumberFormField,
+        widget_cls=PhoneNumberWidget,
+        lookups=TEXT_LOOKUPS,
+        default_model_field_args={
+            "max_length": 30,
+        },
+        field_options=COMMON_TEXT_FIELD_OPTIONS,
+    )
     
     SLUG_FIELD = FieldTypeDefinition(
         id="SlugField",
@@ -1227,9 +1244,10 @@ class FieldType(Enum):
         Returns:
             The matching FieldType enum member, or None if not found
         """
-        for member in cls:
-            if member.value.model_field_cls == model_field_cls:
-                return member
+        for candidate_cls in model_field_cls.__mro__:
+            for member in cls:
+                if member.value.model_field_cls == candidate_cls:
+                    return member
         return None
     
     @classmethod
