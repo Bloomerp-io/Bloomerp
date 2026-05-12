@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.views.generic import TemplateView
@@ -38,6 +39,12 @@ def _wizard_error_message(form) -> str:
     if form.non_field_errors():
         return str(form.non_field_errors()[0])
     return "Please review the submitted data and try again."
+
+
+def _validation_error_message(exc: ValidationError) -> str:
+    if hasattr(exc, "messages") and exc.messages:
+        return " ".join(str(message) for message in exc.messages)
+    return str(exc)
 
 
 def ctx_upload_step(request: HttpRequest, view, orchestrator: BaseStateOrchestrator):
@@ -80,10 +87,19 @@ def pcs_upload_step(request: HttpRequest, view, orchestrator: BaseStateOrchestra
             step=0,
         )
 
-    draft = view.service.create_draft(
-        uploaded_file,
-        previous_file_id=existing_draft_file_id,
-    )
+    try:
+        draft = view.service.create_draft(
+            uploaded_file,
+            previous_file_id=existing_draft_file_id,
+        )
+    except ValidationError as exc:
+        upload_form.add_error("bulk_upload_file", _validation_error_message(exc))
+        return WizardError(
+            message=_validation_error_message(exc),
+            title="Upload validation failed",
+            step=0,
+        )
+
     orchestrator.set_session_data(DRAFT_FILE_ID_KEY, draft.file_id)
     orchestrator.set_session_data(SELECTED_FIELDS_KEY, draft.selected_fields)
     orchestrator.set_session_data(CHANGES_KEY, {})
@@ -327,7 +343,14 @@ class BloomerpBulkUploadView(WizardMixin, BaseBloomerpView, TemplateView):
                 step=2,
             )
 
-        status, created_count = self.service.process_draft(file_id=file_id, changes=changes)
+        try:
+            status, created_count = self.service.process_draft(file_id=file_id, changes=changes)
+        except ValidationError as exc:
+            return WizardError(
+                message=_validation_error_message(exc),
+                title="Import blocked",
+                step=2,
+            )
         self._keep_draft_file = status == "queued"
         if status == "queued":
             self.set_success_message(f"Bulk upload queued for {created_count} row(s).")

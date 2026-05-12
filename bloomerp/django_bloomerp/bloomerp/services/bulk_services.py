@@ -12,6 +12,7 @@ from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Field
 from django.db.models import Model, QuerySet
 from django.forms import BaseFormSet, formset_factory
 from django.forms.widgets import CheckboxInput, CheckboxSelectMultiple, HiddenInput, RadioSelect
@@ -109,33 +110,15 @@ class BulkCrudService:
         Get the application fields that the user is allowed to access for this service's model.
         """
         bulk_fields = self.permission_manager.get_accessible_fields(self.content_type, self.bulk_add_permission)
-        add_fields = self.permission_manager.get_accessible_fields(self.content_type, self.add_permission)
-        allowed_ids = set(bulk_fields.values_list("id", flat=True)) | set(add_fields.values_list("id", flat=True))
-        if not allowed_ids and getattr(self.user, "is_superuser", False):
+        if not bulk_fields.exists() and getattr(self.user, "is_superuser", False):
             return ApplicationField.get_for_model(self.model).order_by("field")
-        return ApplicationField.objects.filter(id__in=allowed_ids).order_by("field")
+        return bulk_fields.order_by("field")
 
     def get_allowed_field_names(self) -> list[str]:
         """
         Get the field names that the user is allowed to access for this service's model.
         """
-        allowed_names: list[str] = []
-        for application_field in self.get_allowed_application_fields():
-            field_name = application_field.field
-            if field_name in AUTO_MANAGED_FIELD_NAMES:
-                continue
-            try:
-                model_field = application_field._get_model_field()
-            except Exception:
-                continue
-            if not getattr(model_field, "editable", True):
-                continue
-            if not getattr(model_field, "concrete", True):
-                continue
-            if application_field.get_form_field() is None:
-                continue
-            allowed_names.append(field_name)
-        return allowed_names
+        return self._get_uploadable_field_names(self.get_allowed_application_fields())
 
     def build_template_form(self, data=None) -> BloomerpBulkForm:
         """
@@ -260,12 +243,17 @@ class BulkCrudService:
         draft_file.file.open("rb")
         try:
             filename = (draft_file.file.name or draft_file.name or "").lower()
-            if filename.endswith(".csv"):
-                dataframe = pd.read_csv(TextIOWrapper(draft_file.file.file, encoding="utf-8"))
-            elif filename.endswith((".xlsx", ".xls")):
-                dataframe = pd.read_excel(draft_file.file.file)
-            else:
-                raise ValidationError("Unsupported file type. Only CSV and Excel files are allowed.")
+            try:
+                if filename.endswith(".csv"):
+                    dataframe = pd.read_csv(TextIOWrapper(draft_file.file.file, encoding="utf-8"))
+                elif filename.endswith((".xlsx", ".xls")):
+                    dataframe = pd.read_excel(draft_file.file.file)
+                else:
+                    raise ValidationError("Unsupported file type. Only CSV and Excel files are allowed.")
+            except pd.errors.EmptyDataError:
+                raise ValidationError("The uploaded file must include a header row with field names.")
+            except pd.errors.ParserError:
+                raise ValidationError("The uploaded file could not be parsed. Check the file format and try again.")
         finally:
             draft_file.file.close()
 
@@ -562,27 +550,126 @@ class BulkCrudService:
         return formset_factory(review_form_class, extra=0)
 
     def validate_dataframe_headers(self, dataframe: pd.DataFrame) -> list[str]:
+        if dataframe.columns.empty:
+            raise ValidationError("The uploaded file must include a header row with field names.")
+
+        self._validate_header_cells(dataframe.columns)
+
+        uploadable_by_lower = {
+            field_name.lower(): field_name
+            for field_name in self._get_uploadable_field_names(ApplicationField.get_for_model(self.model))
+        }
         allowed_by_lower = {field_name.lower(): field_name for field_name in self.get_allowed_field_names()}
         selected_fields: list[str] = []
-        invalid_fields: list[str] = []
+        unknown_fields: list[str] = []
+        disallowed_fields: list[str] = []
 
         for column in dataframe.columns:
             column_name = str(column).strip()
             canonical_name = allowed_by_lower.get(column_name.lower())
-            if canonical_name is None:
-                invalid_fields.append(column_name)
+            if canonical_name is not None:
+                selected_fields.append(canonical_name)
                 continue
-            selected_fields.append(canonical_name)
 
-        if invalid_fields:
+            if column_name.lower() in uploadable_by_lower:
+                disallowed_fields.append(column_name)
+                continue
+
+            unknown_fields.append(column_name)
+
+        if unknown_fields:
+            raise ValidationError(
+                "The uploaded file contains headers that do not match uploadable fields: "
+                + ", ".join(sorted(unknown_fields))
+            )
+        if disallowed_fields:
             raise ValidationError(
                 "You do not have permission to bulk upload the following fields: "
-                + ", ".join(sorted(invalid_fields))
+                + ", ".join(sorted(disallowed_fields))
             )
         if not selected_fields:
             raise ValidationError("The uploaded file did not contain any permitted columns.")
 
+        missing_required_fields = sorted(set(self.get_required_field_names()) - set(selected_fields))
+        if missing_required_fields:
+            raise ValidationError(
+                "The uploaded file is missing required headers: "
+                + ", ".join(missing_required_fields)
+            )
+
         return selected_fields
+
+    def get_required_field_names(self) -> list[str]:
+        required_field_names: list[str] = []
+        allowed_names = set(self.get_allowed_field_names())
+        for application_field in self.get_allowed_application_fields():
+            field_name = application_field.field
+            if field_name not in allowed_names:
+                continue
+            try:
+                form_field = application_field.get_form_field()
+            except Exception:
+                continue
+            if form_field is not None and form_field.required:
+                required_field_names.append(field_name)
+        return required_field_names
+
+    def _get_uploadable_field_names(self, application_fields) -> list[str]:
+        uploadable_names: list[str] = []
+        for application_field in application_fields:
+            field_name = application_field.field
+            model_field = self._get_uploadable_model_field(application_field)
+            if model_field is None:
+                continue
+            if application_field.get_form_field() is None:
+                continue
+            uploadable_names.append(field_name)
+        return uploadable_names
+
+    def _get_uploadable_model_field(self, application_field: ApplicationField) -> Field | None:
+        field_name = application_field.field
+        if field_name in AUTO_MANAGED_FIELD_NAMES:
+            return None
+        try:
+            model_field = application_field._get_model_field()
+        except Exception:
+            return None
+        if not getattr(model_field, "editable", True):
+            return None
+        if not getattr(model_field, "concrete", True):
+            return None
+        return model_field
+
+    def _validate_header_cells(self, columns) -> None:
+        header_names = [str(column).strip() for column in columns]
+        missing_header_positions = [
+            str(index + 1)
+            for index, header_name in enumerate(header_names)
+            if not header_name or header_name.lower().startswith("unnamed:")
+        ]
+
+        if len(missing_header_positions) == len(header_names):
+            raise ValidationError("The uploaded file must include a header row with field names.")
+
+        if missing_header_positions:
+            raise ValidationError(
+                "The uploaded file has blank header cells at column(s): "
+                + ", ".join(missing_header_positions)
+            )
+
+        seen_headers: set[str] = set()
+        duplicate_headers: set[str] = set()
+        for header_name in header_names:
+            header_key = header_name.lower()
+            if header_key in seen_headers:
+                duplicate_headers.add(header_name)
+            seen_headers.add(header_key)
+
+        if duplicate_headers:
+            raise ValidationError(
+                "The uploaded file contains duplicate headers: "
+                + ", ".join(sorted(duplicate_headers))
+            )
 
     def apply_changes_to_rows(
         self,
