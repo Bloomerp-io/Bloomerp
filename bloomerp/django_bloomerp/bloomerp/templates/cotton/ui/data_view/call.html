@@ -1,0 +1,10 @@
+
+{% url 'components_data_view' content_type_id=content_type_id as base_url %}
+<div
+	hx-get="{{ base_url }}{% if filters %}{% for key, value in filters.items %}{% if forloop.first %}?{% else %}&{% endif %}{{ key|urlencode }}={{ value|urlencode }}{% endfor %}{% endif %}{% if component_id %}{% if filters %}&{% else %}?{% endif %}_component_id={{ component_id }}{% endif %}{% if args %}{% for key, value in args.items %}{% if filters or component_id or not forloop.first %}&{% else %}?{% endif %}_arg_{{ key|urlencode }}={{ value|urlencode }}{% endfor %}{% endif %}{% if request.GET.urlencode %}{% if filters or component_id or args %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
+	hx-trigger="load"
+	hx-target="this"
+	hx-swap="outerHTML"
+	hx-push-url="false"
+>
+</div>

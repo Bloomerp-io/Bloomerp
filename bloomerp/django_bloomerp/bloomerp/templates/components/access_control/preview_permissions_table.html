@@ -19,7 +19,7 @@
 
     {% if has_row_rules %}
         {% if page_obj.object_list %}
-            <div class="w-full min-w-0 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <div class="w-full min-w-0 overflow-x-auto rounded-xl border border-gray-200 bg-white">
                 <table class="table-auto table-hover table min-w-max border-collapse text-sm">
                     <thead class="text-left text-gray-600">
                         <tr>
@@ -107,12 +107,12 @@
                 </div>
             {% endif %}
         {% else %}
-            <div class="min-h-[120px] rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-500 flex items-center justify-center text-center">
+            <div class="min-h-[120px] rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-500 flex items-center justify-center text-center">
                 No objects are included by the current row conditions.
             </div>
         {% endif %}
     {% else %}
-        <div class="min-h-[120px] rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-500 flex items-center justify-center text-center">
+        <div class="min-h-[120px] rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-500 flex items-center justify-center text-center">
             Add a row condition to preview included objects.
         </div>
     {% endif %}

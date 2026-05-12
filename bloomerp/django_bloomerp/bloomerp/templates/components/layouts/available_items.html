@@ -8,7 +8,7 @@
             data-layout-item-id="{{ item.id }}"
             data-layout-search-text="{{ item.title }}"
             data-layout-search-keywords="{{ item.search_keywords|default:'' }}"
-            class="flex w-full cursor-grab items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-slate-300 hover:bg-slate-50 active:cursor-grabbing"
+            class="flex w-full cursor-grab items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-slate-300 hover:bg-slate-50 active:cursor-grabbing"
         >
             <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-500">
                 <i class="fa {{ item.icon|default:'fa-grip' }}"></i>
@@ -28,7 +28,7 @@
             </span>
         </div>
     {% empty %}
-        <div class="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500">
+        <div class="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500">
             No items available.
         </div>
     {% endfor %}

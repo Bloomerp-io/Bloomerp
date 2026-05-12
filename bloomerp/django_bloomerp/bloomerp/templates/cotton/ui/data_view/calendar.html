@@ -21,7 +21,7 @@ Parameters:
 {% load bloomerp %}
 
 <div 
-    class="flex flex-col h-full bg-white rounded-lg border border-gray-200 overflow-hidden"
+    class="flex flex-col h-full bg-white rounded-xl border border-gray-200 overflow-hidden"
     data-content-type-id="{{ content_type_id }}"
     data-view-mode="{{ calendar_view_mode|default:'month' }}"
     data-page-offset="{{ calendar_page_offset|default:0 }}"
@@ -46,7 +46,7 @@ Parameters:
                 <button 
                     type="button"
                     data-calendar-nav="prev"
-                    class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    class="p-2 hover:bg-gray-100 rounded-xl transition-colors"
                     title="Previous"
                 >
                     <c-icons.chevron_left size="16" class="text-gray-600" />
@@ -54,14 +54,14 @@ Parameters:
                 <button 
                     type="button"
                     data-calendar-nav="today"
-                    class="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    class="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
                 >
                     Today
                 </button>
                 <button 
                     type="button"
                     data-calendar-nav="next"
-                    class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    class="p-2 hover:bg-gray-100 rounded-xl transition-colors"
                     title="Next"
                 >
                     <c-icons.chevron_right size="16" class="text-gray-600" />

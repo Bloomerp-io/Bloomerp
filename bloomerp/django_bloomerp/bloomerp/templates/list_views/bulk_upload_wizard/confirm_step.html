@@ -50,7 +50,7 @@
         <c-ui.text.text>Validation issues</c-ui.text.text>
         <div class="mt-3 space-y-3">
             {% for row_error in validation_summary.errors %}
-            <div class="rounded-lg border border-red-100 bg-red-50 px-4 py-3">
+            <div class="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
                 <p class="text-sm font-medium text-red-900">Row {{ row_error.row }}</p>
                 <ul class="mt-2 list-disc pl-5 text-sm text-red-800">
                     {% for error in row_error.errors %}
@@ -63,7 +63,7 @@
     </div>
     {% endif %}
     {% else %}
-    <div class="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+    <div class="rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
         Upload and review a file before confirming the import.
     </div>
     {% endif %}

@@ -1,14 +1,14 @@
 {% load crispy_forms_tags %}
 
 <div class="space-y-4">
-    <div class="rounded-lg border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900">
+    <div class="rounded-xl border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900">
         {{ form.intro_text }}
     </div>
 
     <form method="post" action="{{ post_url }}" id="bloomerp-bulk-form-{{ content_type_id }}">
         {% csrf_token %}
         {% if form.non_field_errors %}
-        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {% for error in form.non_field_errors %}
                 <p>{{ error }}</p>
             {% endfor %}

@@ -1,7 +1,7 @@
 {% load bloomerp %}
 
 <!-- View Switcher -->
-<div class="bg-base p-2 rounded-lg flex mb-4 overflow-x-scroll no-scrollbar gap-2">
+<div class="bg-base p-2 rounded-xl flex mb-4 overflow-x-scroll no-scrollbar gap-2">
     {% for view_type in view_types %}
     <button
         hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
@@ -22,7 +22,7 @@
             <span>Split view</span>
         </div>
         <button 
-            class="relative inline-flex w-40 justify-center px-2 py-1 rounded-lg transition-all duration-200 {% if preference.split_view_enabled %}bg-primary-100 text-primary-600 ring-1 ring-primary-500{% else %}bg-base text-light hover:bg-gray-200 hover:text-gray-700{% endif %}"
+            class="relative inline-flex w-40 justify-center px-2 py-1 rounded-xl transition-all duration-200 {% if preference.split_view_enabled %}bg-primary-100 text-primary-600 ring-1 ring-primary-500{% else %}bg-base text-light hover:bg-gray-200 hover:text-gray-700{% endif %}"
             hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
             hx-vals='{"split_view_enabled": "{% if preference.split_view_enabled %}false{% else %}true{% endif %}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
             hx-target="#data-view-{{ content_type_id }}"

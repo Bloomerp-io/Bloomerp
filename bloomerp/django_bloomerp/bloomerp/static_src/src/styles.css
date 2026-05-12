@@ -1011,7 +1011,7 @@ Dashboard
 /* Wrapper to hold all messages */
 @layer components {
   .alert {
-    @apply rounded-lg border px-4 py-3 text-sm;
+    @apply rounded-xl border px-4 py-3 text-sm;
   }
 
   .alert-primary {
@@ -1264,7 +1264,7 @@ Dashboard
 
     /* DrawFlow Node Styling - Card-like appearance */
     .drawflow .drawflow-node {
-        @apply border border-gray-200 rounded-lg shadow-sm min-w-[200px] p-0;
+        @apply border border-gray-200 rounded-xl shadow-sm min-w-[200px] p-0;
         background: white !important;
         border: 1px solid #e5e7eb !important;
         border-radius: 0.5rem !important;

@@ -818,7 +818,7 @@ export class PermissionsTable extends BaseComponent {
 
             if (!response.ok) {
                 this.previewTarget.innerHTML = `
-                    <div class="rounded-lg border border-dashed border-red-200 bg-red-50 px-4 py-6 text-sm text-red-600">
+                    <div class="rounded-xl border border-dashed border-red-200 bg-red-50 px-4 py-6 text-sm text-red-600">
                         Unable to load preview.
                     </div>
                 `;
@@ -833,7 +833,7 @@ export class PermissionsTable extends BaseComponent {
             }
 
             this.previewTarget.innerHTML = `
-                <div class="rounded-lg border border-dashed border-red-200 bg-red-50 px-4 py-6 text-sm text-red-600">
+                <div class="rounded-xl border border-dashed border-red-200 bg-red-50 px-4 py-6 text-sm text-red-600">
                     Unable to load preview.
                 </div>
             `;

@@ -7,7 +7,7 @@
         data-sidebar-gap-dropzone
         data-drop-parent-id="{{ item.parent_id|default:'' }}"
         data-drop-position="{{ item.position }}"
-        class="h-1 my-0 rounded-lg border border-dashed border-transparent transition-all duration-200 ease-out"
+        class="h-1 my-0 rounded-xl border border-dashed border-transparent transition-all duration-200 ease-out"
     ></div>
 </li>
 <li 
@@ -35,7 +35,7 @@
         data-drop-parent-id="{{ item.id }}"
         data-drop-position="{{ children|length }}"
         {% endif %}
-        class="relative flex items-center overflow-visible rounded-lg cursor-grab active:cursor-grabbing"
+        class="relative flex items-center overflow-visible rounded-xl cursor-grab active:cursor-grabbing"
         @click="if ({{ item.is_folder|yesno:'true,false' }} && !$event.target.closest('[data-ignore-toggle]')) expanded = !expanded"
     >
         {% if item.is_folder %}

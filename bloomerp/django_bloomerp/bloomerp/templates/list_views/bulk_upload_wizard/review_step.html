@@ -11,7 +11,7 @@
             Continue when this page looks correct, or move between pages here before importing.
         </p>
         <div class="flex items-center gap-3 self-start lg:self-auto">
-            <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+            <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
                 Page {{ review_page.page }} of {{ review_page.total_pages }}
             </div>
             <div class="flex items-center gap-2">
@@ -86,7 +86,7 @@
         </div>
     </div>
     {% else %}
-    <div class="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+    <div class="rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
         Upload a file before reviewing rows.
     </div>
     {% endif %}

@@ -33,6 +33,12 @@ Parameters:
         }
     "
     @click.away="open = false"
+    @keydown.escape.window="
+        if (open) {
+            open = false;
+            $el.querySelector('[aria-haspopup=&quot;true&quot;]')?.focus();
+        }
+    "
     @{{ close_on_item_event|default:'dropdown-close' }}="open = false"
     {% if trigger_selector %}
     x-init="(() => {
@@ -79,7 +85,7 @@ Parameters:
             {{ trigger_class }}
         " 
         @click="{% if not disabled %}open = !open{% endif %}"
-        aria-expanded="false" 
+        :aria-expanded="open.toString()"
         aria-haspopup="true"
         {% if disabled %}disabled{% endif %}
     >
