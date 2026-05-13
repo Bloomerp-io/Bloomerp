@@ -1,4 +1,6 @@
 import { registerCommands } from "./commands";
+import { ImageNode } from "./nodes/ImageNode";
+import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 
@@ -32,7 +34,7 @@ import { Action, ACTIONS } from "./actions";
 import { BaseWidget } from "../widgets/BaseWidget";
 
 export class BloomerpTextEditor extends BaseWidget {
-    private editor: LexicalEditor | null = null;
+    public editor: LexicalEditor | null = null;
     private unregister: (() => void) | null = null;
     private button:HTMLButtonElement;
     private actionsToolbar:HTMLElement;
@@ -76,6 +78,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 TableNode,
                 TableRowNode,
                 TableCellNode,
+                ImageNode,
             ],
             onError: (error: Error) => {
                 throw error;
@@ -93,6 +96,7 @@ export class BloomerpTextEditor extends BaseWidget {
             registerRichText(this.editor),
             registerHistory(this.editor, historyState, 300),
             registerTableBehavior(this.editor, this.element),
+            registerImageBehavior(this.editor, this.element),
             this.editor.registerUpdateListener(() => {
                 if (this.isInitializing || this.suppressNextChange) {
                     this.suppressNextChange = false;
@@ -149,7 +153,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 event.preventDefault()
             })
             actionBtn.addEventListener('click', ()=> {
-                action.handler(this.editor)
+                action.handler(this)
                 this.editor?.focus()
             })
 

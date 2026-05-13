@@ -198,7 +198,11 @@ export const COMMANDS: Record<string, Command> = {
     },
     range: {
         command: SELECTION_CHANGE_COMMAND,
-        handler: () => true,
+        handler: () => {
+            
+
+            return false
+        },
     },
     at: {
         command: KEY_DOWN_COMMAND,

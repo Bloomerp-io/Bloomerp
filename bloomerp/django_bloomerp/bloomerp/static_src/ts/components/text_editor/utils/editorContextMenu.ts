@@ -1,6 +1,8 @@
 import { ContextMenuController, getContextMenu } from "@/utils/contextMenu";
 import { $getSelection, $isRangeSelection, $isTextNode, LexicalEditor } from "lexical";
 import { ACTIONS } from "../actions";
+import { componentIdentifier, getComponent } from "@/components/BaseComponent";
+import type { BloomerpTextEditor } from "../BloomerpTextEditor";
 
 function getCaretRect(root: HTMLElement): DOMRect {
     const selection = window.getSelection();
@@ -76,6 +78,15 @@ function getSlashRect(editor: LexicalEditor): DOMRect {
     return rect ?? getCaretRect(root);
 }
 
+function getTextEditorComponent(editor: LexicalEditor): BloomerpTextEditor | null {
+    const root = editor.getRootElement();
+    const componentElement = root?.closest<HTMLElement>(`[${componentIdentifier}="bloomerp-text-editor"]`);
+    if (!componentElement) {
+        return null;
+    }
+
+    return getComponent(componentElement) as BloomerpTextEditor | null;
+}
 
 export function launchContextMenu(
     editor:LexicalEditor, 
@@ -85,6 +96,11 @@ export function launchContextMenu(
 ) {
     const root = editor.getRootElement()
     if (!root) {
+        return;
+    }
+
+    const textEditor = getTextEditorComponent(editor);
+    if (!textEditor) {
         return;
     }
 
@@ -104,7 +120,7 @@ export function launchContextMenu(
             label: insert.label,
             icon: insert.icon,
             onClick: () => {
-                insert.handler(editor);
+                insert.handler(textEditor);
             },
         }));
 

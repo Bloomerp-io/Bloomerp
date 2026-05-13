@@ -78,7 +78,7 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
             this.value = nextValue;
             const nextSnapshot = this.captureSnapshot();
             this.lastSnapshot = this.cloneSnapshot(nextSnapshot);
-            console.log("Change detected in DetailViewCell widget:", customEvent.detail?.widget, nextValue);
+            
             this.emitCellChange(previousValue, nextValue, target, previousSnapshot, nextSnapshot);
         };
 
@@ -94,7 +94,6 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
             this.value = nextValue;
             const nextSnapshot = this.captureSnapshot();
             this.lastSnapshot = this.cloneSnapshot(nextSnapshot);
-            console.log("Change detected in DetailViewCell input:", target, nextValue);
             this.emitCellChange(previousValue, nextValue, target, previousSnapshot, nextSnapshot);
         };
 

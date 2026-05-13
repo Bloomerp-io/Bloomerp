@@ -6,11 +6,14 @@ import { $setBlocksType } from "@lexical/selection";
 import { $createTableNodeWithDimensions } from "@lexical/table";
 import { $createParagraphNode, $getSelection, $insertNodes, $isRangeSelection, LexicalEditor } from "lexical"
 import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./utils/wordSelector";
+import getGeneralModal from "@/utils/modals";
+import type { BloomerpTextEditor } from "./BloomerpTextEditor";
+import { promptImageUpload } from "./utils/imageBehavior";
 
 export type Action = {
     label: string,
     icon: string,
-    handler: (editor: LexicalEditor) => void
+    handler: (textEditor: BloomerpTextEditor) => void
 }
 
 
@@ -21,7 +24,16 @@ function removeTriggerWord() {
     }
 }
 
-function handleHeading(editor: LexicalEditor, heading: "h1" | "h2" | "h3") {
+function getLexicalEditor(textEditor: BloomerpTextEditor): LexicalEditor | null {
+    return textEditor.editor;
+}
+
+function handleHeading(textEditor: BloomerpTextEditor, heading: "h1" | "h2" | "h3") {
+    const editor = getLexicalEditor(textEditor);
+    if (!editor) {
+        return;
+    }
+
     editor.update(() => {
         removeTriggerWord()
         const selection = $getSelection();
@@ -38,29 +50,42 @@ export const ACTIONS: Record<string, Action> = {
     h1: {
         label: "Heading 1",
         icon: "fa-solid fa-heading",
-        handler: (editor) => handleHeading(editor, "h1")
+        handler: (textEditor) => handleHeading(textEditor, "h1")
     },
     h2: {
         label: "Heading 2",
         icon: "fa-solid fa-heading",
-        handler: (editor) => handleHeading(editor, "h2")
+        handler: (textEditor) => handleHeading(textEditor, "h2")
     },
     h3: {
         label: "Heading 3",
         icon: "fa-solid fa-heading",
-        handler: (editor) => handleHeading(editor, "h3")
+        handler: (textEditor) => handleHeading(textEditor, "h3")
     },
     image: {
         label: "Image",
         icon: "fa-solid fa-image",
-        handler: (editor) => {
+        handler: (textEditor) => {
+            const editor = getLexicalEditor(textEditor);
+            if (!editor) {
+                return;
+            }
 
+            editor.update(() => {
+                removeTriggerWord()
+            });
+            promptImageUpload(editor);
         }
     },
     unordered_list: {
         label: "Bullet List",
         icon: "fa-solid fa-list-ul",
-        handler: (editor) => {
+        handler: (textEditor) => {
+            const editor = getLexicalEditor(textEditor);
+            if (!editor) {
+                return;
+            }
+
             editor.update(() => {
                 removeTriggerWord()
                 const selection = $getSelection();
@@ -76,7 +101,12 @@ export const ACTIONS: Record<string, Action> = {
     ordered_list: {
         label: "Numbered List",
         icon: "fa-solid fa-list-ol",
-        handler: (editor) => {
+        handler: (textEditor) => {
+            const editor = getLexicalEditor(textEditor);
+            if (!editor) {
+                return;
+            }
+
             editor.update(() => {
                 removeTriggerWord()
                 const selection = $getSelection();
@@ -92,7 +122,12 @@ export const ACTIONS: Record<string, Action> = {
     table: {
         label: "Table",
         icon: "fa-solid fa-table",
-        handler: (editor) => {
+        handler: (textEditor) => {
+            const editor = getLexicalEditor(textEditor);
+            if (!editor) {
+                return;
+            }
+
             editor.update(() => {
                 removeTriggerWord()
                 const selection = $getSelection();
@@ -109,6 +144,53 @@ export const ACTIONS: Record<string, Action> = {
 
                 $insertNodes([table, paragraph]);
             });
+        }
+    },
+    html: {
+        label: "HTML",
+        icon: "fa-solid fa-code",
+        handler: (textEditor) => {
+            const modal = getGeneralModal();
+            const body = modal.getBodyElement();
+            if (!body) {
+                return;
+            }
+
+            modal.setTitle('Raw HTML')
+            body.innerHTML = ''
+
+            const wrapper = document.createElement('div')
+            wrapper.className = 'flex flex-col gap-3'
+
+            const textarea = document.createElement('textarea')
+            textarea.className = 'input min-h-80 w-full font-mono text-sm'
+            textarea.value = textEditor.getValue()
+
+            const actions = document.createElement('div')
+            actions.className = 'flex justify-end gap-2'
+
+            const cancelButton = document.createElement('button')
+            cancelButton.type = 'button'
+            cancelButton.className = 'btn btn-secondary'
+            cancelButton.textContent = 'Cancel'
+            cancelButton.addEventListener('click', () => {
+                modal.close()
+            })
+
+            const applyButton = document.createElement('button')
+            applyButton.type = 'button'
+            applyButton.className = 'btn btn-primary'
+            applyButton.textContent = 'Apply'
+            applyButton.addEventListener('click', () => {
+                textEditor.setValue(textarea.value, true)
+                modal.close()
+            })
+
+            actions.append(cancelButton, applyButton)
+            wrapper.append(textarea, actions)
+            body.appendChild(wrapper)
+            modal.open()
+            textarea.focus()
         }
     }
 }

@@ -101,15 +101,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
                 previousSnapshot: this.cloneSnapshot(previousSnapshot),
                 snapshot: this.cloneSnapshot(snapshot),
             });
-            console.log("ObjectCRUDViewContainer registered change:", {
-                cell,
-                previousValue,
-                value,
-                target,
-                previousSnapshot,
-                snapshot,
-                pendingChanges: this.pendingChanges,
-            });
+            
             this.syncChangeButtonsVisibility();
         };
         this.element.addEventListener(DetailViewCell.changeEventName, this.detailViewCellChangeHandler);

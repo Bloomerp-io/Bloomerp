@@ -21,7 +21,6 @@ import { CardView } from './components/data_view_components/CardView';
 import { CardViewCard } from './components/data_view_components/CardView';
 import { PermissionsTable } from './components/PermissionsTable';
 import FilterContainer from './components/Filters';
-import TextEditor from './components/inputs/TextEditor';
 import WebsiteBuilder from './components/WebsiteBuilder';
 import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
