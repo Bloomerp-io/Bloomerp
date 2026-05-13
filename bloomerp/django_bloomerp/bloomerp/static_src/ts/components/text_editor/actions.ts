@@ -1,12 +1,11 @@
 import { $createHeadingNode } from "@lexical/rich-text";
 import {
     $createListNode,
-    INSERT_ORDERED_LIST_COMMAND,
-    INSERT_UNORDERED_LIST_COMMAND,
 } from "@lexical/list";
 import { $setBlocksType } from "@lexical/selection";
-import { $getSelection, $isRangeSelection, LexicalEditor } from "lexical"
-import { getCurrentWord, removeTextFromCurrentNode } from "./utils/wordSelector";
+import { $createTableNodeWithDimensions } from "@lexical/table";
+import { $createParagraphNode, $getSelection, $insertNodes, $isRangeSelection, LexicalEditor } from "lexical"
+import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./utils/wordSelector";
 
 export type Action = {
     label: string,
@@ -15,14 +14,17 @@ export type Action = {
 }
 
 
+function removeTriggerWord() {
+    const currentWord = getCurrentWordFromSelection();
+    if (currentWord[0] === '/' || currentWord[0] === '@') {
+        removeTextFromCurrentSelection(currentWord)
+    }
+}
+
 function handleHeading(editor: LexicalEditor, heading: "h1" | "h2" | "h3") {
     editor.update(() => {
+        removeTriggerWord()
         const selection = $getSelection();
-
-        const currentWord = getCurrentWord(editor);
-        if (currentWord[0] === '/' || currentWord[0] === '@') {
-            removeTextFromCurrentNode(editor, currentWord)
-        }
 
         if (!$isRangeSelection(selection)) {
             return;
@@ -60,6 +62,7 @@ export const ACTIONS: Record<string, Action> = {
         icon: "fa-solid fa-list-ul",
         handler: (editor) => {
             editor.update(() => {
+                removeTriggerWord()
                 const selection = $getSelection();
 
                 if (!$isRangeSelection(selection)) {
@@ -75,6 +78,7 @@ export const ACTIONS: Record<string, Action> = {
         icon: "fa-solid fa-list-ol",
         handler: (editor) => {
             editor.update(() => {
+                removeTriggerWord()
                 const selection = $getSelection();
 
                 if (!$isRangeSelection(selection)) {
@@ -82,6 +86,28 @@ export const ACTIONS: Record<string, Action> = {
                 }
 
                 $setBlocksType(selection, () => $createListNode('number'))
+            });
+        }
+    },
+    table: {
+        label: "Table",
+        icon: "fa-solid fa-table",
+        handler: (editor) => {
+            editor.update(() => {
+                removeTriggerWord()
+                const selection = $getSelection();
+                
+                if (!$isRangeSelection(selection)) {
+                    return;
+                }
+
+                const table = $createTableNodeWithDimensions(3, 2, {
+                    rows: true,
+                    columns: false,
+                });
+                const paragraph = $createParagraphNode();
+
+                $insertNodes([table, paragraph]);
             });
         }
     }

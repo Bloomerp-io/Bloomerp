@@ -41,8 +41,12 @@
     "vite": "^6.0.1"
   },
   "dependencies": {
+    "@editorjs/code": "^2.9.4",
+    "@editorjs/editorjs": "^2.31.6",
+    "@editorjs/header": "^2.8.9",
     "@excalidraw/excalidraw": "^0.18.0",
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "@lexical/history": "^0.18.0",
     "@lexical/html": "^0.18.0",
     "@lexical/link": "^0.18.0",
     "@lexical/list": "^0.18.0",

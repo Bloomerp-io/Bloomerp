@@ -19,7 +19,7 @@ import {
 import { $createListItemNode, $createListNode, $isListItemNode, $isListNode, type ListItemNode, type ListType } from "@lexical/list";
 import { $setBlocksType } from "@lexical/selection";
 import { getContextMenu } from "@/utils/contextMenu";
-import { launchContextMenu } from "./editorContextMenu";
+import { launchContextMenu } from "./utils/editorContextMenu";
 import { getCurrentWord, removeTextFromCurrentNode } from "./utils/wordSelector";
 
 export type Command = {
@@ -188,7 +188,7 @@ export const COMMANDS: Record<string, Command> = {
                 launchContextMenu(
                     this,
                     contextMenu,
-                    ["h1", "h2", "h3", "image", "unordered_list", "ordered_list"],
+                    ["h1", "h2", "h3", "image", "unordered_list", "ordered_list", "table"],
                     currentWord.slice(1),
                 );
             });

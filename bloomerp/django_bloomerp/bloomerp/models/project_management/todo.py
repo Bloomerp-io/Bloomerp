@@ -119,7 +119,9 @@ class Todo(BloomerpModel):
         )
     datetime_completed = models.DateTimeField(
         null=True, 
-        blank=True
+        blank=True,
+        editable=False,
+        help_text=_("The date and time when the todo was completed")
         )
     status = models.CharField(
         max_length=50, 
@@ -177,4 +179,6 @@ class Todo(BloomerpModel):
 
         return super().clean()
 
-    
+    def save(self, *args, **kwargs):
+        self.full_clean()  # This will call the clean method and raise a ValidationError if there are any validation errors
+        super().save(*args, **kwargs)

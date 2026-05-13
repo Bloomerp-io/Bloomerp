@@ -1,6 +1,6 @@
 import { ContextMenuController, getContextMenu } from "@/utils/contextMenu";
 import { $getSelection, $isRangeSelection, $isTextNode, LexicalEditor } from "lexical";
-import { ACTIONS } from "./actions";
+import { ACTIONS } from "../actions";
 
 function getCaretRect(root: HTMLElement): DOMRect {
     const selection = window.getSelection();

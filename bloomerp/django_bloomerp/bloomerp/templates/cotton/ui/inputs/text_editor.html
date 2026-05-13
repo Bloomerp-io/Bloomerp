@@ -1,16 +1,14 @@
 <div 
-    bloomerp-component="text-editor" 
+    bloomerp-component="bloomerp-text-editor" 
     class="relative rounded-xl p-2 h-72 {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}" 
     data-placeholder="{{ placeholder|default:'' }}"
     data-disabled="{{ disabled|yesno:'true,false' }}"
     data-styling="{{ styling|default:'prose max-w-none' }}"
+    data-name="{{ name }}"
     >
-    <div 
-        data-text-editor-body="true"
-        contenteditable="true"
-        role="textbox"
-        aria-multiline="true"
-        class="focus:outline-none focus:border-0 focus:ring-0 caret-black"
-        ></div>
+    <!--Toolbar-->
+    <div class="flex p-2 gap-2 overflow-x-scroll" id="actions-toolbar"></div>
+    <!--End toolbar-->
+    <div id="editor" class="outline-none p-2" contenteditable></div>
     <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value|default:'' }}">
 </div>

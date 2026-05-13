@@ -141,14 +141,33 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
     public override focusReadModeTarget(): void {
         if (!this.element) return;
 
-        const focusTarget = this.element.querySelector<HTMLElement>(
-            ".detail-layout-item__body input, .detail-layout-item__body textarea, .detail-layout-item__body select, .detail-layout-item__body button, .detail-layout-item__body [contenteditable=\"true\"], .detail-layout-item__body [tabindex]:not([tabindex=\"-1\"])",
-        );
+        const focusTarget = this.getFirstFocusableElement([
+            "#editor", // TODO: this is for the text editor
+            ".detail-layout-item__body [contenteditable=\"true\"]",
+            ".detail-layout-item__body input:not([type=\"hidden\"])",
+            ".detail-layout-item__body textarea",
+            ".detail-layout-item__body select",
+            ".detail-layout-item__body button:not([tabindex=\"-1\"])",
+            ".detail-layout-item__body [tabindex]:not([tabindex=\"-1\"])",
+        ]);
+        console.log(focusTarget)
+
         if (focusTarget) {
             focusTarget.focus();
             return;
         }
         this.element.focus();
+    }
+
+    private getFirstFocusableElement(selectors: string[]): HTMLElement | null {
+        for (const selector of selectors) {
+            const element = this.element?.querySelector<HTMLElement>(selector);
+            if (element) {
+                return element;
+            }
+        }
+
+        return null;
     }
 
     public override focusEditModeTarget(): void {

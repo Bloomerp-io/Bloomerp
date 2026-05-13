@@ -535,6 +535,18 @@
     @apply bg-primary-50;
   }
 
+  .object-selected {
+    @apply bg-primary-50 ring-2 ring-primary ring-inset;
+  }
+
+  tr.object-selected > td {
+    @apply bg-primary-50;
+  }
+
+  .object-selection-mode [data-object-id] {
+    @apply cursor-pointer;
+  }
+
   .workspace-tile--focused {
     @apply outline-none ring-2 ring-offset-2;
     @apply ring-[var(--color-primary-700)] ring-offset-white;

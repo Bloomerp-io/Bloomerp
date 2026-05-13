@@ -700,7 +700,7 @@ class FieldType(Enum):
         icon="fa-solid fa-paragraph",
         model_field_cls=models.TextField,
         lookups=TEXT_LOOKUPS,
-        widget_cls=forms.Textarea,
+        widget_cls=BloomerpTextEditorWidget,
         field_options=COMMON_FIELD_OPTIONS,
     )
     

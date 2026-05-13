@@ -50,6 +50,7 @@ import ShortcutTooltip from './components/ShortcutTooltip';
 import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
 import TemplateBuilder from './components/template_builder/TemplateBuilder';
 import FocusOnForm from './components/FocusOnForm';
+import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -78,9 +79,6 @@ registerComponent('permissions-table', PermissionsTable)
 // Filter container
 registerComponent('filter-container', FilterContainer)
 
-// Textfield
-registerComponent('text-editor', TextEditor)
-
 // Website builder
 registerComponent('website-builder', WebsiteBuilder)
 registerComponent('template-builder', TemplateBuilder)
@@ -99,6 +97,7 @@ registerComponent('foreign-field-widget', ForeignFieldWidget);
 registerComponent('one-to-many-field-widget', OneToManyFieldWidget);
 registerComponent('code-editor-widget', CodeEditorWidget);
 registerComponent('icon-picker-widget', IconPickerWidget);
+registerComponent('bloomerp-text-editor', BloomerpTextEditor);
 
 // Messages
 registerComponent('ui-message', UiMessage);
@@ -131,6 +130,7 @@ registerComponent('shortcut-tooltip', ShortcutTooltip);
 registerComponent('ordered-field-select', OrderedFieldSelect);
 
 registerComponent('focus-on-form', FocusOnForm);
+
 
 // Auto init comonents
 setupComponentAutoInit();
