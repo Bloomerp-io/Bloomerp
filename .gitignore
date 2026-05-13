@@ -91,3 +91,6 @@ bloomerp/django_bloomerp/bloomerp/static_src/.vite/
 setup.py
 bloomerp/django_bloomerp/db.sqlite3
 
+# 
+bloomerp/django_bloomerp/bloomerp/bloomerp_modules
+bloomerp/django_bloomerp/avatars

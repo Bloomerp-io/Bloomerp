@@ -13,6 +13,7 @@ Parameters:
 - kanban_groups (list): List of groups with 'value', 'label', 'items', 'count' keys.
 - kanban_group_by_field (ApplicationField): The field used for grouping.
 
+TODO: This and dataview_kanban_cards need to be merged
 {% endcomment %}
 
 {% load bloomerp %}
@@ -31,7 +32,8 @@ Parameters:
         {% for group in kanban_groups %}
         <div 
             class="kanban-column flex-shrink-0 w-72 bg-base rounded-xl border border-gray-200 flex flex-col max-h-full"
-            data-column-value="{{ group.value|default:'__none__' }}"
+            data-column-value="{{ group.request_value }}"
+            data-kanban-total-count="{{ group.count }}"
         >
             <!-- Column Header -->
             <div class="kanban-column-header p-3 border-b border-gray-200 bg-base rounded-t-lg">
@@ -49,50 +51,9 @@ Parameters:
             <div 
                 class="kanban-column-body flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]"
                 data-kanban-dropzone
-                data-column-value="{{ group.value|default:'__none__' }}"
+                data-column-value="{{ group.request_value }}"
             >
-                {% for object in group.items %}
-                <div 
-                    class="kanban-card bg-white rounded-xl border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
-                    draggable="true"
-                    data-object-id="{{ object.pk }}"
-                    hx-get="{{ object.get_absolute_url }}"
-                    hx-target="#main-content"
-                    hx-swap="innerHTML"
-                    hx-trigger="click"
-                    hx-push-url="true"
-
-                    bloomerp-component="kanban-card"
-                >
-                    <!-- Card Title -->
-                    <div class="mb-2 flex items-center gap-2">
-                        {% if avatar_field %}
-                            <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover shrink-0" />
-                        {% endif %}
-                        <div class="min-w-0 flex-1 font-medium text-gray-900 text-sm truncate" title="{{ object }}">
-                            {{ object }}
-                        </div>
-                    </div>
-                    
-                    <!-- Card Fields -->
-                    <div class="space-y-1">
-                        {% for field in fields %}
-                        <div class="flex items-center text-xs text-gray-600">
-                            <span class="text-gray-400 mr-1 truncate w-20">{{ field.field|title }}:</span>
-                            <span class="truncate flex-1">
-                                {% with value=object|getattr_filter:field.field %}
-                                    {{ value|default:"-" }}
-                                {% endwith %}
-                            </span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% empty %}
-                <div class="text-center py-4 text-gray-400 text-sm">
-                    No items
-                </div>
-                {% endfor %}
+                {% include "components/objects/dataview_kanban_cards.html" %}
             </div>
         </div>
         {% endfor %}

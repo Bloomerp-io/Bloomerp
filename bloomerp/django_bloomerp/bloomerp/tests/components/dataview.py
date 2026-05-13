@@ -367,6 +367,55 @@ class TestDataView(BaseBloomerpModelTestCase):
             any("direction=desc" in url and "page=3" not in url for url in first_name_sort_urls)
         )
 
+    def test_kanban_dataview_uses_column_pagination(self):
+        self.client.force_login(self.admin_user)
+        self.CustomerModel.objects.all().delete()
+
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        age_field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        last_name_field = ApplicationField.get_by_field(self.CustomerModel, "last_name")
+        preference = get_user_list_view_preference(self.admin_user, content_type)
+        preference.view_type = "kanban"
+        preference.page_size = 10
+        preference.kanban_group_by_field = age_field
+        preference.display_fields = {
+            **preference.display_fields,
+            "kanban": [last_name_field.id],
+        }
+        preference.save()
+
+        for index in range(30):
+            self.create_customer(f"Batch-{index}", "Kanban", 123)
+
+        dataview_url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type.id},
+        )
+
+        response = self.client.get(dataview_url, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-column-value="123"', html=False)
+        self.assertContains(response, 'data-kanban-total-count="30"', html=False)
+        self.assertContains(response, "kanban_column=123&kanban_page=2", html=False)
+        self.assertNotContains(response, 'data-testid="data-view-pagination"', html=False)
+
+        column_url = reverse(
+            viewname="components_data_view_kanban_column",
+            kwargs={"content_type_id": content_type.id},
+        )
+        page_response = self.client.get(
+            f"{column_url}?kanban_column=123&kanban_page=2",
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(page_response.status_code, 200)
+        self.assertEqual(
+            page_response.content.decode("utf-8").count('bloomerp-component="kanban-card"'),
+            10,
+        )
+        self.assertContains(page_response, "kanban_column=123&kanban_page=3", html=False)
+
     def test_filter_dataview_with_foreign_key_field(self):
         """
         This test checks whether the dataview correctly applies filters

@@ -23,9 +23,12 @@ from bloomerp.models.users.user_list_view_preference import CalendarViewMode
 from bloomerp.models import ApplicationField
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from collections import defaultdict
-from django.db.models import QuerySet
+from django.db.models import Count, Q, QuerySet
 from datetime import date, datetime, timedelta
+from dataclasses import dataclass
 import uuid
+
+from bloomerp.utils.stopwatch import Stopwatch
 
 # -----------------------------------
 # Filter helpers
@@ -110,6 +113,125 @@ def _format_applied_filters(query_params) -> list[dict]:
         })
 
     return applied
+
+# -----------------------------------
+# Paginator
+# -----------------------------------
+@dataclass
+class DataViewPagination:
+    """Pagination state for the current data view render."""
+    queryset: QuerySet
+    page_obj: object | None = None
+    pagination_pages: list[int | None] | None = None
+    show_global_pagination: bool = False
+
+
+@dataclass
+class DataViewQueryState:
+    content_type: ContentType
+    model: type
+    preference: UserListViewPreference
+    data_view_fields: object
+    data_view_render_fields: list[ApplicationField]
+    avatar_field: ApplicationField | None
+    queryset: QuerySet
+    query: str | None
+    sort_context: dict
+
+
+class DataViewPaginationStrategy:
+    """Base hook for view-specific pagination behavior."""
+
+    def paginate(self, queryset: QuerySet, preference: UserListViewPreference, request: HttpRequest) -> DataViewPagination:
+        return DataViewPagination(queryset=queryset)
+
+
+class GlobalPagePaginationStrategy(DataViewPaginationStrategy):
+    """Classic whole-queryset pagination used by table-like views."""
+
+    def paginate(self, queryset: QuerySet, preference: UserListViewPreference, request: HttpRequest) -> DataViewPagination:
+        page_obj = _paginate_object_list(queryset, preference.page_size, request.GET.get("page", 1))
+        return DataViewPagination(
+            queryset=page_obj,
+            page_obj=page_obj,
+            pagination_pages=_build_pagination_range(page_obj),
+            show_global_pagination=True,
+        )
+
+
+class KanbanColumnPaginationStrategy(DataViewPaginationStrategy):
+    """Kanban paginates inside each column, so the base queryset remains intact."""
+
+    def paginate(self, queryset: QuerySet, preference: UserListViewPreference, request: HttpRequest) -> DataViewPagination:
+        return DataViewPagination(queryset=queryset, show_global_pagination=False)
+
+
+VIEW_PAGINATION_STRATEGIES: dict[str, DataViewPaginationStrategy] = {
+    ViewType.TABLE: GlobalPagePaginationStrategy(),
+    ViewType.CARD: GlobalPagePaginationStrategy(),
+    ViewType.KANBAN: KanbanColumnPaginationStrategy(),
+}
+
+
+def _get_pagination_strategy(view_type: str) -> DataViewPaginationStrategy:
+    return VIEW_PAGINATION_STRATEGIES.get(view_type, DataViewPaginationStrategy())
+
+
+def _paginate_object_list(object_list, page_size: int, page_number):
+    paginator = Paginator(object_list, page_size)
+
+    try:
+        return paginator.page(page_number)
+    except PageNotAnInteger:
+        return paginator.page(1)
+    except EmptyPage:
+        return paginator.page(paginator.num_pages or 1)
+
+
+def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> DataViewQueryState | HttpResponse:
+    query = request.GET.get('q')
+
+    try:
+        content_type = ContentType.objects.get(id=content_type_id)
+        Model = content_type.model_class()
+    except ContentType.DoesNotExist:
+        return HttpResponse("Content Type not found.", status=404)
+
+    permission_manager = UserPermissionManager(request.user)
+    queryset = permission_manager.get_queryset(Model, create_permission_str(Model, "view"))
+
+    preference = get_user_list_view_preference(request.user, content_type)
+    data_view_fields = get_data_view_fields(preference)
+    avatar_field, data_view_render_fields = _split_avatar_field(data_view_fields)
+
+    if query:
+        queryset = string_search_on_queryset(queryset, query)
+
+    filter_querydict = request.GET.copy()
+    for key in ('page', 'calendar_page', 'kanban_page', 'kanban_column', 'sort', 'direction', '_component_id'):
+        filter_querydict.pop(key, None)
+    for key in list(filter_querydict.keys()):
+        if key.startswith("_arg_"):
+            filter_querydict.pop(key, None)
+    queryset = filter_model(Model, filter_querydict, queryset)
+
+    sort_context = {}
+    if preference.view_type == ViewType.TABLE:
+        queryset, sort_context = _apply_table_sorting(queryset, request, data_view_fields)
+
+    return DataViewQueryState(
+        content_type=content_type,
+        model=Model,
+        preference=preference,
+        data_view_fields=data_view_fields,
+        data_view_render_fields=data_view_render_fields,
+        avatar_field=avatar_field,
+        queryset=queryset,
+        query=query,
+        sort_context=sort_context,
+    )
+
+
 
 # -----------------------------------
 # Helper functions for different view types
@@ -208,12 +330,17 @@ def _get_extra_context_for_view_type(preference:UserListViewPreference, queryset
     match preference.view_type:
         case ViewType.TABLE:
             pass
+        
         case ViewType.KANBAN:
             kanban_groups = None
             kanban_group_by_field = None
             if preference.view_type == ViewType.KANBAN and preference.kanban_group_by_field:
                 kanban_group_by_field = preference.kanban_group_by_field
-                kanban_groups = _build_kanban_groups(queryset, kanban_group_by_field)
+                kanban_groups = _build_kanban_groups(
+                    queryset,
+                    kanban_group_by_field,
+                    page_size=preference.page_size,
+                )
             
             context["kanban_groups"] = kanban_groups
             context["kanban_group_by_field"] = kanban_group_by_field
@@ -400,95 +527,285 @@ def _build_month_calendar_grid(start_date: date, end_date: date) -> list:
     return weeks
     
     
-def _build_kanban_groups(queryset, group_by_field: ApplicationField) -> list:
+KANBAN_EMPTY_COLUMN_VALUE = "__none__"
+
+
+def _format_kanban_column_value(value) -> str:
+    return KANBAN_EMPTY_COLUMN_VALUE if value in (None, "") else str(value)
+
+
+def _get_kanban_model_field(queryset, field_name: str):
+    model = queryset.model
+    if not hasattr(model, '_meta'):
+        return None
+
+    try:
+        return model._meta.get_field(field_name)
+    except Exception:
+        return None
+
+
+def _iter_kanban_choices(choices):
+    for choice_value, choice_label in choices:
+        if isinstance(choice_label, (list, tuple)):
+            for nested_value, nested_label in choice_label:
+                yield nested_value, nested_label
+        else:
+            yield choice_value, choice_label
+
+
+def _kanban_field_allows_blank_string(model_field) -> bool:
+    return bool(
+        model_field
+        and getattr(model_field, 'empty_strings_allowed', False)
+        and not (getattr(model_field, 'many_to_one', False) or getattr(model_field, 'one_to_one', False))
+    )
+
+
+def _build_kanban_empty_filter(field_name: str, model_field) -> Q:
+    empty_filter = Q(**{f"{field_name}__isnull": True})
+    if _kanban_field_allows_blank_string(model_field):
+        empty_filter |= Q(**{field_name: ""})
+    return empty_filter
+
+
+def _coerce_kanban_column_value(raw_value: str, model_field):
+    if raw_value == KANBAN_EMPTY_COLUMN_VALUE:
+        return None
+
+    if model_field is None:
+        return raw_value
+
+    try:
+        if getattr(model_field, 'many_to_one', False) or getattr(model_field, 'one_to_one', False):
+            return model_field.target_field.to_python(raw_value)
+        return model_field.to_python(raw_value)
+    except Exception:
+        return raw_value
+
+
+def _get_kanban_choice_label(model_field, value) -> str:
+    if model_field and getattr(model_field, 'choices', None):
+        for choice_value, choice_label in _iter_kanban_choices(model_field.choices):
+            if choice_value == value:
+                return str(choice_label)
+
+    return str(value)
+
+
+def _get_kanban_related_label(queryset, field_name: str, value) -> str:
+    related_obj = (
+        queryset
+        .filter(**{field_name: value})
+        .select_related(field_name)
+        .first()
+    )
+    if related_obj:
+        related_value = getattr(related_obj, field_name, None)
+        if related_value:
+            return str(related_value)
+
+    return f'ID: {value}'
+
+
+def _build_kanban_column_queryset(queryset, field_name: str, model_field, value):
+    if value is None:
+        return queryset.filter(_build_kanban_empty_filter(field_name, model_field))
+    return queryset.filter(**{field_name: value})
+
+
+def _build_kanban_column_group(
+    queryset,
+    group_by_field: ApplicationField,
+    column_value: str,
+    page_size: int | None = None,
+    page_number=1,
+) -> dict | None:
+    field_name = group_by_field.field
+    field_type = group_by_field.field_type
+    model_field = _get_kanban_model_field(queryset, field_name)
+    value = _coerce_kanban_column_value(column_value, model_field)
+
+    column_queryset = _build_kanban_column_queryset(queryset, field_name, model_field, value)
+    item_count = column_queryset.count()
+    if item_count == 0 and value is not None:
+        return None
+
+    if value is None:
+        label = 'Unassigned'
+    elif field_type in ['ForeignKey', 'OneToOneField']:
+        label = _get_kanban_related_label(queryset, field_name, value)
+    else:
+        label = _get_kanban_choice_label(model_field, value)
+
+    return _build_kanban_group(
+        value,
+        label,
+        column_queryset,
+        page_size,
+        page_number,
+        item_count=item_count,
+    )
+
+
+def _build_kanban_group(
+    value,
+    label: str,
+    items: list,
+    page_size: int | None = None,
+    page_number=1,
+    item_count: int | None = None,
+) -> dict:
+    """Build a kanban group with optimized performance.
+    
+    Args:
+        value: The group value/identifier
+        label: The group label for display
+        items: List of items in this group
+        page_size: Optional page size for pagination
+        page_number: Current page number for pagination
+        item_count: Pre-calculated item count (avoids len() call if provided)
+    
+    Returns:
+        Dictionary representing the kanban group
+    """
+    # Pre-calculated count is more efficient than calling len(items) each time
+    total_count = item_count if item_count is not None else len(items)
+    
+    # Only paginate if needed
+    if page_size:
+        page_obj = _paginate_object_list(items, page_size, page_number)
+        visible_items = page_obj.object_list  # Keep as paginator object_list, don't convert to list
+    else:
+        page_obj = None
+        visible_items = items
+
+    return {
+        'value': value,
+        'request_value': _format_kanban_column_value(value),
+        'label': label,
+        'items': visible_items,
+        'count': total_count,
+        'page_obj': page_obj,
+        'has_next_page': page_obj.has_next() if page_obj else False,
+        'next_page_number': page_obj.next_page_number() if page_obj and page_obj.has_next() else None,
+    }
+
+
+def _build_kanban_groups(queryset, group_by_field: ApplicationField, page_size: int | None = None, page_number=1) -> list[dict]:
     """
     Builds kanban groups from a queryset based on a grouping field.
+    Optimized to minimize database queries and Python object iteration.
     
     Args:
         queryset: The Django queryset to group
         group_by_field: The ApplicationField to group by
+        page_size: Optional page size for pagination
+        page_number: Current page number (1-indexed)
         
     Returns:
         A list of dicts with 'value', 'label', and 'items' keys
     """
     field_name = group_by_field.field
     field_type = group_by_field.field_type
+    model_field = _get_kanban_model_field(queryset, field_name)
+    groups = []
     
-    # Get unique values for the grouping field
-    # For ForeignKey fields, we need to handle differently
     if field_type in ['ForeignKey', 'OneToOneField']:
-        # Group by the related object
-        grouped_data = defaultdict(list)
-        for obj in queryset:
-            related_obj = getattr(obj, field_name, None)
-            # Use the related object's pk as key, or None for empty
-            key = related_obj.pk if related_obj else None
-            grouped_data[key].append(obj)
-        
-        # Build the groups list
-        groups = []
-        
-        # Add a group for items with no value (None)
-        if None in grouped_data:
-            groups.append({
-                'value': None,
-                'label': 'Unassigned',
-                'items': grouped_data[None],
-                'count': len(grouped_data[None]),
-            })
-        
-        # Get unique related objects
-        related_model = group_by_field.related_model.model_class() if group_by_field.related_model else None
-        if related_model:
-            # Get all related objects that are referenced
-            related_pks = [pk for pk in grouped_data.keys() if pk is not None]
-            related_objects = {obj.pk: obj for obj in related_model.objects.filter(pk__in=related_pks)}
-            
-            for pk, items in grouped_data.items():
-                if pk is not None:
-                    related_obj = related_objects.get(pk)
-                    groups.append({
-                        'value': pk,
-                        'label': str(related_obj) if related_obj else f'ID: {pk}',
-                        'items': items,
-                        'count': len(items),
-                    })
+        count_rows = list(
+            queryset
+            .values(field_name)
+            .annotate(item_count=Count('pk'))
+            .order_by(field_name)
+        )
+        counts_by_value = {
+            row[field_name]: row["item_count"]
+            for row in count_rows
+        }
+
+        if None in counts_by_value:
+            items = _build_kanban_column_queryset(queryset, field_name, model_field, None)
+            groups.append(_build_kanban_group(
+                None, 'Unassigned', items, page_size, page_number,
+                item_count=counts_by_value[None]
+            ))
+
+        related_labels = {}
+        if model_field and getattr(model_field, 'remote_field', None):
+            related_model = model_field.remote_field.model
+            related_values = [value for value in counts_by_value if value is not None]
+            related_labels = {
+                pk: str(related_obj)
+                for pk, related_obj in related_model.objects.in_bulk(related_values).items()
+            }
+
+        for row in count_rows:
+            value = row[field_name]
+            if value is not None:
+                items = _build_kanban_column_queryset(queryset, field_name, model_field, value)
+                label = related_labels.get(value, f'ID: {value}')
+                groups.append(_build_kanban_group(
+                    value, label, items, page_size, page_number,
+                    item_count=row["item_count"]
+                ))
     else:
-        # For regular fields (CharField with choices, BooleanField, etc.)
-        grouped_data = defaultdict(list)
-        for obj in queryset:
-            value = getattr(obj, field_name, None)
-            grouped_data[value].append(obj)
-        
-        groups = []
-        
-        # Try to get choices from the model field
-        model = queryset.model
-        model_field = model._meta.get_field(field_name) if hasattr(model, '_meta') else None
-        choices_dict = {}
-        if model_field and hasattr(model_field, 'choices') and model_field.choices:
-            choices_dict = dict(model_field.choices)
-        
-        # Add None group first if it exists
-        if None in grouped_data or '' in grouped_data:
-            none_items = grouped_data.get(None, []) + grouped_data.get('', [])
-            if none_items:
-                groups.append({
-                    'value': None,
-                    'label': 'Unassigned',
-                    'items': none_items,
-                    'count': len(none_items),
-                })
-        
-        for value, items in grouped_data.items():
-            if value is not None and value != '':
-                label = choices_dict.get(value, str(value)) if choices_dict else str(value)
-                groups.append({
-                    'value': value,
-                    'label': label,
-                    'items': items,
-                    'count': len(items),
-                })
+        empty_count = queryset.filter(_build_kanban_empty_filter(field_name, model_field)).count()
+        if empty_count:
+            items = _build_kanban_column_queryset(queryset, field_name, model_field, None)
+            groups.append(_build_kanban_group(
+                None, 'Unassigned', items, page_size, page_number,
+                item_count=empty_count
+            ))
+
+        if model_field and getattr(model_field, 'choices', None):
+            seen_values = set()
+            counts_by_value = {
+                row[field_name]: row["item_count"]
+                for row in (
+                    queryset
+                    .exclude(_build_kanban_empty_filter(field_name, model_field))
+                    .values(field_name)
+                    .annotate(item_count=Count('pk'))
+                    .order_by(field_name)
+                )
+            }
+
+            # Always render every configured choice in declaration order.
+            for choice_value, choice_label in _iter_kanban_choices(model_field.choices):
+                if choice_value in (None, ''):
+                    continue
+
+                choice_items = _build_kanban_column_queryset(queryset, field_name, model_field, choice_value)
+                groups.append(_build_kanban_group(
+                    choice_value, str(choice_label), choice_items, page_size, page_number,
+                    item_count=counts_by_value.get(choice_value, 0)
+                ))
+                seen_values.add(choice_value)
+
+            # Include unexpected values from data so cards never disappear.
+            for value, item_count in counts_by_value.items():
+                if value in seen_values:
+                    continue
+                items = _build_kanban_column_queryset(queryset, field_name, model_field, value)
+                groups.append(_build_kanban_group(
+                    value, str(value), items, page_size, page_number,
+                    item_count=item_count
+                ))
+        else:
+            count_rows = (
+                queryset
+                .exclude(_build_kanban_empty_filter(field_name, model_field))
+                .values(field_name)
+                .annotate(item_count=Count('pk'))
+                .order_by(field_name)
+            )
+            for row in count_rows:
+                value = row[field_name]
+                items = _build_kanban_column_queryset(queryset, field_name, model_field, value)
+                groups.append(_build_kanban_group(
+                    value, str(value), items, page_size, page_number,
+                    item_count=row["item_count"]
+                ))
     
     return groups
 
@@ -527,65 +844,28 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     - permissions management
     - string searching
     """
-    query = request.GET.get('q')
-    page = request.GET.get('page', 1)
+    state = _build_data_view_query_state(request, content_type_id)
+    if isinstance(state, HttpResponse):
+        return state
     
-    # Get the content type
-    try:
-        content_type = ContentType.objects.get(id=content_type_id)
-        Model = content_type.model_class()
-    except ContentType.DoesNotExist:
-        return HttpResponse("Content Type not found.", status=404)
+    preference = state.preference
+    queryset = state.queryset
+    query = state.query
+    data_view_fields = state.data_view_fields
+    data_view_render_fields = state.data_view_render_fields
+    avatar_field = state.avatar_field
+    sort_context = state.sort_context
     
-    # Manager
-    permission_manager = UserPermissionManager(request.user)
-    
-    # Get the base queryset
-    queryset = permission_manager.get_queryset(Model, create_permission_str(Model, "view"))
-    
-    # Get the user's list view preference
-    preference = get_user_list_view_preference(request.user, content_type)
-    
-    # Get fields for the user (visible + accessible)
-    data_view_fields = get_data_view_fields(preference)
-    avatar_field, data_view_render_fields = _split_avatar_field(data_view_fields)
-    
-    # Apply string search if query is present
-    if query:
-        queryset = string_search_on_queryset(queryset, query)
-
-    # The model
-    filter_querydict = request.GET.copy()
-    filter_querydict.pop('page', None)
-    filter_querydict.pop('calendar_page', None)
-    filter_querydict.pop('sort', None)
-    filter_querydict.pop('direction', None)
-    filter_querydict.pop('_component_id', None)
-    for key in list(filter_querydict.keys()):
-        if key.startswith("_arg_"):
-            filter_querydict.pop(key, None)
-    queryset = filter_model(Model, filter_querydict, queryset)
-
-    sort_context = {}
-    if preference.view_type == ViewType.TABLE:
-        queryset, sort_context = _apply_table_sorting(queryset, request, data_view_fields)
-    
-    # Apply pagination
-    page_size = preference.page_size
-    paginator = Paginator(queryset, page_size)
-    
-    try:
-        page_obj = paginator.page(page)
-    except PageNotAnInteger:
-        page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
-    
+    pagination = _get_pagination_strategy(preference.view_type).paginate(queryset, preference, request)
     
     # Add extra context based on view type
     # TODO: take a look at this logic, it looks a little bit weird
     page_querystring = request.GET.copy()
     page_querystring.pop('page', None)
+    kanban_page_querystring = request.GET.copy()
+    kanban_page_querystring.pop('page', None)
+    kanban_page_querystring.pop('kanban_page', None)
+    kanban_page_querystring.pop('kanban_column', None)
     table_sort_querystring = request.GET.copy()
     table_sort_querystring.pop('page', None)
     table_sort_querystring.pop('sort', None)
@@ -607,8 +887,8 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
 
     context = {
         'content_type_id': content_type_id,
-        'queryset': page_obj,
-        'page_obj': page_obj,
+        'queryset': pagination.queryset,
+        'page_obj': pagination.page_obj,
         'fields': data_view_fields,
         'data_view_render_fields': data_view_render_fields,
         'avatar_field': avatar_field,
@@ -625,8 +905,10 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'sync_url': sync_url,
         'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),
+        'kanban_page_querystring': kanban_page_querystring.urlencode(),
         'table_sort_querystring': table_sort_querystring.urlencode(),
-        'pagination_pages': _build_pagination_range(page_obj),
+        'pagination_pages': pagination.pagination_pages or [],
+        'show_global_pagination': pagination.show_global_pagination,
         'applied_filters': _format_applied_filters(request.GET),
         'component_id': component_id,
         'component_args' : _get_component_args(request)
@@ -635,6 +917,59 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     context.update(_get_extra_context_for_view_type(preference, queryset, request))
     
     return render(request, 'components/objects/dataview.html', context)
+
+
+@router.register(
+    path="components/data_view/<int:content_type_id>/kanban_column/",
+    name="components_data_view_kanban_column",
+)
+def data_view_kanban_column(request: HttpRequest, content_type_id: int) -> HttpResponse:
+    """Renders one additional page for a kanban column."""
+    
+    state = _build_data_view_query_state(request, content_type_id)
+    
+    if isinstance(state, HttpResponse):
+        return state
+
+    preference = state.preference
+    if preference.view_type != ViewType.KANBAN or not preference.kanban_group_by_field:
+        return HttpResponse("Kanban grouping is not configured.", status=400)
+
+    column_value = request.GET.get("kanban_column")
+    if not column_value:
+        return HttpResponse("Missing kanban column.", status=400)
+
+    page_number = request.GET.get("kanban_page", 1)
+    
+    group = _build_kanban_column_group(
+        state.queryset,
+        preference.kanban_group_by_field,
+        column_value,
+        page_size=preference.page_size,
+        page_number=page_number,
+    )
+    
+    if group is None:
+        return HttpResponse("Kanban column not found.", status=404)
+    
+    
+    kanban_page_querystring = request.GET.copy()
+    kanban_page_querystring.pop('page', None)
+    kanban_page_querystring.pop('kanban_page', None)
+    kanban_page_querystring.pop('kanban_column', None)
+
+    
+    return render(
+        request,
+        'components/objects/dataview_kanban_cards.html',
+        {
+            'content_type_id': content_type_id,
+            'fields': state.data_view_render_fields,
+            'avatar_field': state.avatar_field,
+            'group': group,
+            'kanban_page_querystring': kanban_page_querystring.urlencode(),
+        },
+    )
     
 
 @router.register(

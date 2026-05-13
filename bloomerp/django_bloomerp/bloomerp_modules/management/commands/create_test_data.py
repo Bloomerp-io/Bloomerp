@@ -22,6 +22,17 @@ FIRST_NAMES = [
     "Liv", "Tijn", "Lieke", "Jayden", "Nora", "Jesse", "Yfke", "Julian", "Fay",
     "Adam", "Luna", "Levi", "Isa", "Thomas", "Puck", "Lucas", "Nova", "Dylan",
     "Lana", "Mason", "Fiene", "Ethan", "Jade", "Logan", "Saar", "Caleb", "Livia",
+    "Ralph", "Feline", "Nathan", "Lieke", "Ryan", "Yara", "Aaron", "Mara", "Elias",
+    "Jade", "Benjamin", "Fleur", "Samuel", "Lina", "David", "Sophie", "Joseph", "Emma",
+    "Max", "Daan", "Oscar", "Sanne", "Liam", "Floor", "Milan", "Jeroen", "Elias",
+    "Chaim", "Noah", "Resam", "Lisa", "Mick", "Jelle", "Tess", "Wout", "Yara", "Lars", "Noah", "Sophie",
+    "Noa", "Levi", "Mila", "Lucas", "Emma", "Finn", "Anna", "Daan", "Sara", "Sem", "Eva", "Luuk", "Lina",
+    "Oliver", "Ava", "Elijah", "Isabella", "James", "Sophia", "Benjamin", "Charlotte", "Henry", "Amelia",
+    "Alexander", "Mia", "Mason", "Harper", "Michael", "Evelyn", "Ethan", "Abigail", "Daniel", "Emily",
+    "Jacob", "Elizabeth", "Logan", "Ella", "Jackson", "Avery", "Sebastian", "Sofia", "Aiden", "Scarlett",
+    "Matthew", "Victoria", "Samuel", "Madison", "David", "Chloe", "Joseph", "Penelope", "Carter", "Layla",
+    "Thomas", "Lillian", "Charles", "Grace", "Christopher", "Zoey", "Daniel", "Nora", "Matthew", "Riley",
+    
 ]
 
 LAST_NAMES = [
@@ -38,11 +49,25 @@ LAST_NAMES = [
     "Peeters", "Maes", "Goossens", "Claes", "Jacobs", "Mertens", "Lemmens",
     "Al Shamrani", "Al-Qahtani", "Al-Farsi", "Al-Mansoori", "Al-Harbi",
     "Al-Zahrani", "Al-Shehri", "Al-Rashid", "Al-Naimi", "Al-Khalifa",
+    "Goldsmit", "Goldberg", "Goldstein", "Goldman", "Gold", "Silverman", "Silvers", "Silva",
+    "Stern", "Hertzman", "Silverstein", "Goldstein", "Silverstein", "Goldman", "Silversmith", "Goldsmith",
+    "Milerson", "Bennett", "Murphy", "Kelly", "Howard", "Rowe", "Henderson", "Coleman",
+    "Jenkins", "Perry", "Powell", "Long", "Patterson", "Hughes", "Flores", "Washington",
+    "Butler", "Simmons", "Bryant", "Alexander", "Russell", "Griffin", "Hayes", "Myers",
+    "Ford", "Hamilton", "Graham", "Sullivan", "Wallace", "Woods", "Cole", "West",
+    "Jordan", "Owens", "Reynolds", "Fisher", "Ellis", "Harper", "Mason", "Howell",
+    "Doyle", "Meadows", "Herrera", "Henson", "Wilkins", "Dyer", "Reeves", "Chase",
+    "Crane", "Dalton", "Everett", "Gentry", "Gibbs", "Haynes", "Hodges", "Holmes",
+    "Hudson", "Kline", "Knox", "Lacey", "Larsen", "Latham", "Lawson", "Leach",
+    "Rosenberg", "Eisenberg", "Feldman", "Friedman", "Kaplan", "Rosen", "Mendelsohn",
+    "Lipman", "Wasserstein", "Weintraub", "Blumenthal", "Berkowitz", "Horowitz", "Levin", "Zuckerman",
+    
 ]
 
 
 class Command(BaseCommand):
     help = "Create test data for bloomerp_modules dynamic models."
+    BASE_EMPLOYEE_COUNT = 10000
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -50,12 +75,22 @@ class Command(BaseCommand):
             action="store_true",
             help="Create test data even if records already exist.",
         )
+        parser.add_argument(
+            "--employee-multiplier",
+            type=float,
+            default=1.0,
+            help=(
+                "Scale employee generation count. "
+                "For example, --employee-multiplier 10 creates about 10x more employees."
+            ),
+        )
 
     def handle(self, *args, **options):
         force = options.get("force", False)
+        employee_multiplier = max(options.get("employee_multiplier", 1.0), 0.0)
 
         self._create_manufacturing_master_data(force)
-        self._create_hrm_data(force)
+        self._create_hrm_data(force, employee_multiplier)
         self._create_finance_data(force)
         self._create_crm_data(force)
         self._create_user_data(force)
@@ -216,7 +251,7 @@ class Command(BaseCommand):
         elif product_model:
             self.stdout.write("Skipping Product data (missing units or warehouses).")
 
-    def _create_hrm_data(self, force: bool) -> None:
+    def _create_hrm_data(self, force: bool, employee_multiplier: float = 1.0) -> None:
         person_model = self._get_model("Person")
         job_title_model = self._get_model("JobTitle")
         cost_center_model = self._get_model("HrCostCenter")
@@ -397,15 +432,21 @@ class Command(BaseCommand):
         employees = []
         if employee_model and self._should_create(employee_model, force):
             import random
+
             records = []
-            
+            employee_target = max(1, int(self.BASE_EMPLOYEE_COUNT * employee_multiplier))
+
             email_extensions = ["bloomerp.test", "example.com", "testmail.com", "mailtest.org"]
-            
-            for i in range(10000):
+
+            self.stdout.write(f"Generating approximately {employee_target} employees...")
+            for i in range(employee_target):
                 first_name = random.choice(FIRST_NAMES)
                 last_name = random.choice(LAST_NAMES)
-                email = f"{first_name.lower()}.{last_name.lower()}@{random.choice(email_extensions)}"
-                
+                email = (
+                    f"{first_name.lower()}.{last_name.lower()}.{i}"
+                    f"@{random.choice(email_extensions)}"
+                )
+
                 record = {
                     "first_name": first_name,
                     "last_name": last_name,
@@ -421,13 +462,13 @@ class Command(BaseCommand):
                     "employment_type": random.choice(["full_time", "part_time", "contractor", "intern"]),
                     "hire_date": date.today() - timedelta(days=random.randint(30, 365 * 10)),
                     "status": "active",
-                    }
+                }
                 records.append(record)
-                
+
             employees = self._create_records(
                 employee_model,
                 records,
-                ["first_name", "last_name"],
+                ["email"],
             )
         elif employee_model:
             employees = list(employee_model.objects.all()[:3])

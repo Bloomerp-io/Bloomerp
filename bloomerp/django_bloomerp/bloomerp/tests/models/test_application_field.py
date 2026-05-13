@@ -10,10 +10,13 @@ from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.field_types import FieldType, Lookup
+from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
+from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
+from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
 
 
 class TestApplicationField(BaseBloomerpModelTestCase):
@@ -38,6 +41,16 @@ class TestApplicationField(BaseBloomerpModelTestCase):
             },
             use_bloomerp_base=True,
         )["CustomerLine"]
+        cls.PhoneRecordModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "PhoneRecord": {
+                    "phone": PhoneNumberField(blank=True, null=True),
+                    "__str__": lambda self: str(self.phone or ""),
+                }
+            },
+            use_bloomerp_base=True,
+        )["PhoneRecord"]
 
     def test_pk_application_field_returns_widget(self):
         content_type = ContentType.objects.get_for_model(Policy)
@@ -156,6 +169,50 @@ class TestApplicationField(BaseBloomerpModelTestCase):
 
         self.assertIsInstance(widget, CodeEditorWidget)
         self.assertEqual(widget.language, "json")
+
+    def test_phone_number_field_type_uses_phone_field_parts(self):
+        field_type = FieldType.PHONE_NUMBER_FIELD.value
+
+        self.assertEqual(field_type.id, "PhoneNumberField")
+        self.assertIs(field_type.model_field_cls, PhoneNumberField)
+        self.assertIs(field_type.form_field_cls, PhoneNumberFormField)
+        self.assertIs(field_type.widget_cls, PhoneNumberWidget)
+        self.assertEqual(field_type.default_model_field_args["max_length"], 30)
+        self.assertIn(Lookup.CONTAINS, field_type.lookups)
+
+    def test_phone_number_form_field_normalizes_country_codes(self):
+        form_field = PhoneNumberFormField()
+
+        self.assertEqual(form_field.clean("+32 470 12 34 56"), "+32470123456")
+        self.assertEqual(form_field.clean("0032 470 12 34 56"), "+32470123456")
+
+    def test_phone_number_form_field_rejects_invalid_values(self):
+        form_field = PhoneNumberFormField()
+
+        with self.assertRaises(ValidationError):
+            form_field.clean("call me maybe")
+
+    def test_phone_number_model_field_formfield_uses_phone_widget(self):
+        model_field = PhoneNumberField()
+        form_field = model_field.formfield()
+
+        self.assertIsInstance(form_field, PhoneNumberFormField)
+        self.assertIsInstance(form_field.widget, PhoneNumberWidget)
+        self.assertEqual(form_field.widget.input_type, "tel")
+
+    def test_stale_char_field_metadata_uses_phone_number_widget_for_phone_field(self):
+        content_type = ContentType.objects.get_for_model(self.PhoneRecordModel)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="phone",
+        )
+        application_field.field_type = FieldType.CHAR_FIELD.id
+
+        form_field = application_field.get_form_field()
+
+        self.assertEqual(application_field.get_field_type_enum(), FieldType.PHONE_NUMBER_FIELD)
+        self.assertIsInstance(form_field, PhoneNumberFormField)
+        self.assertIsInstance(form_field.widget, PhoneNumberWidget)
 
     def test_property_backed_application_field_returns_no_form_field(self):
         content_type = ContentType.objects.get_for_model(RowPolicyRule)

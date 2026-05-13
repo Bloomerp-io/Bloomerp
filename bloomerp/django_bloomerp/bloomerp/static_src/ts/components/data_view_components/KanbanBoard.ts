@@ -98,28 +98,25 @@ export class KanbanBoard extends BaseDataViewComponent {
 
     private setupDragAndDrop(): void {
         if (!this.element) return;
+        const abortController = this.ensureAbortController();
 
-        const cards = Array.from(
-            this.element.querySelectorAll<HTMLElement>(`[${componentIdentifier}="kanban-card"]`)
-        );
-        for (const card of cards) {
-            card.addEventListener('dragstart', this.onDragStart);
-            card.addEventListener('dragend', this.onDragEnd);
-        }
+        this.element.addEventListener('dragstart', this.onDragStart, { signal: abortController.signal });
+        this.element.addEventListener('dragend', this.onDragEnd, { signal: abortController.signal });
 
         const dropzones = Array.from(
             this.element.querySelectorAll<HTMLElement>('[data-kanban-dropzone]')
         );
         for (const dropzone of dropzones) {
-            dropzone.addEventListener('dragover', this.onDragOver);
-            dropzone.addEventListener('dragenter', this.onDragEnter);
-            dropzone.addEventListener('dragleave', this.onDragLeave);
-            dropzone.addEventListener('drop', this.onDrop);
+            dropzone.addEventListener('dragover', this.onDragOver, { signal: abortController.signal });
+            dropzone.addEventListener('dragenter', this.onDragEnter, { signal: abortController.signal });
+            dropzone.addEventListener('dragleave', this.onDragLeave, { signal: abortController.signal });
+            dropzone.addEventListener('drop', this.onDrop, { signal: abortController.signal });
         }
     }
 
     private onDragStart = (event: DragEvent): void => {
-        const target = event.currentTarget as HTMLElement | null;
+        const eventTarget = event.target as HTMLElement | null;
+        const target = eventTarget?.closest<HTMLElement>(`[${componentIdentifier}="kanban-card"]`) ?? null;
         if (!target) return;
 
         this.activeDragCard = target;
@@ -192,6 +189,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         this.removeEmptyPlaceholder(destinationDropzone);
         destinationDropzone.appendChild(card);
         this.ensureEmptyPlaceholder(originDropzone);
+        this.adjustColumnTotals(originDropzone, destinationDropzone);
         this.updateCounts();
 
         const updateSucceeded = await this.persistMove(card, destinationValue);
@@ -201,6 +199,7 @@ export class KanbanBoard extends BaseDataViewComponent {
                 originDropzone.appendChild(card);
             }
             this.ensureEmptyPlaceholder(destinationDropzone);
+            this.adjustColumnTotals(destinationDropzone, originDropzone);
             this.updateCounts();
         }
     }
@@ -282,9 +281,27 @@ export class KanbanBoard extends BaseDataViewComponent {
             const dropzone = column.querySelector<HTMLElement>('[data-kanban-dropzone]');
             if (!countEl || !dropzone) continue;
 
-            const cardCount = dropzone.querySelectorAll(`[${componentIdentifier}="kanban-card"]`).length;
-            countEl.textContent = String(cardCount);
+            const totalCount = column.dataset.kanbanTotalCount;
+            const visibleCount = dropzone.querySelectorAll(`[${componentIdentifier}="kanban-card"]`).length;
+            countEl.textContent = totalCount ?? String(visibleCount);
         }
+    }
+
+    private adjustColumnTotals(originDropzone: HTMLElement | null, destinationDropzone: HTMLElement | null): void {
+        const originColumn = originDropzone?.closest<HTMLElement>('.kanban-column');
+        const destinationColumn = destinationDropzone?.closest<HTMLElement>('.kanban-column');
+
+        this.incrementColumnTotal(originColumn, -1);
+        this.incrementColumnTotal(destinationColumn, 1);
+    }
+
+    private incrementColumnTotal(column: HTMLElement | null | undefined, delta: number): void {
+        if (!column) return;
+
+        const current = Number.parseInt(column.dataset.kanbanTotalCount ?? '', 10);
+        if (!Number.isFinite(current)) return;
+
+        column.dataset.kanbanTotalCount = String(Math.max(0, current + delta));
     }
 
     private clearDropzoneHighlights(): void {

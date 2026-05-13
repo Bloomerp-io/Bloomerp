@@ -1,3 +1,7 @@
+{% comment %}
+TODO: M2M relationship should be enhanced
+{% end comment%}
+
 <td 
     class="cursor-context-menu" 
     data-dropdown="cell-menu"
@@ -51,6 +55,9 @@
                 >{{ i }}</a>
             {% else %}
                 <span class="badge badge-primary">{{ i }}</span>
+            {% endif %}
+            {% if forloop.counter == 4 %}
+            <span class="badge badge-secondary">...</span>
             {% endif %}
         {% endfor %}
     {% else %}

@@ -45,7 +45,6 @@ class BloomerpCreateView(
     BaseBloomerpView,
     BloomerpModelFormViewMixin,
     BloomerpLayoutFormMixin,
-    MessageMixin,
     CreateView,
 ):
     template_name = "mixins/bloomerp_layout_form_mixin.html"
