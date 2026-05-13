@@ -36,6 +36,23 @@
         {% else %}
             <span class="badge bg-danger">No</span>
         {% endif %}
+    {% elif is_field_type.many_to_many_field %}
+        {% for i in value.all|slice:":4" %}
+            {% if i.get_absolute_url %}
+            <a
+                hx-get="{{ i.get_absolute_url }}"
+                hx-swap="innerHTML"
+                hx-trigger="click"
+                hx-target="{% if split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
+                hx-push-url="true"
+                class="badge badge-primary text-primary"
+                data-no-row-click
+                data-preview-object-id="{{ i.pk }}"
+                >{{ i }}</a>
+            {% else %}
+                <span class="badge badge-primary">{{ i }}</span>
+            {% endif %}
+        {% endfor %}
     {% else %}
         {{ value }}
     {% endif %}

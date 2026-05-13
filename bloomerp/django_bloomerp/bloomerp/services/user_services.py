@@ -75,7 +75,6 @@ def get_data_view_fields(preference: UserListViewPreference, view_type: str = No
     ).exclude(
         field_type__in=[
             FieldType.ONE_TO_MANY_FIELD.value.id,
-            FieldType.MANY_TO_MANY_FIELD.value.id
         ]
     )
     
