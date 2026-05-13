@@ -11,13 +11,14 @@ export type ContextMenuItem = {
 
 export type ContextMenuContext = {
 	trigger: HTMLElement;
-	event: MouseEvent;
+	event: MouseEvent|KeyboardEvent;
 	hide: () => void;
 };
 
 export type ContextMenuController = {
 	element: HTMLDivElement;
-	show: (event: MouseEvent, trigger: HTMLElement, items: ContextMenuItem[]) => void;
+	show: (event: MouseEvent|KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]) => void;
+	showAt: (position: { x: number; y: number }, trigger: HTMLElement, items: ContextMenuItem[]) => void;
 	hide: () => void;
 	destroy: () => void;
 };
@@ -171,7 +172,7 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 			}
 
 			// Activate selected item
-			if (event.key === 'Enter' || event.key === ' ') {
+			if (event.key === 'Enter') {
 				event.preventDefault();
 				event.stopPropagation();
 
@@ -193,13 +194,23 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 	window.addEventListener('scroll', hide, { signal: abortController.signal, capture: true });
 	window.addEventListener('resize', hide, { signal: abortController.signal });
 
-	const show = (event: MouseEvent, trigger: HTMLElement, items: ContextMenuItem[]): void => {
+	const showAt = (
+		position: { x: number; y: number },
+		trigger: HTMLElement,
+		items: ContextMenuItem[]
+	): void => {
 		// Populate
 		const ul = clearMenu(element);
 
 		const context: ContextMenuContext = {
 			trigger,
-			event,
+			event: new MouseEvent('click', {
+				clientX: position.x,
+				clientY: position.y,
+				bubbles: true,
+				cancelable: true,
+				view: window,
+			}),
 			hide,
 		};
 
@@ -241,10 +252,10 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 		element.classList.remove('hidden');
 
 		// First place at cursor, then clamp based on measured size.
-		element.style.left = `${event.clientX}px`;
-		element.style.top = `${event.clientY}px`;
+		element.style.left = `${position.x}px`;
+		element.style.top = `${position.y}px`;
 
-		const clamped = clampToViewport(event.clientX, event.clientY, element);
+		const clamped = clampToViewport(position.x, position.y, element);
 		element.style.left = `${clamped.x}px`;
 		element.style.top = `${clamped.y}px`;
 
@@ -253,13 +264,20 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 		setActiveIndex(0);
 	};
 
+	const show = (event: MouseEvent | KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]): void => {
+		const rect = trigger.getBoundingClientRect();
+		const x = 'clientX' in event && typeof event.clientX === 'number' ? event.clientX : rect.left;
+		const y = 'clientY' in event && typeof event.clientY === 'number' ? event.clientY : rect.bottom;
+		showAt({ x, y }, trigger, items);
+	};
+
 	const destroy = (): void => {
 		abortController.abort();
 		menuCache.delete(id);
 		if (element.parentElement) element.parentElement.removeChild(element);
 	};
 
-	const controller: ContextMenuController = { element, show, hide, destroy };
+	const controller: ContextMenuController = { element, show, showAt, hide, destroy };
 	menuCache.set(id, controller);
 	return controller;
 }
@@ -267,7 +285,5 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 export function getActiveContextMenu(): ContextMenuController | null {
 	return activeMenu;
 }
-
-
 
 
