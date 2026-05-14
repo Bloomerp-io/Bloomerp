@@ -231,6 +231,30 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("sdk.metadata.models.<model>.fields.<field>.choices", readme_contents)
             self.assertIn("BloomerpHttpError", readme_contents)
 
+    def test_create_sdk_can_limit_generated_models_to_selected_apps(self):
+        """
+        The create_sdk management command should allow filtering generated SDK
+        models by a comma-separated list of app names.
+        """
+        with TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "sdk"
+
+            call_command(
+                "create_sdk",
+                str(output_path),
+                "--language",
+                "typescript",
+                "--filename",
+                "index.ts",
+                "--apps",
+                "django.contrib.auth",
+            )
+
+            index_contents = (output_path / "index.ts").read_text(encoding="utf-8")
+
+            self.assertNotIn("export interface Customer", index_contents)
+            self.assertNotIn("export class CustomerApi", index_contents)
+
     def test_create_sdk_rejects_unsupported_languages(self):
         """
         The create_sdk management command should reject languages that are not
