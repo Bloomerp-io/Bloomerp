@@ -4,6 +4,7 @@ import { BloomerpTextEditor } from "./text_editor/BloomerpTextEditor";
 import ForeignFieldWidget from "./widgets/ForeignFieldWidget";
 import getSdk from "@/sdk/getSdk";
 import CodeEditorWidget from "./widgets/CodeEditorWidget";
+import { getModal } from "@/utils/modals";
 
 type InjectionMethod = {
     id: string;
@@ -29,6 +30,30 @@ type FreeVariableTypeDefinition = {
     icon: string;
     supportsChoices: boolean;
     injectionMethods: InjectionMethod[];
+};
+
+type VariablePickerEntry = {
+    id: string;
+    sourceLabel: string;
+    label: string;
+    description: string;
+    icon: string;
+    token: string;
+    isFreeVariable: boolean;
+    injectionMethods: InjectionMethod[];
+    searchText: string;
+};
+
+type VariablePickerItem = {
+    entry: VariablePickerEntry;
+    element: HTMLDivElement;
+};
+
+type VariablePickerLayout = {
+    root: HTMLDivElement;
+    searchInput: HTMLInputElement;
+    emptyState: HTMLParagraphElement;
+    results: HTMLDivElement;
 };
 
 /**
@@ -140,6 +165,11 @@ function getChoicesDescription(choices:Array<{ value: string; label: string }>) 
     return `${choices.length} ${choices.length === 1 ? 'choice' : 'choices'}`
 }
 
+function getFreeVariableDescription(variable:FreeVariable) {
+    const choiceDescription = getChoicesDescription(variable.choices)
+    return choiceDescription ? `${variable.typeLabel} · ${choiceDescription}` : variable.typeLabel
+}
+
 /**
  * Normalizes a variable slug
  * @param value 
@@ -169,6 +199,99 @@ function getUniqueSlug(value:string, freeVariables:FreeVariable[]) {
     return `${baseSlug}_${suffix}`
 }
 
+function createVariablePickerEntry(args: {
+    id: string;
+    sourceLabel: string;
+    label: string;
+    description: string;
+    icon: string;
+    token: string;
+    isFreeVariable: boolean;
+    injectionMethods: InjectionMethod[];
+}) : VariablePickerEntry {
+    const searchText = [
+        args.sourceLabel,
+        args.label,
+        args.description,
+        args.token,
+        ...args.injectionMethods.map((method) => method.label),
+    ].join(' ').toLowerCase()
+
+    return {
+        ...args,
+        searchText,
+    }
+}
+
+function createModelVariablePickerEntry(variableElement:HTMLElement) : VariablePickerEntry|null {
+    const token = variableElement.dataset.token
+    if (!token) {return null}
+
+    return createVariablePickerEntry({
+        id: `model:${token}`,
+        sourceLabel: variableElement.dataset.contentTypeLabel || 'Model variable',
+        label: variableElement.dataset.label || token,
+        description: variableElement.dataset.fieldTypeLabel || '',
+        icon: variableElement.dataset.icon || 'fa-solid fa-cubes',
+        token,
+        isFreeVariable: false,
+        injectionMethods: getInjectionMethods(variableElement),
+    })
+}
+
+function createFreeVariablePickerEntry(variable:FreeVariable) : VariablePickerEntry {
+    return createVariablePickerEntry({
+        id: `free:${variable.slug}`,
+        sourceLabel: 'Free variable',
+        label: variable.label,
+        description: getFreeVariableDescription(variable),
+        icon: variable.icon,
+        token: variable.slug,
+        isFreeVariable: true,
+        injectionMethods: variable.injectionMethods,
+    })
+}
+
+function matchesVariablePickerEntry(entry:VariablePickerEntry, query:string) {
+    const normalizedQuery = query.trim().toLowerCase()
+    return !normalizedQuery || entry.searchText.includes(normalizedQuery)
+}
+
+function getWrappedIndex(currentIndex:number, delta:1|-1, length:number) {
+    if (length === 0) {return -1}
+    if (currentIndex === -1) {
+        return delta === 1 ? 0 : length - 1
+    }
+    return (currentIndex + delta + length) % length
+}
+
+function createVariablePickerLayout() : VariablePickerLayout {
+    const root = document.createElement('div')
+    root.className = 'space-y-4'
+
+    const searchInput = document.createElement('input')
+    searchInput.type = 'text'
+    searchInput.className = 'input w-full'
+    searchInput.placeholder = 'Search variables'
+    searchInput.setAttribute('aria-label', 'Search variables')
+    root.appendChild(searchInput)
+
+    const emptyState = document.createElement('p')
+    emptyState.className = 'hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500'
+    root.appendChild(emptyState)
+
+    const results = document.createElement('div')
+    results.className = 'max-h-[60vh] overflow-y-auto overflow-x-hidden pr-1'
+    root.appendChild(results)
+
+    return {
+        root,
+        searchInput,
+        emptyState,
+        results,
+    }
+}
+
 /**
  * Creates a variable div
  * @param label the label
@@ -176,6 +299,7 @@ function getUniqueSlug(value:string, freeVariables:FreeVariable[]) {
  * @returns the variable div
  */
 function createVariableDiv(
+    sourceLabel:string,
     label:string,
     icon:string,
     description:string,
@@ -199,13 +323,22 @@ function createVariableDiv(
     labelDiv.className = 'text-sm font-medium text-gray-700'
     labelDiv.textContent = label
 
+    const sourceBadge = document.createElement('span')
+    sourceBadge.className = 'inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-600'
+    sourceBadge.textContent = sourceLabel
+
+    const titleRow = document.createElement('div')
+    titleRow.className = 'flex items-center justify-between gap-2'
+    titleRow.appendChild(labelDiv)
+    titleRow.appendChild(sourceBadge)
+
     const descriptionDiv = document.createElement('div')
     descriptionDiv.className = 'text-xs text-gray-500'
     descriptionDiv.textContent = description
 
     const labelWrapper = document.createElement('div')
     labelWrapper.className = 'flex flex-col'
-    labelWrapper.appendChild(labelDiv)
+    labelWrapper.appendChild(titleRow)
     labelWrapper.appendChild(descriptionDiv)
 
 
@@ -224,6 +357,8 @@ function createVariableDiv(
         button.type = 'button'
         button.className = 'badge bg-primary/8 badge-xs border-0 cursor-pointer'
         button.title = injectionMethod.description
+        button.dataset.variableMethodButton = 'true'
+        button.dataset.methodId = injectionMethod.id
         button.innerHTML = `<i class="${injectionMethod.icon}"></i> ${injectionMethod.label}`
         button.addEventListener('click', ()=>onInjectionMethodClick(injectionMethod.id))
         actionsDiv.appendChild(button)
@@ -243,6 +378,30 @@ function createVariableDiv(
     return containerDiv
 }
 
+function renderVariableEntryList(
+    container:HTMLDivElement,
+    entries:VariablePickerEntry[],
+    onSelect:(entry:VariablePickerEntry, methodId:string)=>void,
+    onRemoveFreeVariable?:(slug:string)=>void,
+) : VariablePickerItem[] {
+    container.innerHTML = ''
+
+    return entries.map((entry)=>{
+        const item = createVariableDiv(
+            entry.sourceLabel,
+            entry.label,
+            entry.icon,
+            entry.description,
+            entry.injectionMethods,
+            (methodId) => onSelect(entry, methodId),
+            entry.isFreeVariable && onRemoveFreeVariable ? () => onRemoveFreeVariable(entry.token) : undefined,
+        )
+
+        container.appendChild(item)
+        return { entry, element: item }
+    })
+}
+
 export class DocumentTemplateBuilder extends BaseComponent {
     private editor: BloomerpTextEditor;
     private pageContainer: HTMLDivElement;
@@ -252,8 +411,13 @@ export class DocumentTemplateBuilder extends BaseComponent {
     private currentPageOrientation: 'landscape' | 'portrait' = 'portrait';
     
     private freeVariables: FreeVariable[] = [];
+    private modelVariableEntries: VariablePickerEntry[] = [];
     private freeVariableField: CodeEditorWidget|null = null;
     private freeVariableInput: HTMLTextAreaElement|null = null;
+    private sidebarVariableSearchInput: HTMLInputElement|null = null;
+    private variablePickerItems: VariablePickerItem[] = [];
+    private variablePickerActiveIndex: number = -1;
+    private variablePickerActiveMethodIndex: number = 0;
 
 
     public initialize(): void {
@@ -309,8 +473,12 @@ export class DocumentTemplateBuilder extends BaseComponent {
         const freeVariableComponent = this.freeVariableInput?.closest('[bloomerp-component="code-editor-widget"]') as HTMLElement|null;
         this.freeVariableField = freeVariableComponent ? getComponent(freeVariableComponent) as CodeEditorWidget : null;
         this.freeVariables = this.readFreeVariables();
-        this.renderFreeVariables();
         this.syncFreeVariablesInput();
+        this.sidebarVariableSearchInput = this.element.querySelector('#variable-search-input') as HTMLInputElement | null;
+        this.sidebarVariableSearchInput?.addEventListener('input', ()=>{
+            this.renderSidebarVariables()
+        })
+        this.renderSidebarVariables();
         
         const freeVariableLabel = this.getFormField('free_variable_label')
         const freeVariableType = this.getFormField('free_variable_type');
@@ -337,11 +505,19 @@ export class DocumentTemplateBuilder extends BaseComponent {
             freeVariableRequired.checked = false;
         })
 
-    }
+        // Add command
+        this.editor.registerAction(
+            {
+                label: "Add variable",
+                icon: "fa-solid fa-plus",
+                handler: (editor) => {
+                    this.openVariablePicker()
+                }
+            },
+            'variables',
+            true
+        )
 
-
-    private buildVariableNode(token: string) {
-        return $createTextNode(`{{ ${token} }}`);
     }
 
     /**
@@ -498,28 +674,31 @@ export class DocumentTemplateBuilder extends BaseComponent {
         })
 
         this.syncFreeVariablesInput()
-        this.renderFreeVariables()
+        this.renderSidebarVariables()
     }
 
     /**
-     * Renders the free variables
+     * Renders the combined sidebar variables
      */
-    private renderFreeVariables() {
-        const freeVariableDiv = this.element.querySelector('#free-variable-content')
-        freeVariableDiv.innerHTML = ''
+    private renderSidebarVariables() {
+        const variableResults = this.element.querySelector('#variable-results') as HTMLDivElement | null
+        const emptyState = this.element.querySelector('#variable-results-empty') as HTMLParagraphElement | null
+        if (!variableResults || !emptyState) {return}
 
-        this.freeVariables.forEach((variable)=>{
-            const choiceDescription = getChoicesDescription(variable.choices)
-            const variableDiv = createVariableDiv(
-                variable.label,
-                variable.icon,
-                choiceDescription ? `${variable.typeLabel} · ${choiceDescription}` : variable.typeLabel,
-                variable.injectionMethods,
-                (methodId) => this.insertVariable(variable.slug, methodId, true),
-                () => this.removeFreeVariable(variable.slug),
-            )
-            freeVariableDiv.appendChild(variableDiv)
-        })
+        const query = this.sidebarVariableSearchInput?.value || ''
+        const entries = this.getVariableEntries(query)
+        renderVariableEntryList(
+            variableResults,
+            entries,
+            (entry, methodId) => this.insertVariable(entry.token, methodId, entry.isFreeVariable),
+            (slug) => this.removeFreeVariable(slug),
+        )
+
+        const hasQuery = Boolean(query.trim())
+        emptyState.textContent = hasQuery
+            ? `No variables match "${query.trim()}".`
+            : 'No variables are available.'
+        emptyState.classList.toggle('hidden', entries.length > 0)
     }
 
     /**
@@ -527,26 +706,19 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * @param html 
      */
     private renderModelVariables(html:string) {
-        const contentTypeResults = this.element.querySelector('#content-type-results')
-        contentTypeResults.innerHTML = ''
+        this.modelVariableEntries = []
 
         const template = document.createElement('template')
         template.innerHTML = html
 
         template.content.querySelectorAll('[data-model-variable]').forEach((element)=>{
             const variableElement = element as HTMLElement
-            const token = variableElement.dataset.token
-            if (!token) {return}
-
-            const variableDiv = createVariableDiv(
-                variableElement.dataset.label || token,
-                variableElement.dataset.icon || 'fa-solid fa-cubes',
-                variableElement.dataset.fieldTypeLabel || '',
-                getInjectionMethods(variableElement),
-                (methodId) => this.insertVariable(token, methodId, false),
-            )
-            contentTypeResults.appendChild(variableDiv)
+            const entry = createModelVariablePickerEntry(variableElement)
+            if (!entry) {return}
+            this.modelVariableEntries.push(entry)
         })
+
+        this.renderSidebarVariables()
     }
 
     /**
@@ -613,7 +785,198 @@ export class DocumentTemplateBuilder extends BaseComponent {
     private removeFreeVariable(slug:string) {
         this.freeVariables = this.freeVariables.filter((variable)=>variable.slug !== slug)
         this.syncFreeVariablesInput()
-        this.renderFreeVariables()
+        this.renderSidebarVariables()
+    }
+
+    private getVariableEntries(query:string = '') {
+        return [
+            ...this.modelVariableEntries,
+            ...this.freeVariables.map((variable)=>createFreeVariablePickerEntry(variable)),
+        ]
+            .filter((entry)=>matchesVariablePickerEntry(entry, query))
+    }
+
+    private openVariablePicker() {
+        const modal = getModal('add-variable-modal')
+        const modalBody = modal.getBodyElement()
+        if (!modalBody) {return}
+
+        modal.resetToDefaults()
+        modal.setSize('lg')
+        modal.setTitle('Add variable')
+        modalBody.innerHTML = ''
+
+        const layout = createVariablePickerLayout()
+        modalBody.appendChild(layout.root)
+
+        this.variablePickerActiveIndex = -1
+        this.variablePickerActiveMethodIndex = 0
+        this.renderVariablePickerResults(layout.results, layout.emptyState, '')
+
+        layout.searchInput.addEventListener('input', () => {
+            this.renderVariablePickerResults(layout.results, layout.emptyState, layout.searchInput.value)
+        })
+
+        layout.searchInput.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                this.moveVariablePickerSelection(1)
+                return
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                this.moveVariablePickerSelection(-1)
+                return
+            }
+
+            if (event.key === 'ArrowRight') {
+                event.preventDefault()
+                this.moveVariablePickerMethodSelection(1)
+                return
+            }
+
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault()
+                this.moveVariablePickerMethodSelection(-1)
+                return
+            }
+
+            if (event.key === 'Enter') {
+                const activeItem = this.getActiveVariablePickerItem()
+                const activeMethodId = this.getActiveVariablePickerMethodId(activeItem)
+                if (!activeItem || !activeMethodId) {return}
+
+                event.preventDefault()
+                this.insertVariableFromPicker(activeItem.entry, activeMethodId)
+            }
+        })
+
+        modal.open()
+        window.setTimeout(() => {
+            layout.searchInput.focus()
+        }, 80)
+    }
+
+    private renderVariablePickerResults(
+        container:HTMLDivElement,
+        emptyState:HTMLParagraphElement,
+        query:string,
+    ) {
+        this.variablePickerItems = renderVariableEntryList(
+            container,
+            this.getVariableEntries(query),
+            (entry, methodId) => this.insertVariableFromPicker(entry, methodId),
+        )
+
+        this.variablePickerItems.forEach((item)=>{
+            item.element.classList.add('cursor-pointer', 'transition-colors')
+            item.element.dataset.variablePickerId = item.entry.id
+            item.element.addEventListener('click', (event: MouseEvent) => {
+                const target = event.target as HTMLElement | null
+                if (target?.closest('button')) {return}
+
+                const defaultMethod = item.entry.injectionMethods[0]?.id
+                if (!defaultMethod) {return}
+                this.insertVariableFromPicker(item.entry, defaultMethod)
+            })
+        })
+
+        const hasQuery = Boolean(query.trim())
+        emptyState.textContent = hasQuery
+            ? `No variables match "${query.trim()}".`
+            : 'No variables are available.'
+        emptyState.classList.toggle('hidden', this.variablePickerItems.length > 0)
+
+        this.variablePickerActiveIndex = this.variablePickerItems.length > 0 ? 0 : -1
+        this.variablePickerActiveMethodIndex = 0
+        this.updateVariablePickerActiveState(this.variablePickerItems)
+    }
+
+    private moveVariablePickerSelection(delta:1|-1) {
+        const visibleItems = this.getVisibleVariablePickerItems()
+        if (!visibleItems.length) {return}
+
+        this.variablePickerActiveIndex = getWrappedIndex(this.variablePickerActiveIndex, delta, visibleItems.length)
+        this.variablePickerActiveMethodIndex = 0
+        this.updateVariablePickerActiveState(visibleItems)
+
+        const activeItem = this.getActiveVariablePickerItem()
+        activeItem?.element.scrollIntoView({ block: 'nearest' })
+    }
+
+    private moveVariablePickerMethodSelection(delta:1|-1) {
+        const activeItem = this.getActiveVariablePickerItem()
+        if (!activeItem) {return}
+
+        const methodButtons = this.getVariablePickerMethodButtons(activeItem)
+        if (!methodButtons.length) {return}
+
+        this.variablePickerActiveMethodIndex = getWrappedIndex(
+            this.variablePickerActiveMethodIndex,
+            delta,
+            methodButtons.length,
+        )
+        this.updateVariablePickerActiveState(this.getVisibleVariablePickerItems())
+        methodButtons[this.variablePickerActiveMethodIndex]?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+
+    private updateVariablePickerActiveState(visibleItems:VariablePickerItem[]) {
+        this.variablePickerItems.forEach((item)=>{
+            item.element.classList.remove('border-primary-300', 'bg-primary-50', 'ring-1', 'ring-primary-200')
+            this.getVariablePickerMethodButtons(item).forEach((button)=>{
+                button.classList.remove('ring-2', 'ring-primary-300', 'bg-primary/16')
+            })
+        })
+
+        if (visibleItems.length === 0) {return}
+
+        const nextIndex = this.variablePickerActiveIndex >= 0 ? this.variablePickerActiveIndex : 0
+        this.variablePickerActiveIndex = Math.min(nextIndex, visibleItems.length - 1)
+
+        const activeItem = visibleItems[this.variablePickerActiveIndex]
+        activeItem.element.classList.add('border-primary-300', 'bg-primary-50', 'ring-1', 'ring-primary-200')
+
+        const methodButtons = this.getVariablePickerMethodButtons(activeItem)
+        if (!methodButtons.length) {return}
+
+        this.variablePickerActiveMethodIndex = Math.min(this.variablePickerActiveMethodIndex, methodButtons.length - 1)
+        const activeMethodButton = methodButtons[this.variablePickerActiveMethodIndex]
+        activeMethodButton.classList.add('ring-2', 'ring-primary-300', 'bg-primary/16')
+    }
+
+    private getVisibleVariablePickerItems() {
+        return this.variablePickerItems.filter((item)=>!item.element.classList.contains('hidden'))
+    }
+
+    private getActiveVariablePickerItem() {
+        const visibleItems = this.getVisibleVariablePickerItems()
+        if (this.variablePickerActiveIndex < 0 || this.variablePickerActiveIndex >= visibleItems.length) {
+            return null
+        }
+        return visibleItems[this.variablePickerActiveIndex]
+    }
+
+    private getVariablePickerMethodButtons(item:VariablePickerItem) {
+        return Array.from(
+            item.element.querySelectorAll<HTMLButtonElement>('[data-variable-method-button="true"]')
+        )
+    }
+
+    private getActiveVariablePickerMethodId(item:VariablePickerItem | null) {
+        if (!item) {return null}
+
+        const methodButtons = this.getVariablePickerMethodButtons(item)
+        if (!methodButtons.length) {return null}
+
+        const nextIndex = Math.min(this.variablePickerActiveMethodIndex, methodButtons.length - 1)
+        this.variablePickerActiveMethodIndex = nextIndex
+        return methodButtons[nextIndex].dataset.methodId || null
+    }
+
+    private insertVariableFromPicker(entry:VariablePickerEntry, methodId:string) {
+        this.insertVariable(entry.token, methodId, entry.isFreeVariable)
+        getModal('add-variable-modal').close()
     }
 
     /**

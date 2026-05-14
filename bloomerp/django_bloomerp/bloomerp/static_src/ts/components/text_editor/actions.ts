@@ -46,7 +46,7 @@ function handleHeading(textEditor: BloomerpTextEditor, heading: "h1" | "h2" | "h
     });
 }
 
-export const ACTIONS: Record<string, Action> = {
+export let ACTIONS: Record<string, Action> = {
     h1: {
         label: "Heading 1",
         icon: "fa-solid fa-heading",

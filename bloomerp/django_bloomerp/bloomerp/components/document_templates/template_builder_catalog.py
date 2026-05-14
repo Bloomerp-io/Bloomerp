@@ -42,6 +42,7 @@ def document_template_builder_catalog(request: HttpRequest) -> HttpResponse:
         for field in fields:
             field_type = field.get_field_type_enum()
             variables.append({
+                "content_type_label": content_type.name.title(),
                 "label": field.title,
                 "field_type_label": field_type.display_name,
                 "icon": field_type.icon,

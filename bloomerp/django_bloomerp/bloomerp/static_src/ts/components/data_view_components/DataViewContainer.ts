@@ -16,9 +16,6 @@ export class DataViewContainer extends BaseComponent {
     private appliedFiltersHandler: ((event: Event) => void) | null = null;
     private afterSwapHandler: ((event: Event) => void) | null = null;
     private addButtonHandler: ((event: MouseEvent) => void) | null = null;
-    private selectButtonHandler: ((event: MouseEvent) => void) | null = null;
-    private objectSelectionChangeHandler: ((event: Event) => void) | null = null;
-    private objectSelectionMode: boolean = false;
 
     private static readonly RESERVED_FILTER_KEYS = new Set<string>([
         "q",
@@ -75,17 +72,10 @@ export class DataViewContainer extends BaseComponent {
         this.addButtonHandler = (event: MouseEvent) => this.handleAddButtonClick(event);
         this.getAddButton()?.addEventListener('click', this.addButtonHandler, true);
 
-        this.selectButtonHandler = (event: MouseEvent) => this.handleSelectButtonClick(event);
-        this.getSelectButton()?.addEventListener('click', this.selectButtonHandler);
-
-        this.objectSelectionChangeHandler = (event: Event) => this.handleObjectSelectionChange(event);
-        this.element?.addEventListener('bloomerp:object-selection-change', this.objectSelectionChangeHandler);
-
         this.afterSwapHandler = (event: Event) => this.handleAfterSwap(event);
         this.element?.addEventListener('htmx:afterSwap', this.afterSwapHandler);
 
         this.installCellClickOverrides();
-        this.syncSelectionButton();
     }
 
     /**
@@ -203,8 +193,6 @@ export class DataViewContainer extends BaseComponent {
         }
 
         this.installCellClickOverrides();
-        this.applySelectionModeToDataView();
-        this.syncSelectionButton();
     }
 
     private handleAddButtonClick(event: MouseEvent): void {
@@ -228,13 +216,7 @@ export class DataViewContainer extends BaseComponent {
 
         const cells = dataView.getCells();
         for (const cell of cells) {
-            cell.onClickOverride = (clickedCell, event) => {
-                if (dataView.handleObjectSelectionClick(clickedCell, event)) {
-                    return true;
-                }
-
-                return this.onCellClick(clickedCell, event);
-            };
+            cell.onClickOverride = (clickedCell) => this.onCellClick(clickedCell);
         }
     }
 
@@ -242,7 +224,7 @@ export class DataViewContainer extends BaseComponent {
         return false;
     }
 
-    protected onCellClick(_cell: BaseDataViewCell, _event?: MouseEvent): boolean {
+    protected onCellClick(_cell: BaseDataViewCell): boolean {
         return false;
     }
 
@@ -256,65 +238,6 @@ export class DataViewContainer extends BaseComponent {
 
     private getAddButton(): HTMLElement | null {
         return this.element?.querySelector<HTMLElement>('[data-dataview-add-button]') ?? null;
-    }
-
-    private getSelectButton(): HTMLButtonElement | null {
-        return this.element?.querySelector<HTMLButtonElement>('[data-dataview-select-button]') ?? null;
-    }
-
-    private getSelectionCountElement(): HTMLElement | null {
-        return this.element?.querySelector<HTMLElement>('[data-dataview-selection-count]') ?? null;
-    }
-
-    private handleSelectButtonClick(event: MouseEvent): void {
-        event.preventDefault();
-
-        this.objectSelectionMode = !this.objectSelectionMode;
-        this.applySelectionModeToDataView();
-        this.syncSelectionButton();
-    }
-
-    private applySelectionModeToDataView(): void {
-        try {
-            this.getDataViewComponent().setObjectSelectionMode(this.objectSelectionMode);
-        } catch {
-            return;
-        }
-    }
-
-    private handleObjectSelectionChange(event: Event): void {
-        if (!(event instanceof CustomEvent)) return;
-
-        if (typeof event.detail?.selectionMode === 'boolean') {
-            this.objectSelectionMode = event.detail.selectionMode;
-        }
-
-        this.syncSelectionButton(event.detail?.selectedObjectIds?.length ?? 0);
-    }
-
-    private syncSelectionButton(selectedCount?: number): void {
-        const button = this.getSelectButton();
-        const countElement = this.getSelectionCountElement();
-
-        if (!button) return;
-
-        let count = selectedCount;
-        if (count === undefined) {
-            try {
-                count = this.getDataViewComponent().getSelectedObjectIds().length;
-            } catch {
-                count = 0;
-            }
-        }
-
-        button.setAttribute('aria-pressed', this.objectSelectionMode ? 'true' : 'false');
-        button.classList.toggle('btn-primary', this.objectSelectionMode);
-        button.classList.toggle('btn-secondary', !this.objectSelectionMode);
-
-        if (countElement) {
-            countElement.textContent = count > 0 ? String(count) : '';
-            countElement.classList.toggle('hidden', count <= 0);
-        }
     }
 
     private syncBrowserUrl(dataViewUrl: URL): void {
@@ -469,18 +392,11 @@ export class DataViewContainer extends BaseComponent {
         if (addButton && this.addButtonHandler) {
             addButton.removeEventListener('click', this.addButtonHandler, true);
         }
-        const selectButton = this.getSelectButton();
-        if (selectButton && this.selectButtonHandler) {
-            selectButton.removeEventListener('click', this.selectButtonHandler);
-        }
         if (this.appliedFiltersHandler) {
             this.element?.removeEventListener('click', this.appliedFiltersHandler);
         }
         if (this.afterSwapHandler) {
             this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
-        }
-        if (this.objectSelectionChangeHandler) {
-            this.element?.removeEventListener('bloomerp:object-selection-change', this.objectSelectionChangeHandler);
         }
     }
 

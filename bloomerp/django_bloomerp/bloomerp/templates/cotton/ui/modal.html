@@ -21,6 +21,9 @@ Parameters:
     class="fixed inset-0 bg-black/50 z-[100] hidden items-start justify-center pt-12 p-4 transition-opacity duration-200 ease-out"
     bloomerp-component="modal"
     data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
+    data-default-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
+    data-modal-size="{{ size|default:'md' }}"
+    data-default-modal-size="{{ size|default:'md' }}"
 >
     <!-- Modal container -->
     <div 
@@ -93,4 +96,3 @@ Parameters:
         {% endif %}
     </div>
 </div>
-

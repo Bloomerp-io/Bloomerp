@@ -62,12 +62,14 @@ class BaseSdkGenerator(ABC):
         force: bool = False,
         filename: str | None = None,
         add_readme: bool = False,
+        app_labels: list[str] | None = None,
     ):
         self.output_path = Path(path)
         self.package_name = package_name or self.output_path.name or "bloomerp-sdk"
         self.force = force
         self.filename = filename or self.default_filename
         self.add_readme = add_readme
+        self.app_labels = set(app_labels or [])
 
     def generate(self) -> list[Path]:
         model_definitions = self.get_model_definitions()
@@ -114,6 +116,9 @@ class BaseSdkGenerator(ABC):
         api_models: list[type[models.Model]] = []
         for model in apps.get_models():
             if model._meta.abstract or model._meta.proxy:
+                continue
+
+            if self.app_labels and model._meta.app_label not in self.app_labels:
                 continue
 
             config = getattr(model, "bloomerp_config", None)

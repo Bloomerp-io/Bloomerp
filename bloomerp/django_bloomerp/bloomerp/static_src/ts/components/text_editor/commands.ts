@@ -21,16 +21,22 @@ import { $setBlocksType } from "@lexical/selection";
 import { getContextMenu } from "@/utils/contextMenu";
 import { launchContextMenu } from "./utils/editorContextMenu";
 import { getCurrentWord, removeTextFromCurrentNode } from "./utils/wordSelector";
+import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 
 export type Command = {
     command: LexicalCommand<KeyboardEvent>;
-    handler: (event?: KeyboardEvent) => boolean;
+    handler: (this: BloomerpTextEditor, event?: KeyboardEvent) => boolean;
     priority?: CommandListenerPriority;
 }
 
-export function registerCommands(editor: LexicalEditor): Array<() => void> {
+export function registerCommands(textEditor: BloomerpTextEditor): Array<() => void> {
+    const editor = textEditor.editor;
+    if (!editor) {
+        return [];
+    }
+
     return Object.values(COMMANDS).map(({ command, handler, priority = COMMAND_PRIORITY_LOW }) => (
-        editor.registerCommand(command, (event) => handler.call(editor, event), priority)
+        editor.registerCommand(command, (event) => handler.call(textEditor, event), priority)
     ));
 }
 
@@ -172,23 +178,28 @@ function enterListMode(editor: LexicalEditor, trigger: string, listType: ListTyp
     return true;
 }
 
-export const COMMANDS: Record<string, Command> = {
+export let COMMANDS: Record<string, Command> = {
     slash: {
         command: KEY_DOWN_COMMAND,
         handler: function () {
             requestAnimationFrame(() => {
-                const currentWord = getCurrentWord(this);
+                const editor = this.editor;
+                if (!editor) {return}
+
+                const currentWord = getCurrentWord(editor);
                 const contextMenu = getContextMenu();
 
                 if (currentWord[0] !== "/") {
                     contextMenu.hide();
                     return;
                 }
-
+                console.log(this.slashExtraActions)
                 launchContextMenu(
-                    this,
+                    editor,
                     contextMenu,
-                    ["h1", "h2", "h3", "image", "unordered_list", "ordered_list", "table"],
+                    ["h1", "h2", "h3", "image", "unordered_list", "ordered_list", "table"].concat(
+                        this.slashExtraActions
+                    ),
                     currentWord.slice(1),
                 );
             });
@@ -199,7 +210,7 @@ export const COMMANDS: Record<string, Command> = {
     range: {
         command: SELECTION_CHANGE_COMMAND,
         handler: () => {
-            
+
 
             return false
         },
@@ -208,7 +219,10 @@ export const COMMANDS: Record<string, Command> = {
         command: KEY_DOWN_COMMAND,
         handler: function () {
             requestAnimationFrame(() => {
-                const currentWord = getCurrentWord(this);
+                const editor = this.editor;
+                if (!editor) {return}
+
+                const currentWord = getCurrentWord(editor);
                 const contextMenu = getContextMenu();
 
                 if (currentWord[0] !== "@") {
@@ -217,7 +231,7 @@ export const COMMANDS: Record<string, Command> = {
                 }
 
                 launchContextMenu(
-                    this,
+                    editor,
                     contextMenu,
                     ["h1", "h2", "h3", "ordered_list", "unordered_list"],
                     currentWord.slice(1),
@@ -230,7 +244,8 @@ export const COMMANDS: Record<string, Command> = {
     numberEntersUnorderdList: {
         command: KEY_SPACE_COMMAND,
         handler: function (event) {
-            if (!enterListMode(this, "1.", "number")) {
+            const editor = this.editor;
+            if (!editor || !enterListMode(editor, "1.", "number")) {
                 return false;
             }
 
@@ -241,7 +256,8 @@ export const COMMANDS: Record<string, Command> = {
     dashEntersUnorderedList: {
         command: KEY_SPACE_COMMAND,
         handler: function (event) {
-            if (!enterListMode(this, "-", "bullet")) {
+            const editor = this.editor;
+            if (!editor || !enterListMode(editor, "-", "bullet")) {
                 return false;
             }
 
@@ -254,7 +270,7 @@ export const COMMANDS: Record<string, Command> = {
         handler: function (event) {
             event.preventDefault();
 
-            this.update(() => {
+            this.editor?.update(() => {
                 const selection = $getSelection();
 
                 if (!$isRangeSelection(selection)) {
@@ -279,7 +295,7 @@ export const COMMANDS: Record<string, Command> = {
         handler: function (event) {
             let handled = false;
 
-            this.update(() => {
+            this.editor?.update(() => {
                 const selection = $getSelection();
 
                 if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
@@ -302,7 +318,7 @@ export const COMMANDS: Record<string, Command> = {
         handler: function (event) {
             let handled = false;
 
-            this.update(() => {
+            this.editor?.update(() => {
                 const selection = $getSelection();
 
                 if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
@@ -325,8 +341,12 @@ export const COMMANDS: Record<string, Command> = {
         priority: COMMAND_PRIORITY_CRITICAL,
         handler: function (event) {
             let shouldHandle = false;
+            const editor = this.editor;
+            if (!editor) {
+                return false;
+            }
 
-            this.getEditorState().read(() => {
+            editor.getEditorState().read(() => {
                 const selection = $getSelection();
 
                 if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
@@ -344,7 +364,7 @@ export const COMMANDS: Record<string, Command> = {
             event?.preventDefault();
             event?.stopPropagation();
 
-            this.update(() => {
+            editor.update(() => {
                 const selection = $getSelection();
 
                 if (!$isRangeSelection(selection) || !selection.isCollapsed()) {

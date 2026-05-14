@@ -1,4 +1,4 @@
-import { Command, registerCommands } from "./commands";
+import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
 import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
@@ -50,6 +50,10 @@ export class BloomerpTextEditor extends BaseWidget {
     private isInitializing: boolean = false;
     private editorId:string;
     private includeToolbar:boolean = true;
+
+    // Extra commands
+    public slashExtraActions:string[] = []
+    public rangeExtraActions:string[] = []
 
     public initialize(): void {
         // Get the editor ID
@@ -122,9 +126,9 @@ export class BloomerpTextEditor extends BaseWidget {
 
                 this.onChange();
             }),
-            ...registerCommands(this.editor),
+            ...registerCommands(this),
             ...this.commands.map(({ command, handler, priority = COMMAND_PRIORITY_LOW }) => (
-                this.editor.registerCommand(command, (event) => handler.call(this.editor, event), priority)
+                this.editor.registerCommand(command, (event) => handler.call(this, event), priority)
             )),
         );
 
@@ -282,6 +286,8 @@ export class BloomerpTextEditor extends BaseWidget {
     /**
      * Hook to register extra commands
      * @param command the command to register
+     * @param addToSlash whether to add it to the slash command
+     * @param addToRange whether to add it to the range command
      */
     public registerCommand(command:Command) {
         this.commands.push(command);
@@ -293,25 +299,32 @@ export class BloomerpTextEditor extends BaseWidget {
         const { command: lexicalCommand, handler, priority = COMMAND_PRIORITY_LOW } = command;
         const unregister = this.editor.registerCommand(
             lexicalCommand,
-            (event) => handler.call(this.editor, event),
+            (event) => handler.call(this, event),
             priority,
         );
 
         this.unregister = this.unregister
             ? mergeRegister(this.unregister, unregister)
             : unregister;
+
     }
 
     /**
      * Hook to register extra actions
      * @param action the action to register
      */
-    public registerAction(action:Action) {
+    public registerAction(action:Action, key:string, addToSlash:boolean=false, addToRange:boolean=false) {
         this.actions.push(action);
 
         if (this.actionsToolbar) {
             this.registerActionsToolbar();
         }
+
+        // Add command to repo
+        ACTIONS[key] = action
+
+        if (addToSlash) {this.slashExtraActions.push(key)}
+        if (addToRange) {this.rangeExtraActions.concat(key)}
     }
 
     

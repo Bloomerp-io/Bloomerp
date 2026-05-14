@@ -17,7 +17,7 @@ class DocumentTemplateHeader(BloomerpModel):
     class Meta(BloomerpModel.Meta):
         managed = True
         db_table = 'bloomerp_document_template_header'
-
+    
     name = models.CharField(
         max_length=100,
         blank=False,
@@ -26,7 +26,7 @@ class DocumentTemplateHeader(BloomerpModel):
     header = models.ImageField(
         help_text=_("Image of the header."),
         upload_to='document_templates/headers',
-    ) 
+    )
     margin_top = models.FloatField(default=0.5, help_text=_("Top margin of the header in inches."))
     margin_bottom = models.FloatField(default=0.0, help_text=_("Bottom margin of the header in inches."))
     margin_left = models.FloatField(default=1.0, help_text=_("Left margin of the header in inches."))

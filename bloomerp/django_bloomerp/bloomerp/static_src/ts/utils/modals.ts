@@ -3,7 +3,17 @@ import { Modal } from "@/components/Modal"
 
 
 export default function getGeneralModal(): Modal {
-    return getComponent(document.getElementById("bloomerp-general-use-modal")) as Modal
+    const modal = getModal("bloomerp-general-use-modal")
+    modal.resetToDefaults()
+    return modal
+}
+
+/**
+ * Returns a modal
+ * @param id the modal id
+ */
+export function getModal(id:string) : Modal {
+    return getComponent(document.getElementById(id)) as Modal
 }
 
 /**

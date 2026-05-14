@@ -267,3 +267,7 @@ class ApplicationField(models.Model):
     def icon(self):
         return self.get_field_type_enum().value.icon
         
+        
+    @property
+    def field_type_enum(self):
+        return self.get_field_type_enum()

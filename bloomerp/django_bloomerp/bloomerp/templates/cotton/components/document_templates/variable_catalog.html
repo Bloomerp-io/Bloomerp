@@ -2,6 +2,7 @@
     {% for variable in variables %}
         <div
             data-model-variable
+            data-content-type-label="{{ variable.content_type_label }}"
             data-label="{{ variable.label }}"
             data-field-type-label="{{ variable.field_type_label }}"
             data-icon="{{ variable.icon }}"

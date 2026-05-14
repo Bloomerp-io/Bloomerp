@@ -22,6 +22,14 @@ const TOGGLE_FULL_SCREEN_ATTRIBUTE = 'bloomerp-full-screen-modal'
  * 
  */
 export class Modal extends BaseComponent {
+    private static readonly SIZE_CLASS_MAP: Record<string, string> = {
+        sm: 'max-w-sm',
+        md: 'max-w-2xl',
+        lg: 'max-w-4xl',
+        xl: 'max-w-6xl',
+        full: 'max-w-full',
+    };
+
     private modalId: string = '';
     private backdropElement: HTMLElement | null = null;
     private containerElement: HTMLElement | null = null;
@@ -195,18 +203,20 @@ export class Modal extends BaseComponent {
     private setupBackdropClickHandler(): void {
         if (!this.backdropElement) return;
 
-        // Check if backdrop click should close modal
-        const backdropClickClose = this.element?.getAttribute('data-backdrop-click-close');
-        const shouldClose = backdropClickClose !== 'false'; // Default to true
-
-        if (shouldClose) {
-            this.backdropClickHandler = (e: MouseEvent) => {
-                if (e.target === this.backdropElement) {
-                    this.close();
-                }
-            };
-            this.backdropElement.addEventListener('click', this.backdropClickHandler);
+        if (this.backdropClickHandler) {
+            this.backdropElement.removeEventListener('click', this.backdropClickHandler);
         }
+
+        this.backdropClickHandler = null;
+
+        if (!this.shouldCloseOnBackdrop()) return;
+
+        this.backdropClickHandler = (e: MouseEvent) => {
+            if (e.target === this.backdropElement) {
+                this.close();
+            }
+        };
+        this.backdropElement.addEventListener('click', this.backdropClickHandler);
     }
 
     private setupEscapeKeyHandler(): void {
@@ -400,7 +410,7 @@ export class Modal extends BaseComponent {
     }
 
     private detectCurrentSize(container: HTMLElement): string {
-        const sizeClasses = ['max-w-sm', 'max-w-2xl', 'max-w-4xl', 'max-w-6xl', 'max-w-full'];
+        const sizeClasses = Object.values(Modal.SIZE_CLASS_MAP);
 
         for (const sizeClass of sizeClasses) {
             if (container.classList.contains(sizeClass)) {
@@ -421,23 +431,7 @@ export class Modal extends BaseComponent {
 
         // Get original size from data attribute (more reliable) or instance property
         const storedSize = container.getAttribute('data-original-size') || this.originalSize;
-        
-        // Add back the original size class
-        const sizeClassMap: Record<string, string> = {
-            'sm': 'max-w-sm',
-            'lg': 'max-w-4xl',
-            'xl': 'max-w-6xl',
-            'full': 'max-w-full',
-        };
-
-        const sizeClass = sizeClassMap[storedSize] || 'max-w-2xl';
-        container.classList.add(sizeClass);
-
-        if (storedSize === 'full') {
-            container.classList.add('h-full', 'rounded-none');
-        } else {
-            container.classList.add('w-full');
-        }
+        this.applySizeToElements(storedSize);
 
         // Restore original modal body classes
         const originalBodyClasses = container.getAttribute('data-original-body-classes');
@@ -486,6 +480,67 @@ export class Modal extends BaseComponent {
         const titleElement = this.element.querySelector(`#${this.element.id}-title`) as HTMLElement | null;
         if (titleElement) {
             titleElement.textContent = title;
+        }
+    }
+
+    public setSize(size: string): void {
+        if (!this.element) return;
+
+        this.element.setAttribute('data-modal-size', size);
+        this.originalSize = size;
+
+        if (this.containerElement) {
+            this.containerElement.setAttribute('data-original-size', size);
+        }
+
+        if (!this.isFullscreen) {
+            this.applySizeToElements(size);
+        }
+    }
+
+    public setBackdrop(enabled: boolean): void {
+        if (!this.element) return;
+
+        this.element.setAttribute('data-backdrop-click-close', String(enabled));
+        this.setupBackdropClickHandler();
+    }
+
+    public resetToDefaults(): void {
+        if (!this.element) return;
+
+        if (this.isFullscreen) {
+            this.toggleFullscreen();
+        }
+
+        const defaultSize = this.element.getAttribute('data-default-modal-size') || 'md';
+        const defaultBackdrop = (this.element.getAttribute('data-default-backdrop-click-close') || 'true') !== 'false';
+
+        this.setSize(defaultSize);
+        this.setBackdrop(defaultBackdrop);
+    }
+
+    private shouldCloseOnBackdrop(): boolean {
+        const backdropClickClose = this.element?.getAttribute('data-backdrop-click-close');
+        return backdropClickClose !== 'false';
+    }
+
+    private applySizeToElements(size: string): void {
+        if (!this.containerElement || !this.modalBodyElement) return;
+
+        const normalizedSize = size in Modal.SIZE_CLASS_MAP ? size : 'md';
+        const sizeClasses = Object.values(Modal.SIZE_CLASS_MAP);
+
+        this.containerElement.classList.remove(...sizeClasses);
+        this.containerElement.classList.remove('h-full', 'rounded-none');
+        this.containerElement.classList.add(Modal.SIZE_CLASS_MAP[normalizedSize], 'w-full');
+
+        if (normalizedSize === 'full') {
+            this.containerElement.classList.add('h-full', 'rounded-none');
+            this.modalBodyElement.classList.add('flex-1');
+            this.modalBodyElement.classList.remove('max-h-96');
+        } else {
+            this.modalBodyElement.classList.remove('flex-1');
+            this.modalBodyElement.classList.add('max-h-96');
         }
     }
 }

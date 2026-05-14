@@ -199,39 +199,40 @@ INJECTION_METHODS = {
 }
 
 FIELD_TYPE_TEMPLATE_INJECTIONS = {
-    FieldType.PROPERTY.id: [VALUE.id],
-    FieldType.CHAR_FIELD.id: [VALUE.id],
-    FieldType.CHOICE_FIELD.id: [VALUE.id],
-    FieldType.TEXT_FIELD.id: [VALUE.id],
-    FieldType.EMAIL_FIELD.id: [VALUE.id],
-    FieldType.URL_FIELD.id: [VALUE.id],
-    FieldType.PHONE_NUMBER_FIELD.id: [VALUE.id],
-    FieldType.SLUG_FIELD.id: [VALUE.id],
-    FieldType.INTEGER_FIELD.id: [VALUE.id],
-    FieldType.FLOAT_FIELD.id: [VALUE.id],
-    FieldType.DECIMAL_FIELD.id: [VALUE.id],
-    FieldType.POSITIVE_INTEGER_FIELD.id: [VALUE.id],
-    FieldType.POSITIVE_SMALL_INTEGER_FIELD.id: [VALUE.id],
-    FieldType.BIG_INTEGER_FIELD.id: [VALUE.id],
-    FieldType.SMALL_INTEGER_FIELD.id: [VALUE.id],
-    FieldType.BOOLEAN_FIELD.id: [VALUE.id, YES_NO.id],
-    FieldType.NULL_BOOLEAN_FIELD.id: [VALUE.id, YES_NO.id],
-    FieldType.DATE_FIELD.id: [VALUE.id, FORMATTED_DATE.id],
-    FieldType.DATE_TIME_FIELD.id: [VALUE.id, FORMATTED_DATE.id],
-    FieldType.TIME_FIELD.id: [VALUE.id],
-    FieldType.DURATION_FIELD.id: [VALUE.id],
-    FieldType.FILE_FIELD.id: [VALUE.id],
-    FieldType.IMAGE_FIELD.id: [VALUE.id],
-    FieldType.FOREIGN_KEY.id: [VALUE.id, NESTED_FIELD.id],
-    FieldType.ONE_TO_ONE_FIELD.id: [VALUE.id, NESTED_FIELD.id],
-    FieldType.MANY_TO_MANY_FIELD.id: [LIST.id, TABLE.id, COUNT.id],
-    FieldType.ONE_TO_MANY_FIELD.id: [LOOP.id, TABLE.id, COUNT.id],
-    FieldType.USER_FIELD.id: [VALUE.id, NESTED_FIELD.id],
-    FieldType.UUID_FIELD.id: [VALUE.id],
-    FieldType.STATUS_FIELD.id: [VALUE.id],
-    FieldType.ICON_FIELD.id: [VALUE.id],
-    FieldType.BLOOMERP_FILE_FIELD.id: [VALUE.id],
+    FieldType.PROPERTY.id: [VALUE],
+    FieldType.CHAR_FIELD.id: [VALUE],
+    FieldType.CHOICE_FIELD.id: [VALUE],
+    FieldType.TEXT_FIELD.id: [VALUE],
+    FieldType.EMAIL_FIELD.id: [VALUE],
+    FieldType.URL_FIELD.id: [VALUE],
+    FieldType.PHONE_NUMBER_FIELD.id: [VALUE],
+    FieldType.SLUG_FIELD.id: [VALUE],
+    FieldType.INTEGER_FIELD.id: [VALUE],
+    FieldType.FLOAT_FIELD.id: [VALUE],
+    FieldType.DECIMAL_FIELD.id: [VALUE],
+    FieldType.POSITIVE_INTEGER_FIELD.id: [VALUE],
+    FieldType.POSITIVE_SMALL_INTEGER_FIELD.id: [VALUE],
+    FieldType.BIG_INTEGER_FIELD.id: [VALUE],
+    FieldType.SMALL_INTEGER_FIELD.id: [VALUE],
+    FieldType.BOOLEAN_FIELD.id: [VALUE, YES_NO],
+    FieldType.NULL_BOOLEAN_FIELD.id: [VALUE, YES_NO],
+    FieldType.DATE_FIELD.id: [VALUE, FORMATTED_DATE],
+    FieldType.DATE_TIME_FIELD.id: [VALUE, FORMATTED_DATE],
+    FieldType.TIME_FIELD.id: [VALUE],
+    FieldType.DURATION_FIELD.id: [VALUE],
+    FieldType.FILE_FIELD.id: [VALUE],
+    FieldType.IMAGE_FIELD.id: [VALUE],
+    FieldType.FOREIGN_KEY.id: [VALUE, NESTED_FIELD],
+    FieldType.ONE_TO_ONE_FIELD.id: [VALUE, NESTED_FIELD],
+    FieldType.MANY_TO_MANY_FIELD.id: [LIST, TABLE, COUNT],
+    FieldType.ONE_TO_MANY_FIELD.id: [LOOP, TABLE, COUNT],
+    FieldType.USER_FIELD.id: [VALUE, NESTED_FIELD],
+    FieldType.UUID_FIELD.id: [VALUE],
+    FieldType.STATUS_FIELD.id: [VALUE],
+    FieldType.ICON_FIELD.id: [VALUE],
+    FieldType.BLOOMERP_FILE_FIELD.id: [VALUE],
 }
+
 
 
 @dataclass
@@ -260,6 +261,7 @@ class DocumentTemplateValidationResult:
             "warnings": [message.as_payload() for message in self.warnings],
         }
 
+
 class DocumentTemplateService:
     def __init__(self, document_template: DocumentTemplate, user: AbstractBloomerpUser | None = None):
         self.document_template = document_template
@@ -276,7 +278,12 @@ class DocumentTemplateService:
             **root_objects,
             "vars": self.get_cleaned_free_variable_values(form),
         })
-        bytes =  generate_pdf(formatted_html)
+        bytes =  generate_pdf(
+            formatted_html,
+            page_margin=self.document_template.page_margin,
+            header_url=self.document_template.template_header.header.url if self.document_template.template_header else None,
+            
+        )
         return bytes
 
     def get_model_content_types(self) -> QuerySet[ContentType]:
@@ -445,18 +452,6 @@ class DocumentTemplateService:
             if content_type.model in form.cleaned_data
         }
 
-    def build_variable_catalog(self) -> dict[str, Any]:
-        return {
-            "modelVariables": [self._build_model_variable_payload(field) for field in self.get_model_variables()],
-            "freeVariables": [self._build_free_variable_payload(config) for config in self.get_free_variables()],
-            "freeVariableTypes": FreeVariableType.choices_payload(),
-            "injectionMethods": {
-                method_id: method.as_payload()
-                for method_id, method in INJECTION_METHODS.items()
-            },
-            "validation": self.validate().as_payload(),
-        }
-
     def validate(self) -> DocumentTemplateValidationResult:
         result = DocumentTemplateValidationResult()
         template = self.document_template.template or ""
@@ -502,73 +497,7 @@ class DocumentTemplateService:
         temp = django_engine.from_string("{% load document_template_tags %}" + self.document_template.template)
         return temp.render(data)
 
-    def _build_model_variable_payload(self, application_field: ApplicationField) -> dict[str, Any]:
-        field_type = application_field.get_field_type_enum()
-        related_fields = self._get_related_field_payloads(application_field)
-        content_type = application_field.content_type
-        variable_name = self.get_content_type_variable_name(content_type)
-        return {
-            "source": "model",
-            "name": application_field.field,
-            "label": f"{content_type.model_class()._meta.verbose_name.title()} - {application_field.title}" if content_type.model_class() else application_field.title,
-            "fieldType": field_type.id,
-            "fieldTypeLabel": field_type.display_name,
-            "icon": field_type.icon,
-            "token": f"{variable_name}.{application_field.field}",
-            "rootName": variable_name,
-            "contentTypeId": content_type.pk,
-            "injectionMethods": FIELD_TYPE_TEMPLATE_INJECTIONS.get(field_type.id, [VALUE.id]),
-            "relatedFields": related_fields,
-        }
-
     def get_content_type_variable_name(self, content_type: ContentType) -> str:
         model_class = content_type.model_class()
         model_name = model_class.__name__ if model_class else content_type.model
         return re.sub(r"(?<!^)(?=[A-Z])", "_", model_name).lower()
-
-    def _build_free_variable_payload(self, config: FreeVariableConfig) -> dict[str, Any]:
-        try:
-            variable_type = FreeVariableType.from_id(config.type)
-        except ValueError:
-            variable_type = FreeVariableType.TEXT
-        return {
-            "source": "free",
-            "slug": config.normalized_slug,
-            "label": config.label,
-            "type": variable_type.id,
-            "typeLabel": variable_type.display_name,
-            "icon": variable_type.icon,
-            "token": f"vars.{config.normalized_slug}",
-            "required": config.required,
-            "choices": [choice.model_dump() for choice in config.choices],
-            "injectionMethods": variable_type.value.injection_methods,
-        }
-
-    def _get_related_field_payloads(self, application_field: ApplicationField) -> list[dict[str, Any]]:
-        related_model = application_field.get_related_model()
-        if related_model is None:
-            return []
-
-        content_type = ContentType.objects.get_for_model(related_model)
-        if self.user:
-            manager = UserPermissionManager(self.user)
-            permission = f"view_{content_type.model}"
-            fields = manager.get_accessible_fields(content_type, permission)
-        else:
-            fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
-
-        related_payloads = []
-        for related_field in fields:
-            try:
-                field_type = related_field.get_field_type_enum()
-            except ValueError:
-                continue
-            related_payloads.append({
-                "name": related_field.field,
-                "label": related_field.title,
-                "fieldType": field_type.id,
-                "fieldTypeLabel": field_type.display_name,
-                "icon": field_type.icon,
-                "token": related_field.field,
-            })
-        return related_payloads
