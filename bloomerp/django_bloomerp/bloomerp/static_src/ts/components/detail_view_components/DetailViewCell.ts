@@ -141,7 +141,7 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         if (!this.element) return;
 
         const focusTarget = this.getFirstFocusableElement([
-            "#editor", // TODO: this is for the text editor
+            ".bloomerp-text-editor", // TODO: this is for the text editor
             ".detail-layout-item__body [contenteditable=\"true\"]",
             ".detail-layout-item__body input:not([type=\"hidden\"])",
             ".detail-layout-item__body textarea",
@@ -149,7 +149,7 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
             ".detail-layout-item__body button:not([tabindex=\"-1\"])",
             ".detail-layout-item__body [tabindex]:not([tabindex=\"-1\"])",
         ]);
-        console.log(focusTarget)
+        
 
         if (focusTarget) {
             focusTarget.focus();

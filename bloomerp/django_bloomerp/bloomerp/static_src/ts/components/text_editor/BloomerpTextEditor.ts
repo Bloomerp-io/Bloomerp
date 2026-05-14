@@ -228,7 +228,18 @@ export class BloomerpTextEditor extends BaseWidget {
             const nodes = $generateNodesFromDOM(editor, document);
 
             if (nodes.length > 0) {
-                root.append(...nodes);
+                // Filter nodes to only include root-compatible nodes
+                // Only ElementNodes and DecoratorNodes can be root children
+                const validNodes = nodes.filter((node) => {
+                    const type = node.getType();
+                    return ['paragraph', 'heading', 'quote', 'list', 'table'].includes(type);
+                });
+
+                if (validNodes.length > 0) {
+                    root.append(...validNodes);
+                } else {
+                    root.append($createParagraphNode());
+                }
             } else {
                 root.append($createParagraphNode());
             }
@@ -324,7 +335,7 @@ export class BloomerpTextEditor extends BaseWidget {
         ACTIONS[key] = action
 
         if (addToSlash) {this.slashExtraActions.push(key)}
-        if (addToRange) {this.rangeExtraActions.concat(key)}
+        if (addToRange) {this.rangeExtraActions.push(key)}
     }
 
     
