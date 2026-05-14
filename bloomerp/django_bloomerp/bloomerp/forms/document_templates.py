@@ -1,7 +1,5 @@
 from django import forms
 from django.db.models import Model
-
-
 from typing import Any
 
 

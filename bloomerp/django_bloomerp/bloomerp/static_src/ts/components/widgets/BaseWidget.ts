@@ -22,8 +22,6 @@ export abstract class BaseWidget extends BaseComponent {
 
         const value = this.getValue();
 
-        console.log("Widget changed:", this.constructor.name, value);
-
         this.element.dispatchEvent(
             new CustomEvent<BaseWidgetChangeDetail>(BaseWidget.changeEventName, {
                 bubbles: true,

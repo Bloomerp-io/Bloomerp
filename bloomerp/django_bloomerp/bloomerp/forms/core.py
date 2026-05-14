@@ -66,7 +66,7 @@ class BloomerpModelForm(forms.ModelForm):
                 related_model = field.meta['related_model']
                 model = ContentType.objects.get(pk=related_model).model_class()
                 widget_attrs = {
-                    'class' : 'input',
+                    'class' : 'input w-full',
                     'model' : model,
                 }
                 widget_attrs.update(field.meta or {})
@@ -80,7 +80,7 @@ class BloomerpModelForm(forms.ModelForm):
             if field.name in self.fields:
                 related_model = field.remote_field.model
                 self.fields[field.name].widget = ForeignFieldWidget(
-                    attrs={"model": related_model, "is_m2m": True}
+                        attrs={"model": related_model, "is_m2m": True, 'class': 'input w-full'}
                     )
     
         # ---------------------------------
@@ -104,12 +104,15 @@ class BloomerpModelForm(forms.ModelForm):
         # Update the widgets for the json fields
         for field_name, field in self.fields.items():
             # Check if the field is a JSONField
-            model_field = self._meta.model._meta.get_field(field_name)
+            try:
+                model_field = self._meta.model._meta.get_field(field_name)
+                
+                if isinstance(model_field, JSONField):
+                    # Apply the CodeEditorWidget for JSON fields
+                    self.fields[field_name].widget = CodeEditorWidget(language='json')
+            except:
+                pass
             
-            if isinstance(model_field, JSONField):
-                # Apply the CodeEditorWidget for JSON fields
-                self.fields[field_name].widget = CodeEditorWidget(language='json')
-
         # ---------------------------------
         # Hide created_by and updated_by fields
         # ---------------------------------

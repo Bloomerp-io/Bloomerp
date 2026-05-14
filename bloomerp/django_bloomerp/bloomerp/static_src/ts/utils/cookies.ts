@@ -20,5 +20,11 @@ export function deleteCookie(name: string): void {
 } 
 
 export function getCsrfToken(): string | null {
-    return getCookie('csrftoken');
+    const csrfCookie = getCookie('csrftoken');
+    if (csrfCookie) {
+        return csrfCookie;
+    }
+
+    const csrfInput = document.querySelector<HTMLInputElement>('input[name="csrfmiddlewaretoken"]');
+    return csrfInput?.value || null;
 }

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 
 from bloomerp.sdk.javascript import JavaScriptSdkGenerator
@@ -31,6 +32,12 @@ class Command(BaseCommand):
             help="Optional filename for the generated SDK entry file. Defaults depend on the selected language.",
         )
         parser.add_argument(
+            "--apps",
+            type=str,
+            default=None,
+            help="Optional comma-separated app names to limit which app models are included in the generated SDK.",
+        )
+        parser.add_argument(
             "--add-readme",
             action="store_true",
             help="Also generate a README.md file in the target folder.",
@@ -47,6 +54,7 @@ class Command(BaseCommand):
         package_name = options.get("package_name")
         raw_filename = options.get("filename")
         filename = str(raw_filename).strip() if raw_filename is not None else None
+        app_labels = self.parse_app_labels(options.get("apps"))
         add_readme = bool(options.get("add_readme"))
         force = bool(options.get("force"))
 
@@ -60,6 +68,7 @@ class Command(BaseCommand):
             force=force,
             filename=filename,
             add_readme=add_readme,
+            app_labels=app_labels,
         )
         try:
             generated_files = generator.generate()
@@ -81,11 +90,11 @@ class Command(BaseCommand):
         path: str,
         package_name: str | None,
         force: bool,
-        filename: str,
+        filename: str | None,
         add_readme: bool,
+        app_labels: list[str] | None,
     ):
         match language:
-            
             case "typescript":
                 return TypescriptSdkGenerator(
                     path=path,
@@ -93,6 +102,7 @@ class Command(BaseCommand):
                     force=force,
                     filename=filename,
                     add_readme=add_readme,
+                    app_labels=app_labels,
                 )
             case "javascript":
                 return JavaScriptSdkGenerator(
@@ -101,6 +111,7 @@ class Command(BaseCommand):
                     force=force,
                     filename=filename,
                     add_readme=add_readme,
+                    app_labels=app_labels,
                 )
             case "python":
                 return PythonSdkGenerator(
@@ -109,8 +120,46 @@ class Command(BaseCommand):
                     force=force,
                     filename=filename,
                     add_readme=add_readme,
+                    app_labels=app_labels,
                 )
             case _:
                 raise CommandError(
                     f"Unsupported SDK language '{language}'. Supported languages: typescript, javascript, python."
                 )
+
+    def parse_app_labels(self, raw_apps: str | None) -> list[str] | None:
+        if raw_apps is None:
+            return None
+
+        raw_names = [part.strip() for part in str(raw_apps).split(",")]
+        if not any(raw_names):
+            raise CommandError("Apps cannot be empty.")
+
+        normalized_labels: list[str] = []
+        invalid_names: list[str] = []
+        for raw_name in raw_names:
+            if not raw_name:
+                continue
+
+            app_config = apps.app_configs.get(raw_name)
+            if app_config is None:
+                app_config = next(
+                    (config for config in apps.get_app_configs() if config.name == raw_name),
+                    None,
+                )
+
+            if app_config is None:
+                invalid_names.append(raw_name)
+                continue
+
+            if app_config.label not in normalized_labels:
+                normalized_labels.append(app_config.label)
+
+        if invalid_names:
+            raise CommandError(
+                "Unknown app names: "
+                + ", ".join(invalid_names)
+                + ". Use Django app labels or full app config names."
+            )
+
+        return normalized_labels or None

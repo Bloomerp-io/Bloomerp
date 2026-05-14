@@ -1,0 +1,21 @@
+<div data-variable-catalog-payload>
+    {% for variable in variables %}
+        <div
+            data-model-variable
+            data-label="{{ variable.label }}"
+            data-field-type-label="{{ variable.field_type_label }}"
+            data-icon="{{ variable.icon }}"
+            data-token="{{ variable.token }}"
+        >
+            {% for injection_method in variable.injection_methods %}
+                <span
+                    data-injection-method
+                    data-id="{{ injection_method.id }}"
+                    data-label="{{ injection_method.label }}"
+                    data-icon="{{ injection_method.icon }}"
+                    data-description="{{ injection_method.description }}"
+                ></span>
+            {% endfor %}
+        </div>
+    {% endfor %}
+</div>

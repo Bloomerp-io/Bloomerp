@@ -2,6 +2,7 @@
 import json
 from typing import Any
 
+from bloomerp.forms.core import BloomerpModelForm
 from bloomerp.router import router
 from bloomerp.models import ApplicationField
 from bloomerp.models.document_templates.document_template import DocumentTemplate, FreeVariableConfig
@@ -14,13 +15,11 @@ from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from bloomerp.services.document_services import DocumentTemplateService
+from bloomerp.services.document_services import DocumentTemplateService, FreeVariableType
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 
-class DocumentTemplateBuilderForm(forms.ModelForm):
-    template_content = forms.CharField(required=False)
-    free_variables_json = forms.CharField(required=False)
+class DocumentTemplateBuilderForm(BloomerpModelForm):
 
     class Meta:
         model = DocumentTemplate
@@ -31,24 +30,23 @@ class DocumentTemplateBuilderForm(forms.ModelForm):
             "page_size",
             "page_margin",
             "include_page_numbers",
+            "styling",
+            "template_header",
+            "template",
+            "free_variables"
         ]
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self.fields["content_types"].queryset = get_template_content_types()
-        self.fields["content_types"].required = False
-        self.fields["content_types"].widget = ForeignFieldWidget(
-            ContentType,
-            attrs={
-                "is_m2m": True,
-                "class": "input w-full",
-            },
-        )
 
     def clean_free_variables_json(self) -> list[dict[str, Any]]:
         raw_value = self.cleaned_data.get("free_variables_json") or "[]"
+        return self.clean_free_variables_payload(raw_value)
+
+    def clean_free_variables(self) -> list[dict[str, Any]]:
+        raw_value = self.cleaned_data.get("free_variables") or []
+        return self.clean_free_variables_payload(raw_value)
+
+    def clean_free_variables_payload(self, raw_value: Any) -> list[dict[str, Any]]:
         try:
-            parsed = json.loads(raw_value)
+            parsed = json.loads(raw_value) if isinstance(raw_value, str) else raw_value
         except json.JSONDecodeError as exc:
             raise forms.ValidationError("Free variables must be valid JSON.") from exc
 
@@ -75,8 +73,8 @@ class DocumentTemplateBuilderForm(forms.ModelForm):
 
     def save(self, commit: bool = True):
         instance = super().save(commit=False)
-        instance.template = self.cleaned_data.get("template_content") or ""
-        instance.free_variables = self.cleaned_data["free_variables_json"]
+        instance.template = self.cleaned_data.get("template") or ""
+        instance.free_variables = self.cleaned_data.get("free_variables", [])
         if commit:
             instance.save()
             self.save_m2m()
@@ -148,8 +146,9 @@ class DocumentTemplateBuilderContextMixin:
     def get_form(self) -> DocumentTemplateBuilderForm:
         instance = self.get_initial_object()
         if self.request.method == "POST":
-            return DocumentTemplateBuilderForm(self.request.POST, instance=instance)
+            return DocumentTemplateBuilderForm(model=DocumentTemplate, data=self.request.POST, instance=instance)
         return DocumentTemplateBuilderForm(
+            model=DocumentTemplate,
             instance=instance,
             initial={"content_types": [content_type.pk for content_type in get_selected_content_types(self.request, instance)]},
         )
@@ -182,36 +181,8 @@ class DocumentTemplateBuilderContextMixin:
         context = super().get_context_data(**kwargs)
         instance = kwargs.get("instance") or self.get_initial_object()
         form = kwargs.get("form") or self.get_form()
-        content_types = get_selected_content_types(self.request, instance)
-
-        context["object"] = None if instance.pk is None else instance
         context["builder_form"] = form
-        context["content_type_id"] = content_types[0].pk if content_types else ""
-        context["template_content"] = form.data.get("template_content", instance.template or "") if form.is_bound else instance.template or ""
-        context["document_template_name"] = form.data.get("name", instance.name or "") if form.is_bound else instance.name or ""
-        context["free_variables_json"] = (
-            form.data.get("free_variables_json", json.dumps(instance.free_variables or []))
-            if form.is_bound
-            else json.dumps(instance.free_variables or [])
-        )
-        free_variables = parse_free_variables_json(context["free_variables_json"])
-        template_for_catalog = DocumentTemplate(
-            free_variables=free_variables,
-            template=context["template_content"],
-        )
-        template_for_catalog._unsaved_content_types = content_types
-        context["template_builder_variable_catalog"] = DocumentTemplateService(
-            template_for_catalog,
-            self.request.user,
-        ).build_variable_catalog()
-        context["page_orientation"] = form.data.get("page_orientation") if form.is_bound else instance.page_orientation
-        context["page_size"] = form.data.get("page_size") if form.is_bound else instance.page_size
-        context["page_margin"] = form.data.get("page_margin") if form.is_bound else instance.page_margin
-        context["include_page_numbers"] = (
-            "include_page_numbers" in form.data
-            if form.is_bound
-            else instance.include_page_numbers
-        )
+        context["free_variable_types"] = FreeVariableType.choices_payload()
         return context
 
 

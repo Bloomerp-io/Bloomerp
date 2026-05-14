@@ -1,4 +1,4 @@
-import { registerCommands } from "./commands";
+import { Command, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
 import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
@@ -7,8 +7,13 @@ import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import {
     $createParagraphNode,
     $getRoot,
+    $getSelection,
+    $insertNodes,
+    $isRangeSelection,
+    COMMAND_PRIORITY_LOW,
     createEditor,
     LexicalEditor,
+    type LexicalNode,
 } from "lexical";
 
 import {
@@ -36,14 +41,22 @@ import { BaseWidget } from "../widgets/BaseWidget";
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
     private unregister: (() => void) | null = null;
+    private commands: Array<Command> = [];
+    private actions: Array<Action> = [];
     private button:HTMLButtonElement;
     private actionsToolbar:HTMLElement;
     private hiddenInput:HTMLInputElement;
     private suppressNextChange: boolean = false;
     private isInitializing: boolean = false;
+    private editorId:string;
+    private includeToolbar:boolean = true;
 
     public initialize(): void {
-        const editorRef = this.element.querySelector("#editor") as HTMLElement | null;
+        // Get the editor ID
+        this.editorId = this.element.dataset.editorId;
+        
+        // Get the editor
+        const editorRef = this.element.querySelector("#editor-" + this.editorId) as HTMLElement | null;
 
         if (!editorRef) {
             throw new Error("Could not find #lexical-editor");
@@ -110,6 +123,9 @@ export class BloomerpTextEditor extends BaseWidget {
                 this.onChange();
             }),
             ...registerCommands(this.editor),
+            ...this.commands.map(({ command, handler, priority = COMMAND_PRIORITY_LOW }) => (
+                this.editor.registerCommand(command, (event) => handler.call(this.editor, event), priority)
+            )),
         );
 
         this.registerActionsToolbar()
@@ -117,6 +133,8 @@ export class BloomerpTextEditor extends BaseWidget {
             this.isInitializing = false;
             this.suppressNextChange = false;
         });
+
+        this.includeToolbar = (this.element.dataset.includeToolbar !== '') 
     }
 
     public destroy(): void {
@@ -133,7 +151,7 @@ export class BloomerpTextEditor extends BaseWidget {
      * Returns the actions available for this editor
      */
     public getActions() : Array<Action> {
-        return Object.values(ACTIONS)
+        return [...Object.values(ACTIONS), ...this.actions]
     }
 
     /**
@@ -141,7 +159,16 @@ export class BloomerpTextEditor extends BaseWidget {
      */
     private registerActionsToolbar() {
         const actions = this.getActions()
-        this.actionsToolbar = this.element.querySelector('#actions-toolbar') as HTMLElement;
+        let actionsToolbarId = this.element.dataset.actionsToolbarSectionId;
+        
+        const standardToolbar = (!actionsToolbarId && this.includeToolbar)
+        if (standardToolbar) {
+            actionsToolbarId = 'actions-toolbar-' + this.editorId;
+        }
+
+        this.actionsToolbar = document.getElementById(actionsToolbarId) as HTMLElement;
+        this.actionsToolbar.innerHTML = ''
+
 
         actions.map((action)=>{
             let actionBtn = document.createElement('button')
@@ -159,6 +186,11 @@ export class BloomerpTextEditor extends BaseWidget {
 
             this.actionsToolbar.appendChild(actionBtn)
         })
+
+
+        if (standardToolbar) {
+            this.actionsToolbar.className = 'flex mb-4 gap-2 overflow-x-scroll'
+        }
     }
     
     public override onChange(): void {
@@ -206,6 +238,29 @@ export class BloomerpTextEditor extends BaseWidget {
         return this.toHtml()
     }
 
+    public insertNode(node: LexicalNode | (() => LexicalNode)): void {
+        const editor = this.editor;
+        if (!editor) {
+            return;
+        }
+
+        editor.focus();
+        editor.update(() => {
+            const resolvedNode = typeof node === 'function' ? node() : node;
+            const selection = $getSelection();
+
+            if ($isRangeSelection(selection)) {
+                $insertNodes([resolvedNode]);
+                return;
+            }
+
+            const paragraph = $createParagraphNode();
+            paragraph.append(resolvedNode);
+            $getRoot().append(paragraph);
+            paragraph.selectEnd();
+        });
+    }
+
     /**
      * 
      * @returns editor state in html
@@ -223,5 +278,42 @@ export class BloomerpTextEditor extends BaseWidget {
 
         return html;
     }
+
+    /**
+     * Hook to register extra commands
+     * @param command the command to register
+     */
+    public registerCommand(command:Command) {
+        this.commands.push(command);
+
+        if (!this.editor) {
+            return;
+        }
+
+        const { command: lexicalCommand, handler, priority = COMMAND_PRIORITY_LOW } = command;
+        const unregister = this.editor.registerCommand(
+            lexicalCommand,
+            (event) => handler.call(this.editor, event),
+            priority,
+        );
+
+        this.unregister = this.unregister
+            ? mergeRegister(this.unregister, unregister)
+            : unregister;
+    }
+
+    /**
+     * Hook to register extra actions
+     * @param action the action to register
+     */
+    public registerAction(action:Action) {
+        this.actions.push(action);
+
+        if (this.actionsToolbar) {
+            this.registerActionsToolbar();
+        }
+    }
+
+    
 
 }

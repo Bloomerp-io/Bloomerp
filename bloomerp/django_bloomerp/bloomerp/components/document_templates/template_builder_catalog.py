@@ -1,43 +1,22 @@
-import json
-from typing import Any
+from django.http import HttpRequest, HttpResponse
+from django.views.decorators.http import require_http_methods
+from django_cotton import render_component
 
-from django.http import HttpRequest, JsonResponse
-from django.views.decorators.http import require_POST
-
-from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.router import router
-from bloomerp.services.document_services import DocumentTemplateService
+from bloomerp.services.document_services import FIELD_TYPE_TEMPLATE_INJECTIONS, DocumentTemplateService
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.document_templates.document_template_builder_view import (
     get_template_content_types,
-    parse_free_variables_json,
 )
-
-
-def _parse_payload(request: HttpRequest) -> dict[str, Any]:
-    try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
 
 
 @router.register(
     path="components/document-template-builder/catalog/",
     name="components_document_template_builder_catalog",
 )
-@require_POST
-def document_template_builder_catalog(request: HttpRequest) -> JsonResponse:
-    payload = _parse_payload(request)
-    raw_content_type_ids = payload.get("content_type_ids") or []
-    if not isinstance(raw_content_type_ids, list):
-        raw_content_type_ids = []
-
-    content_type_ids: list[int] = []
-    for raw_id in raw_content_type_ids:
-        try:
-            content_type_ids.append(int(raw_id))
-        except (TypeError, ValueError):
-            continue
+@require_http_methods(["GET"])
+def document_template_builder_catalog(request: HttpRequest) -> HttpResponse:
+    content_type_ids = request.GET.getlist("content_types")
 
     content_types = list(
         get_template_content_types()
@@ -45,10 +24,37 @@ def document_template_builder_catalog(request: HttpRequest) -> JsonResponse:
         .order_by("app_label", "model")
     )
 
-    template = DocumentTemplate(
-        free_variables=parse_free_variables_json(str(payload.get("free_variables_json") or "[]")),
-        template=str(payload.get("template_content") or ""),
-    )
-    template._unsaved_content_types = content_types
+    # Get the permission manager
+    manager = UserPermissionManager(request.user)
+    service = DocumentTemplateService(document_template=None)
+    variables = []
+    
+    for content_type in content_types:
+        root_name = service.get_content_type_variable_name(content_type)
+        fields = manager.get_accessible_fields(
+            content_type,
+            create_permission_str(
+                content_type.model_class(),
+                "view"
+            )
+        )
+        
+        for field in fields:
+            field_type = field.get_field_type_enum()
+            variables.append({
+                "label": field.title,
+                "field_type_label": field_type.display_name,
+                "icon": field_type.icon,
+                "token": f"{root_name}.{field.field}",
+                "injection_methods": FIELD_TYPE_TEMPLATE_INJECTIONS.get(field_type.id, []),
+            })
 
-    return JsonResponse(DocumentTemplateService(template, request.user).build_variable_catalog())
+    return HttpResponse(
+        render_component(
+            request,
+            "components.document_templates.variable_catalog",
+            {
+                "variables": variables,
+            },
+        )
+    )

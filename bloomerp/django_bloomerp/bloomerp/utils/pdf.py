@@ -9,6 +9,7 @@ from reportlab.lib.utils import ImageReader
 from PIL import Image
 from typing import Optional
 from enum import Enum
+from django.conf import settings
 
 def fetch_image(image_url):
     """Helper function to download image from a URL and save it temporarily."""
@@ -25,14 +26,45 @@ def fetch_image(image_url):
         print(f"Error fetching image: {e}")
         return None
 
+
+def _resolve_local_path(uri: str, rel: str | None = None) -> str:
+    """Resolve local URLs/paths to filesystem paths when possible."""
+    if not uri:
+        return uri
+
+    if os.path.isabs(uri) and os.path.exists(uri):
+        return uri
+
+    media_root = getattr(settings, "MEDIA_ROOT", "")
+    media_url = (getattr(settings, "MEDIA_URL", "") or "").strip("/")
+
+    if media_root and media_url:
+        prefixes = [
+            f"/{media_url}/",
+            f"{media_url}/",
+        ]
+        for prefix in prefixes:
+            if uri.startswith(prefix):
+                relative_media_path = uri[len(prefix):]
+                resolved = os.path.join(media_root, relative_media_path)
+                if os.path.exists(resolved):
+                    return resolved
+
+    if rel and not os.path.isabs(uri):
+        candidate = os.path.join(os.path.dirname(rel), uri)
+        if os.path.exists(candidate):
+            return candidate
+
+    return uri
+
 def link_callback(uri, rel):
     """Link callback function to handle external images."""
     if uri.startswith("http://") or uri.startswith("https://"):
         # If the URI is an external image, fetch and return its local path
         return fetch_image(uri)
     else:
-        # If it's a local file path, resolve it and return
-        return uri
+        # If it's a local file/media path, resolve it to a filesystem path when possible.
+        return _resolve_local_path(uri, rel)
 
 def generate_pdf(
         html_content:str, 

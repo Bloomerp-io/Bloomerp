@@ -50,6 +50,7 @@ import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
 import TemplateBuilder from './components/template_builder/TemplateBuilder';
 import FocusOnForm from './components/FocusOnForm';
 import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor';
+import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -81,6 +82,7 @@ registerComponent('filter-container', FilterContainer)
 // Website builder
 registerComponent('website-builder', WebsiteBuilder)
 registerComponent('template-builder', TemplateBuilder)
+registerComponent('document-template-builder', DocumentTemplateBuilder)
 
 // Permission checkboxes
 registerComponent('permission-checkboxes', PermissionCheckboxes)

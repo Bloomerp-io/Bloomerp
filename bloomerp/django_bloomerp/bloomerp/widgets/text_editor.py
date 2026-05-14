@@ -13,5 +13,6 @@ class BloomerpTextEditorWidget(forms.Textarea):
             'name': widget_context.get('name'),
             'value': widget_context.get('value'),
             'disabled': widget_context.get('attrs', {}).get('disabled', False),
+            'include_toolbar' : True
         })
         return new_context

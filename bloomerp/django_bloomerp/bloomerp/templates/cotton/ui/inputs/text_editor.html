@@ -1,14 +1,22 @@
+{% load bloomerp %}
+{% generate_uuid as editor_uuid %}
+
 <div 
     bloomerp-component="bloomerp-text-editor" 
-    class="relative rounded-xl p-2 min-h-72 {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}" 
+    class="relative rounded-xl min-h-72 {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}" 
     data-placeholder="{{ placeholder|default:'' }}"
     data-disabled="{{ disabled|yesno:'true,false' }}"
     data-styling="{{ styling|default:'prose max-w-none' }}"
     data-name="{{ name }}"
+    data-actions-toolbar-section-id="{{ actions_toolbar_section_id }}"
+    data-editor-id="{{ editor_uuid }}"
+    data-include-toolbar="{{ include_toolbar }}"
     >
     <!--Toolbar-->
-    <div class="flex p-2 gap-2 overflow-x-scroll" id="actions-toolbar"></div>
+    {% if include_toolbar %}
+    <div class="" id="actions-toolbar-{{ editor_uuid }}"></div>
+    {% endif %}
     <!--End toolbar-->
-    <div id="editor" class="outline-none p-2" contenteditable></div>
-    <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value|default:'' }}">
+    <div id="editor-{{ editor_uuid }}" class="outline-none" contenteditable></div>
+    <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value }}">
 </div>

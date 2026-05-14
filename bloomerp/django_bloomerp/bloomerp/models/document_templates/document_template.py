@@ -8,6 +8,8 @@ from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from django.utils.translation import gettext_lazy as _
+from bloomerp.models.document_templates.document_tempate_styling import DocumentTemplateStyling
+from bloomerp.models.document_templates.document_template_header import DocumentTemplateHeader
 from bloomerp.models.files.file_folder import FileFolder
 
 class PageSize(models.TextChoices):
@@ -70,7 +72,7 @@ class DocumentTemplate(BloomerpModel):
         default=list,
         blank=True,
     )
-    template_header = models.ForeignKey(
+    template_header : DocumentTemplateHeader = models.ForeignKey(
         "DocumentTemplateHeader",
         on_delete=models.SET_NULL,
         null=True,
@@ -109,13 +111,19 @@ class DocumentTemplate(BloomerpModel):
         default=True,
         help_text=_("Signifies whether the page numbers are included or not.")
         ) 
-
     save_to_folder = models.ForeignKey(
         to = FileFolder,
         null=True,
         blank=True,
         help_text=_('Signifies to which folder a file generated from the template needs to be saved upon creation.'),
         on_delete=models.SET_NULL
+    )
+    styling = models.ForeignKey(
+        to=DocumentTemplateStyling,
+        null=True,
+        blank=True,
+        help_text=_('Signifies the styling to be applied to the document template'),
+        on_delete=models.SET_NULL,
     )
 
     def __str__(self):

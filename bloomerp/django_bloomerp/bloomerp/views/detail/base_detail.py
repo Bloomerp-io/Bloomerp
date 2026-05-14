@@ -30,7 +30,7 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         Returns:
             bool: response
         """
-        obj = self.object
+        obj = self.get_object()
         try:
             obj._meta.get_field("avatar")
         except FieldDoesNotExist:
