@@ -17,7 +17,7 @@
                 <img src="{% static 'bloomerp/img/logo-touch-icon.png' %}" class="md:hidden" width="30" height="30">
             </a>
 
-            <c-ui.shortcut_tooltip shortcut="mod+b" action="click" position="right" text="Toggle sidebar    ">
+            <c-ui.shortcut_tooltip shortcut="mod+shift+b" action="click" position="left" text="Toggle sidebar    ">
                 <button id="sidebar-toggle" type="button"
                     class="hover:cursor-pointer flex h-10 w-10 items-center justify-center">
                     <c-icons.lines_horizontal size="24" />
@@ -37,8 +37,6 @@
                     class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-xl hover:cursor-pointer focus:outline-none w-full hover:bg-gray-200">
                     <i class="fa fa-magnifying-glass text-gray-500"></i>
                     <span class="text-sm text-gray-600">Search</span>
-                    <span id="global-search-shortcut"
-                        class="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">⌘K</span>
                 </button>
             </div>
         </c-ui.shortcut_tooltip>
