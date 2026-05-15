@@ -704,6 +704,16 @@ class BulkCrudService:
         if isinstance(value, bool):
             return value
         if isinstance(value, (datetime, date)):
+            if isinstance(value, datetime):
+                # Excel date cells often load as midnight datetimes; normalize to date-only
+                # so Django DateField validation accepts the value.
+                if (
+                    value.hour == 0
+                    and value.minute == 0
+                    and value.second == 0
+                    and value.microsecond == 0
+                ):
+                    return value.date().isoformat()
             return value.isoformat()
         if isinstance(value, Decimal):
             return str(value)
