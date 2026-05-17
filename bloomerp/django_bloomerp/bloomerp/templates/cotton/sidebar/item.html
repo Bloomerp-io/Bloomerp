@@ -48,6 +48,7 @@
             {% if item.is_internal_url %}
             hx-get="{{ item.url }}"
             hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}"
+            hx-animation
             hx-swap="innerHTML"
             hx-push-url="true"
             {% else %}

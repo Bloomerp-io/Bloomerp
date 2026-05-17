@@ -36,4 +36,19 @@ function insertSkeleton(target: HTMLElement) {
     }
 }
 
+
+export function SetupAnimationListener() {
+    document.addEventListener('htmx:beforeSend', (ev) => {
+        const sourceElement = ev.target as HTMLElement
+
+        if (!sourceElement.hasAttribute('hx-animation')) {return}
+        if (!sourceElement.hasAttribute('hx-target')) {return}
+
+        let target = document.querySelector(sourceElement.getAttribute('hx-target')) as HTMLElement
+
+        insertSkeleton(target)
+    })
+}
+
+
 export { insertSkeleton };

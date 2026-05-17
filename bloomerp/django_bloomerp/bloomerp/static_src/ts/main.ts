@@ -51,6 +51,7 @@ import TemplateBuilder from './components/template_builder/TemplateBuilder';
 import FocusOnForm from './components/FocusOnForm';
 import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor';
 import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
+import { SetupAnimationListener } from './utils/animations';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -139,3 +140,7 @@ setupComponentAutoInit();
 
 // Realtime messages
 initMessagesWebsocket();
+
+
+// Setup animation listener
+SetupAnimationListener()
