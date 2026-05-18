@@ -2,6 +2,9 @@ from bloomerp.tests.base import BaseBloomerpModelTestCase
 from django.urls import reverse
 
 from bloomerp.models import ApplicationField
+from bloomerp.models.project_management.todo import Todo
+from bloomerp.models.project_management.todo_label import TodoLabel
+from bloomerp.utils.filters import filter_model
 from bloomerp.tests.utils.dynamic_models import create_test_models
 from django.db import models
 
@@ -113,3 +116,40 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'value="is_null"', html=False)
+
+    def test_filter_model_filters_many_to_many_labels_by_id(self):
+        backend_label = TodoLabel.objects.create(name="Backend", color="#000000")
+        frontend_label = TodoLabel.objects.create(name="Frontend", color="#ffffff")
+
+        todo_with_backend = Todo.objects.create(title="Fix labels filter")
+        todo_with_backend.labels.add(backend_label)
+
+        todo_with_frontend = Todo.objects.create(title="Polish filters UI")
+        todo_with_frontend.labels.add(frontend_label)
+
+        todo_with_both = Todo.objects.create(title="Ship both")
+        todo_with_both.labels.add(backend_label, frontend_label)
+
+        filtered_qs = filter_model(Todo, {"labels": [str(backend_label.id)]})
+
+        self.assertCountEqual(
+            filtered_qs.values_list("id", flat=True),
+            [todo_with_backend.id, todo_with_both.id],
+        )
+
+    def test_filter_model_filters_many_to_many_labels_with_exact_lookup_alias(self):
+        backend_label = TodoLabel.objects.create(name="Backend", color="#000000")
+        frontend_label = TodoLabel.objects.create(name="Frontend", color="#ffffff")
+
+        todo_with_backend = Todo.objects.create(title="Fix labels filter")
+        todo_with_backend.labels.add(backend_label)
+
+        todo_with_frontend = Todo.objects.create(title="Polish filters UI")
+        todo_with_frontend.labels.add(frontend_label)
+
+        filtered_qs = filter_model(Todo, {"labels__exact": [str(backend_label.id)]})
+
+        self.assertCountEqual(
+            filtered_qs.values_list("id", flat=True),
+            [todo_with_backend.id],
+        )
