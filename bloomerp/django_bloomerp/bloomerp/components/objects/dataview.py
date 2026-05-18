@@ -61,6 +61,16 @@ LOOKUP_LABELS = {
     "month": "month is",
     "day": "day is",
     "week": "week is",
+    "today": "is today",
+    "yesterday": "was yesterday",
+    "this_week": "is in this week",
+    "last_week": "is in last week",
+    "this_month": "is in this month",
+    "last_month": "is in last month",
+    "this_quarter": "is in this quarter",
+    "last_quarter": "is in last quarter",
+    "this_year": "is in this year",
+    "last_year": "is in last year",
 }
 
 
@@ -103,6 +113,8 @@ def _format_applied_filters(query_params) -> list[dict]:
                 label = f"{field_label} is empty"
             else:
                 label = f"{field_label} has value"
+        elif lookup in {"today", "yesterday", "this_week", "last_week", "this_month", "last_month", "this_quarter", "last_quarter", "this_year", "last_year"}:
+            label = f"{field_label} {lookup_label}"
         else:
             label = f"{field_label} {lookup_label} {raw_value}"
 
