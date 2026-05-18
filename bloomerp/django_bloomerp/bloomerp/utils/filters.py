@@ -148,12 +148,20 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
                     filter_overrides[field_name] = django_filters.ModelMultipleChoiceFilter(
                         field_name=field_name,
                         to_field_name='id',
-                        queryset=related_model.objects.all()
+                        queryset=related_model.objects.all(),
+                        distinct=True,
+                    )
+                    filter_overrides[f'{field_name}__exact'] = django_filters.ModelMultipleChoiceFilter(
+                        field_name=field_name,
+                        to_field_name='id',
+                        queryset=related_model.objects.all(),
+                        distinct=True,
                     )
                     filter_overrides[f'{field_name}__id'] = django_filters.ModelMultipleChoiceFilter(
                         field_name=field_name,
                         to_field_name='id',
-                        queryset=related_model.objects.all()
+                        queryset=related_model.objects.all(),
+                        distinct=True,
                     )
                     filter_overrides[f'{field_name}__in'] = django_filters.ModelMultipleChoiceFilter(
                         field_name=field_name,
