@@ -5,7 +5,7 @@ from bloomerp.automation.triggers.base import BaseTrigger
 from django import forms
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 
-class HumanTriggerForm:
+class HumanTriggerForm(forms.Form):
     data = forms.JSONField(
         widget=CodeEditorWidget(
             language="json"

@@ -12,6 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic.edit import CreateView
 
 from bloomerp.models import UserCreateViewPreference
+from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.files import File
 from bloomerp.models.workspaces import SqlQuery, Tile
@@ -39,7 +40,7 @@ User = get_user_model()
     url_name="add",
     description="Create a new object from {model}",
     route_type="model",
-    exclude_models=[File, Tile, SqlQuery, User, Workspace, DocumentTemplate],
+    exclude_models=[File, Tile, SqlQuery, User, Workspace, DocumentTemplate, Workflow],
 )
 class BloomerpCreateView(
     BaseBloomerpView,

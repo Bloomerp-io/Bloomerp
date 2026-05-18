@@ -14,8 +14,9 @@ class NodeSubTypeDefinition:
     name:str = ""
     description:str = ""
     executor_cls:Optional[Type[BaseExecutor]] = None
+    icon:Optional[str]="fa fa-plus"
     
-
+    
 @dataclass
 class NodeTypeDefinition:
     id:str
@@ -34,13 +35,15 @@ class WorkflowNodeType(Enum):
                 id="ON_OBJECT_CREATE",
                 name="On Object Create",
                 description="Triggered when a new object is created",
-                executor_cls=None  # Placeholder for actual function
+                executor_cls=None,  # Placeholder for actual function
+                icon="fa fa-plus"
             ),
             NodeSubTypeDefinition(
                 id="ON_OBJECT_UPDATE",
                 name="On Object Update",
                 description="Triggered when an object is updated",
-                executor_cls=None  # Placeholder for actual function
+                executor_cls=None,  # Placeholder for actual function
+                icon="fa fa-plus"
             ),
             NodeSubTypeDefinition(
                 id="ON_OBJECT_DELETE",
@@ -134,3 +137,12 @@ class WorkflowNodeType(Enum):
     @classmethod
     def members(cls):
         return [member for member in cls]
+    
+    @classmethod
+    def from_id(cls, id):
+        for member in cls:
+            if member.value.id == id:
+                return member
+        raise ValueError(f"Unknown node type: {id}")
+        
+    

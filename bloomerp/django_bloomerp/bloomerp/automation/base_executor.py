@@ -1,8 +1,10 @@
+from typing import Type
+
 from django import forms
 
 class BaseExecutor:
     """Base class for all executors in the automation system."""
-    config_form : forms.Form = None
+    config_form : Type[forms.Form] = None
 
     def __init__(self, config: dict):
         self.config : dict = config.get("parameters")

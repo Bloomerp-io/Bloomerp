@@ -1,5 +1,8 @@
+import getGeneralModal from "@/utils/modals";
+import { getCsrfToken } from "@/utils/cookies";
 import BaseComponent from "../BaseComponent";
 import DrawFlow from 'drawflow';
+import htmx from "htmx.org";
 
 interface WorkflowNode {
     id: number;
@@ -19,11 +22,24 @@ function createNodeHtml(nodeType: string, nodeSubType: string, nodeId: number): 
     `;
 }
 
+interface Coordinates {
+    x:number,
+    y:number
+}
+
+function createRandomCoordinates() : Coordinates {
+    return {
+        x:Math.random() * 300 + 200,
+        y:Math.random() * 200 + 100
+    }
+}
 
 export default class Workflow extends BaseComponent {
     private drawflow: DrawFlow;
     private nodeId: number = 1;
     private workflowId: string | null = null;
+
+    private saveWorkflowBtn: HTMLButtonElement
 
     public initialize(): void {
         // Initialize DrawFlow on the drawflow container
@@ -59,8 +75,6 @@ export default class Workflow extends BaseComponent {
         this.drawflow.addModule('Home');
         this.drawflow.changeModule('Home');
         
-        // Add sample nodes with connections
-        this.addSampleNodes();
         
         // Setup toolbar buttons
         this.setupToolbar();
@@ -71,7 +85,20 @@ export default class Workflow extends BaseComponent {
         // Setup double-click handler for nodes
         this.setupNodeDoubleClickHandler();
         
-        console.log('Workflow component initialized');
+        // Setup the sidebar
+        this.element.querySelectorAll('[data-node-subtype-id]').forEach((el)=>{
+            const nodeTypeId = el.getAttribute('data-node-type-id');
+            const nodeSubTypeId = el.getAttribute('data-node-subtype-id')
+
+            el.addEventListener('click', ()=>{
+                this.addNode(nodeTypeId, nodeSubTypeId)
+            })
+        })
+
+        this.workflowId = this.element.getAttribute('data-workflow-id');
+        this.saveWorkflowBtn = this.element.querySelector('#save-workflow-btn')
+        this.saveWorkflowBtn.addEventListener('click', () => void this.saveWorkflow());
+
     }
     
     /**
@@ -94,44 +121,6 @@ export default class Workflow extends BaseComponent {
         });
     }
     
-    private addSampleNodes(): void {
-        // Start Node (ID will be 1)
-        const startHtml = createNodeHtml('TRIGGER', 'ON_START', this.nodeId);
-        const startId = this.drawflow.addNode('TRIGGER', 0, 1, 150, 100, 'start-node', { nodeType: 'TRIGGER', nodeSubType: 'ON_START' }, startHtml, false);
-        this.nodeId++;
-        
-        // Process Node (ID will be 2)
-        const processHtml = createNodeHtml('ACTION', 'PROCESS_DATA', this.nodeId);
-        const processId = this.drawflow.addNode('ACTION', 1, 1, 400, 150, 'process-node', { nodeType: 'ACTION', nodeSubType: 'PROCESS_DATA' }, processHtml, false);
-        this.nodeId++;
-        
-        // Decision Node (ID will be 3)
-        const decisionHtml = createNodeHtml('FLOW', 'IF_CONDITION', this.nodeId);
-        const decisionId = this.drawflow.addNode('FLOW', 1, 2, 700, 100, 'decision-node', { nodeType: 'FLOW', nodeSubType: 'IF_CONDITION' }, decisionHtml, false);
-        this.nodeId++;
-        
-        // End Node (ID will be 4)
-        const endHtml = createNodeHtml('ACTION', 'END', this.nodeId);
-        const endId = this.drawflow.addNode('ACTION', 2, 0, 1000, 200, 'end-node', { nodeType: 'ACTION', nodeSubType: 'END' }, endHtml, false);
-        this.nodeId++;
-        
-        // Create connections programmatically
-        // Format: addConnection(fromNodeId, toNodeId, outputClass, inputClass)
-        
-        // Connect Start -> Process
-        this.drawflow.addConnection(startId, processId, 'output_1', 'input_1');
-        
-        // Connect Process -> Decision
-        this.drawflow.addConnection(processId, decisionId, 'output_1', 'input_1');
-        
-        // Connect Decision -> End (first output)
-        this.drawflow.addConnection(decisionId, endId, 'output_1', 'input_1');
-        
-        // You can also connect Decision -> End (second output) if you want multiple paths
-        // this.drawflow.addConnection(decisionId, endId, 'output_2', 'input_2');
-        
-        console.log('Created connections between nodes');
-    }
     
     private setupToolbar(): void {
         const addNodeBtn = this.element.querySelector('#add-node-btn');
@@ -173,6 +162,80 @@ export default class Workflow extends BaseComponent {
         const data = this.drawflow.export();
     }
 
+    private buildWorkflowPayload() {
+        const exportData = this.drawflow.export();
+        const workflowData = exportData.drawflow?.Home?.data || {};
+        const nodes = Object.values(workflowData as Record<string, any>);
+        const edges: Array<{ from_node: string; to_node: string }> = [];
+
+        for (const node of nodes) {
+            const outputs = node.outputs || {};
+            for (const output of Object.values(outputs) as Array<any>) {
+                for (const connection of output.connections || []) {
+                    edges.push({
+                        from_node: `node-${node.id}`,
+                        to_node: `node-${connection.node}`,
+                    });
+                }
+            }
+        }
+
+        return {
+            ...(this.workflowId ? { workflow_id: parseInt(this.workflowId, 10) } : {}),
+            name: 'Workflow',
+            nodes: nodes.map((node: any) => ({
+                ...(node.data?.workflowNodeId ? { id: node.data.workflowNodeId } : {}),
+                client_id: `node-${node.id}`,
+                type: node.data?.nodeType || node.name,
+                config: {
+                    ...(node.data?.config || {}),
+                    sub_type: node.data?.nodeSubType,
+                },
+                pos_x: node.pos_x,
+                pos_y: node.pos_y,
+            })),
+            edges,
+        };
+    }
+
+    private async saveWorkflow(): Promise<void> {
+        const csrfToken = getCsrfToken();
+        const payload = this.buildWorkflowPayload();
+
+        try {
+            const response = await fetch('/components/automation/save_workflow/', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                console.error('Failed to save workflow');
+                return;
+            }
+
+            const savedWorkflow = await response.json();
+            this.workflowId = savedWorkflow.workflow_id?.toString() || this.workflowId;
+
+            for (const node of savedWorkflow.nodes || []) {
+                const drawflowId = parseInt(String(node.client_id).replace('node-', ''), 10);
+                const drawflowNode = this.drawflow.getNodeFromId(drawflowId);
+                if (drawflowNode) {
+                    drawflowNode.data = {
+                        ...drawflowNode.data,
+                        workflowNodeId: node.id,
+                    };
+                }
+            }
+        } catch (error) {
+            console.error('Failed to save workflow', error);
+        }
+    }
+
     private addEventListeners(): void {
         // Listen for clicks on workflow node buttons
         const nodeButtons = this.element.querySelectorAll('.workflow-node-btn');
@@ -197,31 +260,26 @@ export default class Workflow extends BaseComponent {
      * @param nodeSubType the id of the node subtype
      */
     private addNode(nodeType: string, nodeSubType: string) {
-        const endpoint = `/components/automation/render_workflow_node/?node_type=${nodeType}&node_subtype=${nodeSubType}`;
-        
-        fetch(endpoint)
-            .then(response => response.text())
-            .then(html => {
-                const posX = Math.random() * 300 + 200;
-                const posY = Math.random() * 200 + 100;
+        const coordinates = createRandomCoordinates() 
+        let numberOfInputs = 1;
+
+        if (nodeType==='TRIGGER') {
+            numberOfInputs=0
+        }
+
+        this.drawflow.addNode(
+            nodeType,
+            numberOfInputs,
+            1,
+            coordinates.x,
+            coordinates.y,
+            `${nodeType}-${this.nodeId}`,
+            { nodeType, nodeSubType },
+            createNodeHtml(nodeType, nodeSubType, this.nodeId),
+            false
+        );
                 
-                this.drawflow.addNode(
-                    nodeType,
-                    1,
-                    1,
-                    posX,
-                    posY,
-                    `${nodeType}-${this.nodeId}`,
-                    { nodeType, nodeSubType },
-                    html,
-                    false
-                );
-                
-                this.nodeId++;
-            })
-            .catch(error => {
-                console.error('Error fetching node HTML:', error);
-            });
+        this.nodeId++;
     }
 
     /**
@@ -229,68 +287,28 @@ export default class Workflow extends BaseComponent {
      * @param nodeId the ID of the double-clicked node
      */
     private handleNodeDoubleClick(nodeId: number): void {
+        let url = "/components/automation/render_workflow_node?"
         const nodeData = this.drawflow.getNodeFromId(nodeId);
+
+        url += 'node_type=' + nodeData.data['nodeType'] + '&node_sub_type=' + nodeData.data['nodeSubType']
         
-        if (!nodeData) {
-            console.error('Node not found:', nodeId);
-            return;
-        }
+        // Get the general modal
+        const modal = getGeneralModal()
+        
+        htmx.ajax(
+            'get',
+            url,
+            {
+                target: `#${modal.getBodyElement().id}`,
+                swap: 'innerHTML'
 
-        const { data } = nodeData;
-        const nodeType = data.nodeType;
-        const nodeSubType = data.nodeSubType;
+            }
+        )
 
-        console.log('Double-clicked node:', { nodeId, nodeType, nodeSubType, data });
+        modal.open()
 
-        // Handle different node types
-        switch (nodeType) {
-            case 'TRIGGER':
-                this.handleTriggerNodeAction(nodeId, nodeSubType, data);
-                break;
-            case 'ACTION':
-                this.handleActionNodeAction(nodeId, nodeSubType, data);
-                break;
-            case 'FLOW':
-                this.handleFlowNodeAction(nodeId, nodeSubType, data);
-                break;
-            default:
-                console.warn('Unknown node type:', nodeType);
-                this.openNodeEditor(nodeId, nodeType, nodeSubType, data);
-        }
     }
 
-    /**
-     * Handle trigger node actions
-     */
-    private handleTriggerNodeAction(nodeId: number, nodeSubType: string, data: any): void {
-        console.log('Trigger node action:', { nodeId, nodeSubType, data });
-        
-        // TODO: Open modal or panel to configure trigger settings
-        // Examples: schedule configuration, webhook URL, event filters, etc.
-        this.openNodeEditor(nodeId, 'TRIGGER', nodeSubType, data);
-    }
-
-    /**
-     * Handle action node actions
-     */
-    private handleActionNodeAction(nodeId: number, nodeSubType: string, data: any): void {
-        console.log('Action node action:', { nodeId, nodeSubType, data });
-        
-        // TODO: Open modal or panel to configure action settings
-        // Examples: email template, API endpoint, record fields, etc.
-        this.openNodeEditor(nodeId, 'ACTION', nodeSubType, data);
-    }
-
-    /**
-     * Handle flow node actions
-     */
-    private handleFlowNodeAction(nodeId: number, nodeSubType: string, data: any): void {
-        console.log('Flow node action:', { nodeId, nodeSubType, data });
-        
-        // TODO: Open modal or panel to configure flow logic
-        // Examples: condition builder, switch cases, etc.
-        this.openNodeEditor(nodeId, 'FLOW', nodeSubType, data);
-    }
 
     /**
      * Opens a node editor/configuration panel
@@ -311,5 +329,7 @@ export default class Workflow extends BaseComponent {
         // 3. Dispatch a custom event that another component can listen to
         // 4. Update the node's data property with new configuration
     }
+
+
 
 }
