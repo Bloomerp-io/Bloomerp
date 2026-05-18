@@ -1,7 +1,10 @@
 """
 Utility functions for filtering through Django models using django-filters.
 """
+from datetime import date, datetime, time, timedelta
+
 import django_filters
+from django.conf import settings
 from django.db.models import (
     ForeignKey, 
     CharField, 
@@ -20,12 +23,116 @@ from django.db.models import (
 )
 from bloomerp.model_fields.status_field import StatusField
 from django_filters import DateFilter
+from django.utils import timezone
 
 from typing import Type, Optional
 from django.db.models import Model
 from django.db.models.query import QuerySet
 
 MAX_RELATION_FILTER_DEPTH = 2
+
+RELATIVE_DATE_LOOKUPS = (
+    "today",
+    "yesterday",
+    "this_week",
+    "last_week",
+    "this_month",
+    "last_month",
+    "this_quarter",
+    "last_quarter",
+    "this_year",
+    "last_year",
+)
+
+
+def _shift_months(value: date, months: int) -> date:
+    month_index = value.month - 1 + months
+    year = value.year + month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, 1)
+
+
+def _quarter_start(value: date) -> date:
+    quarter_month = ((value.month - 1) // 3) * 3 + 1
+    return date(value.year, quarter_month, 1)
+
+
+def _get_relative_date_range(lookup: str, reference_date: date) -> tuple[date, date]:
+    if lookup == "today":
+        return reference_date, reference_date + timedelta(days=1)
+
+    if lookup == "yesterday":
+        start = reference_date - timedelta(days=1)
+        return start, reference_date
+
+    if lookup == "this_week":
+        start = reference_date - timedelta(days=reference_date.weekday())
+        return start, start + timedelta(days=7)
+
+    if lookup == "last_week":
+        end = reference_date - timedelta(days=reference_date.weekday())
+        return end - timedelta(days=7), end
+
+    if lookup == "this_month":
+        start = reference_date.replace(day=1)
+        return start, _shift_months(start, 1)
+
+    if lookup == "last_month":
+        end = reference_date.replace(day=1)
+        start = _shift_months(end, -1)
+        return start, end
+
+    if lookup == "this_quarter":
+        start = _quarter_start(reference_date)
+        return start, _shift_months(start, 3)
+
+    if lookup == "last_quarter":
+        end = _quarter_start(reference_date)
+        start = _shift_months(end, -3)
+        return start, end
+
+    if lookup == "this_year":
+        start = date(reference_date.year, 1, 1)
+        return start, date(reference_date.year + 1, 1, 1)
+
+    if lookup == "last_year":
+        start = date(reference_date.year - 1, 1, 1)
+        return start, date(reference_date.year, 1, 1)
+
+    raise ValueError(f"Unsupported relative date lookup: {lookup}")
+
+
+def _coerce_relative_bounds(field: Field, start: date, end: date) -> tuple[date | datetime, date | datetime]:
+    if isinstance(field, DateTimeField):
+        start_dt = datetime.combine(start, time.min)
+        end_dt = datetime.combine(end, time.min)
+        if settings.USE_TZ:
+            current_timezone = timezone.get_current_timezone()
+            start_dt = timezone.make_aware(start_dt, current_timezone)
+            end_dt = timezone.make_aware(end_dt, current_timezone)
+        return start_dt, end_dt
+
+    return start, end
+
+
+class RelativeDateRangeFilter(django_filters.BooleanFilter):
+    def __init__(self, *args, lookup_id: str, model_field: Field, **kwargs):
+        self.lookup_id = lookup_id
+        self.model_field = model_field
+        super().__init__(*args, **kwargs)
+
+    def filter(self, queryset: QuerySet, value: bool) -> QuerySet:
+        if value in django_filters.constants.EMPTY_VALUES or value is False:
+            return queryset
+
+        start, end = _get_relative_date_range(self.lookup_id, timezone.localdate())
+        range_start, range_end = _coerce_relative_bounds(self.model_field, start, end)
+        return queryset.filter(
+            **{
+                f"{self.field_name}__gte": range_start,
+                f"{self.field_name}__lt": range_end,
+            }
+        )
 
 def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.FilterSet]:
     """
@@ -86,6 +193,13 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
                 filter_overrides[f'{field_name}__gt'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='gt')
                 filter_overrides[f'{field_name}__lt'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='lt')
                 filter_overrides[f'{field_name}__exact'] = django_filters.DateTimeFilter(field_name=field_name, lookup_expr='exact')
+
+            for relative_lookup in RELATIVE_DATE_LOOKUPS:
+                filter_overrides[f"{field_name}__{relative_lookup}"] = RelativeDateRangeFilter(
+                    field_name=field_name,
+                    lookup_id=relative_lookup,
+                    model_field=field,
+                )
 
             filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
             filter_overrides[f'{field_name}__year'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='year')
