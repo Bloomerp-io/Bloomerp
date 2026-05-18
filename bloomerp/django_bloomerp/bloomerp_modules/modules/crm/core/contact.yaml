@@ -65,6 +65,12 @@ fields:
     options:
       null: true
       blank: true
+  - id: address
+    name: Address
+    type: AddressField
+    options:
+      null: true
+      blank: true
 field_layout:
   rows:
     - title: "Contact Info"
@@ -82,6 +88,7 @@ field_layout:
         - id: email
         - id: phone
         - id: mobile_phone
+        - id: address
     - title: "Notes"
       columns: 1
       items:
