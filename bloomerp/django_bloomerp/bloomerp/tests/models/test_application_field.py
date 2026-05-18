@@ -1,6 +1,7 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db import connection
 
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.access_control.field_policy import FieldPolicy
@@ -10,10 +11,13 @@ from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.field_types import FieldType, Lookup
+from bloomerp.form_fields.address_field import AddressFormField, AddressValue
 from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
+from bloomerp.model_fields.address_field import AddressField
 from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
+from bloomerp.widgets.address_widget import AddressWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
@@ -51,6 +55,16 @@ class TestApplicationField(BaseBloomerpModelTestCase):
             },
             use_bloomerp_base=True,
         )["PhoneRecord"]
+        cls.AddressRecordModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "AddressRecord": {
+                    "address": AddressField(blank=True, null=True),
+                    "__str__": lambda self: "Address record",
+                }
+            },
+            use_bloomerp_base=True,
+        )["AddressRecord"]
 
     def test_pk_application_field_returns_widget(self):
         content_type = ContentType.objects.get_for_model(Policy)
@@ -180,6 +194,96 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertEqual(field_type.default_model_field_args["max_length"], 30)
         self.assertIn(Lookup.CONTAINS, field_type.lookups)
 
+    def test_address_field_type_uses_address_field_parts(self):
+        field_type = FieldType.ADDRESS_FIELD.value
+
+        self.assertEqual(field_type.id, "AddressField")
+        self.assertIs(field_type.model_field_cls, AddressField)
+        self.assertIs(field_type.form_field_cls, AddressFormField)
+        self.assertIs(field_type.widget_cls, AddressWidget)
+        self.assertIn(Lookup.CONTAINS, field_type.lookups)
+
+    def test_address_form_field_normalizes_structured_value(self):
+        form_field = AddressFormField()
+
+        value = form_field.clean(
+            [
+                " Main street 1 ",
+                "",
+                " 1000 ",
+                " Brussels ",
+                "",
+                "BE",
+            ]
+        )
+
+        self.assertIsInstance(value, AddressValue)
+        self.assertEqual(
+            value,
+            {
+                "street_1": "Main street 1",
+                "street_2": "",
+                "postal_code": "1000",
+                "city": "Brussels",
+                "state": "",
+                "country": "BE",
+            },
+        )
+        self.assertEqual(str(value), "Main street 1, 1000 Brussels, Belgium")
+
+    def test_address_form_field_rejects_unknown_country_code(self):
+        form_field = AddressFormField()
+
+        with self.assertRaises(ValidationError):
+            form_field.clean(
+                [
+                    "Main street 1",
+                    "",
+                    "1000",
+                    "Brussels",
+                    "",
+                    "ZZZ",
+                ]
+            )
+
+    def test_address_model_field_formfield_uses_address_widget(self):
+        model_field = AddressField()
+        form_field = model_field.formfield()
+
+        self.assertIsInstance(form_field, AddressFormField)
+        self.assertIsInstance(form_field.widget, AddressWidget)
+
+    def test_address_model_field_to_python_returns_string_renderable_value(self):
+        model_field = AddressField()
+
+        value = model_field.to_python(
+            {
+                "street_1": "Main street 1",
+                "street_2": "",
+                "postal_code": "1000",
+                "city": "Brussels",
+                "state": "",
+                "country": "BE",
+            }
+        )
+
+        self.assertIsInstance(value, AddressValue)
+        self.assertEqual(str(value), "Main street 1, 1000 Brussels, Belgium")
+
+    def test_stale_json_field_metadata_uses_address_widget_for_address_field(self):
+        content_type = ContentType.objects.get_for_model(self.AddressRecordModel)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="address",
+        )
+        application_field.field_type = FieldType.JSON_FIELD.id
+
+        form_field = application_field.get_form_field()
+
+        self.assertEqual(application_field.get_field_type_enum(), FieldType.ADDRESS_FIELD)
+        self.assertIsInstance(form_field, AddressFormField)
+        self.assertIsInstance(form_field.widget, AddressWidget)
+
     def test_phone_number_form_field_normalizes_country_codes(self):
         form_field = PhoneNumberFormField()
 
@@ -200,6 +304,14 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertIsInstance(form_field.widget, PhoneNumberWidget)
         self.assertEqual(form_field.widget.input_type, "tel")
 
+    def test_phone_number_model_field_exposes_database_type(self):
+        model_field = PhoneNumberField(max_length=30)
+
+        self.assertEqual(
+            model_field.db_type(connection),
+            models.CharField(max_length=30).db_type(connection),
+        )
+
     def test_stale_char_field_metadata_uses_phone_number_widget_for_phone_field(self):
         content_type = ContentType.objects.get_for_model(self.PhoneRecordModel)
         application_field = ApplicationField.objects.get(
@@ -213,6 +325,14 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertEqual(application_field.get_field_type_enum(), FieldType.PHONE_NUMBER_FIELD)
         self.assertIsInstance(form_field, PhoneNumberFormField)
         self.assertIsInstance(form_field.widget, PhoneNumberWidget)
+
+    def test_address_model_field_exposes_database_type(self):
+        model_field = AddressField()
+
+        self.assertEqual(
+            model_field.db_type(connection),
+            models.JSONField().db_type(connection),
+        )
 
     def test_property_backed_application_field_returns_no_form_field(self):
         content_type = ContentType.objects.get_for_model(RowPolicyRule)

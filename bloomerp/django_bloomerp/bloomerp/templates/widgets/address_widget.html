@@ -1,0 +1,12 @@
+<div bloomerp-component="address-field-widget">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {% for field in widget.address_fields %}
+            <div class="{% if field.key == 'street_1' or field.key == 'street_2' %}md:col-span-2{% endif %}">
+                <label class="mb-1 block text-xs font-medium text-slate-600" for="{{ field.subwidget.attrs.id }}">
+                    {{ field.label }}
+                </label>
+                {% include field.subwidget.template_name with widget=field.subwidget %}
+            </div>
+        {% endfor %}
+    </div>
+</div>

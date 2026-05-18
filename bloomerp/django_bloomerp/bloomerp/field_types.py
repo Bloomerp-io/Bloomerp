@@ -15,10 +15,13 @@ from bloomerp.widgets.ordered_field_select_widget import OrderedFieldSelectWidge
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
+from bloomerp.model_fields.address_field import AddressField
 from bloomerp.model_fields.icon_field import IconField
 from bloomerp.model_fields.phone_number_field import PhoneNumberField
+from bloomerp.form_fields.address_field import AddressFormField
 from bloomerp.form_fields.icon_field import IconFormField
 from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
+from bloomerp.widgets.address_widget import AddressWidget
 from bloomerp.widgets.icon_picker_widget import IconPickerWidget
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
 from bloomerp.widgets.select_widget import InputSelectWidget
@@ -923,6 +926,21 @@ class FieldType(Enum):
             "max_length": 200,
         },
         field_options=COMMON_TEXT_FIELD_OPTIONS,
+    )
+
+    ADDRESS_FIELD = FieldTypeDefinition(
+        id="AddressField",
+        display_name="Address Field",
+        icon="fa-solid fa-location-dot",
+        model_field_cls=AddressField,
+        form_field_cls=AddressFormField,
+        widget_cls=AddressWidget,
+        lookups=TEXT_LOOKUPS,
+        field_options=[
+            NULL_FIELD_OPTION,
+            BLANK_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+        ],
     )
 
     PHONE_NUMBER_FIELD = FieldTypeDefinition(

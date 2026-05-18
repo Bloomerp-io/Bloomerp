@@ -151,6 +151,7 @@ dependencies = [
     "fa6-icons>=0.0.3",
     "celery>=5.4.0",
     "vulture>=2.16",
+    "pycountries>=1.2.1",
 ]
 
 [project.optional-dependencies]

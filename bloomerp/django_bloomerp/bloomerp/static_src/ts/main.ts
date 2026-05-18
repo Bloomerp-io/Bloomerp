@@ -29,6 +29,7 @@ import ForeignFieldWidget from './components/widgets/ForeignFieldWidget';
 import OneToManyFieldWidget from './components/widgets/OneToManyFieldWidget';
 import CodeEditorWidget from './components/widgets/CodeEditorWidget';
 import IconPickerWidget from './components/widgets/IconPickerWidget';
+import AddressFieldWidget from './components/widgets/AddressFieldWidget';
 import UiMessage from './components/UiMessage';
 import ObjectCRUDViewContainer from './components/detail_view_components/ObjectCRUDViewContainer';
 import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
@@ -99,6 +100,7 @@ registerComponent('foreign-field-widget', ForeignFieldWidget);
 registerComponent('one-to-many-field-widget', OneToManyFieldWidget);
 registerComponent('code-editor-widget', CodeEditorWidget);
 registerComponent('icon-picker-widget', IconPickerWidget);
+registerComponent('address-field-widget', AddressFieldWidget);
 registerComponent('bloomerp-text-editor', BloomerpTextEditor);
 
 // Messages

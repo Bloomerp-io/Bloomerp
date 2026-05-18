@@ -22,6 +22,13 @@ class PhoneNumberField(models.CharField):
     def get_internal_type(self):
         return "PhoneNumberField"
 
+    def db_type(self, connection):
+        data = self.db_type_parameters(connection)
+        column_type = connection.data_types["CharField"]
+        if callable(column_type):
+            return column_type(data)
+        return column_type % data
+
     def to_python(self, value):
         value = super().to_python(value)
         if value in self.empty_values:

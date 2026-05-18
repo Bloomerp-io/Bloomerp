@@ -295,12 +295,24 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
             return "";
         }
 
+        if (typeof value === "object") {
+            try {
+                return JSON.stringify(value);
+            } catch {
+                return String(value);
+            }
+        }
+
         return String(value);
     }
 
     private isInsideCustomWidget(target: HTMLElement): boolean {
         const widgetRoot = target.closest<HTMLElement>(`[${componentIdentifier}]`);
         if (!widgetRoot || widgetRoot === this.element) return false;
+
+        if (widgetRoot.getAttribute(componentIdentifier) === "address-field-widget") {
+            return false;
+        }
 
         const component = getComponent(widgetRoot);
         return component instanceof BaseWidget;
