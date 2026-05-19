@@ -83,7 +83,6 @@ def render_advanced_lookup(application_field:"ApplicationField", name_override: 
     
     return html
 
-
 def render_hidden_lookup_value(
     application_field: "ApplicationField",
     name_override: Optional[str] = None,
