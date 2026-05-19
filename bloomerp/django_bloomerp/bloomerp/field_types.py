@@ -95,7 +95,6 @@ def render_hidden_lookup_value(
         f'<div class="input w-full">{helper_text}</div>'
     )
 
-
 def render_numeric_lookup_value(
     application_field: "ApplicationField",
     name_override: Optional[str] = None,
