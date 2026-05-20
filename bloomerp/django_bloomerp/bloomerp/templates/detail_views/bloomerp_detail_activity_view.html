@@ -1,15 +1,6 @@
 {% load bloomerp %}
 
-<div class="max-w-4xl">
-    {% if messages %}
-        <div class="mb-6 space-y-2">
-            {% for message in messages %}
-                <div class="rounded-md border px-3 py-2 text-sm {% if message.tags == 'success' %}border-green-200 bg-green-50 text-green-800{% elif message.tags == 'error' %}border-red-200 bg-red-50 text-red-800{% else %}border-gray-200 bg-gray-50 text-gray-700{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
+<div class="max-w-4xl flex justify-center mx-auto">
 
     {% if queryset %}
         <ol class="relative space-y-10 before:absolute before:left-5 before:top-3 before:h-full before:w-px before:bg-gray-200">
@@ -99,9 +90,6 @@
             {% endfor %}
         </ol>
     {% else %}
-        <div class="rounded-md border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-            <p class="text-sm font-medium text-gray-700">No activity yet</p>
-            <p class="mt-1 text-sm text-gray-500">Changes to this object will appear here.</p>
-        </div>
+        <c-ui.text.muted class="">No activity yet</c-ui.text.muted>
     {% endif %}
 </div>

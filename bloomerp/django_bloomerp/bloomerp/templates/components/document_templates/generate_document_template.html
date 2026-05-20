@@ -4,7 +4,7 @@
 {% generate_uuid as uuid %}
 
 <div id="id-{{ uuid }}">
-    <div class="grid min-h-[72vh] gap-5 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
+    <div class="grid min-h-[72vh] gap-5 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]" >
         <div class="flex min-h-0 flex-col gap-4">
             <form
                 hx-post="{{ form_action|default:request.get_full_path }}"
