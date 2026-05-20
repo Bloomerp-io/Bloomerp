@@ -52,7 +52,8 @@ class DocumentTemplate(BloomerpModel):
         db_table = 'bloomerp_document_template'
 
     bloomerp_config = BloomerpModelConfig()
-
+    avatar = None
+    
     name = models.CharField(
         max_length=100,
         help_text=_("Name of the document template.")
