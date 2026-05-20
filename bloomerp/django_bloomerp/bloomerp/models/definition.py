@@ -260,6 +260,8 @@ class BloomerpModelConfig(BaseModel):
 
     api_settings: Optional[ApiSettings] = None
 
+    record_activity_log : bool = True
+    
     @field_validator("module", mode="before")
     @classmethod
     def normalize_module(cls, value: Any) -> str | None:

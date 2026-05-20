@@ -398,7 +398,7 @@ def apply_queryset_nesting(
         queryset = queryset.prefetch_related(*sorted(prefetch_related_paths))
     return queryset
 
-def generate_serializer(model:Model):
+def generate_serializer(model:Model) -> type[serializers.ModelSerializer]:
     '''
     Dynamically generate a serializer class for a given model.
     '''

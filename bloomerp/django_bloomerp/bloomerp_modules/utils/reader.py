@@ -170,6 +170,7 @@ def create_model_from_config(
     config = BloomerpModelConfig(
         module=module_config.full_id or module_config.id,
         layout=_normalize_field_layout(getattr(model_config, "field_layout", None)),
+        record_activity_log=True
     )
 
     attrs["Meta"] = Meta
