@@ -23,7 +23,11 @@ class BloomerpApp(AppConfig):
         from bloomerp.config.validator import validate_runtime_configuration
         from bloomerp.signals.automations import setup_automation_signals
         from bloomerp.modules.definition import module_registry
-
+        from bloomerp.signals.activity_log import before_save_of_object  # noqa: F401
+        from bloomerp.signals.activity_log import after_save_of_object
+        from bloomerp.signals.activity_log import before_delete_of_object  # noqa: F401
+        from bloomerp.signals.activity_log import after_delete_of_object  # noqa: F401
+        
         configure_bloomerp_allauth_settings()
 
         try:
@@ -31,7 +35,7 @@ class BloomerpApp(AppConfig):
         except (OperationalError, ProgrammingError):
             # Database may not be ready during migrations.
             pass
-
+        
         # Refresh the module registry
         module_registry.refresh()
 
