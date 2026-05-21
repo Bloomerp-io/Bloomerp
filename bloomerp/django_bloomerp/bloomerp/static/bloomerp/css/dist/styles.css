@@ -3,7 +3,7 @@
 @layer theme, base, components, utilities;
 @layer theme {
   :root, :host {
-    --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --font-sans: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
     --color-red-50: oklch(97.1% 0.013 17.38);
@@ -40,7 +40,6 @@
     --color-green-900: oklch(39.3% 0.095 152.535);
     --color-emerald-50: oklch(97.9% 0.021 166.113);
     --color-emerald-100: oklch(95% 0.052 163.051);
-    --color-emerald-200: oklch(90.5% 0.093 164.15);
     --color-emerald-600: oklch(59.6% 0.145 163.225);
     --color-emerald-700: oklch(50.8% 0.118 165.612);
     --color-blue-50: oklch(97% 0.014 254.604);
@@ -534,9 +533,6 @@
   }
   .my-8 {
     margin-block: calc(var(--spacing) * 8);
-  }
-  .my-auto {
-    margin-block: auto;
   }
   .prose {
     color: var(--tw-prose-body);
@@ -1139,6 +1135,9 @@
   .h-\[calc\(100vh-1\.5rem\)\] {
     height: calc(100vh - 1.5rem);
   }
+  .h-\[calc\(100vh-8rem\)\] {
+    height: calc(100vh - 8rem);
+  }
   .h-\[calc\(100vh-200px\)\] {
     height: calc(100vh - 200px);
   }
@@ -1205,11 +1204,11 @@
   .min-h-20 {
     min-height: calc(var(--spacing) * 20);
   }
+  .min-h-24 {
+    min-height: calc(var(--spacing) * 24);
+  }
   .min-h-64 {
     min-height: calc(var(--spacing) * 64);
-  }
-  .min-h-72 {
-    min-height: calc(var(--spacing) * 72);
   }
   .min-h-80 {
     min-height: calc(var(--spacing) * 80);
@@ -2197,17 +2196,11 @@
   .bg-blue-100 {
     background-color: var(--color-blue-100);
   }
-  .bg-blue-200 {
-    background-color: var(--color-blue-200);
-  }
   .bg-blue-600 {
     background-color: var(--color-blue-600);
   }
   .bg-emerald-50 {
     background-color: var(--color-emerald-50);
-  }
-  .bg-emerald-200 {
-    background-color: var(--color-emerald-200);
   }
   .bg-gray-50 {
     background-color: var(--color-gray-50);
