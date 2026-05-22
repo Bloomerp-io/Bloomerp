@@ -419,17 +419,13 @@ class FieldOption:
     choices: list[str] | None = None  # valid values when primitive_input_type='choices'
     mutually_exclusive_with: list[str] = dataclass_field(default_factory=list)
     python_type: Any = Any
-
-    def __post_init__(self) -> None:
-        if not self.attribute_name:
-            self.attribute_name = self.id
     
 NULL_FIELD_OPTION = FieldOption(
     id="null",
     label="Nullable",
     primitive_input_type="bool",
     description="Whether this field can be set to null",
-    default_value=False,
+    default_value=True,
     python_type=bool,
 )
 
@@ -438,7 +434,7 @@ BLANK_FIELD_OPTION = FieldOption(
     label="Allow Empty Input",
     primitive_input_type="bool",
     description="Whether this field can be left empty in forms.",
-    default_value=False,
+    default_value=True,
     python_type=bool,
 )
 
@@ -538,7 +534,6 @@ RELATED_NAME_FIELD_OPTION = FieldOption(
     label="Reverse Relation Name",
     primitive_input_type="text",
     description="Optional related_name used on the reverse side of relationships.",
-    default_value="",
     python_type=str,
 )
 
@@ -547,7 +542,6 @@ VERBOSE_NAME_FIELD_OPTION = FieldOption(
     label="Label",
     primitive_input_type="text",
     description="Human-readable name shown as the field label in forms and admin.",
-    default_value="",
     python_type=str,
 )
 
