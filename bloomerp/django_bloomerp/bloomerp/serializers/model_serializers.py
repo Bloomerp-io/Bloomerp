@@ -8,6 +8,7 @@ def set_serializer_cls(model:type[Model]):
     _model_serializers[model] = generate_serializer(model)
     
 def get_serializer_cls(model:type[Model]) -> type[ModelSerializer]:
+    if model not in _model_serializers:
+        set_serializer_cls(model)
     return _model_serializers[model]
-
 

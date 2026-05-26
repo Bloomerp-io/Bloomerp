@@ -419,6 +419,9 @@ class FieldOption:
     choices: list[str] | None = None  # valid values when primitive_input_type='choices'
     mutually_exclusive_with: list[str] = dataclass_field(default_factory=list)
     python_type: Any = Any
+
+    def __hash__(self) -> int:
+        return hash(self.id)
     
 NULL_FIELD_OPTION = FieldOption(
     id="null",

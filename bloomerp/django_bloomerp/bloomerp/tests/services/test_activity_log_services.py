@@ -2,7 +2,7 @@ import uuid
 
 from bloomerp.models.activity_log import ActivityLog, ActivityLogAction
 from bloomerp.models.definition import BloomerpModelConfig
-from bloomerp.serializers.model_serializers import set_serializer_cls
+from bloomerp.serializers.model_serializers import _model_serializers, get_serializer_cls, set_serializer_cls
 from bloomerp.services.activity_log_services import ActivityLogManager
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 
@@ -16,6 +16,7 @@ class ActivityLogManagerTestCase(BaseBloomerpModelTestCase):
         self.customer = self.create_customer("Ada", "Lovelace", 28)
         self.CustomerModel.bloomerp_config = BloomerpModelConfig(record_activity_log=True)
         set_serializer_cls(self.CustomerModel)
+        ActivityLog.objects.all().delete()
 
     def test_build_changes_converts_uuid_values_to_json_safe_strings(self):
         manager = ActivityLogManager(self.customer)
@@ -62,6 +63,13 @@ class ActivityLogManagerTestCase(BaseBloomerpModelTestCase):
         self.assertIsNone(activity_log)
         self.assertEqual(ActivityLog.objects.count(), 0)
 
+    def test_serializer_lookup_registers_missing_serializer_lazily(self):
+        _model_serializers.pop(self.CustomerModel, None)
+
+        serializer_cls = get_serializer_cls(self.CustomerModel)
+
+        self.assertIs(_model_serializers[self.CustomerModel], serializer_cls)
+
     def test_delete_signal_stores_full_object_payload_after_delete(self):
         customer_id = str(self.customer.pk)
 
@@ -85,7 +93,7 @@ class ActivityLogManagerTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(
             activity_log.summary_string,
-            "System changed the field department to Finance",
+            "System changed the field 'department' to Finance",
         )
 
     def test_summary_string_lists_two_changed_fields(self):
@@ -100,7 +108,7 @@ class ActivityLogManagerTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(
             activity_log.summary_string,
-            "System changed the fields first_name and last_name",
+            "System changed the fields 'first_name' and 'last_name'",
         )
 
     def test_summary_string_summarizes_more_than_two_changed_fields(self):
@@ -116,5 +124,5 @@ class ActivityLogManagerTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(
             activity_log.summary_string,
-            "System changed the fields first_name, last_name and more",
+            "System changed the fields 'first_name', 'last_name' and more",
         )
