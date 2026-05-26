@@ -247,3 +247,54 @@ class TestExportServiceExcel(BaseBloomerpModelTestCase):
             for cell_value in (sheet.cell(row=row_index, column=1).value for row_index in range(2, sheet.max_row + 1))
         ]
         self.assertIn(str(customer.country_id), exported_values)
+
+
+class TestExportServiceFileFields(BaseBloomerpModelTestCase):
+    auto_create_customers = False
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.ImageRecordModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "ExportImageRecord": {
+                    "name": models.CharField(max_length=100),
+                    "photo": models.ImageField(upload_to="exports/", null=True, blank=True),
+                }
+            },
+            use_bloomerp_base=True,
+        )["ExportImageRecord"]
+        cls._register_dynamic_model_routes([cls.ImageRecordModel])
+
+    def test_create_export_bytes_xlsx_serializes_image_fields_as_file_names(self):
+        empty_record = self.ImageRecordModel.objects.create(name="No photo")
+        file_record = self.ImageRecordModel.objects.create(
+            name="Has photo",
+            photo="exports/customer.png",
+        )
+
+        service = ExportService(
+            model=self.ImageRecordModel,
+            user=self.admin_user,
+            permission_str="export_exportimagerecord",
+        )
+        fields = [
+            ApplicationField.get_by_field(self.ImageRecordModel, "name"),
+            ApplicationField.get_by_field(self.ImageRecordModel, "photo"),
+        ]
+
+        export_bytes, _, _ = service.create_export_bytes(
+            application_fields=list(fields),
+            file_type="xlsx",
+        )
+
+        workbook = openpyxl.load_workbook(BytesIO(export_bytes))
+        sheet = workbook.active
+        exported_values = {
+            sheet.cell(row=row_index, column=1).value: sheet.cell(row=row_index, column=2).value
+            for row_index in range(2, sheet.max_row + 1)
+        }
+
+        self.assertIsNone(exported_values[empty_record.name])
+        self.assertEqual(exported_values[file_record.name], "exports/customer.png")

@@ -10,6 +10,7 @@ import openpyxl
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db.models import Model, QuerySet
+from django.db.models.fields.files import FieldFile
 
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.services.object_services import string_search_on_queryset
@@ -138,6 +139,8 @@ class ExportService:
     def _serialize_value(self, value):
         if value is None:
             return ""
+        if isinstance(value, FieldFile):
+            return value.name or ""
         if isinstance(value, bool):
             return value
         if isinstance(value, UUID):
