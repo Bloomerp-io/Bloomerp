@@ -141,6 +141,6 @@ jobs:
 
       - name: Publish to PyPI
         if: steps.version.outputs.changed == 'true' && steps.pypi.outputs.exists != 'true'
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
           packages-dir: bloomerp/django_bloomerp/dist
