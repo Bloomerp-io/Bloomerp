@@ -1,16 +1,18 @@
 from dataclasses import dataclass, field as dataclass_field
 
 from bloomerp.field_types.display_options import FieldDisplayOption
-from bloomerp.field_types.lookups import BOOLEAN_LOOKUPS, DATE_LOOKUPS, NUMERIC_LOOKUPS, TEXT_LOOKUPS, Lookup
+from bloomerp.field_types.lookups import BOOLEAN_LOOKUPS, DATE_LOOKUPS, NUMERIC_LOOKUPS, TEXT_LOOKUPS, WEEK_LOOKUPS, Lookup
 from bloomerp.field_types.options import AUTO_NOW_ADD_FIELD_OPTION, AUTO_NOW_FIELD_OPTION, BLANK_FIELD_OPTION, COMMON_CHOICE_FIELD_OPTIONS, COMMON_FIELD_OPTIONS, COMMON_RELATION_FIELD_OPTIONS, COMMON_TEXT_FIELD_OPTIONS, DB_INDEX_FIELD_OPTION, DECIMAL_PLACES_FIELD_OPTION, DEFAULT_FIELD_OPTION, HELP_TEXT_FIELD_OPTION, MAX_DIGITS_FIELD_OPTION, NULL_FIELD_OPTION, ON_DELETE_FIELD_OPTION, RELATED_NAME_FIELD_OPTION, TO_FIELD_OPTION, UNIQUE_FIELD_OPTION, UPLOAD_TO_FIELD_OPTION, VERBOSE_NAME_FIELD_OPTION, FieldOption
 from bloomerp.form_fields.address_field import AddressFormField
 from bloomerp.form_fields.icon_field import IconFormField
 from bloomerp.form_fields.ordered_multiple_choice_field import OrderedMultipleChoiceField
 from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
+from bloomerp.form_fields.week_field import WeekFormField
 from bloomerp.model_fields.address_field import AddressField
 from bloomerp.model_fields.icon_field import IconField
 from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.model_fields.user_field import UserField
+from bloomerp.model_fields.week_field import WeekField
 from bloomerp.widgets.address_widget import AddressWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
@@ -20,6 +22,7 @@ from bloomerp.widgets.ordered_field_select_widget import OrderedFieldSelectWidge
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
 from bloomerp.widgets.select_widget import InputSelectWidget
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
+from bloomerp.widgets.week_widget import WeekWidget
 from typing import Optional
 from typing import TYPE_CHECKING
 from django import forms
@@ -476,6 +479,20 @@ class FieldType(Enum):
             AUTO_NOW_FIELD_OPTION,
             AUTO_NOW_ADD_FIELD_OPTION,
         ],
+    )
+
+    WEEK_FIELD = FieldTypeDefinition(
+        id="WeekField",
+        display_name="Week Field",
+        icon="fa-solid fa-calendar-week",
+        model_field_cls=WeekField,
+        form_field_cls=WeekFormField,
+        widget_cls=WeekWidget,
+        default_model_field_args={
+            "max_length": 8,
+        },
+        lookups=WEEK_LOOKUPS,
+        field_options=COMMON_FIELD_OPTIONS,
     )
 
     DATE_TIME_FIELD = FieldTypeDefinition(

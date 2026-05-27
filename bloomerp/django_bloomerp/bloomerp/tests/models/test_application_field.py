@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django import forms
 from django.db import models
 from django.db import connection
 
@@ -9,18 +10,22 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.services.sectioned_layout_services import build_crud_layout_field_context
 from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.field_types import FieldType, Lookup
 from bloomerp.form_fields.address_field import AddressFormField, AddressValue
 from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
+from bloomerp.form_fields.week_field import WeekFormField, WeekValue
 from bloomerp.model_fields.address_field import AddressField
 from bloomerp.model_fields.phone_number_field import PhoneNumberField
+from bloomerp.model_fields.week_field import WeekField
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
 from bloomerp.widgets.address_widget import AddressWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
+from bloomerp.widgets.week_widget import WeekWidget
 
 
 class TestApplicationField(BaseBloomerpModelTestCase):
@@ -65,6 +70,16 @@ class TestApplicationField(BaseBloomerpModelTestCase):
             },
             use_bloomerp_base=True,
         )["AddressRecord"]
+        cls.WeekRecordModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "WeekRecord": {
+                    "week": WeekField(blank=True, null=True),
+                    "__str__": lambda self: str(self.week or ""),
+                }
+            },
+            use_bloomerp_base=True,
+        )["WeekRecord"]
 
     def test_pk_application_field_returns_widget(self):
         content_type = ContentType.objects.get_for_model(Policy)
@@ -203,6 +218,16 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertIs(field_type.widget_cls, AddressWidget)
         self.assertIn(Lookup.CONTAINS, field_type.lookups)
 
+    def test_week_field_type_uses_week_field_parts(self):
+        field_type = FieldType.WEEK_FIELD.value
+
+        self.assertEqual(field_type.id, "WeekField")
+        self.assertIs(field_type.model_field_cls, WeekField)
+        self.assertIs(field_type.form_field_cls, WeekFormField)
+        self.assertIs(field_type.widget_cls, WeekWidget)
+        self.assertEqual(field_type.default_model_field_args["max_length"], 8)
+        self.assertIn(Lookup.EQUALS, field_type.lookups)
+
     def test_address_form_field_normalizes_structured_value(self):
         form_field = AddressFormField()
 
@@ -303,6 +328,81 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertIsInstance(form_field, PhoneNumberFormField)
         self.assertIsInstance(form_field.widget, PhoneNumberWidget)
         self.assertEqual(form_field.widget.input_type, "tel")
+
+    def test_week_form_field_returns_template_friendly_value(self):
+        form_field = WeekFormField()
+
+        value = form_field.clean("2026-W26")
+
+        self.assertIsInstance(value, WeekValue)
+        self.assertEqual(value.year, 2026)
+        self.assertEqual(value.week, 26)
+        self.assertEqual(str(value), "2026-W26")
+
+    def test_week_form_field_rejects_invalid_week(self):
+        form_field = WeekFormField()
+
+        with self.assertRaises(ValidationError):
+            form_field.clean("2026-W54")
+
+    def test_week_model_field_formfield_uses_week_widget(self):
+        model_field = WeekField()
+        form_field = model_field.formfield()
+
+        self.assertIsInstance(form_field, WeekFormField)
+        self.assertIsInstance(form_field.widget, WeekWidget)
+        self.assertEqual(form_field.widget.input_type, "week")
+        self.assertEqual(str(form_field.clean("2026-W26")), "2026-W26")
+
+    def test_week_model_field_exposes_database_type(self):
+        model_field = WeekField(max_length=8)
+
+        self.assertEqual(
+            model_field.db_type(connection),
+            models.CharField(max_length=8).db_type(connection),
+        )
+
+    def test_week_model_field_round_trips_string_renderable_value(self):
+        record = self.WeekRecordModel.objects.create(week="2026-W26")
+
+        record = self.WeekRecordModel.objects.get(pk=record.pk)
+
+        self.assertIsInstance(record.week, WeekValue)
+        self.assertEqual(record.week.year, 2026)
+        self.assertEqual(record.week.week, 26)
+        self.assertEqual(str(record.week), "2026-W26")
+
+    def test_week_application_field_widget_uses_week_input(self):
+        content_type = ContentType.objects.get_for_model(self.WeekRecordModel)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="week",
+        )
+
+        form_field = application_field.get_form_field()
+
+        self.assertEqual(application_field.get_field_type_enum(), FieldType.WEEK_FIELD)
+        self.assertIsInstance(form_field, WeekFormField)
+        self.assertIsInstance(form_field.widget, WeekWidget)
+        self.assertEqual(form_field.widget.input_type, "week")
+
+    def test_week_layout_render_uses_week_input_with_input_class(self):
+        content_type = ContentType.objects.get_for_model(self.WeekRecordModel)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="week",
+        )
+        form_field = application_field.get_form_field()
+        form_cls = type("WeekForm", (forms.Form,), {"week": form_field})
+        form = form_cls(initial={"week": "2026-W26"})
+
+        context = build_crud_layout_field_context(
+            application_field=application_field,
+            bound_field=form["week"],
+        )
+
+        self.assertIn('type="week"', context["input"])
+        self.assertIn('class="input w-full"', context["input"])
 
     def test_phone_number_model_field_exposes_database_type(self):
         model_field = PhoneNumberField(max_length=30)
