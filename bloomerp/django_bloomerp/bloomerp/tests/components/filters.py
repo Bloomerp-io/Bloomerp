@@ -254,6 +254,50 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
         self.assertContains(response, 'value="$user"', html=False)
         self.assertContains(response, "disabled", html=False)
 
+    def test_advanced_lookup_preserves_existing_field_path_prefix(self):
+        application_field = ApplicationField.get_by_field(self.CustomerModel, "country")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+
+        response = self.client.get(
+            url,
+            {
+                "lookup_value": "foreign_advanced",
+                "field_path": "employee_on_project__employee",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-base-field="employee_on_project__employee"', html=False)
+        self.assertContains(response, 'data-path-prefix="employee_on_project__employee"', html=False)
+
+    def test_advanced_lookup_preserves_original_base_application_field_id(self):
+        application_field = ApplicationField.get_by_field(self.CustomerModel, "country")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+
+        response = self.client.get(
+            url,
+            {
+                "lookup_value": "foreign_advanced",
+                "field_path": "parent_department__parent_department",
+                "base_application_field_id": "123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-base-field-id="123"', html=False)
+
     def test_value_input_ignores_invalid_foreign_current_value(self):
         application_field = ApplicationField.get_by_field(self.CustomerModel, "country")
         url = reverse(

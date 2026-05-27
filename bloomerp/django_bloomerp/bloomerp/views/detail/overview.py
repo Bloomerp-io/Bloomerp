@@ -156,6 +156,7 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         if form is None:
             return redirect(get_detail_view_url(self.model), pk=self.object.pk)
         if form.is_valid():
+            self.add_message(f"Object '{self.object}' updated", "success")
             return self.form_valid(form)
         
         return self.form_invalid(form)

@@ -210,9 +210,14 @@ export default class FilterContainer extends BaseComponent {
             return false;
         }
 
-        let pathPrefix = pathParts[0];
-        for (const fieldName of pathParts.slice(1)) {
-            const relatedSelect = this.findAdvancedRelatedSelect(builder, pathPrefix);
+        let currentBuilder = builder;
+        let pathPrefix = currentBuilder.getAttribute("data-base-field") || pathParts[0];
+        const baseParts = pathPrefix.split("__").filter((part) => part !== "");
+        const remainingPathParts = pathParts.slice(baseParts.length);
+        let terminalOperatorSelect: HTMLSelectElement | null = null;
+
+        for (const fieldName of remainingPathParts) {
+            const relatedSelect = this.findAdvancedRelatedSelect(currentBuilder, pathPrefix);
             if (!relatedSelect) {
                 return false;
             }
@@ -226,10 +231,44 @@ export default class FilterContainer extends BaseComponent {
 
             relatedSelect.value = matchingFieldOption.value;
             await this.onAdvancedRelatedFieldSelected(relatedSelect);
-            pathPrefix = `${pathPrefix}__${fieldName}`;
+            const currentPath = `${pathPrefix}__${fieldName}`;
+
+            if (currentPath === filter.field) {
+                terminalOperatorSelect = this.findAdvancedOperatorSelect(currentBuilder, currentPath);
+                break;
+            }
+
+            const nextRelatedSelect = this.findAdvancedRelatedSelect(currentBuilder, currentPath);
+            if (nextRelatedSelect) {
+                pathPrefix = currentPath;
+                continue;
+            }
+
+            const nestedAdvancedOperatorSelect = this.findAdvancedOperatorSelect(currentBuilder, currentPath);
+            if (!nestedAdvancedOperatorSelect) {
+                return false;
+            }
+
+            const nestedAdvancedOption = Array.from(nestedAdvancedOperatorSelect.options).find((option) => {
+                return option.value === "foreign_advanced";
+            });
+            if (!nestedAdvancedOption) {
+                return false;
+            }
+
+            nestedAdvancedOperatorSelect.value = nestedAdvancedOption.value;
+            await this.onAdvancedOperatorSelected(nestedAdvancedOperatorSelect);
+
+            const nestedBuilder = this.findNestedAdvancedBuilder(currentBuilder, currentPath);
+            if (!nestedBuilder) {
+                return false;
+            }
+
+            currentBuilder = nestedBuilder;
+            pathPrefix = currentPath;
         }
 
-        const advancedOperatorSelect = builder.querySelector<HTMLSelectElement>("select[data-advanced-operator-select]");
+        const advancedOperatorSelect = terminalOperatorSelect || this.findAdvancedOperatorSelect(currentBuilder, filter.field);
         if (!advancedOperatorSelect) {
             return false;
         }
@@ -246,6 +285,18 @@ export default class FilterContainer extends BaseComponent {
         await this.onAdvancedOperatorSelected(advancedOperatorSelect);
         this.setValueInput(filter.value);
         return true;
+    }
+
+    private findAdvancedOperatorSelect(builder: HTMLElement, fieldPath: string): HTMLSelectElement | null {
+        const selects = Array.from(builder.querySelectorAll<HTMLSelectElement>("select[data-advanced-operator-select]"));
+        return selects.find((select) => select.getAttribute("data-field") === fieldPath) || null;
+    }
+
+    private findNestedAdvancedBuilder(builder: HTMLElement, basePath: string): HTMLElement | null {
+        const builders = Array.from(builder.querySelectorAll<HTMLElement>("[data-advanced-builder]"));
+        return builders.find((nestedBuilder) => {
+            return nestedBuilder !== builder && nestedBuilder.getAttribute("data-base-field") === basePath;
+        }) || null;
     }
 
     private findAdvancedRelatedSelect(builder: HTMLElement, pathPrefix: string): HTMLSelectElement | null {
@@ -584,9 +635,10 @@ export default class FilterContainer extends BaseComponent {
 
         const lookupValue = select.value;
         const fieldPath = select.getAttribute('data-field') || select.getAttribute('data-field-path') || '';
+        const baseApplicationFieldId = select.getAttribute('data-application-field-id') || '';
         const applicationFieldId =
             select.getAttribute('data-lookup-application-field-id')
-            || select.getAttribute('data-application-field-id')
+            || baseApplicationFieldId
             || '';
 
         if (!lookupValue || !fieldPath || !applicationFieldId) {
@@ -596,7 +648,15 @@ export default class FilterContainer extends BaseComponent {
         const valueSection = builder.querySelector('[data-advanced-value]') as HTMLElement | null;
         if (!valueSection) return;
 
-        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}&field_path=${encodeURIComponent(fieldPath)}`;
+        const params = new URLSearchParams({
+            lookup_value: lookupValue,
+            field_path: fieldPath,
+        });
+        if (baseApplicationFieldId) {
+            params.set('base_application_field_id', baseApplicationFieldId);
+        }
+
+        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?${params.toString()}`;
         await htmx.ajax('get', url, {
             target: valueSection,
             swap: 'innerHTML',
