@@ -78,7 +78,7 @@ def render_advanced_lookup(application_field:"ApplicationField", name_override: 
 
 def render_equals_current_user(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
     field_name = name_override or application_field.field
-    return forms.CharField.widget_cls().render(
+    return forms.CharField().widget.render(
         name=field_name,
         value="$user",
         attrs={
@@ -456,4 +456,3 @@ def render_foreign_key_in(application_field:"ApplicationField", name_override: O
             "class": "input w-full"
         }
     )
-

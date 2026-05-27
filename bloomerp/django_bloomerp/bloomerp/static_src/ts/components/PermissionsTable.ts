@@ -351,7 +351,7 @@ export class PermissionsTable extends BaseComponent {
                     </div>
                 `;
             }
-        } else {
+        } else if (index === null) {
             await this.loadRowPolicyConditionFilter(filterTarget, field.id);
         }
 

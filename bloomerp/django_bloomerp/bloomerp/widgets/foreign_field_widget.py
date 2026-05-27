@@ -3,9 +3,9 @@ from typing import Optional
 from uuid import UUID
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.forms import widgets
 from django.db.models import Model
-from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 
 
@@ -146,7 +146,7 @@ class ForeignFieldWidget(widgets.Widget):
                             selected_ids.append(str(instance.pk))
                             selected_labels.append(str(instance))
                             selected_urls.append(self.get_object_detail_url(instance))
-                        except (ObjectDoesNotExist, ValueError, TypeError):
+                        except (ObjectDoesNotExist, ValidationError, ValueError, TypeError):
                             selected_ids.append(str(normalized_item))
                             selected_labels.append(str(normalized_item))
                             selected_urls.append("")
@@ -169,7 +169,7 @@ class ForeignFieldWidget(widgets.Widget):
                         selected_ids = [str(instance.pk)]
                         selected_labels = [str(instance)]
                         selected_urls = [self.get_object_detail_url(instance)]
-                    except (ObjectDoesNotExist, ValueError, TypeError):
+                    except (ObjectDoesNotExist, ValidationError, ValueError, TypeError):
                         if normalized_value not in ("", None):
                             selected_ids = [str(normalized_value)]
                             selected_labels = [str(normalized_value)]
