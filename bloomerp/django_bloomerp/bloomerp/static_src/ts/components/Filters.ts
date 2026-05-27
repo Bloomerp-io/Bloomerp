@@ -1,4 +1,4 @@
-import BaseComponent from "./BaseComponent";
+import BaseComponent, { getComponent } from "./BaseComponent";
 import htmx from "htmx.org";
 
 // Types for filter entries returned by getFilters()
@@ -254,7 +254,51 @@ export default class FilterContainer extends BaseComponent {
             filters.push({ field: name, applicationFieldId, operator, value });
         });
 
+        if (filters.length === 0) {
+            const widgetFilter = this.getCustomWidgetFilter(valueSection);
+            if (widgetFilter) {
+                filters.push(widgetFilter);
+            }
+        }
+
         return filters;
+    }
+
+    private getCustomWidgetFilter(valueSection: HTMLElement): FilterEntry | null {
+        const widgetElement = valueSection.querySelector<HTMLElement>("[bloomerp-component='foreign-field-widget']");
+        if (!widgetElement) {
+            return null;
+        }
+
+        const fieldName = widgetElement.dataset.fieldName || "";
+        if (!fieldName) {
+            return null;
+        }
+
+        const widget = getComponent(widgetElement) as { getValue?: () => unknown } | null;
+        const rawValue = widget?.getValue ? widget.getValue() : widgetElement.dataset.value || null;
+        const value = Array.isArray(rawValue)
+            ? rawValue.map((item) => String(item)).filter((item) => item !== "")
+            : rawValue === null || rawValue === undefined || String(rawValue) === ""
+                ? null
+                : String(rawValue);
+
+        if (value === null || (Array.isArray(value) && value.length === 0)) {
+            return null;
+        }
+
+        const operatorSelect = this.findOperatorForField(widgetElement);
+        const selectedOption = operatorSelect?.selectedOptions[0];
+        const djangoLookup = selectedOption?.getAttribute('data-lookup-django') || '';
+        const operator = operatorSelect ? (djangoLookup || operatorSelect.value) : null;
+        const applicationFieldId = this.findApplicationFieldIdForField(widgetElement) || '';
+
+        return {
+            field: fieldName,
+            applicationFieldId,
+            operator,
+            value,
+        };
     }
 
 
@@ -533,6 +577,12 @@ export default class FilterContainer extends BaseComponent {
         const valueSection = this.getValueInputSection();
         if (!valueSection || value === null) {
             return;
+        }
+
+        const customWidget = valueSection.querySelector<HTMLElement>("[bloomerp-component='foreign-field-widget']");
+        if (customWidget) {
+            const widget = getComponent(customWidget) as { setValue?: (value: unknown) => void } | null;
+            widget?.setValue?.(value);
         }
 
         const fields = Array.from(
