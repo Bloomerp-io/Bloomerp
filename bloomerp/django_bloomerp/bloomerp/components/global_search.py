@@ -342,7 +342,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                 user_model = get_user_model()
                 model_name = user_model._meta.model_name
                 permission_name = f"{user_model._meta.app_label}.view_{model_name}"
-                if request.user.has_perm(permission_name) or request.user.is_superuser:
+                if permission_manager.has_global_permission(user_model, create_permission_str(user_model, "view")):
                     content_type = ContentType.objects.get_for_model(user_model)
                     row_policies_exist = permission_manager.get_row_policies().filter(
                         content_type=content_type

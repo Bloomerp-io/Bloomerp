@@ -90,19 +90,49 @@ class BloomerpLayoutFormMixin(ABC):
     def get_layout_editable_field_names(self) -> list[str]:
         return []
 
+    def get_layout_visible_field_names(self) -> set[str]:
+        layout = self.get_layout_object()
+        application_fields = self.get_layout_application_fields(layout=layout)
+        visible_field_names: set[str] = set()
+        for row in layout.rows:
+            for item in row.items:
+                item_id = self.normalize_layout_application_field_id(item.id)
+                if item_id is None:
+                    continue
+                application_field = application_fields.get(item_id)
+                if application_field is None:
+                    continue
+                visible_field_names.add(application_field.field)
+        return visible_field_names
+
     def build_layout_form(self):
         field_names = self.get_layout_editable_field_names()
         if not field_names:
             return None
 
         form_class = bloomerp_modelform_factory(self.model, fields=field_names)
+        form_fields = form_class.base_fields
         kwargs: dict[str, Any] = {}
         bound_object = self.get_layout_bound_object()
         if bound_object is not None:
             kwargs["instance"] = bound_object
 
         if getattr(getattr(self, "request", None), "method", "").upper() == "POST":
-            kwargs["data"] = self.request.POST
+            data = self.request.POST.copy()
+            if not self.is_create_layout() and bound_object is not None:
+                visible_field_names = self.get_layout_visible_field_names()
+                for field_name in field_names:
+                    if field_name in visible_field_names or field_name in data:
+                        continue
+                    current_value = getattr(bound_object, field_name, None)
+                    if current_value not in (None, ""):
+                        form_field = form_fields.get(field_name)
+                        data[field_name] = (
+                            form_field.prepare_value(current_value)
+                            if form_field is not None
+                            else current_value
+                        )
+            kwargs["data"] = data
             kwargs["files"] = self.request.FILES
 
         form = form_class(**kwargs)
@@ -274,6 +304,17 @@ class BloomerpLayoutFormMixin(ABC):
         context = super().get_context_data(**kwargs)
         form = explicit_layout_form or self.get_layout_form(context=context)
         context["layout_has_form"] = form is not None
-        context["layout_non_field_errors"] = list(form.non_field_errors()) if form is not None else []
+        layout_non_field_errors = list(form.non_field_errors()) if form is not None else []
+        if form is not None:
+            visible_field_names = self.get_layout_visible_field_names()
+            hidden_field_errors = [
+                f"{form.fields[field_name].label or field_name}: {error}"
+                for field_name, errors in form.errors.items()
+                if field_name != "__all__" and field_name not in visible_field_names and field_name in form.fields
+                for error in errors
+            ]
+            if hidden_field_errors:
+                layout_non_field_errors.extend(hidden_field_errors)
+        context["layout_non_field_errors"] = layout_non_field_errors
         context.update(self.build_layout_context(form=form))
         return context

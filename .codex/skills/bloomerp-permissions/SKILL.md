@@ -15,7 +15,6 @@ Use this skill before changing permission-sensitive code. BloomERP authorization
 5. Add or update permission tests when behavior changes.
 
 ## Permission Layers
-- Use Django auth permissions for coarse action gates such as `request.user.has_perm(f"{app_label}.view_{model}")`.
 - Use `BloomerpModel.Meta.default_permissions` as the canonical source for generated model-level codenames: `add`, `change`, `delete`, `view`, `bulk_change`, `bulk_delete`, `bulk_add`, `export`.
 - Use `Policy` to attach access control to users and groups. A policy combines one `RowPolicy`, one `FieldPolicy`, and optional `global_permissions`.
 - Use `UserPermissionManager.get_queryset(...)` for row-level access and `has_field_permission(...)` / `get_accessible_fields(...)` for field-level access.

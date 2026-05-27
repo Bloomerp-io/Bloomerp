@@ -28,9 +28,7 @@ def object_preview(request: HttpRequest, content_type_id: int, object_id: str) -
     permission_manager = UserPermissionManager(request.user)
 
     access_denied_message = None
-    if not request.user.has_perm(f"{model._meta.app_label}.{permission_str}"):
-        access_denied_message = "You do not have permission to preview this object."
-    elif not permission_manager.has_access_to_object(obj, permission_str):
+    if not permission_manager.has_access_to_object(obj, permission_str):
         access_denied_message = "You do not have direct access to this object."
 
     if access_denied_message:

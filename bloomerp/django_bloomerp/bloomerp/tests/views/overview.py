@@ -296,6 +296,36 @@ class TestOverviewView(CrudViewTestMixin):
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.first_name, "Allowed Updated")
 
+    def test_post_allows_update_when_required_field_is_hidden_but_already_has_value(self):
+        preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
+        preference.field_layout = {
+            "rows": [
+                {
+                    "title": "Primary",
+                    "columns": 2,
+                    "items": [
+                        {"id": self.fields_by_name["first_name"].pk, "colspan": 1},
+                        {"id": self.fields_by_name["age"].pk, "colspan": 1},
+                    ],
+                }
+            ]
+        }
+        preference.save(update_fields=["field_layout"])
+        self.client.force_login(self.admin_user)
+
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "Allowed Updated",
+                "age": "30",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.first_name, "Allowed Updated")
+        self.assertEqual(self.customer.last_name, "Person")
+
     def test_detail_layout_preference_save_persists_shape(self):
         self.client.force_login(self.admin_user)
         field = self.fields_by_name["first_name"]

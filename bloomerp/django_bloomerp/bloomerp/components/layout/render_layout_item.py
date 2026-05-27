@@ -108,7 +108,11 @@ def _render_application_field(request: HttpRequest, content_type: ContentType) -
 
 
 def _build_create_render_context(*, request: HttpRequest, content_type: ContentType, model, application_field: ApplicationField):
-    if not request.user.has_perm(f"{model._meta.app_label}.{create_permission_str(model, 'add')}"):
+    manager = UserPermissionManager(request.user)
+    if not manager.has_global_permission(
+        model,
+        create_permission_str(model, "add"),
+    ):
         return HttpResponse("Permission denied", status=403)
 
     field_type = application_field.get_field_type_enum().value

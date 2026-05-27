@@ -10,7 +10,7 @@ from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import get_object_or_404, render
 
-from bloomerp.services.permission_services import create_permission_str
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.services.sectioned_layout_services import get_available_layout_fields
 from bloomerp.services.workspace_services import UserWorkspaceService
 
@@ -30,6 +30,7 @@ def _get_scope_from_content_type(content_type: ContentType) -> str | None:
 
 
 def _get_application_fields(request: HttpRequest, content_type: ContentType):
+    manager = UserPermissionManager(request.user)
     scope = _get_scope_from_content_type(content_type)
     if scope is None:
         return HttpResponse("Unsupported content type for application fields", status=400)
@@ -44,7 +45,7 @@ def _get_application_fields(request: HttpRequest, content_type: ContentType):
         return HttpResponse("Invalid content type", status=400)
 
     permission = create_permission_str(model, "add" if scope == "create" else "view")
-    if not request.user.has_perm(f"{model._meta.app_label}.{permission}"):
+    if not manager.has_global_permission(model, permission):
         return HttpResponse("Permission denied", status=403)
 
     return get_available_layout_fields(
