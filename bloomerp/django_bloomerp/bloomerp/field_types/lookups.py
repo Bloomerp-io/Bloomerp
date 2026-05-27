@@ -416,6 +416,18 @@ DATE_LOOKUPS = [
     Lookup.NOT_EQUALS,
 ]
 
+WEEK_LOOKUPS = [
+    Lookup.EQUALS,
+    Lookup.GREATER_THAN,
+    Lookup.GREATER_THAN_OR_EQUAL,
+    Lookup.LESS_THAN,
+    Lookup.LESS_THAN_OR_EQUAL,
+    Lookup.YEAR,
+    Lookup.WEEK,
+    Lookup.IS_NULL,
+    Lookup.NOT_EQUALS,
+]
+
 BOOLEAN_LOOKUPS = [
     Lookup.EQUALS,
 ]

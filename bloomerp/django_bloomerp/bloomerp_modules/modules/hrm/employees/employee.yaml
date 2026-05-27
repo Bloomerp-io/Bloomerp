@@ -126,6 +126,13 @@ fields:
         - ["leave", "On Leave"]
         - ["terminated", "Terminated"]
       default: "active"
+  
+  - id: initiation_week
+    name: Initiation week
+    description: Week in which employee has initiation
+    type: WeekField
+    
+
 
 field_layout:
   rows:
