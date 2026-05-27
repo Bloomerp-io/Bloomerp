@@ -177,6 +177,7 @@ def value_input(
         current_value = request.GET.get("current_value", None)
         application_field = ApplicationField.objects.get(id=application_field_id)
         field_path = request.GET.get("field_path", None)
+        base_application_field_id = request.GET.get("base_application_field_id", None)
         
         field_type = application_field.get_field_type_enum()
         
@@ -205,6 +206,8 @@ def value_input(
                 "components/filters/advanced_lookup.html",
                 {
                     "base_field": application_field,
+                    "base_field_path": field_path or application_field.field,
+                    "base_field_id": base_application_field_id or application_field.id,
                     "related_fields": related_fields,
                     "related_content_type_id": related_content_type_id,
                 }

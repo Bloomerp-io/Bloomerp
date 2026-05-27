@@ -105,6 +105,22 @@ class BloomerpLayoutFormMixin(ABC):
                 visible_field_names.add(application_field.field)
         return visible_field_names
 
+    def add_hidden_current_value_to_data(self, *, data, field_name: str, form_field, current_value) -> None:
+        if hasattr(current_value, "all"):
+            data.setlist(field_name, [str(obj.pk) for obj in current_value.all()])
+            return
+
+        prepared_value = (
+            form_field.prepare_value(current_value)
+            if form_field is not None
+            else current_value
+        )
+        if isinstance(prepared_value, (list, tuple, set)):
+            data.setlist(field_name, [str(value) for value in prepared_value])
+            return
+
+        data[field_name] = prepared_value
+
     def build_layout_form(self):
         field_names = self.get_layout_editable_field_names()
         if not field_names:
@@ -127,10 +143,11 @@ class BloomerpLayoutFormMixin(ABC):
                     current_value = getattr(bound_object, field_name, None)
                     if current_value not in (None, ""):
                         form_field = form_fields.get(field_name)
-                        data[field_name] = (
-                            form_field.prepare_value(current_value)
-                            if form_field is not None
-                            else current_value
+                        self.add_hidden_current_value_to_data(
+                            data=data,
+                            field_name=field_name,
+                            form_field=form_field,
+                            current_value=current_value,
                         )
             kwargs["data"] = data
             kwargs["files"] = self.request.FILES
