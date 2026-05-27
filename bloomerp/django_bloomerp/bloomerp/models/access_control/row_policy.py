@@ -15,7 +15,6 @@ class RowPolicy(absolute_url_model_mixin.AbsoluteUrlModelMixin, models.Model):
         db_table = "bloomerp_access_control_row_policy"
         verbose_name = _("Access Control Row Policy")
         verbose_name_plural = _("Access Control Row Policies")
-        
     content_type = models.ForeignKey(
         to=ContentType,
         on_delete=models.CASCADE,
@@ -44,5 +43,4 @@ class RowPolicy(absolute_url_model_mixin.AbsoluteUrlModelMixin, models.Model):
     def clean(self):
         self.validate_rule()
         super().clean()
-
 

@@ -1,11 +1,12 @@
 from bloomerp.models.access_control.policy import Policy
 from rest_framework import serializers
 from django.contrib.auth.models import Permission
-from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
+from bloomerp.models.access_control.row_policy_rule import RowPolicyRule, RowPolicyRuleContent
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
+from pydantic import ValidationError as PydanticValidationError
 
 class PermissionCodenameField(serializers.RelatedField):
     def to_representation(self, value: Permission):
@@ -31,6 +32,12 @@ class RowPolicyRuleSerializer(serializers.ModelSerializer):
             "rule",
             "permissions",
         ]
+
+    def validate_rule(self, value):
+        try:
+            return RowPolicyRuleContent.model_validate(value).model_dump(exclude_none=True)
+        except PydanticValidationError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
 
 
 class RowPolicySerializer(serializers.ModelSerializer):

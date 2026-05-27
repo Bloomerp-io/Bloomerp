@@ -2,6 +2,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.access_control.row_policy_rule import RowPolicyRuleContent
 from bloomerp.serializers.access_control import PolicySerializer
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 
@@ -37,9 +38,14 @@ class TestPolicySerializer(BaseBloomerpModelTestCase):
                 "rules": [
                     {
                         "rule": {
-                            "application_field_id": str(self.first_name_field.pk),
-                            "operator": "exact",
-                            "value": "Alice",
+                            "connector": "OR",
+                            "conditions": [
+                                {
+                                    "application_field_id": str(self.first_name_field.pk),
+                                    "operator": "exact",
+                                    "value": "Alice",
+                                }
+                            ],
                         },
                         "permissions": row_permissions,
                     }
@@ -99,7 +105,7 @@ class TestPolicySerializer(BaseBloomerpModelTestCase):
         updated_payload["description"] = "Updated serializer test"
         updated_payload["row_policy"]["name"] = "Updated row policy"
         updated_payload["field_policy"]["name"] = "Updated field policy"
-        updated_payload["row_policy"]["rules"][0]["rule"]["value"] = "Bob"
+        updated_payload["row_policy"]["rules"][0]["rule"]["conditions"][0]["value"] = "Bob"
 
         update_serializer = PolicySerializer(instance=policy, data=updated_payload)
         self.assertTrue(update_serializer.is_valid(), update_serializer.errors)
@@ -117,7 +123,7 @@ class TestPolicySerializer(BaseBloomerpModelTestCase):
         self.assertEqual(updated_policy.row_policy.name, "Updated row policy")
         self.assertEqual(updated_policy.field_policy.name, "Updated field policy")
         self.assertEqual(updated_policy.row_policy.rules.count(), 1)
-        self.assertEqual(updated_policy.row_policy.rules.first().rule["value"], "Bob")
+        self.assertEqual(updated_policy.row_policy.rules.first().rule["conditions"][0]["value"], "Bob")
         self.assertEqual(
             list(updated_policy.row_policy.rules.first().permissions.values_list("codename", flat=True)),
             ["change_customer"],
@@ -126,3 +132,91 @@ class TestPolicySerializer(BaseBloomerpModelTestCase):
             updated_policy.field_policy.rule,
             {str(self.first_name_field.pk): ["change_customer"]},
         )
+
+    def test_serializer_accepts_and_rule_with_multiple_conditions(self):
+        payload = self.build_payload(
+            global_permissions=["view_customer"],
+            row_permissions=["view_customer"],
+            field_permissions=["view_customer"],
+        )
+        payload["row_policy"]["rules"][0]["rule"] = {
+            "connector": "AND",
+            "conditions": [
+                {
+                    "application_field_id": str(self.first_name_field.pk),
+                    "operator": "exact",
+                    "value": "Alice",
+                },
+                {
+                    "application_field_id": str(self.first_name_field.pk),
+                    "operator": "icontains",
+                    "value": "Ali",
+                },
+            ],
+        }
+
+        serializer = PolicySerializer(data=payload)
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_serializer_accepts_all_rule_without_operator_or_value(self):
+        payload = self.build_payload(
+            global_permissions=["view_customer"],
+            row_permissions=["view_customer"],
+            field_permissions=["view_customer"],
+        )
+        payload["row_policy"]["rules"][0]["rule"] = {
+            "connector": "OR",
+            "conditions": [
+                {
+                    "field": "__all__",
+                }
+            ],
+        }
+
+        serializer = PolicySerializer(data=payload)
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_row_policy_rule_content_requires_condition_details_except_all(self):
+        required_rule_parts = [
+            {
+                "operator": "exact",
+                "value": "Alice",
+            },
+            {
+                "application_field_id": str(self.first_name_field.pk),
+                "value": "Alice",
+            },
+            {
+                "application_field_id": str(self.first_name_field.pk),
+                "operator": "exact",
+            },
+        ]
+
+        for condition in required_rule_parts:
+            with self.subTest(condition=condition):
+                with self.assertRaises(ValueError):
+                    RowPolicyRuleContent.model_validate(
+                        {
+                            "connector": "OR",
+                            "conditions": [condition],
+                        }
+                    )
+
+    def test_serializer_rejects_old_flat_row_rule_shape(self):
+        payload = self.build_payload(
+            global_permissions=["view_customer"],
+            row_permissions=["view_customer"],
+            field_permissions=["view_customer"],
+        )
+        payload["row_policy"]["rules"][0]["rule"] = {
+            "application_field_id": str(self.first_name_field.pk),
+            "operator": "exact",
+            "value": "Alice",
+        }
+
+        serializer = PolicySerializer(data=payload)
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("row_policy", serializer.errors)

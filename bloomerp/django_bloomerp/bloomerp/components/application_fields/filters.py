@@ -37,7 +37,31 @@ def _render_filter_value_widget(application_field: ApplicationField, field_path:
     )
 
 
+def _render_foreign_filter_value_widget(application_field: ApplicationField, field_path: str | None, value: str | None) -> str:
+    from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+
+    widget_attrs = {}
+    widget_attrs.update(application_field.meta or {})
+    return ForeignFieldWidget(attrs=widget_attrs).render(
+        name=field_path or application_field.field,
+        value=value,
+        attrs={
+            "class": "input w-full",
+        },
+    )
+
+
 def _render_is_null_widget(field_name: str) -> str:
+    return forms.Select(
+        choices=[
+            ("true", "True"),
+            ("false", "False"),
+        ],
+        attrs={"class": "select w-full"},
+    ).render(name=field_name, value=None)
+
+
+def _render_boolean_widget(field_name: str) -> str:
     return forms.Select(
         choices=[
             ("true", "True"),
@@ -150,6 +174,7 @@ def value_input(
     try:
         # Get the selected application field and operator
         lookup_value = request.GET.get("lookup_value", "")
+        current_value = request.GET.get("current_value", None)
         application_field = ApplicationField.objects.get(id=application_field_id)
         field_path = request.GET.get("field_path", None)
         
@@ -187,11 +212,25 @@ def value_input(
         
         lookup = application_field.get_field_type_enum().get_lookup_by_id(lookup_value).value
 
+        # TODO: This needs to be handled on the lookup definition level instead of hardcoded here. We should add metadata to the lookup definitions to indicate what type of input they require and any special rendering instructions, instead of inferring it from the lookup id.
         if lookup_value == "is_null":
             return HttpResponse(_render_is_null_widget(field_path or application_field.field))
 
+        if application_field.field_type in {
+            FieldType.BOOLEAN_FIELD.id,
+            FieldType.NULL_BOOLEAN_FIELD.id,
+        }:
+            return HttpResponse(_render_boolean_widget(field_path or application_field.field))
+
         if lookup.render_func is None:
             return HttpResponse(_render_filter_value_widget(application_field, field_path))
+
+        if application_field.field_type in {
+            FieldType.FOREIGN_KEY.id,
+            FieldType.ONE_TO_ONE_FIELD.id,
+            FieldType.MANY_TO_MANY_FIELD.id,
+        }:
+            return HttpResponse(_render_foreign_filter_value_widget(application_field, field_path, current_value))
 
         return HttpResponse(lookup.render(application_field, name_override=field_path))
         

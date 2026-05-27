@@ -8,9 +8,10 @@ from django.shortcuts import get_object_or_404, render
 
 from bloomerp.field_types import FieldType
 from bloomerp.models import ApplicationField
+from bloomerp.models.access_control.row_policy_rule import RowPolicyRuleContent
 from bloomerp.router import router
 from bloomerp.services.permission_services import UserPermissionManager
-
+from pydantic import ValidationError as PydanticValidationError
 PREVIEW_PAGE_SIZE = 10
 
 
@@ -22,6 +23,20 @@ def _parse_json_payload(raw_value: str | None, fallback):
         return json.loads(raw_value)
     except json.JSONDecodeError:
         return fallback
+
+
+def _get_row_policy_rule_dict(row_policy_rule: dict) -> dict:
+    if not isinstance(row_policy_rule, dict):
+        return {}
+
+    rule_dict = row_policy_rule.get("rule") or {}
+    if not isinstance(rule_dict, dict):
+        return {}
+
+    try:
+        return RowPolicyRuleContent.model_validate(rule_dict).model_dump(exclude_none=True)
+    except PydanticValidationError:
+        return {}
 
 
 def _build_preview_queryset(
@@ -37,8 +52,8 @@ def _build_preview_queryset(
     rule_dicts = [
         rule_dict
         for row_policy_rule in row_policy_rules
-        for rule_dict in [row_policy_rule.get("rule") or {}]
-        if isinstance(rule_dict, dict)
+        for rule_dict in [_get_row_policy_rule_dict(row_policy_rule)]
+        if rule_dict
     ]
     return permission_manager.build_queryset_from_rule_dicts(content_type, rule_dicts)
 
@@ -101,7 +116,7 @@ def _build_preview_rows(
         matched_permissions = OrderedDict()
 
         for row_policy_rule in row_policy_rules:
-            rule_dict = row_policy_rule.get("rule") or {}
+            rule_dict = _get_row_policy_rule_dict(row_policy_rule)
             rule_q = permission_manager.build_q_for_rule_dict(rule_dict)
             if rule_q is None:
                 continue
@@ -153,7 +168,7 @@ def preview_permissions_table(request: HttpRequest, content_type_id: int) -> Htt
     payload = request.POST if request.method == "POST" else request.GET
     row_policy_rules = _parse_json_payload(payload.get("row_policy_rules_json"), [])
     field_policies = _parse_json_payload(payload.get("field_policies_json"), {})
-
+    
     try:
         page_number = int(payload.get("page", "1"))
     except (TypeError, ValueError):

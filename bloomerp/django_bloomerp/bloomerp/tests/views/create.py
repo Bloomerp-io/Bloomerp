@@ -49,6 +49,14 @@ class TestCreateView(CrudViewTestMixin):
         user.refresh_from_db()
         return permission
 
+    def group_row_rule(self, row_rule):
+        if "conditions" in row_rule:
+            return row_rule
+        return {
+            "connector": "OR",
+            "conditions": [row_rule],
+        }
+
     def grant_policy(self, *, user, field_names, row_rules=None):
         field_policy = FieldPolicy.objects.create(
             content_type=self.content_type,
@@ -65,7 +73,7 @@ class TestCreateView(CrudViewTestMixin):
         for row_rule in row_rules or []:
             created_rule = RowPolicyRule.objects.create(
                 row_policy=row_policy,
-                rule=row_rule,
+                rule=self.group_row_rule(row_rule),
             )
             created_rule.add_permission(f"add_{self.CustomerModel._meta.model_name}")
 
@@ -299,6 +307,49 @@ class TestCreateView(CrudViewTestMixin):
         created = self.CustomerModel.objects.get()
         self.assertEqual(created.first_name, "Allowed")
         self.assertEqual(created.created_by, self.normal_user)
+
+    def test_post_creates_object_when_and_row_rule_matches_foreign_key_value(self):
+        self.normal_user.is_staff = True
+        self.normal_user.save(update_fields=["is_staff"])
+        belgium = self.CountryModel.objects.get(name="Belgium")
+        self.grant_policy(
+            user=self.normal_user,
+            field_names=["first_name", "last_name", "age", "country"],
+            row_rules=[
+                {
+                    "connector": "AND",
+                    "conditions": [
+                        {
+                            "application_field_id": str(self.fields_by_name["last_name"].pk),
+                            "operator": Lookup.EQUALS.value.id,
+                            "value": "Peeters",
+                        },
+                        {
+                            "application_field_id": str(self.fields_by_name["country"].pk),
+                            "operator": Lookup.FOREIGN_EQUALS.value.id,
+                            "value": str(belgium.pk),
+                        },
+                    ],
+                }
+            ],
+        )
+        self.client.force_login(self.normal_user)
+
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "Jaimy",
+                "last_name": "Peeters",
+                "age": 30,
+                "country": str(belgium.pk),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.CustomerModel.objects.count(), 1)
+        created = self.CustomerModel.objects.get()
+        self.assertEqual(created.last_name, "Peeters")
+        self.assertEqual(created.country, belgium)
 
     def test_component_post_from_foreign_field_widget_returns_trigger_instead_of_refresh(self):
         self.client.force_login(self.admin_user)

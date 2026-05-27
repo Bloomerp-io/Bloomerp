@@ -68,10 +68,15 @@ class TestExportService(BaseBloomerpModelTestCase):
         row_rule = RowPolicyRule.objects.create(
             row_policy=row_policy,
             rule={
-                "field": "age",
-                "application_field_id": ApplicationField.get_by_field(self.CustomerModel, "age").id,
-                "operator": "exact",
-                "value": "77",
+                "connector": "OR",
+                "conditions": [
+                    {
+                        "field": "age",
+                        "application_field_id": ApplicationField.get_by_field(self.CustomerModel, "age").id,
+                        "operator": "exact",
+                        "value": "77",
+                    }
+                ],
             },
         )
         row_rule.add_permission("export_customer")

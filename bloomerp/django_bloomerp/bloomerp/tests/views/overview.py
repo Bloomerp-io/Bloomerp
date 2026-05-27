@@ -53,6 +53,14 @@ class TestOverviewView(CrudViewTestMixin):
         user.refresh_from_db()
         return permission
 
+    def group_row_rule(self, row_rule):
+        if "conditions" in row_rule:
+            return row_rule
+        return {
+            "connector": "OR",
+            "conditions": [row_rule],
+        }
+
     def grant_policy(
         self,
         *,
@@ -85,13 +93,13 @@ class TestOverviewView(CrudViewTestMixin):
         for row_rule in view_row_rules or []:
             created_rule = RowPolicyRule.objects.create(
                 row_policy=row_policy,
-                rule=row_rule,
+                rule=self.group_row_rule(row_rule),
             )
             created_rule.add_permission(f"view_{self.CustomerModel._meta.model_name}")
         for row_rule in change_row_rules or []:
             created_rule = RowPolicyRule.objects.create(
                 row_policy=row_policy,
-                rule=row_rule,
+                rule=self.group_row_rule(row_rule),
             )
             created_rule.add_permission(f"change_{self.CustomerModel._meta.model_name}")
 

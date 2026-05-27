@@ -19,12 +19,14 @@ from django.db.models import QuerySet
 from bloomerp.models.access_control import Policy
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.access_control.row_policy import RowPolicy
+from bloomerp.models.access_control.row_policy_rule import RowPolicyRuleContent
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 from typing import Literal, Type
 from django.db.models import Q
 from bloomerp.field_types import Lookup
 from django.core.exceptions import FieldDoesNotExist
+from pydantic import ValidationError as PydanticValidationError
     
 # --------------------------
 # Service Functions
@@ -105,11 +107,16 @@ class UserPermissionManager:
 
         return None
 
-    def _normalize_lookup_value(self, lookup: str, value):
+    def _normalize_lookup_value(self, lookup: str, value, application_field: ApplicationField | None = None):
         normalized_lookup = str(lookup or "").strip().lower()
 
         if normalized_lookup == "in" and isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
+
+        if application_field and application_field.field_type in {"BooleanField", "NullBooleanField"}:
+            if isinstance(value, str):
+                return value.lower() in {"true", "1", "yes", "on"}
+            return bool(value)
 
         if normalized_lookup == "isnull":
             if isinstance(value, str):
@@ -118,14 +125,20 @@ class UserPermissionManager:
 
         return value
 
-    def build_q_for_rule_dict(self, rule_dict: dict) -> Q | None:
-        if not isinstance(rule_dict, dict):
+    def _normalize_row_policy_rule_content(self, rule: dict) -> dict:
+        try:
+            return RowPolicyRuleContent.model_validate(rule).model_dump(exclude_none=True)
+        except PydanticValidationError:
+            return {}
+
+    def build_q_for_rule_condition(self, rule_condition: dict) -> Q | None:
+        if not isinstance(rule_condition, dict):
             return None
 
-        application_field_id = rule_dict.get("application_field_id")
-        operator_id = rule_dict.get("operator")
-        value = rule_dict.get("value")
-        field_path = rule_dict.get("field")
+        application_field_id = rule_condition.get("application_field_id")
+        operator_id = rule_condition.get("operator")
+        value = rule_condition.get("value")
+        field_path = rule_condition.get("field")
 
         if field_path == "__all__" or application_field_id == "__all__":
             return Q()
@@ -145,7 +158,7 @@ class UserPermissionManager:
         if operator_str.startswith("__"):
             filter_key = operator_str.lstrip("_")
             advanced_lookup = filter_key.rsplit("__", 1)[-1] if "__" in filter_key else ""
-            return Q(**{filter_key: self._normalize_lookup_value(advanced_lookup, value)})
+            return Q(**{filter_key: self._normalize_lookup_value(advanced_lookup, value, application_field)})
 
         lookup_enum = self._resolve_lookup(application_field, operator_str)
         django_lookup = (lookup_enum.value.django_representation or "").strip() if lookup_enum else operator_str
@@ -157,7 +170,34 @@ class UserPermissionManager:
             return ~Q(**{field_name: value})
 
         filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
-        return Q(**{filter_key: self._normalize_lookup_value(django_lookup, value)})
+        return Q(**{filter_key: self._normalize_lookup_value(django_lookup, value, application_field)})
+
+    def build_q_for_rule_dict(self, rule_dict: dict) -> Q | None:
+        if not isinstance(rule_dict, dict):
+            return None
+
+        conditions = rule_dict.get("conditions")
+        if not isinstance(conditions, list) or not conditions:
+            return None
+
+        condition_qs: list[Q] = []
+        for condition in conditions:
+            condition_q = self.build_q_for_rule_condition(condition)
+            if condition_q is not None:
+                condition_qs.append(condition_q)
+
+        if not condition_qs:
+            return None
+
+        connector = str(rule_dict.get("connector") or "AND").upper()
+        combined_q = condition_qs[0]
+        for condition_q in condition_qs[1:]:
+            if connector == "OR":
+                combined_q |= condition_q
+            else:
+                combined_q &= condition_q
+
+        return combined_q
 
     def build_queryset_from_rule_dicts(
         self,
@@ -502,14 +542,14 @@ class UserPermissionManager:
 
         return self.build_queryset_from_rule_dicts(content_type, applicable_rule_dicts)
 
-    def candidate_matches_rule_dict(self, candidate: models.Model, rule_dict: dict) -> bool:
-        if not isinstance(rule_dict, dict):
+    def candidate_matches_rule_condition(self, candidate: models.Model, rule_condition: dict) -> bool:
+        if not isinstance(rule_condition, dict):
             return False
 
-        application_field_id = rule_dict.get("application_field_id")
-        operator_id = rule_dict.get("operator")
-        expected_value = rule_dict.get("value")
-        explicit_field_path = rule_dict.get("field")
+        application_field_id = rule_condition.get("application_field_id")
+        operator_id = rule_condition.get("operator")
+        expected_value = rule_condition.get("value")
+        explicit_field_path = rule_condition.get("field")
 
         if explicit_field_path == "__all__" or application_field_id == "__all__":
             return True
@@ -553,6 +593,24 @@ class UserPermissionManager:
 
         return self._matches_lookup(resolved_value, expected_value, lookup)
 
+    def candidate_matches_rule_dict(self, candidate: models.Model, rule_dict: dict) -> bool:
+        if not isinstance(rule_dict, dict):
+            return False
+
+        conditions = rule_dict.get("conditions")
+        if not isinstance(conditions, list) or not conditions:
+            return False
+
+        matches = [
+            self.candidate_matches_rule_condition(candidate, condition)
+            for condition in conditions
+        ]
+
+        connector = str(rule_dict.get("connector") or "AND").upper()
+        if connector == "OR":
+            return any(matches)
+        return all(matches)
+
     def _candidate_matches_rule(self, candidate: models.Model, rule_obj) -> bool:
         # TODO: Add method description
         rule_dict = getattr(rule_obj, "rule", None) or {}
@@ -574,12 +632,31 @@ class UserPermissionManager:
             return getattr(value, "pk", None)
         return value
 
+    def _values_equal(self, actual, expected) -> bool:
+        normalized_actual = self._normalize_compare_value(actual)
+        normalized_expected = self._normalize_compare_value(expected)
+
+        if normalized_actual == normalized_expected:
+            return True
+
+        if normalized_actual is not None and normalized_expected is not None:
+            if str(normalized_actual) == str(normalized_expected):
+                return True
+
+        if isinstance(actual, models.Model) and normalized_expected is not None:
+            return str(actual) == str(normalized_expected)
+
+        if isinstance(expected, models.Model) and normalized_actual is not None:
+            return str(expected) == str(normalized_actual)
+
+        return False
+
     def _matches_lookup(self, actual, expected, lookup: str) -> bool:
         normalized_actual = self._normalize_compare_value(actual)
         normalized_expected = self._normalize_compare_value(expected)
 
         if lookup in {"exact", "equals", "", None}:
-            return normalized_actual == normalized_expected
+            return self._values_equal(actual, expected)
         if lookup == "iexact":
             return str(normalized_actual).lower() == str(normalized_expected).lower()
         if lookup == "icontains":
@@ -601,15 +678,14 @@ class UserPermissionManager:
                 values = [item.strip() for item in normalized_expected.split(",") if item.strip()]
             else:
                 values = list(normalized_expected) if normalized_expected is not None else []
-            normalized_values = [self._normalize_compare_value(value) for value in values]
-            return normalized_actual in normalized_values
+            return any(self._values_equal(actual, value) for value in values)
         if lookup == "isnull":
             expected_bool = normalized_expected
             if isinstance(expected_bool, str):
                 expected_bool = expected_bool.lower() in {"true", "1", "yes"}
             return (normalized_actual is None) is bool(expected_bool)
         if lookup == "ne":
-            return normalized_actual != normalized_expected
+            return not self._values_equal(actual, expected)
         return False
     
     def assign_creator_permission(
@@ -794,11 +870,25 @@ class UserPermissionManager:
         )
 
         row_rule_definition = {
-            "application_field_id": str(creator_field.id),
-            "operator": Lookup.EQUALS_USER.value.id,
-            "value": "$user",
+            "connector": "OR",
+            "conditions": [
+                {
+                    "application_field_id": str(creator_field.id),
+                    "operator": Lookup.EQUALS_USER.value.id,
+                    "value": "$user",
+                }
+            ],
         }
-        row_rule = row_policy.rules.filter(rule=row_rule_definition).first()
+        normalized_row_rule_definition = self._normalize_row_policy_rule_content(row_rule_definition)
+
+        row_rule = None
+        for existing_rule in row_policy.rules.all():
+            existing_rule_dict = existing_rule.rule if isinstance(existing_rule.rule, dict) else {}
+            normalized_existing_rule = self._normalize_row_policy_rule_content(existing_rule_dict)
+            if normalized_existing_rule == normalized_row_rule_definition:
+                row_rule = existing_rule
+                break
+
         if not row_rule:
             row_rule = row_policy.rules.create(rule=row_rule_definition)
         row_rule.add_permissions(normalized_row_permissions)

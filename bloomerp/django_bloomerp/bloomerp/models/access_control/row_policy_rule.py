@@ -1,12 +1,45 @@
 from django.db import models
 from enum import Enum
-from typing import Optional
+from typing import Any, Literal, Optional
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
+from pydantic import BaseModel, ValidationError as PydanticValidationError, field_validator, model_validator
+
+class RowPolicyRuleCondition(BaseModel):
+    application_field_id : Optional[int|str] = None
+    operator : Optional[str] = None
+    value : Optional[Any] = None
+    field : Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_condition_shape(self):
+        if self.field == "__all__" or self.application_field_id == "__all__":
+            return self
+
+        if self.application_field_id in (None, ""):
+            raise ValueError("Missing application field id in rule")
+        if self.operator in (None, ""):
+            raise ValueError("Missing operator")
+        if self.value is None or self.value == "":
+            raise ValueError("No value given")
+
+        return self
+
+class RowPolicyRuleContent(BaseModel):
+    connector : Literal["AND", "OR"]
+    conditions : list[RowPolicyRuleCondition]
+
+    @field_validator("conditions")
+    @classmethod
+    def validate_conditions(cls, conditions):
+        if not conditions:
+            raise ValueError("At least one condition is required")
+        return conditions
+    
 
 class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
     """
@@ -166,29 +199,23 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
 
         return False
 
-    def validate_rule(self):
+    def validate_rule_condition(self, rule_condition: RowPolicyRuleCondition):
         """Checks whether the rule is valid
 
         Returns:
             bool: whether the rule is valid or not
         """
-        if self.rule.get("field") == "__all__" or self.rule.get("application_field_id") == "__all__":
+        if rule_condition.field == "__all__" or rule_condition.application_field_id == "__all__":
             return
 
-        application_field_id = self.rule.get("application_field_id")
-        if not application_field_id:
-            raise ValidationError("Missing application field id in rule")
-
         try:
-            application_field = ApplicationField.objects.get(id=application_field_id)
+            application_field = ApplicationField.objects.get(id=rule_condition.application_field_id)
         except ApplicationField.DoesNotExist:
             raise ValidationError("Incorrect application field")
 
-        operator = self.rule.get("operator")
-        if not operator:
-            raise ValidationError("Missing operator")
+        operator = rule_condition.operator
 
-        field_path = self.rule.get("field")
+        field_path = rule_condition.field
         if isinstance(field_path, str) and "__" in field_path:
             if not (
                 self._is_valid_related_path_by_fields(self.content_type, field_path)
@@ -211,9 +238,19 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
             if not self._resolve_lookup(field_type, str(operator)):
                 raise ValidationError("Invalid operator")
 
-        value = self.rule.get("value")
-        if value is None or value == "":
-            raise ValidationError("No value given")
+    def validate_rule(self):
+        """Checks whether the rule is valid
+
+        Returns:
+            bool: whether the rule is valid or not
+        """
+        try:
+            rule_content = RowPolicyRuleContent.model_validate(self.rule)
+        except PydanticValidationError as exc:
+            raise ValidationError(str(exc)) from exc
+
+        for condition in rule_content.conditions:
+            self.validate_rule_condition(condition)
         
     def is_valid_rule(self) -> bool:
         """Checks whether a rule is valud
@@ -222,8 +259,8 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
             bool: the result
         """
         try:
-            self.is_valid_rule()
-        except Exception as e:
+            self.validate_rule()
+        except Exception:
             return False
         return True
         
@@ -234,15 +271,22 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
         if not isinstance(self.rule, dict):
             return
 
-        rule = dict(self.rule)
-        operator = rule.get("operator")
-        if isinstance(operator, Enum):
-            operator = operator.value
-        if hasattr(operator, "id") and isinstance(operator.id, str):
-            rule["operator"] = operator.id
+        for condition in self.rule.get("conditions", []):
+            if not isinstance(condition, dict):
+                continue
 
-        rule["operator"] = rule.get("operator")
-        self.rule = rule
+            operator = condition.get("operator")
+            if isinstance(operator, Enum):
+                operator = operator.value
+            if hasattr(operator, "id") and isinstance(operator.id, str):
+                condition["operator"] = operator.id
+
+            condition["operator"] = condition.get("operator")
+
+        try:
+            self.rule = RowPolicyRuleContent.model_validate(self.rule).model_dump()
+        except PydanticValidationError:
+            return
 
     def save(self, *args, **kwargs):
         self._normalize_rule()
@@ -258,8 +302,13 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
         
     def __str__(self):
         try:
-            return f"{self.rule.get("field")} {self.rule.get("operator")} {self.rule.get("value")}"
-        except Exception as e:
+            rule_content = RowPolicyRuleContent.model_validate(self.rule)
+            labels = [
+                f"{condition.field or condition.application_field_id} {condition.operator or ''} {condition.value or ''}".strip()
+                for condition in rule_content.conditions
+            ]
+            return f" {rule_content.connector} ".join(labels)
+        except Exception:
             return super().__str__()
     
 

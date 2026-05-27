@@ -60,9 +60,13 @@ export default class FilterContainer extends BaseComponent {
 
         // Load lookup operators via HTMX AJAX
         const url = `/components/filters/${this.contentTypeId}/lookup-operators/${applicationFieldId}/?application_field_id=${applicationFieldId}`;
+        const lookupSection = this.getLookupOperatorSection();
+        if (!lookupSection) {
+            return;
+        }
 
         htmx.ajax('get', url, {
-            target: '#lookup-operator-section',
+            target: lookupSection,
             swap: 'innerHTML',
         });
     }
@@ -116,7 +120,7 @@ export default class FilterContainer extends BaseComponent {
             applicationFieldId = fieldSelector.value;
         } else {
             // In pre-selected field case, get from hidden input
-            const hiddenInput = document.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
+            const hiddenInput = this.element.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
             applicationFieldId = hiddenInput?.value;
         }
 
@@ -175,7 +179,7 @@ export default class FilterContainer extends BaseComponent {
         }
 
         operatorSelect.value = matchingOption.value;
-        await this.loadValueInput(filter.applicationFieldId, matchingOption.value);
+        await this.loadValueInput(filter.applicationFieldId, matchingOption.value, filter.value);
         this.setValueInput(filter.value);
     }
 
@@ -268,14 +272,14 @@ export default class FilterContainer extends BaseComponent {
         if (name) {
             const escaped = typeof (CSS as any)?.escape === 'function' ? (CSS as any).escape(name) : name;
             const selector = `select[data-field="${escaped}"]`;
-            const byData = document.querySelector(selector) as HTMLSelectElement | null;
+            const byData = this.element.querySelector(selector) as HTMLSelectElement | null;
             if (byData) {
                 return byData;
             }
         }
 
         // If there's only one operator select, return it
-        const operatorSelects = Array.from(document.querySelectorAll<HTMLSelectElement>('#lookup-operator-section select'));
+        const operatorSelects = Array.from(this.element.querySelectorAll<HTMLSelectElement>('#lookup-operator-section select'));
         if (operatorSelects.length === 1) {
             return operatorSelects[0];
         }
@@ -316,7 +320,7 @@ export default class FilterContainer extends BaseComponent {
         }
 
         // Hidden selected-field-id input (pre-selected field case)
-        const hiddenInput = document.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
+        const hiddenInput = this.element.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
         if (hiddenInput && hiddenInput.value) {
             return hiddenInput.value;
         }
@@ -362,6 +366,10 @@ export default class FilterContainer extends BaseComponent {
 
     private getLookupOperatorInput(): HTMLElement | null {
         return this.element.querySelector("#lookup-operator-section select");
+    }
+
+    private getLookupOperatorSection(): HTMLElement | null {
+        return this.element.querySelector("#lookup-operator-section");
     }
 
     private getValueInputSection(): HTMLElement | null {
@@ -497,10 +505,26 @@ export default class FilterContainer extends BaseComponent {
         }
     }
 
-    private async loadValueInput(applicationFieldId: string, lookupValue: string): Promise<void> {
-        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}`;
+    private async loadValueInput(
+        applicationFieldId: string,
+        lookupValue: string,
+        currentValue: string | string[] | null = null,
+    ): Promise<void> {
+        const params = new URLSearchParams({ lookup_value: lookupValue });
+        if (currentValue !== null) {
+            const value = Array.isArray(currentValue) ? currentValue[0] : currentValue;
+            if (value !== undefined && value !== null && String(value) !== '') {
+                params.set('current_value', String(value));
+            }
+        }
+        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?${params.toString()}`;
+        const valueSection = this.getValueInputSection();
+        if (!valueSection) {
+            return;
+        }
+
         await htmx.ajax('get', url, {
-            target: '#value-input-section',
+            target: valueSection,
             swap: 'innerHTML',
         });
     }

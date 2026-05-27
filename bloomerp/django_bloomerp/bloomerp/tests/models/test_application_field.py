@@ -358,9 +358,14 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         row_policy_rule = RowPolicyRule.objects.create(
             row_policy=row_policy,
             rule={
-                "application_field_id": str(target_field.pk),
-                "operator": Lookup.EQUALS.value.id,
-                "value": "Policy",
+                "connector": "OR",
+                "conditions": [
+                    {
+                        "application_field_id": str(target_field.pk),
+                        "operator": Lookup.EQUALS.value.id,
+                        "value": "Policy",
+                    }
+                ],
             },
         )
 
