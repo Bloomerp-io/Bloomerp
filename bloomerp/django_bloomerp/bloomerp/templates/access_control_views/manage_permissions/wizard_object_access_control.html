@@ -135,16 +135,29 @@
                 />
             </div>
 
-            <div class="my-4">
+            <div class="my-4" id="primary-query">
                 <c-ui.text.label class="mb-2">
                     Query
                 </c-ui.text.label>
-                <div id="permissions-modal-filter-target" class="mt-2"></div>
+                <div id="row-policy-condition-list" class="mt-2 flex flex-col gap-3">
+                    <div data-row-policy-condition-row>
+                        <div id="permissions-modal-filter-target"></div>
+                    </div>
+                    <div class="hidden" data-row-policy-connector-row>
+                        <select class="select w-24 min-w-0 text-xs" aria-label="Condition operator" data-row-policy-condition-connector>
+                            <option value="AND">AND</option>
+                            <option value="OR">OR</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-
+            
             <div class="mt-6 flex gap-2">
                 <button class="btn btn-primary" id="add-row-policy-btn" type="button">
                     <c-blocktrans>Add Condition</c-blocktrans>
+                </button>
+                <button class="btn btn-secondary" id="add-row-policy-rule-btn" type="button">
+                    <c-blocktrans>Add</c-blocktrans>
                 </button>
             </div>
         </div>
