@@ -30,6 +30,9 @@ class BloomerpProfileView(BaseBloomerpDetailView, UpdateView):
     fields = ['first_name', 'last_name', 'date_view_preference', 'datetime_view_preference', 'avatar']
     success_url = reverse_lazy('users_my_profile_overview')
 
+    def get_object(self, queryset=None):
+        return self.request.user
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['instance'] = self.request.user
