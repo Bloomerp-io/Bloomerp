@@ -106,6 +106,7 @@ class TestCreateView(CrudViewTestMixin):
         response = self.client.get(self.get_url())
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-testid="create-view-layout"', html=False)
         self.assertContains(response, 'id="object-crud-container-save-button"', html=False)
         self.assertContains(response, 'id="object-crud-container-save-and-create-new-button"', html=False)
         self.assertContains(response, 'name="next"', html=False)

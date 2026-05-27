@@ -1,4 +1,4 @@
-import getGeneralModal, { openModal } from "@/utils/modals";
+import { openModal } from "@/utils/modals";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { DataViewContainer } from "./DataViewContainer";
 import htmx from "htmx.org";
@@ -16,6 +16,9 @@ export default class DocumentTemplateDataViewContainer extends DataViewContainer
 
         // 2. User fills in the form and submits
         const url = this.constructUrl(cell.objectId)
+        if (!url) {
+            return false;
+        }
 
         htmx.ajax(
             'get',
@@ -24,6 +27,9 @@ export default class DocumentTemplateDataViewContainer extends DataViewContainer
                 target : '#create-document-template-modal-body'
             }
         )
+        this.element.dispatchEvent(new CustomEvent("document-template-dataview:load-template", {
+            detail: { objectId: cell.objectId, url },
+        }));
         
         return true
     }
@@ -34,7 +40,10 @@ export default class DocumentTemplateDataViewContainer extends DataViewContainer
     }
 
     private constructUrl(objectId:string) : string {
-        let url = this.element.dataset.generateTemplateUrl;
-        return url.replace('INSERT_ID',objectId)
+        const url = this.element.dataset.generateTemplateUrl;
+        if (!url) {
+            return "";
+        }
+        return url.replace('INSERT_ID', objectId)
     }
 }
