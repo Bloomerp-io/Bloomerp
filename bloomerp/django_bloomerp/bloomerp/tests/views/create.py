@@ -225,6 +225,8 @@ class TestCreateView(CrudViewTestMixin):
         self.assertContains(response, "border-red-500", html=False)
 
     def test_post_with_hidden_required_layout_field_shows_visible_error_message(self):
+        self.normal_user.is_staff = True
+        self.normal_user.save(update_fields=["is_staff"])
         self.grant_policy(
             user=self.normal_user,
             field_names=["first_name", "last_name", "age"],

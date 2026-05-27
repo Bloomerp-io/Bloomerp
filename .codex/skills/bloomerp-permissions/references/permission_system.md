@@ -121,7 +121,6 @@ If an API task changes permissions, verify both queryset behavior and serializer
 ## Components And Layouts
 Permission-sensitive UI code appears in two patterns:
 
-- Direct `request.user.has_perm(...)` gates for top-level capability checks.
 - `UserPermissionManager` gates for row/field-sensitive rendering.
 
 Examples worth checking:

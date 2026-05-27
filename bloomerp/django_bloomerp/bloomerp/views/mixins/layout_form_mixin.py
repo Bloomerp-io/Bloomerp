@@ -111,6 +111,7 @@ class BloomerpLayoutFormMixin(ABC):
             return None
 
         form_class = bloomerp_modelform_factory(self.model, fields=field_names)
+        form_fields = form_class.base_fields
         kwargs: dict[str, Any] = {}
         bound_object = self.get_layout_bound_object()
         if bound_object is not None:
@@ -125,7 +126,12 @@ class BloomerpLayoutFormMixin(ABC):
                         continue
                     current_value = getattr(bound_object, field_name, None)
                     if current_value not in (None, ""):
-                        data[field_name] = current_value
+                        form_field = form_fields.get(field_name)
+                        data[field_name] = (
+                            form_field.prepare_value(current_value)
+                            if form_field is not None
+                            else current_value
+                        )
             kwargs["data"] = data
             kwargs["files"] = self.request.FILES
 

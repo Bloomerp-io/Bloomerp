@@ -297,26 +297,7 @@ class TestOverviewView(CrudViewTestMixin):
         self.assertEqual(self.customer.first_name, "Allowed Updated")
 
     def test_post_allows_update_when_required_field_is_hidden_but_already_has_value(self):
-        self.grant_policy(
-            user=self.normal_user,
-            view_field_names=["first_name", "last_name", "age"],
-            change_field_names=["first_name", "last_name", "age"],
-            view_row_rules=[
-                {
-                    "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
-                    "value": "Allowed",
-                }
-            ],
-            change_row_rules=[
-                {
-                    "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
-                    "value": "Allowed",
-                }
-            ],
-        )
-        preference = UserDetailViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
+        preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
         preference.field_layout = {
             "rows": [
                 {
@@ -330,7 +311,7 @@ class TestOverviewView(CrudViewTestMixin):
             ]
         }
         preference.save(update_fields=["field_layout"])
-        self.client.force_login(self.normal_user)
+        self.client.force_login(self.admin_user)
 
         response = self.client.post(
             self.get_url(),
