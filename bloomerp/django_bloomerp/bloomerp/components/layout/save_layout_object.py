@@ -12,7 +12,7 @@ from bloomerp.models.users.user_detail_view_preference import UserDetailViewPref
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.router import router
-from bloomerp.services.permission_services import create_permission_str
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.services.sectioned_layout_services import (
     get_available_layout_fields,
     normalize_layout_payload,
@@ -41,11 +41,12 @@ def _save_layout_preference(
     model,
     scope: str,
 ) -> HttpResponse:
+    manager = UserPermissionManager(request.user)
     if payload.get("content_type_id") and str(payload.get("content_type_id")) != str(content_type.id):
         return HttpResponse("content_type_id does not match route", status=400)
 
     permission = create_permission_str(model, "add" if scope == "create" else "view")
-    if not request.user.has_perm(f"{model._meta.app_label}.{permission}"):
+    if not manager.has_global_permission(model, permission):
         return HttpResponse("Permission denied", status=403)
 
     layout = normalize_layout_payload(payload.get("layout"))
