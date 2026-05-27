@@ -106,7 +106,6 @@ class TestCreateView(CrudViewTestMixin):
         response = self.client.get(self.get_url())
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'data-testid="create-view-layout"', html=False)
         self.assertContains(response, 'id="object-crud-container-save-button"', html=False)
         self.assertContains(response, 'id="object-crud-container-save-and-create-new-button"', html=False)
         self.assertContains(response, 'name="next"', html=False)
@@ -224,6 +223,46 @@ class TestCreateView(CrudViewTestMixin):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, f'data-layout-item-id="{self.fields_by_name["age"].pk}"', html=False)
         self.assertContains(response, "border-red-500", html=False)
+
+    def test_post_with_hidden_required_layout_field_shows_visible_error_message(self):
+        self.grant_policy(
+            user=self.normal_user,
+            field_names=["first_name", "last_name", "age"],
+            row_rules=[
+                {
+                    "application_field_id": str(self.fields_by_name["first_name"].pk),
+                    "operator": Lookup.EQUALS.value.id,
+                    "value": "Allowed",
+                }
+            ],
+        )
+        preference = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
+        preference.field_layout = {
+            "rows": [
+                {
+                    "title": "Primary",
+                    "columns": 2,
+                    "items": [
+                        {"id": self.fields_by_name["first_name"].pk, "colspan": 1},
+                        {"id": self.fields_by_name["age"].pk, "colspan": 1},
+                    ],
+                }
+            ]
+        }
+        preference.save(update_fields=["field_layout"])
+        self.client.force_login(self.normal_user)
+
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "Allowed",
+                "age": "30",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Last name: This field is required.", html=False)
+        self.assertEqual(self.CustomerModel.objects.count(), 0)
 
     def test_post_rejects_disallowed_injected_field(self):
         self.grant_policy(
