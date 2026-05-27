@@ -2,7 +2,7 @@ from dataclasses import dataclass, field as dataclass_field
 
 from bloomerp.field_types.display_options import FieldDisplayOption
 from bloomerp.field_types.lookups import BOOLEAN_LOOKUPS, DATE_LOOKUPS, NUMERIC_LOOKUPS, TEXT_LOOKUPS, Lookup
-from bloomerp.field_types.options import AUTO_NOW_ADD_FIELD_OPTION, AUTO_NOW_FIELD_OPTION, BLANK_FIELD_OPTION, COMMON_CHOICE_FIELD_OPTIONS, COMMON_FIELD_OPTIONS, COMMON_RELATION_FIELD_OPTIONS, COMMON_TEXT_FIELD_OPTIONS, DECIMAL_PLACES_FIELD_OPTION, DEFAULT_FIELD_OPTION, HELP_TEXT_FIELD_OPTION, MAX_DIGITS_FIELD_OPTION, NULL_FIELD_OPTION, ON_DELETE_FIELD_OPTION, RELATED_NAME_FIELD_OPTION, TO_FIELD_OPTION, UNIQUE_FIELD_OPTION, UPLOAD_TO_FIELD_OPTION, VERBOSE_NAME_FIELD_OPTION, FieldOption
+from bloomerp.field_types.options import AUTO_NOW_ADD_FIELD_OPTION, AUTO_NOW_FIELD_OPTION, BLANK_FIELD_OPTION, COMMON_CHOICE_FIELD_OPTIONS, COMMON_FIELD_OPTIONS, COMMON_RELATION_FIELD_OPTIONS, COMMON_TEXT_FIELD_OPTIONS, DB_INDEX_FIELD_OPTION, DECIMAL_PLACES_FIELD_OPTION, DEFAULT_FIELD_OPTION, HELP_TEXT_FIELD_OPTION, MAX_DIGITS_FIELD_OPTION, NULL_FIELD_OPTION, ON_DELETE_FIELD_OPTION, RELATED_NAME_FIELD_OPTION, TO_FIELD_OPTION, UNIQUE_FIELD_OPTION, UPLOAD_TO_FIELD_OPTION, VERBOSE_NAME_FIELD_OPTION, FieldOption
 from bloomerp.form_fields.address_field import AddressFormField
 from bloomerp.form_fields.icon_field import IconFormField
 from bloomerp.form_fields.ordered_multiple_choice_field import OrderedMultipleChoiceField
@@ -28,12 +28,8 @@ from django.forms import Widget
 from enum import Enum
 from typing import Any, Callable, Type
 
-
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
-
-
-
 
 # ---------------------
 # Helper functions
@@ -661,7 +657,12 @@ class FieldType(Enum):
             Lookup.FOREIGN_EQUALS
         ],
         field_options=[
-            *COMMON_RELATION_FIELD_OPTIONS,
+            VERBOSE_NAME_FIELD_OPTION,
+            NULL_FIELD_OPTION,
+            BLANK_FIELD_OPTION,
+            DB_INDEX_FIELD_OPTION,
+            RELATED_NAME_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
             ON_DELETE_FIELD_OPTION,
         ],
     )
