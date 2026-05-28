@@ -3,6 +3,9 @@ import htmx from "htmx.org";
 import { componentIdentifier, getComponent, initComponents } from "../BaseComponent";
 import BaseSectionedLayoutContainer, { type SectionedLayoutRowPayload } from "../layouts/BaseSectionedLayoutContainer";
 import WorkspaceTile from "./WorkspaceTile";
+import getGeneralModal from "@/utils/modals";
+import BaseWizard from "../BaseWizard";
+import { Drawer } from "../Drawer";
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
     protected override shouldApplyFocusedItemClass(): boolean {
@@ -163,5 +166,53 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
                 resizePlots();
             });
         });
+    }
+
+    public toggleEditMode(): void {
+        super.toggleEditMode()
+
+        const btn = this.element.querySelector('[data-create-tile-btn]')
+        btn.classList.toggle('hidden')
+        
+        // TODO: use relative url
+        const url = '/create-tile/?reset_wizard=true'
+
+        btn.addEventListener('click', ()=> {
+            const modal = getGeneralModal()
+            modal.setSize('full')
+            modal.setTitle('Create tile')
+
+            const drawer = getComponent(document.getElementById('layout-drawer-items')) as Drawer
+
+            htmx.ajax(
+                'get',
+                url,
+                {
+                    target: modal.getBodyElement(),
+                    push: 'false',
+                    swap: 'innerHTML'
+                }
+                
+            ).then(()=>{
+                modal.open()                
+                const component = getComponent(modal.getBodyElement().querySelector('[bloomerp-component="base-wizard"]')) as BaseWizard
+                component.setOnDone((wizard)=>{
+                    // In the case of an analytics tile
+                    if (wizard.getCurrentStepIndex() === 0) {return}
+                    
+                    // Close modal
+                    modal.close()
+                    
+                    this.loadAvailableItems().then(()=>{drawer.open()})
+                })
+                
+                
+
+            })
+            
+
+        })
+
+        
     }
 }

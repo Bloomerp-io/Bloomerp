@@ -53,6 +53,7 @@ import FocusOnForm from './components/FocusOnForm';
 import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor';
 import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
 import { SetupAnimationListener } from './utils/animations';
+import BaseWizard from './components/BaseWizard';
 
 // Register components here
 registerComponent('modal', Modal);
@@ -134,7 +135,7 @@ registerComponent('shortcut-tooltip', ShortcutTooltip);
 registerComponent('ordered-field-select', OrderedFieldSelect);
 
 registerComponent('focus-on-form', FocusOnForm);
-
+registerComponent('base-wizard', BaseWizard)
 
 // Auto init comonents
 setupComponentAutoInit();
