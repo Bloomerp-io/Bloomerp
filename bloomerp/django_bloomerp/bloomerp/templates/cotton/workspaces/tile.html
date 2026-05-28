@@ -8,6 +8,7 @@
     data-max-cols="{{ max_cols|default:'4' }}"
     data-layout-search-text="{{ title|default:'' }}"
     data-layout-search-keywords="{{ tile_search_keywords|default:'' }}"
+    data-update-url="{{ update_url }}"
 >
     <div class="mb-3 flex items-center justify-between text-xs text-slate-500">
         <div class="flex items-center gap-2">
@@ -18,6 +19,15 @@
         </div>
 
         <div data-layout-item-controls class="hidden items-center gap-1">
+            <button
+                type="button"
+                class="h-6 w-6 rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 active:cursor-grabbing"
+                title="Update tile"
+                aria-label="Update"
+                data-update-tile
+            >
+                <i class="fa fa-gear"></i>
+            </button>
             <button
                 data-layout-item-drag-handle
                 type="button"

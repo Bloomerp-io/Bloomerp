@@ -4,6 +4,7 @@
     workspace_id="{{ workspace.id }}"
     layout_json="{{ workspace_layout_json }}"
 >
+    <!--My workspaces btn-->
     <c-ui.dropdown.body
         trigger_text="My workspaces"
         trigger_button_class="btn btn-sm btn-secondary"
@@ -61,6 +62,7 @@
         />
     
     </c-ui.dropdown.body>
+    <!--End my workspaces btn-->
 
     {% if workspace.module_id and workspace.user_id == request.user.id %}
         {% if workspace.is_default %}

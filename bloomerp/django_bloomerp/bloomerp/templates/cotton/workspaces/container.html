@@ -26,9 +26,25 @@
                 </div>
             </div>
         </c-ui.dropdown.body>
-        <button class="btn btn-sm btn-secondary">
-            <i class="fa fa-filter"></i>
-            Filter
-        </button>
+        <c-ui.dropdown.body
+                trigger_text="Filter"
+                trigger_button_class="btn btn-sm btn-secondary"
+                trigger_icon_class="fa fa-filter"
+                position="left"
+                trigger_button_id="filter-btn"
+            >
+            <div
+                id="workspace-filter-component-{{ workspace.id }}"
+                class="p-2"
+                hx-get="{% url 'components_filter_workspace' workspace_id=workspace.id %}"
+                hx-trigger="click from:#filter-btn"
+                hx-target="this"
+                hx-swap="innerHTML"
+            >
+                <div class="px-3 py-2 text-sm text-slate-500">
+                    <c-blocktrans>Loading filters...</c-blocktrans>
+                </div>
+            </div>
+        </c-ui.dropdown.body>
     </c-slot>
 </c-layout.container>

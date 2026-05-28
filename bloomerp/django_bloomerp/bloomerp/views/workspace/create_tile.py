@@ -62,13 +62,7 @@ def pcs_0(request: HttpRequest, view, orchestrator: BaseStateOrchestrator):
         )
 
     orchestrator.set_session_data("tile_type", tile_type)
-    orchestrator.set_session_data("query", "")
-    orchestrator.set_session_data("analytics_builder", {})
-    orchestrator.set_session_data("tile_config", {})
-    orchestrator.set_session_data(TILE_NAME_SESSION_KEY, "")
-    orchestrator.set_session_data(TILE_DESCRIPTION_SESSION_KEY, "")
-    orchestrator.set_session_data(TILE_ICON_SESSION_KEY, DEFAULT_TILE_ICON)
-
+    
 
 def ctx_analytics_query(request, view, orchestrator: BaseStateOrchestrator):
     query = orchestrator.get_session_data("query") or ""
@@ -85,9 +79,12 @@ def pcs_analytics_query(request: HttpRequest, view, orchestrator: BaseStateOrche
             title=_("Query required"),
             step=1,
         )
-    config = AnalyticsTileConfig.get_default(
-        query=query
-    )
+    try:
+        config = AnalyticsTileConfig(**orchestrator.get_session_data("config"))    
+    except:
+        config = AnalyticsTileConfig.get_default(
+            query=query
+        )
 
     # Get the database fields
     output_table = SqlExecutor(request.user).execute_query(query).output_fields.model_dump()
@@ -176,7 +173,6 @@ class CreateTileView(WizardMixin, BaseBloomerpView, TemplateView):
     template_name = "base_wizard.html"
     session_key = CREATE_TILE_SESSION_KEY
     
-
     def get_step(self, step: int) -> WizardStep | None:
         tile_type = TileType.from_key(self.orchestrator.get_session_data("tile_type"))
 
@@ -225,4 +221,11 @@ class CreateTileView(WizardMixin, BaseBloomerpView, TemplateView):
             auto_generated=False
         )
 
+        self.add_message(
+            text=f"Tile '{tile.name}' created successfully",
+            type="success"
+        )
+        
+        self.orchestrator.clear_state()
+        
         return None

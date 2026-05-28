@@ -88,6 +88,7 @@ Parameters:
         :aria-expanded="open.toString()"
         aria-haspopup="true"
         {% if disabled %}disabled{% endif %}
+        id="{{ trigger_button_id }}"
     >
         {# Show custom trigger_icon if provided, else use trigger_text #}
         {% if trigger_icon_class %}
