@@ -288,6 +288,13 @@ class SqlExecutor:
         if field_type and field_type != "unknown":
             return to_primitive_field_type(field_type).value.key
 
+        sampled_field_type = self._resolve_output_field_type_from_rows(field_name, rows)
+        if sampled_field_type:
+            return sampled_field_type
+
+        return TileFieldType.TEXT.value.key
+
+    def _resolve_output_field_type_from_rows(self, field_name: str, rows: list[dict[str, Any]]) -> str | None:
         for row in rows:
             value = row.get(field_name)
             if value is None:
@@ -307,14 +314,4 @@ class SqlExecutor:
 
             return to_primitive_field_type(value_type).value.key
 
-        normalized_name = field_name.strip().lower()
-        if normalized_name == "id" or normalized_name.endswith("_id"):
-            return TileFieldType.NUMERIC.value.key
-        if normalized_name.startswith(("is_", "has_", "can_")):
-            return TileFieldType.BOOL.value.key
-        if normalized_name.endswith("_at") or "datetime" in normalized_name or "timestamp" in normalized_name:
-            return TileFieldType.DATETIME.value.key
-        if "date" in normalized_name:
-            return TileFieldType.DATE.value.key
-
-        return TileFieldType.TEXT.value.key
+        return None

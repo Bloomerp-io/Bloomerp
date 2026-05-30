@@ -1,8 +1,9 @@
 
-
+from unittest.mock import patch
 
 from bloomerp.services.sql_services import SqlExecutor
 from bloomerp.tests.base import BaseBloomerpModelTestCase
+from bloomerp.utils.sql import SqlQueryExecutor
 
 class TestSqlExecutor(BaseBloomerpModelTestCase):
     def extendedSetup(self):
@@ -78,3 +79,56 @@ class TestSqlExecutor(BaseBloomerpModelTestCase):
             self.executor._extract_referenced_tables(query),
             {self.db_table},
         )
+
+    def test_raw_postgres_type_code_falls_back_to_backend_type_map(self):
+        """
+        Tests whether raw cursor type codes still resolve when introspection fails.
+        """
+        executor = SqlQueryExecutor()
+
+        with patch(
+            "bloomerp.utils.sql.connection.introspection.get_field_type",
+            side_effect=AttributeError("raw cursor metadata"),
+        ), patch(
+            "bloomerp.utils.sql.connection.introspection.data_types_reverse",
+            {701: "FloatField"},
+        ):
+            field_type = executor._get_field_type((None, 701))
+
+        self.assertEqual(field_type, "floatfield")
+
+    def test_output_field_type_uses_numeric_row_value_when_metadata_is_unknown(self):
+        """
+        Tests whether computed numeric columns are not downgraded without metadata.
+        """
+        field_type = self.executor._resolve_output_field_type(
+            "total",
+            "unknown",
+            [{"total": 12.5}],
+        )
+
+        self.assertEqual(field_type, "numeric")
+
+    def test_output_field_type_keeps_text_when_metadata_and_value_are_text(self):
+        """
+        Tests whether real text columns stay text when sampled.
+        """
+        field_type = self.executor._resolve_output_field_type(
+            "activity",
+            "text",
+            [{"activity": "Development"}],
+        )
+
+        self.assertEqual(field_type, "text")
+
+    def test_output_field_type_does_not_assume_id_columns_are_numeric(self):
+        """
+        Tests whether ID column names alone do not force numeric output types.
+        """
+        field_type = self.executor._resolve_output_field_type(
+            "external_id",
+            "unknown",
+            [],
+        )
+
+        self.assertEqual(field_type, "text")
