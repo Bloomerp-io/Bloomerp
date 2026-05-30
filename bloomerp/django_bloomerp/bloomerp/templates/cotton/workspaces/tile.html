@@ -9,6 +9,8 @@
     data-layout-search-text="{{ title|default:'' }}"
     data-layout-search-keywords="{{ tile_search_keywords|default:'' }}"
     data-update-url="{{ update_url }}?reset_wizard=true"
+    id="tile-{{ tile_id }}"
+    style="grid-column: span {{ colspan|default:'1' }} / span {{ colspan|default:'1' }};"
 >
     <div class="mb-3 flex items-center justify-between text-xs text-slate-500">
         <div class="flex items-center gap-2">

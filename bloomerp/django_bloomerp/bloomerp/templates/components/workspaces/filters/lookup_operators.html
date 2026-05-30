@@ -1,0 +1,15 @@
+<select
+    class="select w-full"
+    bloomerp-component="focus-on-form"
+    data-field="{{ filter_field.field }}"
+    data-filter-key="{{ filter_field.field }}"
+>
+    <option disabled selected value="">
+        <c-blocktrans>Select operator</c-blocktrans>
+    </option>
+    {% for lookup in lookups %}
+        <option value="{{ lookup.value.id }}" data-lookup-django="{{ lookup.value.django_representation }}">
+            {{ lookup.value.display_name }}
+        </option>
+    {% endfor %}
+</select>

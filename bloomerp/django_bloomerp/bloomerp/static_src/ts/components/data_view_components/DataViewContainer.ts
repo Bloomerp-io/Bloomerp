@@ -57,8 +57,6 @@ export class DataViewContainer extends BaseComponent {
                     }
                 });
                 
-                console.log('Applying filters with args:', args);
-
                 // Merge new filters with existing query params
                 this.filter(args, false);
                 this.resetFilterSection();

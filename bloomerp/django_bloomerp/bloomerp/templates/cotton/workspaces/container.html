@@ -4,6 +4,7 @@
     :layout_object_id="workspace.id"
     :layout_object_content_type_id="{{ workspace_content_type_id.id }}"
     :can_edit="True"
+    :extra_attrs="extra_attrs"
     >
     <c-slot name="buttons_left">
 
@@ -26,26 +27,52 @@
                 </div>
             </div>
         </c-ui.dropdown.body>
-        <c-ui.dropdown.body
-                trigger_text="Filter"
-                trigger_button_class="btn btn-sm btn-secondary"
-                trigger_icon_class="fa fa-filter"
-                position="left"
-                trigger_button_id="filter-btn"
-            >
-            <div
-                id="workspace-filter-component-{{ workspace.id }}"
-                class="p-2"
-                hx-get="{% url 'components_filter_workspace' workspace_id=workspace.id %}"
-                hx-trigger="click from:#filter-btn"
-                hx-target="this"
-                hx-swap="innerHTML"
-            >
-                <div class="px-3 py-2 text-sm text-slate-500">
-                    <c-blocktrans>Loading filters...</c-blocktrans>
-                </div>
-            </div>
-        </c-ui.dropdown.body>
+        
+        <!--Filters-->
+        <div class="w-full sm:w-auto">
+            <c-ui.shortcut_tooltip 
+                position="bottom" 
+                shortcut="mod+1"
+                focus_target="select"
+                >
+                <c-ui.dropdown.body 
+                    trigger_text="Filter"
+                    trigger_icon_class="fa fa-filter"
+                    trigger_button_class="btn-secondary"
+                    trigger_class="w-full justify-center gap-2"
+                    wrapper_class="w-full"
+                    size="sm"
+                    width="w-128"
+                    position="left"
+                    >
+                    <div class="p-3">
+                        <div>
+                            <div class="mb-2">
+                                <c-ui.text.subtitle class="mb-2">
+                                    Filter
+                                </c-ui.text.subtitle>
+                                
+                                <div
+                                    id="workspace-filter-section-{{ workspace.id }}"
+                                    hx-get="{% url 'components_workspaces_filters_init' workspace_id=workspace.id %}"
+                                    hx-trigger="load"
+                                    hx-target="this"
+                                    hx-swap="innerHTML"
+                                >
+                                    <div class="px-3 py-2 text-sm text-slate-500">
+                                        <c-blocktrans>Loading filters...</c-blocktrans>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm" data-workspace-apply-filters>
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </c-ui.dropdown.body>
+            </c-ui.shortcut_tooltip>
+        </div>
+        <!--End filters-->
     </c-slot>
     
     <c-slot name="buttons_right">

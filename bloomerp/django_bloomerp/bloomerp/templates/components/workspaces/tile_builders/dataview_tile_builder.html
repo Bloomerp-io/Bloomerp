@@ -10,9 +10,9 @@
             hx-trigger="change"
         >
             <option value="">Select a model</option>
-            {% for content_type_id, content_type_label in content_types %}
-                <option value="{{ content_type_id }}" {% if config.content_type_id == content_type_id %}selected{% endif %}>
-                    {{ content_type_label }}
+            {% for ct in content_types %}
+                <option value="{{ ct.id }}" {% if config.content_type_id == content_type_id %}selected{% endif %}>
+                    {{ ct }}
                 </option>
             {% endfor %}
         </select>
