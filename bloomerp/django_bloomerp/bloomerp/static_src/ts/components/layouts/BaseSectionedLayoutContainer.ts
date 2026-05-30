@@ -236,7 +236,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         }
     }
 
-    protected toggleEditMode(): void {
+    public toggleEditMode(): void {
         this.editMode = !this.editMode;
         this.items.forEach((item) => item.setEditMode(this.editMode));
         this.updateRowControlVisibility();
@@ -858,7 +858,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         });
     }
 
-    protected async loadAvailableItems(options?: { focusFirstItem?: boolean }): Promise<void> {
+    public async loadAvailableItems(options?: { focusFirstItem?: boolean }): Promise<void> {
         const container = this.element?.querySelector<HTMLElement>("[data-layout-available-items]");
         const url = this.element?.dataset.layoutAvailableItemsUrl;
         if (!container || !url) return;

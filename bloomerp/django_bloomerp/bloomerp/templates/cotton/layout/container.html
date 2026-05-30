@@ -19,8 +19,6 @@
     >   
         <!--Right Section-->
         <div class="flex gap-2">
-            {{ buttons_left }}
-
             <c-ui.shortcut_tooltip 
                 shortcut="mod+/" 
                 action="click" 
@@ -31,6 +29,8 @@
                     <c-blocktrans>Search</c-blocktrans>
                 </button>
             </c-ui.shortcut_tooltip>
+
+            {{ buttons_left }}
         </div>
         <!--End Right Section-->
 
@@ -86,6 +86,10 @@
         <!--End Left section-->
     </div>
     <!--End Header Section-->
+
+    <div data-layout-header-section-2>
+        
+    </div>
 
     <!--Layout items-->
     <div class="space-y-4" data-layout-root>

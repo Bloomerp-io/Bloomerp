@@ -102,6 +102,54 @@ def render_foreign_key_field(application_field:"ApplicationField", name_override
         }
     )
     
+
+def _is_truthy_lookup_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+
+    return str(value).strip().lower() in {"true", "1", "yes", "on"}
+
+
+def _sql_literal(value: Any) -> str:
+    if value is None:
+        return "NULL"
+
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+
+    value_str = str(value).strip()
+    if value_str.lower() in {"true", "false"}:
+        return value_str.upper()
+
+    try:
+        float(value_str)
+    except (TypeError, ValueError):
+        escaped_value = value_str.replace("'", "''")
+        return f"'{escaped_value}'"
+
+    return value_str
+
+
+def _sql_like_value(value: Any, *, prefix: str = "", suffix: str = "") -> str:
+    escaped_value = str(value).strip().replace("'", "''")
+    return f"'{prefix}{escaped_value}{suffix}'"
+
+
+def _sql_in_values(value: Any) -> str:
+    values = value
+    if isinstance(value, str):
+        values = [item.strip() for item in value.split(",")]
+    elif not isinstance(value, (list, tuple, set)):
+        values = [value]
+
+    rendered_values = ", ".join(_sql_literal(item) for item in values if str(item).strip() != "")
+    return f"IN ({rendered_values})"
+
+
+def _sql_is_null(value: Any) -> str:
+    return "IS NULL" if _is_truthy_lookup_value(value) else "IS NOT NULL"
+
+
 # ---------------------
 # Defintion
 # ---------------------
@@ -121,13 +169,17 @@ class LookupDefinition:
     get_filter_kwargs: Optional[Callable[[Any], dict]] = None  # Function that returns extra kwargs  
     render_func : Optional[Callable] = None
 
+    # SQL
+    sql_operator: Callable[[Any], str] = lambda value: f"= {_sql_literal(value)}"
+    
     def render(self, application_field, name_override: Optional[str] = None) -> str:
         if not self.render_func:
             field_name = name_override or application_field.field
             return f"""<input type=\"text\" class=\"input w-full\" name=\"{field_name}\">"""
-
+        
         return self.render_func(application_field, name_override=name_override)
 
+    
 
 class Lookup(Enum):
     EQUALS = LookupDefinition(
@@ -135,7 +187,8 @@ class Lookup(Enum):
         display_name="Equals",
         django_representation="exact",
         aliases=["", "__exact", "__equals"],  # Can use field_name, field_name__exact, or field_name__equals
-        filter_class=django_filters.CharFilter
+        filter_class=django_filters.CharFilter,
+        sql_operator=lambda value: f"= {_sql_literal(value)}",
     )
 
     IEXACT = LookupDefinition(
@@ -143,7 +196,8 @@ class Lookup(Enum):
         display_name="Equals (case-insensitive)",
         django_representation="iexact",
         aliases=["__iexact"],
-        description="Case-insensitive exact match."
+        description="Case-insensitive exact match.",
+        sql_operator=lambda value: f"LIKE {_sql_literal(value)}",
     )
 
     CONTAINS = LookupDefinition(
@@ -151,7 +205,8 @@ class Lookup(Enum):
         display_name="Contains",
         django_representation="icontains",
         aliases=["__icontains", "__contains"],
-        description="Containment test (generated as icontains by default)."
+        description="Containment test (generated as icontains by default).",
+        sql_operator=lambda value: f"LIKE {_sql_like_value(value, prefix='%', suffix='%')}",
     )
 
     STARTS_WITH = LookupDefinition(
@@ -159,7 +214,8 @@ class Lookup(Enum):
         display_name="Starts With",
         django_representation="startswith",
         aliases=["__startswith", "__istartswith"],
-        description="Starts with test."
+        description="Starts with test.",
+        sql_operator=lambda value: f"LIKE {_sql_like_value(value, suffix='%')}",
     )
 
     ENDS_WITH = LookupDefinition(
@@ -167,35 +223,40 @@ class Lookup(Enum):
         display_name="Ends With",
         django_representation="endswith",
         aliases=["__endswith", "__iendswith"],
-        description="Ends with test."
+        description="Ends with test.",
+        sql_operator=lambda value: f"LIKE {_sql_like_value(value, prefix='%')}",
     )
 
     GREATER_THAN = LookupDefinition(
         id="greater_than",
         display_name="Greater Than",
         django_representation="gt",
-        aliases=["__gt"]
+        aliases=["__gt"],
+        sql_operator=lambda value: f"> {_sql_literal(value)}",
     )
 
     GREATER_THAN_OR_EQUAL = LookupDefinition(
         id="greater_than_or_equal",
         display_name="Greater Than or Equal",
         django_representation="gte",
-        aliases=["__gte"]
+        aliases=["__gte"],
+        sql_operator=lambda value: f">= {_sql_literal(value)}",
     )
 
     LESS_THAN = LookupDefinition(
         id="less_than",
         display_name="Less Than",
         django_representation="lt",
-        aliases=["__lt"]
+        aliases=["__lt"],
+        sql_operator=lambda value: f"< {_sql_literal(value)}",
     )
 
     LESS_THAN_OR_EQUAL = LookupDefinition(
         id="less_than_or_equal",
         display_name="Less Than or Equal",
         django_representation="lte",
-        aliases=["__lte"]
+        aliases=["__lte"],
+        sql_operator=lambda value: f"<= {_sql_literal(value)}",
     )
 
     IN = LookupDefinition(
@@ -203,7 +264,8 @@ class Lookup(Enum):
         display_name="In",
         django_representation="in",
         aliases=["__in"],
-        description="Checks if value is in a list of values."
+        description="Checks if value is in a list of values.",
+        sql_operator=_sql_in_values,
     )
 
     IS_NULL = LookupDefinition(
@@ -211,14 +273,17 @@ class Lookup(Enum):
         display_name="Is Null",
         django_representation="isnull",
         aliases=["__isnull"],
-        description="Checks if value is null (True) or not null (False)."
+        description="Checks if value is null (True) or not null (False).",
+        sql_operator=_sql_is_null,
     )
 
     NOT_EQUALS = LookupDefinition(
         id="not_equals",
         display_name="Not Equals",
         django_representation="ne",
-        description="Not equal comparison."
+        aliases=["__ne", "__not_equals"],
+        description="Not equal comparison.",
+        sql_operator=lambda value: f"!= {_sql_literal(value)}",
     )
 
     EQUALS_USER = LookupDefinition(

@@ -6,12 +6,36 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import pandas as pd
 
+from bloomerp.services.sql_services import SqlExecutor
+from bloomerp.workspaces.analytics_tile.sql_utils import quote_identifier, strip_trailing_query_semicolon
 from bloomerp.workspaces.analytics_tile.utils import Formatter
 from bloomerp.workspaces.base import BaseTileRenderer
 
 if TYPE_CHECKING:
     from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
     from bloomerp.workspaces.analytics_tile.model import FieldConfig
+
+
+PIE_LABEL_ALIAS = "bloomerp_pie_label"
+PIE_VALUE_ALIAS = "bloomerp_pie_value"
+
+
+def build_pie_chart_query(query: str, label_field: FieldConfig, value_field: FieldConfig) -> str:
+    """Builds a grouped pie chart query so slice totals are calculated by SQL."""
+
+    base_query = strip_trailing_query_semicolon(query)
+    label_column = quote_identifier(label_field.name)
+    value_column = quote_identifier(value_field.name)
+
+    return (
+        "WITH bloomerp_pie_source AS (\n"
+        f"{base_query}\n"
+        ")\n"
+        f"SELECT {label_column} AS {quote_identifier(PIE_LABEL_ALIAS)}, "
+        f"SUM({value_column}) AS {quote_identifier(PIE_VALUE_ALIAS)}\n"
+        "FROM bloomerp_pie_source\n"
+        f"GROUP BY {label_column}"
+    )
 
 
 def _is_truthy(value) -> bool:
@@ -83,27 +107,24 @@ class AnalyticsPieChartRenderer(BaseTileRenderer):
     template_name = "cotton/workspaces/tiles/pie_chart.html"
 
     @classmethod
-    def render(cls, config: AnalyticsTileConfig, user, data):
+    def render(cls, config: AnalyticsTileConfig, request):
+        from bloomerp.workspaces.analytics_tile.model import get_filtered_query
+
         label_field = next(iter(config.fields.get("labels") or []), None)
         value_field = next(iter(config.fields.get("values") or []), None)
 
         if label_field is None or value_field is None:
             return "<p>Please add pie chart fields.</p>"
 
-        if label_field.name not in data.columns or value_field.name not in data.columns:
-            return "<p>Please add pie chart fields.</p>"
-
-        grouped_data = (
-            data.groupby(label_field.name, dropna=False)[value_field.name]
-            .sum()
-            .reset_index()
-        )
+        query = get_filtered_query(config, request.GET)
+        pie_query = build_pie_chart_query(query, label_field, value_field)
+        grouped_data = SqlExecutor(request.user).execute_query(pie_query, paginate=False).to_dataframe()
 
         if grouped_data.empty:
             return "<p>Please add pie chart fields.</p>"
 
-        labels = ["" if value is None else str(value) for value in grouped_data[label_field.name].tolist()]
-        values = grouped_data[value_field.name].tolist()
+        labels = ["" if value is None else str(value) for value in grouped_data[PIE_LABEL_ALIAS].tolist()]
+        values = grouped_data[PIE_VALUE_ALIAS].tolist()
         formatted_values = [_format_value(value, value_field) for value in values]
         opts = config.opts or {}
         show_legend = _resolve_bool_option(opts.get("show_legend"), default=True)

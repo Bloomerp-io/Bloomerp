@@ -10,7 +10,7 @@ from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig, build_pr
 class DataViewTileRenderer(BaseTileRenderer):
 
     @classmethod
-    def render(cls, config: DataViewTileConfig, user:User) -> str:
+    def render(cls, config: DataViewTileConfig, user:User, query_params) -> str:
         """
         Render the data view tile based on the provided configuration.
 
@@ -20,13 +20,14 @@ class DataViewTileRenderer(BaseTileRenderer):
         Returns:
             str: The rendered HTML for the data view tile.
         """
-        print(config)
         content_type = ContentType.objects.filter(id=config.content_type_id).first()
         
 
         request = HttpRequest()
         request.user = user
         request.method = "GET"
+        if query_params is not None:
+            request.GET = query_params.copy()
 
 
         return data_view(

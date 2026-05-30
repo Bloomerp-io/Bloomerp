@@ -2,7 +2,8 @@
 
 import json
 
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse
+from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.users.user_create_view_preference import UserCreateViewPreference
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
@@ -39,7 +40,7 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
 
     error = False
     try:
-        content = render_tile_to_string(tile, request.user)
+        content = render_tile_to_string(tile, request)
     except Exception as e:
         content = e
         error = True
@@ -54,6 +55,12 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
         "max_cols": max_cols,
         "tile_type": tile.type.lower(),
         "tile_search_keywords": tile.get_type_display(),
+        "update_url" : reverse(
+            "tiles_detail_update_tile",
+            kwargs={
+                "pk" : tile_id
+            }
+        )
     }
     return render(request, "components/workspaces/render_workspace_tile.html", context=context)
 

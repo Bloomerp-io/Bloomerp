@@ -1,6 +1,15 @@
 {% load i18n %}
 
-<div id="wizard-root" class="space-y-4" x-data="{ wizardSubmitting: false }">
+<div 
+    id="wizard-root" 
+    class="space-y-4" 
+    x-data="{ wizardSubmitting: false }"
+    bloomerp-component="base-wizard"
+    data-wizard-step-index="{{ step_index }}"
+    data-wizard-total-steps="{{ wizard_total_steps }}"
+    data-wizard-step-query-param="{{ wizard_step_query_param }}"
+    data-wizard-has-error="{% if wizard_error %}true{% else %}false{% endif %}"
+    >
     <form
         method="post"
         enctype="multipart/form-data"

@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 from bloomerp.forms.workspaces import DEFAULT_TILE_ICON, TileMetadataForm
 from bloomerp.router import router
+from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.sql_services import DatabaseTable
 from bloomerp.utils.requests import parse_bool_parameter
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator
@@ -20,6 +21,7 @@ from bloomerp.workspaces.analytics_tile.model import (
     AnalyticsTileConfig,
     AnalyticsTileType,
     get_field_options_form_factory,
+    get_filters_from_query,
     is_field_definition_allowed,
     options_form_factory,
 )
@@ -102,7 +104,7 @@ class PreviewWorkspaceTile(TemplateView):
         tile_type = self.get_tile_type()
         render_cls = tile_type.value.render_cls
         
-        return render_cls.render(config, self.request.user)
+        return render_cls.render(config, self.request)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -147,8 +149,8 @@ class PreviewWorkspaceTile(TemplateView):
                 return "components/workspaces/tile_builders/links_tile_builder.html"
             case TileType.TEXT_TILE:
                 return "components/workspaces/tile_builders/text_tile_builder.html"
-            # case TileType.DATAVIEW_TILE:
-            #     return "components/workspaces/tile_builders/dataview_tile_builder.html"
+            case TileType.DATAVIEW_TILE:
+                return "components/workspaces/tile_builders/dataview_tile_builder.html"
             case _:
                 return "components/workspaces/tile_builders/default_tile_builder.html"
 
@@ -224,10 +226,20 @@ class PreviewWorkspaceTile(TemplateView):
 
                 extra_context["available_output_fields"] = available_output_fields
                 extra_context["field_opts_forms"] = field_opts_forms
-
+                
+                # Filter variables
+                extra_context["filter_variables"] = get_filters_from_query(output_table, config.query)
+                
             case TileType.LINKS_TILE:
                 pass
-
+            
+            case TileType.DATAVIEW_TILE:
+                manager = UserPermissionManager(self.request.user)
+                
+                return {
+                    "content_types" : manager.get_accessible_content_types("view")
+                }
+            
             case _:
                 return {}
         

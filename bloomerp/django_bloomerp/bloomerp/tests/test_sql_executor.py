@@ -59,5 +59,22 @@ class TestSqlExecutor(BaseBloomerpModelTestCase):
         SELECT * FROM {self.db_table};
         """
         self.assertTrue(self.executor.is_safe(query))
-        
-        
+
+    def test_extract_referenced_tables_ignores_cte_names(self):
+        """
+        Tests whether CTE aliases are not treated as database tables.
+        """
+        query = f"""
+        WITH bloomerp_kpi_source AS (
+            SELECT id FROM {self.db_table}
+        ),
+        bloomerp_kpi_numbered AS (
+            SELECT * FROM bloomerp_kpi_source
+        )
+        SELECT COUNT("id") FROM bloomerp_kpi_numbered;
+        """
+
+        self.assertEqual(
+            self.executor._extract_referenced_tables(query),
+            {self.db_table},
+        )

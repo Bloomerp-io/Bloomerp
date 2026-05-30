@@ -122,7 +122,7 @@ class SqlExecutor:
         return sorted(tables.values(), key=lambda table: table.name.lower())
     
 
-    def execute_query(self, query:str, page:int = 1, page_size:int = 25) -> SqlQueryResponse:
+    def execute_query(self, query:str, page:int = 1, page_size:int = 25, paginate: bool = True) -> SqlQueryResponse:
         """Executes the sql query, with included
         permissions
 
@@ -150,39 +150,48 @@ class SqlExecutor:
                 blocked_list = ", ".join(sorted(set(blocked_tables)))
                 raise PermissionError(f"You do not have access to table(s): {blocked_list}")
 
-        normalized_page_size = max(1, min(page_size, 200))
-        normalized_page = max(1, page)
-        offset = (normalized_page - 1) * normalized_page_size
-
         executor = SqlQueryExecutor()
         query_without_semicolon = normalized_query.rstrip(";")
-        count_query = (
-            "SELECT COUNT(*) AS total_count "
-            f"FROM ({query_without_semicolon}) AS bloomerp_sql_count_subquery"
-        )
-
         started_at = time.perf_counter()
-        count_result = executor.execute_to_dict(count_query, safe=True, use_cache=False)
-        count_rows = count_result.get("rows", [])
-        total_row_count = int(count_rows[0][0] or 0) if count_rows else 0
 
-        if total_row_count > 0 and offset >= total_row_count:
-            normalized_page = ((total_row_count - 1) // normalized_page_size) + 1
+        if paginate:
+            normalized_page_size = max(1, min(page_size, 200))
+            normalized_page = max(1, page)
             offset = (normalized_page - 1) * normalized_page_size
 
-        paginated_query = (
-            "SELECT * "
-            f"FROM ({query_without_semicolon}) AS bloomerp_sql_page_subquery "
-            f"LIMIT {normalized_page_size} OFFSET {offset}"
-        )
+            count_query = (
+                "SELECT COUNT(*) AS total_count "
+                f"FROM ({query_without_semicolon}) AS bloomerp_sql_count_subquery"
+            )
+            count_result = executor.execute_to_dict(count_query, safe=True, use_cache=False)
+            count_rows = count_result.get("rows", [])
+            total_row_count = int(count_rows[0][0] or 0) if count_rows else 0
 
-        result = executor.execute_to_dict(paginated_query, safe=True, use_cache=False)
+            if total_row_count > 0 and offset >= total_row_count:
+                normalized_page = ((total_row_count - 1) // normalized_page_size) + 1
+                offset = (normalized_page - 1) * normalized_page_size
+
+            execution_query = (
+                "SELECT * "
+                f"FROM ({query_without_semicolon}) AS bloomerp_sql_page_subquery "
+                f"LIMIT {normalized_page_size} OFFSET {offset}"
+            )
+        else:
+            normalized_page_size = max(1, page_size)
+            normalized_page = 1
+            offset = 0
+            total_row_count = 0
+            execution_query = query_without_semicolon
+
+        result = executor.execute_to_dict(execution_query, safe=True, use_cache=False)
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
 
         columns = result.get("columns", [])
         raw_rows = result.get("rows", [])
         rows = [dict(zip(columns, row)) for row in raw_rows]
         page_rows_count = len(rows)
+        if not paginate:
+            total_row_count = page_rows_count
         total_pages = max(1, (total_row_count + normalized_page_size - 1) // normalized_page_size)
         page_start = offset + 1 if total_row_count > 0 else 0
         page_end = min(offset + page_rows_count, total_row_count)
@@ -249,11 +258,13 @@ class SqlExecutor:
     
     def _extract_referenced_tables(self, query: str) -> set[str]:
         matches = re.findall(r"\b(?:from|join)\s+([\w\.\"]+)", query, flags=re.IGNORECASE)
+        cte_matches = re.findall(r"(?:\bwith|,)\s+([\w\"]+)\s+as\s*\(", query, flags=re.IGNORECASE)
+        cte_names = {match.strip().strip('"') for match in cte_matches}
         normalized_tables: set[str] = set()
 
         for match in matches:
             table_name = match.strip().strip('"')
-            if table_name:
+            if table_name and table_name not in cte_names:
                 normalized_tables.add(table_name)
 
         return normalized_tables
@@ -307,6 +318,3 @@ class SqlExecutor:
             return TileFieldType.DATE.value.key
 
         return TileFieldType.TEXT.value.key
-
-
-    
