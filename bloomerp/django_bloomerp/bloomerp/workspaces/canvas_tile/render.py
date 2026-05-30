@@ -1,3 +1,5 @@
+from django.http import HttpRequest
+
 from bloomerp.workspaces.base import BaseTileRenderer
 from bloomerp.workspaces.canvas_tile.model import CanvasTileConfig
 
@@ -5,7 +7,7 @@ class CanvasTileRenderer(BaseTileRenderer):
     template_name = "cotton/workspaces/tiles/canvas.html"
 
     @classmethod
-    def render(cls, config: CanvasTileConfig, user) -> str:
+    def render(cls, config: CanvasTileConfig, request:HttpRequest) -> str:
         """
         Render the canvas tile based on the provided configuration.
 

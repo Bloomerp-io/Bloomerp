@@ -1,9 +1,15 @@
-from django.db import models
+from typing import Any
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Case, IntegerField, QuerySet, When
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
+
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
-from django.utils.translation import gettext_lazy as _
+from bloomerp.models.workspaces.tile import Tile
 
 class Workspace(AbsoluteUrlModelMixin, models.Model):
     class Meta(BloomerpModel.Meta):
@@ -78,5 +84,41 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
     
     def get_absolute_url(self):
         return reverse("workspace", kwargs={"pk": self.pk})
+    
+    
+    def get_tiles(self) -> QuerySet[Tile]:
+        """Returns the tiles that are on this workspace
+
+        Returns:
+            QuerySet[Tile]: the tiles available on this
+        """
+        tile_ids: list[Any] = []
+        seen_tile_ids: set[Any] = set()
+
+        for row in self.layout_obj.rows:
+            for item in row.items:
+                try:
+                    tile_id = Tile._meta.pk.to_python(item.id)
+                except (TypeError, ValueError, ValidationError):
+                    continue
+
+                if tile_id in seen_tile_ids:
+                    continue
+
+                tile_ids.append(tile_id)
+                seen_tile_ids.add(tile_id)
+
+        if not tile_ids:
+            return Tile.objects.none()
+
+        preserved_order = Case(
+            *[
+                When(pk=tile_id, then=position)
+                for position, tile_id in enumerate(tile_ids)
+            ],
+            output_field=IntegerField(),
+        )
+
+        return Tile.objects.filter(pk__in=tile_ids).order_by(preserved_order)
     
     

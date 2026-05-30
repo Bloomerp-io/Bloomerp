@@ -39,7 +39,6 @@ class Tile(BloomerpModel):
         default=False
     )
 
-    string_search_fields = ['name', 'description']
 
     def __str__(self):
         return self.name

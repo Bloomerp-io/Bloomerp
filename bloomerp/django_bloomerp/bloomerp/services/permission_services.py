@@ -922,3 +922,31 @@ class UserPermissionManager:
 
         self.policies = self.get_user_policies()
         return policy
+
+    def get_accessible_content_types(self, permission:Literal['view', 'add', 'change', 'delete']) -> QuerySet[ContentType]:
+        """Returns the globaly accessible content types based on the permission str
+
+        Args:
+            permission_str (str): the permission str
+
+        Returns:
+            QuerySet[ContentType]: the content type
+        """
+        if self.is_anonymous:
+            return ContentType.objects.none()
+
+        if getattr(self.user, "is_superuser", False):
+            return ContentType.objects.all()
+
+        permission_prefix = str(permission or "").strip()
+        if not permission_prefix:
+            return ContentType.objects.none()
+
+        return ContentType.objects.filter(
+            Q(permission__codename__startswith=f"{permission_prefix}_")
+            & (
+                Q(permission__user=self.user)
+                | Q(permission__group__user=self.user)
+                | Q(permission__access_control_policies__in=self.policies)
+            )
+        ).distinct()

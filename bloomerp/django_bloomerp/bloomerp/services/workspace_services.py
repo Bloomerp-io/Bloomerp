@@ -1,19 +1,36 @@
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Optional, Type
 
 from django.db import transaction
+from django.http import HttpRequest
 from django.urls import reverse
 
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.modules.definition import module_registry
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_list_view_url
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileType
+from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileType
+from bloomerp.workspaces.analytics_tile.utils import TileFieldType
 from bloomerp.workspaces.base import TileTypeDefinition
+from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
 from bloomerp.workspaces.links_tile.model import Link, LinkTileConfig
 from bloomerp.workspaces.tiles import TileType
 from bloomerp.models.users import User
 from bloomerp.services.sectioned_layout_services import AvailableLayoutItem
 from django.db.models import Q
+from django.forms import Form
+from django import forms
+from bloomerp.field_types.types import FieldType
+from django.contrib.contenttypes.models import ContentType
+
+PRIMITIVE_FIELD_TYPE_MAP = {
+    TileFieldType.TEXT.value.key: FieldType.CHAR_FIELD,
+    TileFieldType.NUMERIC.value.key: FieldType.DECIMAL_FIELD,
+    TileFieldType.DATE.value.key: FieldType.DATE_FIELD,
+    TileFieldType.DATETIME.value.key: FieldType.DATE_TIME_FIELD,
+    TileFieldType.BOOL.value.key: FieldType.BOOLEAN_FIELD,
+}
 
 def create_default_workspace(
         user,
@@ -124,7 +141,10 @@ def create_default_sidebar(
     modules = module_registry.get_enabled()
     
 
-def render_tile_to_string(tile:Tile, user:User) -> str:
+def render_tile_to_string(
+    tile:Tile, 
+    request:HttpRequest
+    ) -> str:
     """Renders a tile to a string, given the tile and the user object
 
     Args:
@@ -138,15 +158,94 @@ def render_tile_to_string(tile:Tile, user:User) -> str:
     tile_type = TileType.from_key(tile.type)
 
     # 2. Get the config object
-    config = tile_type.value.model(**tile.schema)
-
-    # 3. Get the render class
-    return tile_type.value.render_cls.render(
-        config=config,
-        user=user
+    config = tile_type.value.model( 
+        **tile.schema
     )
 
+    # 3. Get the render class
+    return tile_type.value.render_cls.render(config=config, request=request)
 
+@dataclass
+class WorkspaceFilter:
+    field:str
+    type:str
+    label:str
+
+class WorkspaceManager:
+    def __init__(self, workspace:Workspace):
+        self.workspace = workspace
+        
+    def get_filter_form(self) -> Type[Form]:
+        """Returns the filter form for a particular workspace.
+
+        Returns:
+            Type[Form]: the form
+        """
+        attrs = {}
+        
+        for tile in self.workspace.get_tiles():
+            match TileType.from_key(tile.type):
+                case TileType.ANALYTICS_TILE:
+                    config = AnalyticsTileConfig(**tile.schema)
+            
+                    if not config.filters:
+                        continue
+                    
+                    for filter_config in config.filters.values():
+                        match filter_config.type:
+                            case "text":
+                                field_type = FieldType.CHAR_FIELD
+                                
+                                attrs
+                                
+                
+        return type("FilterForm", (Form,), attrs)
+ 
+    def get_filter_fields(self, user:User) -> dict[str, WorkspaceFilter]:
+        """Returns all the filterable fields for a particular 
+
+        Args:
+            user (User): the user object. Some filters are not accessible to users
+
+        Returns:
+            dict[str, WorkspaceFilter]:
+        """
+        result = {}
+        # TODO: no collision management right now
+        
+        for tile in self.workspace.get_tiles():
+            match TileType.from_key(tile.type):
+                case TileType.ANALYTICS_TILE:
+                    config = AnalyticsTileConfig(**tile.schema)
+            
+                    if not config.filters:
+                        continue
+                    
+                    for filter_config in config.filters.values():
+                        result[filter_config.field] = WorkspaceFilter(
+                            field=filter_config.field,
+                            type=PRIMITIVE_FIELD_TYPE_MAP[filter_config.type].value.id,
+                            label=filter_config.field.replace("_", " ").title()
+                        )
+                case TileType.DATAVIEW_TILE:
+                    config = DataViewTileConfig(**tile.schema)
+                    manager = UserPermissionManager(user)
+                    content_type = ContentType.objects.get(id=config.content_type_id)
+                    fields = manager.get_accessible_fields(
+                        content_type,
+                        create_permission_str(
+                            content_type.model_class(),
+                            "view"
+                        )
+                    )
+                    for field in fields:
+                        result[field.field] = WorkspaceFilter(
+                            field=field.field,
+                            type=field.field_type,
+                            label=field.title
+                        )
+                           
+        return result
 
 
 class UserWorkspaceService:

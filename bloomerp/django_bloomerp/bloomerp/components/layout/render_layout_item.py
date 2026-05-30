@@ -2,7 +2,7 @@
 
 import json
 
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.users.user_create_view_preference import UserCreateViewPreference
@@ -40,7 +40,7 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
 
     error = False
     try:
-        content = render_tile_to_string(tile, request.user)
+        content = render_tile_to_string(tile, request)
     except Exception as e:
         content = e
         error = True

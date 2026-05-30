@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from django.forms import Form
+from django.http import HttpHeaders, HttpRequest
 from pydantic import BaseModel
 from typing import TYPE_CHECKING, Literal, Optional, Self, Type
 
@@ -28,7 +29,6 @@ class TileOperationDefinition:
 
 
 class BaseTileConfig(BaseModel):
-    
     @classmethod
     @abstractmethod
     def get_default(cls, *args, **kwargs) -> Self:
@@ -45,13 +45,20 @@ class BaseTileRenderer(ABC):
 
     @classmethod
     @abstractmethod
-    def render(cls, config: BaseModel, user: "User", *args, **kwargs) -> str:
+    def render(
+        cls, 
+        config: BaseModel, 
+        request:HttpRequest,
+        *args, 
+        **kwargs
+        ) -> str:
         raise NotImplementedError("Subclasses must implement the render method.")
 
     @classmethod
     def render_to_string(cls, context: dict) -> str:
         from django.template.loader import render_to_string
         return render_to_string(cls.template_name, context)
+    
     
     
 
