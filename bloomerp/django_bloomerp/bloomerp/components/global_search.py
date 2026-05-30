@@ -41,7 +41,7 @@ from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.router import router
 from bloomerp.modules.definition import module_registry
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
-from bloomerp.utils.models import string_search_queryset
+from bloomerp.services.object_services import string_search_on_queryset
 
 from django.contrib.auth.models import Permission
 from django.contrib.sessions.models import Session
@@ -177,7 +177,7 @@ def _collect_object_results(
             break
 
         matching_objects = list(
-            string_search_queryset(base_qs, search_value)[: per_model_limit + 1]
+            string_search_on_queryset(base_qs, search_value)[: per_model_limit + 1]
         )
         if not matching_objects:
             continue
@@ -353,7 +353,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                     else:
                         base_qs = user_model.objects.all()
 
-                    results = list(string_search_queryset(base_qs, search_query)[: USER_LIMIT + 1])
+                    results = list(string_search_on_queryset(base_qs, search_query)[: USER_LIMIT + 1])
                     if len(results) > USER_LIMIT:
                         context["results_truncated"] = True
                         results = results[:USER_LIMIT]

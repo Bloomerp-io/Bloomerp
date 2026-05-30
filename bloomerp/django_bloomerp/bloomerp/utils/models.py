@@ -1,12 +1,9 @@
 from typing import Literal
 
-from django.db.models import F, Model, QuerySet, Value
+from django.db.models import Model, QuerySet
 from django.contrib.contenttypes.models import ContentType
-from django.db.models.functions import Concat
 from bloomerp.models import ApplicationField
 
-from django.db.models.query import QuerySet
-from django.db.models import Q, Model, CharField, TextField
 from django.apps import apps
 
 
@@ -67,22 +64,9 @@ def string_search(cls, query: str):
     model.string_search = classmethod(string_search)
 
     '''
-    # Get all string fields (CharField and TextField) of the model
-    if hasattr(cls, 'string_search_fields') and cls.string_search_fields:
-        string_fields = cls.string_search_fields
-    else:
-        string_fields = [
-            field.name for field in cls._meta.fields
-            if isinstance(field, CharField) or isinstance(field, TextField)
-        ]
+    from bloomerp.services.object_services import string_search_on_queryset
 
-    # Build a Q object to filter across all string fields
-    query_filter = Q()
-    for field in string_fields:
-        query_filter |= Q(**{f"{field}__icontains": query})
-
-    # Filter the queryset by the query in any of the string fields
-    return cls.objects.filter(query_filter)
+    return string_search_on_queryset(cls.objects.all(), query)
 
 def string_search_on_qs(qs: QuerySet, query: str):
     '''
@@ -95,27 +79,9 @@ def string_search_on_qs(qs: QuerySet, query: str):
     qs = string_search_on_qs(qs, 'search query')
     ```
     '''
-    # Get the model of the QuerySet
-    model = qs.model
+    from bloomerp.services.object_services import string_search_on_queryset
 
-    # Check if the model has a string_search_fields attribute
-    if hasattr(model, 'string_search_fields') and model.string_search_fields:
-        return model.string_search(query)
-
-    else:
-        # Get all string fields (CharField and TextField) of the model
-        string_fields = [
-            field.name for field in model._meta.fields
-            if isinstance(field, CharField) or isinstance(field, TextField)
-        ]
-
-    # Build a Q object to filter across all string fields
-    query_filter = Q()
-    for field in string_fields:
-        query_filter |= Q(**{f"{field}__icontains": query})
-
-    # Filter the queryset by the query in any of the string fields
-    return qs.filter(query_filter)
+    return string_search_on_queryset(qs, query)
 
 def get_bloomerp_file_fields_for_model(model:Model, output='queryset') -> QuerySet[ApplicationField] | list[str]:
     """
@@ -308,69 +274,9 @@ def get_initials(object:Model) -> str:
     return ''.join([word[0].upper() for word in object.__str__().split()])[0:2]
 
 def string_search_queryset(qs: QuerySet, search_value: str) -> QuerySet:
-        model = qs.model
-        string_fields = getattr(model, "string_search_fields", None) or [
-            field.name
-            for field in model._meta.fields
-            if isinstance(field, CharField) or isinstance(field, TextField)
-        ]
-        if not string_fields:
-            return qs.none()
+    from bloomerp.services.object_services import string_search_on_queryset
 
-        search_value = search_value or ""
-        query_filter = None
-        working_qs = qs
-
-        actual_field_names = {
-            field.name
-            for field in model._meta.fields
-            if isinstance(field, CharField) or isinstance(field, TextField)
-        }
-        token_fields = []
-
-        for field in string_fields:
-            if "+" in field:
-                concatenated_query = search_value.replace(" ", "")
-                concat_fields = field.split("+")
-                concat_operation = Concat(
-                    *[F(item) if item != " " else Value(" ") for item in concat_fields],
-                    output_field=CharField(),
-                )
-                working_qs = working_qs.annotate(**{field: concat_operation})
-                condition = {f"{field}__icontains": concatenated_query}
-                for part in concat_fields:
-                    if part in actual_field_names:
-                        token_fields.append(part)
-            else:
-                condition = {f"{field}__icontains": search_value}
-                if field in actual_field_names:
-                    token_fields.append(field)
-
-            if query_filter is None:
-                query_filter = Q(**condition)
-            else:
-                query_filter |= Q(**condition)
-
-        if query_filter is None:
-            return qs.none()
-
-        tokens = [token for token in search_value.split() if token]
-        token_fields = list(dict.fromkeys(token_fields))
-        if len(tokens) > 1 and token_fields:
-            tokens_query = None
-            for token in tokens:
-                token_query = Q()
-                for field in token_fields:
-                    token_query |= Q(**{f"{field}__icontains": token})
-                if tokens_query is None:
-                    tokens_query = token_query
-                else:
-                    tokens_query &= token_query
-
-            if tokens_query is not None:
-                query_filter = query_filter | tokens_query
-
-        return working_qs.filter(query_filter)
+    return string_search_on_queryset(qs, search_value)
 
 def get_object_from_content_type(content_type_id:int, object_id:str) -> Model | None:
     """

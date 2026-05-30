@@ -238,6 +238,7 @@ class BloomerpModelConfig(BaseModel):
     Settings are:
         - module: the canonical module to which this model belongs.
         - layout: a layout object defining how the default CRUD layout for users is.
+        - string_search_fields: optional field paths used by the shared string search service.
 
     Usage
     ```python
@@ -255,6 +256,8 @@ class BloomerpModelConfig(BaseModel):
     layout: Optional[FieldLayout] = None
 
     allow_string_search: bool = True
+
+    string_search_fields: list[str] | None = None
 
     is_internal: bool = False
 

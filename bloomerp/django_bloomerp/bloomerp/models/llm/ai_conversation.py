@@ -1,9 +1,14 @@
 import uuid
 from django.conf import settings
 from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import BloomerpModelConfig
 from django.db import models
 
 class AIConversation(BloomerpModel):
+    bloomerp_config = BloomerpModelConfig(
+        string_search_fields=["title"],
+    )
+
     class Meta:
         managed = True
         db_table = "bloomerp_ai_conversation"
@@ -29,7 +34,6 @@ class AIConversation(BloomerpModel):
     args = models.JSONField(null=True, blank=True, help_text="Extra arguments for the conversation")
 
     allow_string_search = False
-    string_search_fields = ['title']
 
     @property
     def number_of_messages(self):

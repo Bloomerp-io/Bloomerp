@@ -395,7 +395,7 @@ Backend components enable a seamless request-response cycle where HTMX sends req
 Backend components use the router system from `registries.route_registry` for clean, centralized route management:
 
 ```python
-from registries.route_registry import router
+from bloomerp.router import router
 
 @router.register(
     path="components/search-objects/<int:content_type_id>/",
