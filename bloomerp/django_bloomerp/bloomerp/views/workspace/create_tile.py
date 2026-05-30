@@ -73,6 +73,7 @@ def ctx_analytics_query(request, view, orchestrator: BaseStateOrchestrator):
 
 def pcs_analytics_query(request: HttpRequest, view, orchestrator: BaseStateOrchestrator):
     query = (request.POST.get("query") or "").strip()
+    
     if not query:
         return WizardError(
             message=_("Please provide a SQL query before continuing."),
@@ -80,7 +81,10 @@ def pcs_analytics_query(request: HttpRequest, view, orchestrator: BaseStateOrche
             step=1,
         )
     try:
-        config = AnalyticsTileConfig(**orchestrator.get_session_data("config"))    
+        config_data = orchestrator.get_session_data("config")
+        config_data["query"] = query
+        
+        config = AnalyticsTileConfig(**config_data)    
     except:
         config = AnalyticsTileConfig.get_default(
             query=query

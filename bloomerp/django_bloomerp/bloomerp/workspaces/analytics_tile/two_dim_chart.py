@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import pandas as pd
 
+from bloomerp.services.sql_services import SqlExecutor
 from bloomerp.workspaces.base import BaseTileRenderer
 
 if TYPE_CHECKING:
@@ -80,7 +81,12 @@ class AnalyticsTwoDimChartRenderer(BaseTileRenderer):
     template_name = "cotton/workspaces/tiles/two_dim_chart.html"
 
     @classmethod
-    def render(cls, config: AnalyticsTileConfig, user, data):
+    def render(cls, config: AnalyticsTileConfig, request):
+        from bloomerp.workspaces.analytics_tile.model import get_filtered_query
+        
+        query = get_filtered_query(config, request.GET)
+        data = SqlExecutor(request.user).execute_query(query).to_dataframe()
+        
         x_axis_field = next(iter(config.fields.get("x_axis") or []), None)
         y_axis_fields = list(config.fields.get("y_axis") or [])
 
