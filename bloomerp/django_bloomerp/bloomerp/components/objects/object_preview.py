@@ -46,18 +46,18 @@ def object_preview(request: HttpRequest, content_type_id: int, object_id: str) -
     preference = UserDetailViewPreference.get_or_create_for_user(request.user, content_type)
     layout = {
         "rows": resolve_detail_layout_rows(
-            layout=preference.field_layout_obj,
+            layout=preference.layout_obj,
             content_type=content_type,
             user=request.user,
         )
     }
 
     if not any(row.get("items") for row in layout["rows"]):
-        preference.field_layout = get_default_layout(content_type=content_type, user=request.user).model_dump()
-        preference.save(update_fields=["field_layout"])
+        preference.layout = get_default_layout(content_type=content_type, user=request.user).model_dump()
+        preference.save(update_fields=["layout"])
         layout = {
             "rows": resolve_detail_layout_rows(
-                layout=preference.field_layout_obj,
+                layout=preference.layout_obj,
                 content_type=content_type,
                 user=request.user,
             )

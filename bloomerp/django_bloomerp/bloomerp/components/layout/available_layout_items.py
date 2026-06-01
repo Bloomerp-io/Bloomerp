@@ -1,6 +1,7 @@
 
 
 from django.http import Http404, HttpRequest, HttpResponse
+from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_create_view_preference import UserCreateViewPreference
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.models.workspaces.tile import Tile
@@ -26,6 +27,8 @@ def _get_scope_from_content_type(content_type: ContentType) -> str | None:
         return "create"
     if model_cls is UserDetailViewPreference:
         return "detail"
+    if model_cls is Form:
+        return "create"
     return None
 
 
@@ -57,6 +60,7 @@ def _get_application_fields(request: HttpRequest, content_type: ContentType):
 
 CALLABLES = {
     Workspace: _get_tiles,
+    Form: _get_application_fields,
     UserCreateViewPreference: _get_application_fields,
     UserDetailViewPreference: _get_application_fields
 }

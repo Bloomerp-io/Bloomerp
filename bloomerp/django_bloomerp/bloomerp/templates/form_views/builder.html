@@ -1,0 +1,43 @@
+{% load cotton %}
+
+{% if layout_non_field_errors %}
+    {% for error in layout_non_field_errors %}
+        <div class="alert-message-error mb-4 rounded px-4 py-3" role="alert">
+            <div class="alert-message">{{ error }}</div>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<c-layout.container
+    component_name="object-crud-view-container"
+    :layout="layout"
+    :layout_object_id="layout_object_id"
+    :layout_object_content_type_id="layout_object_content_type_id"
+    :can_edit="can_change_layout"
+    :can_delete="can_delete_layout_object"
+    :extra_attrs="layout_container_extra_attrs"
+>
+    <c-slot name="buttons_left">
+        <div data-toggle-non-required-fields-container>
+            <c-ui.shortcut_tooltip
+                shortcut="mod+."
+                position="bottom">
+                <button
+                    type="button"
+                    class="btn btn-sm btn-secondary"
+                    data-toggle-non-required-fields
+                    aria-pressed="false"
+                >
+                    <i class="fa fa-asterisk"></i>
+                    <span data-toggle-non-required-fields-label>
+                        <c-blocktrans>
+                            Show Required Only
+                        </c-blocktrans>
+                    </span>
+                </button>
+            </c-ui.shortcut_tooltip>
+        </div>
+    </c-slot>
+
+    {% include "inclusion_tags/sectioned_layout_rows.html" %}
+</c-layout.container>

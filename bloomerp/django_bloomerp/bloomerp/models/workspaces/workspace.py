@@ -9,9 +9,10 @@ from django.utils.translation import gettext_lazy as _
 
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
+from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
 from bloomerp.models.workspaces.tile import Tile
 
-class Workspace(AbsoluteUrlModelMixin, models.Model):
+class Workspace(ContentLayoutModelMixin, AbsoluteUrlModelMixin, models.Model):
     class Meta(BloomerpModel.Meta):
         managed = True
         db_table = 'bloomerp_workspace'
@@ -35,7 +36,6 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
         max_length=255, 
         default=""
         )
-    layout = models.JSONField(default=dict)
     is_default = models.BooleanField(
         help_text=_("Whether it is a default workspace"),
         default=False
@@ -77,11 +77,6 @@ class Workspace(AbsoluteUrlModelMixin, models.Model):
             is_default=True,
         )
 
-    @property
-    def layout_obj(self):
-        from bloomerp.services.sectioned_layout_services import normalize_layout_payload
-        return normalize_layout_payload(self.layout)
-    
     def get_absolute_url(self):
         return reverse("workspace", kwargs={"pk": self.pk})
     

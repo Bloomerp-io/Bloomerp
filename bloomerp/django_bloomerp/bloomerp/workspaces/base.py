@@ -3,10 +3,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from django.forms import Form
-from django.http import HttpHeaders, HttpRequest
+from django.http import HttpRequest
 from pydantic import BaseModel
 from typing import TYPE_CHECKING, Literal, Optional, Self, Type
-
+from django import forms
 if TYPE_CHECKING:
     from bloomerp.models.users.user import User
 
@@ -24,7 +24,7 @@ class TileOperationHandler(ABC):
 
 @dataclass
 class TileOperationDefinition:
-    validation_model:type[BaseModel]
+    validation_model:type[BaseModel]|type[forms.Form]
     handler:TileOperationHandler
 
 

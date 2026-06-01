@@ -7,6 +7,9 @@ from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.models import ApplicationField, FieldPolicy, UserDetailViewPreference
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.router import router
+from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
+from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.models.forms.form import Form as BloomerpForm
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.services.sectioned_layout_services import get_application_field_help_text
@@ -56,7 +59,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         detail_view_preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=ContentType.objects.get_for_model(self.CustomerModel),
-            field_layout={},
+            layout={},
             tab_state={
                 "top_level_order": ["non_existant_tab"],
                 "folders": [],
@@ -80,7 +83,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         detail_view_preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=ContentType.objects.get_for_model(self.CustomerModel),
-            field_layout={},
+            layout={},
             tab_state="invalid",
         )
 
@@ -93,7 +96,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=content_type,
-            field_layout={},
+            layout={},
         )
         UserDetailViewPreference.objects.filter(pk=preference.pk).update(selected=False)
 
@@ -132,9 +135,9 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
         preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
-        self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
+        self.assertEqual(preference.layout_obj.rows[0].title, "Primary")
+        self.assertEqual(preference.layout_obj.rows[0].items[0].id, str(field.pk))
+        self.assertEqual(preference.layout_obj.rows[0].items[0].colspan, 2)
 
     def test_detail_layout_save_persists_item_config(self):
         self.client.force_login(self.admin_user)
@@ -172,7 +175,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
         preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
-        item = preference.field_layout_obj.rows[0].items[0]
+        item = preference.layout_obj.rows[0].items[0]
         self.assertEqual(item.config["display"], "compact")
         self.assertEqual(item.config["inline_fields"], ["activity_type", "hours"])
 
@@ -186,7 +189,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=content_type,
-            field_layout={
+            layout={
                 "rows": [
                     {
                         "title": "Primary",
@@ -208,8 +211,48 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
         preference.refresh_from_db()
-        item = preference.field_layout_obj.rows[0].items[0]
+        item = preference.layout_obj.rows[0].items[0]
         self.assertEqual(item.config["label"], "Preferred name")
+
+    def test_field_display_options_updates_form_layout_item_config(self):
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="first_name",
+        )
+        form_object = BloomerpForm.objects.create(
+            name="Customer signup",
+            content_type=content_type,
+            layout={
+                "rows": [
+                    {
+                        "title": "Primary",
+                        "columns": 2,
+                        "items": [{"id": field.pk, "colspan": 1, "config": {}}],
+                    }
+                ]
+            },
+        )
+        layout_object_content_type = ContentType.objects.get_for_model(BloomerpForm)
+
+        response = self.client.post(
+            f"/components/field_display_options/{field.pk}/",
+            {
+                "layout_object_content_type_id": layout_object_content_type.pk,
+                "layout_object_id": form_object.pk,
+                "layout_mode": "form",
+                "layout_edit_mode": "true",
+                "label": "Public first name",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="layout-field-{field.pk}"', html=False)
+        self.assertContains(response, 'hx-swap-oob="outerHTML"', html=False)
+        form_object.refresh_from_db()
+        item = form_object.layout_obj.rows[0].items[0]
+        self.assertEqual(item.config["label"], "Public first name")
 
     def test_field_display_options_returns_oob_field_swap_for_detail_object(self):
         self.client.force_login(self.admin_user)
@@ -222,7 +265,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=content_type,
-            field_layout={
+            layout={
                 "rows": [
                     {
                         "title": "Primary",
@@ -261,7 +304,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=content_type,
-            field_layout={
+            layout={
                 "rows": [
                     {
                         "title": "Primary",
@@ -296,7 +339,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=content_type,
-            field_layout={
+            layout={
                 "rows": [
                     {
                         "title": "Primary",
@@ -318,7 +361,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
         preference.refresh_from_db()
-        item = preference.field_layout_obj.rows[0].items[0]
+        item = preference.layout_obj.rows[0].items[0]
         self.assertEqual(item.config["inline_fields"], ["description", "name", "row_policy"])
 
     def test_one_to_many_display_options_keep_required_fields_selected(self):
@@ -331,7 +374,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=content_type,
-            field_layout={
+            layout={
                 "rows": [
                     {
                         "title": "Primary",
@@ -353,7 +396,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
 
         self.assertEqual(response.status_code, 200)
         preference.refresh_from_db()
-        item = preference.field_layout_obj.rows[0].items[0]
+        item = preference.layout_obj.rows[0].items[0]
         self.assertEqual(item.config["inline_fields"], ["description", "name", "row_policy"])
 
     def test_detail_layout_render_field_returns_fragment(self):
@@ -402,7 +445,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         # TODO: Refine test
         from bloomerp.services.sectioned_layout_services import create_default_layout
         # 1. Create a default layout
-        field_layout = create_default_layout(self.CustomerModel)
+        layout = create_default_layout(self.CustomerModel)
 
         # 2. Validate 
 
@@ -477,7 +520,7 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
         preference = UserDetailViewPreference.objects.create(
             user=self.admin_user,
             content_type=content_type,
-            field_layout={},
+            layout={},
             tab_state={
                 "top_level_order": [],
                 "folders": [],
@@ -487,7 +530,38 @@ class DetailViewTabsTestCase(BaseBloomerpModelTestCase):
 
         repaired = UserDetailViewPreference.get_or_create_for_user(self.admin_user, content_type)
         self.assertEqual(repaired.pk, preference.pk)
-        self.assertTrue(any(row.items for row in repaired.field_layout_obj.rows))
+        self.assertTrue(any(row.items for row in repaired.layout_obj.rows))
+
+    def test_default_detail_layout_does_not_append_unconfigured_fields(self):
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        configured_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="first_name",
+        )
+        original_config = getattr(self.CustomerModel, "bloomerp_config", None)
+        self.CustomerModel.bloomerp_config = BloomerpModelConfig(
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Primary",
+                        columns=2,
+                        items=[LayoutItem(id="first_name", colspan=2)],
+                    )
+                ]
+            )
+        )
+
+        try:
+            preference = UserDetailViewPreference.create_default_for_user(self.admin_user, content_type)
+
+            self.assertEqual(len(preference.layout_obj.rows), 1)
+            self.assertEqual(preference.layout_obj.rows[0].title, "Primary")
+            self.assertEqual(
+                [item.id for item in preference.layout_obj.rows[0].items],
+                [str(configured_field.pk)],
+            )
+        finally:
+            self.CustomerModel.bloomerp_config = original_config
 
     def test_user_detail_view_handles_auto_created_one_to_many_fields(self):
         self.client.force_login(self.admin_user)

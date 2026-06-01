@@ -64,22 +64,24 @@
                     </button>
                 </c-ui.shortcut_tooltip>
 
-                <c-ui.shortcut_tooltip 
-                    shortcut="mod+j" 
-                    action="click" 
-                    position="bottom">
-                    <button 
-                        class="btn btn-sm btn-danger" 
-                        bloomerp-open-modal="layout-object-delete-modal"
-                        hx-get="{% url 'components_delete_layout_object' layout_object_content_type_id layout_object_id %}"
-                        hx-target="#layout-object-delete-modal-body"
-                        hx-trigger="click"
-                        type="button"
-                        >
-                        <i class="fa fa-trash"></i>
-                        <c-blocktrans>Delete</c-blocktrans>
-                    </button>
-                </c-ui.shortcut_tooltip>
+                {% if can_delete %}
+                    <c-ui.shortcut_tooltip 
+                        shortcut="mod+j" 
+                        action="click" 
+                        position="bottom">
+                        <button 
+                            class="btn btn-sm btn-danger" 
+                            bloomerp-open-modal="layout-object-delete-modal"
+                            hx-get="{% url 'components_delete_layout_object' layout_object_content_type_id layout_object_id %}"
+                            hx-target="#layout-object-delete-modal-body"
+                            hx-trigger="click"
+                            type="button"
+                            >
+                            <i class="fa fa-trash"></i>
+                            <c-blocktrans>Delete</c-blocktrans>
+                        </button>
+                    </c-ui.shortcut_tooltip>
+                {% endif %}
             </div>
             {% endif %}
         </div>

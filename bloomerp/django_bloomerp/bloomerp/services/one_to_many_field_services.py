@@ -37,7 +37,8 @@ def save_submitted_one_to_many_fields(
     parent_object: models.Model,
     layout: FieldLayout,
     submitted_data: Mapping[str, Any],
-    user,
+    user=None,
+    enforce_permissions: bool = True,
 ) -> None:
     """Persist one-to-many inline table rows posted with a CRUD layout form.
 
@@ -47,7 +48,7 @@ def save_submitted_one_to_many_fields(
     parent object, permissions, and the layout configuration that decides which
     related fields are editable inline.
     """
-    permission_manager = UserPermissionManager(user)
+    permission_manager = UserPermissionManager(user) if enforce_permissions else None
     errors: list[str] = []
 
     for config in iter_one_to_many_save_configs(
@@ -69,11 +70,37 @@ def save_submitted_one_to_many_fields(
         raise ValidationError(errors)
 
 
+def collect_submitted_one_to_many_data(
+    *,
+    parent_model: type[models.Model],
+    layout: FieldLayout,
+    submitted_data: Mapping[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Collect one-to-many inline table rows from submitted layout form data."""
+    one_to_many_fields = _get_layout_one_to_many_application_fields(
+        parent_model=parent_model,
+        layout=layout,
+    )
+    collected_data: dict[str, list[dict[str, Any]]] = {}
+
+    for application_field in one_to_many_fields:
+        rows = _parse_submitted_rows(application_field.field, submitted_data)
+        submitted_rows = [
+            row_data
+            for _, row_data in sorted(rows.items(), key=lambda item: _row_sort_key(item[0]))
+            if not _is_blank_submitted_row(row_data)
+        ]
+        if submitted_rows:
+            collected_data[application_field.field] = submitted_rows
+
+    return collected_data
+
+
 def iter_one_to_many_save_configs(
     *,
     parent_model: type[models.Model],
     layout: FieldLayout,
-    permission_manager: UserPermissionManager,
+    permission_manager: UserPermissionManager | None,
 ) -> list[OneToManySaveConfig]:
     """Resolve editable one-to-many fields from a layout."""
 
@@ -106,7 +133,7 @@ def iter_one_to_many_save_configs(
             if field_type.id != "OneToManyField":
                 continue
 
-            if not permission_manager.has_field_permission(
+            if permission_manager is not None and not permission_manager.has_field_permission(
                 application_field,
                 create_permission_str(parent_model, "change"),
             ):
@@ -139,12 +166,53 @@ def iter_one_to_many_save_configs(
     return configs
 
 
+def _get_layout_one_to_many_application_fields(
+    *,
+    parent_model: type[models.Model],
+    layout: FieldLayout,
+) -> list[ApplicationField]:
+    content_type = ContentType.objects.get_for_model(parent_model)
+    item_ids = [
+        item.id
+        for row in layout.rows
+        for item in row.items
+        if str(item.id).isdigit()
+    ]
+    if not item_ids:
+        return []
+
+    application_fields = {
+        field.pk: field
+        for field in ApplicationField.objects.filter(content_type=content_type, id__in=item_ids)
+    }
+
+    one_to_many_fields: list[ApplicationField] = []
+    seen: set[int] = set()
+    for row in layout.rows:
+        for item in row.items:
+            if not str(item.id).isdigit():
+                continue
+
+            application_field = application_fields.get(int(item.id))
+            if application_field is None or application_field.pk in seen:
+                continue
+
+            field_type = application_field.get_field_type_enum().value
+            if field_type.id != "OneToManyField":
+                continue
+
+            one_to_many_fields.append(application_field)
+            seen.add(application_field.pk)
+
+    return one_to_many_fields
+
+
 def _save_one_to_many_field(
     *,
     parent_object: models.Model,
     config: OneToManySaveConfig,
     submitted_data: Mapping[str, Any],
-    permission_manager: UserPermissionManager,
+    permission_manager: UserPermissionManager | None,
 ) -> None:
     rows = _parse_submitted_rows(config.prefix, submitted_data)
     if not rows:
@@ -178,7 +246,7 @@ def _save_one_to_many_field(
 
         child = form.save(commit=False)
         setattr(child, config.parent_fk_name, parent_object)
-        _stamp_child(child, permission_manager.user)
+        _stamp_child(child, getattr(permission_manager, "user", None))
         action = "add" if is_new_row else "change"
         _assert_can_save_child(
             child,
@@ -218,20 +286,37 @@ def _get_submitted_value(submitted_data: Mapping[str, Any], key: str) -> Any:
     return submitted_data.get(key)
 
 
+def _row_sort_key(row_index: str) -> tuple[int, int | str]:
+    if str(row_index).isdigit():
+        return (0, int(row_index))
+    return (1, str(row_index))
+
+
+def _is_blank_submitted_row(row_data: dict[str, Any]) -> bool:
+    for field_name, value in row_data.items():
+        if field_name in (ROW_ID_KEY, ROW_DELETE_KEY):
+            continue
+        if value not in (None, "", []):
+            return False
+    return False if row_data.get(ROW_DELETE_KEY) else True
+
+
 def _get_row_instance(
     *,
     parent_object: models.Model,
     config: OneToManySaveConfig,
     row_index: str,
     row_data: dict[str, Any],
-    permission_manager: UserPermissionManager,
+    permission_manager: UserPermissionManager | None,
 ) -> models.Model | None:
     raw_pk = row_data.get(ROW_ID_KEY)
     if raw_pk in (None, ""):
         return None
 
-    permission = create_permission_str(config.related_model, "change")
-    queryset = permission_manager.get_queryset(config.related_model, permission)
+    queryset = config.related_model.objects.all()
+    if permission_manager is not None:
+        permission = create_permission_str(config.related_model, "change")
+        queryset = permission_manager.get_queryset(config.related_model, permission)
     instance = queryset.filter(
         pk=raw_pk,
         **{config.parent_fk_name: parent_object},
@@ -245,13 +330,13 @@ def _delete_row(
     *,
     instance: models.Model | None,
     config: OneToManySaveConfig,
-    permission_manager: UserPermissionManager,
+    permission_manager: UserPermissionManager | None,
 ) -> None:
     if instance is None:
         return
 
     permission = create_permission_str(config.related_model, "delete")
-    if not permission_manager.has_access_to_object(instance, permission):
+    if permission_manager is not None and not permission_manager.has_access_to_object(instance, permission):
         raise ValidationError(f"{config.application_field.title}: you do not have permission to delete this row.")
     instance.delete()
 
@@ -269,8 +354,11 @@ def _assert_can_save_child(
     action: str,
     cleaned_data: dict[str, Any],
     config: OneToManySaveConfig,
-    permission_manager: UserPermissionManager,
+    permission_manager: UserPermissionManager | None,
 ) -> None:
+    if permission_manager is None:
+        return
+
     permission = create_permission_str(config.related_model, action)
     if getattr(permission_manager.user, "is_superuser", False):
         return
@@ -304,7 +392,7 @@ def _get_editable_related_fields(
     related_model: type[models.Model],
     parent_fk_name: str,
     layout_config: dict[str, Any],
-    permission_manager: UserPermissionManager,
+    permission_manager: UserPermissionManager | None,
 ) -> list[ApplicationField]:
     content_type = ContentType.objects.get_for_model(related_model)
     configured_fields = [
@@ -330,7 +418,7 @@ def _get_editable_related_fields(
             continue
         if not _is_model_editable_field(related_field):
             continue
-        if not permission_manager.has_field_permission(related_field, change_permission):
+        if permission_manager is not None and not permission_manager.has_field_permission(related_field, change_permission):
             continue
         editable_fields.append(related_field)
         if not configured_fields and len(editable_fields) >= 6:

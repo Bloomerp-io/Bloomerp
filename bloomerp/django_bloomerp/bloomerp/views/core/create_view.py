@@ -67,7 +67,7 @@ class BloomerpCreateView(
         return self.layout_content_type
 
     def get_layout_object(self):
-        return self.get_layout_preference_object().field_layout_obj
+        return self.get_layout_preference_object().layout_obj
 
     def get_layout_preference_object(self):
         return UserCreateViewPreference.get_or_create_for_user(
@@ -207,7 +207,7 @@ class BloomerpCreateView(
                     self.object.save_file_fields()
                 save_submitted_one_to_many_fields(
                     parent_object=self.object,
-                    layout=self.get_layout_preference_object().field_layout_obj,
+                    layout=self.get_layout_preference_object().layout_obj,
                     submitted_data=self.request.POST,
                     user=self.request.user,
                 )

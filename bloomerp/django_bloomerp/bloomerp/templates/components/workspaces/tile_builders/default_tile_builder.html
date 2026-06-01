@@ -1,1 +1,14 @@
-<p>Some default shit</p>
+{% load crispy_forms_tags %}
+
+<form 
+    class="p-4" 
+    hx-post="{% url 'preview_workspace_tile' %}"
+    hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}"}'
+    hx-vars='js:{operation: "set_form"}'
+    hx-trigger="change delay:200ms"
+    >
+    
+    {% csrf_token %}
+    {{ form | crispy }}
+    
+</form>

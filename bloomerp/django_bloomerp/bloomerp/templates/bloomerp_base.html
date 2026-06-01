@@ -8,8 +8,9 @@
 		{% include "snippets/head.html" %}
 	</head>
 
-	{% block body %}
+	
 	<body class="bg-base" id="bloomerpBody" x-data>
+		{% block body %}
 
 		<!-- Sidebar -->
 		<c-sidebar.body/>
@@ -66,6 +67,8 @@
 		{% block scripts %}
 		
 		{% endblock scripts %}
+		
+		{% endblock body %}
 	</body>
-	{% endblock body %}
+	
 </html>
