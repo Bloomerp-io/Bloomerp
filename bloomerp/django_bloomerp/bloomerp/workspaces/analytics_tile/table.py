@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
 from django.http import HttpRequest
+from django.template import engines
 from django.urls import reverse
 import pandas as pd
 
@@ -24,7 +25,8 @@ def _normalize_value(value):
     return value
 
 
-def _format_value(value, field: FieldConfig):
+def _format_value(value, field: FieldConfig, vars:dict):
+    pre_formatted_value = value
     field_opts = field.opts or {}
     value = _normalize_value(value)
 
@@ -37,6 +39,14 @@ def _format_value(value, field: FieldConfig):
 
     prefix = field_opts.get("prefix") or ""
     suffix = field_opts.get("suffix") or ""
+
+    vars["value"] = value
+    
+    # Advanced formatting
+    advanced_formatting: str | None = field_opts.get("advanced_formatting")
+    if advanced_formatting:
+        value = engines["django"].from_string(advanced_formatting).render(vars)
+
     return f"{prefix}{value}{suffix}"
 
 
@@ -85,6 +95,14 @@ def get_renderer_url() -> str:
         }
     )
     
+def _build_vars(row:pd.Series) -> dict:
+    vars = {}
+    for key, value in row.to_dict().items():
+        key:str
+        vars[f"var_{key.lower().replace(" ","_")}"] = value
+        
+    return vars    
+
 
 class AnalyticsTableRenderer(BaseTileRenderer):
     template_name = "cotton/workspaces/tiles/table.html"
@@ -122,9 +140,13 @@ class AnalyticsTableRenderer(BaseTileRenderer):
         rows = []
         for _, row in data.iterrows():
             rendered_row = []
+            
+            # Build vars
+            vars = _build_vars(row)
+            
             for field in selected_fields:
                 value = row[field.name] if field.name in data.columns else None
-                rendered_row.append(_format_value(value, field))
+                rendered_row.append(_format_value(value, field, vars))
             rows.append(rendered_row)
 
         payload["rows"] = rows
