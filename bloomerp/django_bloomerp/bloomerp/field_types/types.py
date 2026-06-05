@@ -168,7 +168,7 @@ class FieldTypeDefinition:
             attrs[self.widget_related_model_attr] = related_model
         if self.widget_parent_model_attr:
             attrs[self.widget_parent_model_attr] = application_field.get_model()
-
+        
         if self.widget_cls:
             return self.get_widget_cls()(
                 attrs=attrs,
@@ -437,12 +437,20 @@ class FieldType(Enum):
         default_model_field_args={
             "default": False,
         },
+        widget_cls=forms.CheckboxInput,
+        default_widget_args={
+            "style" : "max-width:1.5rem; height:1.5rem", # otherwise this fucker would be w-full
+            
+        },
         field_options=[
             NULL_FIELD_OPTION,
             BLANK_FIELD_OPTION,
             DEFAULT_FIELD_OPTION,
             HELP_TEXT_FIELD_OPTION,
         ],
+        field_display_options=[
+            
+        ]
     )
 
     NULL_BOOLEAN_FIELD = FieldTypeDefinition(
@@ -938,3 +946,5 @@ class FieldType(Enum):
             return self.value.model_field_cls.widget_cls
 
         return forms.widgets.TextInput
+
+

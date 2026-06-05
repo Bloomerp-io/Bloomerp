@@ -5,6 +5,7 @@ import json
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_create_view_preference import UserCreateViewPreference
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.models.workspaces.tile import Tile
@@ -165,6 +166,7 @@ def _build_detail_render_context(*, request: HttpRequest, model, application_fie
 
 items = {
     Workspace: _tile,
+    Form: _render_application_field,
     UserDetailViewPreference: _render_application_field,
     UserCreateViewPreference: _render_application_field,
 }

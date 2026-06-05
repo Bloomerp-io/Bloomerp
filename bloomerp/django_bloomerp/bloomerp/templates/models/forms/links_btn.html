@@ -1,0 +1,33 @@
+<c-ui.dropdown.body 
+    trigger_icon_class="fa fa-share-nodes" 
+    trigger_button_class="btn btn-secondary btn-xs" 
+    position="right" 
+    trigger_text="Share Form"
+    fixed=True
+    >
+    {% with submit_url=request.scheme|add:"://"|add:request.get_host|add:object.submit_url %}
+    <c-ui.dropdown.item 
+            id=""
+            onclick="navigator.clipboard.writeText('{{ submit_url|escapejs }}'); showMessage('Link copied to clipboard!');"
+            icon="fa fa-link"
+        >
+        Link
+    </c-ui.dropdown.item>
+    {% endwith %}
+    <c-ui.dropdown.item 
+            id=""
+            text="QR Code"
+            hx_get="{% url 'components_forms_qr_code' id=object.id %}"
+            hx_target="#qr-code-modal-body"
+            hx_push_url="false"
+            :extra_attrs="{
+                'bloomerp-open-modal': 'qr-code-modal',
+            }"
+            icon="fa fa-qrcode"
+        />
+</c-ui.dropdown.body>
+
+
+<c-ui.modal id="qr-code-modal" title="QR Code">
+
+</c-ui.modal>

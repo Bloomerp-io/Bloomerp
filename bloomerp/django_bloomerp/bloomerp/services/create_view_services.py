@@ -65,7 +65,7 @@ def create_default_create_view_preference(content_type: ContentType, user) -> Us
     return UserCreateViewPreference.objects.create(
         user=user,
         content_type=content_type,
-        field_layout=default_layout.model_dump(),
+        layout=default_layout.model_dump(),
     )
 
 

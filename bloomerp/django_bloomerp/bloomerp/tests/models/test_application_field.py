@@ -10,8 +10,12 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.forms.form import Form as BloomerpForm
 from bloomerp.services.sectioned_layout_services import build_crud_layout_field_context
-from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
+from bloomerp.services.form_services import FormManager
+from bloomerp.services.one_to_many_field_services import (
+    save_submitted_one_to_many_fields,
+)
 from bloomerp.field_types import FieldType, Lookup
 from bloomerp.form_fields.address_field import AddressFormField, AddressValue
 from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
@@ -527,6 +531,219 @@ class TestApplicationField(BaseBloomerpModelTestCase):
             ).exists()
         )
 
+    def test_form_submission_includes_one_to_many_layout_rows(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        relation_field = ApplicationField.objects.get(
+            content_type=parent_content_type,
+            field="lines",
+        )
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Inline rows",
+                        columns=1,
+                        items=[
+                            LayoutItem(
+                                id=str(relation_field.pk),
+                                colspan=1,
+                                config={"inline_fields": ["description", "hours"]},
+                            )
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "POST": {
+                    "lines__0__id": "",
+                    "lines__0__description": "Contract line",
+                    "lines__0__hours": "3.75",
+                }
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "David",
+                "last_name": "Bloomer",
+            },
+            request=request,
+        )
+
+        response.form_submission.refresh_from_db()
+        self.assertEqual(
+            response.form_submission.data,
+            {
+                "first_name": "David",
+                "last_name": "Bloomer",
+                "lines": [
+                    {
+                        "id": "",
+                        "description": "Contract line",
+                        "hours": "3.75",
+                    }
+                ],
+            },
+        )
+
+    def test_form_submission_without_review_persists_object_and_one_to_many_rows(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name", "age", "lines"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=False,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["age"].pk)),
+                            LayoutItem(
+                                id=str(fields_by_name["lines"].pk),
+                                colspan=2,
+                                config={"inline_fields": ["description", "hours"]},
+                            ),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {
+                    "lines__0__id": "",
+                    "lines__0__description": "Persisted line",
+                    "lines__0__hours": "4.25",
+                },
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Persisted",
+                "last_name": "Customer",
+                "age": "41",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        response.form_submission.refresh_from_db()
+        self.assertTrue(response.form_submission.persisted)
+        customer = self.CustomerModel.objects.get(first_name="Persisted")
+        self.assertEqual(customer.last_name, "Customer")
+        self.assertTrue(
+            self.CustomerLineModel.objects.filter(
+                customer=customer,
+                description="Persisted line",
+                hours="4.25",
+            ).exists()
+        )
+
+    def test_form_initial_payload_persists_hidden_model_fields(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=False,
+            initial_payload={"age": 41},
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {},
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Hidden",
+                "last_name": "Default",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        response.form_submission.refresh_from_db()
+        self.assertEqual(response.form_submission.data["age"], 41)
+        self.assertTrue(response.form_submission.persisted)
+        customer = self.CustomerModel.objects.get(first_name="Hidden")
+        self.assertEqual(customer.age, 41)
+
+    def test_visible_initial_payload_is_available_as_form_initial_data(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            initial_payload={
+                "first_name": "Visible",
+                "age": 41,
+            },
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+
+        initial_data = FormManager(form_object).get_initial_form_data()
+
+        self.assertEqual(initial_data, {"first_name": "Visible"})
+
     def test_one_to_many_save_service_raises_validation_error_for_missing_required_fields(self):
         row_policy = RowPolicy.objects.create(
             content_type=ContentType.objects.get_for_model(Policy),
@@ -576,3 +793,49 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertTrue(
             any("Policies row 0, Row policy:" in message for message in exc_info.exception.messages)
         )
+
+
+class FormCleanTestCase(BaseBloomerpModelTestCase):
+    auto_create_customers = False
+    auto_create_users = False
+    create_foreign_models = True
+
+    def test_form_clean_resets_layout_and_initial_payload_when_content_type_changes(self):
+        customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        country_content_type = ContentType.objects.get_for_model(self.CountryModel)
+        customer_first_name_field = ApplicationField.objects.get(
+            content_type=customer_content_type,
+            field="first_name",
+        )
+        country_name_field = ApplicationField.objects.get(
+            content_type=country_content_type,
+            field="name",
+        )
+        form_object = BloomerpForm(
+            name="Customer form",
+            content_type=customer_content_type,
+            initial_payload={"age": 41},
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=1,
+                        items=[LayoutItem(id=str(customer_first_name_field.pk))],
+                    )
+                ]
+            ).model_dump(),
+        )
+        BloomerpForm.objects.bulk_create([form_object])
+        form_object = BloomerpForm.objects.get(name="Customer form")
+
+        form_object.content_type = country_content_type
+        form_object.full_clean()
+
+        layout_item_ids = {
+            str(item.id)
+            for row in form_object.layout_obj.rows
+            for item in row.items
+        }
+        self.assertEqual(form_object.initial_payload, {})
+        self.assertNotIn(str(customer_first_name_field.pk), layout_item_ids)
+        self.assertIn(str(country_name_field.pk), layout_item_ids)

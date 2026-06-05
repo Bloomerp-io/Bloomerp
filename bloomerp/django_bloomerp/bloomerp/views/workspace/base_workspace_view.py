@@ -88,7 +88,7 @@ class BaseWorkspaceView(BaseBloomerpView):
             "my_workspaces_url": reverse("my_workspaces"),
             "module_id": self.get_module_id(),
             "workspace_content_type_id" : ContentType.objects.get_for_model(Workspace),
-            "extra_attrs" : {"data-workspace-id": workspace.id}
+            "extra_attrs" : {"data-workspace-id": workspace.id if workspace else None}
         }
 
         if workspace:

@@ -19,6 +19,7 @@ class HtmxMixin:
     htmx_detail_target = 'detail-view-content'
     htmx_main_target = 'main-content'
     htmx_include_addendum = True
+    htmx_include_addendum_padding = True
     is_detail_view = None
     include_padding = True
 
@@ -211,5 +212,5 @@ class HtmxMixin:
         context["rand_int"] = random.randint(0,10000)
         context["route_title"] = self._resolve_route_title()
         context["breadcrumbs"] = self._build_breadcrumb_items(context)
-
+        context["htmx_include_addendum_padding"] = self.htmx_include_addendum_padding
         return context

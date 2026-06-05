@@ -2,12 +2,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
 
-from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout
+from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
 from bloomerp.models.users.base_view_preference import BaseViewPreference
 from bloomerp.models.users.user import AbstractBloomerpUser
-from bloomerp.services.sectioned_layout_services import normalize_layout_payload
 
-class UserCreateViewPreference(BaseViewPreference):
+class UserCreateViewPreference(ContentLayoutModelMixin, BaseViewPreference):
     """
     Stores the create-view field layout preference per user and content type.
     """
@@ -21,8 +21,6 @@ class UserCreateViewPreference(BaseViewPreference):
                 name="unique_selected_create_view_preference",
             ),
         ]
-    field_layout = models.JSONField(default=dict)
-
     @classmethod
     def create_default_for_user(
         cls,
@@ -36,17 +34,8 @@ class UserCreateViewPreference(BaseViewPreference):
         return create_default_create_view_preference(content_type=content_type, user=user)
 
     def ensure_default_state(self, *, user, content_type: ContentType) -> None:
-        if not self.field_layout_obj.rows or not any(row.items for row in self.field_layout_obj.rows):
+        if not self.layout_obj.rows or not any(row.items for row in self.layout_obj.rows):
             from bloomerp.services.create_view_services import get_default_layout
 
-            self.field_layout = get_default_layout(content_type=content_type, user=user).model_dump()
-            self.save(update_fields=["field_layout"])
-
-    def validate_field_layout(self):
-        normalize_layout_payload(self.field_layout)
-
-    @property
-    def field_layout_obj(self) -> FieldLayout:
-        if isinstance(self.field_layout, FieldLayout):
-            return self.field_layout
-        return normalize_layout_payload(self.field_layout)
+            self.layout = get_default_layout(content_type=content_type, user=user).model_dump()
+            self.save(update_fields=["layout"])

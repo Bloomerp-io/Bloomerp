@@ -81,6 +81,9 @@ class BloomerpLayoutFormMixin(ABC):
     def can_change_layout(self) -> bool:
         return False
 
+    def can_delete_layout_object(self) -> bool:
+        return self.can_change_layout()
+
     def get_layout_context_extras(self, *, layout: FieldLayout, form=None) -> dict[str, Any]:
         return {}
 
@@ -198,6 +201,12 @@ class BloomerpLayoutFormMixin(ABC):
             return False
         return manager.has_field_permission(application_field, self.get_layout_edit_permission())
 
+    def can_render_unbound_editable_layout_field(self, application_field: ApplicationField) -> bool:
+        return self.is_create_layout()
+
+    def get_unbound_layout_field_value(self, application_field: ApplicationField):
+        return None
+
     def build_layout_item_context(
         self,
         *,
@@ -229,10 +238,13 @@ class BloomerpLayoutFormMixin(ABC):
                 can_edit=has_edit_permission and field_type.editable_without_form_field,
                 layout_config=config,
             )
-        elif self.is_create_layout() and field_type.editable_without_form_field:
+        elif (
+            field_type.editable_without_form_field
+            and self.can_render_unbound_editable_layout_field(application_field)
+        ):
             field_context = build_crud_layout_field_context(
                 application_field=application_field,
-                value=None,
+                value=self.get_unbound_layout_field_value(application_field),
                 can_edit=True,
                 layout_config=config,
             )
@@ -302,6 +314,7 @@ class BloomerpLayoutFormMixin(ABC):
             "layout_available_items_url": self.get_layout_available_items_url(),
             "layout_save_url": self.get_layout_save_url(),
             "can_change_layout": self.can_change_layout(),
+            "can_delete_layout_object": self.can_delete_layout_object(),
             "layout_render_item_url": self.get_layout_render_item_url(),
             "layout_is_create": self.is_create_layout(),
             "non_required_fields_visible_attr": self.get_non_required_fields_visible_attr(),
