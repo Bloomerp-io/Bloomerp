@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pandas as pd
+from django.template import engines
 
 
 from bloomerp.services.sql_services import SqlExecutor
@@ -20,6 +21,12 @@ if TYPE_CHECKING:
 class KpiAggregatedField:
     field: FieldConfig
     alias: str
+
+
+def _normalize_value(value):
+    if pd.isna(value):
+        return None
+    return value
 
 
 def _sql_expression_for_aggregator(field_name: str, aggregator_name: str) -> tuple[str, bool]:
@@ -109,8 +116,10 @@ def _render_value(field: FieldConfig, data: pd.DataFrame, column_name: str | Non
     else:
         value = series.iloc[0] if len(series) > 0 else None
 
+    value = _normalize_value(value)
+
     formatter_name = field_opts.get("formatter")
-    if formatter_name:
+    if formatter_name and formatter_name != "NONE":
         value = Formatter[formatter_name].value.func(value)
 
     if value is None:
@@ -120,6 +129,41 @@ def _render_value(field: FieldConfig, data: pd.DataFrame, column_name: str | Non
     suffix = field_opts.get("suffix") or ""
 
     return f"{prefix}{value}{suffix}"
+
+
+def _build_section_vars(aggregated_fields: list[KpiAggregatedField], data: pd.DataFrame) -> dict[str, object]:
+    vars: dict[str, object] = {}
+
+    for aggregated_field in aggregated_fields:
+        data_column = aggregated_field.alias
+        if data_column not in data.columns:
+            continue
+
+        field_name = aggregated_field.field.name.lower().replace(" ", "_")
+        series = data[data_column]
+        preformatted_value = series.iloc[0] if len(series) > 0 else None
+        vars[f"preformatted_var_{field_name}"] = _normalize_value(preformatted_value)
+        vars[f"var_{field_name}"] = _render_value(aggregated_field.field, data, data_column)
+
+    return vars
+
+
+def _render_section(
+    aggregated_fields: list[KpiAggregatedField],
+    data: pd.DataFrame,
+    advanced_formatting: str | None = None,
+) -> str:
+    vars = _build_section_vars(aggregated_fields, data)
+    value = "".join(
+        str(_render_value(aggregated_field.field, data, aggregated_field.alias))
+        for aggregated_field in aggregated_fields
+    )
+
+    if advanced_formatting and advanced_formatting.strip():
+        vars["value"] = value
+        value = engines["django"].from_string(advanced_formatting).render(vars)
+
+    return value
 
 
 class AnalyticsKpiRenderer(BaseTileRenderer):
@@ -138,18 +182,20 @@ class AnalyticsKpiRenderer(BaseTileRenderer):
         )
         data = SqlExecutor(request.user).execute_query(kpi_query, paginate=False).to_dataframe()
 
-        value = ""
-        sub_value = ""
-
         value_aliases = aggregated_fields[:len(value_fields)]
         sub_value_aliases = aggregated_fields[len(value_fields):]
 
-        for aggregated_field in value_aliases:
-            value += str(_render_value(aggregated_field.field, data, aggregated_field.alias))
+        value = _render_section(
+            value_aliases,
+            data,
+            config.opts.get("advanced_formatting_value"),
+        )
+        sub_value = _render_section(
+            sub_value_aliases,
+            data,
+            config.opts.get("advanced_formatting_sub_value"),
+        )
         
-        for aggregated_field in sub_value_aliases:
-            sub_value += str(_render_value(aggregated_field.field, data, aggregated_field.alias))
-
         return cls.render_to_string({
             "value": value,
             "sub_value": sub_value,

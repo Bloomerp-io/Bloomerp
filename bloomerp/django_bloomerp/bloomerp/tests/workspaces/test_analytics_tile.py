@@ -1,11 +1,13 @@
 from django.http import QueryDict
 from django.test import SimpleTestCase
+import pandas as pd
 
 from bloomerp.field_types.lookups import Lookup
-from bloomerp.workspaces.analytics_tile.kpi import build_kpi_aggregation_query
+from bloomerp.workspaces.analytics_tile.kpi import KpiAggregatedField, _build_section_vars, _render_section, _render_value, build_kpi_aggregation_query
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileFilter, get_filtered_query
 from bloomerp.workspaces.analytics_tile.model import FieldConfig
 from bloomerp.workspaces.analytics_tile.pie_chart import build_pie_chart_query
+from bloomerp.workspaces.analytics_tile.table import _format_value
 from bloomerp.workspaces.analytics_tile.two_dim_chart import build_two_dim_chart_query
 from bloomerp.workspaces.analytics_tile.utils import TileFieldType
 
@@ -43,6 +45,84 @@ class TestAnalyticsTile(SimpleTestCase):
         
         # 4. Check
         self.assertEqual(query, start_query)
+
+    def test_format_value_renders_advanced_formatting_with_value_context(self):
+        field = FieldConfig(
+            name="total",
+            opts={
+                "advanced_formatting": "USD {{ value }}",
+            },
+        )
+
+        rendered = _format_value(42, field, {})
+
+        self.assertEqual(rendered, "USD 42")
+
+    def test_render_value_renders_advanced_formatting_with_formatted_and_preformatted_values(self):
+        revenue_field = FieldConfig(
+            name="Revenue",
+            opts={
+                "formatter": "CURRENCY_USD",
+            },
+        )
+        aggregated_fields = [
+            KpiAggregatedField(field=revenue_field, alias="bloomerp_kpi_value_0"),
+        ]
+
+        rendered = _render_section(
+            aggregated_fields,
+            pd.DataFrame({"bloomerp_kpi_value_0": [42]}),
+            "raw={{ preformatted_var_revenue }} formatted={{ var_revenue }}",
+        )
+
+        self.assertEqual(rendered, "raw=42 formatted=$42.00")
+
+    def test_render_section_allows_multiple_kpi_values_in_one_template(self):
+        revenue_field = FieldConfig(name="Revenue")
+        orders_field = FieldConfig(name="Orders")
+        aggregated_fields = [
+            KpiAggregatedField(field=revenue_field, alias="bloomerp_kpi_value_0"),
+            KpiAggregatedField(field=orders_field, alias="bloomerp_kpi_value_1"),
+        ]
+        data = pd.DataFrame(
+            {
+                "bloomerp_kpi_value_0": [42],
+                "bloomerp_kpi_value_1": [3],
+            }
+        )
+
+        rendered = _render_section(
+            aggregated_fields,
+            data,
+            "Revenue {{ var_revenue }} across {{ var_orders }} orders",
+        )
+
+        self.assertEqual(rendered, "Revenue 42 across 3 orders")
+
+    def test_render_section_uses_default_when_advanced_formatting_is_blank(self):
+        revenue_field = FieldConfig(name="Revenue")
+        aggregated_fields = [
+            KpiAggregatedField(field=revenue_field, alias="bloomerp_kpi_value_0"),
+        ]
+
+        rendered = _render_section(
+            aggregated_fields,
+            pd.DataFrame({"bloomerp_kpi_value_0": [42]}),
+            "   ",
+        )
+
+        self.assertEqual(rendered, "42")
+
+    def test_build_section_vars_includes_formatted_and_preformatted_values(self):
+        aggregated_fields = [
+            KpiAggregatedField(field=FieldConfig(name="Revenue"), alias="bloomerp_kpi_value_0"),
+        ]
+        aggregated_data = pd.DataFrame({"bloomerp_kpi_value_0": [42]})
+
+        vars = _build_section_vars(aggregated_fields, aggregated_data)
+
+        self.assertEqual(vars["var_revenue"], "42")
+        self.assertEqual(vars["preformatted_var_revenue"], 42)
         
     def test_get_filtered_query_with_text_column(self):
         # 1. Start query

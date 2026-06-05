@@ -3,9 +3,27 @@
 <div
     bloomerp-component="code-editor-widget"
     data-language="{{ widget.language }}"
->
-    <div id="{{ widget.editor_id }}" data-code-editor-container style="width: 100%; height: 300px;"></div>
+    data-launch-from-button="{{ widget.launch_from_button|yesno:'true,false' }}"
+    {% if widget.launch_from_button %}data-modal-id="modal_{{ widget.attrs.id }}"{% endif %}
+>   
+    {% if widget.launch_from_button %}
+        <button 
+            bloomerp-open-modal="modal_{{ widget.attrs.id }}" 
+            class="btn btn-secondary btn-sm my-2"
+            type="button"
+            >
+            <i class="fa fa-code"></i>
+            Edit
+        </button>
 
-    <textarea id="{{ widget.attrs.id }}" name="{{ widget.name }}" data-code-editor-input hidden>{{ widget.value }}</textarea>
-    <p class="text-muted">Language: {{ widget.language }}</p>
+        <c-ui.modal id="modal_{{ widget.attrs.id }}" title="Edit {{ widget.label }}" size="xl">
+            <div id="{{ widget.editor_id }}" data-code-editor-container style="width: 100%; height: 300px;"></div>
+            <p class="text-muted">Language: {{ widget.language }}</p>
+        </c-ui.modal>
+        <textarea id="{{ widget.attrs.id }}" name="{{ widget.name }}" data-code-editor-input hidden>{{ widget.value }}</textarea>
+    {% else %}
+        <div id="{{ widget.editor_id }}" data-code-editor-container style="width: 100%; height: 300px;"></div>
+        <textarea id="{{ widget.attrs.id }}" name="{{ widget.name }}" data-code-editor-input hidden>{{ widget.value }}</textarea>
+        <p class="text-muted">Language: {{ widget.language }}</p>
+    {% endif %}
 </div>

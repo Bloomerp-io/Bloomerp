@@ -5,10 +5,11 @@ from django import forms
 class CodeEditorWidget(forms.Textarea):
     template_name = 'widgets/code_editor_widget.html'
 
-    def __init__(self, attrs=None, language='python'):
+    def __init__(self, attrs=None, language='python', launch_from_button:bool=False):
         attrs = attrs or {}
         super().__init__(attrs)
         self.language = language
+        self.launch_from_button = launch_from_button
 
     def format_value(self, value):
         if self.language != 'json':
@@ -30,5 +31,6 @@ class CodeEditorWidget(forms.Textarea):
         context['widget'].update({
             'language': self.language,
             'editor_id': f"editor_{attrs.get('id', name)}",
+            "launch_from_button" : self.launch_from_button
         })
         return context

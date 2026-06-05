@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field as PydanticField
 import re
 
 from bloomerp.services.sql_services import DatabaseTable
+from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.workspaces.analytics_tile.kpi import AnalyticsKpiRenderer
 from bloomerp.workspaces.analytics_tile.pie_chart import AnalyticsPieChartRenderer
 from bloomerp.workspaces.analytics_tile.table import AnalyticsTableRenderer
@@ -217,6 +218,28 @@ FILTER_FIELD = FieldDefinition(
     allow_multiple=True
 )
 
+ADVANCED_FORMATTER_OPTION = OptionDefinition(
+    "advanced_formatting",
+    _("Advanced formatting"),
+    _("HTML based formatting. The value is injected as {{ value }}, the pre-formatted value as {{ pre_formatted_value }}."),
+    field_cls=forms.CharField,
+    field_args={
+        "widget" : CodeEditorWidget(language="html", launch_from_button=True)
+    }
+)
+
+ADVANCED_FORMATTER_OPTION_VALUE = copy.copy(ADVANCED_FORMATTER_OPTION)
+ADVANCED_FORMATTER_OPTION_VALUE.key = "advanced_formatting_value"
+ADVANCED_FORMATTER_OPTION_VALUE.label = "Advanced formatting (value)"
+ADVANCED_FORMATTER_OPTION_VALUE.description = "HTML based formatting. Values are injected as {{ var_col_name }} and {{ preformatted_var_col_name }}."
+
+ADVANCED_FORMATTER_OPTION_SUB_VALUE = copy.copy(ADVANCED_FORMATTER_OPTION)
+ADVANCED_FORMATTER_OPTION_SUB_VALUE.key = "advanced_formatting_sub_value"
+ADVANCED_FORMATTER_OPTION_SUB_VALUE.label = "Advanced formatting (sub-value)"
+ADVANCED_FORMATTER_OPTION_SUB_VALUE.description = "HTML based formatting. Values are injected as {{ var_col_name }} and {{ preformatted_var_col_name }}."
+
+
+
 class AnalyticsTileType(Enum):
     TWO_DIM_CHART = AnalyticsTileTypeDefinition(
         key="TWO_DIM_CHART",
@@ -274,6 +297,7 @@ class AnalyticsTileType(Enum):
                     PREFIX_OPTION,
                     SUFFIX_OPTION,
                     FORMATTER_OPTION,
+                    ADVANCED_FORMATTER_OPTION,
                 ]
             ),
         ],
@@ -316,7 +340,8 @@ class AnalyticsTileType(Enum):
             )
         ],
         opts=[
-            
+            ADVANCED_FORMATTER_OPTION_VALUE,
+            ADVANCED_FORMATTER_OPTION_SUB_VALUE,    
         ],
         render_cls=AnalyticsKpiRenderer
     )

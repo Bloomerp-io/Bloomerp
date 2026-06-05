@@ -131,6 +131,7 @@ def configure_bloomerp_allauth_settings() -> None:
 
 
 BLOOMERP_APPS = [
+    'django.forms',
     "bloomerp",
     "django_htmx",
     "crispy_forms",
@@ -148,6 +149,7 @@ if _has_allauth():
         "allauth",
         "allauth.account",
         "allauth.socialaccount",
+        
     ]
 
 BLOOMERP_MIDDLEWARE = [

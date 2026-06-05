@@ -149,6 +149,19 @@ class BloomerpConfigurationValidator:
                     )
                 )
         
+        # Check if form renderer is set
+        FORM_RENDERER = getattr(self.settings, "FORM_RENDERER")
+        if not FORM_RENDERER or FORM_RENDERER != "django.forms.renderers.TemplatesSetting":
+            responses.append(
+                ValidatorResponse(
+                    validation_type=ValidationType.WARNING,
+                    code="settings.invalid_form_renderer",
+                    hint="Ensure FORM_RENDERER is set to 'django.forms.renderers.TemplatesSetting'",
+                    subject="FORM_RENDERER",
+                    message="Invalid or missing FORM_RENDERER setting"
+                )
+            )
+        
         return responses
 
     def validate_models(self) -> list[ValidatorResponse]:
