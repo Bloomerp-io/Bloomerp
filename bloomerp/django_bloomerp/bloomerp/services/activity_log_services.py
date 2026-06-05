@@ -67,12 +67,15 @@ class ActivityLogManager:
         after_data = self._serialize_instance(self.instance)
         self.payload = self._build_changes(before_data=before_data, after_data=after_data)
 
-        user = self.request.user
+        user = getattr(self.request, "user", None)
+        if user is None:
+            return
+
         if hasattr(self.instance, "created_by") and not (user.is_anonymous):
-            setattr(self.instance, "created_by", self.request.user)
+            setattr(self.instance, "created_by", user)
             
         if hasattr(self.instance, "updated_by") and not (user.is_anonymous):
-            setattr(self.instance, "updated_by", self.request.user)
+            setattr(self.instance, "updated_by", user)
         
         
     def set_delete(self) -> None:

@@ -23,6 +23,7 @@ from bloomerp.services.create_view_services import (
     get_disallowed_submitted_fields,
 )
 from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
+from bloomerp.services.object_file_field_services import save_layout_uploaded_files
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.base import BaseBloomerpView
@@ -219,6 +220,12 @@ class BloomerpCreateView(
                     form.save_m2m()
                 if hasattr(self.object, "save_file_fields"):
                     self.object.save_file_fields()
+                save_layout_uploaded_files(
+                    obj=self.object,
+                    request=self.request,
+                    layout=self.get_layout_preference_object().layout_obj,
+                    action="add",
+                )
                 save_submitted_one_to_many_fields(
                     parent_object=self.object,
                     layout=self.get_layout_preference_object().layout_obj,
@@ -252,4 +259,3 @@ class BloomerpCreateView(
             return redirect(save_and_create_new_url)
         
         return redirect(self.get_success_url())
-

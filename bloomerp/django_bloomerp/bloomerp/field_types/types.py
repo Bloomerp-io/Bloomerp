@@ -17,6 +17,7 @@ from bloomerp.widgets.address_widget import AddressWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.widgets.icon_picker_widget import IconPickerWidget
+from bloomerp.widgets.object_files_widget import ObjectFilesWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.widgets.ordered_field_select_widget import OrderedFieldSelectWidget
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
@@ -809,6 +810,15 @@ class FieldType(Enum):
         allow_in_model=False,
     )
 
+    FILES_RELATION_FIELD = FieldTypeDefinition(
+        id="FilesRelationField",
+        display_name="Files",
+        icon="fa-solid fa-paperclip",
+        widget_cls=ObjectFilesWidget,
+        allow_in_model=False,
+        editable_without_form_field=True,
+    )
+
     @property
     def id(self) -> str:
         """Returns the internal ID of the field type."""
@@ -946,5 +956,4 @@ class FieldType(Enum):
             return self.value.model_field_cls.widget_cls
 
         return forms.widgets.TextInput
-
 

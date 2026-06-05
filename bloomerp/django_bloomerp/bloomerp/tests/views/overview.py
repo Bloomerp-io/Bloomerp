@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from bloomerp.field_types import Lookup
@@ -11,6 +12,7 @@ from bloomerp.models import (
     Policy,
     RowPolicy,
     RowPolicyRule,
+    File,
 )
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.tests.views.crud_test_mixin import CrudViewTestMixin
@@ -295,6 +297,34 @@ class TestOverviewView(CrudViewTestMixin):
         self.assertEqual(response.status_code, 302)
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.first_name, "Allowed Updated")
+
+    def test_post_with_files_layout_field_attaches_uploaded_file_to_object(self):
+        preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
+        preference.layout = {
+            "rows": [
+                {
+                    "title": "Files",
+                    "columns": 1,
+                    "items": [
+                        {"id": self.fields_by_name["files"].pk, "colspan": 1},
+                    ],
+                }
+            ]
+        }
+        preference.save(update_fields=["layout"])
+        self.client.force_login(self.admin_user)
+
+        uploaded_file = SimpleUploadedFile("signature.pdf", b"signature content", content_type="application/pdf")
+        response = self.client.post(
+            self.get_url(),
+            {"files": uploaded_file},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        attached_file = File.objects.get(name="signature.pdf")
+        self.assertEqual(attached_file.content_type, self.content_type)
+        self.assertEqual(attached_file.object_id, str(self.customer.pk))
+        self.assertTrue(attached_file.persisted)
 
     def test_post_allows_update_when_required_field_is_hidden_but_already_has_value(self):
         preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)

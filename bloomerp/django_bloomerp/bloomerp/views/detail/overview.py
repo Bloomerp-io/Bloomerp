@@ -9,6 +9,7 @@ from django.db import transaction
 from django.shortcuts import redirect
 
 from bloomerp.models import ApplicationField
+from bloomerp.services.object_file_field_services import save_layout_uploaded_files
 from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.router import router
@@ -131,6 +132,12 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         try:
             with transaction.atomic():
                 self.object = form.save()
+                save_layout_uploaded_files(
+                    obj=self.object,
+                    request=self.request,
+                    layout=self.layout_preference.layout_obj,
+                    action="change",
+                )
                 save_submitted_one_to_many_fields(
                     parent_object=self.object,
                     layout=self.layout_preference.layout_obj,

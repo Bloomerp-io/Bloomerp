@@ -132,6 +132,8 @@ def _build_create_render_context(*, request: HttpRequest, content_type: ContentT
     if not field_type.allow_in_model:
         if not field_type.editable_without_form_field:
             return HttpResponse("Permission denied", status=403)
+        if not manager.has_field_permission(application_field, create_permission_str(model, "add")):
+            return HttpResponse("Permission denied", status=403)
         return build_crud_layout_field_context(
             application_field=application_field,
             value=None,

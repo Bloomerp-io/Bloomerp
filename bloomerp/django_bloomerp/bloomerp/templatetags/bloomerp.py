@@ -476,7 +476,7 @@ def render_object_action(
         (
             '<button class="btn btn-xs btn-{}" '
             'hx-post="{}" '
-            'hx-target="#actions-target" '
+            'hx-target="#object-actions-target" '
             "hx-vals='{{\"csrfmiddlewaretoken\": \"{}\"}}'>{}</button>"
         ),
         action.style,

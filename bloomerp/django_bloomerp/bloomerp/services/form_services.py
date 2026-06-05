@@ -14,6 +14,11 @@ from bloomerp.services.one_to_many_field_services import (
     collect_submitted_one_to_many_data,
     save_submitted_one_to_many_fields,
 )
+from bloomerp.services.object_file_field_services import (
+    FILES_FIELD_NAME,
+    attach_uploaded_files_to_form_submission,
+    move_form_submission_files_to_object,
+)
 from bloomerp.utils.json_serialization import make_json_safe
 from dataclasses import dataclass
 from django.forms import ModelForm
@@ -54,6 +59,18 @@ class FormManager:
             form=self.form,
             data=make_json_safe(submission_data),
         )
+        uploaded_files = attach_uploaded_files_to_form_submission(
+            form_submission=submission,
+            request=request,
+            target_model=self.form.content_type.model_class(),
+            layout=self.form.layout_obj,
+        )
+        if uploaded_files:
+            submission.data = {
+                **(submission.data or {}),
+                FILES_FIELD_NAME: [str(file.id) for file in uploaded_files],
+            }
+            submission.save(update_fields=["data"])
         
         if not self.form.requires_review:
             submission = self.persist_form_submission(submission, request=request)
@@ -111,11 +128,14 @@ class FormManager:
     def get_initial_model_payload(self, initial_payload: dict | None = None) -> dict:
         """Return initial payload values that are direct model fields."""
         payload = initial_payload if isinstance(initial_payload, dict) else self.get_initial_payload()
-        one_to_many_field_names = self.layout_one_to_many_field_names()
+        layout_only_field_names = {
+            FILES_FIELD_NAME,
+            *self.layout_one_to_many_field_names(),
+        }
         return {
             field_name: value
             for field_name, value in payload.items()
-            if field_name not in one_to_many_field_names
+            if field_name not in layout_only_field_names
         }
 
     def apply_one_to_many_initial_payload(
@@ -288,6 +308,8 @@ class FormManager:
         """Build POST-like data from stored submission data."""
         querydict = QueryDict("", mutable=True)
         for field_name, value in (data or {}).items():
+            if field_name == FILES_FIELD_NAME:
+                continue
             if isinstance(value, list) and all(isinstance(item, dict) for item in value):
                 for row_index, row_data in enumerate(value):
                     for row_field_name, row_value in row_data.items():
@@ -336,6 +358,11 @@ class FormManager:
                 target_form.save_m2m()
             if hasattr(obj, "save_file_fields"):
                 obj.save_file_fields()
+            move_form_submission_files_to_object(
+                form_submission=form_submission,
+                obj=obj,
+                user=getattr(request, "user", None),
+            )
             save_submitted_one_to_many_fields(
                 parent_object=obj,
                 layout=self.form.layout_obj,

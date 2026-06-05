@@ -1,8 +1,10 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django import forms
 from django.db import models
 from django.db import connection
+from django.utils.datastructures import MultiValueDict
 
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.access_control.field_policy import FieldPolicy
@@ -10,7 +12,9 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.files.file import File
 from bloomerp.models.forms.form import Form as BloomerpForm
+from bloomerp.models.forms.form_submission import FormSubmission
 from bloomerp.services.sectioned_layout_services import build_crud_layout_field_context
 from bloomerp.services.form_services import FormManager
 from bloomerp.services.one_to_many_field_services import (
@@ -27,6 +31,7 @@ from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
 from bloomerp.widgets.address_widget import AddressWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
+from bloomerp.widgets.object_files_widget import ObjectFilesWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
 from bloomerp.widgets.week_widget import WeekWidget
@@ -124,6 +129,16 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertIs(field_type.widget_cls, OneToManyFieldWidget)
         self.assertEqual(field_type.widget_related_model_attr, "related_model")
         self.assertTrue(field_type.editable_without_form_field)
+
+    def test_files_application_field_uses_files_relation_field_type(self):
+        application_field = ApplicationField.objects.get(
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            field="files",
+        )
+
+        self.assertEqual(application_field.field_type, FieldType.FILES_RELATION_FIELD.id)
+        self.assertIsInstance(application_field.get_widget(), ObjectFilesWidget)
+        self.assertTrue(application_field.get_field_type_enum().value.editable_without_form_field)
 
     def test_one_to_many_widget_renders_inline_table_markup(self):
         content_type = ContentType.objects.get_for_model(FieldPolicy)
@@ -658,6 +673,138 @@ class TestApplicationField(BaseBloomerpModelTestCase):
                 hours="4.25",
             ).exists()
         )
+
+    def test_form_submission_with_review_attaches_files_to_submission_then_persist_moves_to_object(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        form_submission_content_type = ContentType.objects.get_for_model(FormSubmission)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name", "age", "files"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=True,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["age"].pk)),
+                            LayoutItem(id=str(fields_by_name["files"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {},
+                "FILES": MultiValueDict(
+                    {
+                        "files": [
+                            SimpleUploadedFile("submitted.pdf", b"submitted content", content_type="application/pdf")
+                        ]
+                    }
+                ),
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Reviewed",
+                "last_name": "Customer",
+                "age": "42",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        submission = response.form_submission
+        submission.refresh_from_db()
+        attached_file = File.objects.get(name="submitted.pdf")
+        self.assertEqual(attached_file.content_type, form_submission_content_type)
+        self.assertEqual(attached_file.object_id, str(submission.pk))
+        self.assertEqual(submission.data["files"], [str(attached_file.id)])
+
+        FormManager(form_object).persist_form_submission(submission, request=request)
+
+        attached_file.refresh_from_db()
+        customer = self.CustomerModel.objects.get(first_name="Reviewed")
+        self.assertEqual(attached_file.content_type, parent_content_type)
+        self.assertEqual(attached_file.object_id, str(customer.pk))
+        self.assertTrue(attached_file.persisted)
+
+    def test_form_submission_without_review_moves_files_to_persisted_object_immediately(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name", "age", "files"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=False,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["age"].pk)),
+                            LayoutItem(id=str(fields_by_name["files"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {},
+                "FILES": MultiValueDict(
+                    {
+                        "files": [
+                            SimpleUploadedFile("immediate.pdf", b"immediate content", content_type="application/pdf")
+                        ]
+                    }
+                ),
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Immediate",
+                "last_name": "Customer",
+                "age": "43",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        response.form_submission.refresh_from_db()
+        self.assertTrue(response.form_submission.persisted)
+        customer = self.CustomerModel.objects.get(first_name="Immediate")
+        attached_file = File.objects.get(name="immediate.pdf")
+        self.assertEqual(attached_file.content_type, parent_content_type)
+        self.assertEqual(attached_file.object_id, str(customer.pk))
+        self.assertEqual(response.form_submission.data["files"], [str(attached_file.id)])
 
     def test_form_initial_payload_persists_hidden_model_fields(self):
         parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)

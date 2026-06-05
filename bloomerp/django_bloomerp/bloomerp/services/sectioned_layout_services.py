@@ -339,13 +339,13 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
     fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
     available: list[dict[str, Any]] = []
     for field in fields:
-        if field.field in AUTO_MANAGED_FIELD_NAMES:
-            continue
-
         if not permission_manager.has_field_permission(field, permission_str):
             continue
 
         field_type = field.get_field_type_enum().value
+        if field.field in AUTO_MANAGED_FIELD_NAMES and not field_type.editable_without_form_field:
+            continue
+
         if layout_kind == "create" and not (
             field_type.allow_in_model or field_type.editable_without_form_field
         ):
