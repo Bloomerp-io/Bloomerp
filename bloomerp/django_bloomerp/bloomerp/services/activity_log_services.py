@@ -66,7 +66,15 @@ class ActivityLogManager:
         before_data = self._serialize_instance(before_instance)
         after_data = self._serialize_instance(self.instance)
         self.payload = self._build_changes(before_data=before_data, after_data=after_data)
-    
+
+        user = self.request.user
+        if hasattr(self.instance, "created_by") and not (user.is_anonymous):
+            setattr(self.instance, "created_by", self.request.user)
+            
+        if hasattr(self.instance, "updated_by") and not (user.is_anonymous):
+            setattr(self.instance, "updated_by", self.request.user)
+        
+        
     def set_delete(self) -> None:
         """Capture a full JSON-safe representation before the object is deleted."""
         self.action = ActivityLogAction.DELETE

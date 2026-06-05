@@ -12,6 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic.edit import CreateView
 
 from bloomerp.models import UserCreateViewPreference
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.files import File
 from bloomerp.models.workspaces import SqlQuery, Tile
@@ -28,11 +29,23 @@ from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.message_mixin import MessageMixin
 from bloomerp.views.mixins.model_form_view_mixin import BloomerpModelFormViewMixin
 from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
-
+from django.db.models import Model
 
 User = get_user_model()
 
+def _redirect_url(model:type[Model], object:Model) -> str:
+    if hasattr(model, "bloomerp_config"):
+        config = getattr(model, "bloomerp_config")
+        if isinstance(config, BloomerpModelConfig):
+            if config.create_redirect_url_func:
+                return config.create_redirect_url_func(object)
+            
+    if hasattr(object, 'get_absolute_url'):
+        return object.get_absolute_url()
 
+    
+    
+    
 @router.register(
     path="create",
     name="Create {model}",
@@ -67,7 +80,7 @@ class BloomerpCreateView(
         return self.layout_content_type
 
     def get_layout_object(self):
-        return self.get_layout_preference_object().field_layout_obj
+        return self.get_layout_preference_object().layout_obj
 
     def get_layout_preference_object(self):
         return UserCreateViewPreference.get_or_create_for_user(
@@ -118,7 +131,8 @@ class BloomerpCreateView(
     def get_success_url(self):
         if getattr(self, "object", None) is None:
             return self.request.path
-        return reverse(get_detail_view_url(self.model), kwargs={"pk": self.object.pk})
+        return _redirect_url(self.model, self.object)
+        
 
     def get_save_and_create_new_url(self) -> str | None:
         next_url = self.request.POST.get("next")
@@ -207,7 +221,7 @@ class BloomerpCreateView(
                     self.object.save_file_fields()
                 save_submitted_one_to_many_fields(
                     parent_object=self.object,
-                    layout=self.get_layout_preference_object().field_layout_obj,
+                    layout=self.get_layout_preference_object().layout_obj,
                     submitted_data=self.request.POST,
                     user=self.request.user,
                 )

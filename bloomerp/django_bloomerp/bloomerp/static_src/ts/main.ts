@@ -34,6 +34,7 @@ import UiMessage from './components/UiMessage';
 import ObjectCRUDViewContainer from './components/detail_view_components/ObjectCRUDViewContainer';
 import { DetailViewCell } from './components/detail_view_components/DetailViewCell';
 import DetailTabs from './components/detail_view_components/DetailTabs';
+import DetailViewFrame from './components/detail_view_components/DetailViewFrame';
 import Workflow from './components/workflows/Workflow';
 import GlobalSearch from './components/GlobalSearch';
 import SearchSection from './components/SearchSection';
@@ -54,11 +55,18 @@ import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor'
 import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
 import { SetupAnimationListener } from './utils/animations';
 import BaseWizard from './components/BaseWizard';
+import showMessage from './utils/messages';
+import Breadcrumb from './components/Breadcrumb';
+import ResizableDiv from './components/ResizableDiv';
+
+Object.assign(window, { showMessage });
 
 // Register components here
 registerComponent('modal', Modal);
 registerComponent('drawer', Drawer);
 registerComponent('sidebar', Sidebar);
+registerComponent('breadcrumb', Breadcrumb);
+registerComponent('resizable-div', ResizableDiv);
 
 // Dataview component
 registerComponent('dataview-container', DataViewContainer);
@@ -111,6 +119,7 @@ registerComponent('ui-message', UiMessage);
 registerComponent('object-crud-view-container', ObjectCRUDViewContainer);
 registerComponent('detail-view-value', DetailViewCell);
 registerComponent('detail-tabs', DetailTabs);
+registerComponent('detail-view-frame', DetailViewFrame);
 
 // Workflow
 registerComponent('workflow', Workflow);

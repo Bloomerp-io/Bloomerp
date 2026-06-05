@@ -1,0 +1,41 @@
+{% load i18n %}
+
+<div class="space-y-4">
+    <div class="flex justify-center">
+        <img
+            src="{{ qr_code_data_uri }}"
+            alt="{% trans 'Form QR code' %}"
+            class="h-64 w-64 rounded border border-gray-200 bg-white p-3"
+        >
+    </div>
+
+    <div class="space-y-2">
+        <c-ui.text.label>{% trans "Link" %}</c-ui.text.label>
+        <div class="flex items-center gap-2">
+            <input
+                type="text"
+                readonly
+                value="{{ submit_url }}"
+                class="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            >
+            <button
+                type="button"
+                class="btn btn-sm btn-secondary"
+                onclick="navigator.clipboard.writeText('{{ submit_url|escapejs }}'); showMessage('{% trans 'Link copied to clipboard!' %}');"
+            >
+                <i class="fa fa-link"></i>
+                {% trans "Copy" %}
+            </button>
+        </div>
+    </div>
+
+    <div class="flex justify-end">
+        <a
+            href="{% url 'components_forms_qr_code' id=form.id %}?download=true"
+            class="btn btn-sm btn-secondary"
+        >
+            <i class="fa fa-download"></i>
+            {% trans "Download" %}
+        </a>
+    </div>
+</div>

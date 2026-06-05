@@ -49,7 +49,7 @@ class BloomerpModel(
     files = GenericRelation("bloomerp.File")
     comments = GenericRelation("bloomerp.Comment")
 
-    field_layout:Optional[FieldLayout] = None
+    field_layout:Optional[FieldLayout] = None # DEPR
     form_layout:dict = None # DEPR 
 
 

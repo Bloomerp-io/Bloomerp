@@ -2,6 +2,7 @@ from django.forms import modelform_factory
 from django import forms
 from django.shortcuts import get_object_or_404, render
 from bloomerp.components.application_fields.filters import filters_init
+from bloomerp.models.definition import ObjectAction, get_model_config
 from bloomerp.utils.requests import render_message
 from bloomerp.router import router
 from django.http import HttpResponse
@@ -23,7 +24,7 @@ from bloomerp.models.users.user_list_view_preference import CalendarViewMode
 from bloomerp.models import ApplicationField
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from collections import defaultdict
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, Q, Model, QuerySet
 from datetime import date, datetime, timedelta
 from dataclasses import dataclass
 import uuid
@@ -44,6 +45,7 @@ RESERVED_FILTER_KEYS = {
 
 SORT_DIRECTIONS = {"asc", "desc"}
 
+# TODO: Refactor and get rid of this code
 LOOKUP_LABELS = {
     "exact": "is",
     "equals": "is",
@@ -840,6 +842,13 @@ def _get_component_args(request:HttpRequest) -> dict[str, str]:
     return args
 
 
+def _get_actions(model:type[Model]) -> list[ObjectAction]:
+    config = get_model_config(model)
+    if config:
+        return config.object_actions
+    return []
+    
+
 # -----------------------------------
 # Components
 # -----------------------------------
@@ -923,7 +932,8 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'show_global_pagination': pagination.show_global_pagination,
         'applied_filters': _format_applied_filters(request.GET),
         'component_id': component_id,
-        'component_args' : _get_component_args(request)
+        'component_args' : _get_component_args(request),
+        'object_actions' : _get_actions(queryset.model)
     }
     context.update(sort_context)
     context.update(_get_extra_context_for_view_type(preference, queryset, request))

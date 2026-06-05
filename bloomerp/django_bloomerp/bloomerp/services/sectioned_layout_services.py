@@ -427,7 +427,6 @@ def create_default_layout(
 
     if model_layout:
         rows: list[LayoutRow] = []
-        seen_field_ids: set[int] = set()
         for row in model_layout.rows:
             resolved_items: list[LayoutItem] = []
             for item in row.items:
@@ -440,7 +439,6 @@ def create_default_layout(
 
                 if resolved_id not in available_field_ids:
                     continue
-                seen_field_ids.add(resolved_id)
                 resolved_items.append(
                     LayoutItem(
                         id=resolved_id,
@@ -453,20 +451,6 @@ def create_default_layout(
                     columns=row.columns,
                     title=row.title,
                     items=resolved_items,
-                )
-            )
-
-        remaining_items = [
-            LayoutItem(id=application_field.pk, colspan=1)
-            for application_field in application_fields
-            if application_field.pk not in seen_field_ids
-        ]
-        if remaining_items:
-            rows.append(
-                LayoutRow(
-                    columns=2,
-                    title="Details",
-                    items=remaining_items,
                 )
             )
 

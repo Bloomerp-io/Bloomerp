@@ -298,7 +298,7 @@ class TestOverviewView(CrudViewTestMixin):
 
     def test_post_allows_update_when_required_field_is_hidden_but_already_has_value(self):
         preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
-        preference.field_layout = {
+        preference.layout = {
             "rows": [
                 {
                     "title": "Primary",
@@ -310,7 +310,7 @@ class TestOverviewView(CrudViewTestMixin):
                 }
             ]
         }
-        preference.save(update_fields=["field_layout"])
+        preference.save(update_fields=["layout"])
         self.client.force_login(self.admin_user)
 
         response = self.client.post(
@@ -351,9 +351,9 @@ class TestOverviewView(CrudViewTestMixin):
 
         self.assertEqual(response.status_code, 200)
         preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
-        self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
+        self.assertEqual(preference.layout_obj.rows[0].title, "Primary")
+        self.assertEqual(preference.layout_obj.rows[0].items[0].id, str(field.pk))
+        self.assertEqual(preference.layout_obj.rows[0].items[0].colspan, 2)
 
     def test_shared_layout_available_fields_route_returns_detail_items(self):
         self.client.force_login(self.admin_user)

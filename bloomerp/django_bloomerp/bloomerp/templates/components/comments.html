@@ -1,50 +1,41 @@
-{% load bloomerp %}
+<div id="comments-section-{{ object.id }}" class="flex flex-col gap-4 xl:h-full xl:min-h-0">
+    <c-ui.chat.container class="pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+        {% for comment in comments %}
+            <c-ui.chat.message
+                sender="{{ comment.created_by.get_full_name|default:comment.created_by|default:'Unknown' }}"
+                :message="comment.content"
+                :datetime="comment.datetime_created"
+                side="{% if comment.created_by == request.user %}right{% else %}left{% endif %}"
+                background="{% if comment.created_by == request.user %}primary{% else %}secondary{% endif %}"
+            />
+        {% endfor %}
+    </c-ui.chat.container>
 
-<input type="hidden" id="csrf_token" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+    <div class="shrink-0 p-2 border border-gray-200 rounded-xl flex flex-col" id="comment-form-{{ object.id }}">
+        <form 
+            hx-post="{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}"
+            hx-target="#comments-section-{{ object.id }}"
+            bloomerp-component="focus-on-form"
+            >
+            {% csrf_token %}
+            <c-ui.inputs.text_editor 
+                placeholder="" 
+                disabled="" 
+                styling="" 
+                name="comment" 
+                include_toolbar="false" 
+                height="4rem"
+            />
 
-{% for comment in comments %}
-    <div class="bg-white border border-gray-200 shadow-sm p-4 rounded mb-4">
-        <div class="flex justify-between items-center mb-2">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10">
-                    {% avatar object=request.user size="50px" class_name="rounded-full" %}
-                </div>
+            <div class="flex justify-between">
                 <div>
-                    <div class="font-semibold text-gray-800">{{ comment.created_by }}</div>
-                    <div class="text-xs text-gray-500">{{ comment.datetime_created }}</div>
-                </div>
-            </div>
-            {% if request.user == comment.created_by %}
-            <div class="flex gap-2">
-                <a onclick="document.getElementById('commentContent{{ comment.pk }}').classList.toggle('hidden'); document.getElementById('editComment{{ comment.pk }}').classList.toggle('hidden')" class="text-blue-500 hover:text-blue-700 text-sm">
-                    Edit
-                </a>
-                <button type="button" class="text-red-500 hover:text-red-700 text-sm"
-                    hx-post="{% url 'components_comments' %}?delete_comment_id={{ comment.pk }}"
-                    hx-trigger="click"
-                    hx-target="#{{ target }}"
-                    hx-swap="innerHTML"
-                    hx-include="#csrf_token">
-                    Delete
-                </button>
-            </div>
-            {% endif %}
-        </div>
-        <div class="text-gray-700">
-            <p id="commentContent{{ comment.pk }}">{{ comment.content }}</p>
-            <div id="editComment{{ comment.pk }}" class="hidden mt-2">
-                <form hx-post="{% url 'components_comments' %}?edit_comment_id={{ comment.pk }}"
-                      hx-trigger="submit"
-                      hx-target="#{{ target }}"
-                      hx-swap="innerHTML">
-                    {% csrf_token %}
-                    <textarea class="w-full border border-gray-300 rounded p-2" id="editComment{{ comment.pk }}Content" name="content">{{ comment.content }}</textarea>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        Save
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-{% endfor %}
 
+                </div>
+
+                <button class="btn btn-xs btn-primary">
+                    <i class="fa fa-paper-plane"></i>
+                </button>    
+            </div>
+        </form>
+    </div>
+</div>

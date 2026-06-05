@@ -3,13 +3,13 @@ from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
 
+from bloomerp.models.forms import form
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
 from bloomerp.workspaces.analytics_tile.render import AnalyticsTileRenderer
 from bloomerp.workspaces.canvas_tile.model import CanvasTileConfig
 from bloomerp.workspaces.canvas_tile.render import CanvasTileRenderer
-from bloomerp.workspaces.dataview_tile.form import DataViewTileForm
-from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
-from bloomerp.workspaces.dataview_tile.render import DataViewTileRenderer
+from bloomerp.workspaces.form_tile.model import FormTileConfig, FormTileForm
+from bloomerp.workspaces.form_tile.render import FormTileRenderer
 from bloomerp.workspaces.links_tile.model import LinkTileConfig
 from bloomerp.workspaces.links_tile.render import LinksTileRenderer
 from bloomerp.workspaces.text_tile.model import TextTileConfig
@@ -59,6 +59,15 @@ class TileType(Enum):
     #     model=DataViewTileConfig,
     #     render_cls=DataViewTileRenderer
     # )
+    
+    FORM_TILE = TileTypeDefinition(
+        name=str(_("Form")),
+        description=str(_("Displays a form, containing inputs, etc.")),
+        icon="fa-rectangle-list",
+        model=FormTileConfig,
+        render_cls=FormTileRenderer,
+        form_cls=FormTileForm
+    )
 
     @classmethod
     def from_key(cls, key: str | None) -> "TileType | None":

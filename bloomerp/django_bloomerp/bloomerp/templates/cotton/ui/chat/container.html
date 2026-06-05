@@ -1,0 +1,13 @@
+{% comment %}
+Chat container component.
+
+Parameters:
+- class: Additional classes for the chat list
+
+Slots:
+- default: Chat messages
+{% endcomment %}
+
+<div class="space-y-4 {{ class|default:'' }}">
+    {{ slot }}
+</div>

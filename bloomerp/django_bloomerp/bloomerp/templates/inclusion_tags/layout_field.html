@@ -23,10 +23,10 @@
 
         <div data-layout-item-controls class="{% if layout_edit_mode %}flex{% else %}hidden{% endif %} items-center gap-1">
             {% comment %}# TODO: This is also there in tile.html and should be refactored into a separate template or component{% endcomment %}
-            {% if application_field.get_field_type_enum.value.field_display_options and layout_preference_object %}
+            {% if application_field.get_field_type_enum.value.field_display_options and layout_object_content_type_id and layout_object_id %}
             <button
                 type="button"
-                hx-get="{% url 'components_field_display_options' application_field.id %}?preference_id={{ layout_preference_object.id }}&preference_scope={{ layout_mode|default:'detail' }}&layout_edit_mode=true{% if object_id %}&object_id={{ object_id }}{% endif %}"
+                hx-get="{% url 'components_field_display_options' application_field.id %}?layout_object_content_type_id={{ layout_object_content_type_id }}&layout_object_id={{ layout_object_id }}&layout_mode={{ layout_mode|default:'detail' }}&layout_edit_mode=true{% if object_id %}&object_id={{ object_id }}{% endif %}"
                 hx-target="#field-display-option-modal-body"
                 hx-trigger="click"
                 bloomerp-open-modal="field-display-option-modal"

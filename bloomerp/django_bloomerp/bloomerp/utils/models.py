@@ -3,6 +3,7 @@ from typing import Literal
 from django.db.models import Model, QuerySet
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
+from django.shortcuts import get_object_or_404
 
 from django.apps import apps
 
@@ -297,3 +298,20 @@ def get_object_from_content_type(content_type_id:int, object_id:str) -> Model | 
         return model_class.objects.filter(id=object_id).first()
     except ContentType.DoesNotExist:
         return None
+
+
+def get_object_model_and_content_type_or_404(content_type_id:int, object_id:str) -> tuple[Model, type[Model], ContentType]:
+    """Returns the object, model, and content type or a 404 based on the parameters
+
+    Args:
+        content_type_id (int): the content type id
+        object_id (str): the object id
+
+    Returns:
+        tuple[Model, type[Model], ContentType]: the repsonse
+    """
+    content_type = get_object_or_404(ContentType, id=content_type_id)
+    ModelCls = content_type.model_class()
+    object = get_object_or_404(ModelCls, id=object_id)
+    
+    return object, ModelCls, content_type

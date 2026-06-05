@@ -239,7 +239,7 @@ class TestCreateView(CrudViewTestMixin):
             ],
         )
         preference = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
-        preference.field_layout = {
+        preference.layout = {
             "rows": [
                 {
                     "title": "Primary",
@@ -251,7 +251,7 @@ class TestCreateView(CrudViewTestMixin):
                 }
             ]
         }
-        preference.save(update_fields=["field_layout"])
+        preference.save(update_fields=["layout"])
         self.client.force_login(self.normal_user)
 
         response = self.client.post(
@@ -479,9 +479,9 @@ class TestCreateView(CrudViewTestMixin):
 
         self.assertEqual(response.status_code, 200)
         preference = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
-        self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
+        self.assertEqual(preference.layout_obj.rows[0].title, "Primary")
+        self.assertEqual(preference.layout_obj.rows[0].items[0].id, str(field.pk))
+        self.assertEqual(preference.layout_obj.rows[0].items[0].colspan, 2)
 
     def test_empty_create_layout_is_repaired_with_default_items(self):
         self.grant_policy(
@@ -498,24 +498,24 @@ class TestCreateView(CrudViewTestMixin):
         preference = UserCreateViewPreference.objects.create(
             user=self.normal_user,
             content_type=self.content_type,
-            field_layout={},
+            layout={},
         )
 
         repaired = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
 
         self.assertEqual(repaired.pk, preference.pk)
-        self.assertTrue(any(row.items for row in repaired.field_layout_obj.rows))
+        self.assertTrue(any(row.items for row in repaired.layout_obj.rows))
 
     def test_selected_create_preference_unselects_previous_preference(self):
         first = UserCreateViewPreference.objects.create(
             user=self.normal_user,
             content_type=self.content_type,
-            field_layout={},
+            layout={},
         )
         second = UserCreateViewPreference.objects.create(
             user=self.normal_user,
             content_type=self.content_type,
-            field_layout={},
+            layout={},
             selected=True,
         )
 

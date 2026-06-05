@@ -4,10 +4,20 @@ Avatar component.
 Parameters:
 - object
 - avatar_attribute
+- url
+- initials
 - size
 - class_name
 {% endcomment %}
 
 {% load bloomerp %}
 
-{% avatar object avatar_attribute|default:"avatar" size|default:30 class_name|default:"" %}
+{% if url %}
+    <img src="{{ url }}" class="{{ class_name|default:'rounded-full object-cover' }}" style="height:{{ size|default:30 }}; width:{{ size|default:30 }}" alt="avatar">
+{% elif object %}
+    {% avatar object avatar_attribute|default:"avatar" size|default:30 class_name|default:"" %}
+{% else %}
+    <div class="{{ class_name|default:'rounded-full' }} flex items-center justify-center bg-primary-100 text-primary-800" style="height:{{ size|default:30 }}; width:{{ size|default:30 }}">
+        <span class="text-sm font-medium">{{ initials|default:"?" }}</span>
+    </div>
+{% endif %}

@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 
 from django.contrib.contenttypes.models import ContentType
-from django.forms import Form
+from django.forms import Form as DjangoForm
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
 
 from bloomerp.field_types import FieldTypeDefinition
+from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models import ApplicationField, UserCreateViewPreference
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem
+from bloomerp.models.forms.form import Form
+from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
+from bloomerp.models.users.base_view_preference import BaseViewPreference
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.router import router
 from bloomerp.services.create_view_services import get_addable_fields
@@ -27,27 +32,71 @@ PREFERENCE_MODELS = {
     "create": UserCreateViewPreference,
     "detail": UserDetailViewPreference,
 }
+LAYOUT_OBJECT_MODELS = {
+    Form,
+    UserCreateViewPreference,
+    UserDetailViewPreference,
+}
 
 
-def create_form(field_type: FieldTypeDefinition, application_field: ApplicationField) -> type[Form]:
+@dataclass
+class LayoutConfigTarget:
+    layout_object: ContentLayoutModelMixin
+    content_type: ContentType
+    scope: str
+
+
+def create_form(field_type: FieldTypeDefinition, application_field: ApplicationField) -> type[DjangoForm]:
     attrs = {
         option.id: option.build_form_field(application_field)
         for option in field_type.field_display_options
     }
-    return type("FieldDisplayForm", (Form,), attrs)
+    return type("FieldDisplayForm", (DjangoForm,), attrs)
 
 
 def _get_request_value(request: HttpRequest, key: str) -> str | None:
     return request.POST.get(key) or request.GET.get(key)
 
 
-def _get_preference(request: HttpRequest):
+def _get_legacy_preference(request: HttpRequest):
     preference_scope = _get_request_value(request, "preference_scope") or "detail"
     preference_id = _get_request_value(request, "preference_id")
     preference_model = PREFERENCE_MODELS.get(preference_scope)
     if preference_model is None or not preference_id:
         return None, preference_scope
     return get_object_or_404(preference_model, pk=preference_id, user=request.user), preference_scope
+
+
+def _get_layout_config_target(request: HttpRequest) -> LayoutConfigTarget | None:
+    scope = _get_request_value(request, "layout_mode") or _get_request_value(request, "preference_scope") or "detail"
+    layout_object_content_type_id = _get_request_value(request, "layout_object_content_type_id")
+    layout_object_id = _get_request_value(request, "layout_object_id")
+
+    if layout_object_content_type_id and layout_object_id:
+        content_type = get_object_or_404(ContentType, pk=layout_object_content_type_id)
+        model = content_type.model_class()
+        if model not in LAYOUT_OBJECT_MODELS:
+            return None
+
+        layout_object = get_object_or_404(model, pk=layout_object_id)
+        target_content_type = getattr(layout_object, "content_type", None)
+        if not isinstance(target_content_type, ContentType):
+            return None
+
+        return LayoutConfigTarget(
+            layout_object=layout_object,
+            content_type=target_content_type,
+            scope=scope,
+        )
+
+    preference, preference_scope = _get_legacy_preference(request)
+    if preference is None:
+        return None
+    return LayoutConfigTarget(
+        layout_object=preference,
+        content_type=preference.content_type,
+        scope=preference_scope,
+    )
 
 
 def _find_layout_item(layout: FieldLayout, application_field: ApplicationField) -> LayoutItem | None:
@@ -59,21 +108,21 @@ def _find_layout_item(layout: FieldLayout, application_field: ApplicationField) 
     return None
 
 
-def _get_item_config(preference, application_field: ApplicationField) -> dict:
-    item = _find_layout_item(preference.field_layout_obj, application_field)
+def _get_item_config(layout_object: ContentLayoutModelMixin, application_field: ApplicationField) -> dict:
+    item = _find_layout_item(layout_object.layout_obj, application_field)
     if item is None:
         return {}
     return item.config if isinstance(item.config, dict) else {}
 
 
-def _save_item_config(preference, application_field: ApplicationField, config: dict) -> None:
-    layout = preference.field_layout_obj
+def _save_item_config(layout_object: ContentLayoutModelMixin, application_field: ApplicationField, config: dict) -> None:
+    layout = layout_object.layout_obj
     item = _find_layout_item(layout, application_field)
     if item is None:
         return
     item.config = config
-    preference.field_layout = layout.model_dump()
-    preference.save(update_fields=["field_layout"])
+    layout_object.layout = layout.model_dump()
+    layout_object.save(update_fields=["layout"])
 
 
 def _build_initial_config(field_type: FieldTypeDefinition, config: dict) -> dict:
@@ -97,36 +146,59 @@ def _merge_cleaned_config(field_type: FieldTypeDefinition, current_config: dict,
 def _render_field_oob(
     *,
     request: HttpRequest,
-    preference,
-    preference_scope: str,
+    target: LayoutConfigTarget,
     application_field: ApplicationField,
     object_id: str | None,
     layout_edit_mode: bool = False,
 ) -> HttpResponse | None:
-    if preference_scope != "detail" or not object_id:
-        return None
-
     model = application_field.get_model()
     permission_manager = UserPermissionManager(request.user)
-    view_permission = create_permission_str(model, "view")
-    obj = get_object_or_404(permission_manager.get_queryset(model, view_permission), pk=object_id)
-    config = _get_item_config(preference, application_field)
-    field_context = build_crud_layout_field_context(
-        application_field=application_field,
-        value=get_object_field_value(obj=obj, application_field=application_field),
-        can_edit=permission_manager.has_field_permission(
-            application_field,
-            create_permission_str(model, "change"),
-        ),
-        layout_config=config,
-    )
+    config = _get_item_config(target.layout_object, application_field)
+    field_type = application_field.get_field_type_enum().value
+
+    if target.scope == "detail" and object_id:
+        view_permission = create_permission_str(model, "view")
+        obj = get_object_or_404(permission_manager.get_queryset(model, view_permission), pk=object_id)
+        field_context = build_crud_layout_field_context(
+            application_field=application_field,
+            value=get_object_field_value(obj=obj, application_field=application_field),
+            can_edit=permission_manager.has_field_permission(
+                application_field,
+                create_permission_str(model, "change"),
+            ),
+            layout_config=config,
+        )
+    elif field_type.allow_in_model:
+        addable_fields = list(get_addable_fields(content_type=target.content_type, user=request.user))
+        allowed_field_names = [field.field for field in addable_fields]
+        form_class = bloomerp_modelform_factory(model_cls=model, fields=allowed_field_names)
+        form = form_class()
+        if application_field.field not in form.fields:
+            return None
+        field_context = build_crud_layout_field_context(
+            application_field=application_field,
+            bound_field=form[application_field.field],
+            layout_config=config,
+        )
+    elif field_type.editable_without_form_field:
+        field_context = build_crud_layout_field_context(
+            application_field=application_field,
+            value=None,
+            can_edit=True,
+            layout_config=config,
+        )
+    else:
+        return None
+
     content = render_to_string(
         "inclusion_tags/layout_field.html",
         {
             **field_context,
-            "colspan": _get_layout_item_colspan(preference.field_layout_obj, application_field),
-            "layout_preference_object": preference,
-            "layout_mode": preference_scope,
+            "colspan": _get_layout_item_colspan(target.layout_object.layout_obj, application_field),
+            "layout_object_content_type_id": ContentType.objects.get_for_model(target.layout_object.__class__).pk,
+            "layout_object_id": target.layout_object.pk,
+            "layout_preference_object": target.layout_object if isinstance(target.layout_object, BaseViewPreference) else None,
+            "layout_mode": target.scope,
             "layout_edit_mode": layout_edit_mode,
             "object_id": object_id,
             "non_required_fields_visible": "true",
@@ -147,20 +219,33 @@ def _get_layout_item_colspan(layout: FieldLayout, application_field: Application
     return item.colspan if item is not None else 1
 
 
-def _user_can_configure_field(request: HttpRequest, preference, preference_scope: str, application_field: ApplicationField) -> bool:
-    if application_field.content_type_id != preference.content_type_id:
+def _user_can_configure_field(request: HttpRequest, target: LayoutConfigTarget, application_field: ApplicationField) -> bool:
+    if application_field.content_type_id != target.content_type.id:
         return False
     if request.user.is_superuser:
         return True
 
-    model = preference.content_type.model_class()
+    layout_object = target.layout_object
+    if isinstance(layout_object, BaseViewPreference) and layout_object.user_id != request.user.id:
+        return False
+
+    model = target.content_type.model_class()
     if model is None:
         return False
 
-    if preference_scope == "create":
+    if isinstance(layout_object, Form):
+        manager = UserPermissionManager(request.user)
+        if not manager.has_access_to_object(layout_object, create_permission_str(layout_object, "change")):
+            return False
         return application_field.field in {
             field.field
-            for field in get_addable_fields(content_type=preference.content_type, user=request.user)
+            for field in get_addable_fields(content_type=target.content_type, user=request.user)
+        }
+
+    if target.scope == "create":
+        return application_field.field in {
+            field.field
+            for field in get_addable_fields(content_type=target.content_type, user=request.user)
         }
 
     permission_manager = UserPermissionManager(request.user)
@@ -176,10 +261,10 @@ def _user_can_configure_field(request: HttpRequest, preference, preference_scope
 )
 def field_display_options(request: HttpRequest, application_field_id: int):
     application_field = get_object_or_404(ApplicationField, id=application_field_id)
-    preference, preference_scope = _get_preference(request)
-    if preference is None:
-        return HttpResponse("Missing display preference", status=400)
-    if not _user_can_configure_field(request, preference, preference_scope, application_field):
+    target = _get_layout_config_target(request)
+    if target is None:
+        return HttpResponse("Missing layout object", status=400)
+    if not _user_can_configure_field(request, target, application_field):
         return HttpResponse("Permission denied", status=403)
 
     field_type = application_field.get_field_type_enum().value
@@ -187,10 +272,13 @@ def field_display_options(request: HttpRequest, application_field_id: int):
         return HttpResponse("This field does not have display options.")
 
     form_class = create_form(field_type, application_field)
-    current_config = _get_item_config(preference, application_field)
+    current_config = _get_item_config(target.layout_object, application_field)
     hidden_args = {
-        "preference_id": preference.pk,
-        "preference_scope": preference_scope,
+        "layout_object_content_type_id": ContentType.objects.get_for_model(target.layout_object.__class__).pk,
+        "layout_object_id": target.layout_object.pk,
+        "layout_mode": target.scope,
+        "preference_id": getattr(target.layout_object, "pk", ""),
+        "preference_scope": target.scope,
         "object_id": _get_request_value(request, "object_id") or "",
         "layout_edit_mode": _get_request_value(request, "layout_edit_mode") or "",
     }
@@ -203,11 +291,10 @@ def field_display_options(request: HttpRequest, application_field_id: int):
         form = form_class(request.POST)
         if form.is_valid():
             next_config = _merge_cleaned_config(field_type, current_config, form.cleaned_data)
-            _save_item_config(preference, application_field, next_config)
+            _save_item_config(target.layout_object, application_field, next_config)
             field_oob = _render_field_oob(
                 request=request,
-                preference=preference,
-                preference_scope=preference_scope,
+                target=target,
                 application_field=application_field,
                 object_id=hidden_args["object_id"],
                 layout_edit_mode=hidden_args["layout_edit_mode"].lower() == "true",

@@ -2,165 +2,222 @@
 {% load bloomerp %}
 {% load crispy_forms_tags %}
 
-<!--Picture-->
-<div class="flex justify-center mb-3">
-	{% include "components/objects/avatar_upload.html" with content_type_id=detail_view_content_type_id %}
-</div>
-<!--End Picture-->
 
-<!--Text under picture-->
-<div class="flex justify-center mb-6">
-	<h2 class="text-xl font-bold">{{object}}</h2>
-</div>
-<!--End Text under picture-->
-
-<!--Card Tabs-->
 <div
-	bloomerp-component="detail-tabs"
-	data-content-type-id="{{ detail_view_content_type_id }}"
-	data-save-url="{% url 'components_detail_tabs_preference' %}"
-	data-folder-modal-url="{% url 'components_detail_tabs_folder_modal' %}"
-	data-tab-strip
-	class="mb-2"
+	bloomerp-component="detail-view-frame"
+	class="grid gap-6 xl:h-full xl:min-h-0 xl:overflow-hidden xl:gap-0 {% if include_detail_aside %}xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)_auto]{% else %}xl:grid-cols-[minmax(0,1fr)_auto]{% endif %}"
+	data-detail-view-grid
 >
-	<div class="relative overflow-x-auto no-scrollbar border-b border-gray-200 bg-white" style="overflow-y: visible;" data-tabs-strip-container>
-		<ul class="flex min-w-max items-end gap-1 px-1 pt-1" role="tablist" data-tabs-strip>
-			{% for tab in tabs_top_level %}
-				{% if not tab.is_delete %}
-				{% if tab.requires_pk %}
-					{% url tab.url object.pk as tab_href %}
-				{% else %}
-					{% url tab.url as tab_href %}
-				{% endif %}
-				<li
-					data-tab-item
-					data-tab-type="tab"
-					data-tab-key="{{ tab.key|default:tab.url }}"
-					data-tab-name="{{ tab.name }}"
-					data-tab-url="{{ tab.url }}"
-					data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
-					data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
-					draggable="true"
-					class="shrink-0 rounded-t-xl border-b-2 border-transparent cursor-pointer select-none"
-				>
-					<button
-						type="button"
-						data-tab-link
-						role="tab"
-						aria-selected="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
-						hx-get="{{ tab_href }}"
-						hx-swap="innerHTML"
-						hx-trigger="click"
-						hx-target="#detail-view-content"
-						hx-push-url="true"
-						id="{{ tab_href }}"
-						class="h-full w-full rounded-t-xl px-3 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
-					>
-						{{ tab.name }}
-					</button>
-				</li>
-				{% endif %}
-			{% endfor %}
 
-			{% for folder in tab_folders %}
-				<li
-					data-tab-item
-					data-tab-type="folder"
-					data-folder-id="{{ folder.id }}"
-					data-folder-name="{{ folder.name }}"
-					draggable="true"
-					class="relative shrink-0 rounded-t-xl border-b-2 border-transparent cursor-pointer select-none"
-				>
-					<button
-						type="button"
-						data-folder-toggle
-						class="h-full w-full rounded-t-xl px-4 py-1.5 text-sm whitespace-nowrap text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
-					>
-						{{ folder.name }}
-					</button>
-
-					<div class="hidden absolute left-0 top-full mt-1 min-w-56 rounded-md border border-gray-200 bg-white z-50 shadow-lg" data-folder-tabs>
-						{% for tab in folder.tabs %}
+	<section class="min-w-0 xl:h-full xl:min-h-0 xl:overflow-hidden">
+		<div class="flex flex-col bg-white xl:h-full xl:min-h-0 xl:overflow-hidden">
+			<!--Card Tabs-->
+			<div
+				bloomerp-component="detail-tabs"
+				data-content-type-id="{{ detail_view_content_type_id }}"
+				data-save-url="{% url 'components_detail_tabs_preference' %}"
+				data-folder-modal-url="{% url 'components_detail_tabs_folder_modal' %}"
+				data-tab-strip
+				class="sticky top-0 z-40 shrink-0 bg-white"
+			>
+				<div class="relative overflow-x-auto no-scrollbar border-b border-gray-200 bg-white" style="overflow-y: visible;" data-tabs-strip-container>
+					<ul class="flex min-w-max items-end gap-1" role="tablist" data-tabs-strip>
+						{% for tab in tabs_top_level %}
+							{% if not tab.is_delete %}
 							{% if tab.requires_pk %}
 								{% url tab.url object.pk as tab_href %}
 							{% else %}
 								{% url tab.url as tab_href %}
 							{% endif %}
-							<button
-								type="button"
-								data-folder-tab-item
+							<li
+								data-tab-item
+								data-tab-type="tab"
 								data-tab-key="{{ tab.key|default:tab.url }}"
 								data-tab-name="{{ tab.name }}"
 								data-tab-url="{{ tab.url }}"
 								data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
 								data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
-								hx-get="{{ tab_href }}"
-								hx-swap="innerHTML"
-								hx-trigger="click"
-								hx-target="#detail-view-content"
-								hx-push-url="true"
-								class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-							>	
-								{{ tab.name }}
-							</button>
+								draggable="true"
+								class="shrink-0 border-b-2 border-transparent cursor-pointer select-none"
+							>
+								<button
+									type="button"
+									data-tab-link
+									role="tab"
+									aria-selected="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+									hx-get="{{ tab_href }}"
+									hx-swap="innerHTML"
+									hx-trigger="click"
+									hx-target="#detail-view-content"
+									hx-push-url="true"
+									id="{{ tab_href }}"
+									class="h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
+								>
+									{{ tab.name }}
+								</button>
+							</li>
+							{% endif %}
 						{% endfor %}
-						{% if not folder.tabs %}
-							<div class="px-3 py-2 text-sm text-gray-500" data-folder-empty>
-								No tabs in folder
-							</div>
-						{% endif %}
+
+						{% for folder in tab_folders %}
+							<li
+								data-tab-item
+								data-tab-type="folder"
+								data-folder-id="{{ folder.id }}"
+								data-folder-name="{{ folder.name }}"
+								draggable="true"
+								class="relative shrink-0 border-b-2 border-transparent cursor-pointer select-none"
+							>
+								<button
+									type="button"
+									data-folder-toggle
+									class="h-full w-full px-4 py-2 text-sm whitespace-nowrap text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
+								>
+									{{ folder.name }}
+								</button>
+
+								<div class="absolute left-0 top-full z-50 mt-1 hidden min-w-56 rounded-md border border-gray-200 bg-white shadow-lg" data-folder-tabs>
+									{% for tab in folder.tabs %}
+										{% if tab.requires_pk %}
+											{% url tab.url object.pk as tab_href %}
+										{% else %}
+											{% url tab.url as tab_href %}
+										{% endif %}
+										<button
+											type="button"
+											data-folder-tab-item
+											data-tab-key="{{ tab.key|default:tab.url }}"
+											data-tab-name="{{ tab.name }}"
+											data-tab-url="{{ tab.url }}"
+											data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
+											data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+											hx-get="{{ tab_href }}"
+											hx-swap="innerHTML"
+											hx-trigger="click"
+											hx-target="#detail-view-content"
+											hx-push-url="true"
+											class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+										>
+											{{ tab.name }}
+										</button>
+									{% endfor %}
+									{% if not folder.tabs %}
+										<div class="px-4 py-2 text-sm text-gray-500" data-folder-empty>
+											No tabs in folder
+										</div>
+									{% endif %}
+								</div>
+							</li>
+						{% endfor %}
+
+						{% for tab in tabs_top_level %}
+							{% if tab.is_delete %}
+							{% if tab.requires_pk %}
+								{% url tab.url object.pk as tab_href %}
+							{% else %}
+								{% url tab.url as tab_href %}
+							{% endif %}
+							<li
+								data-tab-item
+								data-tab-type="tab"
+								data-tab-key="{{ tab.key|default:tab.url }}"
+								data-tab-name="{{ tab.name }}"
+								data-tab-url="{{ tab.url }}"
+								data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
+								data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+								draggable="true"
+								class="shrink-0 border-b-2 border-transparent cursor-pointer select-none"
+							>
+								<button
+									type="button"
+									data-tab-link
+									role="tab"
+									aria-selected="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
+									hx-get="{{ tab_href }}"
+									hx-swap="innerHTML"
+									hx-trigger="click"
+									hx-target="#detail-view-content"
+									hx-push-url="true"
+									id="{{ tab_href }}"
+									class="h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
+								>
+									{{ tab.name }}
+								</button>
+							</li>
+							{% endif %}
+						{% endfor %}
+					</ul>
+				</div>
+			</div>
+			<!--End Card Tabs-->
+
+			<!--Content-->
+			<div id="detail-view-content" class="min-w-0 p-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+				{% block content %}
+					{% if include_detail_content %}
+						{% include include_detail_content %}
+					{% endif %}
+				{% endblock content %}
+			</div>
+			<!--End Content-->
+		</div>
+	</section>
+
+	<!--Side section-->
+	<c-ui.resizable_div id="detail-aside" start_width="22rem" fit_to_main_bottom="true" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
+		<aside class="xl:h-full xl:min-h-0">
+			<div class="relative flex flex-col overflow-hidden border-r border-gray-200 bg-white xl:h-full xl:min-h-0" data-resizable-div-panel>
+				<div class="pointer-events-none absolute left-0 top-0 z-40 h-full w-px bg-gray-200"></div>
+				<div class="flex shrink-0 justify-center px-6 pt-8">
+					{% include "components/objects/avatar_upload.html" with content_type_id=detail_view_content_type_id %}
+				</div>
+				<div class="shrink-0 px-6 pb-8 pt-4 text-center">
+					<h2 class="text-2xl font-semibold text-gray-900">{{ object }}</h2>
+				</div>
+				<div class="flex flex-col xl:min-h-0 xl:flex-1">
+					<div class="flex flex-wrap justify-center gap-2">
+						<button 
+							class="btn btn-secondary btn-sm"
+							hx-get="{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}"
+							hx-target="#object-sidesection"
+							hx-animation	
+							>
+							<i class="fa fa-history"></i>
+							<c-blocktrans>Activity</c-blocktrans>
+						</button>
+						<button 
+							class="btn btn-secondary btn-sm"
+							hx-get="{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}"
+							hx-target="#object-sidesection"
+							hx-animation	
+							>
+							<i class="fa fa-comments"></i>
+							<c-blocktrans>Comments</c-blocktrans>
+						</button>
+						{% for button in extra_buttons %}
+							{% render_object_action action=button object=object request=request content_type_id=content_type_id %}
+						{% endfor %}
+						{% for action in object_actions %}
+							{% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+						{% endfor %}
 					</div>
-				</li>
-			{% endfor %}
-
-			{% for tab in tabs_top_level %}
-				{% if tab.is_delete %}
-				{% if tab.requires_pk %}
-					{% url tab.url object.pk as tab_href %}
-				{% else %}
-					{% url tab.url as tab_href %}
-				{% endif %}
-				<li
-					data-tab-item
-					data-tab-type="tab"
-					data-tab-key="{{ tab.key|default:tab.url }}"
-					data-tab-name="{{ tab.name }}"
-					data-tab-url="{{ tab.url }}"
-					data-tab-requires-pk="{% if tab.requires_pk %}true{% else %}false{% endif %}"
-					data-tab-active="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
-					draggable="true"
-					class="shrink-0 rounded-t-xl border-b-2 border-transparent cursor-pointer select-none"
-				>
-					<button
-						type="button"
-						data-tab-link
-						role="tab"
-						aria-selected="{% if tab.is_active or request.path == tab_href %}true{% else %}false{% endif %}"
-						hx-get="{{ tab_href }}"
+					<div
+						hx-get="{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}" 
+						hx-target="#object-sidesection" 
+						hx-trigger="load"
 						hx-swap="innerHTML"
-						hx-trigger="click"
-						hx-target="#detail-view-content"
-						hx-push-url="true"
-						id="{{ tab_href }}"
-						class="h-full w-full rounded-t-xl px-3 py-1.5 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
-					>
-						{{ tab.name }}
-					</button>
-				</li>
-				{% endif %}
-			{% endfor %}
-		</ul>
-	</div>
+						class="mt-8 flex animate-fade-in flex-col overflow-hidden border-t border-gray-200 pt-4 xl:min-h-0 xl:flex-1"
+						>
+						<div id="object-sidesection" class="p-4 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+							<!-- Activity log will load here -->
+							<div class="text-center text-gray-500">
+								Loading activity...
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</aside>
+	</c-ui.resizable_div>
+	<!--End Side section-->
 </div>
-<!--End Card Tabs-->
-
-<!--Content-->
-<div id="detail-view-content" class="mt-4">
-	{% block content %}
-		{% if include_detail_content %}
-			{% include include_detail_content %}
-		{% endif %}
-	{% endblock content %}
-</div>
-<!--End Content-->
-

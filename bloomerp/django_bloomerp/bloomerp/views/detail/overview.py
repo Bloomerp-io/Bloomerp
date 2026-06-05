@@ -37,7 +37,7 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         return ContentType.objects.get_for_model(self.model)
 
     def get_layout_object(self):
-        return self.layout_preference.field_layout_obj
+        return self.layout_preference.layout_obj
 
     def get_layout_preference_object(self):
         return self.layout_preference
@@ -46,12 +46,12 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
     def layout_preference(self) -> UserDetailViewPreference:
         content_type = self.get_layout_content_type()
         preference = UserDetailViewPreference.get_or_create_for_user(self.request.user, content_type)
-        if not any(row.items for row in preference.field_layout_obj.rows):
-            preference.field_layout = get_default_layout(
+        if not any(row.items for row in preference.layout_obj.rows):
+            preference.layout = get_default_layout(
                 content_type=content_type,
                 user=self.request.user,
             ).model_dump()
-            preference.save(update_fields=["field_layout"])
+            preference.save(update_fields=["layout"])
         return preference
 
     def get_layout_available_items_url(self) -> str:
@@ -133,12 +133,12 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
                 self.object = form.save()
                 save_submitted_one_to_many_fields(
                     parent_object=self.object,
-                    layout=self.layout_preference.field_layout_obj,
+                    layout=self.layout_preference.layout_obj,
                     submitted_data=self.request.POST,
                     user=self.request.user,
                 )
         except ValidationError as exc:
-            print(self.request.POST)
+            
             for message in exc.messages:
                 form.add_error(None, message)
             return self.form_invalid(form)

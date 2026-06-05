@@ -1,0 +1,36 @@
+{% comment %}
+Chat message component.
+
+Parameters:
+- avatar: Avatar image URL. If omitted, initials are shown.
+- sender: Sender display name
+- message: Message text
+- datetime: Message datetime. Rendered as a relative time.
+- side: Message side, "left" or "right". Default is "left".
+- background: Bubble background, "primary" or "secondary". Default is "secondary".
+- variant: Alias for background.
+- class: Additional classes for the message row
+{% endcomment %}
+
+<article class="flex min-w-0 gap-3 {% if side == 'right' %}flex-row-reverse{% endif %} {{ class|default:'' }}">
+    <div class="shrink-0">
+        <c-ui.avatar
+            object=""
+            url="{{ avatar }}"
+            initials="{{ sender|default:'?'|slice:':2'|upper }}"
+            size="36px"
+            class_name="h-9 w-9 rounded-full object-cover"
+        />
+    </div>
+    <div class="min-w-0 flex-1 {% if side == 'right' %}text-right{% endif %}">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm {% if side == 'right' %}justify-end{% endif %}">
+            <span class="font-semibold text-gray-900">{{ sender }}</span>
+            {% if datetime %}
+                <time datetime="{{ datetime|date:'c' }}" class="text-xs text-gray-400">{{ datetime|timesince }} ago</time>
+            {% endif %}
+        </div>
+        <div class="mt-1 inline-block max-w-full rounded-md px-3 py-2 text-left text-sm leading-6 {% if background == 'primary' or variant == 'primary' %}bg-primary-600 text-white{% else %}bg-gray-50 text-gray-700{% endif %}">
+            {{ message|safe }}
+        </div>
+    </div>
+</article>

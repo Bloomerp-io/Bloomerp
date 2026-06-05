@@ -13,6 +13,7 @@ from functools import wraps
 from typing import Callable, List, Literal
 
 from regex import B
+from bloomerp.models.definition import get_model_config
 from bloomerp.modules.definition import ModuleConfig, module_registry
 logger = logging.getLogger(__name__)
 
@@ -507,6 +508,17 @@ class BloomerpRouteRegistry:
                     })
 
                     for model in _retrieve_models(models, exclude_models, _route_type):
+                        config = get_model_config(model)
+                        
+                        # Skip for detail view
+                        if _route_type == RouteType.DETAIL and config and config.detail_view_settings and config.detail_view_settings.skip_views:
+                            if _url_name in config.detail_view_settings.skip_views:
+                                continue
+                            
+                        if _route_type == RouteType.MODEL and config and config.model_view_settings and config.model_view_settings.skip_views:
+                            if _url_name in config.detail_view_settings.skip_views:
+                                continue
+                        
                         actual_path = _auto_path()
 
                         module = module_registry.get_module_for_model(model) if model else None

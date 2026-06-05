@@ -1,0 +1,27 @@
+{% comment %}
+resizable_div
+
+A resizable div will have a resize handler and store the value to the cookies so that will 
+maintain the same value on a page refresh.
+
+Parameters:
+- id (str): The id of the resizable div. This will be used to store the value in the cookies. 
+- start_width (str): The initial width of the resizable div. Is a string with the unit, e.g. "200px" or "50%". 
+- fit_to_main_bottom (bool, optional): If true, keep the div height aligned with the bottom of the main panel.
+- class (str, optional): Additional classes to add to the resizable div. Default is "".
+
+Slots:
+- default: 
+{% endcomment %}
+
+
+<div 
+    bloomerp-component="resizable-div"
+    data-id="{{ id }}"
+    data-start-width="{{ start_width }}"
+    data-fit-to-main-bottom="{{ fit_to_main_bottom|default:'false' }}"
+    class="{{ class }}"
+    id="resizable-div-{{ id }}"
+    >
+    {{ slot }}
+</div>
