@@ -9,7 +9,8 @@ from django.urls import reverse
     models="__all__",
     route_type="detail",
     name="Document templates",
-    description="Different document templaes",
+    description="Different document templates",
+    url_name="document_templates",
 )
 class DocumentTemplateListDetailView(BaseBloomerpDetailView):
     template_name = "detail_views/bloomerp_document_template_list_detail_view.html"

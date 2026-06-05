@@ -8,6 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import get_object_or_404
 
 from bloomerp.utils.requests import render_blank_form
+from django_htmx.http import HttpResponseClientRefresh
 
 @router.register(
     path="components/layout/available-object/<int:content_type_id>/<str:object_id>",
@@ -29,7 +30,7 @@ def delete_layout_object(request:HttpRequest, content_type_id: int, object_id: s
     match request.method:
         case "POST":
             object.delete()
-            return HttpResponse(status=204)
+            return HttpResponseClientRefresh()
         case "GET":
             return render_blank_form(
                 request,

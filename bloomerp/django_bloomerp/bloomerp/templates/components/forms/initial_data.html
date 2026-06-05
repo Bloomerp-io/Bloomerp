@@ -1,0 +1,36 @@
+{% load i18n %}
+
+<form
+    class="space-y-4"
+    hx-post="{% url 'components_forms_initial_data' id=form.id %}"
+    hx-target="#initial-data-modal-body"
+    hx-swap="innerHTML"
+>
+    {% csrf_token %}
+    <c-ui.text.text>
+        {% trans "Preset values by selecting a field and filling in the value. A form can have default values for fields that exist on the form and fields that are hidden from the user." %}
+    </c-ui.text.text>
+
+    <div id="initial-data-rows" class="space-y-3">
+        {% for row in rows %}
+            {% include "components/forms/initial_data_row.html" with row_id=row.row_id selected_field_id=row.selected_field_id value_context=row.value_context %}
+        {% endfor %}
+    </div>
+
+    <div class="flex items-center justify-between gap-3 pt-4">
+        <button
+            type="button"
+            class="btn btn-sm btn-secondary"
+            hx-get="{% url 'components_forms_initial_data_row' id=form.id %}"
+            hx-target="#initial-data-rows"
+            hx-swap="beforeend"
+        >
+            <i class="fa fa-plus"></i>
+            {% trans "New" %}
+        </button>
+        <button type="submit" class="btn btn-sm btn-primary">
+            <i class="fa fa-save"></i>
+            {% trans "Save" %}
+        </button>
+    </div>
+</form>

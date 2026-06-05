@@ -204,6 +204,9 @@ class BloomerpLayoutFormMixin(ABC):
     def can_render_unbound_editable_layout_field(self, application_field: ApplicationField) -> bool:
         return self.is_create_layout()
 
+    def get_unbound_layout_field_value(self, application_field: ApplicationField):
+        return None
+
     def build_layout_item_context(
         self,
         *,
@@ -241,7 +244,7 @@ class BloomerpLayoutFormMixin(ABC):
         ):
             field_context = build_crud_layout_field_context(
                 application_field=application_field,
-                value=None,
+                value=self.get_unbound_layout_field_value(application_field),
                 can_edit=True,
                 layout_config=config,
             )

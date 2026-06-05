@@ -2,11 +2,13 @@ from django import template
 from django.db.models.manager import Manager
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
+from bloomerp.models.definition import ObjectAction, ObjectHTML
 from bloomerp.utils.models import get_initials, get_detail_view_url, get_delete_view_url
 from django.urls import reverse 
 from django.contrib.contenttypes.models import ContentType
 from django.utils.safestring import mark_safe
-from django.utils.html import escape
+from django.utils.html import escape, format_html
+from django.middleware.csrf import get_token
 import re
 import uuid
 from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField
@@ -419,3 +421,74 @@ def highlight_query(value, query):
 def parse_icon_value(value):
     """Split a stored icon value into glyph and color-chip classes for templates."""
     return parse_icon_value_service(value)
+
+
+@register.simple_tag
+def should_render_action(
+    action:ObjectAction|ObjectHTML,
+    object:Model,
+    request:HttpRequest,
+) -> bool:
+    """Decides whether an action should render
+
+    Args:
+        action (ObjectAction): the action object
+        object (Model): the objec 
+        request (HttpRequest): the request object
+
+    Returns:
+        bool: whether the action should render or not.
+    """
+    try:
+        return action.should_render_func(request, object)
+    except:
+        return False
+    
+
+@register.simple_tag
+def render_object_action(
+    action:ObjectAction|ObjectHTML,
+    object:Model,
+    request:HttpRequest,
+    content_type_id:int|None=None,
+):
+    if not should_render_action(action, object, request):
+        return ""
+
+    if isinstance(action, ObjectHTML):
+        return mark_safe(
+            render_to_string(
+                action.template_name,
+                {
+                    "action": action,
+                    "object": object,
+                    "request": request,
+                    "content_type_id": content_type_id,
+                },
+                request=request,
+            )
+        )
+
+    if content_type_id is None:
+        content_type_id = ContentType.objects.get_for_model(object).pk
+
+    return format_html(
+        (
+            '<button class="btn btn-xs btn-{}" '
+            'hx-post="{}" '
+            'hx-target="#actions-target" '
+            "hx-vals='{{\"csrfmiddlewaretoken\": \"{}\"}}'>{}</button>"
+        ),
+        action.style,
+        reverse(
+            "components_objects_actions",
+            kwargs={
+                "content_type_id": content_type_id,
+                "object_id": object.pk,
+                "action_id": action.id,
+            },
+        ),
+        get_token(request),
+        action.label,
+    )
+    

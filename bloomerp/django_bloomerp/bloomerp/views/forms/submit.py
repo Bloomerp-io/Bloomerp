@@ -13,6 +13,8 @@ from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
     path="submit",
     route_type="detail",
     name="Submit",
+    description="Submit a form",
+    url_name="submit",
     models=[Form],
 )
 class SubmitFormView(
@@ -56,6 +58,12 @@ class SubmitFormView(
 
     def get_layout_editable_field_names(self) -> list[str]:
         return FormManager(self.object).layout_field_names()
+
+    def get_unbound_layout_field_value(self, application_field: ApplicationField):
+        field_type_id = application_field.get_field_type_enum().value.id
+        if field_type_id == "OneToManyField":
+            return FormManager(self.object).get_one_to_many_initial_value(application_field.field)
+        return super().get_unbound_layout_field_value(application_field)
 
     def build_layout_form(self):
         manager = FormManager(self.object)
@@ -110,3 +118,4 @@ class SubmitFormView(
         if not context.get("form_submitted_successfully") and not FormManager(self.object).can_submit(self.request):
             context["form_submission_error_message"] = FormManager.MAX_SUBMISSIONS_MESSAGE
         return context
+    

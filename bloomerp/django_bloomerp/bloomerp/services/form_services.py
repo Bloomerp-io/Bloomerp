@@ -80,8 +80,9 @@ class FormManager:
 
     def build_submission_data(self, *, data: dict, request: HttpRequest | None) -> dict:
         """Combine ModelForm data with layout-only submitted fields."""
+        initial_payload = self.get_initial_payload()
         submission_data = {
-            **self.get_initial_payload(),
+            **self.get_initial_model_payload(initial_payload),
             **dict(data),
         }
         target_model = self.form.content_type.model_class()
@@ -89,11 +90,15 @@ class FormManager:
         if target_model is None or submitted_data is None:
             return submission_data
 
+        submitted_one_to_many_data = collect_submitted_one_to_many_data(
+            parent_model=target_model,
+            layout=self.form.layout_obj,
+            submitted_data=submitted_data,
+        )
         submission_data.update(
-            collect_submitted_one_to_many_data(
-                parent_model=target_model,
-                layout=self.form.layout_obj,
-                submitted_data=submitted_data,
+            self.apply_one_to_many_initial_payload(
+                initial_payload=initial_payload,
+                submitted_one_to_many_data=submitted_one_to_many_data,
             )
         )
         return submission_data
@@ -102,6 +107,72 @@ class FormManager:
         """Return the configured initial payload as a dict."""
         payload = self.form.initial_payload
         return dict(payload) if isinstance(payload, dict) else {}
+
+    def get_initial_model_payload(self, initial_payload: dict | None = None) -> dict:
+        """Return initial payload values that are direct model fields."""
+        payload = initial_payload if isinstance(initial_payload, dict) else self.get_initial_payload()
+        one_to_many_field_names = self.layout_one_to_many_field_names()
+        return {
+            field_name: value
+            for field_name, value in payload.items()
+            if field_name not in one_to_many_field_names
+        }
+
+    def apply_one_to_many_initial_payload(
+        self,
+        *,
+        initial_payload: dict,
+        submitted_one_to_many_data: dict[str, list[dict]],
+    ) -> dict[str, list[dict]]:
+        one_to_many_data: dict[str, list[dict]] = {}
+        one_to_many_field_names = self.layout_one_to_many_field_names()
+        for field_name, value in initial_payload.items():
+            if field_name not in one_to_many_field_names:
+                continue
+            config = self.normalize_one_to_many_initial_payload(value)
+            submitted_rows = submitted_one_to_many_data.get(field_name)
+            rows = submitted_rows if submitted_rows is not None else config["initial_rows"]
+            if rows:
+                one_to_many_data[field_name] = [
+                    {
+                        **config["row_defaults"],
+                        **row,
+                    }
+                    for row in rows
+                ]
+
+        for field_name, rows in submitted_one_to_many_data.items():
+            one_to_many_data.setdefault(field_name, rows)
+        return one_to_many_data
+
+    def get_one_to_many_initial_value(self, field_name: str) -> list[dict]:
+        config = self.normalize_one_to_many_initial_payload(self.get_initial_payload().get(field_name))
+        return [
+            {
+                **config["row_defaults"],
+                **row,
+            }
+            for row in config["initial_rows"]
+        ]
+
+    def normalize_one_to_many_initial_payload(self, value) -> dict:
+        if isinstance(value, dict):
+            initial_rows = value.get("initial_rows", [])
+            row_defaults = value.get("row_defaults", {})
+            return {
+                "initial_rows": initial_rows if isinstance(initial_rows, list) else [],
+                "row_defaults": row_defaults if isinstance(row_defaults, dict) else {},
+            }
+        if isinstance(value, list) and all(isinstance(item, dict) for item in value):
+            return {"initial_rows": value, "row_defaults": {}}
+        return {"initial_rows": [], "row_defaults": {}}
+
+    def layout_one_to_many_field_names(self) -> set[str]:
+        return {
+            field.field
+            for field in self.layout_application_fields()
+            if field.get_field_type_enum().value.id == "OneToManyField"
+        }
 
     def get_initial_form_data(self) -> dict:
         """Return initial payload values for fields present in the visible form."""
@@ -269,7 +340,7 @@ class FormManager:
                 parent_object=obj,
                 layout=self.form.layout_obj,
                 submitted_data=data,
-                user=user,
+                user=request.user,
                 enforce_permissions=False,
             )
             form_submission.persisted = True

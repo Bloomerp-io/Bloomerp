@@ -793,3 +793,49 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertTrue(
             any("Policies row 0, Row policy:" in message for message in exc_info.exception.messages)
         )
+
+
+class FormCleanTestCase(BaseBloomerpModelTestCase):
+    auto_create_customers = False
+    auto_create_users = False
+    create_foreign_models = True
+
+    def test_form_clean_resets_layout_and_initial_payload_when_content_type_changes(self):
+        customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        country_content_type = ContentType.objects.get_for_model(self.CountryModel)
+        customer_first_name_field = ApplicationField.objects.get(
+            content_type=customer_content_type,
+            field="first_name",
+        )
+        country_name_field = ApplicationField.objects.get(
+            content_type=country_content_type,
+            field="name",
+        )
+        form_object = BloomerpForm(
+            name="Customer form",
+            content_type=customer_content_type,
+            initial_payload={"age": 41},
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=1,
+                        items=[LayoutItem(id=str(customer_first_name_field.pk))],
+                    )
+                ]
+            ).model_dump(),
+        )
+        BloomerpForm.objects.bulk_create([form_object])
+        form_object = BloomerpForm.objects.get(name="Customer form")
+
+        form_object.content_type = country_content_type
+        form_object.full_clean()
+
+        layout_item_ids = {
+            str(item.id)
+            for row in form_object.layout_obj.rows
+            for item in row.items
+        }
+        self.assertEqual(form_object.initial_payload, {})
+        self.assertNotIn(str(customer_first_name_field.pk), layout_item_ids)
+        self.assertIn(str(country_name_field.pk), layout_item_ids)

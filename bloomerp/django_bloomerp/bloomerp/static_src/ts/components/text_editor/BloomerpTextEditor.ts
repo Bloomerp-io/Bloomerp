@@ -37,6 +37,7 @@ import {
 } from "@lexical/table";
 import { Action, ACTIONS } from "./actions";
 import { BaseWidget } from "../widgets/BaseWidget";
+import { parseBoolean } from "../../utils/booleans";
 
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
@@ -44,7 +45,7 @@ export class BloomerpTextEditor extends BaseWidget {
     private commands: Array<Command> = [];
     private actions: Array<Action> = [];
     private button:HTMLButtonElement;
-    private actionsToolbar:HTMLElement;
+    private actionsToolbar: HTMLElement | null = null;
     private hiddenInput:HTMLInputElement;
     private suppressNextChange: boolean = false;
     private isInitializing: boolean = false;
@@ -102,6 +103,7 @@ export class BloomerpTextEditor extends BaseWidget {
             },
         });
         this.button = this.element.querySelector('#h1-button')
+        this.includeToolbar = parseBoolean(this.element.dataset.includeToolbar, true);
 
         this.editor.setRootElement(editorRef);
         this.isInitializing = true;
@@ -137,8 +139,6 @@ export class BloomerpTextEditor extends BaseWidget {
             this.isInitializing = false;
             this.suppressNextChange = false;
         });
-
-        this.includeToolbar = (this.element.dataset.includeToolbar !== '') 
     }
 
     public destroy(): void {
@@ -148,7 +148,10 @@ export class BloomerpTextEditor extends BaseWidget {
         this.editor?.setRootElement(null);
         this.editor = null;
 
-        this.actionsToolbar.innerHTML = ''
+        if (this.actionsToolbar) {
+            this.actionsToolbar.innerHTML = ''
+            this.actionsToolbar = null;
+        }
     }
 
     /**
@@ -170,7 +173,11 @@ export class BloomerpTextEditor extends BaseWidget {
             actionsToolbarId = 'actions-toolbar-' + this.editorId;
         }
 
-        this.actionsToolbar = document.getElementById(actionsToolbarId) as HTMLElement;
+        if (!actionsToolbarId) return;
+
+        this.actionsToolbar = document.getElementById(actionsToolbarId) as HTMLElement | null;
+        if (!this.actionsToolbar) return;
+
         this.actionsToolbar.innerHTML = ''
 
 

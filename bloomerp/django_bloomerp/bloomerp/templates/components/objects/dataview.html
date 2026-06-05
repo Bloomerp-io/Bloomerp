@@ -248,6 +248,7 @@
                         :current_sort_field="current_sort_field"
                         :current_sort_direction="current_sort_direction"
                         :table_sort_querystring="table_sort_querystring"
+                        :actions="{{ object_actions }}"
                     />
                 {% elif preference.view_type == 'kanban' %}
                     <c-ui.data_view.kanban 

@@ -1,4 +1,5 @@
 import BaseComponent from "../BaseComponent";
+import { parseBoolean } from "../../utils/booleans";
 
 type DropdownOption = {
     element: HTMLButtonElement;
@@ -36,7 +37,7 @@ export default class DropdownInput extends BaseComponent {
             return;
         }
 
-        this.allowFreeValue = this.isTruthy(this.element.getAttribute('data-allow-free-value'));
+        this.allowFreeValue = parseBoolean(this.element.getAttribute('data-allow-free-value'));
         this.options = Array.from(this.element.querySelectorAll<HTMLButtonElement>('[data-dropdown-option]')).map((optionElement) => ({
             element: optionElement,
             label: optionElement.getAttribute('data-label') || optionElement.textContent?.trim() || '',
@@ -478,10 +479,6 @@ export default class DropdownInput extends BaseComponent {
 
     private getVisibleOptions(): DropdownOption[] {
         return this.options.filter((option) => !option.element.classList.contains('hidden'));
-    }
-
-    private isTruthy(value: string | null): boolean {
-        return value === 'true' || value === 'True';
     }
 
 }

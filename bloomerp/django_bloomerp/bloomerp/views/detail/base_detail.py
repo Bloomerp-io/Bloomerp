@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Any, Optional
 from django.views.generic.detail import DetailView
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import ObjectHTML, get_model_config
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
@@ -20,7 +21,8 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
     exclude_header = False
     permissions : list[str] = ["view"]
     permission_fields : list[tuple[str, str]] = []
-
+    htmx_include_addendum_padding = False
+    
     def _can_change_avatar(self, content_type: ContentType) -> bool:
         """Whether the user can change the avatar field
 
@@ -104,6 +106,8 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         context["tabs_top_level"] = resolved_tabs.get("top_level_tabs", [])
         context["tab_folders"] = resolved_tabs.get("folders", [])
         context["tabs"] = resolved_tabs.get("top_level_tabs", [])
+        context["extra_buttons"] = self.get_extra_buttons()
+        context["object_actions"] = self.get_object_actions()
         return context
 
     def get_tabs(self):
@@ -124,5 +128,23 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
                 )
         return tabs
     
-    
+    def get_extra_buttons(self) -> list[ObjectHTML]:
+        """Returns the extra buttons
+
+        Returns:
+            list[ObjectHTML]: the buttons
+        """
+        config = get_model_config(self.model)
+        if config and config.detail_view_settings:
+            return config.detail_view_settings.extra_buttons if config.detail_view_settings.extra_buttons else []
+        
+        return []
+
+    def get_object_actions(self):
+        config = get_model_config(self.model)
+        if config and config.object_actions:
+            return config.object_actions
+
+        return []
+
         

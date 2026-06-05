@@ -1,37 +1,82 @@
 <div id="htmx-addendum" {% if include_addendum_oob %}hx-swap-oob="outerHTML"{% endif %}>
-    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <c-ui.text.subtitle>
-            {{ route_title | title }}
-        </c-ui.text.subtitle>
-
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 p-4">
         <div class="w-full overflow-x-auto sm:w-auto sm:max-w-[60%]">
-            <c-ui.breadcrumb.body class="min-w-max justify-start sm:justify-end">
+            <nav
+                class="flex min-w-max justify-start sm:justify-end"
+                aria-label="Breadcrumb"
+                bloomerp-component="breadcrumb"
+            >
+                <ol class="inline-flex items-center">
                 {% for crumb in breadcrumbs %}
-                    {% if crumb.active %}
-                    <c-ui.breadcrumb.item
-                        text="{{ crumb.text | title }}"
-                        hx_get="{{ crumb.url }}"
-                        hx_target="#main-content"
-                        hx_swap="innerHTML"
-                        hx_push_url="true"
-                        separator="chevron"
-                        :active="True"
-                        />
-                    {% else %}
-                    <c-ui.breadcrumb.item
-                        text="{{ crumb.text | title }}"
-                        hx_get="{{ crumb.url }}"
-                        hx_target="#main-content"
-                        hx_swap="innerHTML"
-                        hx_push_url="true"
-                        separator="chevron"
-                        :active="False"
-                        />
+                    {% if breadcrumbs|length > 2 and forloop.counter == 2 %}
+                    <li
+                        class="inline-flex origin-left items-center overflow-hidden whitespace-nowrap transition-all duration-200 ease-out"
+                        data-breadcrumb-ellipsis
+                    >
+                        <button
+                            type="button"
+                            class="inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-sm font-medium text-primary-900 transition-colors hover:bg-gray-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            aria-label="Show breadcrumb path"
+                            aria-expanded="false"
+                            data-breadcrumb-toggle
+                        >
+                            ...
+                        </button>
+                        <svg class="mx-2 h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </li>
                     {% endif %}
+
+                    {% if breadcrumbs|length > 2 and not forloop.first and not forloop.last %}
+                    <li
+                        class="inline-flex w-0 origin-left -translate-x-1 scale-95 items-center overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 ease-out pointer-events-none"
+                        data-breadcrumb-collapsed-item
+                    >
+                    {% else %}
+                    <li class="inline-flex items-center">
+                    {% endif %}
+                        {% if crumb.active %}
+                        <a
+                            href="#"
+                            class="inline-flex items-center text-sm font-medium text-gray-400"
+                            aria-current="page"
+                            hx-get="{{ crumb.url }}"
+                            hx-target="#main-content"
+                        >
+                            {{ crumb.text | title }}
+                        </a>
+                        {% else %}
+                        <a
+                            href="#"
+                            hx-get="{{ crumb.url }}"
+                            hx-target="#main-content"
+                            hx-swap="innerHTML"
+                            hx-push-url="true"
+                            class="inline-flex items-center text-sm font-medium text-primary-900 transition-colors hover:text-primary-600"
+                        >
+                            {{ crumb.text | title }}
+                        </a>
+                        {% endif %}
+
+                        {% if not crumb.active %}
+                        <svg class="mx-2 h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        {% endif %}
+                    </li>
                 {% endfor %}
-            </c-ui.breadcrumb.body>
+                </ol>
+            </nav>
         </div>
     </div>
 </div>
 
-{% include template_name %}
+{% if htmx_include_addendum_padding %}
+<div class="p-4">
+    {% include template_name %}
+</div>
+{% else %}
+    {% include template_name %}
+{% endif %}
+
