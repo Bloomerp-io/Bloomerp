@@ -1,6 +1,10 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django import forms
 from django.db import models
+from django.db import connection
+from django.utils.datastructures import MultiValueDict
 
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.access_control.field_policy import FieldPolicy
@@ -8,15 +12,29 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
+from bloomerp.models.files.file import File
+from bloomerp.models.forms.form import Form as BloomerpForm
+from bloomerp.models.forms.form_submission import FormSubmission
+from bloomerp.services.sectioned_layout_services import build_crud_layout_field_context
+from bloomerp.services.form_services import FormManager
+from bloomerp.services.one_to_many_field_services import (
+    save_submitted_one_to_many_fields,
+)
 from bloomerp.field_types import FieldType, Lookup
+from bloomerp.form_fields.address_field import AddressFormField, AddressValue
 from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
+from bloomerp.form_fields.week_field import WeekFormField, WeekValue
+from bloomerp.model_fields.address_field import AddressField
 from bloomerp.model_fields.phone_number_field import PhoneNumberField
+from bloomerp.model_fields.week_field import WeekField
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
+from bloomerp.widgets.address_widget import AddressWidget
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
+from bloomerp.widgets.object_files_widget import ObjectFilesWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
+from bloomerp.widgets.week_widget import WeekWidget
 
 
 class TestApplicationField(BaseBloomerpModelTestCase):
@@ -51,6 +69,26 @@ class TestApplicationField(BaseBloomerpModelTestCase):
             },
             use_bloomerp_base=True,
         )["PhoneRecord"]
+        cls.AddressRecordModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "AddressRecord": {
+                    "address": AddressField(blank=True, null=True),
+                    "__str__": lambda self: "Address record",
+                }
+            },
+            use_bloomerp_base=True,
+        )["AddressRecord"]
+        cls.WeekRecordModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "WeekRecord": {
+                    "week": WeekField(blank=True, null=True),
+                    "__str__": lambda self: str(self.week or ""),
+                }
+            },
+            use_bloomerp_base=True,
+        )["WeekRecord"]
 
     def test_pk_application_field_returns_widget(self):
         content_type = ContentType.objects.get_for_model(Policy)
@@ -91,6 +129,16 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertIs(field_type.widget_cls, OneToManyFieldWidget)
         self.assertEqual(field_type.widget_related_model_attr, "related_model")
         self.assertTrue(field_type.editable_without_form_field)
+
+    def test_files_application_field_uses_files_relation_field_type(self):
+        application_field = ApplicationField.objects.get(
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            field="files",
+        )
+
+        self.assertEqual(application_field.field_type, FieldType.FILES_RELATION_FIELD.id)
+        self.assertIsInstance(application_field.get_widget(), ObjectFilesWidget)
+        self.assertTrue(application_field.get_field_type_enum().value.editable_without_form_field)
 
     def test_one_to_many_widget_renders_inline_table_markup(self):
         content_type = ContentType.objects.get_for_model(FieldPolicy)
@@ -180,6 +228,106 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertEqual(field_type.default_model_field_args["max_length"], 30)
         self.assertIn(Lookup.CONTAINS, field_type.lookups)
 
+    def test_address_field_type_uses_address_field_parts(self):
+        field_type = FieldType.ADDRESS_FIELD.value
+
+        self.assertEqual(field_type.id, "AddressField")
+        self.assertIs(field_type.model_field_cls, AddressField)
+        self.assertIs(field_type.form_field_cls, AddressFormField)
+        self.assertIs(field_type.widget_cls, AddressWidget)
+        self.assertIn(Lookup.CONTAINS, field_type.lookups)
+
+    def test_week_field_type_uses_week_field_parts(self):
+        field_type = FieldType.WEEK_FIELD.value
+
+        self.assertEqual(field_type.id, "WeekField")
+        self.assertIs(field_type.model_field_cls, WeekField)
+        self.assertIs(field_type.form_field_cls, WeekFormField)
+        self.assertIs(field_type.widget_cls, WeekWidget)
+        self.assertEqual(field_type.default_model_field_args["max_length"], 8)
+        self.assertIn(Lookup.EQUALS, field_type.lookups)
+
+    def test_address_form_field_normalizes_structured_value(self):
+        form_field = AddressFormField()
+
+        value = form_field.clean(
+            [
+                " Main street 1 ",
+                "",
+                " 1000 ",
+                " Brussels ",
+                "",
+                "BE",
+            ]
+        )
+
+        self.assertIsInstance(value, AddressValue)
+        self.assertEqual(
+            value,
+            {
+                "street_1": "Main street 1",
+                "street_2": "",
+                "postal_code": "1000",
+                "city": "Brussels",
+                "state": "",
+                "country": "BE",
+            },
+        )
+        self.assertEqual(str(value), "Main street 1, 1000 Brussels, Belgium")
+
+    def test_address_form_field_rejects_unknown_country_code(self):
+        form_field = AddressFormField()
+
+        with self.assertRaises(ValidationError):
+            form_field.clean(
+                [
+                    "Main street 1",
+                    "",
+                    "1000",
+                    "Brussels",
+                    "",
+                    "ZZZ",
+                ]
+            )
+
+    def test_address_model_field_formfield_uses_address_widget(self):
+        model_field = AddressField()
+        form_field = model_field.formfield()
+
+        self.assertIsInstance(form_field, AddressFormField)
+        self.assertIsInstance(form_field.widget, AddressWidget)
+
+    def test_address_model_field_to_python_returns_string_renderable_value(self):
+        model_field = AddressField()
+
+        value = model_field.to_python(
+            {
+                "street_1": "Main street 1",
+                "street_2": "",
+                "postal_code": "1000",
+                "city": "Brussels",
+                "state": "",
+                "country": "BE",
+            }
+        )
+
+        self.assertIsInstance(value, AddressValue)
+        self.assertEqual(str(value), "Main street 1, 1000 Brussels, Belgium")
+
+    def test_stale_json_field_metadata_uses_address_widget_for_address_field(self):
+        content_type = ContentType.objects.get_for_model(self.AddressRecordModel)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="address",
+        )
+        application_field.field_type = FieldType.JSON_FIELD.id
+
+        form_field = application_field.get_form_field()
+
+        self.assertEqual(application_field.get_field_type_enum(), FieldType.ADDRESS_FIELD)
+        self.assertIsInstance(form_field, AddressFormField)
+        self.assertIsInstance(form_field.widget, AddressWidget)
+
     def test_phone_number_form_field_normalizes_country_codes(self):
         form_field = PhoneNumberFormField()
 
@@ -200,6 +348,89 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertIsInstance(form_field.widget, PhoneNumberWidget)
         self.assertEqual(form_field.widget.input_type, "tel")
 
+    def test_week_form_field_returns_template_friendly_value(self):
+        form_field = WeekFormField()
+
+        value = form_field.clean("2026-W26")
+
+        self.assertIsInstance(value, WeekValue)
+        self.assertEqual(value.year, 2026)
+        self.assertEqual(value.week, 26)
+        self.assertEqual(str(value), "2026-W26")
+
+    def test_week_form_field_rejects_invalid_week(self):
+        form_field = WeekFormField()
+
+        with self.assertRaises(ValidationError):
+            form_field.clean("2026-W54")
+
+    def test_week_model_field_formfield_uses_week_widget(self):
+        model_field = WeekField()
+        form_field = model_field.formfield()
+
+        self.assertIsInstance(form_field, WeekFormField)
+        self.assertIsInstance(form_field.widget, WeekWidget)
+        self.assertEqual(form_field.widget.input_type, "week")
+        self.assertEqual(str(form_field.clean("2026-W26")), "2026-W26")
+
+    def test_week_model_field_exposes_database_type(self):
+        model_field = WeekField(max_length=8)
+
+        self.assertEqual(
+            model_field.db_type(connection),
+            models.CharField(max_length=8).db_type(connection),
+        )
+
+    def test_week_model_field_round_trips_string_renderable_value(self):
+        record = self.WeekRecordModel.objects.create(week="2026-W26")
+
+        record = self.WeekRecordModel.objects.get(pk=record.pk)
+
+        self.assertIsInstance(record.week, WeekValue)
+        self.assertEqual(record.week.year, 2026)
+        self.assertEqual(record.week.week, 26)
+        self.assertEqual(str(record.week), "2026-W26")
+
+    def test_week_application_field_widget_uses_week_input(self):
+        content_type = ContentType.objects.get_for_model(self.WeekRecordModel)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="week",
+        )
+
+        form_field = application_field.get_form_field()
+
+        self.assertEqual(application_field.get_field_type_enum(), FieldType.WEEK_FIELD)
+        self.assertIsInstance(form_field, WeekFormField)
+        self.assertIsInstance(form_field.widget, WeekWidget)
+        self.assertEqual(form_field.widget.input_type, "week")
+
+    def test_week_layout_render_uses_week_input_with_input_class(self):
+        content_type = ContentType.objects.get_for_model(self.WeekRecordModel)
+        application_field = ApplicationField.objects.get(
+            content_type=content_type,
+            field="week",
+        )
+        form_field = application_field.get_form_field()
+        form_cls = type("WeekForm", (forms.Form,), {"week": form_field})
+        form = form_cls(initial={"week": "2026-W26"})
+
+        context = build_crud_layout_field_context(
+            application_field=application_field,
+            bound_field=form["week"],
+        )
+
+        self.assertIn('type="week"', context["input"])
+        self.assertIn('class="input w-full"', context["input"])
+
+    def test_phone_number_model_field_exposes_database_type(self):
+        model_field = PhoneNumberField(max_length=30)
+
+        self.assertEqual(
+            model_field.db_type(connection),
+            models.CharField(max_length=30).db_type(connection),
+        )
+
     def test_stale_char_field_metadata_uses_phone_number_widget_for_phone_field(self):
         content_type = ContentType.objects.get_for_model(self.PhoneRecordModel)
         application_field = ApplicationField.objects.get(
@@ -213,6 +444,14 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertEqual(application_field.get_field_type_enum(), FieldType.PHONE_NUMBER_FIELD)
         self.assertIsInstance(form_field, PhoneNumberFormField)
         self.assertIsInstance(form_field.widget, PhoneNumberWidget)
+
+    def test_address_model_field_exposes_database_type(self):
+        model_field = AddressField()
+
+        self.assertEqual(
+            model_field.db_type(connection),
+            models.JSONField().db_type(connection),
+        )
 
     def test_property_backed_application_field_returns_no_form_field(self):
         content_type = ContentType.objects.get_for_model(RowPolicyRule)
@@ -238,9 +477,14 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         row_policy_rule = RowPolicyRule.objects.create(
             row_policy=row_policy,
             rule={
-                "application_field_id": str(target_field.pk),
-                "operator": Lookup.EQUALS.value.id,
-                "value": "Policy",
+                "connector": "OR",
+                "conditions": [
+                    {
+                        "application_field_id": str(target_field.pk),
+                        "operator": Lookup.EQUALS.value.id,
+                        "value": "Policy",
+                    }
+                ],
             },
         )
 
@@ -302,6 +546,351 @@ class TestApplicationField(BaseBloomerpModelTestCase):
             ).exists()
         )
 
+    def test_form_submission_includes_one_to_many_layout_rows(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        relation_field = ApplicationField.objects.get(
+            content_type=parent_content_type,
+            field="lines",
+        )
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Inline rows",
+                        columns=1,
+                        items=[
+                            LayoutItem(
+                                id=str(relation_field.pk),
+                                colspan=1,
+                                config={"inline_fields": ["description", "hours"]},
+                            )
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "POST": {
+                    "lines__0__id": "",
+                    "lines__0__description": "Contract line",
+                    "lines__0__hours": "3.75",
+                }
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "David",
+                "last_name": "Bloomer",
+            },
+            request=request,
+        )
+
+        response.form_submission.refresh_from_db()
+        self.assertEqual(
+            response.form_submission.data,
+            {
+                "first_name": "David",
+                "last_name": "Bloomer",
+                "lines": [
+                    {
+                        "id": "",
+                        "description": "Contract line",
+                        "hours": "3.75",
+                    }
+                ],
+            },
+        )
+
+    def test_form_submission_without_review_persists_object_and_one_to_many_rows(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name", "age", "lines"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=False,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["age"].pk)),
+                            LayoutItem(
+                                id=str(fields_by_name["lines"].pk),
+                                colspan=2,
+                                config={"inline_fields": ["description", "hours"]},
+                            ),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {
+                    "lines__0__id": "",
+                    "lines__0__description": "Persisted line",
+                    "lines__0__hours": "4.25",
+                },
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Persisted",
+                "last_name": "Customer",
+                "age": "41",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        response.form_submission.refresh_from_db()
+        self.assertTrue(response.form_submission.persisted)
+        customer = self.CustomerModel.objects.get(first_name="Persisted")
+        self.assertEqual(customer.last_name, "Customer")
+        self.assertTrue(
+            self.CustomerLineModel.objects.filter(
+                customer=customer,
+                description="Persisted line",
+                hours="4.25",
+            ).exists()
+        )
+
+    def test_form_submission_with_review_attaches_files_to_submission_then_persist_moves_to_object(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        form_submission_content_type = ContentType.objects.get_for_model(FormSubmission)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name", "age", "files"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=True,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["age"].pk)),
+                            LayoutItem(id=str(fields_by_name["files"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {},
+                "FILES": MultiValueDict(
+                    {
+                        "files": [
+                            SimpleUploadedFile("submitted.pdf", b"submitted content", content_type="application/pdf")
+                        ]
+                    }
+                ),
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Reviewed",
+                "last_name": "Customer",
+                "age": "42",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        submission = response.form_submission
+        submission.refresh_from_db()
+        attached_file = File.objects.get(name="submitted.pdf")
+        self.assertEqual(attached_file.content_type, form_submission_content_type)
+        self.assertEqual(attached_file.object_id, str(submission.pk))
+        self.assertEqual(submission.data["files"], [str(attached_file.id)])
+
+        FormManager(form_object).persist_form_submission(submission, request=request)
+
+        attached_file.refresh_from_db()
+        customer = self.CustomerModel.objects.get(first_name="Reviewed")
+        self.assertEqual(attached_file.content_type, parent_content_type)
+        self.assertEqual(attached_file.object_id, str(customer.pk))
+        self.assertTrue(attached_file.persisted)
+
+    def test_form_submission_without_review_moves_files_to_persisted_object_immediately(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name", "age", "files"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=False,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["age"].pk)),
+                            LayoutItem(id=str(fields_by_name["files"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {},
+                "FILES": MultiValueDict(
+                    {
+                        "files": [
+                            SimpleUploadedFile("immediate.pdf", b"immediate content", content_type="application/pdf")
+                        ]
+                    }
+                ),
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Immediate",
+                "last_name": "Customer",
+                "age": "43",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        response.form_submission.refresh_from_db()
+        self.assertTrue(response.form_submission.persisted)
+        customer = self.CustomerModel.objects.get(first_name="Immediate")
+        attached_file = File.objects.get(name="immediate.pdf")
+        self.assertEqual(attached_file.content_type, parent_content_type)
+        self.assertEqual(attached_file.object_id, str(customer.pk))
+        self.assertEqual(response.form_submission.data["files"], [str(attached_file.id)])
+
+    def test_form_initial_payload_persists_hidden_model_fields(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            requires_review=False,
+            initial_payload={"age": 41},
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "user": self.admin_user,
+                "POST": {},
+            },
+        )()
+
+        response = FormManager(form_object).register_submission(
+            {
+                "first_name": "Hidden",
+                "last_name": "Default",
+            },
+            request=request,
+        )
+
+        self.assertTrue(response.submitted)
+        response.form_submission.refresh_from_db()
+        self.assertEqual(response.form_submission.data["age"], 41)
+        self.assertTrue(response.form_submission.persisted)
+        customer = self.CustomerModel.objects.get(first_name="Hidden")
+        self.assertEqual(customer.age, 41)
+
+    def test_visible_initial_payload_is_available_as_form_initial_data(self):
+        parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        fields_by_name = {
+            field.field: field
+            for field in ApplicationField.objects.filter(
+                content_type=parent_content_type,
+                field__in=["first_name", "last_name"],
+            )
+        }
+        form_object = BloomerpForm.objects.create(
+            name="Customer form",
+            content_type=parent_content_type,
+            initial_payload={
+                "first_name": "Visible",
+                "age": 41,
+            },
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=2,
+                        items=[
+                            LayoutItem(id=str(fields_by_name["first_name"].pk)),
+                            LayoutItem(id=str(fields_by_name["last_name"].pk)),
+                        ],
+                    )
+                ]
+            ).model_dump(),
+        )
+
+        initial_data = FormManager(form_object).get_initial_form_data()
+
+        self.assertEqual(initial_data, {"first_name": "Visible"})
+
     def test_one_to_many_save_service_raises_validation_error_for_missing_required_fields(self):
         row_policy = RowPolicy.objects.create(
             content_type=ContentType.objects.get_for_model(Policy),
@@ -351,3 +940,49 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertTrue(
             any("Policies row 0, Row policy:" in message for message in exc_info.exception.messages)
         )
+
+
+class FormCleanTestCase(BaseBloomerpModelTestCase):
+    auto_create_customers = False
+    auto_create_users = False
+    create_foreign_models = True
+
+    def test_form_clean_resets_layout_and_initial_payload_when_content_type_changes(self):
+        customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        country_content_type = ContentType.objects.get_for_model(self.CountryModel)
+        customer_first_name_field = ApplicationField.objects.get(
+            content_type=customer_content_type,
+            field="first_name",
+        )
+        country_name_field = ApplicationField.objects.get(
+            content_type=country_content_type,
+            field="name",
+        )
+        form_object = BloomerpForm(
+            name="Customer form",
+            content_type=customer_content_type,
+            initial_payload={"age": 41},
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        title="Customer",
+                        columns=1,
+                        items=[LayoutItem(id=str(customer_first_name_field.pk))],
+                    )
+                ]
+            ).model_dump(),
+        )
+        BloomerpForm.objects.bulk_create([form_object])
+        form_object = BloomerpForm.objects.get(name="Customer form")
+
+        form_object.content_type = country_content_type
+        form_object.full_clean()
+
+        layout_item_ids = {
+            str(item.id)
+            for row in form_object.layout_obj.rows
+            for item in row.items
+        }
+        self.assertEqual(form_object.initial_payload, {})
+        self.assertNotIn(str(customer_first_name_field.pk), layout_item_ids)
+        self.assertIn(str(country_name_field.pk), layout_item_ids)

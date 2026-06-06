@@ -216,8 +216,12 @@ class TestDataView(BaseBloomerpModelTestCase):
         row_rule = RowPolicyRule.objects.create(
             row_policy=row_policy,
             rule={
-                "field": "__all__",
-                "application_field_id": "__all__",
+                "connector": "OR",
+                "conditions": [
+                    {
+                        "field": "__all__",
+                    }
+                ],
             },
         )
         row_rule.add_permission("view_customer")

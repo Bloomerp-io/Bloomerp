@@ -4,6 +4,7 @@ import Sortable, { type SortableEvent } from "sortablejs";
 import BaseComponent, { componentIdentifier, getComponent, initComponents } from "../BaseComponent";
 import BaseSectionedLayoutItem from "./BaseSectionedLayoutItem";
 import { getCsrfToken } from "../../utils/cookies";
+import { parseBoolean } from "../../utils/booleans";
 
 export type SectionedLayoutItemPayload = {
     id: string;
@@ -195,13 +196,18 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         this.element.addEventListener("keydown", this.searchKeydownHandler, true);
 
         this.setupDnD();
+        const initEditMode = this.parseBooleanDatasetValue(this.element.dataset.initEdit);
         this.itemLoadQueue = this.loadInitialItems().then(() => {
             this.reindexItems();
             this.syncAvailableItemsState();
             this.refreshSortables();
-            if (!this.editMode && this.items.length > 0) {
+
+            if (initEditMode) {
+                this.setEditMode(true);
+            } else if (!this.editMode && this.items.length > 0) {
                 this.focusItemByIndex(0);
             }
+
             if (this.searchActive) {
                 this.refreshSearchMatches();
             }
@@ -236,8 +242,12 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         }
     }
 
-    protected toggleEditMode(): void {
-        this.editMode = !this.editMode;
+    public toggleEditMode(): void {
+        this.setEditMode(!this.editMode);
+    }
+
+    protected setEditMode(enabled: boolean): void {
+        this.editMode = enabled;
         this.items.forEach((item) => item.setEditMode(this.editMode));
         this.updateRowControlVisibility();
         this.updateSortableDisabledState();
@@ -253,6 +263,10 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             this.isRowFocused = false;
             this.updateRowControlVisibility();
         }
+    }
+
+    protected parseBooleanDatasetValue(value: string | undefined): boolean {
+        return parseBoolean(value);
     }
 
     protected parseLayoutData(): SectionedLayoutRowPayload[] {
@@ -858,7 +872,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         });
     }
 
-    protected async loadAvailableItems(options?: { focusFirstItem?: boolean }): Promise<void> {
+    public async loadAvailableItems(options?: { focusFirstItem?: boolean }): Promise<void> {
         const container = this.element?.querySelector<HTMLElement>("[data-layout-available-items]");
         const url = this.element?.dataset.layoutAvailableItemsUrl;
         if (!container || !url) return;

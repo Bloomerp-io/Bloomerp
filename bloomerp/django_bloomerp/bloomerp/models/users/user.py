@@ -17,7 +17,7 @@ from bloomerp.models.workspaces.sidebar_item import Sidebar
 
 USER_CONFIG = BloomerpModelConfig(
     module="users",
-    layout=FieldLayout()
+    layout=FieldLayout(),
 )
 
 class AbstractBloomerpUser(
@@ -29,8 +29,6 @@ class AbstractBloomerpUser(
     class Meta:
         abstract = True
 
-    # String search mixin fields
-    string_search_fields = ['first_name+last_name', 'username']
     allow_string_search = True
 
     # ------------------------------------------------

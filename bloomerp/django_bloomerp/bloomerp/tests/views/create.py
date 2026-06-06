@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from bloomerp.field_types import Lookup
@@ -12,6 +13,7 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
     UserCreateViewPreference,
+    File,
 )
 from bloomerp.tests.views.crud_test_mixin import CrudViewTestMixin
 
@@ -49,6 +51,14 @@ class TestCreateView(CrudViewTestMixin):
         user.refresh_from_db()
         return permission
 
+    def group_row_rule(self, row_rule):
+        if "conditions" in row_rule:
+            return row_rule
+        return {
+            "connector": "OR",
+            "conditions": [row_rule],
+        }
+
     def grant_policy(self, *, user, field_names, row_rules=None):
         field_policy = FieldPolicy.objects.create(
             content_type=self.content_type,
@@ -65,7 +75,7 @@ class TestCreateView(CrudViewTestMixin):
         for row_rule in row_rules or []:
             created_rule = RowPolicyRule.objects.create(
                 row_policy=row_policy,
-                rule=row_rule,
+                rule=self.group_row_rule(row_rule),
             )
             created_rule.add_permission(f"add_{self.CustomerModel._meta.model_name}")
 
@@ -122,6 +132,43 @@ class TestCreateView(CrudViewTestMixin):
         created = self.CustomerModel.objects.get()
         self.assertEqual(created.first_name, "Another")
         self.assertEqual(created.last_name, "Customer")
+
+    def test_post_with_files_layout_field_attaches_uploaded_file_to_created_object(self):
+        preference = UserCreateViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
+        preference.layout = {
+            "rows": [
+                {
+                    "title": "Primary",
+                    "columns": 2,
+                    "items": [
+                        {"id": self.fields_by_name["first_name"].pk, "colspan": 1},
+                        {"id": self.fields_by_name["last_name"].pk, "colspan": 1},
+                        {"id": self.fields_by_name["age"].pk, "colspan": 1},
+                        {"id": self.fields_by_name["files"].pk, "colspan": 1},
+                    ],
+                }
+            ]
+        }
+        preference.save(update_fields=["layout"])
+        self.client.force_login(self.admin_user)
+
+        uploaded_file = SimpleUploadedFile("timesheet.pdf", b"timesheet content", content_type="application/pdf")
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "File",
+                "last_name": "Owner",
+                "age": 31,
+                "files": uploaded_file,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        created = self.CustomerModel.objects.get(first_name="File")
+        attached_file = File.objects.get(name="timesheet.pdf")
+        self.assertEqual(attached_file.content_type, self.content_type)
+        self.assertEqual(attached_file.object_id, str(created.pk))
+        self.assertTrue(attached_file.persisted)
 
     def test_get_without_add_permission_returns_403(self):
         """
@@ -216,6 +263,48 @@ class TestCreateView(CrudViewTestMixin):
         self.assertContains(response, f'data-layout-item-id="{self.fields_by_name["age"].pk}"', html=False)
         self.assertContains(response, "border-red-500", html=False)
 
+    def test_post_with_hidden_required_layout_field_shows_visible_error_message(self):
+        self.normal_user.is_staff = True
+        self.normal_user.save(update_fields=["is_staff"])
+        self.grant_policy(
+            user=self.normal_user,
+            field_names=["first_name", "last_name", "age"],
+            row_rules=[
+                {
+                    "application_field_id": str(self.fields_by_name["first_name"].pk),
+                    "operator": Lookup.EQUALS.value.id,
+                    "value": "Allowed",
+                }
+            ],
+        )
+        preference = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
+        preference.layout = {
+            "rows": [
+                {
+                    "title": "Primary",
+                    "columns": 2,
+                    "items": [
+                        {"id": self.fields_by_name["first_name"].pk, "colspan": 1},
+                        {"id": self.fields_by_name["age"].pk, "colspan": 1},
+                    ],
+                }
+            ]
+        }
+        preference.save(update_fields=["layout"])
+        self.client.force_login(self.normal_user)
+
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "Allowed",
+                "age": "30",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Last name: This field is required.", html=False)
+        self.assertEqual(self.CustomerModel.objects.count(), 0)
+
     def test_post_rejects_disallowed_injected_field(self):
         self.grant_policy(
             user=self.normal_user,
@@ -299,6 +388,49 @@ class TestCreateView(CrudViewTestMixin):
         created = self.CustomerModel.objects.get()
         self.assertEqual(created.first_name, "Allowed")
         self.assertEqual(created.created_by, self.normal_user)
+
+    def test_post_creates_object_when_and_row_rule_matches_foreign_key_value(self):
+        self.normal_user.is_staff = True
+        self.normal_user.save(update_fields=["is_staff"])
+        belgium = self.CountryModel.objects.get(name="Belgium")
+        self.grant_policy(
+            user=self.normal_user,
+            field_names=["first_name", "last_name", "age", "country"],
+            row_rules=[
+                {
+                    "connector": "AND",
+                    "conditions": [
+                        {
+                            "application_field_id": str(self.fields_by_name["last_name"].pk),
+                            "operator": Lookup.EQUALS.value.id,
+                            "value": "Peeters",
+                        },
+                        {
+                            "application_field_id": str(self.fields_by_name["country"].pk),
+                            "operator": Lookup.FOREIGN_EQUALS.value.id,
+                            "value": str(belgium.pk),
+                        },
+                    ],
+                }
+            ],
+        )
+        self.client.force_login(self.normal_user)
+
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "Jaimy",
+                "last_name": "Peeters",
+                "age": 30,
+                "country": str(belgium.pk),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.CustomerModel.objects.count(), 1)
+        created = self.CustomerModel.objects.get()
+        self.assertEqual(created.last_name, "Peeters")
+        self.assertEqual(created.country, belgium)
 
     def test_component_post_from_foreign_field_widget_returns_trigger_instead_of_refresh(self):
         self.client.force_login(self.admin_user)
@@ -386,9 +518,9 @@ class TestCreateView(CrudViewTestMixin):
 
         self.assertEqual(response.status_code, 200)
         preference = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
-        self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
+        self.assertEqual(preference.layout_obj.rows[0].title, "Primary")
+        self.assertEqual(preference.layout_obj.rows[0].items[0].id, str(field.pk))
+        self.assertEqual(preference.layout_obj.rows[0].items[0].colspan, 2)
 
     def test_empty_create_layout_is_repaired_with_default_items(self):
         self.grant_policy(
@@ -405,24 +537,24 @@ class TestCreateView(CrudViewTestMixin):
         preference = UserCreateViewPreference.objects.create(
             user=self.normal_user,
             content_type=self.content_type,
-            field_layout={},
+            layout={},
         )
 
         repaired = UserCreateViewPreference.get_or_create_for_user(self.normal_user, self.content_type)
 
         self.assertEqual(repaired.pk, preference.pk)
-        self.assertTrue(any(row.items for row in repaired.field_layout_obj.rows))
+        self.assertTrue(any(row.items for row in repaired.layout_obj.rows))
 
     def test_selected_create_preference_unselects_previous_preference(self):
         first = UserCreateViewPreference.objects.create(
             user=self.normal_user,
             content_type=self.content_type,
-            field_layout={},
+            layout={},
         )
         second = UserCreateViewPreference.objects.create(
             user=self.normal_user,
             content_type=self.content_type,
-            field_layout={},
+            layout={},
             selected=True,
         )
 

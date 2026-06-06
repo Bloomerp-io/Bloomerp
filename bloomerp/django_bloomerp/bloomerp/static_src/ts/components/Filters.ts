@@ -1,13 +1,156 @@
-import BaseComponent from "./BaseComponent";
+import BaseComponent, { getComponent } from "./BaseComponent";
 import htmx from "htmx.org";
+import { formatFilterLabel, formatFilterTooltip } from "@/utils/filterLabels";
 
-// Types for filter entries returned by getFilters()
-interface FilterEntry {
+export interface FilterEntryData {
     field: string;
-    applicationFieldId: string;
+    applicationFieldId: string | null;
     operator: string | null;
     value: string | string[] | null;
+    key?: string | null;
 }
+
+export class FilterEntry implements FilterEntryData {
+    public field: string;
+    public applicationFieldId: string | null;
+    public operator: string | null;
+    public value: string | string[] | null;
+    public key: string | null;
+
+    public constructor({ field, applicationFieldId, operator, value, key = null }: FilterEntryData) {
+        this.field = field;
+        this.applicationFieldId = applicationFieldId;
+        this.operator = operator;
+        this.value = value;
+        this.key = key;
+    }
+
+    public static from(entry: FilterEntry | FilterEntryData): FilterEntry {
+        return entry instanceof FilterEntry ? entry : new FilterEntry(entry);
+    }
+
+    public getFilterKey(): string {
+        if (this.key) {
+            return this.key;
+        }
+
+        if (this.operator) {
+            return `${this.field}__${this.operator}`;
+        }
+
+        return this.field;
+    }
+
+    public stringifyValue(): string {
+        if (Array.isArray(this.value)) {
+            return this.value.join(", ");
+        }
+
+        return String(this.value ?? "");
+    }
+
+}
+
+export type FilterBoxRemoveHandler = (filter: FilterEntry, filterBox: FilterBox) => void;
+
+export class FilterBox {
+    public filter: FilterEntry;
+    private removeHandler: FilterBoxRemoveHandler | null;
+    private element: HTMLElement | null = null;
+
+    public constructor(filter: FilterEntry | FilterEntryData, removeHandler: FilterBoxRemoveHandler | null = null) {
+        this.filter = FilterEntry.from(filter);
+        this.removeHandler = removeHandler;
+    }
+
+    public setHandleRemove(removeHandler: FilterBoxRemoveHandler): void {
+        this.removeHandler = removeHandler;
+    }
+
+    public render(): HTMLElement {
+        const filterKey = this.filter.getFilterKey();
+        const badge = document.createElement("span");
+        badge.className = "badge badge-primary";
+        badge.dataset.filterKey = filterKey;
+        badge.title = this.filter.key
+            ? `${filterKey} = ${this.filter.stringifyValue()}`
+            : formatFilterTooltip(this.filter.field, this.filter.operator, this.filter.value);
+
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "badge-remove";
+        removeButton.dataset.filterRemove = "true";
+        removeButton.setAttribute("aria-label", "Remove filter");
+        removeButton.innerHTML = '<i class="fa fa-x"></i>';
+        removeButton.addEventListener("click", (event) => this.handleRemove(event));
+
+        const label = document.createElement("span");
+        label.textContent = formatFilterLabel(this.filter.field, this.filter.operator, this.filter.value);
+
+        badge.appendChild(removeButton);
+        badge.appendChild(label);
+        this.element = badge;
+        return badge;
+    }
+
+    public handleRemove(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        if (this.removeHandler) {
+            this.removeHandler(this.filter, this);
+            return;
+        }
+
+        this.remove();
+    }
+
+    public remove(): void {
+        if (this.element) {
+            this.element.remove();
+            this.element = null;
+        }
+    }
+}
+
+type FilterEntryLike = FilterEntry | FilterEntryData;
+
+export const LOOKUP_LABELS : Map<string, string> = new Map([
+    ["exact", "is"],
+    ["equals", "is"],
+    ["icontains", "contains"],
+    ["contains", "contains"],
+    ["startswith", "starts with"],
+    ["endswith", "ends with"],
+    ["gte", "≥"],
+    ["lte", "≤"],
+    ["gt", ">"],
+    ["lt", "<"],
+    ["isnull", "is empty"],
+    ["in", "in"],
+    ["year", "year is"],
+    ["month", "month is"],
+    ["day", "day is"],
+    ["week", "week is"],
+    ["today", "is today"],
+    ["yesterday", "was yesterday"],
+    ["this_week", "is in this week"],
+    ["last_week", "is in last week"],
+    ["this_month", "is in this month"],
+    ["last_month", "is in last month"],
+    ["this_quarter", "is in this quarter"],
+    ["last_quarter", "is in last quarter"],
+    ["this_year", "is in this year"],
+    ["last_year", "is in last year"],
+])
+
+const RESERVED_FILTER_KEYS = new Set([
+    "q",
+    "page",
+    "calendar_page",
+    "sort",
+    "direction",
+    "_component_id",
+]);
 
 export default class FilterContainer extends BaseComponent {
     private static readonly MAX_ADVANCED_RELATION_DEPTH = 2;
@@ -17,7 +160,11 @@ export default class FilterContainer extends BaseComponent {
     private htmxSwapHandler: ((event: Event) => void) | null = null;
     private advancedChangeHandler: ((event: Event) => void) | null = null;
 
+    // Get filter results element
+    private filterResultsElement:HTMLElement=null;
+
     public initialize(): void {
+        
         // Get content_type_id from data attribute
         this.contentTypeId = this.element.getAttribute('data-content-type-id') || '';
 
@@ -41,6 +188,9 @@ export default class FilterContainer extends BaseComponent {
         // Listen for HTMX afterSwap events to re-attach listeners
         this.htmxSwapHandler = () => this.onAfterSwap();
         this.element.addEventListener('htmx:afterSwap', this.htmxSwapHandler);
+
+        
+        this.filterResultsElement = document.querySelector(this.element.dataset.filterResultElement)
     }
 
     /**
@@ -59,12 +209,18 @@ export default class FilterContainer extends BaseComponent {
         }
 
         // Load lookup operators via HTMX AJAX
-        const url = `/components/filters/${this.contentTypeId}/lookup-operators/${applicationFieldId}/?application_field_id=${applicationFieldId}`;
+        const url = this.buildLookupOperatorsUrl(applicationFieldId);
+        const lookupSection = this.getLookupOperatorSection();
+        if (!lookupSection) {
+            return;
+        }
 
         htmx.ajax('get', url, {
-            target: '#lookup-operator-section',
+            target: lookupSection,
             swap: 'innerHTML',
         });
+
+
     }
 
     /**
@@ -116,7 +272,7 @@ export default class FilterContainer extends BaseComponent {
             applicationFieldId = fieldSelector.value;
         } else {
             // In pre-selected field case, get from hidden input
-            const hiddenInput = document.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
+            const hiddenInput = this.element.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
             applicationFieldId = hiddenInput?.value;
         }
 
@@ -159,15 +315,23 @@ export default class FilterContainer extends BaseComponent {
 
     }
 
-    public async setFilter(filter: FilterEntry): Promise<void> {
+    public async setFilter(filter: FilterEntryLike): Promise<void> {
+        const filterEntry = FilterEntry.from(filter);
         const operatorSelect = this.getLookupOperatorInput() as HTMLSelectElement | null;
-        if (!operatorSelect || !filter.applicationFieldId || !filter.operator) {
+        if (!operatorSelect || !filterEntry.applicationFieldId || !filterEntry.operator) {
             return;
         }
 
+        if (filterEntry.field.includes("__")) {
+            const restoredAdvancedFilter = await this.setAdvancedFilter(filterEntry, operatorSelect);
+            if (restoredAdvancedFilter) {
+                return;
+            }
+        }
+
         const matchingOption = Array.from(operatorSelect.options).find((option) => {
-            return option.value === filter.operator
-                || option.getAttribute('data-lookup-django') === filter.operator;
+            return option.value === filterEntry.operator
+                || option.getAttribute('data-lookup-django') === filterEntry.operator;
         });
 
         if (!matchingOption) {
@@ -175,8 +339,127 @@ export default class FilterContainer extends BaseComponent {
         }
 
         operatorSelect.value = matchingOption.value;
-        await this.loadValueInput(filter.applicationFieldId, matchingOption.value);
-        this.setValueInput(filter.value);
+        await this.loadValueInput(filterEntry.applicationFieldId, matchingOption.value, filterEntry.value);
+        this.setValueInput(filterEntry.value);
+    }
+
+    private async setAdvancedFilter(filter: FilterEntryLike, operatorSelect: HTMLSelectElement): Promise<boolean> {
+        const filterEntry = FilterEntry.from(filter);
+        if (!filterEntry.applicationFieldId) {
+            return false;
+        }
+
+        const advancedOption = Array.from(operatorSelect.options).find((option) => option.value === "foreign_advanced");
+        if (!advancedOption) {
+            return false;
+        }
+
+        const pathParts = filterEntry.field.split("__").filter((part) => part !== "");
+        if (pathParts.length < 2) {
+            return false;
+        }
+
+        operatorSelect.value = advancedOption.value;
+        await this.loadValueInput(filterEntry.applicationFieldId, advancedOption.value);
+
+        const valueSection = this.getValueInputSection();
+        const builder = valueSection?.querySelector<HTMLElement>("[data-advanced-builder]");
+        if (!builder) {
+            return false;
+        }
+
+        let currentBuilder = builder;
+        let pathPrefix = currentBuilder.getAttribute("data-base-field") || pathParts[0];
+        const baseParts = pathPrefix.split("__").filter((part) => part !== "");
+        const remainingPathParts = pathParts.slice(baseParts.length);
+        let terminalOperatorSelect: HTMLSelectElement | null = null;
+
+        for (const fieldName of remainingPathParts) {
+            const relatedSelect = this.findAdvancedRelatedSelect(currentBuilder, pathPrefix);
+            if (!relatedSelect) {
+                return false;
+            }
+
+            const matchingFieldOption = Array.from(relatedSelect.options).find((option) => {
+                return option.getAttribute("data-field-name") === fieldName;
+            });
+            if (!matchingFieldOption) {
+                return false;
+            }
+
+            relatedSelect.value = matchingFieldOption.value;
+            await this.onAdvancedRelatedFieldSelected(relatedSelect);
+            const currentPath = `${pathPrefix}__${fieldName}`;
+
+            if (currentPath === filterEntry.field) {
+                terminalOperatorSelect = this.findAdvancedOperatorSelect(currentBuilder, currentPath);
+                break;
+            }
+
+            const nextRelatedSelect = this.findAdvancedRelatedSelect(currentBuilder, currentPath);
+            if (nextRelatedSelect) {
+                pathPrefix = currentPath;
+                continue;
+            }
+
+            const nestedAdvancedOperatorSelect = this.findAdvancedOperatorSelect(currentBuilder, currentPath);
+            if (!nestedAdvancedOperatorSelect) {
+                return false;
+            }
+
+            const nestedAdvancedOption = Array.from(nestedAdvancedOperatorSelect.options).find((option) => {
+                return option.value === "foreign_advanced";
+            });
+            if (!nestedAdvancedOption) {
+                return false;
+            }
+
+            nestedAdvancedOperatorSelect.value = nestedAdvancedOption.value;
+            await this.onAdvancedOperatorSelected(nestedAdvancedOperatorSelect);
+
+            const nestedBuilder = this.findNestedAdvancedBuilder(currentBuilder, currentPath);
+            if (!nestedBuilder) {
+                return false;
+            }
+
+            currentBuilder = nestedBuilder;
+            pathPrefix = currentPath;
+        }
+
+        const advancedOperatorSelect = terminalOperatorSelect || this.findAdvancedOperatorSelect(currentBuilder, filterEntry.field);
+        if (!advancedOperatorSelect) {
+            return false;
+        }
+
+        const matchingOperatorOption = Array.from(advancedOperatorSelect.options).find((option) => {
+            return option.value === filterEntry.operator
+                || option.getAttribute("data-lookup-django") === filterEntry.operator;
+        });
+        if (!matchingOperatorOption) {
+            return false;
+        }
+
+        advancedOperatorSelect.value = matchingOperatorOption.value;
+        await this.onAdvancedOperatorSelected(advancedOperatorSelect);
+        this.setValueInput(filterEntry.value);
+        return true;
+    }
+
+    private findAdvancedOperatorSelect(builder: HTMLElement, fieldPath: string): HTMLSelectElement | null {
+        const selects = Array.from(builder.querySelectorAll<HTMLSelectElement>("select[data-advanced-operator-select]"));
+        return selects.find((select) => select.getAttribute("data-field") === fieldPath) || null;
+    }
+
+    private findNestedAdvancedBuilder(builder: HTMLElement, basePath: string): HTMLElement | null {
+        const builders = Array.from(builder.querySelectorAll<HTMLElement>("[data-advanced-builder]"));
+        return builders.find((nestedBuilder) => {
+            return nestedBuilder !== builder && nestedBuilder.getAttribute("data-base-field") === basePath;
+        }) || null;
+    }
+
+    private findAdvancedRelatedSelect(builder: HTMLElement, pathPrefix: string): HTMLSelectElement | null {
+        const selects = Array.from(builder.querySelectorAll<HTMLSelectElement>("select[data-advanced-related-select]"));
+        return selects.find((select) => select.getAttribute("data-path-prefix") === pathPrefix) || null;
     }
 
     /**
@@ -245,12 +528,57 @@ export default class FilterContainer extends BaseComponent {
             }
 
             // Find applicationFieldId for this filter row
-            const applicationFieldId = this.findApplicationFieldIdForField(field) || '';
+            const applicationFieldId = this.findApplicationFieldIdForField(field);
 
-            filters.push({ field: name, applicationFieldId, operator, value });
+            filters.push(new FilterEntry({ field: name, applicationFieldId, operator, value }));
         });
 
+        if (filters.length === 0) {
+            const widgetFilter = this.getCustomWidgetFilter(valueSection);
+            if (widgetFilter) {
+                filters.push(widgetFilter);
+            }
+        }
+
         return filters;
+    }
+
+
+    private getCustomWidgetFilter(valueSection: HTMLElement): FilterEntry | null {
+        const widgetElement = valueSection.querySelector<HTMLElement>("[bloomerp-component='foreign-field-widget']");
+        if (!widgetElement) {
+            return null;
+        }
+
+        const fieldName = widgetElement.dataset.fieldName || "";
+        if (!fieldName) {
+            return null;
+        }
+
+        const widget = getComponent(widgetElement) as { getValue?: () => unknown } | null;
+        const rawValue = widget?.getValue ? widget.getValue() : widgetElement.dataset.value || null;
+        const value = Array.isArray(rawValue)
+            ? rawValue.map((item) => String(item)).filter((item) => item !== "")
+            : rawValue === null || rawValue === undefined || String(rawValue) === ""
+                ? null
+                : String(rawValue);
+
+        if (value === null || (Array.isArray(value) && value.length === 0)) {
+            return null;
+        }
+
+        const operatorSelect = this.findOperatorForField(widgetElement);
+        const selectedOption = operatorSelect?.selectedOptions[0];
+        const djangoLookup = selectedOption?.getAttribute('data-lookup-django') || '';
+        const operator = operatorSelect ? (djangoLookup || operatorSelect.value) : null;
+        const applicationFieldId = this.findApplicationFieldIdForField(widgetElement);
+
+        return new FilterEntry({
+            field: fieldName,
+            applicationFieldId,
+            operator,
+            value,
+        });
     }
 
 
@@ -268,14 +596,14 @@ export default class FilterContainer extends BaseComponent {
         if (name) {
             const escaped = typeof (CSS as any)?.escape === 'function' ? (CSS as any).escape(name) : name;
             const selector = `select[data-field="${escaped}"]`;
-            const byData = document.querySelector(selector) as HTMLSelectElement | null;
+            const byData = this.element.querySelector(selector) as HTMLSelectElement | null;
             if (byData) {
                 return byData;
             }
         }
 
         // If there's only one operator select, return it
-        const operatorSelects = Array.from(document.querySelectorAll<HTMLSelectElement>('#lookup-operator-section select'));
+        const operatorSelects = Array.from(this.element.querySelectorAll<HTMLSelectElement>('#lookup-operator-section select'));
         if (operatorSelects.length === 1) {
             return operatorSelects[0];
         }
@@ -316,7 +644,7 @@ export default class FilterContainer extends BaseComponent {
         }
 
         // Hidden selected-field-id input (pre-selected field case)
-        const hiddenInput = document.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
+        const hiddenInput = this.element.querySelector('#field-selector-section input.selected-field-id') as HTMLInputElement | null;
         if (hiddenInput && hiddenInput.value) {
             return hiddenInput.value;
         }
@@ -364,6 +692,10 @@ export default class FilterContainer extends BaseComponent {
         return this.element.querySelector("#lookup-operator-section select");
     }
 
+    private getLookupOperatorSection(): HTMLElement | null {
+        return this.element.querySelector("#lookup-operator-section");
+    }
+
     private getValueInputSection(): HTMLElement | null {
         return this.element.querySelector("#value-input-section");
     }
@@ -381,16 +713,16 @@ export default class FilterContainer extends BaseComponent {
             if (!target) return;
 
             if (target.matches('select[data-advanced-related-select]')) {
-                this.onAdvancedRelatedFieldSelected(target as HTMLSelectElement);
+                void this.onAdvancedRelatedFieldSelected(target as HTMLSelectElement);
             } else if (target.matches('select[data-advanced-operator-select]')) {
-                this.onAdvancedOperatorSelected(target as HTMLSelectElement);
+                void this.onAdvancedOperatorSelected(target as HTMLSelectElement);
             }
         };
 
         valueSection.addEventListener('change', this.advancedChangeHandler);
     }
 
-    private onAdvancedRelatedFieldSelected(select: HTMLSelectElement): void {
+    private async onAdvancedRelatedFieldSelected(select: HTMLSelectElement): Promise<void> {
         const builder = select.closest('[data-advanced-builder]') as HTMLElement | null;
         if (!builder) return;
 
@@ -430,10 +762,10 @@ export default class FilterContainer extends BaseComponent {
 
         if (relatedContentTypeId && level < FilterContainer.MAX_ADVANCED_RELATION_DEPTH) {
             const nextLevel = level + 1;
-            const url = `/components/filters/${relatedContentTypeId}/related-fields/?level=${nextLevel}&path_prefix=${encodeURIComponent(currentPath)}`;
+            const url = this.buildRelatedFieldsUrl(relatedContentTypeId, nextLevel, currentPath);
             const selectsTarget = builder.querySelector('[data-advanced-selects]') as HTMLElement | null;
             if (selectsTarget) {
-                htmx.ajax('get', url, {
+                await htmx.ajax('get', url, {
                     target: selectsTarget,
                     swap: 'beforeend',
                 });
@@ -447,24 +779,31 @@ export default class FilterContainer extends BaseComponent {
 
         // Load lookup operators for the terminal field
         const baseFieldId = builder.getAttribute('data-base-field-id') || '';
-        const url = `/components/filters/${this.contentTypeId}/lookup-operators/${applicationFieldId}/?field_path=${encodeURIComponent(currentPath)}&base_application_field_id=${encodeURIComponent(baseFieldId)}`;
+        const url = this.buildLookupOperatorsUrl(
+            applicationFieldId,
+            new URLSearchParams({
+                field_path: currentPath,
+                base_application_field_id: baseFieldId,
+            }),
+        );
         if (operatorSection) {
-            htmx.ajax('get', url, {
+            await htmx.ajax('get', url, {
                 target: operatorSection,
                 swap: 'innerHTML',
             });
         }
     }
 
-    private onAdvancedOperatorSelected(select: HTMLSelectElement): void {
+    private async onAdvancedOperatorSelected(select: HTMLSelectElement): Promise<void> {
         const builder = select.closest('[data-advanced-builder]') as HTMLElement | null;
         if (!builder) return;
 
         const lookupValue = select.value;
         const fieldPath = select.getAttribute('data-field') || select.getAttribute('data-field-path') || '';
+        const baseApplicationFieldId = select.getAttribute('data-application-field-id') || '';
         const applicationFieldId =
             select.getAttribute('data-lookup-application-field-id')
-            || select.getAttribute('data-application-field-id')
+            || baseApplicationFieldId
             || '';
 
         if (!lookupValue || !fieldPath || !applicationFieldId) {
@@ -474,8 +813,16 @@ export default class FilterContainer extends BaseComponent {
         const valueSection = builder.querySelector('[data-advanced-value]') as HTMLElement | null;
         if (!valueSection) return;
 
-        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}&field_path=${encodeURIComponent(fieldPath)}`;
-        htmx.ajax('get', url, {
+        const params = new URLSearchParams({
+            lookup_value: lookupValue,
+            field_path: fieldPath,
+        });
+        if (baseApplicationFieldId) {
+            params.set('base_application_field_id', baseApplicationFieldId);
+        }
+
+        const url = this.buildValueInputUrl(applicationFieldId, params);
+        await htmx.ajax('get', url, {
             target: valueSection,
             swap: 'innerHTML',
         });
@@ -497,10 +844,26 @@ export default class FilterContainer extends BaseComponent {
         }
     }
 
-    private async loadValueInput(applicationFieldId: string, lookupValue: string): Promise<void> {
-        const url = `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?lookup_value=${encodeURIComponent(lookupValue)}`;
+    private async loadValueInput(
+        applicationFieldId: string,
+        lookupValue: string,
+        currentValue: string | string[] | null = null,
+    ): Promise<void> {
+        const params = new URLSearchParams({ lookup_value: lookupValue });
+        if (currentValue !== null) {
+            const value = Array.isArray(currentValue) ? currentValue[0] : currentValue;
+            if (value !== undefined && value !== null && String(value) !== '') {
+                params.set('current_value', String(value));
+            }
+        }
+        const url = this.buildValueInputUrl(applicationFieldId, params);
+        const valueSection = this.getValueInputSection();
+        if (!valueSection) {
+            return;
+        }
+
         await htmx.ajax('get', url, {
-            target: '#value-input-section',
+            target: valueSection,
             swap: 'innerHTML',
         });
     }
@@ -509,6 +872,12 @@ export default class FilterContainer extends BaseComponent {
         const valueSection = this.getValueInputSection();
         if (!valueSection || value === null) {
             return;
+        }
+
+        const customWidget = valueSection.querySelector<HTMLElement>("[bloomerp-component='foreign-field-widget']");
+        if (customWidget) {
+            const widget = getComponent(customWidget) as { setValue?: (value: unknown) => void } | null;
+            widget?.setValue?.(value);
         }
 
         const fields = Array.from(
@@ -550,4 +919,76 @@ export default class FilterContainer extends BaseComponent {
         });
     }
 
+    // TODO: Technical debt
+    private buildLookupOperatorsUrl(applicationFieldId: string, params: URLSearchParams | null = null): string {
+        const queryParams = params ?? new URLSearchParams({ application_field_id: applicationFieldId });
+        const scope = this.element.getAttribute('data-filter-scope') || 'application-field';
+
+        if (scope === 'workspace') {
+            return `/components/workspaces/${this.contentTypeId}/filters/lookup-operators/${encodeURIComponent(applicationFieldId)}/?${queryParams.toString()}`;
+        }
+
+        return `/components/filters/${this.contentTypeId}/lookup-operators/${applicationFieldId}/?${queryParams.toString()}`;
+    }
+
+    private buildValueInputUrl(applicationFieldId: string, params: URLSearchParams): string {
+        const scope = this.element.getAttribute('data-filter-scope') || 'application-field';
+
+        if (scope === 'workspace') {
+            return `/components/workspaces/${this.contentTypeId}/filters/value-input/${encodeURIComponent(applicationFieldId)}/?${params.toString()}`;
+        }
+
+        return `/components/filters/${this.contentTypeId}/value-input/${applicationFieldId}/?${params.toString()}`;
+    }
+
+    private buildRelatedFieldsUrl(contentTypeId: string, level: number, pathPrefix: string): string {
+        return `/components/filters/${contentTypeId}/related-fields/?level=${level}&path_prefix=${encodeURIComponent(pathPrefix)}`;
+    }
+
+}
+
+/**
+ * Function that parses the filters from the
+ * @returns list of filter entries
+ */
+export function getFiltersFromUrl(params = new URLSearchParams(window.location.search)) : FilterEntry[] {
+    const filters: FilterEntry[] = [];
+    const processedKeys = new Set<string>();
+
+    params.forEach((_value, key) => {
+        if (processedKeys.has(key)) {
+            return;
+        }
+        processedKeys.add(key);
+        if (RESERVED_FILTER_KEYS.has(key) || key.startsWith("_arg_")) {
+            return;
+        }
+
+        const keyParts = key.split("__").filter((part) => part !== "");
+        if (keyParts.length === 0) {
+            return;
+        }
+
+        const finalPart = keyParts[keyParts.length - 1];
+        const hasExplicitOperator = keyParts.length > 1 && LOOKUP_LABELS.has(finalPart);
+        const operator = hasExplicitOperator ? finalPart : "exact";
+        if (!LOOKUP_LABELS.has(operator)) {
+            return;
+        }
+
+        const values = params.getAll(key).filter((value) => value !== "");
+        if (values.length === 0) {
+            return;
+        }
+
+        filters.push(new FilterEntry({
+            field: (hasExplicitOperator ? keyParts.slice(0, -1) : keyParts).join("__"),
+            applicationFieldId: null,
+            operator,
+            value: values.length === 1 ? values[0] : values,
+            key,
+        }));
+    });
+
+    return filters;
 }

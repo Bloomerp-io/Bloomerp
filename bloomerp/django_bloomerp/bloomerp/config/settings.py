@@ -131,6 +131,7 @@ def configure_bloomerp_allauth_settings() -> None:
 
 
 BLOOMERP_APPS = [
+    'django.forms',
     "bloomerp",
     "django_htmx",
     "crispy_forms",
@@ -148,12 +149,14 @@ if _has_allauth():
         "allauth",
         "allauth.account",
         "allauth.socialaccount",
+        
     ]
 
 BLOOMERP_MIDDLEWARE = [
     "bloomerp.middleware.HTMXPermissionDeniedMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
+    "bloomerp.middleware.RequestMiddleware",
 ]
 
 if _has_allauth():

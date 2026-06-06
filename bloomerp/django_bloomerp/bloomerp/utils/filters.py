@@ -22,6 +22,7 @@ from django.db.models import (
     Field
 )
 from bloomerp.model_fields.status_field import StatusField
+from bloomerp.model_fields.week_field import WeekField
 from django_filters import DateFilter
 from django.utils import timezone
 
@@ -143,6 +144,11 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
     # Create a dictionary to store dynamically created filters
     filter_overrides = {}
 
+    def filter_not_equal(queryset: QuerySet, name: str, value):
+        if value in django_filters.constants.EMPTY_VALUES:
+            return queryset
+        return queryset.exclude(**{name: value})
+
     def add_scalar_filters(field: Field, prefix: str) -> None:
         field_name = f"{prefix}{field.name}"
 
@@ -151,6 +157,19 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
         if isinstance(field, ImageField):
             return
         if isinstance(field, FileField):
+            return
+
+        if isinstance(field, WeekField):
+            filter_overrides[f'{field_name}'] = django_filters.CharFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__exact'] = django_filters.CharFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__gte'] = django_filters.CharFilter(field_name=field_name, lookup_expr='gte')
+            filter_overrides[f'{field_name}__lte'] = django_filters.CharFilter(field_name=field_name, lookup_expr='lte')
+            filter_overrides[f'{field_name}__gt'] = django_filters.CharFilter(field_name=field_name, lookup_expr='gt')
+            filter_overrides[f'{field_name}__lt'] = django_filters.CharFilter(field_name=field_name, lookup_expr='lt')
+            filter_overrides[f'{field_name}__year'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='year')
+            filter_overrides[f'{field_name}__week'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='week')
+            filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
+            filter_overrides[f'{field_name}__ne'] = django_filters.CharFilter(field_name=field_name, method=filter_not_equal)
             return
 
         if isinstance(field, CharField) or isinstance(field, TextField) or isinstance(field, StatusField):

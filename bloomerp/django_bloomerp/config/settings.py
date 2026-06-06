@@ -97,6 +97,8 @@ TEMPLATES = [
     },
 ]
 
+FORM_RENDERER = "django.forms.renderers.TemplatesSetting" # TODO: add a validator that this NEEDS to be included
+
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 

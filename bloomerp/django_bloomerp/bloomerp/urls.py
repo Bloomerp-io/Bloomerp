@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.models.access_control.policy import Policy
+from bloomerp.serializers.model_serializers import set_serializer_cls
 from bloomerp.views.api.access_control import PolicyViewSet
 from django.db.models import Model
 from bloomerp.utils.models import (model_name_plural_underline)
@@ -87,6 +88,8 @@ def get_api_models() -> list[type[Model]]:
             continue
         if model._meta.abstract or model._meta.proxy:
             continue
+        
+        set_serializer_cls(model)
         api_models.append(model)
 
     return api_models

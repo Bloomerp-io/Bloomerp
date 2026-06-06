@@ -1,5 +1,6 @@
 import bleach
 from bs4 import BeautifulSoup
+from django.http import HttpRequest
 from django.utils.safestring import mark_safe
 from markdown_it import MarkdownIt
 
@@ -104,7 +105,7 @@ class TextTileRenderer(BaseTileRenderer):
     template_name = "cotton/workspaces/tiles/text.html"
 
     @classmethod
-    def render(cls, config: TextTileConfig, user) -> str:
+    def render(cls, config: TextTileConfig, request:HttpRequest) -> str:
         return cls.render_to_string(
             {
                 "config": config,

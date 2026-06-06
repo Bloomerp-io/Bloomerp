@@ -66,6 +66,7 @@ class Todo(BloomerpModel):
                 ),
             ]
         ),
+        string_search_fields=["title", "content"],
     )
 
     class Meta(BloomerpModel.Meta):
@@ -74,7 +75,6 @@ class Todo(BloomerpModel):
 
     avatar = None
     allow_string_search = False # Do not allow string search for todos (we dont want to-do's to be searchable in the search bar)
-    string_search_fields = ['content'] # Allow string search for content
 
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, 

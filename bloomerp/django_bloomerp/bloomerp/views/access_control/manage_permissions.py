@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
 from bloomerp.field_types import FieldType
+from bloomerp.models.access_control.row_policy_rule import RowPolicyRuleContent
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.router import router
@@ -20,6 +21,7 @@ from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardMixin, WizardStep
 from bloomerp.views.mixins.wizard_mixin import WizardError
 from django.contrib.auth.mixins import UserPassesTestMixin
+from pydantic import ValidationError as PydanticValidationError
 
 GLOBAL_PERMISSIONS_KEY = "global_permissions"
 ROW_POLICY_NAME_KEY = "row_policy_name"
@@ -88,6 +90,22 @@ def _field_title_by_id(application_fields) -> dict[str, str]:
     return {str(field.pk): field.title for field in application_fields}
 
 
+def _get_row_policy_conditions(row_policy_rule: dict) -> list[dict]:
+    if not isinstance(row_policy_rule, dict):
+        return []
+
+    rule = row_policy_rule.get("rule") or {}
+    if not isinstance(rule, dict):
+        return []
+
+    try:
+        rule_content = RowPolicyRuleContent.model_validate(rule)
+    except PydanticValidationError:
+        return []
+
+    return rule_content.model_dump(exclude_none=True)["conditions"]
+
+
 def _policy_builder_context(view, orchestrator: BaseStateOrchestrator) -> dict:
     policy_model = _policy_model_for_view(view)
     application_fields = ApplicationField.get_for_model(policy_model).exclude(
@@ -106,9 +124,10 @@ def _policy_builder_context(view, orchestrator: BaseStateOrchestrator) -> dict:
 
     row_field_ids = []
     for row_policy_rule in row_policy_rules:
-        application_field_id = str(row_policy_rule.get("rule", {}).get("application_field_id", "")).strip()
-        if application_field_id and application_field_id not in row_field_ids:
-            row_field_ids.append(application_field_id)
+        for condition in _get_row_policy_conditions(row_policy_rule):
+            application_field_id = str(condition.get("application_field_id", "")).strip()
+            if application_field_id and application_field_id != "__all__" and application_field_id not in row_field_ids:
+                row_field_ids.append(application_field_id)
 
     column_field_ids = []
     for field_id in field_policies.keys():

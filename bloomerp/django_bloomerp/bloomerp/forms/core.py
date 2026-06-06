@@ -107,7 +107,7 @@ class BloomerpModelForm(forms.ModelForm):
             try:
                 model_field = self._meta.model._meta.get_field(field_name)
                 
-                if isinstance(model_field, JSONField):
+                if isinstance(model_field, JSONField) and not getattr(model_field, "widget_cls", None):
                     # Apply the CodeEditorWidget for JSON fields
                     self.fields[field_name].widget = CodeEditorWidget(language='json')
             except:
@@ -176,6 +176,5 @@ class BloomerpModelForm(forms.ModelForm):
             # Default behavior: use superclass method with hyphen separator
             return super().add_prefix(field_name)
     
-
 
 

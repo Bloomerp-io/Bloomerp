@@ -1,0 +1,23 @@
+<div class="space-y-3">
+    {% if files %}
+        <ul class="divide-y rounded-xl border border-gray-200 divide-gray-200 bg-white">
+            {% for file in files %}
+                <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <a href="{{ file.url }}" target="_blank" class="truncate font-medium text-primary">
+                        {{ file.name }}
+                    </a>
+                    <span class="shrink-0 text-xs">{{ file.size_str }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if not widget.attrs.disabled %}
+        <input
+            type="file"
+            name="{{ widget.name }}"
+            multiple
+            {% include "django/forms/widgets/attrs.html" %}
+        >
+    {% endif %}
+</div>

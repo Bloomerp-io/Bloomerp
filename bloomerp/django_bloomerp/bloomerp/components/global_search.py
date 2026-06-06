@@ -34,13 +34,14 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.urls import NoReverseMatch
 
+
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.router import router
 from bloomerp.modules.definition import module_registry
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
-from bloomerp.utils.models import string_search_queryset
+from bloomerp.services.object_services import string_search_on_queryset
 
 from django.contrib.auth.models import Permission
 from django.contrib.sessions.models import Session
@@ -176,7 +177,7 @@ def _collect_object_results(
             break
 
         matching_objects = list(
-            string_search_queryset(base_qs, search_value)[: per_model_limit + 1]
+            string_search_on_queryset(base_qs, search_value)[: per_model_limit + 1]
         )
         if not matching_objects:
             continue
@@ -341,7 +342,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                 user_model = get_user_model()
                 model_name = user_model._meta.model_name
                 permission_name = f"{user_model._meta.app_label}.view_{model_name}"
-                if request.user.has_perm(permission_name) or request.user.is_superuser:
+                if permission_manager.has_global_permission(user_model, create_permission_str(user_model, "view")):
                     content_type = ContentType.objects.get_for_model(user_model)
                     row_policies_exist = permission_manager.get_row_policies().filter(
                         content_type=content_type
@@ -352,7 +353,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                     else:
                         base_qs = user_model.objects.all()
 
-                    results = list(string_search_queryset(base_qs, search_query)[: USER_LIMIT + 1])
+                    results = list(string_search_on_queryset(base_qs, search_query)[: USER_LIMIT + 1])
                     if len(results) > USER_LIMIT:
                         context["results_truncated"] = True
                         results = results[:USER_LIMIT]

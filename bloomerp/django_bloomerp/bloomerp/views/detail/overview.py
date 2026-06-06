@@ -9,6 +9,7 @@ from django.db import transaction
 from django.shortcuts import redirect
 
 from bloomerp.models import ApplicationField
+from bloomerp.services.object_file_field_services import save_layout_uploaded_files
 from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.router import router
@@ -37,7 +38,7 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         return ContentType.objects.get_for_model(self.model)
 
     def get_layout_object(self):
-        return self.layout_preference.field_layout_obj
+        return self.layout_preference.layout_obj
 
     def get_layout_preference_object(self):
         return self.layout_preference
@@ -46,12 +47,12 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
     def layout_preference(self) -> UserDetailViewPreference:
         content_type = self.get_layout_content_type()
         preference = UserDetailViewPreference.get_or_create_for_user(self.request.user, content_type)
-        if not any(row.items for row in preference.field_layout_obj.rows):
-            preference.field_layout = get_default_layout(
+        if not any(row.items for row in preference.layout_obj.rows):
+            preference.layout = get_default_layout(
                 content_type=content_type,
                 user=self.request.user,
             ).model_dump()
-            preference.save(update_fields=["field_layout"])
+            preference.save(update_fields=["layout"])
         return preference
 
     def get_layout_available_items_url(self) -> str:
@@ -131,14 +132,20 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         try:
             with transaction.atomic():
                 self.object = form.save()
+                save_layout_uploaded_files(
+                    obj=self.object,
+                    request=self.request,
+                    layout=self.layout_preference.layout_obj,
+                    action="change",
+                )
                 save_submitted_one_to_many_fields(
                     parent_object=self.object,
-                    layout=self.layout_preference.field_layout_obj,
+                    layout=self.layout_preference.layout_obj,
                     submitted_data=self.request.POST,
                     user=self.request.user,
                 )
         except ValidationError as exc:
-            print(self.request.POST)
+            
             for message in exc.messages:
                 form.add_error(None, message)
             return self.form_invalid(form)
@@ -156,6 +163,7 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         if form is None:
             return redirect(get_detail_view_url(self.model), pk=self.object.pk)
         if form.is_valid():
+            self.add_message(f"Object '{self.object}' updated", "success")
             return self.form_valid(form)
         
         return self.form_invalid(form)

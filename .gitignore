@@ -87,6 +87,11 @@ bloomerp/django_bloomerp/bloomerp/static/css/dist/
 bloomerp/django_bloomerp/bloomerp/static_src/.vite/
 *.tsbuildinfo
 
+# Package the built CSS that Django templates reference.
+!bloomerp/django_bloomerp/bloomerp/static/bloomerp/css/
+!bloomerp/django_bloomerp/bloomerp/static/bloomerp/css/dist/
+!bloomerp/django_bloomerp/bloomerp/static/bloomerp/css/dist/styles.css
+
 # Keep setup.py out for now
 setup.py
 bloomerp/django_bloomerp/db.sqlite3

@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from bloomerp.field_types import Lookup
@@ -11,6 +12,7 @@ from bloomerp.models import (
     Policy,
     RowPolicy,
     RowPolicyRule,
+    File,
 )
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.tests.views.crud_test_mixin import CrudViewTestMixin
@@ -53,6 +55,14 @@ class TestOverviewView(CrudViewTestMixin):
         user.refresh_from_db()
         return permission
 
+    def group_row_rule(self, row_rule):
+        if "conditions" in row_rule:
+            return row_rule
+        return {
+            "connector": "OR",
+            "conditions": [row_rule],
+        }
+
     def grant_policy(
         self,
         *,
@@ -85,13 +95,13 @@ class TestOverviewView(CrudViewTestMixin):
         for row_rule in view_row_rules or []:
             created_rule = RowPolicyRule.objects.create(
                 row_policy=row_policy,
-                rule=row_rule,
+                rule=self.group_row_rule(row_rule),
             )
             created_rule.add_permission(f"view_{self.CustomerModel._meta.model_name}")
         for row_rule in change_row_rules or []:
             created_rule = RowPolicyRule.objects.create(
                 row_policy=row_policy,
-                rule=row_rule,
+                rule=self.group_row_rule(row_rule),
             )
             created_rule.add_permission(f"change_{self.CustomerModel._meta.model_name}")
 
@@ -288,6 +298,64 @@ class TestOverviewView(CrudViewTestMixin):
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.first_name, "Allowed Updated")
 
+    def test_post_with_files_layout_field_attaches_uploaded_file_to_object(self):
+        preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
+        preference.layout = {
+            "rows": [
+                {
+                    "title": "Files",
+                    "columns": 1,
+                    "items": [
+                        {"id": self.fields_by_name["files"].pk, "colspan": 1},
+                    ],
+                }
+            ]
+        }
+        preference.save(update_fields=["layout"])
+        self.client.force_login(self.admin_user)
+
+        uploaded_file = SimpleUploadedFile("signature.pdf", b"signature content", content_type="application/pdf")
+        response = self.client.post(
+            self.get_url(),
+            {"files": uploaded_file},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        attached_file = File.objects.get(name="signature.pdf")
+        self.assertEqual(attached_file.content_type, self.content_type)
+        self.assertEqual(attached_file.object_id, str(self.customer.pk))
+        self.assertTrue(attached_file.persisted)
+
+    def test_post_allows_update_when_required_field_is_hidden_but_already_has_value(self):
+        preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
+        preference.layout = {
+            "rows": [
+                {
+                    "title": "Primary",
+                    "columns": 2,
+                    "items": [
+                        {"id": self.fields_by_name["first_name"].pk, "colspan": 1},
+                        {"id": self.fields_by_name["age"].pk, "colspan": 1},
+                    ],
+                }
+            ]
+        }
+        preference.save(update_fields=["layout"])
+        self.client.force_login(self.admin_user)
+
+        response = self.client.post(
+            self.get_url(),
+            {
+                "first_name": "Allowed Updated",
+                "age": "30",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.first_name, "Allowed Updated")
+        self.assertEqual(self.customer.last_name, "Person")
+
     def test_detail_layout_preference_save_persists_shape(self):
         self.client.force_login(self.admin_user)
         field = self.fields_by_name["first_name"]
@@ -313,9 +381,9 @@ class TestOverviewView(CrudViewTestMixin):
 
         self.assertEqual(response.status_code, 200)
         preference = UserDetailViewPreference.get_or_create_for_user(self.admin_user, self.content_type)
-        self.assertEqual(preference.field_layout_obj.rows[0].title, "Primary")
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].id, str(field.pk))
-        self.assertEqual(preference.field_layout_obj.rows[0].items[0].colspan, 2)
+        self.assertEqual(preference.layout_obj.rows[0].title, "Primary")
+        self.assertEqual(preference.layout_obj.rows[0].items[0].id, str(field.pk))
+        self.assertEqual(preference.layout_obj.rows[0].items[0].colspan, 2)
 
     def test_shared_layout_available_fields_route_returns_detail_items(self):
         self.client.force_login(self.admin_user)

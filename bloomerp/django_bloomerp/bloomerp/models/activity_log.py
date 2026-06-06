@@ -1,38 +1,31 @@
 from ast import mod
+from typing import Any
 from django.db import models
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
-from django.db.models import QuerySet
+from pydantic import BaseModel
 from bloomerp.models.users.user import User
-
-
-class ActivityLogManager(models.Manager):
-    
-    def for_object(self, obj: models.Model) -> QuerySet["ActivityLog"]:
-        """
-        Return activity logs for a specific object.
-        
-        Args:
-            obj (models.Model): The object for which to retrieve activity logs.
-        Returns:
-            QuerySet[ActivityLog]: A queryset of activity logs related to the specified object.
-        
-        """
-        content_type = ContentType.objects.get_for_model(obj)
-        return self.filter(content_type=content_type, object_id=obj.pk)
-
-    def for_user(self, user: User) -> QuerySet["ActivityLog"]:
-        """Filters the activity logs for a specific user.
-        
-        Args:
-            user (User): The user for whom to filter the activity logs.
-        Returns:
-            QuerySet[ActivityLog]: A queryset of activity logs for the specified user.
-        """
-        return self.filter(user=user)
     
     
+class ActivityLogSource(models.TextChoices):
+    DETAIL = "DETAIL", "DETAIL"
+    API = "API", "API"
+    CREATE = "CREATE", "CREATE"
+    BULK = "BULK", "BULK"    
+
+
+class ActivityLogChange(BaseModel):
+    field_name : str
+    from_value : Any
+    to_value : Any
+    
+class ActivityLogAction(models.TextChoices):
+    CHANGE = "CHANGE", "Change"
+    CREATE = "CREATE", "Create"
+    DELETE = "DELETE", "Delete"
+    
+
 class ActivityLog(models.Model):
     """
     Model to log activities performed by users.
@@ -43,16 +36,78 @@ class ActivityLog(models.Model):
         ordering = ["-timestamp"]
         db_table = "bloomerp_activity_log"
 
-    timestamp = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    timestamp = models.DateTimeField(
+        auto_now_add=True
     )
-    content_type = models.ForeignKey(to=ContentType, on_delete=models.CASCADE)
-    object_id = models.CharField(max_length=255)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
+    )
+    content_type = models.ForeignKey(
+        to=ContentType, 
+        on_delete=models.CASCADE
+    )
+    object_id = models.CharField(
+        max_length=255
+    )
     object: models.Model = GenericForeignKey(
         ct_field="content_type", fk_field="object_id"
     )
-    payload = models.JSONField(blank=True, null=True)
+    payload = models.JSONField(
+        blank=True, 
+        null=True
+    )
+    is_create = models.BooleanField(
+        default=False
+    )
+    source = models.CharField(
+        max_length=12,
+        default=ActivityLogSource.DETAIL.value
+    )
+    action = models.CharField(
+        max_length=12,
+        choices=ActivityLogAction.choices,
+        default=ActivityLogAction.CHANGE
+    )
 
-    # manager
-    objects = ActivityLogManager()
+    @property
+    def summary_string(self) -> str:
+        action = ActivityLogAction(self.action)
+        actor = self.actor or "System"
+        
+        match action:
+            case ActivityLogAction.DELETE:
+                return f"{actor} deleted this object"    
+            case ActivityLogAction.CHANGE:
+                if isinstance(self.payload, list):
+                    fields: list[str] = []
+                    first_to_value: Any = None
+                    for change in self.payload:
+                        if not isinstance(change, dict):
+                            continue
+                        field_name = change.get("field") or change.get("field_name")
+                        if field_name:
+                            fields.append("'" + str(field_name) + "'")
+                            if len(fields) == 1:
+                                first_to_value = change.get("to")
+
+                    if not fields:
+                        return f"{actor} changed the object"
+
+                    if len(fields) == 1:
+                        return f"{actor} changed the field {fields[0]} to {first_to_value}"
+
+                    if len(fields) == 2:
+                        return f"{actor} changed the fields {fields[0]} and {fields[1]}"
+                    
+                    return f"{actor} changed the fields {fields[0]}, {fields[1]} and more"
+                
+                return f"{actor} changed the object"
+                
+            case ActivityLogAction.CREATE:
+                return f"{actor} created this object"
+            
+        return f"{actor} changed the object"
+        

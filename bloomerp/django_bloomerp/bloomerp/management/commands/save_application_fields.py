@@ -68,6 +68,9 @@ class Command(BaseCommand):
                             meta = {}
                             field_type = field.get_internal_type()
 
+                            if field.name == "files":
+                                field_type = FieldType.FILES_RELATION_FIELD.id
+
                             # UUID-backed primary keys should not become selectable
                             # ApplicationFields for CRUD layouts or permissions.
                             if getattr(field, "primary_key", False):
@@ -104,6 +107,7 @@ class Command(BaseCommand):
                                 FieldType.FOREIGN_KEY.id,
                                 FieldType.MANY_TO_MANY_FIELD.id,
                                 FieldType.BLOOMERP_FILE_FIELD.id,
+                                FieldType.FILES_RELATION_FIELD.id,
                                 FieldType.USER_FIELD.id
                             ]:
                                 meta['related_model'] = ContentType.objects.get_for_model(field.related_model).pk

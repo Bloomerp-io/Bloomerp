@@ -1,5 +1,5 @@
 {% load bloomerp %}
-{% load cotton %}
+
 
 <div
     bloomerp-component="{{ component_name }}"
@@ -8,6 +8,7 @@
     data-layout-render-item-url="{% url 'components_render_layout_item' layout_object_content_type_id %}"
     data-layout-save-url="{% url 'components_save_layout_object' layout_object_content_type_id layout_object_id  %}"
     data-layout-object-id="{{ layout_object_id }}"
+    data-init-edit="{{ init_edit }}"
     {% for attr,value in extra_attrs.items %}
     {{attr}}="{{value}}"
     {% endfor %}
@@ -19,8 +20,6 @@
     >   
         <!--Right Section-->
         <div class="flex gap-2">
-            {{ buttons_left }}
-
             <c-ui.shortcut_tooltip 
                 shortcut="mod+/" 
                 action="click" 
@@ -31,13 +30,14 @@
                     <c-blocktrans>Search</c-blocktrans>
                 </button>
             </c-ui.shortcut_tooltip>
+
+            {{ buttons_left }}
         </div>
         <!--End Right Section-->
 
         <!--Left section-->
         <div class="flex gap-2">
             {{ buttons_right }}
-            
             {% if can_edit %}
             <c-ui.shortcut_tooltip 
                 shortcut="mod+e" 
@@ -64,28 +64,35 @@
                     </button>
                 </c-ui.shortcut_tooltip>
 
-                <c-ui.shortcut_tooltip 
-                    shortcut="mod+j" 
-                    action="click" 
-                    position="bottom">
-                    <button 
-                        class="btn btn-sm btn-danger" 
-                        bloomerp-open-modal="layout-object-delete-modal"
-                        hx-get="{% url 'components_delete_layout_object' layout_object_content_type_id layout_object_id %}"
-                        hx-target="#layout-object-delete-modal-body"
-                        hx-trigger="click"
-                        type="button"
-                        >
-                        <i class="fa fa-trash"></i>
-                        <c-blocktrans>Delete</c-blocktrans>
-                    </button>
-                </c-ui.shortcut_tooltip>
+                {% if can_delete %}
+                    <c-ui.shortcut_tooltip 
+                        shortcut="mod+j" 
+                        action="click" 
+                        position="bottom">
+                        <button 
+                            class="btn btn-sm btn-danger" 
+                            bloomerp-open-modal="layout-object-delete-modal"
+                            hx-get="{% url 'components_delete_layout_object' layout_object_content_type_id layout_object_id %}"
+                            hx-target="#layout-object-delete-modal-body"
+                            hx-trigger="click"
+                            hx-push-url="false"
+                            type="button"
+                            >
+                            <i class="fa fa-trash"></i>
+                            <c-blocktrans>Delete</c-blocktrans>
+                        </button>
+                    </c-ui.shortcut_tooltip>
+                {% endif %}
             </div>
             {% endif %}
         </div>
         <!--End Left section-->
     </div>
     <!--End Header Section-->
+
+    <div data-layout-header-section-2>
+        
+    </div>
 
     <!--Layout items-->
     <div class="space-y-4" data-layout-root>

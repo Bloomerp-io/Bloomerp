@@ -395,7 +395,7 @@ Backend components enable a seamless request-response cycle where HTMX sends req
 Backend components use the router system from `registries.route_registry` for clean, centralized route management:
 
 ```python
-from registries.route_registry import router
+from bloomerp.router import router
 
 @router.register(
     path="components/search-objects/<int:content_type_id>/",
@@ -513,6 +513,8 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
 ### CRUD Component Example
 
 ```python
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+
 @router.register(
     path="components/create-object/<int:content_type_id>/",
     name="components_create_object",
@@ -529,9 +531,13 @@ def create_object(request: HttpRequest, content_type_id: int) -> HttpResponse:
     """
     content_type = get_object_or_404(ContentType, id=content_type_id)
     model_class = content_type.model_class()
-    
+    manager = UserPermissionManager(request.user)
+
     # Check permissions
-    if not request.user.has_perm(f'{model_class._meta.app_label}.add_{model_class._meta.model_name}'):
+    if not manager.has_global_permission(
+        model_class,
+        create_permission_str(model_class, "add"),
+    ):
         return HttpResponse("Permission denied", status=403)
     
     # Create the form

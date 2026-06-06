@@ -15,12 +15,19 @@ interface FieldData {
     label: string;
 }
 
+type RowPolicyConnector = "AND" | "OR";
+
+interface RowPolicyConditionState {
+    field?: string;
+    operator?: string | null;
+    value?: string | string[] | null;
+    application_field_id?: string | null;
+}
+
 interface RowPolicyRuleState {
     rule: {
-        field?: string;
-        operator?: string | null;
-        value?: string | string[] | null;
-        application_field_id?: string | null;
+        connector: RowPolicyConnector;
+        conditions: RowPolicyConditionState[];
     };
     permissions: string[];
 }
@@ -36,7 +43,6 @@ enum PermissionScope {
 export class PermissionsTable extends BaseComponent {
     private contentTypeId = "";
     private mode: ComponentMode = "default";
-    private rowPolicyFilter: FilterContainer | null = null;
     private currentDroppedField: FieldData | null = null;
     private editingRowPolicyIndex: number | null = null;
     private editingFieldPolicyId: string | null = null;
@@ -57,16 +63,18 @@ export class PermissionsTable extends BaseComponent {
     private rowPolicyAlert: HTMLElement | null = null;
     private fieldPolicyAlert: HTMLElement | null = null;
     private rowPolicyPreview: HTMLElement | null = null;
+    private rowPolicyConditionList: HTMLElement | null = null;
+    private rowPolicyConnectorRow: HTMLElement | null = null;
     private fieldPolicyPreview: HTMLElement | null = null;
 
     private addRowPolicyBtn: HTMLElement | null = null;
+    private addRowPolicyRuleBtn: HTMLElement | null = null;
     private addFieldPolicyBtn: HTMLElement | null = null;
     private saveBtn: HTMLElement | null = null;
 
     private globalPermissionComp: PermissionCheckboxes | null = null;
     private rowPermissionComp: PermissionCheckboxes | null = null;
     private fieldPermissionComp: PermissionCheckboxes | null = null;
-    private previewRequestController: AbortController | null = null;
     private permissionLabelLookup = new Map<string, string>();
 
     private rowPolicyModal: Modal | null = null;
@@ -83,6 +91,7 @@ export class PermissionsTable extends BaseComponent {
     private readonly onRowPolicyNameInput = () => this.syncWizardInputs();
     private readonly onFieldPolicyNameInput = () => this.syncWizardInputs();
     private readonly onAddRowPolicy = () => this.addRowPolicy();
+    private readonly onAddRowPolicyRule = () => void this.addRowPolicyRule();
     private readonly onAddFieldPolicy = () => this.addFieldPolicy();
     private readonly onSave = () => void this.save();
 
@@ -119,6 +128,7 @@ export class PermissionsTable extends BaseComponent {
         });
 
         this.addRowPolicyBtn?.removeEventListener("click", this.onAddRowPolicy);
+        this.addRowPolicyRuleBtn?.removeEventListener("click", this.onAddRowPolicyRule);
         this.addFieldPolicyBtn?.removeEventListener("click", this.onAddFieldPolicy);
         this.saveBtn?.removeEventListener("click", this.onSave);
         this.rowPolicyNameInput?.removeEventListener("input", this.onRowPolicyNameInput);
@@ -144,10 +154,13 @@ export class PermissionsTable extends BaseComponent {
         this.rowPolicyAlert = this.element.querySelector<HTMLElement>("#row-policy-alert");
         this.fieldPolicyAlert = this.element.querySelector<HTMLElement>("#field-policy-alert");
         this.rowPolicyPreview = this.element.querySelector<HTMLElement>("[data-row-policy-preview]");
+        this.rowPolicyConditionList = this.element.querySelector<HTMLElement>("#row-policy-condition-list");
+        this.rowPolicyConnectorRow = this.element.querySelector<HTMLElement>("[data-row-policy-connector-row]");
         this.fieldPolicyPreview = this.element.querySelector<HTMLElement>("[data-field-policy-preview]");
         this.previewTarget = this.element.querySelector<HTMLElement>("#permissions-table-preview");
 
         this.addRowPolicyBtn = this.element.querySelector("#add-row-policy-btn");
+        this.addRowPolicyRuleBtn = this.element.querySelector("#add-row-policy-rule-btn");
         this.addFieldPolicyBtn = this.element.querySelector("#add-field-policy-btn");
         this.saveBtn = this.element.querySelector("#save-policy-btn");
     }
@@ -212,6 +225,7 @@ export class PermissionsTable extends BaseComponent {
         });
 
         this.addRowPolicyBtn?.addEventListener("click", this.onAddRowPolicy);
+        this.addRowPolicyRuleBtn?.addEventListener("click", this.onAddRowPolicyRule);
         this.addFieldPolicyBtn?.addEventListener("click", this.onAddFieldPolicy);
 
         if (this.mode !== "wizard") {
@@ -325,6 +339,7 @@ export class PermissionsTable extends BaseComponent {
         this.currentDroppedField = field;
         this.editingRowPolicyIndex = index;
         clearInlineAlert(this.rowPolicyAlert);
+        this.resetRowPolicyConditionRows();
         this.rowPolicyModal?.open();
 
         const filterTarget = document.getElementById("permissions-modal-filter-target");
@@ -336,15 +351,8 @@ export class PermissionsTable extends BaseComponent {
                     </div>
                 `;
             }
-            this.rowPolicyFilter = null;
-        } else {
-            await htmx.ajax("get", `/components/filters/${this.contentTypeId}/init/?application_field_id=${field.id}`, {
-                target: "#permissions-modal-filter-target",
-                swap: "innerHTML",
-            });
-
-            const filterElement = document.getElementById(`filter-container-${this.contentTypeId}`);
-            this.rowPolicyFilter = filterElement ? (getComponent(filterElement) as FilterContainer | null) : null;
+        } else if (index === null) {
+            await this.loadRowPolicyConditionFilter(filterTarget, field.id);
         }
 
         if (index === null) {
@@ -362,12 +370,119 @@ export class PermissionsTable extends BaseComponent {
             return;
         }
 
-        await this.rowPolicyFilter?.setFilter({
-            field: String(existingRule.rule.field || ""),
-            applicationFieldId: String(existingRule.rule.application_field_id || field.id),
-            operator: String(existingRule.rule.operator || ""),
-            value: (existingRule.rule.value as string | string[] | null) ?? null,
+        const connector = this.getRowPolicyConnectorSelect();
+        if (connector) {
+            connector.value = existingRule.rule.connector || "AND";
+        }
+
+        const conditions = existingRule.rule.conditions || [];
+        await this.loadExistingRowPolicyConditions(conditions);
+    }
+
+    private resetRowPolicyConditionRows(): void {
+        if (!this.rowPolicyConditionList) {
+            return;
+        }
+
+        const conditionRows = Array.from(
+            this.rowPolicyConditionList.querySelectorAll<HTMLElement>("[data-row-policy-condition-row]")
+        );
+
+        conditionRows
+            .filter((row) => row.dataset.rowPolicyExtraCondition === "true")
+            .forEach((row) => row.remove());
+        this.rowPolicyConnectorRow?.classList.add("hidden");
+    }
+
+    private getRowPolicyConnectorSelect(): HTMLSelectElement | null {
+        return this.rowPolicyConditionList?.querySelector<HTMLSelectElement>("[data-row-policy-condition-connector]") || null;
+    }
+
+    private getRowPolicyConnector(): RowPolicyConnector {
+        const value = this.getRowPolicyConnectorSelect()?.value;
+        return value === "OR" ? "OR" : "AND";
+    }
+
+    private getPrimaryRowPolicyFilterTarget(): HTMLElement | null {
+        return document.getElementById("permissions-modal-filter-target");
+    }
+
+    private async loadRowPolicyConditionFilter(
+        target: HTMLElement | null,
+        applicationFieldId?: string | null,
+    ): Promise<FilterContainer | null> {
+        if (!target) {
+            return null;
+        }
+
+        const query = applicationFieldId ? `?application_field_id=${encodeURIComponent(applicationFieldId)}` : "";
+        await htmx.ajax("get", `/components/filters/${this.contentTypeId}/init/${query}`, {
+            target,
+            swap: "innerHTML",
         });
+
+        const filterElement = target.querySelector<HTMLElement>("[bloomerp-component='filter-container']");
+        return filterElement ? (getComponent(filterElement) as FilterContainer | null) : null;
+    }
+
+    private async addRowPolicyConditionRow(condition?: RowPolicyConditionState): Promise<FilterContainer | null> {
+        if (!this.rowPolicyConditionList) {
+            return null;
+        }
+
+        const row = document.createElement("div");
+        row.dataset.rowPolicyConditionRow = "true";
+        row.dataset.rowPolicyExtraCondition = "true";
+
+        const filterTarget = document.createElement("div");
+        filterTarget.dataset.rowPolicyConditionFilterTarget = "true";
+
+        row.appendChild(filterTarget);
+        this.rowPolicyConditionList.appendChild(row);
+        this.rowPolicyConnectorRow?.classList.remove("hidden");
+
+        const filterComponent = await this.loadRowPolicyConditionFilter(
+            filterTarget,
+            condition?.application_field_id ? String(condition.application_field_id) : null,
+        );
+
+        if (condition && filterComponent) {
+            await filterComponent.setFilter({
+                field: String(condition.field || ""),
+                applicationFieldId: String(condition.application_field_id || ""),
+                operator: String(condition.operator || ""),
+                value: (condition.value as string | string[] | null) ?? null,
+            });
+        }
+
+        return filterComponent;
+    }
+
+    private async loadExistingRowPolicyConditions(conditions: RowPolicyConditionState[]): Promise<void> {
+        const primaryTarget = this.getPrimaryRowPolicyFilterTarget();
+        const firstCondition = conditions[0];
+
+        if (firstCondition) {
+            const firstFilter = await this.loadRowPolicyConditionFilter(
+                primaryTarget,
+                firstCondition.application_field_id ? String(firstCondition.application_field_id) : null,
+            );
+            await firstFilter?.setFilter({
+                field: String(firstCondition.field || ""),
+                applicationFieldId: String(firstCondition.application_field_id || ""),
+                operator: String(firstCondition.operator || ""),
+                value: (firstCondition.value as string | string[] | null) ?? null,
+            });
+        }
+
+        for (const condition of conditions.slice(1)) {
+            await this.addRowPolicyConditionRow(condition);
+        }
+    }
+
+    private async addRowPolicyRule(): Promise<void> {
+        clearInlineAlert(this.rowPolicyAlert);
+        await this.addRowPolicyConditionRow();
     }
 
     private openFieldPolicyModal(field: FieldData): void {
@@ -389,6 +504,30 @@ export class PermissionsTable extends BaseComponent {
         });
     }
 
+    private getRowPolicyConditionFilters(): RowPolicyConditionState[] {
+        if (!this.rowPolicyConditionList) {
+            return [];
+        }
+
+        const filterElements = Array.from(
+            this.rowPolicyConditionList.querySelectorAll<HTMLElement>("[bloomerp-component='filter-container']")
+        );
+
+        return filterElements.flatMap((filterElement) => {
+            const filterComponent = getComponent(filterElement) as FilterContainer | null;
+            if (!filterComponent) {
+                return [];
+            }
+
+            return filterComponent.getFilters().map((filter) => ({
+                field: filter.field,
+                operator: filter.operator,
+                value: filter.value,
+                application_field_id: filter.applicationFieldId || null,
+            }));
+        });
+    }
+
     private addRowPolicy(): void {
         const permissions = this.getPermissionValues(PermissionScope.ROW);
         if (permissions.length === 0) {
@@ -402,8 +541,15 @@ export class PermissionsTable extends BaseComponent {
             const nextRule = {
                 permissions,
                 rule: {
-                    field: "__all__",
-                    application_field_id: "__all__",
+                    connector: this.getRowPolicyConnector(),
+                    conditions: [
+                        {
+                            field: "__all__",
+                            operator: null,
+                            value: null,
+                            application_field_id: "__all__",
+                        },
+                    ],
                 },
             };
 
@@ -422,28 +568,26 @@ export class PermissionsTable extends BaseComponent {
             return;
         }
 
-        const filters = this.rowPolicyFilter?.getFilters() || [];
-        if (filters.length === 0) {
+        const conditions = this.getRowPolicyConditionFilters();
+        if (conditions.length === 0) {
             renderInlineAlert(this.rowPolicyAlert, "Please add at least one condition for the row policy.", "Condition required");
             return;
         }
 
         clearInlineAlert(this.rowPolicyAlert);
 
-        const nextRules = filters.map((filter) => ({
+        const nextRule = {
             permissions,
             rule: {
-                field: filter.field,
-                operator: filter.operator,
-                value: filter.value,
-                application_field_id: filter.applicationFieldId || this.currentDroppedField?.id || null,
+                connector: this.getRowPolicyConnector(),
+                conditions,
             },
-        }));
+        };
 
         if (this.editingRowPolicyIndex !== null) {
-            this.rowPolicyRules.splice(this.editingRowPolicyIndex, 1, ...nextRules);
+            this.rowPolicyRules.splice(this.editingRowPolicyIndex, 1, nextRule);
         } else {
-            this.rowPolicyRules.push(...nextRules);
+            this.rowPolicyRules.push(nextRule);
         }
 
         this.editingRowPolicyIndex = null;
@@ -483,6 +627,54 @@ export class PermissionsTable extends BaseComponent {
         this.updateUsedFieldIndicators();
     }
 
+    private isAllObjectsRule(rowPolicyRule: RowPolicyRuleState): boolean {
+        return rowPolicyRule.rule.conditions.some((condition) => {
+            return condition.field === "__all__" || condition.application_field_id === "__all__";
+        });
+    }
+
+    private formatRowPolicyCondition(condition: RowPolicyConditionState): string {
+        if (condition.field === "__all__" || condition.application_field_id === "__all__") {
+            return "All objects";
+        }
+
+        return formatFilterLabel(
+            String(condition.field || ""),
+            (condition.operator as string | null) ?? null,
+            (condition.value as string | string[] | null) ?? null
+        );
+    }
+
+    private formatRowPolicyRuleLabel(rowPolicyRule: RowPolicyRuleState): string {
+        if (this.isAllObjectsRule(rowPolicyRule)) {
+            return "All objects";
+        }
+
+        const connector = rowPolicyRule.rule.connector || "AND";
+        return rowPolicyRule.rule.conditions
+            .map((condition) => this.formatRowPolicyCondition(condition))
+            .join(` ${connector} `);
+    }
+
+    private formatRowPolicyRuleTooltip(rowPolicyRule: RowPolicyRuleState): string {
+        if (this.isAllObjectsRule(rowPolicyRule)) {
+            return "All objects";
+        }
+
+        const connector = rowPolicyRule.rule.connector || "AND";
+        return rowPolicyRule.rule.conditions
+            .map((condition) => formatFilterTooltip(
+                String(condition.field || ""),
+                (condition.operator as string | null) ?? null,
+                (condition.value as string | string[] | null) ?? null
+            ))
+            .join(` ${connector} `);
+    }
+
+    private getPrimaryCondition(rowPolicyRule: RowPolicyRuleState): RowPolicyConditionState | null {
+        return rowPolicyRule.rule.conditions[0] || null;
+    }
+
     private renderRowPolicyPreview(): void {
         if (!this.rowPolicyPreview) {
             return;
@@ -494,11 +686,7 @@ export class PermissionsTable extends BaseComponent {
             const badge = document.createElement("span");
             badge.className = "badge badge-primary max-w-full cursor-pointer";
             badge.dataset.rowPolicyIndex = String(index);
-            badge.title = formatFilterTooltip(
-                String(rowPolicyRule.rule.field || ""),
-                (rowPolicyRule.rule.operator as string | null) ?? null,
-                (rowPolicyRule.rule.value as string | string[] | null) ?? null
-            );
+            badge.title = this.formatRowPolicyRuleTooltip(rowPolicyRule);
 
             const removeButton = document.createElement("button");
             removeButton.type = "button";
@@ -516,22 +704,15 @@ export class PermissionsTable extends BaseComponent {
 
             const text = document.createElement("span");
             text.className = "min-w-0 truncate";
-            if (rowPolicyRule.rule.field === "__all__" || rowPolicyRule.rule.application_field_id === "__all__") {
-                text.textContent = "All objects";
-            } else {
-                text.textContent = formatFilterLabel(
-                    String(rowPolicyRule.rule.field || ""),
-                    (rowPolicyRule.rule.operator as string | null) ?? null,
-                    (rowPolicyRule.rule.value as string | string[] | null) ?? null
-                );
-            }
+            text.textContent = this.formatRowPolicyRuleLabel(rowPolicyRule);
 
             badge.appendChild(removeButton);
             badge.appendChild(text);
             badge.addEventListener("click", () => {
+                const primaryCondition = this.getPrimaryCondition(rowPolicyRule);
                 const fieldId = String(
-                    rowPolicyRule.rule.application_field_id
-                    || (rowPolicyRule.rule.field === "__all__" ? "__all__" : "")
+                    primaryCondition?.application_field_id
+                    || (primaryCondition?.field === "__all__" ? "__all__" : "")
                 );
                 const field = this.fieldLookup.get(fieldId);
                 if (!field) {
@@ -600,7 +781,8 @@ export class PermissionsTable extends BaseComponent {
         const fieldPolicyIds = new Set<string>(Object.keys(this.fieldPolicies));
         const rowPolicyIds = new Set<string>(
             this.rowPolicyRules
-                .map((rowPolicyRule) => String(rowPolicyRule.rule.application_field_id || ""))
+                .flatMap((rowPolicyRule) => rowPolicyRule.rule.conditions || [])
+                .map((condition) => String(condition.application_field_id || ""))
                 .filter((fieldId) => Boolean(fieldId) && fieldId !== "__all__")
         );
 
@@ -790,9 +972,6 @@ export class PermissionsTable extends BaseComponent {
             return;
         }
 
-        this.previewRequestController?.abort();
-        this.previewRequestController = new AbortController();
-
         this.previewTarget.innerHTML = `
             <div class="min-h-[60px] text-xs text-gray-400 flex items-center justify-center">
                 Loading preview...
@@ -801,37 +980,21 @@ export class PermissionsTable extends BaseComponent {
 
         try {
             const csrfToken = getCsrfToken();
-            const response = await fetch(`/components/access-control/preview-permissions-table/${this.contentTypeId}/`, {
-                method: "POST",
+            await htmx.ajax("post", `/components/access-control/preview-permissions-table/${this.contentTypeId}/`, {
+                target: this.previewTarget,
+                swap: "innerHTML",
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
                     ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
                 },
-                body: new URLSearchParams({
+                values: {
                     page: String(page),
                     global_permissions_json: JSON.stringify(this.getSelectedGlobalPermissions()),
                     row_policy_rules_json: JSON.stringify(this.rowPolicyRules),
                     field_policies_json: JSON.stringify(this.fieldPolicies),
-                }),
-                signal: this.previewRequestController.signal,
+                },
             });
-
-            if (!response.ok) {
-                this.previewTarget.innerHTML = `
-                    <div class="rounded-xl border border-dashed border-red-200 bg-red-50 px-4 py-6 text-sm text-red-600">
-                        Unable to load preview.
-                    </div>
-                `;
-                return;
-            }
-
-            this.previewTarget.innerHTML = await response.text();
             this.bindPreviewPagination();
-        } catch (error) {
-            if (error instanceof DOMException && error.name === "AbortError") {
-                return;
-            }
-
+        } catch {
             this.previewTarget.innerHTML = `
                 <div class="rounded-xl border border-dashed border-red-200 bg-red-50 px-4 py-6 text-sm text-red-600">
                     Unable to load preview.

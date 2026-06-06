@@ -2,8 +2,10 @@
 
 import json
 
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse
+from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_create_view_preference import UserCreateViewPreference
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.models.workspaces.tile import Tile
@@ -39,7 +41,7 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
 
     error = False
     try:
-        content = render_tile_to_string(tile, request.user)
+        content = render_tile_to_string(tile, request)
     except Exception as e:
         content = e
         error = True
@@ -54,6 +56,12 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
         "max_cols": max_cols,
         "tile_type": tile.type.lower(),
         "tile_search_keywords": tile.get_type_display(),
+        "update_url" : reverse(
+            "tiles_detail_update_tile",
+            kwargs={
+                "pk" : tile_id
+            }
+        )
     }
     return render(request, "components/workspaces/render_workspace_tile.html", context=context)
 
@@ -108,7 +116,11 @@ def _render_application_field(request: HttpRequest, content_type: ContentType) -
 
 
 def _build_create_render_context(*, request: HttpRequest, content_type: ContentType, model, application_field: ApplicationField):
-    if not request.user.has_perm(f"{model._meta.app_label}.{create_permission_str(model, 'add')}"):
+    manager = UserPermissionManager(request.user)
+    if not manager.has_global_permission(
+        model,
+        create_permission_str(model, "add"),
+    ):
         return HttpResponse("Permission denied", status=403)
 
     field_type = application_field.get_field_type_enum().value
@@ -119,6 +131,8 @@ def _build_create_render_context(*, request: HttpRequest, content_type: ContentT
 
     if not field_type.allow_in_model:
         if not field_type.editable_without_form_field:
+            return HttpResponse("Permission denied", status=403)
+        if not manager.has_field_permission(application_field, create_permission_str(model, "add")):
             return HttpResponse("Permission denied", status=403)
         return build_crud_layout_field_context(
             application_field=application_field,
@@ -154,6 +168,7 @@ def _build_detail_render_context(*, request: HttpRequest, model, application_fie
 
 items = {
     Workspace: _tile,
+    Form: _render_application_field,
     UserDetailViewPreference: _render_application_field,
     UserCreateViewPreference: _render_application_field,
 }

@@ -231,6 +231,94 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
         self.assertContains(response, 'min="1"', html=False)
         self.assertContains(response, 'max="53"', html=False)
 
+    def test_value_input_renders_current_user_lookup_for_advanced_path(self):
+        application_field = ApplicationField.get_by_field(self.CustomerModel, "created_by")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+
+        response = self.client.get(
+            url,
+            {
+                "lookup_value": "equals_user",
+                "field_path": "country__user",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="country__user"', html=False)
+        self.assertContains(response, 'value="$user"', html=False)
+        self.assertContains(response, "disabled", html=False)
+
+    def test_advanced_lookup_preserves_existing_field_path_prefix(self):
+        application_field = ApplicationField.get_by_field(self.CustomerModel, "country")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+
+        response = self.client.get(
+            url,
+            {
+                "lookup_value": "foreign_advanced",
+                "field_path": "employee_on_project__employee",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-base-field="employee_on_project__employee"', html=False)
+        self.assertContains(response, 'data-path-prefix="employee_on_project__employee"', html=False)
+
+    def test_advanced_lookup_preserves_original_base_application_field_id(self):
+        application_field = ApplicationField.get_by_field(self.CustomerModel, "country")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+
+        response = self.client.get(
+            url,
+            {
+                "lookup_value": "foreign_advanced",
+                "field_path": "parent_department__parent_department",
+                "base_application_field_id": "123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-base-field-id="123"', html=False)
+
+    def test_value_input_ignores_invalid_foreign_current_value(self):
+        application_field = ApplicationField.get_by_field(self.CustomerModel, "country")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+
+        response = self.client.get(
+            url,
+            {
+                "lookup_value": "foreign_equals",
+                "current_value": "dasdasdsa",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "dasdasdsa", html=False)
+
     def test_filter_model_filters_many_to_many_labels_by_id(self):
         backend_label = TodoLabel.objects.create(name="Backend", color="#000000")
         frontend_label = TodoLabel.objects.create(name="Frontend", color="#ffffff")

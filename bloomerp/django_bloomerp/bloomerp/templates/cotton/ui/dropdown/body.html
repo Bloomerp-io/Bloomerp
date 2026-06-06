@@ -15,6 +15,7 @@ Parameters:
 - disabled : whether the dropdown is disabled (default: False)
 - icon : whether to show the arrow indicator icon (default: True; ignored when trigger_icon is set)
 - close_on_item_event : event name used to close this dropdown from nested items/submenus (default: "dropdown-close")
+- fixed : whether the dropdown menu should be positioned relative to the viewport to avoid clipped overflow containers
 {% endcomment %}
 
 {% load static %}
@@ -23,7 +24,54 @@ Parameters:
 {% if icon %}{% endif %}
 
 <div class="relative inline-block text-left {% if wrapper_class %}{{ wrapper_class }}{% endif %}"
-    x-data="{ open: false, wasOpen: false }"
+    x-data="{
+        open: false,
+        wasOpen: false,
+        menuStyle: '',
+        resolvePlacement() {
+            {% if fixed %}
+            const trigger = this.$refs.trigger || this.$el.querySelector('[aria-haspopup=&quot;true&quot;]');
+            const menu = this.$refs.menu;
+            if (!trigger || !menu) return;
+
+            const rect = trigger.getBoundingClientRect();
+            const viewportPadding = 8;
+            const menuWidth = menu.offsetWidth || 224;
+            const menuHeight = menu.offsetHeight || 160;
+            let left;
+            let top;
+
+            {% if position == 'left' %}
+            left = rect.left;
+            {% elif position == 'center' %}
+            left = rect.left + (rect.width / 2) - (menuWidth / 2);
+            {% else %}
+            left = rect.right - menuWidth;
+            {% endif %}
+
+            {% if direction == 'up' %}
+            top = rect.top - menuHeight - 8;
+            {% else %}
+            top = rect.bottom + 8;
+            {% endif %}
+
+            if (left + menuWidth > window.innerWidth - viewportPadding) {
+                left = window.innerWidth - viewportPadding - menuWidth;
+            }
+            if (left < viewportPadding) {
+                left = viewportPadding;
+            }
+            if (top + menuHeight > window.innerHeight - viewportPadding) {
+                top = rect.top - menuHeight - 8;
+            }
+            if (top < viewportPadding) {
+                top = viewportPadding;
+            }
+
+            this.menuStyle = `left: ${left}px; top: ${top}px;`;
+            {% endif %}
+        },
+    }"
     x-effect="
         if (open) {
             wasOpen = true;
@@ -39,6 +87,10 @@ Parameters:
             $el.querySelector('[aria-haspopup=&quot;true&quot;]')?.focus();
         }
     "
+    {% if fixed %}
+    @resize.window="if (open) resolvePlacement()"
+    @scroll.window="if (open) resolvePlacement()"
+    {% endif %}
     @{{ close_on_item_event|default:'dropdown-close' }}="open = false"
     {% if trigger_selector %}
     x-init="(() => {
@@ -56,6 +108,7 @@ Parameters:
 {% elif not trigger_selector %}
     <button 
         type="button" 
+        x-ref="trigger"
         class="
             {% if trigger_button_class %}
                 btn
@@ -84,10 +137,11 @@ Parameters:
             {% endif %}
             {{ trigger_class }}
         " 
-        @click="{% if not disabled %}open = !open{% endif %}"
+        @click="{% if not disabled %}open = !open; if (open) $nextTick(() => resolvePlacement()){% endif %}"
         :aria-expanded="open.toString()"
         aria-haspopup="true"
         {% if disabled %}disabled{% endif %}
+        id="{{ trigger_button_id }}"
     >
         {# Show custom trigger_icon if provided, else use trigger_text #}
         {% if trigger_icon_class %}
@@ -113,12 +167,15 @@ Parameters:
 
     <!-- Dropdown menu -->
     <div 
+        x-ref="menu"
         class="
-            absolute z-[90] 
-            {% if direction == 'up' %}
-                bottom-full mb-2
-            {% else %}
-                mt-2
+            {% if fixed %}fixed z-[140]{% else %}absolute z-[90]{% endif %}
+            {% if not fixed %}
+                {% if direction == 'up' %}
+                    bottom-full mb-2
+                {% else %}
+                    mt-2
+                {% endif %}
             {% endif %}
             {% if width %}
                 {{ width }}
@@ -129,12 +186,16 @@ Parameters:
             {% else %}
                 w-56
             {% endif %}
-            {% if position == 'left' %}
-                {% if direction == 'up' %}origin-bottom-left{% else %}origin-top-left{% endif %} left-0
-            {% elif position == 'center' %}
-                {% if direction == 'up' %}origin-bottom{% else %}origin-top{% endif %} left-1/2 transform -translate-x-1/2
+            {% if fixed %}
+                {% if direction == 'up' %}origin-bottom{% else %}origin-top{% endif %}
             {% else %}
-                {% if direction == 'up' %}origin-bottom-right{% else %}origin-top-right{% endif %} right-0
+                {% if position == 'left' %}
+                    {% if direction == 'up' %}origin-bottom-left{% else %}origin-top-left{% endif %} left-0
+                {% elif position == 'center' %}
+                    {% if direction == 'up' %}origin-bottom{% else %}origin-top{% endif %} left-1/2 transform -translate-x-1/2
+                {% else %}
+                    {% if direction == 'up' %}origin-bottom-right{% else %}origin-top-right{% endif %} right-0
+                {% endif %}
             {% endif %}
                 bg-white border border-gray-200 rounded-xl focus:outline-none transition-all duration-200 ease-in-out
             {{ menu_class }}
@@ -149,7 +210,11 @@ Parameters:
         x-transition:leave-end="transform opacity-0 scale-95"
         role="menu" 
         aria-orientation="vertical" 
+        {% if fixed %}
+        :style="`${menuStyle} display: ${open ? 'block' : 'none'};`"
+        {% else %}
         style="display: none;"
+        {% endif %}
     >
         <div class="py-1" role="none">
             {{ slot }}

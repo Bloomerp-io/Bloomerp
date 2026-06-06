@@ -100,6 +100,9 @@ class SqlQueryExecutor:
         except Exception:
             field_type = None
 
+        if not field_type:
+            field_type = getattr(connection.introspection, "data_types_reverse", {}).get(type_code)
+
         if field_type:
             return str(field_type).lower()
 
@@ -219,4 +222,3 @@ class SqlQueryExecutor:
         Set the result in cache with the cache_id and cache_time.
         """
         cache.set(self.cache_id, result, self.cache_time)
-

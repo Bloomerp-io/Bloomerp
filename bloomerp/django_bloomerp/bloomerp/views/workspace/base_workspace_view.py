@@ -9,9 +9,14 @@ from django.urls import reverse
 from bloomerp.modules.definition import module_registry
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.services.sectioned_layout_services import dump_layout_json
+from bloomerp.services.workspace_services import WorkspaceManager
 from bloomerp.utils.models import get_create_view_url
 from bloomerp.views.base import BaseBloomerpView
 from django.contrib.contenttypes.models import ContentType
+
+# TODO: 
+from bloomerp.components.workspaces.filter_workspace import filter_workspace
+
 
 class BaseWorkspaceView(BaseBloomerpView):
 
@@ -72,7 +77,10 @@ class BaseWorkspaceView(BaseBloomerpView):
     def get_workspace_template_context(self) -> dict:
         workspace = self.get_workspace()
         visible_workspaces = [self.build_workspace_item(item) for item in self.get_visible_workspaces()]
-
+        
+        # Filters
+        manager = WorkspaceManager(workspace)
+        
         context = {
             "workspace": workspace,
             "available_workspaces": visible_workspaces,
@@ -80,6 +88,7 @@ class BaseWorkspaceView(BaseBloomerpView):
             "my_workspaces_url": reverse("my_workspaces"),
             "module_id": self.get_module_id(),
             "workspace_content_type_id" : ContentType.objects.get_for_model(Workspace),
+            "extra_attrs" : {"data-workspace-id": workspace.id if workspace else None}
         }
 
         if workspace:

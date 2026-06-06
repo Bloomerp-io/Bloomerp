@@ -190,7 +190,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
     }
 
-    protected override toggleEditMode(): void {
+    public override toggleEditMode(): void {
         super.toggleEditMode();
         this.syncToggleVisibility();
         this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);

@@ -88,7 +88,7 @@ class SearchResultsTests(BaseBloomerpModelTestCase):
         # Check that no results are returned
         results = response.content.decode('utf-8')
         soup = BeautifulSoup(results, 'html.parser')
-        self.assertNotIn(cust1.__str__(), soup.get_text())
+        self.assertIn("No results found.", soup.get_text())
         self.assertNotIn(cust2.__str__(), soup.get_text())
     
     def test_general_search_as_normal_user_with_permission(self):
@@ -122,9 +122,14 @@ class SearchResultsTests(BaseBloomerpModelTestCase):
         row_policy_rule = RowPolicyRule.objects.create(
             row_policy=row_policy,
             rule={
-                "application_field_id": af.id,
-                "value": "Grenit",
-                "operator": Lookup.EQUALS.value
+                "connector": "OR",
+                "conditions": [
+                    {
+                        "application_field_id": af.id,
+                        "value": "Grenit",
+                        "operator": Lookup.EQUALS.value,
+                    }
+                ],
             }
         )
         

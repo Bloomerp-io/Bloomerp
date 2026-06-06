@@ -1,5 +1,6 @@
+from ipaddress import ip_address
 import re
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
@@ -27,7 +28,6 @@ def parse_bool_parameter(value : Any, default_value=False) -> bool:
         return default_value
     except:
         return default_value    
-
 
 def get_object_from_request(
     request:HttpRequest,
@@ -71,7 +71,6 @@ def get_object_from_request(
         return ct.get_object_for_this_type(id=object_id), object_id, content_type_id
     except:
         return ERROR_RESP
-
 
 def render_blank_form(
         request : HttpRequest, 
@@ -118,7 +117,6 @@ def render_blank_form(
         }
     )
     
-    
 def render_message(request: HttpRequest, message: str, type: Literal["info", "warning", "error", "success"]) -> HttpResponse:
     """Renders a message page
 
@@ -133,7 +131,7 @@ def render_message(request: HttpRequest, message: str, type: Literal["info", "wa
         request=request,
         template_name="cotton/ui/message.html",
         context={
-            "message": message,
+            "text": message,
             "type": type,
         }
     )
@@ -193,28 +191,10 @@ def render_template_and_message(
         context=context
     )
 
-
-def render_message(
-        request:HttpRequest,
-        message:str,
-        type:Literal["info", "warning", "error", "success"],
-):
-    """Renders a message"""
-    return render(
-        request,
-        "cotton/ui/message.html",
-        {
-            "message" : message,
-            "type":type,
-        }
-    )
-
-
 def render_page_refresh() -> HttpResponse:
     """Returns a HTMX page refresh"""
     from django_htmx.http import HttpResponseClientRefresh
     return HttpResponseClientRefresh()
-
 
 def render_oob_swap(
         request: HttpRequest,
@@ -245,3 +225,26 @@ def render_oob_swap(
             return HttpResponse(rendered_with_oob)
 
     return HttpResponse(f'<div id="{target_id}" hx-swap-oob="{swap}">{rendered}</div>')
+
+def get_ip_from_request(request:HttpRequest) -> Optional[str]:
+    """Tries to retrieve the IP address from a request object
+
+    Args:
+        request (HttpRequest): the request object
+
+    Returns:
+        Optional[str]: the ip as a string
+    """
+    if request is None:
+            return None
+
+    meta = getattr(request, "META", {}) or {}
+    forwarded_for = meta.get("HTTP_X_FORWARDED_FOR")
+    raw_ip_address = forwarded_for.split(",", 1)[0].strip() if forwarded_for else meta.get("REMOTE_ADDR")
+    if not raw_ip_address:
+        return None
+
+    try:
+        return str(ip_address(raw_ip_address.strip()))
+    except ValueError:
+        return None

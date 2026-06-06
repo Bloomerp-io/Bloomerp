@@ -3,8 +3,8 @@ from django.http import HttpResponse, HttpRequest
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from bloomerp.models import BloomerpModel
-from bloomerp.utils.models import string_search
 from bloomerp.router import router
+from bloomerp.services.object_services import string_search_on_queryset
 
 def _get_detail_url(obj) -> str:
     """Helper function to get the detail url"""
@@ -36,12 +36,7 @@ def search_objects(request:HttpRequest, content_type_id:int) -> HttpResponse:
     query = request.GET.get('fk_search_results_query')
 
     if query:
-        # Check if the model has a string_search method, it is inherited from BloomerpModel
-        if not hasattr(Model, 'string_search'):
-            # Add the string_search method to the model
-            Model.string_search = classmethod(string_search)
-        
-        results = Model.string_search(query)
+        results = string_search_on_queryset(Model.objects.all(), query)
     else:
         # Take first 10 objects
         results = Model.objects.all()[:10]

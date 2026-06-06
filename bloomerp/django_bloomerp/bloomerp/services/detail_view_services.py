@@ -442,7 +442,7 @@ def create_default_detail_view_preference(content_type:ContentType, user:Abstrac
     return UserDetailViewPreference.objects.create(
         user=user,
         content_type=content_type,
-        field_layout=default_layout.model_dump(),
+        layout=default_layout.model_dump(),
         tab_state=build_default_tab_state_from_tabs(default_tabs),
     )
     

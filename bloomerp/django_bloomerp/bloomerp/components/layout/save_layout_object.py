@@ -8,11 +8,12 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 
 from bloomerp.models import UserCreateViewPreference
+from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.router import router
-from bloomerp.services.permission_services import create_permission_str
+from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.services.sectioned_layout_services import (
     get_available_layout_fields,
     normalize_layout_payload,
@@ -41,11 +42,12 @@ def _save_layout_preference(
     model,
     scope: str,
 ) -> HttpResponse:
+    manager = UserPermissionManager(request.user)
     if payload.get("content_type_id") and str(payload.get("content_type_id")) != str(content_type.id):
         return HttpResponse("content_type_id does not match route", status=400)
 
     permission = create_permission_str(model, "add" if scope == "create" else "view")
-    if not request.user.has_perm(f"{model._meta.app_label}.{permission}"):
+    if not manager.has_global_permission(model, permission):
         return HttpResponse("Permission denied", status=403)
 
     layout = normalize_layout_payload(payload.get("layout"))
@@ -60,8 +62,8 @@ def _save_layout_preference(
 
     preference_model = _get_preference_model(scope=scope)
     preference = preference_model.get_or_create_for_user(request.user, content_type)
-    preference.field_layout = layout.model_dump()
-    preference.save(update_fields=["field_layout"])
+    preference.layout = layout.model_dump()
+    preference.save(update_fields=["layout"])
     return JsonResponse({"status": "ok", "layout": layout.model_dump()})
 
 # ---------------------------------------------------------------------------
@@ -80,6 +82,29 @@ def _save_workspace(request: HttpRequest, workspace: Workspace, payload: dict) -
     workspace.layout = layout.model_dump()
     workspace.save(update_fields=["layout"])
     return {"status": "ok", "layout": layout.model_dump()}
+
+def _save_form(request: HttpRequest, form: Form, payload: dict) -> HttpResponse:
+    manager = UserPermissionManager(request.user)
+    if not manager.has_access_to_object(form, create_permission_str(form, "change")):
+        return HttpResponse("Permission denied", status=403)
+
+    target_content_type = form.content_type
+    if payload.get("content_type_id") and str(payload.get("content_type_id")) != str(target_content_type.id):
+        return HttpResponse("content_type_id does not match form target", status=400)
+
+    layout = normalize_layout_payload(payload.get("layout"))
+    valid_ids = _get_valid_field_ids(request, content_type=target_content_type, scope="create")
+    submitted_ids = {str(item.id) for row in layout.rows for item in row.items}
+    if not submitted_ids.issubset(valid_ids):
+        invalid_ids = sorted(submitted_ids - valid_ids)
+        return JsonResponse(
+            {"error": "Unknown field id in layout", "invalid_ids": invalid_ids},
+            status=400,
+        )
+
+    form.layout = layout.model_dump()
+    form.save(update_fields=["layout"])
+    return JsonResponse({"status": "ok", "layout": layout.model_dump()})
 
 def _save_user_detail_view_preference(
     request: HttpRequest,
@@ -117,6 +142,7 @@ def _save_user_create_view_preference(
 
 CALLABLES = {
     Workspace: _save_workspace,
+    Form: _save_form,
     UserDetailViewPreference : _save_user_detail_view_preference,
     UserCreateViewPreference : _save_user_create_view_preference
 }
@@ -153,7 +179,6 @@ def save_layout_object(
     if isinstance(result, HttpResponse):
         return result
     return JsonResponse(result)
-
 
 
 

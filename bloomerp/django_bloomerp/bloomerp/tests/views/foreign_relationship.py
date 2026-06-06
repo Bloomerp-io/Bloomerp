@@ -82,9 +82,14 @@ class TestForeignRelationshipView(BaseBloomerpModelTestCase):
         created_rule = RowPolicyRule.objects.create(
             row_policy=row_policy,
             rule={
-                "application_field_id": str(self.fields_by_name["first_name"].pk),
-                "operator": Lookup.EQUALS.value.id,
-                "value": self.customer.first_name,
+                "connector": "OR",
+                "conditions": [
+                    {
+                        "application_field_id": str(self.fields_by_name["first_name"].pk),
+                        "operator": Lookup.EQUALS.value.id,
+                        "value": self.customer.first_name,
+                    }
+                ],
             },
         )
         created_rule.add_permission(f"view_{self.CustomerModel._meta.model_name}")

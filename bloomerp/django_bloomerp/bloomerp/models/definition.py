@@ -1,10 +1,13 @@
 import inspect
-from typing import Any, Literal, Optional
+from typing import Any, Callable, Literal, Optional, Type
+
+from django.http import HttpRequest, HttpResponse
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.models.base_bloomerp_model import FieldLayout
 from bloomerp.field_types import Lookup
 from pydantic import BaseModel, Field, field_validator
 from django.conf import settings
+from django.db.models import Model
 
 class ApiFilterRule(BaseModel):
     field: str
@@ -231,6 +234,43 @@ class ApiSettings(BaseModel):
         ]
 
 
+class ObjectHTML(BaseModel):
+    template_name:str
+    
+    should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
+
+
+class ObjectAction(BaseModel):
+    id:str
+    
+    label:str
+    
+    execution_func:Callable[[HttpRequest, Model], HttpResponse]
+    
+    should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
+    
+    icon:Optional[str] = None
+    
+    style:Literal["primary", "secondary"] = "secondary"
+    
+    success_message:Optional[str] = None
+    
+class ModelViewSettings(BaseModel):
+    """
+    Optional settings for on the model level
+    """
+    skip_views : Optional[list[str]] = None
+
+
+class DetailViewSettings(BaseModel):
+    """
+    Settings regarding detail views for certain models
+    """
+    extra_buttons : Optional[list[ObjectHTML]] = None
+    
+    skip_views : Optional[list[str]] = None
+    
+
 class BloomerpModelConfig(BaseModel):
     """
     Used to define certain bloomerp related meta data on a model. 
@@ -238,6 +278,7 @@ class BloomerpModelConfig(BaseModel):
     Settings are:
         - module: the canonical module to which this model belongs.
         - layout: a layout object defining how the default CRUD layout for users is.
+        - string_search_fields: optional field paths used by the shared string search service.
 
     Usage
     ```python
@@ -256,10 +297,22 @@ class BloomerpModelConfig(BaseModel):
 
     allow_string_search: bool = True
 
+    string_search_fields: list[str] | None = None
+
     is_internal: bool = False
 
     api_settings: Optional[ApiSettings] = None
 
+    record_activity_log : bool = True
+    
+    create_redirect_url_func : Optional[Callable[[Model], str]] = None
+    
+    detail_view_settings : Optional[DetailViewSettings] = None
+    
+    model_view_settings : Optional[ModelViewSettings] = None 
+    
+    object_actions : Optional[list[ObjectAction | ObjectHTML]] = None
+    
     @field_validator("module", mode="before")
     @classmethod
     def normalize_module(cls, value: Any) -> str | None:
@@ -321,3 +374,25 @@ class BloomerpModelConfig(BaseModel):
             return bloomerp_config.auto_generate_api_endpoints
         
         return self.api_settings.enable_auto_generation
+
+
+def get_model_config(model_or_object:Type[Model]|Model) -> BloomerpModelConfig | None:
+    """Returns the bloomerp model config for a model or object (if it exists)
+
+    Args:
+        model_or_object (Type[Model] | Model): the model or object
+
+    Returns:
+        BloomerpModelConfig | None: the config object
+    """
+    # Get the model class from either a model class or an instance
+    model_class = model_or_object if inspect.isclass(model_or_object) else type(model_or_object)
+    
+    # Check if the model has a bloomerp_config attribute
+    if hasattr(model_class, 'bloomerp_config'):
+        config = getattr(model_class, 'bloomerp_config')
+        if isinstance(config, BloomerpModelConfig):
+            return config
+    
+    return None
+    

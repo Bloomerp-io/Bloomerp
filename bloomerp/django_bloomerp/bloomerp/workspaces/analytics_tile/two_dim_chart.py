@@ -6,11 +6,43 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import pandas as pd
 
+from bloomerp.services.sql_services import SqlExecutor
+from bloomerp.workspaces.analytics_tile.sql_utils import quote_identifier, strip_trailing_query_semicolon
 from bloomerp.workspaces.base import BaseTileRenderer
 
 if TYPE_CHECKING:
     from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
     from bloomerp.workspaces.analytics_tile.model import FieldConfig
+
+
+TWO_DIM_X_AXIS_ALIAS = "bloomerp_chart_x_axis"
+TWO_DIM_Y_AXIS_ALIAS_PREFIX = "bloomerp_chart_y_axis_"
+
+
+def _y_axis_alias(index: int) -> str:
+    return f"{TWO_DIM_Y_AXIS_ALIAS_PREFIX}{index}"
+
+
+def build_two_dim_chart_query(query: str, x_axis_field: FieldConfig, y_axis_fields: list[FieldConfig]) -> str:
+    """Builds a grouped 2D chart query so series totals are calculated by SQL."""
+
+    base_query = strip_trailing_query_semicolon(query)
+    x_axis_column = quote_identifier(x_axis_field.name)
+    y_axis_expressions = [
+        f"SUM({quote_identifier(y_axis_field.name)}) AS {quote_identifier(_y_axis_alias(index))}"
+        for index, y_axis_field in enumerate(y_axis_fields)
+    ]
+
+    return (
+        "WITH bloomerp_chart_source AS (\n"
+        f"{base_query}\n"
+        ")\n"
+        f"SELECT {x_axis_column} AS {quote_identifier(TWO_DIM_X_AXIS_ALIAS)}, "
+        f"{', '.join(y_axis_expressions)}\n"
+        "FROM bloomerp_chart_source\n"
+        f"GROUP BY {x_axis_column}\n"
+        f"ORDER BY {x_axis_column}"
+    )
 
 
 def _is_truthy(value) -> bool:
@@ -80,15 +112,20 @@ class AnalyticsTwoDimChartRenderer(BaseTileRenderer):
     template_name = "cotton/workspaces/tiles/two_dim_chart.html"
 
     @classmethod
-    def render(cls, config: AnalyticsTileConfig, user, data):
+    def render(cls, config: AnalyticsTileConfig, request):
+        from bloomerp.workspaces.analytics_tile.model import get_filtered_query
+
         x_axis_field = next(iter(config.fields.get("x_axis") or []), None)
         y_axis_fields = list(config.fields.get("y_axis") or [])
 
         if x_axis_field is None or not y_axis_fields:
             return "<p>Please add chart fields.</p>"
 
-        x_axis = x_axis_field.name
-        if x_axis not in data.columns:
+        query = get_filtered_query(config, request.GET)
+        chart_query = build_two_dim_chart_query(query, x_axis_field, y_axis_fields)
+        data = SqlExecutor(request.user).execute_query(chart_query, paginate=False).to_dataframe()
+
+        if TWO_DIM_X_AXIS_ALIAS not in data.columns:
             return "<p>Please add chart fields.</p>"
 
         opts = config.opts or {}
@@ -96,20 +133,21 @@ class AnalyticsTwoDimChartRenderer(BaseTileRenderer):
         if chart_type not in {"line", "scatter", "bar"}:
             chart_type = "line"
 
-        if pd.api.types.is_object_dtype(data[x_axis]) or pd.api.types.is_string_dtype(data[x_axis]):
-            data = _apply_text_x_axis_order(data, x_axis, opts.get("x_axis_order"))
+        if pd.api.types.is_object_dtype(data[TWO_DIM_X_AXIS_ALIAS]) or pd.api.types.is_string_dtype(data[TWO_DIM_X_AXIS_ALIAS]):
+            data = _apply_text_x_axis_order(data, TWO_DIM_X_AXIS_ALIAS, opts.get("x_axis_order"))
 
         stacked = _is_truthy(opts.get("stacked")) and len(y_axis_fields) > 1
         show_legend = _resolve_bool_option(opts.get("show_legend"), default=len(y_axis_fields) > 1)
         fig = go.Figure()
-        x_values = data[x_axis].tolist()
+        x_values = data[TWO_DIM_X_AXIS_ALIAS].tolist()
 
-        for y_axis_field in y_axis_fields:
-            if y_axis_field.name not in data.columns:
+        for index, y_axis_field in enumerate(y_axis_fields):
+            y_axis = _y_axis_alias(index)
+            if y_axis not in data.columns:
                 continue
 
             trace_name = _field_label(y_axis_field)
-            y_values = data[y_axis_field.name].tolist()
+            y_values = data[y_axis].tolist()
             color = _field_color(y_axis_field)
 
             if chart_type == "bar":
@@ -162,9 +200,3 @@ class AnalyticsTwoDimChartRenderer(BaseTileRenderer):
                 "chart_html": _render_plotly_chart_html(fig),
             }
         )
-
-
-
-
-        
-        

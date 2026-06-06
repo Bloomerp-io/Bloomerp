@@ -1,4 +1,6 @@
+import htmx from "htmx.org";
 import BaseSectionedLayoutItem from "../layouts/BaseSectionedLayoutItem";
+import getGeneralModal from "@/utils/modals";
 
 export default class WorkspaceTile extends BaseSectionedLayoutItem {
     private icon = "";
@@ -12,6 +14,22 @@ export default class WorkspaceTile extends BaseSectionedLayoutItem {
         if (tileId) {
             this.itemId = tileId;
         }
+
+        // Set settings button
+        this.element.querySelector('[data-update-tile]').addEventListener('click', ()=> {
+            const url = this.element.dataset.updateUrl
+            const modal = getGeneralModal()
+            modal.setSize('full')
+            modal.setTitle('Update Tile')
+
+            htmx.ajax(
+                'get',
+                url,
+                {
+                    target: modal.getBodyElement()
+                }
+            ).then(()=> {modal.open()})
+        })
     }
 
     public setIcon(icon: string): void {

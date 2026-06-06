@@ -8,6 +8,7 @@ from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from django.utils.translation import gettext_lazy as _
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.document_templates.document_tempate_styling import DocumentTemplateStyling
 from bloomerp.models.document_templates.document_template_header import DocumentTemplateHeader
 from bloomerp.models.files.file_folder import FileFolder
@@ -50,8 +51,9 @@ class DocumentTemplate(BloomerpModel):
         managed = True
         db_table = 'bloomerp_document_template'
 
+    bloomerp_config = BloomerpModelConfig()
     avatar = None
-
+    
     name = models.CharField(
         max_length=100,
         help_text=_("Name of the document template.")

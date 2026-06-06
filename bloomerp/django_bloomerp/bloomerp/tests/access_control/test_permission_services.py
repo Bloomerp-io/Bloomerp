@@ -1,4 +1,5 @@
 from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
+from bloomerp.models.access_control.row_policy_rule import RowPolicyRuleCondition, RowPolicyRuleContent
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import (
     ApiFilterRule,
@@ -14,7 +15,7 @@ from bloomerp.views.api.api_views import BloomerpModelViewSet
 from bloomerp.models.users import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Group, Permission
-from bloomerp.field_types import Lookup
+from bloomerp.field_types.lookups import Lookup
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -324,8 +325,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         # 3. Check if the user has all levels of access to all objects
         for perm in self.CustomerModel._meta.default_permissions:
             self.assertEqual(manager.get_queryset(self.CustomerModel, f"{perm}_customer").count(), nr_of_records)
-        
-        
+          
     def test_normal_user_has_no_access_to_queryset(self):
         """
         This tests whether a normal user has no access to
@@ -337,8 +337,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         # 2. Check if the user has all levels of access to all objects
         for perm in self.CustomerModel._meta.default_permissions:
             self.assertEqual(manager.get_queryset(self.CustomerModel, f"{perm}_customer").count(), 0)
-            
-            
+                
     def test_normal_user_has_no_access_to_queryset_after_assignment_without_rules(self):
         """
         This tests whether a normal user has no access to
@@ -355,7 +354,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         for perm in self.CustomerModel._meta.default_permissions:
             self.assertEqual(manager.get_queryset(self.CustomerModel, f"{perm}_customer").count(), 0)
             
-    
     def test_normal_user_has_access_to_queryset_after_assignment_with_rules(self):
         """
         This tests whether a normal user has access to
@@ -364,13 +362,20 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         """
         # 1. Create a row policy rule
         for i in range(2):
+            rule = RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.EQUALS.value.id,
+                        value=f"Jaimy {i}"
+                    )
+                ]
+            )
+            
             row_policy = RowPolicyRule.objects.create(
                 row_policy=self.row_policy,
-                rule={
-                    "application_field_id" : str(self.first_name_field.id),
-                    "operator" : Lookup.EQUALS.value.id,
-                    "value" : f"Jaimy {i}"
-                }
+                rule=rule.model_dump()
             )
             
             row_policy.add_permission("view_customer")
@@ -392,7 +397,6 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
             
-    
     def test_normal_user_has_access_to_queryset_with_user_rule(self):
         """
         This tests whether a normal user has access to
@@ -405,19 +409,25 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         ).filter(
             field="created_by"
         ).first().id
+        rule = RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(application_field_id),
+                        operator=Lookup.EQUALS_USER.value.id,
+                        value="$user"
+                    )
+                ]
+            )
+        
         
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id" : application_field_id,
-                "operator" : Lookup.EQUALS_USER.value.id,
-                "value" : f"$user"
-            }
+            rule=rule.model_dump()
         )
         
         row_policy.add_permission("view_customer")
             
-        
         # 2. Assign the user to the policy
         self.policy.assign_user(self.normal_user)
         
@@ -433,8 +443,7 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             if perm == "view": continue
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_customer")
             self.assertEqual(qs.count(), 0)
-            
-            
+                  
     def test_normal_user_has_access_to_queryset_with_contains_operator(self):
         """
         This test will check whether the contain operator
@@ -442,13 +451,20 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         """
         # 1. Create a row policy rule
         for i in range(2):
+            rule = RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.CONTAINS.value.id,
+                        value="1"
+                    )
+                ]
+            )
+
             row_policy = RowPolicyRule.objects.create(
                 row_policy=self.row_policy,
-                rule={
-                    "application_field_id" : str(self.first_name_field.id),
-                    "operator" : Lookup.CONTAINS.value.id,
-                    "value" : f"1"
-                }
+                rule=rule.model_dump()
             )
             
             row_policy.add_permission("view_customer")
@@ -468,17 +484,23 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             if perm == "view": continue
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
-            
-            
+             
     def test_normal_user_has_access_to_queryset_with_gte_operator(self):
+        rule = RowPolicyRuleContent(
+            connector="OR",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.age_field.id),
+                    operator=Lookup.GREATER_THAN_OR_EQUAL.value.id,
+                    value=5
+                )
+            ]
+        )
+        
         # 1. Create a row policy rule
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id" : str(self.age_field.id),
-                "operator" : Lookup.GREATER_THAN_OR_EQUAL.value.id,
-                "value" : 5
-            }
+            rule=rule.model_dump()
         )
             
         row_policy.add_permission("view_customer")
@@ -499,19 +521,25 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
 
-
     def test_normal_user_has_access_to_queryset_with_not_equals_operator(self):
         """
         This test checks that the not-equals operator is translated to a
         negated exact filter rather than an invalid Django lookup.
         """
+        rule = RowPolicyRuleContent(
+            connector="OR",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.last_name_field.id),
+                    operator=Lookup.NOT_EQUALS.value.id,
+                    value="Fuller 0"
+                )
+            ]
+        )
+        
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id": str(self.last_name_field.id),
-                "operator": Lookup.NOT_EQUALS.value.id,
-                "value": "Fuller 0",
-            },
+            rule=rule.model_dump()
         )
 
         row_policy.add_permission("view_customer")
@@ -523,20 +551,26 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         self.assertEqual(qs.count(), 9)
         self.assertFalse(qs.filter(last_name="Fuller 0").exists())
     
-    
     def test_normal_user_has_access_with_foreign_field_operator(self):
         """
         Tests whether a normal user has access to objects with a foreign
         field operator (i.e. using the country field)
         """
         # 1. Create a row policy rule
+        rule = RowPolicyRuleContent(
+            connector="OR",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.country_field.id),
+                    operator="__country__name",
+                    value="Belgium"
+                )
+            ]
+        )
+        
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id" : str(self.country_field.id),
-                "operator" : "__country__name",
-                "value" : "Belgium"
-            }
+            rule=rule.model_dump()
         )
         
         row_policy.add_permission("view_customer")
@@ -557,20 +591,26 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_product")
             self.assertEqual(qs.count(), 0)
            
-            
     def test_normal_user_has_access_with_nested_foreign_field_operator(self):
         """
         Tests whether a normal user has access to objects with a foreign
         field operator (i.e. using the planet field of the country field)
         """
         # 1. Create a row policy rule
+        rule = RowPolicyRuleContent(
+            connector="OR",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.country_field.id),
+                    operator="__country__planet__name",
+                    value="Mars"
+                )
+            ]
+        )
+        
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id" : str(self.country_field.id),
-                "operator" : "__country__planet__name",
-                "value" : "Mars"
-            }
+            rule=rule.model_dump()
         )
         
         row_policy.add_permission("view_customer")
@@ -592,14 +632,27 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             self.assertEqual(qs.count(), 0)
 
     def test_candidate_matches_add_row_policy_for_direct_field(self):
-        # TODO: Add laymen description of what this test actually does
+        """
+        This test checks whether the candidate_matches_row_policies method correctly checks row policies for the add action, which don't have an instance and thus require checking the candidate data against the row policy rules.
+        
+        Example for when this is used:
+        - User wants to add a new customer with particular data
+        - this data needs to adhere to the policies for the user
+        """
+        rule = RowPolicyRuleContent(
+            connector="OR",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.first_name_field.id),
+                    operator=Lookup.EQUALS.value.id,
+                    value="Allowed"
+                )
+            ]
+        )
+        
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id": str(self.first_name_field.id),
-                "operator": Lookup.EQUALS.value.id,
-                "value": "Allowed",
-            },
+            rule=rule.model_dump()
         )
         row_policy.add_permission("add_customer")
         self.policy.assign_user(self.normal_user)
@@ -631,13 +684,20 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
 
     def test_candidate_matches_add_row_policy_with_equals_user(self):
         created_by_field = ApplicationField.get_for_model(self.CustomerModel).filter(field="created_by").first()
+        rule = RowPolicyRuleContent(
+            connector="OR",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(created_by_field.id),
+                    operator=Lookup.EQUALS_USER.value.id,
+                    value="$user"
+                )
+            ]
+        )
+        
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id": str(created_by_field.id),
-                "operator": Lookup.EQUALS_USER.value.id,
-                "value": "$user",
-            },
+            rule=rule.model_dump()
         )
         row_policy.add_permission("add_customer")
         self.policy.assign_user(self.normal_user)
@@ -657,13 +717,20 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         )
 
     def test_candidate_matches_add_row_policy_with_nested_foreign_field(self):
+        rule = RowPolicyRuleContent(
+            connector="OR",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.country_field.id),
+                    operator="__country__planet__name",
+                    value="Earth"
+                )
+            ]
+        )
+        
         row_policy = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id": str(self.country_field.id),
-                "operator": "__country__planet__name",
-                "value": "Earth",
-            },
+            rule=rule.model_dump()
         )
         row_policy.add_permission("add_customer")
         self.policy.assign_user(self.normal_user)
@@ -695,6 +762,75 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             )
         )
 
+    def test_candidate_matches_add_row_policy_with_and_rule_and_direct_foreign_key(self):
+        """
+        Create checks should match grouped rules where one condition targets a
+        regular value and another targets a direct foreign key selected by id.
+        """
+        country = self.CountryModel.objects.get(name="Belgium")
+        other_country = self.CountryModel.objects.get(name="Helvetia")
+        rule = RowPolicyRuleContent(
+            connector="AND",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.last_name_field.id),
+                    operator=Lookup.EQUALS.value.id,
+                    value="Peeters",
+                ),
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.country_field.id),
+                    operator=Lookup.FOREIGN_EQUALS.value.id,
+                    value=str(country.pk),
+                ),
+            ],
+        )
+
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule=rule.model_dump(),
+        )
+        row_policy.add_permission("add_customer")
+        self.policy.assign_user(self.normal_user)
+
+        manager = UserPermissionManager(self.normal_user)
+
+        self.assertTrue(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Jaimy",
+                    "last_name": "Peeters",
+                    "age": 30,
+                    "country": country,
+                },
+            )
+        )
+        self.assertFalse(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Jaimy",
+                    "last_name": "Peeters",
+                    "age": 30,
+                    "country": other_country,
+                },
+            )
+        )
+        self.assertFalse(
+            manager.candidate_matches_row_policies(
+                self.CustomerModel,
+                "add_customer",
+                {
+                    "first_name": "Jaimy",
+                    "last_name": "Blocked",
+                    "age": 30,
+                    "country": country,
+                },
+            )
+        )
+
     def test_user_can_view_all_objects_with_all_row_policy(self):
         """
         This test checks whether a user can view all object if the row policy has an all rule.
@@ -705,9 +841,14 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         # 1. Create a row policy rule
         rule = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "field" : "__all__",
-            },
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        field="__all__"
+                    )
+                ]
+            ).model_dump()
         )
         
         # 2. Assign permissions to the rule
@@ -729,6 +870,37 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
             qs = manager.get_queryset(self.CustomerModel, f"{perm}_customer")
             self.assertEqual(qs.count(), 0)
         
+    def test_user_can_view_objects_with_multiple_and_conditions(self):
+        rule = RowPolicyRuleContent(
+            connector="AND",
+            conditions=[
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.first_name_field.id),
+                    operator=Lookup.CONTAINS.value.id,
+                    value="Jaimy"
+                ),
+                RowPolicyRuleCondition(
+                    application_field_id=str(self.age_field.id),
+                    operator=Lookup.GREATER_THAN_OR_EQUAL.value.id,
+                    value=5
+                )
+            ]
+        )
+        
+        row_policy = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule=rule.model_dump()
+        )
+        
+        row_policy.add_permission("view_customer")
+        self.policy.assign_user(self.normal_user)
+        
+        manager = UserPermissionManager(self.normal_user)
+        qs = manager.get_queryset(self.CustomerModel, "view_customer")
+        
+        self.assertEqual(qs.count(), 5)
+        self.assertTrue(all("Jaimy" in obj.first_name for obj in qs))
+        self.assertTrue(all(obj.age >= 5 for obj in qs))
 
     # --------------------------------------
     # API tests using RequestFactory
@@ -743,11 +915,16 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         target = self.CustomerModel.objects.first()
         row_rule = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id": str(self.first_name_field.id),
-                "operator": Lookup.EQUALS.value.id,
-                "value": target.first_name,
-            },
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.EQUALS.value.id,
+                        value=target.first_name,
+                    )
+                ]
+            ).model_dump(),
         )
         row_rule.add_permission("view_customer")
 
@@ -777,11 +954,16 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         target = self.CustomerModel.objects.first()
         row_rule = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id": str(self.first_name_field.id),
-                "operator": Lookup.EQUALS.value.id,
-                "value": target.first_name,
-            },
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.EQUALS.value.id,
+                        value=target.first_name,
+                    )
+                ]
+            ).model_dump(),
         )
         row_rule.add_permission("change_customer")
 
@@ -809,11 +991,16 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         target = self.CustomerModel.objects.first()
         row_rule = RowPolicyRule.objects.create(
             row_policy=self.row_policy,
-            rule={
-                "application_field_id": str(self.first_name_field.id),
-                "operator": Lookup.EQUALS.value.id,
-                "value": target.first_name,
-            },
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.EQUALS.value.id,
+                        value=target.first_name,
+                    )
+                ]
+            ).model_dump(),
         )
         row_rule.add_permission("change_customer")
 
@@ -1140,11 +1327,16 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         )
         country_row_rule = RowPolicyRule.objects.create(
             row_policy=country_row_policy,
-            rule={
-                "application_field_id": str(country_fields["name"].id),
-                "operator": Lookup.EQUALS.value.id,
-                "value": target.name,
-            },
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(country_fields["name"].id),
+                        operator=Lookup.EQUALS.value.id,
+                        value=target.name,
+                    )
+                ]
+            ).model_dump(),
         )
         country_row_rule.add_permission("view_country")
         country_policy = Policy.objects.create(
@@ -1170,11 +1362,16 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         )
         customer_row_rule = RowPolicyRule.objects.create(
             row_policy=customer_row_policy,
-            rule={
-                "application_field_id": str(customer_fields["created_by"].id),
-                "operator": Lookup.EQUALS_USER.value.id,
-                "value": "$user",
-            },
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(customer_fields["created_by"].id),
+                        operator=Lookup.EQUALS_USER.value.id,
+                        value="$user",
+                    )
+                ]
+            ).model_dump(),
         )
         customer_row_rule.add_permission("view_customer")
         customer_policy = Policy.objects.create(

@@ -46,6 +46,7 @@
             :layout_object_id="layout_object_id"
             :layout_object_content_type_id="layout_object_content_type_id"
             :can_edit="can_change_layout"
+            :can_delete="can_delete_layout_object"
             :extra_attrs="layout_container_extra_attrs"
         >
             <c-slot name="buttons_left">
@@ -184,38 +185,7 @@
             </c-slot>
             {% endif %}
 
-            {% for row in layout.rows %}
-                <div
-                    class="workspace-row"
-                    data-layout-row
-                    data-row-title="{{ row.title|default:'' }}"
-                    data-row-columns="{{ row.columns }}"
-                >
-                    <div class="workspace-row__header workspace-row__header--static" data-row-header>
-                        <span class="workspace-row__title{% if not row.title %} workspace-row__title--empty{% endif %}" data-row-title-display>{{ row.title|default:' ' }}</span>
-
-                        <div class="workspace-row__controls" data-row-controls>
-                            <input type="text" class="input input-sm min-w-32" data-row-title-input value="{{ row.title|default:'' }}" placeholder="Row title" />
-                            <input type="number" min="1" max="12" value="{{ row.columns }}" class="workspace-row__input" data-row-cols-input />
-                            <button type="button" class="workspace-row__add" data-add-row title="Add row below">
-                                <i class="fa fa-plus"></i>
-                            </button>
-                            <button type="button" class="workspace-row__drag" data-row-drag-handle title="Drag row">
-                                <i class="fa fa-grip-vertical"></i>
-                            </button>
-                            <button type="button" class="workspace-row__remove" data-remove-row title="Remove row">
-                                <i class="fa fa-xmark"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="workspace-row__grid" data-layout-grid style="grid-template-columns: repeat({{ row.columns }}, minmax(0, 1fr));">
-                        {% for item in row.items %}
-                            {% include "inclusion_tags/layout_field.html" with application_field=item.application_field field=item.field value=item.value input=item.input errors=item.errors help_text=item.help_text colspan=item.colspan config=item.config config_json=item.config_json display_label=item.display_label is_required=item.is_required non_required_fields_visible=non_required_fields_visible layout_preference_object=layout_preference_object layout_mode=layout_mode object_id=object.pk only %}
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endfor %}
+            {% include "inclusion_tags/sectioned_layout_rows.html" %}
         </c-layout.container>
     </form>
     {% else %}
@@ -225,6 +195,7 @@
         :layout_object_id="layout_object_id"
         :layout_object_content_type_id="layout_object_content_type_id"
         :can_edit="can_change_layout"
+        :can_delete="can_delete_layout_object"
         :extra_attrs="layout_container_extra_attrs"
     >
         <c-slot name="buttons_left">
@@ -257,38 +228,7 @@
             />
         </c-slot>
 
-        {% for row in layout.rows %}
-            <div
-                class="workspace-row"
-                data-layout-row
-                data-row-title="{{ row.title|default:'' }}"
-                data-row-columns="{{ row.columns }}"
-            >
-                <div class="workspace-row__header workspace-row__header--static" data-row-header>
-                    <span class="workspace-row__title{% if not row.title %} workspace-row__title--empty{% endif %}" data-row-title-display>{{ row.title|default:' ' }}</span>
-
-                    <div class="workspace-row__controls" data-row-controls>
-                        <input type="text" class="input input-sm min-w-32" data-row-title-input value="{{ row.title|default:'' }}" placeholder="Row title" />
-                        <input type="number" min="1" max="12" value="{{ row.columns }}" class="workspace-row__input" data-row-cols-input />
-                        <button type="button" class="workspace-row__add" data-add-row title="Add row below">
-                            <i class="fa fa-plus"></i>
-                        </button>
-                        <button type="button" class="workspace-row__drag" data-row-drag-handle title="Drag row">
-                            <i class="fa fa-grip-vertical"></i>
-                        </button>
-                        <button type="button" class="workspace-row__remove" data-remove-row title="Remove row">
-                            <i class="fa fa-xmark"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="workspace-row__grid" data-layout-grid style="grid-template-columns: repeat({{ row.columns }}, minmax(0, 1fr));">
-                    {% for item in row.items %}
-                        {% include "inclusion_tags/layout_field.html" with application_field=item.application_field field=item.field value=item.value input=item.input errors=item.errors help_text=item.help_text colspan=item.colspan config=item.config config_json=item.config_json display_label=item.display_label is_required=item.is_required non_required_fields_visible=non_required_fields_visible layout_preference_object=layout_preference_object layout_mode=layout_mode object_id=object.pk only %}
-                    {% endfor %}
-                </div>
-            </div>
-        {% endfor %}
+        {% include "inclusion_tags/sectioned_layout_rows.html" %}
     </c-layout.container>
     {% endif %}
 {% else %}

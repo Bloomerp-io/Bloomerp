@@ -1,0 +1,51 @@
+{% load i18n %}
+
+<div
+    class="grid gap-4 rounded-md border border-gray-200 bg-white p-3 md:grid-cols-[minmax(220px,320px)_minmax(0,1fr)_36px] md:items-start"
+    data-initial-data-row
+>
+    <input type="hidden" name="row_id" value="{{ row_id }}">
+    <div>
+        <label class="mb-1 block text-xs font-medium text-gray-600" for="initial-data-field-{{ row_id }}">
+            {% trans "Field" %}
+        </label>
+        <select
+            id="initial-data-field-{{ row_id }}"
+            class="select w-full"
+            name="field_id_{{ row_id }}"
+            hx-get="{% url 'components_forms_initial_data_value' id=form.id %}?row_id={{ row_id }}"
+            hx-target="#initial-data-value-target-{{ row_id }}"
+            hx-trigger="change"
+            hx-include="this"
+        >
+            <option value="">{% trans "Select field" %}</option>
+            {% for field in application_fields %}
+                <option value="{{ field.id }}" {% if selected_field_id == field.id|stringformat:"s" %}selected{% endif %}>{{ field.title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div id="initial-data-value-target-{{ row_id }}" class="min-w-0">
+        {% if value_context %}
+            {% include "components/forms/initial_data_value.html" with form=value_context.form application_field=value_context.application_field field_type_id=value_context.field_type_id row_id=value_context.row_id mode=value_context.mode child_fields=value_context.child_fields selected_child=value_context.selected_child child_layout_context=value_context.child_layout_context table_layout_context=value_context.table_layout_context layout_context=value_context.layout_context %}
+        {% else %}
+            <label class="mb-1 block text-xs font-medium text-gray-600">
+                {% trans "Value" %}
+            </label>
+            <div class="min-h-10 rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                {% trans "Select a field" %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="pt-6">
+        <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            hx-on:click="this.closest('[data-initial-data-row]').remove()"
+            aria-label="{% trans 'Delete value' %}"
+        >
+            <i class="fa fa-trash"></i>
+        </button>
+    </div>
+</div>

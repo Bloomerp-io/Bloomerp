@@ -339,13 +339,13 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
     fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
     available: list[dict[str, Any]] = []
     for field in fields:
-        if field.field in AUTO_MANAGED_FIELD_NAMES:
-            continue
-
         if not permission_manager.has_field_permission(field, permission_str):
             continue
 
         field_type = field.get_field_type_enum().value
+        if field.field in AUTO_MANAGED_FIELD_NAMES and not field_type.editable_without_form_field:
+            continue
+
         if layout_kind == "create" and not (
             field_type.allow_in_model or field_type.editable_without_form_field
         ):
@@ -427,7 +427,6 @@ def create_default_layout(
 
     if model_layout:
         rows: list[LayoutRow] = []
-        seen_field_ids: set[int] = set()
         for row in model_layout.rows:
             resolved_items: list[LayoutItem] = []
             for item in row.items:
@@ -440,7 +439,6 @@ def create_default_layout(
 
                 if resolved_id not in available_field_ids:
                     continue
-                seen_field_ids.add(resolved_id)
                 resolved_items.append(
                     LayoutItem(
                         id=resolved_id,
@@ -453,20 +451,6 @@ def create_default_layout(
                     columns=row.columns,
                     title=row.title,
                     items=resolved_items,
-                )
-            )
-
-        remaining_items = [
-            LayoutItem(id=application_field.pk, colspan=1)
-            for application_field in application_fields
-            if application_field.pk not in seen_field_ids
-        ]
-        if remaining_items:
-            rows.append(
-                LayoutRow(
-                    columns=2,
-                    title="Details",
-                    items=remaining_items,
                 )
             )
 
