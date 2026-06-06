@@ -5,11 +5,11 @@
     {% for view_type in view_types %}
     <button
         hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
-        hx-vals='{"view_type": "{{ view_type.value }}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
+        hx-vals='{"view_type": "{{ view_type.key }}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
         hx-target="#data-view-{{ content_type_id }}"
         hx-swap="outerHTML"
-        class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md shadow text-sm font-medium {% if preference.view_type == view_type.value %}bg-white text-light ring-1 ring-primary-500{% else %}text-light hover:text-gray-700 hover:bg-gray-50{% endif %}">
-        {% get_icon name=view_type.icon size="16" %}
+        class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md shadow text-sm font-medium {% if preference.view_type == view_type.key %}bg-white text-light ring-1 ring-primary-500{% else %}text-light hover:text-gray-700 hover:bg-gray-50{% endif %}">
+        <i class="{{ view_type.icon }} text-sm text-primary"></i>
         {{ view_type.label }}
     </button>
     {% endfor %}
@@ -38,53 +38,35 @@
     </div>
 
 
-    {% if preference.view_type == 'table' %}
-    <c-ui.data_view.options.select label="Grouping" icon="lines_horizontal" icon_size="16" input_name="table_group_by">
-        <option value="no_grouping">No grouping</option>
-        {% for field in fields.visible_fields %}
-        <option value="{{ field.field }}">{{ field.title }}</option>
+    {% if dataview_options_form %}
+    <form
+        class="space-y-3"
+        hx-post="{% url 'components_change_data_view_preference' content_type_id=content_type_id %}"
+        hx-target="#data-view-data-section"
+        hx-swap="outerHTML"
+        hx-trigger="change delay:200ms"
+        hx-vals='{"dataview_options_view_type": "{{ preference.view_type }}"}'
+    >
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        {% for field in dataview_options_form.visible_fields %}
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+                {% get_icon name="lines_horizontal" size="16" %}
+                <span>{{ field.label }}</span>
+            </div>
+            {{ field }}
+            <span class="hidden">
+                {{ field.errors }}
+            </span>
+        </div>
         {% endfor %}
-    </c-ui.data_view.options.select>
-    
-    <c-ui.data_view.options.select label="Page size" input_name="page_size" content_type_id="{{ content_type_id }}" icon="lines_horizontal" icon_size="16">
-        {% for page_size in page_sizes %}
-        <option value="{{ page_size.value }}" {% if preference.page_size == page_size.value %}selected{% endif %}>{{ page_size.label }}</option>
-        {% endfor %}
-    </c-ui.data_view.options.select>
-
-    {% elif preference.view_type == 'kanban' %}
-    <c-ui.data_view.options.select label="Group by" icon="lines_horizontal" icon_size="16" input_name="kanban_group_by">
-        <option value="no_grouping">No grouping</option>
-        {% for field, is_visible in fields.accessible_fields %}
-        <option value="{{ field.id }}"
-            {% if preference.kanban_group_by_field_id == field.id %}selected{% endif %}
-        >{{ field.title }}</option>
-        {% endfor %}
-    </c-ui.data_view.options.select>
-    {% elif preference.view_type == 'calendar' %}
-    <c-ui.data_view.options.select label="Date field" icon="calendar" icon_size="16" input_name="calendar_start_field">
-        <option value="">Select a date field</option>
-        {% for field, is_visible in fields.accessible_fields %}
-        {% if field.field_type == "DateField" or field.field_type == "DateTimeField" %}
-        <option value="{{ field.id }}"
-            {% if preference.calendar_start_field_id == field.id %}selected{% endif %}
-        >{{ field.title }}</option>
-        {% endif %}
-        {% endfor %}
-    </c-ui.data_view.options.select>
-    
-    <c-ui.data_view.options.select label="View mode" icon="calendar" icon_size="16" input_name="calendar_view_mode">
-        {% for view_mode in calendar_view_modes %}
-        <option value="{{ view_mode.value }}"
-            {% if preference.calendar_view_mode == view_mode.value %}selected{% endif %}
-        >{{ view_mode.label }}</option>
-        {% endfor %}
-    </c-ui.data_view.options.select>
+    </form>
     {% endif %}
 </div>
 
 
 <hr class="border-gray-200 my-4">
+
 
 <!-- Field Visibility Options -->
 <div class="mb-4">
@@ -112,4 +94,3 @@
         {% endfor %}
     </div>
 </div>
-

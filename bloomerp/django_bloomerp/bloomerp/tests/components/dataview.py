@@ -380,8 +380,12 @@ class TestDataView(BaseBloomerpModelTestCase):
         last_name_field = ApplicationField.get_by_field(self.CustomerModel, "last_name")
         preference = get_user_list_view_preference(self.admin_user, content_type)
         preference.view_type = "kanban"
-        preference.page_size = 10
-        preference.kanban_group_by_field = age_field
+        preference.options = {
+            "kanban": {
+                "page_size": 10,
+                "group_by_field_id": age_field.id,
+            }
+        }
         preference.display_fields = {
             **preference.display_fields,
             "kanban": [last_name_field.id],
@@ -405,8 +409,8 @@ class TestDataView(BaseBloomerpModelTestCase):
         self.assertNotContains(response, 'data-testid="data-view-pagination"', html=False)
 
         column_url = reverse(
-            viewname="components_data_view_kanban_column",
-            kwargs={"content_type_id": content_type.id},
+            viewname="components_data_view_action",
+            kwargs={"content_type_id": content_type.id, "action": "column"},
         )
         page_response = self.client.get(
             f"{column_url}?kanban_column=123&kanban_page=2",
@@ -602,7 +606,11 @@ class TestDataView(BaseBloomerpModelTestCase):
             name="Default",
             selected=True,
             view_type="kanban",
-            page_size=50,
+            options={
+                "kanban": {
+                    "page_size": 50,
+                }
+            },
             display_fields={
                 "table": [],
                 "kanban": [1, 2, 3],
@@ -636,7 +644,7 @@ class TestDataView(BaseBloomerpModelTestCase):
         self.assertFalse(source.selected)
         self.assertTrue(created.selected)
         self.assertEqual(created.view_type, "kanban")
-        self.assertEqual(created.page_size, 50)
+        self.assertEqual(created.options, source.options)
         self.assertEqual(created.display_fields, source.display_fields)
 
     def test_change_data_view_preference_uses_selected_preference_when_multiple_exist(self):
@@ -655,7 +663,11 @@ class TestDataView(BaseBloomerpModelTestCase):
             name="Current",
             selected=True,
             view_type="table",
-            page_size=25,
+            options={
+                "table": {
+                    "page_size": 25,
+                }
+            },
         )
 
         url = reverse(
@@ -665,11 +677,14 @@ class TestDataView(BaseBloomerpModelTestCase):
 
         response = self.client.post(
             url,
-            data={"page_size": "50"},
+            data={
+                "dataview_options_view_type": "table",
+                "page_size": "50",
+            },
             HTTP_HX_REQUEST="true",
         )
 
         self.assertEqual(response.status_code, 200)
 
         selected.refresh_from_db()
-        self.assertEqual(selected.page_size, 50)
+        self.assertEqual(selected.options["table"]["page_size"], 50)

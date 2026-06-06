@@ -26,17 +26,12 @@
 <!--End applied filters-->
 
 
+
 <!--Options-->
 <div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
     <c-ui.data_view.display_options 
         :content_type_id="content_type_id"
         :view_types="view_types"
-        :preference="preference"
-        :fields="fields"
-        :page_types="page_types"
-        :page_sizes="page_sizes"
-        :accessible_fields="accessible_fields"
-        :calendar_view_modes="calendar_view_modes"
     />
 </div>
 <!--End options-->
@@ -209,11 +204,8 @@
                             :view_types="view_types"
                             :preference="preference"
                             :fields="fields"
-                            :page_types="page_types"
-                            :page_sizes="page_sizes"
                             :accessible_fields="accessible_fields"
                             :csrf_token="csrf_token"
-                            :calendar_view_modes="calendar_view_modes"
                         />
                     </div>
                     
@@ -238,38 +230,7 @@
         {% if preference.split_view_enabled %}
         <div class="flex h-[calc(100vh-200px)] rounded-xl" data-split-view-container>
             <div class="flex-none resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane" data-split-view-list-pane>
-                {% if preference.view_type == 'table' %}
-                <c-ui.data_view.table 
-                        :content_type_id="content_type_id" 
-                        :fields="data_view_render_fields"
-                        :avatar_field="avatar_field"
-                        :queryset="queryset"
-                        :preference="preference"
-                        :current_sort_field="current_sort_field"
-                        :current_sort_direction="current_sort_direction"
-                        :table_sort_querystring="table_sort_querystring"
-                        :actions="{{ object_actions }}"
-                    />
-                {% elif preference.view_type == 'kanban' %}
-                    <c-ui.data_view.kanban 
-                        :content_type_id="content_type_id" 
-                        :fields="data_view_render_fields"
-                        :avatar_field="avatar_field"
-                        :queryset="queryset"
-                        :preference="preference"
-                        :kanban_groups="kanban_groups"
-                        :kanban_group_by_field="kanban_group_by_field"
-                    />
-                {% elif preference.view_type == 'card' %}
-                    <c-ui.data_view.card
-                        :content_type_id="content_type_id"
-                        :fields="data_view_render_fields"
-                        :avatar_field="avatar_field"
-                        :queryset="queryset"
-                    />
-                {% elif preference.view_type == 'calendar' %}
-                    <c-ui.data_view.calendar />
-                {% endif %}
+                {{ rendered_dataview|safe }}
             </div>
             <div class="w-1 cursor-col-resize bg-gray-200 hover:bg-gray-300 transition-colors" data-split-view-divider></div>
             <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane" data-split-view-detail-pane>
@@ -282,37 +243,7 @@
             </div>
         </div>
         {% else %}
-            {% if preference.view_type == 'table' %}
-                <c-ui.data_view.table 
-                    :content_type_id="content_type_id" 
-                    :fields="data_view_render_fields"
-                    :avatar_field="avatar_field"
-                    :queryset="queryset"
-                    :preference="preference"
-                    :current_sort_field="current_sort_field"
-                    :current_sort_direction="current_sort_direction"
-                    :table_sort_querystring="table_sort_querystring"
-                />
-            {% elif preference.view_type == 'kanban' %}
-                <c-ui.data_view.kanban 
-                    :content_type_id="content_type_id" 
-                    :fields="data_view_render_fields"
-                    :avatar_field="avatar_field"
-                    :kanban_groups="kanban_groups"
-                    :kanban_group_by_field="kanban_group_by_field"
-                />
-            {% elif preference.view_type == 'card' %}
-                <c-ui.data_view.card
-                    :content_type_id="content_type_id"
-                    :fields="data_view_render_fields"
-                    :avatar_field="avatar_field"
-                    :queryset="queryset"
-                />
-            {% elif preference.view_type == 'calendar' %}
-                <c-ui.data_view.calendar 
-                    view_type="week"
-                />
-            {% endif %}
+            {{ rendered_dataview|safe }}
         {% endif %}
 
         {% if show_global_pagination and page_obj.paginator.num_pages > 1 %}

@@ -13,10 +13,10 @@ from django.http import HttpRequest, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 
 from bloomerp.components.application_fields.filters import FILTERABLE_FIELD_TYPES
-from bloomerp.components.objects.dataview import _build_pagination_range
 from bloomerp.components.objects.dataview import _format_applied_filters
+from bloomerp.dataviews.base import BaseDataviewRenderer
 from bloomerp.models import ApplicationField, File, FileFolder
-from bloomerp.models.users.user_list_view_preference import PageSize, UserListViewPreference
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.router import router
 from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
 from bloomerp.services.permission_services import UserPermissionManager
@@ -55,6 +55,7 @@ FILE_BROWSER_RESERVED_QUERY_KEYS = {
     "hide_ancestor_folders",
     "view_type",
 }
+FILE_BROWSER_PAGE_SIZE = 25
 
 
 @dataclass
@@ -770,7 +771,7 @@ def _render_file_browser(
     )
     navigation_items = _build_navigation_items(request=request, scope=scope, query=query)
 
-    paginator = Paginator(visible_files, preference.page_size or PageSize.SIZE_25)
+    paginator = Paginator(visible_files, FILE_BROWSER_PAGE_SIZE)
     try:
         page_obj = paginator.page(page)
     except PageNotAnInteger:
@@ -842,7 +843,7 @@ def _render_file_browser(
         "files": page_obj.object_list,
         "file_rows": _prepare_file_rows(request, page_obj.object_list, current_folder),
         "file_cards": _prepare_file_cards(request, page_obj.object_list, current_folder),
-        "pagination_pages": _build_pagination_range(page_obj),
+        "pagination_pages": BaseDataviewRenderer.build_pagination_range(page_obj),
         "applied_filters": _format_applied_filters(applied_filter_query),
         "folder_options_json": json.dumps(folder_choices),
         "target": getattr(getattr(request, "htmx", None), "target", None),
