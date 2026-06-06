@@ -7,7 +7,7 @@
     bloomerp-component="code-editor-widget"
     data-language="{{ widget.language }}"
     data-launch-from-button="{{ widget.launch_from_button|yesno:'true,false' }}"
-    {% if widget.launch_from_button %}data-modal-id="modal_{{ widget.attrs.id }}"{% endif %}
+    {% if widget.launch_from_button %}data-modal-id="modal_{{ widget.attrs.id }}_{{ extra_id }}"{% endif %}
 >   
     {% if widget.launch_from_button %}
         <button 
