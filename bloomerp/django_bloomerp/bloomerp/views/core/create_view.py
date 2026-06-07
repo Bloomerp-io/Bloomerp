@@ -12,6 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic.edit import CreateView
 
 from bloomerp.models import UserCreateViewPreference
+from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.files import File
@@ -53,7 +54,7 @@ def _redirect_url(model:type[Model], object:Model) -> str:
     url_name="add",
     description="Create a new object from {model}",
     route_type="model",
-    exclude_models=[File, Tile, SqlQuery, User, Workspace, DocumentTemplate, Workflow],
+    exclude_models=[File, Tile, SqlQuery, User, Workspace, DocumentTemplate],
 )
 class BloomerpCreateView(
     BaseBloomerpView,

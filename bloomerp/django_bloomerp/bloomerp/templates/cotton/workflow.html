@@ -1,14 +1,14 @@
 <div 
     bloomerp-component="workflow" class="w-full"
     data-workflow-id="{{ workflow_id }}"
-    data-workflow-json=""
+    data-workflow-json='{{ workflow_json|default:"" }}'
     >
     <!-- Toolbar -->
-    <div class="flex justify-between w-full border-gray-200 border p-4 rounded-xl">
+    <div class="flex justify-between w-full mb-2">
         <div class="flex gap-2">
             
-                <button class="btn btn-primary btn-sm" id="add-node-btn"
-                    bloomerp-open-drawer="node-drawer"><c-blocktrans>Add Node</c-blocktrans>
+                <button class="btn btn-primary btn-sm" id="add-node-btn" type="button">
+                    <c-blocktrans>Add Node</c-blocktrans>
                 </button>
                 <button id="zoom-in-btn" class="btn btn-secondary btn-sm">
                     <i class="fa-solid fa-magnifying-glass-plus"></i>
@@ -29,45 +29,23 @@
     <!-- DrawFlow Canvas -->
     <div id="drawflow" class="border border-1 border-gray-200 mt-3 rounded-xl" style="height: calc(75vh);"></div>
 
-    <c-ui.drawer id="node-drawer">
-        <div class="p-4 space-y-4">
-            <c-ui.text.title>
-                Workflow Nodes
-            </c-ui.text.title>
-            <c-ui.text.muted>
-                Choose a node to get started.
-            </c-ui.text.muted>
-
-            <input class="input w-full" placeholder="Search node">
-        </div>
-        <div>
-            {% for node_type in node_types %}
-            <div class="ml-4">
-                <c-ui.text.subtitle class="">{{ node_type.value.name }}</c-ui.text.subtitle>
-                <c-ui.text.muted class="mb-4">{{ node_type.value.description }}</c-ui.text.muted>
-            </div>
-            <ul>
-                {% for sub_type in node_type.value.types %}
-                <li class="border-l border-l-3 border-gray-200 py-3 hover:border-primary hover:bg-slate-50 cursor-pointer"
-                    data-node-subtype-id="{{ sub_type.id }}" data-node-type-id="{{ node_type.value.id }}">
-                    <div class="flex items-center">
-                        <div class="mx-4 text-slate-400 text-lg">
-                            <i class="{{ sub_type.icon }}"></i>
-                        </div>
-                        <div>
-                            <div class="flex flex-col">
-                                <p>{{ sub_type.name }}</p>
-                                <c-ui.text.help_text>
-                                    {{ sub_type.description }}
-                                </c-ui.text.help_text>
-                            </div>
-                        </div>
-                    </div>
-                </li>
-                {% endfor %}
-            </ul>
+    <div class="hidden" aria-hidden="true" data-workflow-node-definition-registry>
+        {% for node_type in node_types %}
+            {% for sub_type in node_type.value.types %}
+            <div
+                data-node-subtype-id="{{ sub_type.id }}"
+                data-node-subtype-name="{{ sub_type.name }}"
+                data-node-subtype-description="{{ sub_type.description }}"
+                data-node-subtype-icon="{{ sub_type.icon }}"
+                data-node-type-id="{{ node_type.value.id }}"
+                data-node-type-name="{{ node_type.value.name }}"
+            ></div>
             {% endfor %}
-        </div>
+        {% endfor %}
+    </div>
+
+    <c-ui.drawer id="node-drawer">
+        <div data-workflow-drawer-content></div>
     </c-ui.drawer>
 
     <c-ui.modal title="Update node" id="update-node-modal" />

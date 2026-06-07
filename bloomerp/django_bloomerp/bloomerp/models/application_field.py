@@ -5,7 +5,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db.models.query import QuerySet
 from typing import Any, Optional, Type
 from django.utils.translation import gettext_lazy as _
-from bloomerp.field_types import FieldType
+from bloomerp.field_types.types import FieldType
 
 class ApplicationField(models.Model):
     """

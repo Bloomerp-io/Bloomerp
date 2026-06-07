@@ -1,0 +1,66 @@
+<div class="p-4 space-y-4" data-workflow-drawer-root data-workflow-drawer-has-trigger="{{ has_trigger|yesno:'true,false' }}">
+    <div>
+        <c-ui.text.title>
+            Workflow Nodes
+        </c-ui.text.title>
+        <c-ui.text.muted>
+            Choose node to get started.
+        </c-ui.text.muted>
+    </div>
+
+    <input
+        class="input w-full"
+        placeholder="Search node"
+        type="search"
+        data-workflow-node-search
+        aria-label="Search workflow nodes"
+    >
+
+</div>
+<div data-workflow-node-search-results>
+    {% for node_type in node_types %}
+    <section class="pb-3" data-workflow-node-group data-workflow-node-group-name="{{ node_type.value.name|lower }}">
+        <div class="ml-4">
+            <c-ui.text.subtitle>{{ node_type.value.name }}</c-ui.text.subtitle>
+            <c-ui.text.muted class="mb-4">{{ node_type.value.description }}</c-ui.text.muted>
+        </div>
+        <ul>
+            {% for sub_type in node_type.value.types %}
+            <li
+                class="border-l border-l-3 border-gray-200 py-3 hover:border-primary hover:bg-slate-50 cursor-pointer"
+                data-node-subtype-id="{{ sub_type.id }}"
+                data-node-subtype-name="{{ sub_type.name }}"
+                data-node-subtype-description="{{ sub_type.description }}"
+                data-node-subtype-icon="{{ sub_type.icon }}"
+                data-node-type-id="{{ node_type.value.id }}"
+                data-node-type-name="{{ node_type.value.name }}"
+                data-workflow-node-item
+                data-workflow-search-text="{{ node_type.value.name }} {{ sub_type.name }} {{ sub_type.description }}"
+            >
+                <div class="flex items-center">
+                    <div class="mx-4 text-slate-400 text-lg">
+                        <i class="{{ sub_type.icon }}"></i>
+                    </div>
+                    <div>
+                        <div class="flex flex-col">
+                            <p>{{ sub_type.name }}</p>
+                            <c-ui.text.help_text>
+                                {{ sub_type.description }}
+                            </c-ui.text.help_text>
+                        </div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% empty %}
+    <div class="px-4 py-2 text-sm text-slate-500">
+        No nodes available.
+    </div>
+    {% endfor %}
+
+    <div class="hidden px-4 py-3 text-sm text-slate-500" data-workflow-node-empty-search>
+        No nodes match search.
+    </div>
+</div>

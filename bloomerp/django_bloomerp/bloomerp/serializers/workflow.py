@@ -6,6 +6,35 @@ from bloomerp.models.automation.workflow_edge import WorkflowEdge
 from bloomerp.models.automation.workflow_node import WorkflowNode
 
 
+def _node_reference_to_id(reference: str) -> int | None:
+    if not reference.startswith("node-"):
+        return None
+
+    try:
+        return int(reference.removeprefix("node-"))
+    except ValueError:
+        return None
+
+
+def _safe_position(value) -> int:
+    if value in (None, ""):
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+class PositionIntegerField(serializers.IntegerField):
+    def to_internal_value(self, data):
+        if data in (None, ""):
+            return self.default
+        try:
+            return super().to_internal_value(data)
+        except serializers.ValidationError:
+            return self.default
+
+
 class WorkflowNodeSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
     client_id = serializers.CharField(
@@ -16,8 +45,8 @@ class WorkflowNodeSerializer(serializers.Serializer):
         choices=WorkflowNode._meta.get_field("type").choices,
     )
     config = serializers.JSONField()
-    pos_x = serializers.IntegerField(required=False, default=0)
-    pos_y = serializers.IntegerField(required=False, default=0)
+    pos_x = PositionIntegerField(required=False, allow_null=True, default=0)
+    pos_y = PositionIntegerField(required=False, allow_null=True, default=0)
     
     def validate_config(self, value):
         if not isinstance(value, dict):
@@ -150,20 +179,22 @@ class WorkflowSerializer(serializers.ModelSerializer):
         node_lookup = self._save_nodes(instance, nodes_data)
         self._node_lookup = node_lookup
         self._replace_edges(instance, edges_data, node_lookup)
-        self._delete_removed_nodes(instance, nodes_data)
+        self._delete_removed_nodes(instance, node_lookup)
         return instance
 
     def _save_nodes(self, workflow: Workflow, nodes_data: list[dict]) -> dict[str, WorkflowNode]:
         node_lookup: dict[str, WorkflowNode] = {}
 
         for node_data in nodes_data:
-            node_id = node_data.get("id")
             client_id = node_data["client_id"]
+            node_id = self._resolve_node_id(workflow, node_data)
             node_values = {
                 key: value
                 for key, value in node_data.items()
                 if key not in {"id", "client_id"}
             }
+            node_values["pos_x"] = _safe_position(node_values.get("pos_x"))
+            node_values["pos_y"] = _safe_position(node_values.get("pos_y"))
 
             if node_id is not None:
                 node = workflow.nodes.get(id=node_id)
@@ -179,6 +210,24 @@ class WorkflowSerializer(serializers.ModelSerializer):
             node_lookup[client_id] = node
 
         return node_lookup
+
+    def _resolve_node_id(
+        self,
+        workflow: Workflow,
+        node_data: dict,
+    ) -> int | None:
+        node_id = node_data.get("id")
+        if node_id is not None:
+            return node_id
+
+        client_node_id = _node_reference_to_id(node_data["client_id"])
+        if client_node_id is None:
+            return None
+
+        if workflow.nodes.filter(id=client_node_id).exists():
+            return client_node_id
+
+        return None
 
     def _replace_edges(
         self,
@@ -201,8 +250,12 @@ class WorkflowSerializer(serializers.ModelSerializer):
 
         WorkflowEdge.objects.bulk_create(new_edges)
 
-    def _delete_removed_nodes(self, workflow: Workflow, nodes_data: list[dict]) -> None:
-        kept_ids = {node["id"] for node in nodes_data if node.get("id") is not None}
+    def _delete_removed_nodes(
+        self,
+        workflow: Workflow,
+        node_lookup: dict[str, WorkflowNode],
+    ) -> None:
+        kept_ids = {node.id for node in node_lookup.values()}
         workflow.nodes.exclude(id__in=kept_ids).delete()
 
 
@@ -214,9 +267,11 @@ EXAMPLE_WORKFLOW_PAYLOAD = {
             "type": "TRIGGER",
             "config": {
                 "sub_type": "HUMAN_TRIGGER",
-                "data": {
-                    "email": "new.user@example.com",
-                    "first_name": "Ava",
+                "parameters": {
+                    "data": {
+                        "email": "new.user@example.com",
+                        "first_name": "Ava",
+                    },
                 },
             },
             "pos_x": 120,
@@ -227,9 +282,11 @@ EXAMPLE_WORKFLOW_PAYLOAD = {
             "type": "ACTION",
             "config": {
                 "sub_type": "SEND_EMAIL",
-                "recipient": "new.user@example.com",
-                "subject": "Welcome to Bloomerp",
-                "body": "Hi Ava, thanks for signing up.",
+                "parameters": {
+                    "recipient": "new.user@example.com",
+                    "subject": "Welcome to Bloomerp",
+                    "body": "Hi Ava, thanks for signing up.",
+                },
             },
             "pos_x": 420,
             "pos_y": 80,

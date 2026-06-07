@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
@@ -80,8 +82,20 @@ def filters_init(request:HttpRequest, content_type_id:int) -> HttpResponse:
     Initializes the filter component for a given content type.
     """
     application_field_id = request.GET.get("application_field_id", None)
+    initial_filter_raw = request.GET.get("initial_filter", "")
     selected_application_field = None
     html_content = ""
+    initial_filter = None
+
+    if initial_filter_raw:
+        try:
+            parsed_initial_filter = json.loads(initial_filter_raw)
+            if isinstance(parsed_initial_filter, dict):
+                initial_filter = parsed_initial_filter
+                if not application_field_id:
+                    application_field_id = parsed_initial_filter.get("applicationFieldId")
+        except json.JSONDecodeError:
+            initial_filter = None
     
     # TODO: integrate with permissions
     if not application_field_id:
@@ -107,6 +121,7 @@ def filters_init(request:HttpRequest, content_type_id:int) -> HttpResponse:
             "application_fields": application_fields,
             "selected_application_field": selected_application_field,
             "html_content": html_content,
+            "initial_filter_json": json.dumps(initial_filter) if initial_filter else "",
         }    
     )
 

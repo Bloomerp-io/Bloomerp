@@ -1,4 +1,8 @@
+import json
+
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
+from django.urls import reverse
 from bloomerp.models import Workflow, WorkflowEdge, WorkflowNode, User
 from bloomerp.automation.defintion import WorkflowNodeType
 from django.core.exceptions import ValidationError
@@ -124,6 +128,335 @@ class TestAutomationModels(TestCase):
         self.assertIn(self.end_node, output_nodes)
         self.assertIn(self.other_node, output_nodes)
         self.assertNotIn(self.yet_another_node, output_nodes)
+
+    def test_update_workflow_keeps_new_nodes_and_response_client_ids(self):
+        self.client.force_login(self.user)
+
+        payload = {
+            "workflow_id": self.workflow.id,
+            "name": "Updated Workflow",
+            "nodes": [
+                {
+                    "id": self.start_node.id,
+                    "client_id": "node-1",
+                    "type": "TRIGGER",
+                    "config": {
+                        "sub_type": "HUMAN_TRIGGER",
+                        "parameters": {"data": {"d": "d"}},
+                    },
+                    "pos_x": 129,
+                    "pos_y": 192,
+                },
+                {
+                    "id": self.end_node.id,
+                    "client_id": "node-2",
+                    "type": "ACTION",
+                    "config": {
+                        "sub_type": "SEND_EMAIL",
+                        "parameters": {
+                            "recipient": "David",
+                            "subject": "Dubrik",
+                            "body": "You",
+                        },
+                    },
+                    "pos_x": 596,
+                    "pos_y": 293,
+                },
+                {
+                    "client_id": "node-3",
+                    "type": "ACTION",
+                    "config": {
+                        "sub_type": "SEND_EMAIL",
+                        "parameters": {
+                            "recipient": "David",
+                            "subject": "Second",
+                            "body": "Still here",
+                        },
+                    },
+                    "pos_x": 596,
+                    "pos_y": 100,
+                },
+            ],
+            "edges": [
+                {"from_node": "node-1", "to_node": "node-2"},
+                {"from_node": "node-1", "to_node": "node-3"},
+            ],
+        }
+
+        response = self.client.post(
+            reverse("components_automation_save_workflow"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertEqual(len(response_data["nodes"]), 3)
+        self.assertEqual(len(response_data["edges"]), 2)
+        self.assertEqual(
+            {node["client_id"] for node in response_data["nodes"]},
+            {"node-1", "node-2", "node-3"},
+        )
+        self.assertEqual(
+            {
+                (edge["from_node"], edge["to_node"])
+                for edge in response_data["edges"]
+            },
+            {("node-1", "node-2"), ("node-1", "node-3")},
+        )
+        self.assertEqual(self.workflow.nodes.count(), 3)
+
+    def test_update_workflow_defaults_invalid_node_positions(self):
+        self.client.force_login(self.user)
+
+        payload = {
+            "workflow_id": self.workflow.id,
+            "name": "Updated Workflow",
+            "nodes": [
+                {
+                    "id": self.start_node.id,
+                    "client_id": "node-1",
+                    "type": "TRIGGER",
+                    "config": {
+                        "sub_type": "HUMAN_TRIGGER",
+                        "parameters": {"data": {"d": "d"}},
+                    },
+                    "pos_x": None,
+                    "pos_y": "",
+                },
+                {
+                    "id": self.end_node.id,
+                    "client_id": "node-2",
+                    "type": "ACTION",
+                    "config": {
+                        "sub_type": "SEND_EMAIL",
+                        "parameters": {
+                            "recipient": "David",
+                            "subject": "Dubrik",
+                            "body": "You",
+                        },
+                    },
+                    "pos_x": "not-ready",
+                },
+            ],
+            "edges": [{"from_node": "node-1", "to_node": "node-2"}],
+        }
+
+        response = self.client.post(
+            reverse("components_automation_save_workflow"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        node_by_client_id = {
+            node["client_id"]: node for node in response_data["nodes"]
+        }
+        self.assertEqual(node_by_client_id["node-1"]["pos_x"], 0)
+        self.assertEqual(node_by_client_id["node-1"]["pos_y"], 0)
+        self.assertEqual(node_by_client_id["node-2"]["pos_x"], 0)
+        self.assertEqual(node_by_client_id["node-2"]["pos_y"], 0)
+
+    def test_update_workflow_uses_db_shaped_client_ids_when_ids_are_missing(self):
+        self.client.force_login(self.user)
+        payload = {
+            "workflow_id": self.workflow.id,
+            "name": "Workflow",
+            "nodes": [
+                {
+                    "client_id": f"node-{self.start_node.id}",
+                    "type": "TRIGGER",
+                    "config": {
+                        "sub_type": "HUMAN_TRIGGER",
+                        "parameters": {"data": {"d": "d"}},
+                    },
+                    "pos_x": 129,
+                    "pos_y": 192,
+                },
+                {
+                    "client_id": f"node-{self.end_node.id}",
+                    "type": "FLOW",
+                    "config": {
+                        "sub_type": "FILTER_OBJECTS",
+                        "parameters": {
+                            "field": "status",
+                            "operator": "exact",
+                            "value": "active",
+                        },
+                    },
+                    "pos_x": 500,
+                    "pos_y": 192,
+                },
+                {
+                    "client_id": "node-new-for-each",
+                    "type": "FLOW",
+                    "config": {"sub_type": "FOR_EACH", "parameters": {}},
+                    "pos_x": 774,
+                    "pos_y": 192,
+                },
+            ],
+            "edges": [
+                {
+                    "from_node": f"node-{self.start_node.id}",
+                    "to_node": f"node-{self.end_node.id}",
+                },
+                {
+                    "from_node": f"node-{self.end_node.id}",
+                    "to_node": "node-new-for-each",
+                },
+            ],
+        }
+
+        response = self.client.post(
+            reverse("components_automation_save_workflow"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            WorkflowNode.objects.filter(
+                workflow=self.workflow,
+                type="TRIGGER",
+            ).count(),
+            1,
+        )
+        response_data = response.json()
+        self.assertEqual(len(response_data["nodes"]), 3)
+        self.assertIn(
+            f"node-{self.start_node.id}",
+            {node["client_id"] for node in response_data["nodes"]},
+        )
+
+    def test_render_workflow_node_uses_dedicated_template(self):
+        self.client.force_login(self.user)
+        if_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "status",
+                    "operator": "exact",
+                    "value": "active",
+                },
+            },
+            type="FLOW",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.get(
+            reverse("components_automation_render_workflow_node"),
+            {
+                "node_id": if_node.id,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn('data-workflow-node-config-form="true"', content)
+        self.assertIn("If Condition", content)
+        self.assertIn("workflow-node-config-fields", content)
+        self.assertNotIn("Hello world", content)
+
+    def test_render_workflow_node_schema_panel_returns_output_values(self):
+        self.client.force_login(self.user)
+        content_type = ContentType.objects.get_for_model(User)
+        list_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "LIST_OBJECTS",
+                "parameters": {"content_type_id": content_type.id},
+            },
+            type="ACTION",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.get(
+            reverse("components_automation_render_workflow_node_schema_panel"),
+            {"node_id": list_node.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn('data-workflow-node-schema-panel', content)
+        self.assertIn("Output values", content)
+        self.assertIn("Username", content)
+
+    def test_model_backed_schema_panel_includes_output_paths(self):
+        self.client.force_login(self.user)
+        content_type = ContentType.objects.get_for_model(User)
+        list_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "LIST_OBJECTS",
+                "parameters": {"content_type_id": content_type.id},
+            },
+            type="ACTION",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.get(
+            reverse("components_automation_render_workflow_node_schema_panel"),
+            {"node_id": list_node.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Output values", content)
+        self.assertIn("input.0.username", content)
+
+    def test_schema_panel_resolves_upstream_schema_recursively(self):
+        self.client.force_login(self.user)
+        content_type = ContentType.objects.get_for_model(User)
+        list_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "LIST_OBJECTS",
+                "parameters": {"content_type_id": content_type.id},
+            },
+            type="ACTION",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        filter_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "FILTER_OBJECTS",
+                "parameters": {
+                    "field": "is_active",
+                    "operator": "truthy",
+                    "value": "",
+                },
+            },
+            type="FLOW",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        for_each_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={"sub_type": "FOR_EACH", "parameters": {}},
+            type="FLOW",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        WorkflowEdge.objects.create(from_node=list_node, to_node=filter_node)
+        WorkflowEdge.objects.create(from_node=filter_node, to_node=for_each_node)
+
+        response = self.client.get(
+            reverse("components_automation_render_workflow_node_schema_panel"),
+            {"node_id": for_each_node.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Input values", content)
+        self.assertIn("Output values", content)
+        self.assertIn("input.0.username", content)
+        self.assertIn("input.item.username", content)
     
     
     def test_get_node_subtype(self):

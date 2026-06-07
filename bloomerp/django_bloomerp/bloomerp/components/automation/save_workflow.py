@@ -10,6 +10,16 @@ from bloomerp.router import router
 from bloomerp.serializers.workflow import WorkflowSerializer
 
 
+def _node_reference_to_id(reference: str) -> int | None:
+    if not reference.startswith("node-"):
+        return None
+
+    try:
+        return int(reference.removeprefix("node-"))
+    except ValueError:
+        return None
+
+
 @router.register(
     path="components/automation/save_workflow/",
     name="components_automation_save_workflow",
@@ -40,5 +50,11 @@ def save_workflow(request: HttpRequest) -> HttpResponse:
     }
     for node in response_data.get("nodes", []):
         node["client_id"] = client_id_by_node_id.get(node["id"], node["client_id"])
+
+    for edge in response_data.get("edges", []):
+        from_node_id = _node_reference_to_id(edge["from_node"])
+        to_node_id = _node_reference_to_id(edge["to_node"])
+        edge["from_node"] = client_id_by_node_id.get(from_node_id, edge["from_node"])
+        edge["to_node"] = client_id_by_node_id.get(to_node_id, edge["to_node"])
 
     return JsonResponse(response_data, status=status_code)

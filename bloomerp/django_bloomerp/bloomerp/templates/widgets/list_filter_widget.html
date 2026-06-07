@@ -1,0 +1,12 @@
+<div>
+    <div 
+        bloomerp-component="list-filter-widget"
+        {% if url %}hx-get="{{ url }}"{% endif %}
+        hx-target="this"
+        {% if url %}hx-trigger="load"{% endif %}
+        data-content-type-id="{{ content_type_id }}"
+        data-url-template="/components/filters/__CONTENT_TYPE_ID__/init/"
+        >
+
+    </div>
+</div>

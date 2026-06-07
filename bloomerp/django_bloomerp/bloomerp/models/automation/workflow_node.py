@@ -4,6 +4,7 @@ from bloomerp.automation.defintion import WorkflowNodeType
 from bloomerp.automation.defintion import NodeTypeDefinition
 from bloomerp.automation.defintion import NodeSubTypeDefinition
 from bloomerp.automation.base_executor import NodeExecutionError
+from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models.mixins import TimestampModelMixin
 from django.utils.translation import gettext_lazy as _
@@ -13,7 +14,9 @@ from django.core.exceptions import ValidationError
 class WorkflowNode(
     UserStampModelMixin,
     TimestampModelMixin,
-    models.Model):
+    AbsoluteUrlModelMixin,
+    models.Model,
+    ):
     
     class Meta:
         db_table = "bloomerp_workflow_node"

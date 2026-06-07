@@ -1,1 +1,77 @@
-<p>Hello world</p>
+{% load crispy_forms_tags %}
+
+<form
+    method="post"
+    action=""
+    hx-post=""
+    hx-target="this"
+    hx-swap="outerHTML"
+    class="workflow-node-config-form grid gap-6 xl:h-full xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_auto] xl:overflow-hidden xl:gap-0"
+    data-detail-view-grid
+    data-workflow-node-config-form="true"
+    data-node-type="{{ node_type }}"
+    data-node-sub-type="{{ node_sub_type }}"
+>
+    {% csrf_token %}
+
+    <section class="min-w-0 xl:h-full xl:min-h-0 xl:overflow-hidden">
+        <div class="flex flex-col bg-white xl:h-full xl:min-h-0 xl:overflow-hidden">
+            <div class="shrink-0 border-b border-slate-200 px-4 py-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    {{ node_type|title }}
+                </p>
+                <h3 class="text-lg font-semibold text-slate-950">
+                    Configure {{ node_sub_type_definition.name }}
+                </h3>
+                {% if node_sub_type_definition.description %}
+                    <p class="mt-1 text-sm text-slate-500">
+                        {{ node_sub_type_definition.description }}
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="workflow-node-config-fields min-w-0 p-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+                {% if form %}
+                    {{ form|crispy }}
+                {% endif %}
+
+                <div class="mt-4 flex items-center justify-between gap-2">
+                    <p class="text-xs text-slate-500" data-workflow-node-config-status>
+                        Changes save automatically.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <c-ui.resizable_div
+        id="workflow-node"
+        start_width="24rem"
+        fit_to_main_bottom="true"
+        class="w-full border-t border-gray-200 xl:h-full xl:min-h-0 xl:w-[24rem] xl:self-stretch xl:border-0 xl:-ml-px"
+    >
+        <aside class="flex w-full xl:h-full xl:min-h-0 xl:flex-1">
+            <div class="relative flex w-full flex-1 flex-col overflow-hidden border-l border-gray-200 bg-base xl:h-full xl:min-h-0" data-resizable-div-panel>
+                <div class="pointer-events-none absolute left-0 top-0 z-40 h-full w-px bg-gray-200"></div>
+
+                <div class="shrink-0 border-b border-slate-200 bg-white px-5 py-4">
+                    <div class="flex items-start gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                            <i class="{{ node_sub_type_definition.icon }}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                Node Context
+                            </p>
+                            <h4 class="truncate text-base font-semibold text-slate-950">
+                                {{ node_sub_type_definition.name }}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+
+                {% include "components/automation/workflow_node_schema_panel.html" %}
+            </div>
+        </aside>
+    </c-ui.resizable_div>
+</form>
