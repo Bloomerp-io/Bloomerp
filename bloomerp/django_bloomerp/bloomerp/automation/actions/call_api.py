@@ -47,7 +47,6 @@ class CallApiExecutor(BaseExecutor):
         if response.status_code >= 200 and response.status_code < 300:
             return json.loads(response.content)
         else:
-            print(f"API call failed: {response.status_code} - {response.text}")
             return {}
             
     

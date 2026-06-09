@@ -4,6 +4,8 @@ import BaseComponent, { registerComponent, getComponent } from './BaseComponent'
 const OPEN_MODAL_ATTRIBUTE = 'bloomerp-open-modal'
 const CLOSE_MODAL_ATTRIBUTE = 'bloomerp-close-modal'
 const TOGGLE_FULL_SCREEN_ATTRIBUTE = 'bloomerp-full-screen-modal'
+const MODAL_PADDING_ATTRIBUTE = 'data-modal-padding'
+const DEFAULT_MODAL_PADDING_ATTRIBUTE = 'data-default-modal-padding'
 
 /**
  * Modal Component
@@ -29,6 +31,7 @@ export class Modal extends BaseComponent {
         xl: 'max-w-6xl',
         full: 'max-w-full',
     };
+    private static readonly PADDING_CLASS_PATTERN = /^!?p(?:[trblxyse])?-.+$/;
 
     private modalId: string = '';
     private backdropElement: HTMLElement | null = null;
@@ -78,6 +81,7 @@ export class Modal extends BaseComponent {
         }
 
         this.captureOriginalState();
+        this.syncPaddingState();
 
         // Setup event listeners
         this.setupBackdropClickHandler();
@@ -374,9 +378,8 @@ export class Modal extends BaseComponent {
     private enterFullscreen(container: HTMLElement, modalBody: HTMLElement): void {
         this.captureOriginalState(container, modalBody);
 
-        // Store original size and body classes in data attributes for reliable restoration
         const sizeClasses = ['max-w-sm', 'max-w-2xl', 'max-w-4xl', 'max-w-6xl'];
-        let currentSize = container.getAttribute('data-original-size') || 'md';
+        const currentSize = container.getAttribute('data-original-size') || 'md';
 
         this.originalSize = currentSize;
 
@@ -388,8 +391,9 @@ export class Modal extends BaseComponent {
         // Set fullscreen on container - make it flex column for proper layout
         container.classList.add('max-w-full', 'w-full', 'h-full', 'rounded-none', 'flex', 'flex-col');
 
-        // Update modal body - remove max-h constraint and make it flex-1 to fill space
-        modalBody.className = 'flex-1 overflow-y-auto p-6';
+        // Preserve body classes and padding while expanding the scroll region.
+        modalBody.classList.remove('max-h-96');
+        modalBody.classList.add('flex-1');
 
         this.isFullscreen = true;
     }
@@ -404,9 +408,7 @@ export class Modal extends BaseComponent {
             container.setAttribute('data-original-size', this.detectCurrentSize(container));
         }
 
-        if (!container.getAttribute('data-original-body-classes')) {
-            container.setAttribute('data-original-body-classes', Array.from(modalBody.classList).join(' '));
-        }
+        this.syncPaddingState();
     }
 
     private detectCurrentSize(container: HTMLElement): string {
@@ -433,14 +435,7 @@ export class Modal extends BaseComponent {
         const storedSize = container.getAttribute('data-original-size') || this.originalSize;
         this.applySizeToElements(storedSize);
 
-        // Restore original modal body classes
-        const originalBodyClasses = container.getAttribute('data-original-body-classes');
-        if (originalBodyClasses) {
-            modalBody.className = originalBodyClasses;
-        } else {
-            // Fallback to default classes
-            modalBody.className = 'max-h-96 overflow-y-auto p-6';
-        }
+        modalBody.classList.add('overflow-y-auto');
 
         this.isFullscreen = false;
     }
@@ -514,9 +509,11 @@ export class Modal extends BaseComponent {
 
         const defaultSize = this.element.getAttribute('data-default-modal-size') || 'md';
         const defaultBackdrop = (this.element.getAttribute('data-default-backdrop-click-close') || 'true') !== 'false';
+        const defaultPadding = this.getDefaultPadding();
 
         this.setSize(defaultSize);
         this.setBackdrop(defaultBackdrop);
+        this.setPadding(defaultPadding);
     }
 
     private shouldCloseOnBackdrop(): boolean {
@@ -542,5 +539,60 @@ export class Modal extends BaseComponent {
             this.modalBodyElement.classList.remove('flex-1');
             this.modalBodyElement.classList.add('max-h-96');
         }
+    }
+
+    private syncPaddingState(): void {
+        if (!this.element || !this.modalBodyElement) return;
+
+        const detectedPadding = this.detectBodyPadding();
+        const currentPadding = this.element.getAttribute(MODAL_PADDING_ATTRIBUTE)?.trim() || detectedPadding;
+        const defaultPadding = this.element.getAttribute(DEFAULT_MODAL_PADDING_ATTRIBUTE)?.trim() || detectedPadding;
+
+        this.element.setAttribute(MODAL_PADDING_ATTRIBUTE, currentPadding);
+        this.element.setAttribute(DEFAULT_MODAL_PADDING_ATTRIBUTE, defaultPadding);
+
+        this.applyPaddingToBody(currentPadding);
+    }
+
+    private detectBodyPadding(): string {
+        if (!this.modalBodyElement) {
+            return 'p-3';
+        }
+
+        const paddingClasses = Array.from(this.modalBodyElement.classList).filter((className) =>
+            Modal.PADDING_CLASS_PATTERN.test(className)
+        );
+
+        return paddingClasses.join(' ') || 'p-3';
+    }
+
+    private applyPaddingToBody(padding: string): void {
+        if (!this.modalBodyElement) return;
+
+        const existingPaddingClasses = Array.from(this.modalBodyElement.classList).filter((className) =>
+            Modal.PADDING_CLASS_PATTERN.test(className)
+        );
+
+        if (existingPaddingClasses.length > 0) {
+            this.modalBodyElement.classList.remove(...existingPaddingClasses);
+        }
+
+        const nextPaddingClasses = padding.split(/\s+/).filter(Boolean);
+        if (nextPaddingClasses.length > 0) {
+            this.modalBodyElement.classList.add(...nextPaddingClasses);
+        }
+    }
+
+    private getDefaultPadding(): string {
+        return this.element?.getAttribute(DEFAULT_MODAL_PADDING_ATTRIBUTE)?.trim() || 'p-3';
+    }
+
+    public setPadding(padding: string): void {
+        if (!this.element || !this.modalBodyElement) return;
+
+        const normalizedPadding = padding.trim() || this.getDefaultPadding();
+
+        this.element.setAttribute(MODAL_PADDING_ATTRIBUTE, normalizedPadding);
+        this.applyPaddingToBody(normalizedPadding);
     }
 }

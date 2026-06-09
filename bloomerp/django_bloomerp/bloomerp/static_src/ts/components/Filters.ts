@@ -155,6 +155,7 @@ const RESERVED_FILTER_KEYS = new Set([
 export default class FilterContainer extends BaseComponent {
     private static readonly MAX_ADVANCED_RELATION_DEPTH = 2;
     private contentTypeId: string;
+    private initialFilterApplied = false;
     private fieldChangeHandler: ((event: Event) => void) | null = null;
     private lookupChangeHandler: ((event: Event) => void) | null = null;
     private htmxSwapHandler: ((event: Event) => void) | null = null;
@@ -255,6 +256,35 @@ export default class FilterContainer extends BaseComponent {
         }
 
         this.attachAdvancedLookupListener();
+        void this.applyInitialFilterFromDataset();
+    }
+
+    private async applyInitialFilterFromDataset(): Promise<void> {
+        if (this.initialFilterApplied) {
+            return;
+        }
+
+        const rawFilter = this.element.getAttribute("data-initial-filter") || "";
+        if (!rawFilter) {
+            this.initialFilterApplied = true;
+            return;
+        }
+
+        let parsedFilter: FilterEntryData | null = null;
+        try {
+            parsedFilter = JSON.parse(rawFilter) as FilterEntryData;
+        } catch (_error) {
+            this.initialFilterApplied = true;
+            return;
+        }
+
+        if (!parsedFilter?.applicationFieldId) {
+            this.initialFilterApplied = true;
+            return;
+        }
+
+        await this.setFilter(parsedFilter);
+        this.initialFilterApplied = true;
     }
 
     /**

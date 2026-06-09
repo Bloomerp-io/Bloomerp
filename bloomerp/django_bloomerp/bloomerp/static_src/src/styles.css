@@ -1278,10 +1278,10 @@ Dashboard
 
     /* DrawFlow Node Styling - Card-like appearance */
     .drawflow .drawflow-node {
-        @apply border border-gray-200 rounded-xl shadow-sm min-w-[200px] p-0;
+        @apply border border-gray-200 rounded-xl shadow-sm min-w-[240px] p-0;
         background: white !important;
         border: 1px solid #e5e7eb !important;
-        border-radius: 0.5rem !important;
+        border-radius: 0.9rem !important;
         width: auto !important;
         min-height: 40px !important;
         display: block !important;
@@ -1291,13 +1291,11 @@ Dashboard
     }
 
     .drawflow .drawflow-node:hover {
-        @apply shadow-md border-gray-300;
-        border-color: #d1d5db !important;
+        @apply shadow-lg border-gray-200;
     }
 
     .drawflow .drawflow-node.selected {
-        @apply border-gray-400 shadow-md;
-        border-color: #9ca3af !important;
+        @apply border-primary shadow-xl;
     }
 
     /* Node Content Styling */
@@ -1306,10 +1304,47 @@ Dashboard
     }
 
     .node-header {
-        @apply px-4 py-3 font-semibold text-sm text-gray-900 border-b border-gray-200 bg-gray-50 rounded-t-lg;
-        background-color: #f9fafb !important;
+        @apply px-4 py-3 font-semibold text-sm text-gray-900 border-b border-gray-200 rounded-t-xl;
+        background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%) !important;
         color: #111827 !important;
         cursor: move;
+    }
+
+    .workflow-node-header {
+        @apply flex items-center gap-3;
+    }
+
+    .workflow-node-icon {
+        @apply flex h-10 w-10 items-center justify-center rounded-xl text-base shadow-sm;
+        background: #e2e8f0;
+        color: #334155;
+    }
+
+    .workflow-node-title-wrap {
+        @apply min-w-0;
+    }
+
+    .workflow-node-kicker {
+        @apply text-[0.65rem] font-bold uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .workflow-node-title {
+        @apply truncate text-base font-bold leading-tight text-slate-950;
+    }
+
+    .workflow-node-card--trigger .workflow-node-icon {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .workflow-node-card--action .workflow-node-icon {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .workflow-node-card--flow .workflow-node-icon {
+        background: #fef3c7;
+        color: #92400e;
     }
 
     /* Remove colored backgrounds from headers */
@@ -1322,11 +1357,35 @@ Dashboard
     }
 
     .node-body {
-        @apply px-4 py-3;
+        @apply px-4 py-3 space-y-3;
     }
 
     .node-body p {
         @apply mb-2 text-gray-500 text-sm;
+    }
+
+    .workflow-node-meta {
+        @apply text-xs font-semibold uppercase tracking-wide text-slate-400;
+    }
+
+    .workflow-node-config {
+        @apply flex max-w-[280px] flex-wrap gap-1.5;
+    }
+
+    .workflow-node-config-chip {
+        @apply inline-flex max-w-full items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[0.68rem] leading-none;
+    }
+
+    .workflow-node-config-key {
+        @apply font-semibold text-slate-500;
+    }
+
+    .workflow-node-config-value {
+        @apply max-w-[140px] truncate text-slate-800;
+    }
+
+    .workflow-node-empty-config {
+        @apply rounded-full border border-dashed border-slate-200 px-2 py-1 text-xs text-slate-400;
     }
 
     .node-input, 

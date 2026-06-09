@@ -1,5 +1,3 @@
-
-
 from importlib.util import find_spec
 
 from django.conf import settings

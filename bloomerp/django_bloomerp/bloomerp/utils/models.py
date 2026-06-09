@@ -315,3 +315,18 @@ def get_object_model_and_content_type_or_404(content_type_id:int, object_id:str)
     object = get_object_or_404(ModelCls, id=object_id)
     
     return object, ModelCls, content_type
+
+
+def get_model_and_content_type_or_404(content_type_id:int) -> tuple[type[Model], ContentType]:
+    """Returns the model and content type or a 404 based on the content type id
+
+    Args:
+        content_type_id (int): the content type id
+
+    Returns:
+        tuple[type[Model], ContentType]: the repsonse
+    """
+    content_type = get_object_or_404(ContentType, id=content_type_id)
+    ModelCls = content_type.model_class()
+    
+    return ModelCls, content_type
