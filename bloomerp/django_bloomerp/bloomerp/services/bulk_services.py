@@ -26,7 +26,7 @@ from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
 from bloomerp.models.files import File
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
-from bloomerp.tasks.base import is_celery_available
+from bloomerp.celery.utils import is_celery_available
 from bloomerp.utils.model_io import BloomerpModelIO
 
 
@@ -464,7 +464,7 @@ class BulkCrudService:
 
         if is_celery_available():
             try:
-                from bloomerp.tasks.bulk_upload_task import process_bulk_upload_submission
+                from bloomerp.celery.tasks.bulk_upload_task import process_bulk_upload_submission
 
                 process_bulk_upload_submission.delay(
                     content_type_id=self.content_type.pk,

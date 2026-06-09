@@ -146,6 +146,7 @@ dependencies = [
     "celery>=5.4.0",
     "vulture>=2.16",
     "pycountries>=1.2.1",
+    "django-celery-beat>=2.9.0",
 ]
 
 [project.optional-dependencies]

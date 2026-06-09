@@ -4,7 +4,6 @@ from typing import Optional
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
 
-from yaml import Node
 from bloomerp.automation.actions.delete_object import DeleteObjectExecutor
 from bloomerp.automation.actions.enrich import EnrichExecutor
 from bloomerp.automation.actions.extract_field import ExtractFieldExecutor
@@ -19,7 +18,9 @@ from bloomerp.automation.flows.filter_objects import FilterObjectsExecutor
 from bloomerp.automation.flows.for_each import ForEachExecutor
 from bloomerp.automation.flows.if_condition import IfConditionExecutor
 from bloomerp.automation.triggers.human_trigger import HumanTrigger
+from bloomerp.automation.triggers.SCHEDULE_trigger import OnScheduleTrigger
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
+from bloomerp.automation.triggers.on_schedule_trigger import ScheduleTrigger
 
 @dataclass
 class NodeSubTypeDefinition:
@@ -66,10 +67,10 @@ class WorkflowNodeType(Enum):
                 icon="fa-solid fa-trash-can"
             ),
             NodeSubTypeDefinition( 
-                id="ON_SCHEDULE",
+                id="SCHEDULE",
                 name="On Schedule",
                 description="Triggered on a defined schedule",
-                executor_cls=None,  # Placeholder for actual function
+                executor_cls=ScheduleTrigger,
                 icon="fa-solid fa-clock"
             ),
             # NodeSubTypeDefinition( 

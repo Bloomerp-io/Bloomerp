@@ -18,11 +18,8 @@ class HumanTriggerForm(forms.Form):
 
 class HumanTrigger(BaseTrigger):
     config_form = HumanTriggerForm
-    input_requirement = WorkflowInputRequirement(
-        value_type="none",
-        label="No input",
-        description="Manual test triggers start workflows and do not receive upstream input.",
-    )
+    label = "Human Trigger"
+    input_description = "Manual test triggers start workflows and do not receive upstream input."
     
     def execute(self, trigger_data):
         data = self.config.get("data")
@@ -36,6 +33,13 @@ class HumanTrigger(BaseTrigger):
             return data
         return trigger_data
 
+    @classmethod
+    def get_input_requirement(cls, config = None):
+        return WorkflowInputRequirement(
+            value_type="none",
+            label="No input",
+            description=cls.input_description,
+        )
 
     @classmethod
     def get_output_schema(cls, config=None, input_schema=None):
@@ -43,7 +47,7 @@ class HumanTrigger(BaseTrigger):
         if data is None:
             return WorkflowIOSchema(
                 value_type=WorkflowValueType.NONE,
-                label="Human trigger",
+                label=cls.label,
             )
 
         value_type, fields = json_to_type_and_fields(data)
@@ -58,7 +62,7 @@ class HumanTrigger(BaseTrigger):
         
         return WorkflowIOSchema(
             value_type=value_type,
-            label="Human trigger",
+            label=cls.label,
             fields=fields
         )
     

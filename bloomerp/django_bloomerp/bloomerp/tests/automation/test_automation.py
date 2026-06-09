@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.test import TransactionTestCase
+from django_celery_beat.models import PeriodicTask
 
 from bloomerp.automation.defintion import WorkflowNodeType
 from bloomerp.automation.schema import WorkflowValueType
@@ -230,88 +231,50 @@ class TestAutomation(TransactionTestCase):
         self.assertEqual(called_trigger_data["instance"].id, employee.id)
         self.assertEqual(called_trigger_data["sender"], self.EmployeeModel)
 
-    def test_if_condition_continues_when_condition_matches(self):
-        self.end_node.delete()
-        if_node = WorkflowNode.objects.create(
-            workflow=self.workflow,
-            config={
-                "sub_type": "IF_CONDITION",
-                "parameters": {
-                    "field": "age",
-                    "operator": "exact",
-                    "value": "20",
-                },
-            },
-            type=WorkflowNodeType.FLOW.value.id,
+    # ----------------------------------------
+    # Trigger: SCHEDULE
+    # ----------------------------------------
+    def test_trigger_SCHEDULE_trigger_syncs_celery_beat_task(self):
+        workflow = Workflow.objects.create(
+            name="Scheduled workflow",
             created_by=self.user,
             updated_by=self.user,
         )
-        create_node = WorkflowNode.objects.create(
-            workflow=self.workflow,
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
             config={
-                "sub_type": "CREATE_OBJECT",
+                "sub_type": "SCHEDULE",
                 "parameters": {
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                    "schedule": "*/5 * * * *",
+                    "timezone": "Europe/Brussels",
                 },
             },
-            type=WorkflowNodeType.ACTION.value.id,
+            type=WorkflowNodeType.TRIGGER.value.id,
             created_by=self.user,
             updated_by=self.user,
         )
-        WorkflowEdge.objects.create(from_node=self.start_node, to_node=if_node)
-        WorkflowEdge.objects.create(from_node=if_node, to_node=create_node)
 
-        workflow_run = run_workflow(self.workflow, {})
+        task = PeriodicTask.objects.get(name=f"bloomerp.workflow.schedule.{workflow.id}")
+        self.assertEqual(task.task, "bloomerp.celery.tasks.workflow_task.run_scheduled_workflow")
+        self.assertEqual(task.args, f"[{workflow.id}]")
+        self.assertTrue(task.enabled)
+        self.assertEqual(task.crontab.minute, "*/5")
+        self.assertEqual(str(task.crontab.timezone), "Europe/Brussels")
 
-        self.assertTrue(self.CustomerModel.objects.filter(first_name="John").exists())
-        self.assertEqual(
-            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
-            ["HUMAN_TRIGGER", "IF_CONDITION", "CREATE_OBJECT"],
+        workflow.active = False
+        workflow.save(update_fields=["active"])
+        task.refresh_from_db()
+        self.assertFalse(task.enabled)
+
+        trigger.config["parameters"]["schedule"] = ""
+        trigger.save(update_fields=["config"])
+        self.assertFalse(
+            PeriodicTask.objects.filter(name=f"bloomerp.workflow.schedule.{workflow.id}").exists()
         )
 
-    def test_if_condition_stops_branch_when_condition_does_not_match(self):
-        self.end_node.delete()
-        if_node = WorkflowNode.objects.create(
-            workflow=self.workflow,
-            config={
-                "sub_type": "IF_CONDITION",
-                "parameters": {
-                    "field": "age",
-                    "operator": "exact",
-                    "value": "99",
-                },
-            },
-            type=WorkflowNodeType.FLOW.value.id,
-            created_by=self.user,
-            updated_by=self.user,
-        )
-        create_node = WorkflowNode.objects.create(
-            workflow=self.workflow,
-            config={
-                "sub_type": "CREATE_OBJECT",
-                "parameters": {
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
-                },
-            },
-            type=WorkflowNodeType.ACTION.value.id,
-            created_by=self.user,
-            updated_by=self.user,
-        )
-        WorkflowEdge.objects.create(from_node=self.start_node, to_node=if_node)
-        WorkflowEdge.objects.create(from_node=if_node, to_node=create_node)
-
-        workflow_run = run_workflow(self.workflow, {})
-
-        self.assertFalse(self.CustomerModel.objects.filter(first_name="John").exists())
-        self.assertEqual(
-            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
-            ["HUMAN_TRIGGER", "IF_CONDITION"],
-        )
-        self.assertEqual(
-            workflow_run.execution_trace[-1]["output"]["kind"],
-            "branch_stopped",
-        )
-    
+    # ----------------------------------------
+    # Trigger: ON_OBJECT_CREATE, ON_OBJECT_UPDATE, ON_OBJECT_DELETE
+    # ----------------------------------------
     def test_run_workflow_called_after_create(self):
         """
         Ensures workflow runs when an object is created with a matching trigger.
@@ -1058,6 +1021,90 @@ class TestAutomation(TransactionTestCase):
     # Action: DELETE_OBJECT
     # ----------------------------------------
     
+    # ----------------------------------------
+    # Flow: IF_CONDITION
+    # ----------------------------------------
+    def test_if_condition_continues_when_condition_matches(self):
+        self.end_node.delete()
+        if_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "exact",
+                    "value": "20",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        WorkflowEdge.objects.create(from_node=self.start_node, to_node=if_node)
+        WorkflowEdge.objects.create(from_node=if_node, to_node=create_node)
+
+        workflow_run = run_workflow(self.workflow, {})
+
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION", "CREATE_OBJECT"],
+        )
+
+    def test_if_condition_stops_branch_when_condition_does_not_match(self):
+        self.end_node.delete()
+        if_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "exact",
+                    "value": "99",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        WorkflowEdge.objects.create(from_node=self.start_node, to_node=if_node)
+        WorkflowEdge.objects.create(from_node=if_node, to_node=create_node)
+
+        workflow_run = run_workflow(self.workflow, {})
+
+        self.assertFalse(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION"],
+        )
+        self.assertEqual(
+            workflow_run.execution_trace[-1]["output"]["kind"],
+            "branch_stopped",
+        )
     
     
     # ---------------------------------------
