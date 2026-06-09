@@ -18,7 +18,6 @@ from bloomerp.automation.flows.filter_objects import FilterObjectsExecutor
 from bloomerp.automation.flows.for_each import ForEachExecutor
 from bloomerp.automation.flows.if_condition import IfConditionExecutor
 from bloomerp.automation.triggers.human_trigger import HumanTrigger
-from bloomerp.automation.triggers.SCHEDULE_trigger import OnScheduleTrigger
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.automation.triggers.on_schedule_trigger import ScheduleTrigger
 

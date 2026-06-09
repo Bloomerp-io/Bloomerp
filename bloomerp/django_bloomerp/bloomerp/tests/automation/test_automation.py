@@ -234,7 +234,7 @@ class TestAutomation(TransactionTestCase):
     # ----------------------------------------
     # Trigger: SCHEDULE
     # ----------------------------------------
-    def test_trigger_SCHEDULE_trigger_syncs_celery_beat_task(self):
+    def test_trigger_schedule_trigger_syncs_celery_beat_task(self):
         workflow = Workflow.objects.create(
             name="Scheduled workflow",
             created_by=self.user,
