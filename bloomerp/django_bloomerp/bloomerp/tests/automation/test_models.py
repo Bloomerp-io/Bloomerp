@@ -360,6 +360,38 @@ class TestAutomationModels(TestCase):
         self.assertIn("workflow-node-config-fields", content)
         self.assertNotIn("Hello world", content)
 
+    def test_render_workflow_node_can_edit_config_as_json(self):
+        self.client.force_login(self.user)
+        if_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "status",
+                    "operator": "exact",
+                    "value": "{{ input.status }}",
+                },
+            },
+            type="FLOW",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.get(
+            reverse("components_automation_render_workflow_node"),
+            {
+                "node_id": if_node.id,
+                "edit_mode": "json",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn('data-edit-mode="json"', content)
+        self.assertIn('name="parameters"', content)
+        self.assertIn("Config JSON", content)
+        self.assertIn("{{ input.status }}", content)
+
     def test_render_workflow_node_schema_panel_returns_output_values(self):
         self.client.force_login(self.user)
         content_type = ContentType.objects.get_for_model(User)
@@ -382,7 +414,7 @@ class TestAutomationModels(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         self.assertIn('data-workflow-node-schema-panel', content)
-        self.assertIn("Output values", content)
+        self.assertIn("Values this node passes to next nodes", content)
         self.assertIn("Username", content)
 
     def test_model_backed_schema_panel_includes_output_paths(self):
@@ -406,7 +438,7 @@ class TestAutomationModels(TestCase):
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn("Output values", content)
+        self.assertIn("Values this node passes to next nodes", content)
         self.assertIn("input.0.username", content)
 
     def test_schema_panel_resolves_upstream_schema_recursively(self):
@@ -453,8 +485,8 @@ class TestAutomationModels(TestCase):
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn("Input values", content)
-        self.assertIn("Output values", content)
+        self.assertIn("Values you can use in this node", content)
+        self.assertIn("Values this node passes to next nodes", content)
         self.assertIn("input.0.username", content)
         self.assertIn("input.item.username", content)
     

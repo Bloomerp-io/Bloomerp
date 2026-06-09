@@ -1,15 +1,17 @@
+from dataclasses import field
+
 from bloomerp.automation.triggers.base import BaseTrigger
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 
+from bloomerp.automation.utils import model_to_schema_field
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django.db.utils import OperationalError, ProgrammingError
 from bloomerp.automation.schema import (
     WorkflowInputRequirement,
     WorkflowIOSchema,
-    flatten_schema_fields,
-    model_fields_to_value_fields,
+    WorkflowValueField,
 )
 
 
@@ -38,17 +40,17 @@ class ObjectCrudTriggerForm(forms.Form):
 class ObjectCrudTrigger(BaseTrigger):
     config_form = ObjectCrudTriggerForm
     input_requirement = WorkflowInputRequirement(
-        kind="none",
+        value_type="none",
         label="No input",
         description="Triggers start workflows and do not receive upstream input.",
     )
     output_schema = WorkflowIOSchema(
-        kind="object",
+        value_type="object",
         label="Changed object",
         description="The object that created, updated, or deleted the workflow event.",
     )
 
-    def execute(self, trigger_data):
+    def execute(self, trigger_data:dict):
         instance = trigger_data.get("instance")
         fields = {}
         if instance is not None:
@@ -58,9 +60,10 @@ class ObjectCrudTrigger(BaseTrigger):
             }
 
         return {
-            **trigger_data,
+            "event": trigger_data.get("event"),
             "instance": instance,
             "fields": fields,
+            "data": trigger_data.get("data", {}),
         }
 
     @classmethod
@@ -83,10 +86,21 @@ class ObjectCrudTrigger(BaseTrigger):
             return cls.output_schema
 
         return WorkflowIOSchema(
-            kind="object",
+            value_type="object",
             label=str(model._meta.verbose_name).title(),
             description=f"The {model._meta.verbose_name} that triggered this workflow.",
-            fields=model_fields_to_value_fields(model, "input.instance"),
+            fields=[
+                model_to_schema_field(model, path_prefix="instance"),
+                WorkflowValueField(
+                    path="event",
+                    label="Event",
+                    value_type="string",
+                ),
+                WorkflowValueField(
+                    path="data",
+                    label="Trigger Data",
+                    value_type="object",
+                )
+            ],
         )
-
 

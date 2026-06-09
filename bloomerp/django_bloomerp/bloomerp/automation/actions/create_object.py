@@ -1,14 +1,15 @@
 import json
 
 from django.forms import modelform_factory
+from bloomerp.automation.schema import WorkflowIOSchema, WorkflowValueType, WorkflowInputRequirement, WorkflowValueField, WorkflowValueType
+from bloomerp.automation.utils import get_parameters_from_config, model_to_schema_field
+from bloomerp.forms.base_content_type_form import BaseContentTypeForm
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
-from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
-from ..base_executor import BaseExecutor
+from bloomerp.automation.base_executor import BaseExecutor
 from django.contrib.contenttypes.models import ContentType
 from django.core.serializers.json import DjangoJSONEncoder
 from django import forms
-from django.db.utils import OperationalError, ProgrammingError
 
 
 def _get_json_safe_default(model_field) -> object | None:
@@ -52,15 +53,7 @@ def _build_default_data(content_type_id: int) -> dict[str, object | None]:
 
     return default_data
 
-class ConfigParamsForm(forms.Form):
-    content_type_id = forms.IntegerField(
-        widget=ForeignFieldWidget(
-            {
-                "is_m2m" : False,
-                "class" : "input w-full"
-            }            
-        )
-    )
+class ConfigParamsForm(BaseContentTypeForm):
     
     data = forms.JSONField(
         widget=CodeEditorWidget(
@@ -69,35 +62,89 @@ class ConfigParamsForm(forms.Form):
         initial=dict
     )
     
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        try:
-            application_field = ApplicationField.objects.filter(
-                field="content_type"
-            ).first()
-            self.fields["content_type_id"].widget.attrs.update(application_field.meta if application_field else {})
-        except (OperationalError, ProgrammingError):
-            self.fields["content_type_id"].widget.attrs.update({})
-
         if self.initial.get("content_type_id") and not self.initial.get("data"):
             default_data = _build_default_data(self.initial.get("content_type_id"))
             self.initial["data"] = default_data
             self.fields["data"].initial = default_data
-        
+
+    
 class CreateObjectExecutor(BaseExecutor):
     config_form = ConfigParamsForm
     
+    input_requirement = WorkflowInputRequirement(
+        value_type=WorkflowValueType.OBJECT
+    )
+    
+    # OK
+    @classmethod
+    def get_output_schema(cls, config = None, input_schema = None):
+        params = get_parameters_from_config(config)
+        
+        # Get the content type ID
+        content_type_id = params.get("content_type_id")
+        ModelCls = None
+        if content_type_id:
+            try:
+                content_type = ContentType.objects.get(id=content_type_id)
+                ModelCls = content_type.model_class()
+            except (ContentType.DoesNotExist, ValueError, TypeError):
+                ModelCls = None
+        
+        instance = None
+        if ModelCls is not None:
+            instance = model_to_schema_field(ModelCls, optional=True)
+        
+        fields = [
+            WorkflowValueField(
+                path="status",
+                label="Status",
+                value_type=WorkflowValueType.STRING,
+            ),
+            WorkflowValueField(
+                path="error_message",
+                label="Error Message",
+                value_type=WorkflowValueType.LIST,
+                optional=True,
+                children=[
+                    WorkflowValueField(
+                        path="field",
+                        label="Field",
+                        value_type=WorkflowValueType.STRING,
+                    ),
+                    WorkflowValueField(
+                        path="messages",
+                        label="Messages",
+                        value_type=WorkflowValueType.LIST,
+                        children=[
+                            WorkflowValueField(
+                                path="message",
+                                label="Message",
+                                value_type=WorkflowValueType.STRING,
+                            )
+                        ]
+                    )
+                ]
+            )
+        ]
+        
+        if instance:
+            fields.insert(0, instance)
+        
+        return WorkflowIOSchema(
+            value_type=WorkflowValueType.OBJECT,
+            fields=fields
+        )
+    
+    # TODO: Handle M2M and O2M relationships in the input data
     def execute(self, input_data: dict) -> dict:
         # Get the content type id
         content_type_id = self.config.get("content_type_id")
-        
-        params = self.resolve_config(input_data)
-        print("Resolved params", params)
-        
+
         # Get the content type ID
         content_type = ContentType.objects.get(id=content_type_id)
-
+        
         # Get the model
         model = content_type.model_class()
         
@@ -108,11 +155,24 @@ class CreateObjectExecutor(BaseExecutor):
         
         form = FormCls(input_data)
         if form.is_valid():
-            form.save()
-            return {"status" : "object_created"}
+            object = form.save()
+            return {
+                "status": "success",
+                "instance": object,
+                "error_message": None,
+            }
         else:
-            print(form.errors)
-            return {"status": "error"}
+            error_messages = []
+            for field, errors in form.errors.items():
+                error_messages.append({
+                    "field": field,
+                    "messages": [{"message": str(error)} for error in errors]
+                })
+            return {
+                "status": "error",
+                "instance": None,
+                "error_message": error_messages
+            }
     
     
     

@@ -1,11 +1,11 @@
 
 
-from typing import Any
 
 from bloomerp.automation.base_executor import NodeExecutionError
 from bloomerp.automation.triggers.base import BaseTrigger
-from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField
+from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueType, WorkflowValueField, WorkflowValueType
 from django import forms
+from bloomerp.automation.utils import json_to_type_and_fields
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 
 class HumanTriggerForm(forms.Form):
@@ -16,56 +16,10 @@ class HumanTriggerForm(forms.Form):
     )
 
 
-def _value_type_for_json(value: Any) -> str:
-    if isinstance(value, bool):
-        return "boolean"
-    if isinstance(value, (int, float)):
-        return "number"
-    if isinstance(value, str):
-        return "string"
-    if isinstance(value, list):
-        return "list"
-    if isinstance(value, dict):
-        return "object"
-    return "unknown"
-
-
-def _extract_fields(obj: Any, path: str = "") -> tuple[str, list[WorkflowValueField]]:
-    if isinstance(obj, list):
-        if len(obj) == 0:
-            return "list", []
-
-        list_item = obj[0]
-        if not isinstance(list_item, (dict, list)):
-            return "list", []
-
-        child_path = f"{path}.0" if path else "0"
-        _, fields = _extract_fields(list_item, child_path)
-        return "list", fields
-
-    if not isinstance(obj, dict):
-        return _value_type_for_json(obj), []
-
-    fields: list[WorkflowValueField] = []
-    for key, value in obj.items():
-        field_path = key if not path else f"{path}.{key}"
-        _, children = _extract_fields(value, field_path)
-        fields.append(
-            WorkflowValueField(
-                path=field_path,
-                label=key.replace("_", " ").title(),
-                value_type=_value_type_for_json(value),
-                children=children,
-            )
-        )
-
-    return "object", fields
-
-
 class HumanTrigger(BaseTrigger):
     config_form = HumanTriggerForm
     input_requirement = WorkflowInputRequirement(
-        kind="none",
+        value_type="none",
         label="No input",
         description="Manual test triggers start workflows and do not receive upstream input.",
     )
@@ -74,7 +28,13 @@ class HumanTrigger(BaseTrigger):
         data = self.config.get("data")
         if not data:
             raise NodeExecutionError
-        return data
+        if isinstance(data, dict) and isinstance(trigger_data, dict):
+            merged_data = data.copy()
+            merged_data.update(trigger_data)
+            return merged_data
+        if trigger_data in ({}, None):
+            return data
+        return trigger_data
 
 
     @classmethod
@@ -82,14 +42,22 @@ class HumanTrigger(BaseTrigger):
         data = (config or {}).get("parameters", {}).get("data")
         if data is None:
             return WorkflowIOSchema(
-                kind="none",
+                value_type=WorkflowValueType.NONE,
                 label="Human trigger",
             )
 
-        kind, fields = _extract_fields(data)
+        value_type, fields = json_to_type_and_fields(data)
+        if value_type == WorkflowValueType.ANY:
+            fields = [
+                WorkflowValueField(
+                    path="input",
+                    label="Input",
+                    value_type=WorkflowValueType.ANY,
+                )
+            ]
         
         return WorkflowIOSchema(
-            kind=kind,
+            value_type=value_type,
             label="Human trigger",
             fields=fields
         )

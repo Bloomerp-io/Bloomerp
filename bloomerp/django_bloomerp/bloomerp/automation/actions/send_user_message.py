@@ -3,51 +3,51 @@ from pytest import param
 from bloomerp.utils.realtime import send_user_message
 
 from ..base_executor import BaseExecutor
-from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField
+from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField, WorkflowValueType
 from bloomerp.automation.values import stringify_value
 from django.forms import Form
 from django import forms
 
+# TODO: Choices should be defined in a central place
 class SendUserMessageForm(Form):
     user_id = forms.CharField(
         help_text="Use a literal user id or a value reference like {{ input.id }}.",
     )
     message = forms.CharField(widget=forms.Textarea)
-    
+    message_type = forms.ChoiceField(
+        choices=[
+            ("success", "Success"),
+            ("info", "Info"),
+            ("warning", "Warning"),
+            ("error", "Error"),
+        ],
+    )
 
 class SendUserMessage(BaseExecutor):
     config_form = SendUserMessageForm
     input_requirement = WorkflowInputRequirement(
-        kind="any",
+        value_type="any",
         label="Any input",
         description="Use upstream references to pick the recipient user or message text.",
     )
     output_schema = WorkflowIOSchema(
-        kind="object",
-        label="Message result",
-        fields=[
-            WorkflowValueField("input.message.user_id", "Message User ID", "number"),
-            WorkflowValueField("input.message.status", "Message Status", "string"),
-        ],
+        value_type=WorkflowValueType.NONE,
+        label="No output",
     )
     
     def execute(self, input_data: dict) -> dict:
         params = self.resolve_config(input_data)
-        
         user_id = params.get("user_id")
+        
         send_user_message(
             user_id,
             payload={
                 "type": "toast", 
-                "message": params.get("message"), 
-                "level": "success"
+                "message": str(params.get("message")), 
+                "level": params.get("message_type", "success")
             }
         )
         
-        return {
-            
-        }
+        
+        
 
-
-def send_email(recipient: str, subject: str, body: str) -> None:
-    print(f"Email sent\nTo: {recipient}\nSubject: {subject}\nBody: {body}")

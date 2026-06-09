@@ -28,7 +28,7 @@ def resolve_node_input_schema(
 
     if not incoming_edges:
         return WorkflowIOSchema(
-            kind="none",
+            value_type="none",
             label="No upstream input",
             description="This node has no incoming workflow edge.",
         )
@@ -46,7 +46,7 @@ def resolve_node_input_schema(
         fields.extend(schema.fields)
 
     return WorkflowIOSchema(
-        kind="any",
+        value_type="any",
         label="Multiple upstream outputs",
         description="This node receives output from multiple upstream nodes.",
         fields=fields,
@@ -60,7 +60,7 @@ def resolve_node_output_schema(
     seen_node_ids = seen_node_ids or set()
     if node.id in seen_node_ids:
         return WorkflowIOSchema(
-            kind="any",
+            value_type="any",
             label="Circular schema",
             description="A circular workflow connection prevented schema resolution.",
         )
@@ -68,7 +68,7 @@ def resolve_node_output_schema(
     seen_node_ids.add(node.id)
     sub_type = _get_node_sub_type(node)
     if not sub_type or not sub_type.executor_cls:
-        return WorkflowIOSchema(kind="any", label="Output")
+        return WorkflowIOSchema(value_type="any", label="Output")
 
     input_schema = resolve_node_input_schema(node, seen_node_ids.copy())
     return sub_type.executor_cls.get_output_schema(node.config or {}, input_schema)

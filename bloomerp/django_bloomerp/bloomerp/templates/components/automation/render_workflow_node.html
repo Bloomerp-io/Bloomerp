@@ -1,5 +1,13 @@
 {% load crispy_forms_tags %}
 
+{% if form.refresh_on_input %}
+    {% if edit_mode == 'form' %}
+        <div hx-swap-oob="innerHTML" id="workflow-node-form">
+            {{ form | crispy }}
+        </div>
+    {% endif %}
+{% endif %}
+
 <form
     method="post"
     action=""
@@ -11,29 +19,57 @@
     data-workflow-node-config-form="true"
     data-node-type="{{ node_type }}"
     data-node-sub-type="{{ node_sub_type }}"
+    data-edit-mode="{{ edit_mode }}"
 >
     {% csrf_token %}
 
     <section class="min-w-0 xl:h-full xl:min-h-0 xl:overflow-hidden">
         <div class="flex flex-col bg-white xl:h-full xl:min-h-0 xl:overflow-hidden">
             <div class="shrink-0 border-b border-slate-200 px-4 py-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    {{ node_type|title }}
-                </p>
-                <h3 class="text-lg font-semibold text-slate-950">
-                    Configure {{ node_sub_type_definition.name }}
-                </h3>
-                {% if node_sub_type_definition.description %}
-                    <p class="mt-1 text-sm text-slate-500">
-                        {{ node_sub_type_definition.description }}
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            {{ node_type|title }}
+                        </p>
+                        <h3 class="text-lg font-semibold text-slate-950">
+                            Configure {{ node_sub_type_definition.name }}
+                        </h3>
+                        {% if node_sub_type_definition.description %}
+                            <p class="mt-1 text-sm text-slate-500">
+                                {{ node_sub_type_definition.description }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="flex shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-medium">
+                        <button
+                            type="button"
+                            class="rounded-lg px-3 py-1.5 transition {% if edit_mode == 'form' %}bg-white text-slate-950 shadow-xs{% else %}text-slate-500 hover:text-slate-800{% endif %}"
+                            data-workflow-config-edit-mode="form"
+                        >
+                            Form
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-lg px-3 py-1.5 transition {% if edit_mode == 'json' %}bg-white text-slate-950 shadow-xs{% else %}text-slate-500 hover:text-slate-800{% endif %}"
+                            data-workflow-config-edit-mode="json"
+                        >
+                            JSON
+                        </button>
+                    </div>
+                </div>
+                {% if edit_mode == "json" %}
+                    <p class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        JSON mode edits this node's raw parameters. Keep valid JSON; changes still save automatically.
                     </p>
                 {% endif %}
             </div>
 
             <div class="workflow-node-config-fields min-w-0 p-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-                {% if form %}
-                    {{ form|crispy }}
-                {% endif %}
+                <div id="workflow-node-form">
+                    {% if form %}
+                        {{ form|crispy }}
+                    {% endif %}
+                </div>
 
                 <div class="mt-4 flex items-center justify-between gap-2">
                     <p class="text-xs text-slate-500" data-workflow-node-config-status>

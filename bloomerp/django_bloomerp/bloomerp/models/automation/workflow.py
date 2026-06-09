@@ -28,6 +28,13 @@ def _run_workflow(request:HttpRequest, object:"Workflow") -> HttpResponse:
             str(e),
             "error"
         )
+    
+    if workflow_run is None:
+        return render_message(
+            request,
+            "Workflow queued for asynchronous execution.",
+            "success",
+        )
 
     trace = format_execution_trace(workflow_run.execution_trace)
     message = f"Workflow run completed. {trace}" if trace else "Workflow run completed."
@@ -54,6 +61,7 @@ class Workflow(
         verbose_name_plural = _("Workflows")
     
     bloomerp_config = BloomerpModelConfig(
+        module="automation",
         layout=FieldLayout(
             rows=[
                 LayoutRow(
@@ -67,9 +75,18 @@ class Workflow(
                     title="Configuration",
                     columns=2,
                     items=[
-                        LayoutItem(id="run_asynchronously")
+                        LayoutItem(id="active"),
+                        LayoutItem(id="run_asynchronously"),
+                        LayoutItem(id="enable_logging"),
                     ]
                 ),
+                LayoutRow(
+                    title="Runs",
+                    columns=1,
+                    items=[
+                        LayoutItem(id="runs")
+                    ]
+                )
                 
             ]
         ),
@@ -98,6 +115,14 @@ class Workflow(
         default=False,
         help_text=_("Whether runs asynchronously")
     )
+    active = models.BooleanField(
+        default=True,
+        help_text=_("Whether the workflow is active or not")
+    )
+    enable_logging = models.BooleanField(
+        default=False,
+        help_text=_("Whether to enable logging for this workflow. Disabling logging may improve performance but will result in no detailed execution history being stored.")
+    )
     
     def get_trigger(self) -> "WorkflowNode":
         """Returns the trigger of a workflow.
@@ -114,4 +139,33 @@ class Workflow(
     def __str__(self) -> str:
         return self.name    
         
+    def contains_node(self, node:"WorkflowNode") -> bool:
+        """Checks whether a workflow contains a node object
+
+        Args:
+            node (WorkflowNode): the node to check for
+
+        Returns:
+            bool: whether it contains the node
+        """
+        return self.nodes.filter(id=node.id).exists()
     
+    def connect_nodes(self, from_node:"WorkflowNode", to_node:"WorkflowNode") -> "WorkflowEdge":
+        """Adds a connection between two nodes.
+
+        Args:
+            input_node (WorkflowNode): the input node
+            output_node (WorkflowNode): the output node 
+        
+        Returns:
+            edge : the edge between the two nodes
+        """
+        from bloomerp.models.automation.workflow_edge import WorkflowEdge
+        if not self.contains_node(from_node) or not self.contains_node(to_node):
+            raise ValueError("Node not in workflow")
+        
+        return WorkflowEdge.objects.create(
+            from_node=from_node,
+            to_node=to_node
+        )
+        

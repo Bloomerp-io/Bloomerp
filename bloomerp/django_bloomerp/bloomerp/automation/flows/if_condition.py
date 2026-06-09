@@ -4,7 +4,7 @@ from typing import Any
 from django import forms
 
 from bloomerp.automation.base_executor import BaseExecutor
-from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField
+from bloomerp.automation.schema import WorkflowIOFlowKind, WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField
 from bloomerp.automation.values import get_path_value
 
 
@@ -70,12 +70,13 @@ def _resolve_field_value(input_data: Any, field: str) -> Any:
 class IfConditionExecutor(BaseExecutor):
     config_form = IfConditionForm
     input_requirement = WorkflowInputRequirement(
-        kind="any",
+        value_type="any",
         label="Any input",
         description="Checks a condition against the incoming data.",
     )
     output_schema = WorkflowIOSchema(
-        kind="object",
+        value_type="object",
+        flow_kind=WorkflowIOFlowKind.CONDITION_GATE,
         label="Condition matched input",
         description="The original input continues downstream only when the condition is true.",
         fields=[
@@ -89,9 +90,10 @@ class IfConditionExecutor(BaseExecutor):
         config: dict | None = None,
         input_schema: WorkflowIOSchema | None = None,
     ) -> WorkflowIOSchema:
-        if input_schema and input_schema.kind != "none":
+        if input_schema and input_schema.value_type != "none":
             return WorkflowIOSchema(
-                kind=input_schema.kind,
+                value_type=input_schema.value_type,
+                flow_kind=WorkflowIOFlowKind.CONDITION_GATE,
                 label=f"Condition matched {input_schema.label or 'input'}",
                 description="The original input continues downstream only when the condition is true.",
                 fields=input_schema.fields,
@@ -106,8 +108,10 @@ class IfConditionExecutor(BaseExecutor):
 
         if not field:
             return BranchStopped("No condition field configured")
-
+        
+        print(field, operator, input_data)
         value = _resolve_field_value(input_data, field)
+        print(f"Evaluating condition: field={field}, operator={operator}, expected={expected}, actual={value}")
         if _matches(value, expected, operator):
             return input_data
 

@@ -97,7 +97,6 @@ function createNodeHtml(
                 </div>
             </div>
             <div class="node-body">
-                <div class="workflow-node-meta">${escapeHtml(persistedLabel)}</div>
                 <div class="workflow-node-config">${createConfigSummary(config)}</div>
             </div>
         </div>
@@ -132,11 +131,15 @@ export default class Workflow extends BaseComponent {
     private autosaveTimer: number | null = null;
     private nodeConfigAutosaveTimer: number | null = null;
     private nodeConfigSaveVersion: number = 0;
+    private refreshNodeConfigFormOnNextSave: boolean = false;
     private saveInFlight: Promise<void> | null = null;
     private saveAgainAfterCurrent: boolean = false;
     private nodeDrawerLoadPromise: Promise<void> | null = null;
 
     private saveWorkflowBtn: HTMLButtonElement
+
+    private nodeFormEditMode: 'form' | 'json' = 'form';
+
 
     public initialize(): void {
         if (!this.element) return;
@@ -198,10 +201,6 @@ export default class Workflow extends BaseComponent {
         this.setupNodeDoubleClickHandler();
 
         this.setupNodeDrawer();
-
-        this.saveWorkflowBtn = this.element.querySelector('#save-workflow-btn')
-        this.saveWorkflowBtn.addEventListener('click', () => void this.saveWorkflow());
-
     }
 
     private buildNodeDefinitions(): void {
@@ -418,56 +417,59 @@ export default class Workflow extends BaseComponent {
     private async saveWorkflow(): Promise<void> {
         if (this.saveInFlight) {
             this.saveAgainAfterCurrent = true;
-            return this.saveInFlight;
+            await this.saveInFlight;
+            return;
         }
 
-        const csrfToken = getCsrfToken();
-        const payload = this.buildWorkflowPayload();
-
         this.saveInFlight = (async () => {
-            const response = await fetch('/components/automation/save_workflow/', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
-                },
-                body: JSON.stringify(payload),
-            });
+            try {
+                do {
+                    this.saveAgainAfterCurrent = false;
+                    const csrfToken = getCsrfToken();
+                    const payload = this.buildWorkflowPayload();
 
-            if (!response.ok) {
-                console.error('Failed to save workflow');
-                return;
-            }
+                    const response = await fetch('/components/automation/save_workflow/', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+                        },
+                        body: JSON.stringify(payload),
+                    });
 
-            const savedWorkflow = await response.json();
-            this.workflowId = savedWorkflow.workflow_id?.toString() || this.workflowId;
+                    if (!response.ok) {
+                        console.error('Failed to save workflow');
+                        return;
+                    }
 
-            for (const node of savedWorkflow.nodes || []) {
-                const drawflowId = parseInt(String(node.client_id).replace('node-', ''), 10);
-                const drawflowNode = this.drawflow.getNodeFromId(drawflowId);
-                if (drawflowNode) {
-                    const updatedData = {
-                        ...drawflowNode.data,
-                        workflowNodeId: node.id,
-                    };
-                    this.drawflow.updateNodeDataFromId(drawflowId, updatedData);
-                    this.refreshNodeCard(drawflowId, updatedData);
+                    const savedWorkflow = await response.json();
+                    this.workflowId = savedWorkflow.workflow_id?.toString() || this.workflowId;
+
+                    for (const node of savedWorkflow.nodes || []) {
+                        const drawflowId = parseInt(String(node.client_id).replace('node-', ''), 10);
+                        const drawflowNode = this.drawflow.getNodeFromId(drawflowId);
+                        if (drawflowNode) {
+                            const updatedData = {
+                                ...drawflowNode.data,
+                                workflowNodeId: node.id,
+                            };
+                            this.drawflow.updateNodeDataFromId(drawflowId, updatedData);
+                            this.refreshNodeCard(drawflowId, updatedData);
+                        }
+                    }
+                } while (this.saveAgainAfterCurrent);
+            } catch (error) {
+                console.error('Failed to save workflow', error);
+            } finally {
+                this.saveInFlight = null;
+                if (this.saveAgainAfterCurrent) {
+                    await this.saveWorkflow();
                 }
             }
         })();
 
-        try {
-            await this.saveInFlight;
-        } catch (error) {
-            console.error('Failed to save workflow', error);
-        } finally {
-            this.saveInFlight = null;
-            if (this.saveAgainAfterCurrent) {
-                this.saveAgainAfterCurrent = false;
-                await this.saveWorkflow();
-            }
-        }
+        await this.saveInFlight;
     }
 
     private setupNodeDrawer(): void {
@@ -657,9 +659,10 @@ export default class Workflow extends BaseComponent {
 
     }
 
-    private loadNodeConfigFormForNode(nodeData: any, target: HTMLElement): void {
+    private loadNodeConfigFormForNode(nodeData: any, target: HTMLElement, editMode: 'form' | 'json' = 'form'): void {
         const params = new URLSearchParams({
             node_id: String(nodeData.data.workflowNodeId),
+            edit_mode: editMode,
         });
 
         htmx.ajax(
@@ -687,18 +690,63 @@ export default class Workflow extends BaseComponent {
         const form = container.querySelector<HTMLFormElement>('form[data-workflow-node-config-form="true"]');
         if (!form) return;
 
-        const scheduleSave = () => this.scheduleNodeConfigSave(form);
+        const scheduleSave = (event: Event) => {
+            this.scheduleNodeConfigSave(
+                form,
+                this.shouldRefreshNodeConfigFormForEvent(event),
+            );
+        };
         form.addEventListener('change', scheduleSave);
         form.addEventListener(BaseWidget.changeEventName, scheduleSave);
+        form.querySelectorAll<HTMLButtonElement>('[data-workflow-config-edit-mode]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const editMode = button.dataset.workflowConfigEditMode;
+                if (editMode !== 'form' && editMode !== 'json') return;
+                if (editMode === form.dataset.editMode) return;
+                void this.switchNodeConfigEditMode(form, editMode);
+            });
+        });
         form.addEventListener('submit', (event) => {
             event.preventDefault();
             event.stopImmediatePropagation();
-            void this.saveNodeConfigForm(form);
+            void this.saveNodeConfigForm(form, true);
         }, true);
     }
 
-    private scheduleNodeConfigSave(form: HTMLFormElement): void {
+    private shouldRefreshNodeConfigFormForEvent(event: Event): boolean {
+        const target = event.target;
+        if (!(target instanceof Element)) return true;
+
+        return !target.closest('[bloomerp-component="code-editor-widget"]');
+    }
+
+    private async switchNodeConfigEditMode(form: HTMLFormElement, editMode: 'form' | 'json'): Promise<void> {
+        const drawflowNodeId = this.editingNodeId;
+        if (!drawflowNodeId) return;
+
+        const updatedData = this.updateNodeConfigFromForm(drawflowNodeId, form);
+        if (!updatedData) return;
+
+        this.setNodeConfigStatus(form, 'Switching editor...');
+        if (this.nodeConfigAutosaveTimer) {
+            window.clearTimeout(this.nodeConfigAutosaveTimer);
+            this.nodeConfigAutosaveTimer = null;
+        }
+        await this.saveWorkflow();
+
+        const persistedNodeData = this.drawflow.getNodeFromId(drawflowNodeId);
+        if (!persistedNodeData) return;
+
+        const target = form.parentElement as HTMLElement | null;
+        if (!target) return;
+
+        this.nodeFormEditMode = editMode;
+        this.loadNodeConfigFormForNode(persistedNodeData, target, editMode);
+    }
+
+    private scheduleNodeConfigSave(form: HTMLFormElement, refreshForm: boolean = false): void {
         this.setNodeConfigStatus(form, 'Saving changes...');
+        this.refreshNodeConfigFormOnNextSave ||= refreshForm;
 
         if (this.nodeConfigAutosaveTimer) {
             window.clearTimeout(this.nodeConfigAutosaveTimer);
@@ -706,11 +754,13 @@ export default class Workflow extends BaseComponent {
 
         this.nodeConfigAutosaveTimer = window.setTimeout(() => {
             this.nodeConfigAutosaveTimer = null;
-            void this.saveNodeConfigForm(form);
+            const shouldRefreshForm = this.refreshNodeConfigFormOnNextSave;
+            this.refreshNodeConfigFormOnNextSave = false;
+            void this.saveNodeConfigForm(form, shouldRefreshForm);
         }, 600);
     }
 
-    private async saveNodeConfigForm(form: HTMLFormElement): Promise<void> {
+    private async saveNodeConfigForm(form: HTMLFormElement, refreshForm: boolean = false): Promise<void> {
         const currentVersion = ++this.nodeConfigSaveVersion;
         const drawflowNodeId = this.editingNodeId;
         if (!drawflowNodeId) return;
@@ -725,7 +775,7 @@ export default class Workflow extends BaseComponent {
         const workflowNodeId = persistedNodeData?.data?.workflowNodeId;
         if (!workflowNodeId || currentVersion !== this.nodeConfigSaveVersion) return;
 
-        await this.refreshNodeSchemaPanel(form, workflowNodeId);
+        await this.refreshNodeSchemaPanel(form, workflowNodeId, refreshForm);
         this.setNodeConfigStatus(form, 'All changes saved.');
     }
 
@@ -734,6 +784,7 @@ export default class Workflow extends BaseComponent {
         if (!nodeData) return null;
 
         const parameters = this.formToParameters(form);
+        if (!parameters) return null;
         const config = {
             sub_type: nodeData.data?.nodeSubType,
             parameters,
@@ -751,11 +802,18 @@ export default class Workflow extends BaseComponent {
     private async refreshNodeSchemaPanel(
         form: HTMLFormElement,
         workflowNodeId: number,
+        refreshForm: boolean = false,
     ): Promise<void> {
         const panel = form.querySelector<HTMLElement>('[data-workflow-node-schema-panel]');
         if (!panel) return;
 
-        const params = new URLSearchParams({ node_id: String(workflowNodeId) });
+        const params = new URLSearchParams({
+            node_id: String(workflowNodeId),
+            edit_mode: form.dataset.editMode || this.nodeFormEditMode,
+        });
+        if (refreshForm) {
+            params.set('refresh_form', '1');
+        }
         await htmx.ajax(
             'get',
             `/components/automation/render_workflow_node_schema_panel/?${params.toString()}`,
@@ -763,6 +821,8 @@ export default class Workflow extends BaseComponent {
         );
         const refreshedPanel = form.querySelector<HTMLElement>('[data-workflow-node-schema-panel]');
         if (refreshedPanel) initComponents(refreshedPanel);
+        const refreshedFormFields = form.querySelector<HTMLElement>('#workflow-node-form');
+        if (refreshedFormFields) initComponents(refreshedFormFields);
     }
 
     private setNodeConfigStatus(form: HTMLFormElement, message: string): void {
@@ -790,7 +850,25 @@ export default class Workflow extends BaseComponent {
         if (newContent) content.replaceWith(newContent);
     }
 
-    private formToParameters(form: HTMLFormElement): Record<string, any> {
+    private formToParameters(form: HTMLFormElement): Record<string, any> | null {
+        if (form.dataset.editMode === 'json') {
+            const input = form.querySelector<HTMLTextAreaElement | HTMLInputElement>('[name="parameters"]');
+            const rawValue = input?.value?.trim() || '';
+            if (!rawValue) return {};
+
+            try {
+                const parsed = JSON.parse(rawValue);
+                if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+                    this.setNodeConfigStatus(form, 'JSON config must be an object.');
+                    return null;
+                }
+                return parsed;
+            } catch {
+                this.setNodeConfigStatus(form, 'JSON is invalid; changes not saved.');
+                return null;
+            }
+        }
+
         const formData = new FormData(form);
         const parameters: Record<string, any> = {};
 

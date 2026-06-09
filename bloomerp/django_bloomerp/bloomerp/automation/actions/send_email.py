@@ -21,12 +21,12 @@ class SendEmailForm(Form):
 class SendEmailExecutor(BaseExecutor):
     config_form = SendEmailForm
     input_requirement = WorkflowInputRequirement(
-        kind="any",
+        value_type="any",
         label="Any input",
         description="Use references from upstream data in recipient, subject, or body.",
     )
     output_schema = WorkflowIOSchema(
-        kind="object",
+        value_type="object",
         label="Email result",
         description="Details about the email send attempt.",
         fields=[
@@ -45,14 +45,14 @@ class SendEmailExecutor(BaseExecutor):
     ) -> WorkflowIOSchema:
         upstream_fields = (
             remap_schema_field_paths(input_schema.fields, {})
-            if input_schema and input_schema.kind != "none"
+            if input_schema and input_schema.value_type != "none"
             else []
         )
         if not upstream_fields:
             return cls.output_schema
 
         return WorkflowIOSchema(
-            kind=input_schema.kind if input_schema else "object",
+            value_type=input_schema.value_type if input_schema else "object",
             label=f"{input_schema.label or 'Input'} with email result",
             description="Upstream data plus details about the email send attempt.",
             fields=[

@@ -64,12 +64,12 @@ def _matches(value: Any, expected: Any, operator: str) -> bool:
 class FilterObjectsExecutor(BaseExecutor):
     config_form = FilterObjectsForm
     input_requirement = WorkflowInputRequirement(
-        kind="list",
+        value_type="list",
         label="Object list",
         description="Filters a list of objects from the previous node.",
     )
     output_schema = WorkflowIOSchema(
-        kind="list",
+        value_type="list",
         label="Filtered objects",
         description="The subset of input objects that matched the filter.",
         fields=[
@@ -84,9 +84,9 @@ class FilterObjectsExecutor(BaseExecutor):
         config: dict | None = None,
         input_schema: WorkflowIOSchema | None = None,
     ) -> WorkflowIOSchema:
-        if input_schema and input_schema.kind == "list" and input_schema.fields:
+        if input_schema and input_schema.value_type == "list" and input_schema.fields:
             return WorkflowIOSchema(
-                kind="list",
+                value_type="list",
                 label=f"Filtered {input_schema.label or 'objects'}",
                 description="The subset of upstream objects that matched the filter.",
                 fields=remap_schema_field_paths(input_schema.fields, {}),

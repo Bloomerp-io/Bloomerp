@@ -7,8 +7,8 @@ from bloomerp.automation.values import resolve_parameters
 class BaseExecutor:
     """Base class for all executors in the automation system."""
     config_form : Type[forms.Form] = None
-    input_requirement = WorkflowInputRequirement(kind="any", label="Any input")
-    output_schema = WorkflowIOSchema(kind="any", label="Output")
+    input_requirement = WorkflowInputRequirement(value_type="any")
+    output_schema = WorkflowIOSchema(value_type="any")
 
     def __init__(self, config: dict):
         self.raw_config : dict = config or {}
@@ -36,14 +36,6 @@ class BaseExecutor:
         input_schema: WorkflowIOSchema | None = None,
     ) -> WorkflowIOSchema:
         return cls.output_schema
-
-    @classmethod
-    def get_output_paths(
-        cls,
-        config: dict | None = None,
-        input_schema: WorkflowIOSchema | None = None,
-    ) -> list[dict[str, str]]:
-        return flatten_schema_fields(cls.get_output_schema(config, input_schema))
 
     def execute(self, trigger_data: dict) -> dict:
         """Executes the automation logic.
