@@ -186,17 +186,6 @@ class DocumentTemplateBuilderContextMixin:
         return context
 
 
-@router.register(
-    path="create",
-    name="Create {model}",
-    url_name="add",
-    description="Create a new object from {model}",
-    route_type="model",
-    models=[DocumentTemplate],
-)
-class DocumentTemplateBuilderView(DocumentTemplateBuilderContextMixin, BaseBloomerpView, TemplateView):
-    pass
-
 
 @router.register(
     path="builder",

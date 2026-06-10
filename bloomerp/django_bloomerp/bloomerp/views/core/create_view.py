@@ -54,7 +54,7 @@ def _redirect_url(model:type[Model], object:Model) -> str:
     url_name="add",
     description="Create a new object from {model}",
     route_type="model",
-    exclude_models=[File, Tile, SqlQuery, User, Workspace, DocumentTemplate],
+    exclude_models=[File, Tile, SqlQuery, User, Workspace],
 )
 class BloomerpCreateView(
     BaseBloomerpView,
