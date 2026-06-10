@@ -13,6 +13,7 @@ from bloomerp.models import User
 from bloomerp.models.automation import Workflow, WorkflowEdge, WorkflowNode
 from bloomerp.models.automation.workflow_run import WorkflowRun
 from bloomerp.models.document_templates.document_template import DocumentTemplate
+from bloomerp.celery.tasks.workflow_task import run_scheduled_workflow
 from bloomerp.services.workflow_services import (
     _serialize_trigger_data,
     format_execution_trace,
@@ -231,6 +232,15 @@ class TestAutomation(TransactionTestCase):
         self.assertEqual(called_trigger_data["instance"].id, employee.id)
         self.assertEqual(called_trigger_data["sender"], self.EmployeeModel)
 
+    def test_run_workflow_async_returns_json_safe_result(self):
+        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+            workflow_run = WorkflowRun(id=123)
+            run_workflow_sync_mock.return_value = workflow_run
+
+            result = run_workflow_async(self.workflow.id, {"first_name": "John"})
+
+        self.assertEqual(result, {"workflow_run_id": "123"})
+
     # ----------------------------------------
     # Trigger: SCHEDULE
     # ----------------------------------------
@@ -271,6 +281,21 @@ class TestAutomation(TransactionTestCase):
         self.assertFalse(
             PeriodicTask.objects.filter(name=f"bloomerp.workflow.schedule.{workflow.id}").exists()
         )
+
+    def test_run_scheduled_workflow_returns_json_safe_result(self):
+        workflow = Workflow.objects.create(
+            name="Scheduled workflow result",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+            workflow_run = WorkflowRun(id=456)
+            run_workflow_sync_mock.return_value = workflow_run
+
+            result = run_scheduled_workflow(workflow.id)
+
+        self.assertEqual(result, {"workflow_run_id": "456"})
 
     # ----------------------------------------
     # Trigger: ON_OBJECT_CREATE, ON_OBJECT_UPDATE, ON_OBJECT_DELETE

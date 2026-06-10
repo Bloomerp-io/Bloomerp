@@ -139,6 +139,15 @@ def format_execution_trace(trace: list[dict]) -> str:
         )
     return "; ".join(parts)
 
+
+def serialize_workflow_run_result(workflow_run: WorkflowRun | None) -> dict | None:
+    if workflow_run is None:
+        return None
+
+    return {
+        "workflow_run_id": str(workflow_run.id),
+    }
+
 def run_workflow(workflow: Workflow, trigger_data:dict) -> WorkflowRun | None:
     """
     Initiates a workflow run for the given workflow.
@@ -240,4 +249,5 @@ def run_workflow_sync(workflow: Workflow, trigger_data:dict) -> WorkflowRun:
 def run_workflow_async(workflow_id, trigger_data):
     workflow = Workflow.objects.get(id=workflow_id)
     deserialized_trigger_data = _deserialize_trigger_data(trigger_data)
-    return run_workflow_sync(workflow, deserialized_trigger_data)
+    workflow_run = run_workflow_sync(workflow, deserialized_trigger_data)
+    return serialize_workflow_run_result(workflow_run)
