@@ -1,7 +1,3 @@
-
-
-from agents import Model
-
 from bloomerp.automation.schema import WorkflowValueField, WorkflowValueType
 from django.db import models
 from typing import Any
@@ -46,7 +42,7 @@ def model_fields_to_value_fields(
 
 
 def model_to_schema_field(
-    model: type[Model],
+    model: type[models.Model],
     path_prefix: str = "instance",
     label="Instance",
     optional: bool = False,
