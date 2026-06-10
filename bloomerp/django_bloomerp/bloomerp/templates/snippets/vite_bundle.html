@@ -11,6 +11,9 @@ In development mode with an explicit Vite dev server URL configured:
 Otherwise:
 - Loads from built static files
 - Files should be built with: npm run build:js
+
+The built Vite entry also emits a sibling CSS asset (`main.css`) for package
+styles imported from TypeScript, including Drawflow's base interaction styles.
 {% endcomment %}
 
 {% if DEBUG and BLOOMERP_VITE_DEV_SERVER_URL %}
@@ -19,6 +22,6 @@ Otherwise:
     <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/ts/main.ts"></script>
 {% else %}
     <!-- Production mode: Built bundle -->
+    <link href="{% static 'bloomerp/js/dist/main.css' %}" rel="stylesheet" />
     <script type="module" src="{% static 'bloomerp/js/dist/main.js' %}"></script>
-    
 {% endif %}
