@@ -1,4 +1,5 @@
 {% load static %}
+{% load bloomerp %}
 
 <meta charset="utf-8" />
 <meta content="width=device-width, initial-scale=1.0" name="viewport" />
@@ -58,4 +59,10 @@
     integrity="sha512-dABa+YCy/MOELLU5BKnJeR/pcORL8icJNR1TBZWrRmlFoWXZEFketX6Qx/DVBkewMZC8mUOGJMJ70fwxcpIDCw=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-<link href="{% static 'bloomerp/css/dist/styles.css' %}" rel="stylesheet" />
+<!--Main CSS file-->
+{% if DEBUG and BLOOMERP_VITE_DEV_SERVER_URL %}
+    <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/src/styles.css"></script>
+{% else %}
+    <!-- Production mode: Built bundle -->
+    <link href="{% static 'bloomerp/js/dist/main.css' %}" rel="stylesheet" />
+{% endif %}
