@@ -17,7 +17,8 @@ styles imported from TypeScript, including Drawflow's base interaction styles.
 {% endcomment %}
 
 {% if DEBUG and BLOOMERP_VITE_DEV_SERVER_URL %}
-    <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/ts/main.ts"></script>
+        <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/ts/main.ts"></script>
 {% else %}
-    <link href="{% static 'bloomerp/css/dist/styles.css' %}" rel="stylesheet" />
+        <!-- Production mode: Built bundle -->
+        <script type="module" src="{% static 'bloomerp/js/dist/main.js' %}"></script>
 {% endif %}
