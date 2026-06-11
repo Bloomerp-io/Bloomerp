@@ -1,7 +1,7 @@
 from django.http import HttpRequest
 from django.contrib.contenttypes.models import ContentType
 
-from bloomerp.components.objects.dataview import data_view
+from bloomerp.components.objects.dataviews.dataview import data_view
 from bloomerp.models.users.user import User
 from bloomerp.workspaces.base import BaseTileRenderer
 from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig, build_preview_preference

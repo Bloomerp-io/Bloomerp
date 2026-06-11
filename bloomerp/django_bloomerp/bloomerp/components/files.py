@@ -13,7 +13,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 
 from bloomerp.components.application_fields.filters import FILTERABLE_FIELD_TYPES
-from bloomerp.components.objects.dataview import _format_applied_filters
+from bloomerp.components.objects.dataviews.dataview import _format_applied_filters
 from bloomerp.dataviews.base import BaseDataviewRenderer
 from bloomerp.models import ApplicationField, File, FileFolder
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
