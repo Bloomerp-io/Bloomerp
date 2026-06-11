@@ -1,6 +1,7 @@
-from typing import Any
-
 from celery import shared_task
+
+
+from typing import Any
 
 
 @shared_task

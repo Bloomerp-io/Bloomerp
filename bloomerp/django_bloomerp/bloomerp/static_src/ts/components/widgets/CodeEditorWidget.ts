@@ -17,7 +17,6 @@ export default class CodeEditorWidget extends BaseWidget {
 
     public initialize(): void {
         if (!this.element) return;
-
         this.language = this.element.dataset.language || '';
         this.launchFromButton = this.element.dataset.launchFromButton === 'true';
         this.modalId = this.element.dataset.modalId || '';

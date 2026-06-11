@@ -44,7 +44,8 @@ def _format_value(value, field: FieldConfig, vars:dict):
     
     # Advanced formatting
     advanced_formatting: str | None = field_opts.get("advanced_formatting")
-    if advanced_formatting:
+    
+    if advanced_formatting and advanced_formatting not in ["None",""]:
         value = engines["django"].from_string(advanced_formatting).render(vars)
 
     return f"{prefix}{value}{suffix}"

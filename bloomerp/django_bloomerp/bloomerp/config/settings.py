@@ -141,6 +141,7 @@ BLOOMERP_APPS = [
     "django_cotton",
     "django_browser_reload",
     "crispy_tailwind",
+    "django_celery_beat",
 ]
 
 if _has_allauth():

@@ -673,16 +673,10 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         if (this.rowElements.length <= 1) return;
 
         const rowEl = this.rowElements[rowIndex];
-        const destinationRow = this.rowElements[rowIndex + 1] ?? this.rowElements[rowIndex - 1];
-        const destinationGrid = destinationRow?.querySelector<HTMLElement>("[data-layout-grid]");
-        if (rowEl && destinationGrid) {
-            const items = Array.from(rowEl.querySelectorAll<HTMLElement>(this.getItemSelector()));
-            items.forEach((item) => destinationGrid.appendChild(item));
-        }
-
         rowEl?.remove();
         this.layoutRows.splice(rowIndex, 1);
         this.reindexRows();
+        this.syncAvailableItemsState();
         const nextFocusIndex = Math.max(0, Math.min(rowIndex, this.rowElements.length - 1));
         this.focusRowByIndex(nextFocusIndex);
         void this.requestSave();

@@ -3,8 +3,9 @@ from typing import Any
 
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 from pydantic import BaseModel
-from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from django.utils.translation import gettext_lazy as _
@@ -51,7 +52,24 @@ class DocumentTemplate(BloomerpModel):
         managed = True
         db_table = 'bloomerp_document_template'
 
-    bloomerp_config = BloomerpModelConfig()
+    bloomerp_config = BloomerpModelConfig(
+        layout=FieldLayout(
+            rows=[
+                LayoutRow(
+                    columns=2,
+                    title="Core Details",
+                    items=[
+                        LayoutItem(id="name"),
+                        LayoutItem(id="include_page_numbers"),
+                        LayoutItem(id="page_orientation"),
+                        LayoutItem(id="page_size"),
+                        LayoutItem(id="page_margin"),
+                    ]
+                )
+            ]
+        ),
+        create_redirect_url_func=lambda x: reverse("document_templates_detail_builder", kwargs={"pk": x.pk}),
+    )
     avatar = None
     
     name = models.CharField(

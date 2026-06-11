@@ -1,0 +1,114 @@
+{% load crispy_forms_tags %}
+
+{% if form.refresh_on_input %}
+    {% if edit_mode == 'form' %}
+        <div hx-swap-oob="innerHTML" id="workflow-node-form">
+            {{ form|crispy }}
+        </div>
+    {% endif %}
+{% endif %}
+
+<div class="flex min-h-0 w-full flex-1 flex-col" data-workflow-node-schema-panel>
+    <div class="min-h-0 w-full flex-1 space-y-4 overflow-y-auto p-5">
+        {% if not accepts_input %}
+        <div class="bg-warning p-4 border border-gray-200 shadow-xs rounded-xl">
+            <p>Warning: this node may not accept the values coming from the previous node.</p>
+        </div>
+        {% endif %}
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs">
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Values you can use in this node</p>
+            <div
+                class="mt-3 flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3"
+                draggable="true"
+                data-field-path="input"
+                data-template-token="&#123;&#123; input &#125;&#125;"
+            >
+                <div class="min-w-0">
+                    <c-ui.text.subtitle class="">{{ incoming_schema.label|default:"Input" }}</c-ui.text.subtitle>
+                    {% if incoming_schema.description %}
+                        <p class="mt-1 text-xs leading-5 text-slate-500">{{ incoming_schema.description }}</p>
+                    {% endif %}
+                    <div class="mt-2">
+                        <code class="truncate rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700">
+                            &#123;&#123; input &#125;&#125;
+                        </code>
+                    </div>
+                </div>
+                <div class="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                    <div class="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        <i class="{{ incoming_schema.value_type.icon }}"></i>
+                        <span>{{ incoming_schema.value_type.label }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if incoming_schema.fields %}
+                <div class="mt-4 border-l border-slate-200 pl-4">
+                    <div class="space-y-2">
+                    {% for field in incoming_schema.fields %}
+                        <c-automation.value_field :field="field" draggable="true"/>
+                    {% endfor %}
+                    </div>
+                </div>
+            {% elif incoming_schema.value_type == "none" %}
+                <p class="mt-3 text-sm text-slate-500">No values from previous nodes yet.</p>
+            {% else %}
+                <p class="mt-3 text-sm text-slate-500">This value has no nested fields.</p>
+            {% endif %}
+        </div>
+        <div class="flex items-center justify-center py-1 text-slate-400" aria-hidden="true">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white shadow-xs">
+                <i class="fa-solid fa-arrow-down text-sm"></i>
+            </div>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs">
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Values this node passes to next nodes</p>
+            <div
+                class="mt-3 flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3"
+                draggable="false"
+                data-field-path="input"
+                data-template-token="&#123;&#123; input &#125;&#125;"
+            >
+                <div class="min-w-0">
+                    <c-ui.text.subtitle class="">{{ output_schema.label|default:"Output" }}</c-ui.text.subtitle>
+                    {% if output_schema.description %}
+                        <p class="mt-1 text-xs leading-5 text-slate-500">{{ output_schema.description }}</p>
+                    {% endif %}
+                    {% if output_schema.value_type != "none" %}
+                        <div class="mt-2">
+                            <code class="truncate rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700">
+                                &#123;&#123; input &#125;&#125;
+                            </code>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                    {% if output_schema.flow_kind != "normal" %}
+                        <div class="flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            <i class="{{ output_schema.flow_kind.icon }}"></i>
+                            <span>{{ output_schema.flow_kind.label }}</span>
+                        </div>
+                    {% endif %}
+                    <div class="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        <i class="{{ output_schema.value_type.icon }}"></i>
+                        <span>{{ output_schema.value_type.label }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if output_schema.fields %}
+                <div class="mt-4 border-l border-slate-200 pl-4">
+                    <div class="space-y-2">
+                    {% for field in output_schema.fields %}
+                        <c-automation.value_field :field="field" draggable="false"/>
+                    {% endfor %}
+                    </div>
+                </div>
+            {% elif output_schema.value_type == "none" %}
+                <p class="mt-3 text-sm text-slate-500">No values for next nodes yet. Configure this node to calculate them.</p>
+            {% else %}
+                <p class="mt-3 text-sm text-slate-500">This value has no nested fields.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

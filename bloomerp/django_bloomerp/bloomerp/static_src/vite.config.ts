@@ -36,6 +36,10 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     origin: 'http://localhost:5173',
+    watch: {
+      // Prevent backend SQLite writes from triggering frontend reloads.
+      ignored: ['**/*.sqlite3', '**/*.sqlite3-*', '**/db.sqlite3', '**/db.sqlite3-*'],
+    },
     // Enable CORS for Django development server
     cors: true,
     // Hot Module Replacement settings

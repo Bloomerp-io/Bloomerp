@@ -232,7 +232,7 @@ wheels = [
 
 [[package]]
 name = "bloomerp"
-version = "1.5.7"
+version = "1.8.6"
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
@@ -269,6 +269,7 @@ dependencies = [
     { name = "distro" },
     { name = "django" },
     { name = "django-browser-reload" },
+    { name = "django-celery-beat" },
     { name = "django-cotton" },
     { name = "django-crispy-forms" },
     { name = "django-filter" },
@@ -419,6 +420,7 @@ requires-dist = [
     { name = "distro", specifier = "==1.9.0" },
     { name = "django", specifier = "==5.1.1" },
     { name = "django-browser-reload", specifier = "==1.18.0" },
+    { name = "django-celery-beat", specifier = ">=2.9.0" },
     { name = "django-cotton", specifier = "==2.6.1" },
     { name = "django-crispy-forms", specifier = "==2.3" },
     { name = "django-filter", specifier = "==24.3" },
@@ -800,6 +802,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cron-descriptor"
+version = "1.4.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/83/70bd410dc6965e33a5460b7da84cf0c5a7330a68d6d5d4c3dfdb72ca117e/cron_descriptor-1.4.5.tar.gz", hash = "sha256:f51ce4ffc1d1f2816939add8524f206c376a42c87a5fca3091ce26725b3b1bca", size = 30666, upload-time = "2024-08-24T18:16:48.654Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/20/2cfe598ead23a715a00beb716477cfddd3e5948cf203c372d02221e5b0c6/cron_descriptor-1.4.5-py3-none-any.whl", hash = "sha256:736b3ae9d1a99bc3dbfc5b55b5e6e7c12031e7ba5de716625772f8b02dcd6013", size = 50370, upload-time = "2024-08-24T18:16:46.783Z" },
+]
+
+[[package]]
 name = "cryptography"
 version = "43.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -910,6 +921,23 @@ wheels = [
 ]
 
 [[package]]
+name = "django-celery-beat"
+version = "2.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "celery" },
+    { name = "cron-descriptor" },
+    { name = "django" },
+    { name = "django-timezone-field" },
+    { name = "python-crontab" },
+    { name = "tzdata" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/05/45/fc97bc1d9af8e7dc07f1e37044d9551a30e6793249864cef802341e2e3a8/django_celery_beat-2.9.0.tar.gz", hash = "sha256:92404650f52fcb44cf08e2b09635cb1558327c54b1a5d570f0e2d3a22130934c", size = 177667, upload-time = "2026-02-28T16:45:34.749Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/ae/9befa7ae37f5e5c41be636a254fcf47ff30dd5c88bd115070e252f6b9162/django_celery_beat-2.9.0-py3-none-any.whl", hash = "sha256:4a9e5ebe26d6f8d7215e1fc5c46e466016279dc102435a28141108649bdf2157", size = 105013, upload-time = "2026-02-28T16:45:32.822Z" },
+]
+
+[[package]]
 name = "django-cotton"
 version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -992,6 +1020,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/01/25/db0a2cf3180716361da2c27d7051a11b041ed1dfad436d1e85bbca440b39/django_tailwind_4-0.1.4.tar.gz", hash = "sha256:01bc1f64a8867e9258b97218bf79a42e9d2f29073423d3d55c4f4f2666d5ed58", size = 11749, upload-time = "2025-01-26T17:57:26.741Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/9f/57a654404a5cd50042498d4ecd2440ea9ecdac5ffe730981fd816ebdcb8a/django_tailwind_4-0.1.4-py3-none-any.whl", hash = "sha256:e1972c19eef98582f7d92c694af27757fedd7c354c1f4e3b36b4d45e82431bf6", size = 14870, upload-time = "2025-01-26T17:57:25.429Z" },
+]
+
+[[package]]
+name = "django-timezone-field"
+version = "7.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/12/0b/22654abc2355f3b84e3e5b9d26569639c15d04b96d7186f3a477ec45c1ef/django_timezone_field-7.2.2.tar.gz", hash = "sha256:a004d0b19fe10bf5964cb21a65b36324b16a61879e4711c0dafdf8d6253e8ebc", size = 13158, upload-time = "2026-06-06T05:28:23.638Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/5f/c8dfb67105c4ef391a3e9d0bcd35b7eae4c4c9d023d612c3999ae1cb32ef/django_timezone_field-7.2.2-py3-none-any.whl", hash = "sha256:30354d0f37462a0b9b5c289e271580a6be9b58dea30e7bf88435372882c8fa7a", size = 13322, upload-time = "2026-06-06T05:28:22.454Z" },
 ]
 
 [[package]]
@@ -2038,6 +2078,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/70/71807acf367d65a60edf9ee917dbea039d68c2b7608263d5d2d294d424a5/python_bidi-0.6.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:48034cc54c792dfeeb017505293600bc4ece89fca1fc28d6fb24f932d7ef1bcf", size = 451772, upload-time = "2024-07-30T17:32:00.353Z" },
     { url = "https://files.pythonhosted.org/packages/43/00/903cb3742d193dd8b7e7cf139b2566e3fa855ec07d46771d404cb28fe2cb/python_bidi-0.6.0-cp312-none-win32.whl", hash = "sha256:8483de08f3b41063f1819a397aa6686ae88ac908192e448b72e4bf7caa91a655", size = 150888, upload-time = "2024-07-30T17:32:23.397Z" },
     { url = "https://files.pythonhosted.org/packages/b2/4a/a76436f9259be5d63a4c9e36b90aa4bac10e58837f828eedd619ea9c772c/python_bidi-0.6.0-cp312-none-win_amd64.whl", hash = "sha256:a82ee4b48e9b192d4ff3873f2fd063efae063b904b6283119b8cef7165a54084", size = 156259, upload-time = "2024-07-30T17:32:15.098Z" },
+]
+
+[[package]]
+name = "python-crontab"
+version = "3.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/7f/c54fb7e70b59844526aa4ae321e927a167678660ab51dda979955eafb89a/python_crontab-3.3.0.tar.gz", hash = "sha256:007c8aee68dddf3e04ec4dce0fac124b93bd68be7470fc95d2a9617a15de291b", size = 57626, upload-time = "2025-07-13T20:05:35.535Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/47/42/bb4afa5b088f64092036221843fc989b7db9d9d302494c1f8b024ee78a46/python_crontab-3.3.0-py3-none-any.whl", hash = "sha256:739a778b1a771379b75654e53fd4df58e5c63a9279a63b5dfe44c0fcc3ee7884", size = 27533, upload-time = "2025-07-13T20:05:34.266Z" },
 ]
 
 [[package]]
