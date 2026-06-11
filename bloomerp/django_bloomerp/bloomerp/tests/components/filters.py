@@ -26,6 +26,7 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
                 "FilterEvent": {
                     "starts_at": models.DateTimeField(),
                     "starts_on": models.DateField(),
+                    "is_active": models.BooleanField(default=False),
                 }
             },
             use_bloomerp_base=True,
@@ -231,6 +232,24 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
         self.assertContains(response, 'min="1"', html=False)
         self.assertContains(response, 'max="53"', html=False)
 
+    def test_value_input_renders_day_of_week_select_for_date_lookup(self):
+        application_field = ApplicationField.get_by_field(self.EventModel, "starts_on")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+
+        response = self.client.get(url, {"lookup_value": "day_of_week"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<select', html=False)
+        self.assertContains(response, 'class="select w-full"', html=False)
+        self.assertContains(response, '<option value="0">Monday</option>', html=False)
+        self.assertContains(response, '<option value="6">Sunday</option>', html=False)
+
     def test_value_input_renders_current_user_lookup_for_advanced_path(self):
         application_field = ApplicationField.get_by_field(self.CustomerModel, "created_by")
         url = reverse(
@@ -435,3 +454,37 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
             [last_year_event.id],
         )
         self.assertNotIn(this_year_event.id, filtered_qs.values_list("id", flat=True))
+
+    def test_filter_model_filters_boolean_fields_with_exact_lookup(self):
+        active_event = self.EventModel.objects.create(
+            starts_on=date(2026, 5, 18),
+            starts_at=timezone.make_aware(datetime(2026, 5, 18, 9, 0, 0), timezone.get_current_timezone()),
+            is_active=True,
+        )
+        inactive_event = self.EventModel.objects.create(
+            starts_on=date(2026, 5, 19),
+            starts_at=timezone.make_aware(datetime(2026, 5, 19, 9, 0, 0), timezone.get_current_timezone()),
+            is_active=False,
+        )
+
+        filtered_true = filter_model(self.EventModel, {"is_active__exact": "true"})
+        filtered_false = filter_model(self.EventModel, {"is_active__exact": "false"})
+
+        self.assertCountEqual(filtered_true.values_list("id", flat=True), [active_event.id])
+        self.assertCountEqual(filtered_false.values_list("id", flat=True), [inactive_event.id])
+
+    def test_filter_model_filters_date_fields_for_day_of_week_lookup(self):
+        monday_event = self.EventModel.objects.create(
+            starts_on=date(2026, 5, 18),
+            starts_at=timezone.make_aware(datetime(2026, 5, 18, 9, 0, 0), timezone.get_current_timezone()),
+        )
+        sunday_event = self.EventModel.objects.create(
+            starts_on=date(2026, 5, 24),
+            starts_at=timezone.make_aware(datetime(2026, 5, 24, 9, 0, 0), timezone.get_current_timezone()),
+        )
+
+        filtered_monday = filter_model(self.EventModel, {"starts_on__day_of_week": "0"})
+        filtered_sunday = filter_model(self.EventModel, {"starts_on__day_of_week": "6"})
+
+        self.assertCountEqual(filtered_monday.values_list("id", flat=True), [monday_event.id])
+        self.assertCountEqual(filtered_sunday.values_list("id", flat=True), [sunday_event.id])

@@ -109,9 +109,7 @@ class IfConditionExecutor(BaseExecutor):
         if not field:
             return BranchStopped("No condition field configured")
         
-        print(field, operator, input_data)
         value = _resolve_field_value(input_data, field)
-        print(f"Evaluating condition: field={field}, operator={operator}, expected={expected}, actual={value}")
         if _matches(value, expected, operator):
             return input_data
 

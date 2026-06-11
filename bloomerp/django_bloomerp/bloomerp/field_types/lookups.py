@@ -11,97 +11,14 @@ from functools import partial
 from typing import Optional
 from typing import TYPE_CHECKING
 
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
 
 # ---------------------
 # Helper functions
 # ---------------------
-
-def render_month_lookup_value(
-    application_field: "ApplicationField",
-    name_override: Optional[str] = None,
-) -> str:
-    field_name = name_override or application_field.field
-    return forms.Select(
-        choices=[(str(index), calendar.month_name[index]) for index in range(1, 13)],
-        attrs={"class": "select w-full"},
-    ).render(name=field_name, value=None)
-
-
-def render_numeric_lookup_value(
-    application_field: "ApplicationField",
-    name_override: Optional[str] = None,
-    min_value: int | None = None,
-    max_value: int | None = None,
-) -> str:
-    field_name = name_override or application_field.field
-    attrs = {"class": "input w-full"}
-    if min_value is not None:
-        attrs["min"] = min_value
-    if max_value is not None:
-        attrs["max"] = max_value
-    return forms.NumberInput(attrs=attrs).render(name=field_name, value=None)
-
-
-def render_hidden_lookup_value(
-    application_field: "ApplicationField",
-    name_override: Optional[str] = None,
-    value: str = "true",
-    helper_text: str = "This filter uses the current date automatically.",
-) -> str:
-    field_name = name_override or application_field.field
-    return (
-        f'<input type="hidden" name="{field_name}" value="{value}">'
-        f'<div class="input w-full">{helper_text}</div>'
-    )
-
-
-def render_advanced_lookup(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
-    from bloomerp.models import ApplicationField
-    from django.contrib.contenttypes.models import ContentType
-
-    related_model = application_field.related_model
-
-    objects = ApplicationField.objects.filter(
-        content_type=ContentType.objects.get_for_model(related_model)
-    )
-
-    html = "<select class='select'>"
-    for obj in objects:
-        html += f"<option value='{obj.id}'>{obj.title}</option>"
-
-    html += "</select>"
-
-    return html
-
-
-def render_equals_current_user(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
-    field_name = name_override or application_field.field
-    return forms.CharField().widget.render(
-        name=field_name,
-        value="$user",
-        attrs={
-            "class" : "input w-full",
-            "disabled" : True
-        }
-    )
-
-
-def render_foreign_key_field(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
-    from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
-
-    field_name = name_override or application_field.field
-    widget_attrs = {}
-    widget_attrs.update(application_field.meta or {})
-    return ForeignFieldWidget(attrs=widget_attrs).render(
-        name=field_name,
-        value=None,
-        attrs={
-            "class": "input w-full"
-        }
-    )
-    
 
 def _is_truthy_lookup_value(value: Any) -> bool:
     if isinstance(value, bool):
@@ -149,11 +66,39 @@ def _sql_in_values(value: Any) -> str:
 def _sql_is_null(value: Any) -> str:
     return "IS NULL" if _is_truthy_lookup_value(value) else "IS NOT NULL"
 
+# ---------------------
+# Widget functions
+# ---------------------
+def _equals_widget(application_field: "ApplicationField") -> forms.Widget:
+    from bloomerp.field_types.types import FieldType
+    match application_field.field_type_enum:
+        case FieldType.BOOLEAN_FIELD:
+            return forms.Select(choices=[("true", "True"), ("false", "False")], attrs={"class": "select w-full"})
+        case FieldType.FOREIGN_KEY:
+            return ForeignFieldWidget(model=application_field.related_model.model_class(), attrs={"class": "input w-full"})
+        case FieldType.MANY_TO_MANY_FIELD:
+            return ForeignFieldWidget(model=application_field.related_model.model_class(), attrs={"class": "input w-full", "is_m2m": True})
+        case FieldType.DATE_FIELD:
+            return forms.DateInput(attrs={"class": "input w-full", "type": "date"})
+        case FieldType.DATE_TIME_FIELD:
+            return forms.DateTimeInput(attrs={"class": "input w-full", "type": "datetime-local"})
+        case _:
+            return forms.TextInput(attrs={"class": "input w-full"})
+
+def _in_widget(application_field: "ApplicationField") -> forms.Widget:
+    from bloomerp.field_types.types import FieldType
+    match application_field.field_type_enum:
+        case FieldType.FOREIGN_KEY | FieldType.MANY_TO_MANY_FIELD:
+            return ForeignFieldWidget(model=application_field.related_model.model_class(), attrs={"class": "input w-full", "is_m2m":True})
+        case _:
+            return forms.TextInput(attrs={"class": "input w-full", "placeholder": "Enter comma-separated values"})
+
+def _hidden_true(application_field: "ApplicationField") -> forms.Widget:
+    return forms.HiddenInput(attrs={"value": "true"})
 
 # ---------------------
 # Defintion
 # ---------------------
-
 @dataclass
 class LookupDefinition:
     id: str
@@ -167,20 +112,19 @@ class LookupDefinition:
 
     # For special filter configurations (e.g., ModelMultipleChoiceFilter needs queryset)
     get_filter_kwargs: Optional[Callable[[Any], dict]] = None  # Function that returns extra kwargs  
-    render_func : Optional[Callable] = None
 
     # SQL
     sql_operator: Callable[[Any], str] = lambda value: f"= {_sql_literal(value)}"
     
     def render(self, application_field, name_override: Optional[str] = None) -> str:
-        if not self.render_func:
-            field_name = name_override or application_field.field
-            return f"""<input type=\"text\" class=\"input w-full\" name=\"{field_name}\">"""
-        
-        return self.render_func(application_field, name_override=name_override)
+        return self.widget_func(application_field).render(
+            name=name_override or application_field.field,
+            value=None,
+        )
 
+    # Widget function
+    widget_func: Optional[Callable[["ApplicationField"], forms.Widget]] = lambda application_field: forms.TextInput(attrs={"class": "input w-full"})
     
-
 class Lookup(Enum):
     EQUALS = LookupDefinition(
         id="equals",
@@ -189,8 +133,9 @@ class Lookup(Enum):
         aliases=["", "__exact", "__equals"],  # Can use field_name, field_name__exact, or field_name__equals
         filter_class=django_filters.CharFilter,
         sql_operator=lambda value: f"= {_sql_literal(value)}",
+        widget_func=_equals_widget
     )
-
+    
     IEXACT = LookupDefinition(
         id="iexact",
         display_name="Equals (case-insensitive)",
@@ -198,6 +143,7 @@ class Lookup(Enum):
         aliases=["__iexact"],
         description="Case-insensitive exact match.",
         sql_operator=lambda value: f"LIKE {_sql_literal(value)}",
+        widget_func=_equals_widget
     )
 
     CONTAINS = LookupDefinition(
@@ -207,6 +153,7 @@ class Lookup(Enum):
         aliases=["__icontains", "__contains"],
         description="Containment test (generated as icontains by default).",
         sql_operator=lambda value: f"LIKE {_sql_like_value(value, prefix='%', suffix='%')}",
+        widget_func=_equals_widget
     )
 
     STARTS_WITH = LookupDefinition(
@@ -216,6 +163,7 @@ class Lookup(Enum):
         aliases=["__startswith", "__istartswith"],
         description="Starts with test.",
         sql_operator=lambda value: f"LIKE {_sql_like_value(value, suffix='%')}",
+        widget_func=_equals_widget
     )
 
     ENDS_WITH = LookupDefinition(
@@ -225,6 +173,7 @@ class Lookup(Enum):
         aliases=["__endswith", "__iendswith"],
         description="Ends with test.",
         sql_operator=lambda value: f"LIKE {_sql_like_value(value, prefix='%')}",
+        widget_func=_equals_widget
     )
 
     GREATER_THAN = LookupDefinition(
@@ -233,6 +182,7 @@ class Lookup(Enum):
         django_representation="gt",
         aliases=["__gt"],
         sql_operator=lambda value: f"> {_sql_literal(value)}",
+        widget_func=_equals_widget
     )
 
     GREATER_THAN_OR_EQUAL = LookupDefinition(
@@ -241,6 +191,7 @@ class Lookup(Enum):
         django_representation="gte",
         aliases=["__gte"],
         sql_operator=lambda value: f">= {_sql_literal(value)}",
+        widget_func=_equals_widget
     )
 
     LESS_THAN = LookupDefinition(
@@ -249,6 +200,7 @@ class Lookup(Enum):
         django_representation="lt",
         aliases=["__lt"],
         sql_operator=lambda value: f"< {_sql_literal(value)}",
+        widget_func=_equals_widget
     )
 
     LESS_THAN_OR_EQUAL = LookupDefinition(
@@ -257,6 +209,7 @@ class Lookup(Enum):
         django_representation="lte",
         aliases=["__lte"],
         sql_operator=lambda value: f"<= {_sql_literal(value)}",
+        widget_func=_equals_widget
     )
 
     IN = LookupDefinition(
@@ -266,6 +219,7 @@ class Lookup(Enum):
         aliases=["__in"],
         description="Checks if value is in a list of values.",
         sql_operator=_sql_in_values,
+        widget_func=_in_widget
     )
 
     IS_NULL = LookupDefinition(
@@ -275,6 +229,7 @@ class Lookup(Enum):
         aliases=["__isnull"],
         description="Checks if value is null (True) or not null (False).",
         sql_operator=_sql_is_null,
+        widget_func=lambda application_field: forms.Select(choices=[("true", "True"), ("false", "False")], attrs={"class": "select w-full"})
     )
 
     NOT_EQUALS = LookupDefinition(
@@ -284,34 +239,21 @@ class Lookup(Enum):
         aliases=["__ne", "__not_equals"],
         description="Not equal comparison.",
         sql_operator=lambda value: f"!= {_sql_literal(value)}",
+        widget_func=_equals_widget
     )
 
     EQUALS_USER = LookupDefinition(
         id="equals_user",
         display_name="Equals Current User",
         django_representation="",
-        render_func=render_equals_current_user
-    )
-
-    FOREIGN_EQUALS = LookupDefinition(
-        id="foreign_equals",
-        display_name="Equals",
-        django_representation="exact",
-        render_func=render_foreign_key_field
-    )
-
-    FOREIGN_IN = LookupDefinition(
-        id="foreign_in",
-        display_name="In",
-        django_representation="in",
-        render_func=render_foreign_key_field
+        widget_func=lambda x: forms.HiddenInput(attrs={"value": "$user"})
     )
 
     FOREIGN_ADVANCED = LookupDefinition(
         id="foreign_advanced",
         display_name="Advanced Lookup",
         django_representation="",
-        render_func=render_advanced_lookup
+        
     )
 
     TODAY = LookupDefinition(
@@ -319,10 +261,8 @@ class Lookup(Enum):
         display_name="Today",
         django_representation="today",
         aliases=["__today"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses today's date automatically.",
-        ),
+        widget_func=_hidden_true
+        
     )
 
     YESTERDAY = LookupDefinition(
@@ -330,10 +270,7 @@ class Lookup(Enum):
         display_name="Yesterday",
         django_representation="yesterday",
         aliases=["__yesterday"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses yesterday's date automatically.",
-        ),
+        widget_func=_hidden_true
     )
 
     THIS_WEEK = LookupDefinition(
@@ -341,10 +278,7 @@ class Lookup(Enum):
         display_name="This Week",
         django_representation="this_week",
         aliases=["__this_week"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the current week automatically.",
-        ),
+        widget_func=_hidden_true
     )
 
     LAST_WEEK = LookupDefinition(
@@ -352,10 +286,7 @@ class Lookup(Enum):
         display_name="Last Week",
         django_representation="last_week",
         aliases=["__last_week"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the previous week automatically.",
-        ),
+        widget_func=_hidden_true
     )
 
     THIS_MONTH = LookupDefinition(
@@ -363,10 +294,7 @@ class Lookup(Enum):
         display_name="This Month",
         django_representation="this_month",
         aliases=["__this_month"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the current month automatically.",
-        ),
+        widget_func=_hidden_true
     )
 
     LAST_MONTH = LookupDefinition(
@@ -374,10 +302,7 @@ class Lookup(Enum):
         display_name="Last Month",
         django_representation="last_month",
         aliases=["__last_month"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the previous month automatically.",
-        ),
+        widget_func=_hidden_true
     )
 
     THIS_QUARTER = LookupDefinition(
@@ -385,10 +310,7 @@ class Lookup(Enum):
         display_name="This Quarter",
         django_representation="this_quarter",
         aliases=["__this_quarter"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the current quarter automatically.",
-        ),
+        widget_func=_hidden_true,
     )
 
     LAST_QUARTER = LookupDefinition(
@@ -396,10 +318,7 @@ class Lookup(Enum):
         display_name="Last Quarter",
         django_representation="last_quarter",
         aliases=["__last_quarter"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the previous quarter automatically.",
-        ),
+        widget_func=_hidden_true,
     )
 
     THIS_YEAR = LookupDefinition(
@@ -407,10 +326,7 @@ class Lookup(Enum):
         display_name="This Year",
         django_representation="this_year",
         aliases=["__this_year"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the current year automatically.",
-        ),
+        widget_func=_hidden_true,
     )
 
     LAST_YEAR = LookupDefinition(
@@ -418,10 +334,7 @@ class Lookup(Enum):
         display_name="Last Year",
         django_representation="last_year",
         aliases=["__last_year"],
-        render_func=partial(
-            render_hidden_lookup_value,
-            helper_text="Uses the previous year automatically.",
-        ),
+        widget_func=_hidden_true
     )
 
     YEAR = LookupDefinition(
@@ -429,7 +342,7 @@ class Lookup(Enum):
         display_name="Year",
         django_representation="year",
         aliases=["__year"],
-        render_func=partial(render_numeric_lookup_value, min_value=1),
+        widget_func=lambda x: forms.NumberInput(attrs={"class": "input w-full", "min": 1, "max": 9999, "type": "number"})
     )
 
     MONTH = LookupDefinition(
@@ -437,7 +350,7 @@ class Lookup(Enum):
         display_name="Month",
         django_representation="month",
         aliases=["__month"],
-        render_func=render_month_lookup_value,
+        widget_func=lambda x: forms.NumberInput(attrs={"class": "input w-full", "min": 1, "max": 12, "type": "number"})
     )
 
     DAY = LookupDefinition(
@@ -445,7 +358,7 @@ class Lookup(Enum):
         display_name="Day",
         django_representation="day",
         aliases=["__day"],
-        render_func=partial(render_numeric_lookup_value, min_value=1, max_value=31),
+        widget_func=lambda x: forms.NumberInput(attrs={"class": "input w-full", "min": 1, "max": 31, "type": "number"})
     )
 
     WEEK = LookupDefinition(
@@ -453,9 +366,15 @@ class Lookup(Enum):
         display_name="Week",
         django_representation="week",
         aliases=["__week"],
-        render_func=partial(render_numeric_lookup_value, min_value=1, max_value=53),
+        widget_func=lambda application_field: forms.NumberInput(attrs={"class": "input w-full", "min": 1, "max": 53, "type": "number"})
     )
-
+    DAY_OF_WEEK = LookupDefinition(
+        id="day_of_week",
+        display_name="Day of Week",
+        django_representation="day_of_week",
+        aliases=["__day_of_week"],
+        widget_func=lambda application_field: forms.Select(choices=[(str(i), calendar.day_name[i]) for i in range(1,8)], attrs={"class": "select w-full"})
+    )
 
 DATE_LOOKUPS = [
     Lookup.EQUALS,
@@ -479,6 +398,7 @@ DATE_LOOKUPS = [
     Lookup.WEEK,
     Lookup.IS_NULL,
     Lookup.NOT_EQUALS,
+    Lookup.DAY_OF_WEEK,
 ]
 
 WEEK_LOOKUPS = [
@@ -519,17 +439,3 @@ TEXT_LOOKUPS = [
     Lookup.NOT_EQUALS,
 ]
 
-
-def render_foreign_key_in(application_field:"ApplicationField", name_override: Optional[str] = None) -> str:
-    from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
-
-    field_name = name_override or application_field.field
-    widget_attrs = {}
-    widget_attrs.update(application_field.meta or {})
-    return ForeignFieldWidget(attrs=widget_attrs).render(
-        name=field_name,
-        value=None,
-        attrs={
-            "class": "input w-full"
-        }
-    )

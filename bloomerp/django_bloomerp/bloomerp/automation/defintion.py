@@ -17,6 +17,7 @@ from bloomerp.automation.actions.send_email import SendEmailExecutor
 from bloomerp.automation.flows.filter_objects import FilterObjectsExecutor
 from bloomerp.automation.flows.for_each import ForEachExecutor
 from bloomerp.automation.flows.if_condition import IfConditionExecutor
+from bloomerp.automation.flows.object_if_condition import ObjectIfConditionExecutor
 from bloomerp.automation.triggers.human_trigger import HumanTrigger
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.automation.triggers.on_schedule_trigger import ScheduleTrigger
@@ -193,6 +194,13 @@ class WorkflowNodeType(Enum):
                 executor_cls=ForEachExecutor,
                 icon="fa-solid fa-repeat"
             ),
+            NodeSubTypeDefinition(
+                id="OBJECT_IF_CONDITION",
+                name="Object If Condition",
+                description="Branches the workflow based on the value of a field on an object",
+                executor_cls=ObjectIfConditionExecutor,  # Placeholder for actual function
+                icon="fa-solid fa-code-branch"
+            )
             # NodeSubTypeDefinition(
             #     id="SWITCH_CASE",
             #     name="Switch Case",

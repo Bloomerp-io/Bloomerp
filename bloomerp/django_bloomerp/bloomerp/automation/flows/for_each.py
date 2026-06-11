@@ -66,10 +66,12 @@ class ForEachExecutor(BaseExecutor):
         input_schema: WorkflowIOSchema | None = None,
     ) -> WorkflowIOSchema:
         if input_schema and input_schema.value_type == "list" and input_schema.fields:
+            
             item_fields = [
                 field for field in input_schema.fields
-                if field.path == "input.0" or field.path.startswith("input.0.")
+                if field.path == "input.0" or field.path.startswith("0.")
             ]
+            
             return WorkflowIOSchema(
                 value_type="object",
                 flow_kind=WorkflowIOFlowKind.FANOUT,
@@ -77,13 +79,13 @@ class ForEachExecutor(BaseExecutor):
                 description="Downstream nodes receive one item at a time.",
                 fields=[
                     WorkflowValueField(
-                        "input.item",
+                        "item",
                         "Current Item",
                         "object",
-                        children=remap_schema_field_paths(item_fields, {"input.0": "input.item"}),
+                        children=remap_schema_field_paths(item_fields, {"0": "item"}),
                     ),
-                    WorkflowValueField("input.index", "Current Index", "number"),
-                    WorkflowValueField("input.collection", "Original Collection", "list"),
+                    WorkflowValueField("index", "Current Index", "number"),
+                    WorkflowValueField("collection", "Original Collection", "list"),
                 ],
             )
         

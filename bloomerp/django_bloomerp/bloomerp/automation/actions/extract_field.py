@@ -97,7 +97,6 @@ class ExtractFieldExecutor(BaseExecutor):
         
         return super().get_output_schema(config, input_schema)
     
-    
     def execute(self, trigger_data):
         params = self.resolve_config(trigger_data)
         

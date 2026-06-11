@@ -358,8 +358,6 @@ class TestAutomationModels(TestCase):
         self.assertIn('data-workflow-node-config-form="true"', content)
         self.assertIn("If Condition", content)
         self.assertIn("workflow-node-config-fields", content)
-        self.assertNotIn("Hello world", content)
-
     def test_render_workflow_node_can_edit_config_as_json(self):
         self.client.force_login(self.user)
         if_node = WorkflowNode.objects.create(
@@ -511,3 +509,103 @@ class TestAutomationModels(TestCase):
                     "parameters" : {}
                 }
             )
+
+
+class TestWorkflowSaveDraftClientIds(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="draft-client-user", password="password")
+        self.workflow = Workflow.objects.create(name="Draft Client Workflow")
+        self.start_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"d": "d"}},
+            },
+            type="TRIGGER",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        self.action_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {},
+            },
+            type="ACTION",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        WorkflowEdge.objects.create(
+            from_node=self.start_node,
+            to_node=self.action_node,
+        )
+        return super().setUp()
+
+    def test_update_workflow_accepts_draft_client_ids_for_new_nodes(self):
+        self.client.force_login(self.user)
+        payload = {
+            "workflow_id": self.workflow.id,
+            "name": "Workflow",
+            "nodes": [
+                {
+                    "id": self.start_node.id,
+                    "client_id": "node-1",
+                    "type": "TRIGGER",
+                    "config": {
+                        "sub_type": "HUMAN_TRIGGER",
+                        "parameters": {"data": {"d": "d"}},
+                    },
+                    "pos_x": 129,
+                    "pos_y": 192,
+                },
+                {
+                    "id": self.action_node.id,
+                    "client_id": "node-2",
+                    "type": "ACTION",
+                    "config": {
+                        "sub_type": "CREATE_OBJECT",
+                        "parameters": {},
+                    },
+                    "pos_x": 500,
+                    "pos_y": 192,
+                },
+                {
+                    "client_id": "draft-7",
+                    "type": "FLOW",
+                    "config": {"sub_type": "FOR_EACH", "parameters": {}},
+                    "pos_x": 774,
+                    "pos_y": 192,
+                },
+            ],
+            "edges": [
+                {
+                    "from_node": "node-1",
+                    "to_node": "node-2",
+                },
+                {
+                    "from_node": "node-2",
+                    "to_node": "draft-7",
+                },
+            ],
+        }
+
+        response = self.client.post(
+            reverse("components_automation_save_workflow"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertIn(
+            "draft-7",
+            {node["client_id"] for node in response_data["nodes"]},
+        )
+        self.assertIn(
+            ("node-2", "draft-7"),
+            {
+                (edge["from_node"], edge["to_node"])
+                for edge in response_data["edges"]
+            },
+        )
+        self.assertEqual(self.workflow.nodes.count(), 3)

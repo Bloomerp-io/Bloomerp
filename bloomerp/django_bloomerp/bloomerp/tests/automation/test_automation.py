@@ -6,6 +6,7 @@ from django.test import TransactionTestCase
 from django_celery_beat.models import PeriodicTask
 
 from bloomerp.automation.defintion import WorkflowNodeType
+from bloomerp.automation.flows import object_if_condition
 from bloomerp.automation.schema import WorkflowValueType
 from bloomerp.automation.schema_resolver import resolve_node_output_schema
 from bloomerp.automation.utils import enhanced_get_attr
@@ -1131,6 +1132,146 @@ class TestAutomation(TransactionTestCase):
             "branch_stopped",
         )
     
+    # ----------------------------------------
+    # Flow: OBJECT_IF_CONDITION
+    # ----------------------------------------
+    def test_flow_object_if_condition_continues_when_condition_matches(self):
+        # 1. Create an object that matches the condition
+        customer = self.CustomerModel.objects.create(first_name="John", last_name="Doe", age=20)
+        
+        # 2. Create the workflow
+        workflow = Workflow.objects.create(name="Object If Condition Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {
+                    "id": str(customer.id),
+                    "first_name": customer.first_name,
+                    "last_name": customer.last_name,
+                    "age": customer.age,  
+                }},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        extract_action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "EXTRACT_FIELD",
+                "parameters": {
+                    "field_path": "data"
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        object_if_condition = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "OBJECT_IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "exact",
+                    "value": "20",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+        )
+        create_action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
+                    "data": {
+                        "first_name": "Jane",
+                        "last_name": "Smith",
+                        "age": 30,
+                    }
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        workflow.connect_nodes(trigger, extract_action)
+        workflow.connect_nodes(extract_action, object_if_condition)
+        workflow.connect_nodes(object_if_condition, create_action)
+        
+        # 3. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+        
+        # 4. Check that the branch continued and the object was created
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="Jane").exists())
+        
+    def test_flow_object_if_condition_stops_branch_when_condition_does_not_match(self):
+        # 1. Create an object that does not match the condition
+        customer = self.CustomerModel.objects.create(first_name="John", last_name="Doe", age=20)
+        
+        # 2. Create the workflow        
+        workflow = Workflow.objects.create(name="Object If Condition Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {
+                    "id": str(customer.id),
+                    "first_name": customer.first_name,
+                    "last_name": customer.last_name,
+                    "age": customer.age,  
+                }},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        extract_action = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "EXTRACT_FIELD",
+                "parameters": {
+                    "field_path": "data"
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        object_if_condition = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "OBJECT_IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "exact",
+                    "value": "99",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+        )
+        create_action = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
+                    "data": {
+                        "first_name": "Jane",
+                        "last_name": "Smith",
+                        "age": 30,
+                    }
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        workflow.connect_nodes(trigger, extract_action)
+        workflow.connect_nodes(extract_action, object_if_condition)
+        workflow.connect_nodes(object_if_condition, create_action)
+        
+        # 3. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+        
+        # 4. Check that the branch stopped and the object was not created
+        self.assertFalse(self.CustomerModel.objects.filter(first_name="Jane").exists())
     
     # ---------------------------------------
     # Tests for document template generation
