@@ -5,16 +5,12 @@ from bloomerp.automation.base_executor import BaseExecutor
 from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField, WorkflowValueType
 from django.forms import Form
 from django import forms
-from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 
 
 # TODO: Choices should be defined in a central place
 class SendUserMessageForm(Form):
     user_id = forms.CharField(
-        widget=ForeignFieldWidget(
-            model=get_user_model(),
-            attrs={"class" : "input w-full"}
-        ),
         help_text="Use a literal user id or a value reference like {{ input.id }}.",
     )
     message = forms.CharField(widget=forms.Textarea)
