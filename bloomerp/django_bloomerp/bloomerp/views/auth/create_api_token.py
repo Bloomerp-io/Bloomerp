@@ -17,12 +17,14 @@ from django.views.generic.edit import FormView
 class CreateApiTokenView(BaseBloomerpView, FormView):
     template_name = "views/auth/create_api_token.html"
     model = ApiKey
-    form_class = bloomerp_modelform_factory(ApiKey, fields=["name", "expires_at"])
     raw_token: str | None = None
     object: ApiKey | None = None
 
     def has_permission(self):
         return bool(self.request.user and self.request.user.is_authenticated)
+    
+    def get_form_class(self):
+        return bloomerp_modelform_factory(ApiKey, fields=["name", "expires_at"])
     
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
