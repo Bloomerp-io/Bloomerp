@@ -252,7 +252,6 @@ class FieldType(Enum):
         display_name="Char Field",
         icon="fa-solid fa-font",
         model_field_cls=models.CharField,
-        widget_cls=InputSelectWidget,
         default_model_field_args={
             "max_length": 100,
         },

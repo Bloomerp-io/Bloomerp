@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from bloomerp.models import Workflow, WorkflowEdge, WorkflowNode, User
 from bloomerp.automation.defintion import WorkflowNodeType
+from bloomerp.automation.schema_resolver import resolve_node_input_schema
 from django.core.exceptions import ValidationError
 
 from bloomerp.models.automation import workflow  # Import ValidationError
@@ -487,8 +488,7 @@ class TestAutomationModels(TestCase):
         self.assertIn("Values this node passes to next nodes", content)
         self.assertIn("input.0.username", content)
         self.assertIn("input.item.username", content)
-    
-    
+
     def test_get_node_subtype(self):
         """
         Tests whether the retrieval of a NodeSubType defintion works 
@@ -609,3 +609,57 @@ class TestWorkflowSaveDraftClientIds(TestCase):
             },
         )
         self.assertEqual(self.workflow.nodes.count(), 3)
+
+
+class TestWorkflowMultiInputSchema(TestCase):
+    def test_multi_input_schema_namespaces_fields_by_upstream_node(self):
+        user = User.objects.create_user(username="schema-user", password="password")
+        workflow = Workflow.objects.create(name="Merge schema workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type="TRIGGER",
+            created_by=user,
+            updated_by=user,
+        )
+        left_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {"data": {"left_value": "left"}},
+            },
+            type="ACTION",
+            created_by=user,
+            updated_by=user,
+        )
+        right_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {"data": {"right_value": "right"}},
+            },
+            type="ACTION",
+            created_by=user,
+            updated_by=user,
+        )
+        merge_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={"sub_type": "MERGE_BRANCHES", "parameters": {}},
+            type="FLOW",
+            created_by=user,
+            updated_by=user,
+        )
+        WorkflowEdge.objects.create(from_node=trigger, to_node=left_node)
+        WorkflowEdge.objects.create(from_node=trigger, to_node=right_node)
+        WorkflowEdge.objects.create(from_node=left_node, to_node=merge_node)
+        WorkflowEdge.objects.create(from_node=right_node, to_node=merge_node)
+
+        schema = resolve_node_input_schema(merge_node)
+        field_paths = {field.path for field in schema.fields}
+
+        self.assertEqual(schema.value_type, "object")
+        self.assertIn(f"node_{left_node.id}", field_paths)
+        self.assertIn(f"node_{right_node.id}", field_paths)

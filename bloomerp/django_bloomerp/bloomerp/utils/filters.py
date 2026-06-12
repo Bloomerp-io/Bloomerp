@@ -19,6 +19,7 @@ from django.db.models import (
     BigAutoField,
     AutoField,
     DecimalField,
+    FloatField,
     UUIDField,
     Field
 )
@@ -206,7 +207,7 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
             filter_overrides[f'{field_name}__endswith'] = django_filters.CharFilter(field_name=field_name, lookup_expr='endswith')
             return
 
-        if isinstance(field, IntegerField) or isinstance(field, BigAutoField) or isinstance(field, AutoField) or isinstance(field, DecimalField):
+        if isinstance(field, IntegerField) or isinstance(field, BigAutoField) or isinstance(field, AutoField) or isinstance(field, DecimalField) or isinstance(field, FloatField):
             filter_overrides[f'{field_name}__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='gte')
             filter_overrides[f'{field_name}__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='lte')
             filter_overrides[f'{field_name}__gt'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='gt')

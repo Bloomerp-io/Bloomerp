@@ -1,6 +1,9 @@
 from collections.abc import Mapping
 
+from django.contrib.auth.views import LoginView
+from django.urls import reverse_lazy
 from rest_framework import viewsets, status
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from django_filters import rest_framework as filters
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
@@ -9,6 +12,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Model, Q
 
+from bloomerp.auth import allauth_is_enabled, get_interactive_auth_settings, get_login_field_label, get_login_help_text, get_social_login_providers
+from bloomerp.forms.auth import BloomerpAuthenticationForm
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.services.permission_services import (
@@ -16,11 +21,17 @@ from bloomerp.services.permission_services import (
     create_permission_str,
 )
 from bloomerp.utils.api import apply_queryset_nesting
+from bloomerp.views.api.authentication import BloomerpApiKeyAuthentication
 
 class BloomerpModelViewSet(viewsets.ModelViewSet):
     # The model will be injected dynamically when the viewset is initialized
     queryset = None
     serializer_class = None
+    authentication_classes = (
+        BloomerpApiKeyAuthentication,
+        SessionAuthentication,
+        BasicAuthentication,
+    )
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_fields = '__all__'
     permission_classes = (IsAuthenticated,)
@@ -504,3 +515,25 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         kwargs["partial"] = True
         return self.update(request, *args, **kwargs)
+
+
+class BloomerpLoginView(LoginView):
+    authentication_form = BloomerpAuthenticationForm
+    template_name = "auth_views/login_view.html"
+    next_page = reverse_lazy("bloomerp_home_view")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        interactive_auth = get_interactive_auth_settings()
+        social_providers = get_social_login_providers()
+        context.update(
+            {
+                "interactive_auth": interactive_auth,
+                "login_field_label": get_login_field_label(),
+                "login_help_text": get_login_help_text(),
+                "social_login_providers": social_providers,
+                "social_login_enabled": bool(social_providers),
+                "social_login_runtime_ready": allauth_is_enabled(),
+            }
+        )
+        return context

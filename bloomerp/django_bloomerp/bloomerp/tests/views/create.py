@@ -3,6 +3,7 @@ import json
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpResponse
 from django.urls import reverse
 
 from bloomerp.field_types import Lookup
@@ -15,7 +16,12 @@ from bloomerp.models import (
     UserCreateViewPreference,
     File,
 )
+from bloomerp.router import router
 from bloomerp.tests.views.crud_test_mixin import CrudViewTestMixin
+
+
+def overridden_create_view(request, *args, **kwargs):
+    return HttpResponse("overridden")
 
 
 class TestCreateView(CrudViewTestMixin):
@@ -481,6 +487,31 @@ class TestCreateView(CrudViewTestMixin):
         self.assertEqual(response["Location"], component_url)
         self.assertNotIn("HX-Refresh", response)
         self.assertEqual(self.CustomerModel.objects.count(), 1)
+
+    def test_component_get_redirects_when_create_view_is_overridden(self):
+        routes = router.routes.copy()
+        model_route_templates = router._model_route_templates.copy()
+        try:
+            router.register(
+                path="create",
+                route_type="model",
+                name="Create Customer Override",
+                url_name="add",
+                models=self.CustomerModel,
+                override=True,
+            )(overridden_create_view)
+            self.client.force_login(self.admin_user)
+
+            response = self.client.get(
+                reverse("components_create_object", kwargs={"content_type_id": self.content_type.pk}),
+                HTTP_HX_REQUEST="true",
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response["HX-Redirect"], reverse("customers_add"))
+        finally:
+            router.routes = routes
+            router._model_route_templates = model_route_templates
 
     def test_create_layout_preference_save_persists_shape(self):
         self.grant_policy(

@@ -1,0 +1,50 @@
+{% load crispy_forms_tags %}
+
+<c-ui.container class="max-w-3xl mt-16">
+    <form 
+        class="space-y-4"
+        hx-post="{% url 'api_keys_add' %}"
+        hx-target="#main-content"
+        >
+        {% csrf_token %}
+        <c-ui.text.title>Create API Key</c-ui.text.title>
+        <c-ui.text.text>
+            Create an API key for your account.
+        </c-ui.text.text>
+
+        <div>
+            {{ form | crispy }}
+        </div>
+        <button 
+            class="btn btn-primary"
+            type="submit"
+            ><c-blocktrans>Generate Token</c-blocktrans>
+        </button>
+    </form>
+
+    {% if raw_token %}
+        <div class="mt-8 rounded-xl border-gray-200 bg-warning-light p-4 border-warning-dark">
+            <c-ui.text.subtitle>API token</c-ui.text.subtitle>
+            <c-ui.text.text>
+                Copy this token now. It will not be shown again.
+            </c-ui.text.text>
+            <div class="mt-3 flex items-center gap-2">
+                <code class="block flex-1 overflow-x-auto rounded bg-white px-3 py-2 font-mono text-sm text-slate-900">
+                    {{ raw_token }}
+                </code>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="navigator.clipboard.writeText('{{ raw_token|escapejs }}'); showMessage('API token copied to clipboard.');"
+                >
+                    Copy
+                </button>
+            </div>
+            {% if object %}
+                <p class="mt-3 text-sm text-slate-600">
+                    Prefix: <code>{{ object.key_prefix }}</code>
+                </p>
+            {% endif %}
+        </div>
+    {% endif %}
+</c-ui.container>

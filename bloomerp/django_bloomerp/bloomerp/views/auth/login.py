@@ -1,16 +1,9 @@
-from __future__ import annotations
+from bloomerp.auth import allauth_is_enabled, get_interactive_auth_settings, get_login_field_label, get_login_help_text, get_social_login_providers
+from bloomerp.forms.auth import BloomerpAuthenticationForm
+
 
 from django.contrib.auth.views import LoginView
 from django.urls import reverse_lazy
-
-from bloomerp.auth import (
-    allauth_is_enabled,
-    get_interactive_auth_settings,
-    get_login_field_label,
-    get_login_help_text,
-    get_social_login_providers,
-)
-from bloomerp.forms.auth import BloomerpAuthenticationForm
 
 
 class BloomerpLoginView(LoginView):

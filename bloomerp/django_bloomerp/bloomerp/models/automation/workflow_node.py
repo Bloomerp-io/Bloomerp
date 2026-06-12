@@ -22,7 +22,14 @@ class WorkflowNode(
         db_table = "bloomerp_workflow_node"
         verbose_name = _("Workflow Node")
         verbose_name_plural = _("Workflow Nodes")
-    
+        
+    # TODO: Integrate name with builder
+    name = models.CharField(
+        max_length=255,
+        help_text=_("The name of the workflow node."),
+        null=True,
+        blank=True
+    )
     workflow = models.ForeignKey(
         to="bloomerp.Workflow",
         on_delete=models.CASCADE,
@@ -84,7 +91,18 @@ class WorkflowNode(
         return WorkflowNode.objects.filter(
             incoming_edges__from_node=self
         )
+    
+    def get_input_nodes(self) -> models.QuerySet["WorkflowNode"]:
+        """Returns the input nodes connected to this node.
+
+        Returns:
+            models.QuerySet[WorkflowNode]: The input nodes.
+        """
+        return WorkflowNode.objects.filter(
+            outgoing_edges__to_node=self
+        )
         
+    
     def execute(self, trigger_data:dict) -> dict:
         """Executes the node's action.
 
@@ -144,6 +162,8 @@ class WorkflowNode(
         """
         return WorkflowNode.objects.filter(config__sub_type=trigger_subtype)
 
+    
+    
 
 
 

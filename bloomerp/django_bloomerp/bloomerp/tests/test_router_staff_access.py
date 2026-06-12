@@ -13,6 +13,14 @@ def sample_function_view(request, *args, **kwargs):
     return HttpResponse("ok")
 
 
+def first_route_view(request, *args, **kwargs):
+    return HttpResponse("first")
+
+
+def second_route_view(request, *args, **kwargs):
+    return HttpResponse("second")
+
+
 class PublicClassView(View):
     require_staff_for_access = False
 
@@ -109,3 +117,31 @@ class BloomerpRouteStaffAccessTests(TestCase):
 
         with self.assertRaises(PermissionDenied):
             view_callable(request)
+
+    def test_override_route_replaces_earlier_conflicting_route(self):
+        registry = BloomerpRouteRegistry()
+        registry.register(path="/same/", name="Same", url_name="same")(first_route_view)
+        registry.register(path="/same/", name="Same", url_name="same", override=True)(second_route_view)
+
+        self.assertEqual(len(registry.routes), 1)
+        self.assertTrue(registry.routes[0].override)
+
+        request = self.factory.get("/same/")
+        request.user = self.admin_user
+        response = registry.routes[0].view(request)
+
+        self.assertEqual(response.content, b"second")
+
+    def test_non_override_route_does_not_replace_earlier_override_route(self):
+        registry = BloomerpRouteRegistry()
+        registry.register(path="/same/", name="Same", url_name="same", override=True)(first_route_view)
+        registry.register(path="/same/", name="Same", url_name="same")(second_route_view)
+
+        self.assertEqual(len(registry.routes), 1)
+        self.assertTrue(registry.routes[0].override)
+
+        request = self.factory.get("/same/")
+        request.user = self.admin_user
+        response = registry.routes[0].view(request)
+
+        self.assertEqual(response.content, b"first")

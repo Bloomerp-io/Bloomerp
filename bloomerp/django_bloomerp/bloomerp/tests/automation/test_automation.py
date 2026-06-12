@@ -10,7 +10,7 @@ from bloomerp.automation.flows import object_if_condition
 from bloomerp.automation.schema import WorkflowValueType
 from bloomerp.automation.schema_resolver import resolve_node_output_schema
 from bloomerp.automation.utils import enhanced_get_attr
-from bloomerp.models import User
+from bloomerp.models import ApplicationField, User
 from bloomerp.models.automation import Workflow, WorkflowEdge, WorkflowNode
 from bloomerp.models.automation.workflow_run import WorkflowRun
 from bloomerp.models.document_templates.document_template import DocumentTemplate
@@ -22,7 +22,7 @@ from bloomerp.services.workflow_services import (
     run_workflow_async,
 )
 from bloomerp.signals.automations import setup_automation_signals
-from bloomerp.tests.utils.dynamic_models import create_test_models
+from bloomerp.tests.utils.dynamic_models import create_test_models, ensure_content_types_for_models
 
 # TODO: This will change in the future
 def get_terminal_node_output(workflow_run:WorkflowRun) -> dict|list|None:
@@ -68,6 +68,19 @@ class TestAutomation(TransactionTestCase):
     
     def setUp(self):
         super().setUp()
+        ensure_content_types_for_models(self.CustomerModel, self.EmployeeModel)
+        self.customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        self.employee_content_type = ContentType.objects.get_for_model(self.EmployeeModel)
+        self.customer_age_field, _ = ApplicationField.objects.get_or_create(
+            content_type=self.customer_content_type,
+            field="age",
+            defaults={
+                "field_type": "IntegerField",
+                "db_table": self.CustomerModel._meta.db_table,
+                "db_column": "age",
+                "db_field_type": "IntegerField",
+            },
+        )
         self.user = User.objects.create_user(username="testuser", password="password")
         self.workflow = Workflow.objects.create(
             name="Test Workflow",
@@ -1046,6 +1059,424 @@ class TestAutomation(TransactionTestCase):
     # ----------------------------------------
     # Action: DELETE_OBJECT
     # ----------------------------------------
+    def test_action_delete_object_deletes_object_with_given_content_type_and_id(self):
+        #1. Create a test customer
+        customer = self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
+        
+        # 2. Create workflow
+        workflow = Workflow.objects.create(name="Delete Object Test Workflow")
+        
+        # 3. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 4. Create the action node
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "DELETE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
+                    "object_id": str(customer.id),
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 5. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 6. Run the workflow
+        run_workflow(workflow, {})
+        
+        # 7. Check that the customer was deleted
+        self.assertFalse(self.CustomerModel.objects.filter(id=customer.id).exists())
+        
+        # 8. Check that the workflow execution trace contains the status of the delete action
+        output_schema = resolve_node_output_schema(action)
+        self.assertEqual(output_schema.value_type, WorkflowValueType.OBJECT.value)
+        required_fields = ["status", "error_message", "deleted_object_id"]
+        for field in output_schema.fields:
+            self.assertTrue(field.path in required_fields)
+    
+    
+    # ----------------------------------------
+    # Action: SQL_QUERY
+    # ----------------------------------------
+    def test_action_sql_query_returns_list_of_objects_matching_query(self):
+        # 1. Create some test customers
+        self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
+        self.CustomerModel.objects.create(first_name="Bob", last_name="Johnson", age=25)
+
+        # 2. Create workflow
+        workflow = Workflow.objects.create(name="SQL Query Test Workflow")
+        
+        # 3. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 4. Create the action node
+        db_table = self.CustomerModel._meta.db_table
+        query = f"SELECT * FROM {db_table} WHERE age > 26"
+        
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "SQL_QUERY",
+                "parameters": {
+                    "query": query,
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 5. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 6. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+        
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertIn("result", output)
+        self.assertIn("count", output)
+        self.assertEqual(output["count"], 1)
+        self.assertEqual(output["result"][0]["first_name"], "Alice")
+        
+    def test_action_sql_query_with_invalid_query_returns_error(self):
+        # 1. Create workflow
+        workflow = Workflow.objects.create(name="Invalid SQL Query Test Workflow")
+        
+        # 2. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 3. Create the action node with an invalid query
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "SQL_QUERY",
+                "parameters": {
+                    "query": f"SELECT non_existing_field FROM non_existing_table",
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 4. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 5. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+        
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertIn("error_message", output)
+        self.assertIsNotNone(output["error_message"])
+        
+    # ----------------------------------------
+    # Action: GET_OBJECT
+    # ----------------------------------------
+    def test_action_get_object_returns_object_with_given_content_type_and_id(self):
+        # 1. Create a test customer
+        customer = self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
+
+        # 2. Create workflow
+        workflow = Workflow.objects.create(name="Get Object Test Workflow")
+        
+        # 3. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 4. Create the action node
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "GET_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
+                    "object_id": str(customer.id),
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 5. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 6. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertIn("instance", output)
+        self.assertEqual(enhanced_get_attr(output["instance"], "first_name"), "Alice")
+        self.assertEqual(enhanced_get_attr(output["instance"], "last_name"), "Smith")
+        self.assertEqual(enhanced_get_attr(output["instance"], "age"), 30)
+    
+    def test_action_get_object_returns_object_using_context(self):
+        # 1. Create a test customer
+        customer = self.CustomerModel.objects.create(first_name="Bob", last_name="Johnson", age=25)
+        
+        # 2. Create workflow
+        workflow = Workflow.objects.create(name="Get Object with Context Test Workflow")
+        
+        # 3. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 4. Create the action node with object_id referring to the trigger context
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "GET_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
+                    "object_id": "{{ input.instance_id }}",
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 5. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 6. Run the workflow with the trigger context containing the customer id
+        workflow_run = run_workflow(workflow, {"instance_id": str(customer.id)})
+        
+        output = get_terminal_node_output(workflow_run)
+        self.assertIn("instance", output)
+        self.assertEqual(enhanced_get_attr(output["instance"], "first_name"), "Bob")
+        
+    def test_action_get_object_with_invalid_id_returns_error(self):
+        # 1. Create workflow
+        workflow = Workflow.objects.create(name="Get Object with Invalid ID Test Workflow")
+        
+        # 2. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 3. Create the action node with an invalid object_id
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "GET_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
+                    "object_id": "9999",  # Assuming this ID does not exist
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 4. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 5. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+        
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertEqual(output["found"], False)
+    
+    # ----------------------------------------
+    # Action: COMPUTE
+    # ----------------------------------------
+    def test_action_compute(self):
+        # 1. Create workflow
+        workflow = Workflow.objects.create(name="Compute Action Test Workflow")
+        
+        # 2. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 3. Create the action node with a simple computation
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "COMPUTE",
+                "parameters": {
+                    "expression": "{{ input.a }} + {{ input.b }}"
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 4. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 5. Run the workflow with input values for the computation
+        workflow_run = run_workflow(workflow, {"a": 5, "b": 10})
+        
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertEqual(output["result"], 15)
+    
+    def test_action_compute_get_first_item_from_list(self):
+        # 1. Create workflow
+        workflow = Workflow.objects.create(name="Compute Action List Test Workflow")
+        
+        # 2. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 3. Create the action node with an expression that gets the first item from a list
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "COMPUTE",
+                "parameters": {
+                    "expression": "{{ input.numbers }}[2]"
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 4. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 5. Run the workflow with a list of numbers as input
+        workflow_run = run_workflow(workflow, {"numbers": [10, 20, 30]})
+        
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertEqual(output["result"], 30)
+    
+    # ----------------------------------------
+    # Action: CALL_API
+    # ----------------------------------------
+    def test_action_call_api(self):
+        # 1. Create workflow
+        workflow = Workflow.objects.create(name="Call API Action Test Workflow")
+        
+        # 2. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 3. Create the action node with API call configuration
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "CALL_API",
+                "parameters": {
+                    "method": "GET",
+                    "endpoint": "https://jsonplaceholder.typicode.com/todos/1",
+                    "headers": {},
+                    "payload": None,
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 4. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 5. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+        
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertIn("status_code", output)
+        self.assertIn("response", output)
+        self.assertIn("status", output)
+        self.assertEqual(output["status"], "success")
+        self.assertEqual(output["status_code"], 200)
+        self.assertEqual(output["response"]["id"], 1)
+        
+    def test_action_call_api_with_invalid_url_returns_error(self):
+        # 1. Create workflow
+        workflow = Workflow.objects.create(name="Call API with Invalid URL Test Workflow")
+        
+        # 2. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 3. Create the action node with an invalid URL
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type" : "CALL_API",
+                "parameters": {
+                    "method": "GET",
+                    "endpoint": "https://invalid.url",
+                    "headers": {},
+                    "payload": None,
+                }
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        
+        # 4. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 5. Run the workflow
+        workflow_run = run_workflow(workflow, {})
+        
+        output = get_terminal_node_output(workflow_run)
+        
+        self.assertIn("response", output)
+        self.assertEqual(output["status"], "error")
+    
     
     # ----------------------------------------
     # Flow: IF_CONDITION
@@ -1131,6 +1562,228 @@ class TestAutomation(TransactionTestCase):
             workflow_run.execution_trace[-1]["output"]["kind"],
             "branch_stopped",
         )
+
+    
+    # ----------------------------------------
+    # Flow: MERGE_BRANCHES
+    # ----------------------------------------
+    def test_merge_branches_waits_for_all_upstream_nodes_then_runs_downstream_once(self):
+        workflow = Workflow.objects.create(name="Merge branches workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        left_branch = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {"data": {"left_value": "left"}},
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        right_branch = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {"data": {"right_value": "right"}},
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        merge_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={"sub_type": "MERGE_BRANCHES", "parameters": {}},
+            type=WorkflowNodeType.FLOW.value.id,
+        )
+        tail_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {
+                    "data": {
+                        "left": f"{{{{ input.node_{left_branch.id}.left_value }}}}",
+                        "right": f"{{{{ input.node_{right_branch.id}.right_value }}}}",
+                    }
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+
+        WorkflowEdge.objects.create(from_node=trigger, to_node=left_branch)
+        WorkflowEdge.objects.create(from_node=trigger, to_node=right_branch)
+        WorkflowEdge.objects.create(from_node=left_branch, to_node=merge_node)
+        WorkflowEdge.objects.create(from_node=right_branch, to_node=merge_node)
+        WorkflowEdge.objects.create(from_node=merge_node, to_node=tail_node)
+
+        workflow_run = run_workflow(workflow, {})
+
+        self.assertEqual(get_terminal_node_output(workflow_run)["left"], "left")
+        self.assertEqual(get_terminal_node_output(workflow_run)["right"], "right")
+
+        merge_entries = [
+            entry
+            for entry in workflow_run.execution_trace
+            if entry["node_sub_type"] == "MERGE_BRANCHES"
+        ]
+        self.assertEqual(len(merge_entries), 2)
+        self.assertEqual(merge_entries[0]["output"]["kind"], "waiting_for_branches")
+        self.assertEqual(merge_entries[1]["output_summary"]["kind"], "object")
+
+    def test_merge_branches_scopes_wait_state_per_for_each_item(self):
+        workflow = Workflow.objects.create(name="Merge branches in loop workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "records": [
+                            {"value": "A"},
+                            {"value": "B"},
+                        ]
+                    }
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        for_each_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={"sub_type": "FOR_EACH", "parameters": {}},
+            type=WorkflowNodeType.FLOW.value.id,
+        )
+        left_branch = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {"data": {"left_value": "{{ input.item.value }}-L"}},
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        right_branch = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {"data": {"right_value": "{{ input.item.value }}-R"}},
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        merge_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={"sub_type": "MERGE_BRANCHES", "parameters": {}},
+            type=WorkflowNodeType.FLOW.value.id,
+        )
+        tail_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "ENRICH_DATA",
+                "parameters": {
+                    "data": {
+                        "combined": (
+                            f"{{{{ input.node_{left_branch.id}.left_value }}}}|"
+                            f"{{{{ input.node_{right_branch.id}.right_value }}}}"
+                        ),
+                    }
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+
+        WorkflowEdge.objects.create(from_node=trigger, to_node=for_each_node)
+        WorkflowEdge.objects.create(from_node=for_each_node, to_node=left_branch)
+        WorkflowEdge.objects.create(from_node=for_each_node, to_node=right_branch)
+        WorkflowEdge.objects.create(from_node=left_branch, to_node=merge_node)
+        WorkflowEdge.objects.create(from_node=right_branch, to_node=merge_node)
+        WorkflowEdge.objects.create(from_node=merge_node, to_node=tail_node)
+
+        workflow_run = run_workflow(workflow, {})
+
+        tail_outputs = [
+            entry["output"]["combined"]
+            for entry in workflow_run.execution_trace
+            if entry["node_id"] == tail_node.id
+        ]
+        self.assertEqual(tail_outputs, ["A-L|A-R", "B-L|B-R"])
+
+    def test_merge_branches_with_fanout(self):
+        workflow = Workflow.objects.create(name="Merge branches with fanout workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "records": [
+                            {"value": "A"},
+                            {"value": "B"},
+                        ]
+                    }
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        extract_records = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "EXTRACT_FIELD",
+                "parameters": {"field_path": "records"},
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+        for_each_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={"sub_type": "FOR_EACH", "parameters": {}},
+            type=WorkflowNodeType.FLOW.value.id,
+        )
+        merge_branch = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "MERGE_BRANCHES",
+                "parameters": {},
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+        )
+        send_message = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "SEND_USER_MESSAGE",
+                "parameters": {
+                    "user_id": str(self.user.id),
+                    "message": (
+                        f"{{{{ input.node_{trigger.id}.records.0.value }}}}|"
+                        f"{{{{ input.node_{for_each_node.id}.item.value }}}}"
+                    ),
+                    "message_type": "success",
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+        )
+
+        workflow.connect_nodes(trigger, extract_records)
+        workflow.connect_nodes(extract_records, for_each_node)
+        workflow.connect_nodes(for_each_node, merge_branch)
+        workflow.connect_nodes(trigger, merge_branch)
+        workflow.connect_nodes(merge_branch, send_message)
+
+        with patch("bloomerp.automation.actions.send_user_message.send_user_message") as send_message_mock:
+            workflow_run = run_workflow(workflow, {})
+
+        self.assertEqual(send_message_mock.call_count, 2)
+        messages = [
+            call.kwargs["payload"]["message"]
+            for call in send_message_mock.call_args_list
+        ]
+        self.assertEqual(messages, ["A|A", "A|B"])
+
+        send_message_entries = [
+            entry
+            for entry in workflow_run.execution_trace
+            if entry["node_sub_type"] == "SEND_USER_MESSAGE"
+        ]
+        self.assertEqual(len(send_message_entries), 2)
+        
     
     # ----------------------------------------
     # Flow: OBJECT_IF_CONDITION
@@ -1171,8 +1824,9 @@ class TestAutomation(TransactionTestCase):
             config={
                 "sub_type": "OBJECT_IF_CONDITION",
                 "parameters": {
-                    "field": "age",
-                    "operator": "exact",
+                    "content_type_id": self.customer_content_type.id,
+                    "field": self.customer_age_field.id,
+                    "lookup": "equals",
                     "value": "20",
                 },
             },
@@ -1194,15 +1848,13 @@ class TestAutomation(TransactionTestCase):
             type=WorkflowNodeType.ACTION.value.id,
         )
         
-        workflow.connect_nodes(trigger, extract_action)
-        workflow.connect_nodes(extract_action, object_if_condition)
-        workflow.connect_nodes(object_if_condition, create_action)
+        workflow.connect_nodes(trigger, object_if_condition)
         
         # 3. Run the workflow
         workflow_run = run_workflow(workflow, {})
         
-        # 4. Check that the branch continued and the object was created
-        self.assertTrue(self.CustomerModel.objects.filter(first_name="Jane").exists())
+        # 4. Check that the branch continued and returned the original object input.
+        self.assertEqual(get_terminal_node_output(workflow_run)["id"], str(customer.id))
         
     def test_flow_object_if_condition_stops_branch_when_condition_does_not_match(self):
         # 1. Create an object that does not match the condition
@@ -1211,7 +1863,7 @@ class TestAutomation(TransactionTestCase):
         # 2. Create the workflow        
         workflow = Workflow.objects.create(name="Object If Condition Test Workflow")
         trigger = WorkflowNode.objects.create(
-            workflow=self.workflow,
+            workflow=workflow,
             config={
                 "sub_type": "HUMAN_TRIGGER",
                 "parameters": {"data": {
@@ -1225,7 +1877,7 @@ class TestAutomation(TransactionTestCase):
         )
         
         extract_action = WorkflowNode.objects.create(
-            workflow=self.workflow,
+            workflow=workflow,
             config={
                 "sub_type": "EXTRACT_FIELD",
                 "parameters": {
@@ -1236,19 +1888,20 @@ class TestAutomation(TransactionTestCase):
         )
         
         object_if_condition = WorkflowNode.objects.create(
-            workflow=self.workflow,
+            workflow=workflow,
             config={
                 "sub_type": "OBJECT_IF_CONDITION",
                 "parameters": {
-                    "field": "age",
-                    "operator": "exact",
+                    "content_type_id": self.customer_content_type.id,
+                    "field": self.customer_age_field.id,
+                    "lookup": "equals",
                     "value": "99",
                 },
             },
             type=WorkflowNodeType.FLOW.value.id,
         )
         create_action = WorkflowNode.objects.create(
-            workflow=self.workflow,
+            workflow=workflow,
             config={
                 "sub_type": "CREATE_OBJECT",
                 "parameters": {
@@ -1263,15 +1916,16 @@ class TestAutomation(TransactionTestCase):
             type=WorkflowNodeType.ACTION.value.id,
         )
         
-        workflow.connect_nodes(trigger, extract_action)
-        workflow.connect_nodes(extract_action, object_if_condition)
-        workflow.connect_nodes(object_if_condition, create_action)
+        workflow.connect_nodes(trigger, object_if_condition)
         
         # 3. Run the workflow
         workflow_run = run_workflow(workflow, {})
         
-        # 4. Check that the branch stopped and the object was not created
-        self.assertFalse(self.CustomerModel.objects.filter(first_name="Jane").exists())
+        # 4. Check that the branch stopped.
+        self.assertEqual(
+            workflow_run.execution_trace[-1]["output"]["kind"],
+            "branch_stopped",
+        )
     
     # ---------------------------------------
     # Tests for document template generation

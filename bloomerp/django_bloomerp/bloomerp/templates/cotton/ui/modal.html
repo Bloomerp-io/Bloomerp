@@ -27,6 +27,7 @@ Parameters:
     data-default-modal-size="{{ size|default:'md' }}"
     data-modal-padding="{{ body_padding|default:'p-3' }}"
     data-default-modal-padding="{{ body_padding|default:'p-3' }}"
+    data-on-close="{{ onclose | safe }}"
 >
     <!-- Modal container -->
     <div 
@@ -72,7 +73,8 @@ Parameters:
                     <button 
                         type="button"
                         class="hover:cursor-pointer"
-                        bloomerp-close-modal="{{ id }}">
+                        bloomerp-close-modal="{{ id }}"
+                        >
                         <i class="fas fa-times text-primary-900 font-medium"></i> 
                     </button>
                 </c-ui.tooltip>

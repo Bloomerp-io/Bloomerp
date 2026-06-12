@@ -1,8 +1,19 @@
 from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection, models
 
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.definition import BloomerpModelConfig
+
+
+def ensure_content_types_for_models(*models_to_register: type[models.Model]) -> None:
+    ContentType.objects.clear_cache()
+    for model in models_to_register:
+        ContentType.objects.get_or_create(
+            app_label=model._meta.app_label,
+            model=model._meta.model_name,
+        )
+    ContentType.objects.clear_cache()
 
 
 def create_test_models(
@@ -70,5 +81,7 @@ def create_test_models(
                 continue
             schema.create_model(model)
             existing_tables.add(model._meta.db_table)
+
+    ensure_content_types_for_models(*created_models.values())
 
     return created_models

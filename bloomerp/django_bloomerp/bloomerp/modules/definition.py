@@ -65,6 +65,7 @@ class BloomerpModule:
     parent_module_id: str | None = None
     parent: str | None = None
     visible: bool = True
+    route_path: str | None = None
 
     @classmethod
     def to_config(cls) -> ModuleConfig:
@@ -75,6 +76,7 @@ class BloomerpModule:
             "enabled": cls.enabled,
             "icon": cls.icon,
             "visible": cls.visible,
+            "route_path": cls.route_path,
         }
 
         parent_module_id = cls.parent_module_id or cls.parent

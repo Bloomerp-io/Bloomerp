@@ -39,7 +39,8 @@ export class Modal extends BaseComponent {
     private modalBodyElement: HTMLElement | null = null;
     private isFullscreen: boolean = false;
     private originalSize: string = 'md';
-    
+    private onCloseCallback: (() => void) | null = null;
+
     // Event handler references for cleanup
     private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
     private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -47,6 +48,9 @@ export class Modal extends BaseComponent {
     private delegatedTriggerHandler: ((e: MouseEvent) => void) | null = null;
     private closeEventHandler: ((e: Event) => void) | null = null;
     private readonly triggerBoundAttribute = 'data-modal-trigger-bound';
+    private closeAnimationTimeoutId: number | null = null;
+
+    // 
 
     public initialize(): void {
         if (!this.element) {
@@ -82,6 +86,12 @@ export class Modal extends BaseComponent {
 
         this.captureOriginalState();
         this.syncPaddingState();
+
+        // Get onclose callback from data attribute if provided
+        const onCloseCallback = this.element.dataset.onClose;
+        if (onCloseCallback) {
+            this.onCloseCallback = new Function(onCloseCallback) as () => void;
+        }
 
         // Setup event listeners
         this.setupBackdropClickHandler();
@@ -328,19 +338,29 @@ export class Modal extends BaseComponent {
         // Add closing animation
         container.classList.remove('scale-100', 'opacity-100');
         container.classList.add('scale-95', 'opacity-0');
+
+        if (this.closeAnimationTimeoutId !== null) {
+            window.clearTimeout(this.closeAnimationTimeoutId);
+            this.closeAnimationTimeoutId = null;
+        }
         
         // Wait for animation to complete before hiding
-        setTimeout(() => {
+        this.closeAnimationTimeoutId = window.setTimeout(() => {
             backdrop.classList.remove('flex');
             backdrop.classList.add('hidden');
             
             // Restore body scroll
             document.body.style.overflow = '';
 
+            if (this.onCloseCallback) {
+                this.onCloseCallback();
+            }
+
             this.element?.dispatchEvent(new CustomEvent('bloomerp:modal-closed', {
                 bubbles: true,
                 detail: { modalId: this.modalId },
             }));
+            this.closeAnimationTimeoutId = null;
         }, 200);
     }
 
@@ -444,6 +464,11 @@ export class Modal extends BaseComponent {
      * Clean up event listeners
      */
     public destroy(): void {
+        if (this.closeAnimationTimeoutId !== null) {
+            window.clearTimeout(this.closeAnimationTimeoutId);
+            this.closeAnimationTimeoutId = null;
+        }
+
         if (this.backdropElement && this.backdropClickHandler) {
             this.backdropElement.removeEventListener('click', this.backdropClickHandler);
         }

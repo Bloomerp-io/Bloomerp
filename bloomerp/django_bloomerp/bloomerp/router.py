@@ -12,9 +12,10 @@ import os
 from functools import wraps
 from typing import Callable, List, Literal
 
+from numpy import isin
 from regex import B
 from bloomerp.models.definition import get_model_config
-from bloomerp.modules.definition import ModuleConfig, module_registry
+from bloomerp.modules.definition import BloomerpModule, ModuleConfig, module_registry
 logger = logging.getLogger(__name__)
 
 def _generate_description(
@@ -285,6 +286,37 @@ class BloomerpRouteRegistry:
         # replayed for models that are created after the initial import (e.g. in tests).
         self._model_route_templates: List[dict] = []
 
+    def _routes_conflict(self, existing: BloomerpRoute, incoming: BloomerpRoute) -> bool:
+        if existing.route_type != incoming.route_type:
+            return False
+        if existing.model != incoming.model:
+            return False
+        if existing.module != incoming.module:
+            return False
+        return existing.path == incoming.path or existing.url_name == incoming.url_name
+
+    def _add_route(self, route: BloomerpRoute) -> bool:
+        conflicting_routes = [
+            existing
+            for existing in self.routes
+            if self._routes_conflict(existing, route)
+        ]
+
+        if route.override:
+            self.routes = [
+                existing
+                for existing in self.routes
+                if not self._routes_conflict(existing, route)
+            ]
+            self.routes.append(route)
+            return True
+
+        if any(existing.override for existing in conflicting_routes):
+            return False
+
+        self.routes.append(route)
+        return True
+
     def route(self, *args, **kwargs):
         return self.register(*args, **kwargs)
 
@@ -371,7 +403,7 @@ class BloomerpRouteRegistry:
         path: str = None,
         route_type: Literal['app', 'module', 'detail', 'model'] = 'app',
         models: Union[Model, List[Model], str, None] = None,
-        modules: Union[ModuleConfig, List[ModuleConfig], str, None] = None,
+        modules: Union[BloomerpModule, List[BloomerpModule], str, None] = None,
         exclude_models:Union[Model, List[Model], str, None] = None,
         name: Optional[str] = None,
         description: Optional[str] = None,
@@ -441,7 +473,7 @@ class BloomerpRouteRegistry:
                     actual_path = _auto_path()
                     actual_url_name = _url_name if _url_name else actual_name
 
-                    self.routes.append(
+                    self._add_route(
                         BloomerpRoute(
                             path=_generate_path(actual_path, _route_type),
                             route_type=_route_type,
@@ -461,14 +493,14 @@ class BloomerpRouteRegistry:
 
                     if _modules == "__all__":
                         modules_list = module_registry.get_all().values()
-                    elif isinstance(_modules, ModuleConfig):
+                    elif type(_modules) == BloomerpModule:
                         modules_list = [_modules]
                     elif isinstance(_modules, str):
                         modules_list = [module_registry.get(_modules)]
                     elif isinstance(_modules, list):
                         modules_list = _modules
                     else:
-                        raise ValueError("Modules parameter must be a ModuleConfig instance, a list of ModuleConfig instances, or '__all__'")
+                        raise ValueError("Modules parameter must be a BloomerpModule instance, a list of BloomerpModule instances, or '__all__'")
 
                     for module in modules_list:
                         if not module:
@@ -479,7 +511,7 @@ class BloomerpRouteRegistry:
                         actual_path = _auto_path()
                         actual_url_name = _url_name if _url_name else actual_name
 
-                        self.routes.append(
+                        self._add_route(
                             BloomerpRoute(
                                 path=_generate_path(actual_path, _route_type, None, module),
                                 route_type=_route_type,
@@ -516,7 +548,7 @@ class BloomerpRouteRegistry:
                                 continue
                             
                         if _route_type == RouteType.MODEL and config and config.model_view_settings and config.model_view_settings.skip_views:
-                            if _url_name in config.detail_view_settings.skip_views:
+                            if _url_name in config.model_view_settings.skip_views:
                                 continue
                         
                         actual_path = _auto_path()
@@ -541,7 +573,7 @@ class BloomerpRouteRegistry:
                                 override=override,
                             )
 
-                            self.routes.append(route)
+                            self._add_route(route)
    
             # Return the original view (for CBV) or wrapped view (for FBV)
             return view if view_type == ViewType.CLASS else registered_view
@@ -558,8 +590,6 @@ class BloomerpRouteRegistry:
         route paths and URL names are generated correctly.
         """
         self._auto_import_views()  # Ensure templates are populated
-
-        existing_url_names = {r.url_name for r in self.routes}
 
         for template in self._model_route_templates:
             module = module_registry.get_module_for_model(model)
@@ -581,10 +611,6 @@ class BloomerpRouteRegistry:
                 actual_url_name_raw = template['url_name'] if template['url_name'] else actual_name
                 url_name = _auto_generate_url_name(actual_url_name_raw, template['route_type'], model, module)
 
-                # Skip if already registered (idempotent)
-                if url_name in existing_url_names:
-                    continue
-
                 route = BloomerpRoute(
                     path=_generate_path(actual_path, template['route_type'], model, module),
                     model=model,
@@ -597,8 +623,7 @@ class BloomerpRouteRegistry:
                     description=_generate_description(actual_description, model, template['view'], module),
                     override=template['override'],
                 )
-                self.routes.append(route)
-                existing_url_names.add(url_name)
+                self._add_route(route)
 
     def get_routes(self) -> List[BloomerpRoute]:
         """Get all registered routes."""

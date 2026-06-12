@@ -38,7 +38,6 @@ class SendUserMessage(BaseExecutor):
     def execute(self, input_data: dict) -> dict:
         params = self.resolve_config(input_data)
         user_id = params.get("user_id")
-        
         send_user_message(
             user_id,
             payload={

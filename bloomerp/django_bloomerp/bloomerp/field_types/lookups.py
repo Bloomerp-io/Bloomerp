@@ -373,7 +373,14 @@ class Lookup(Enum):
         display_name="Day of Week",
         django_representation="day_of_week",
         aliases=["__day_of_week"],
-        widget_func=lambda application_field: forms.Select(choices=[(str(i), calendar.day_name[i]) for i in range(1,8)], attrs={"class": "select w-full"})
+        widget_func=lambda application_field: forms.Select(choices=[(str(i), calendar.day_name[i-1]) for i in range(1,8)], attrs={"class": "select w-full"})
+    )
+    DAY_OF_WEEK_IN = LookupDefinition(
+        id="day_of_week_in",
+        display_name="Day of Week In",
+        django_representation="day_of_week_in",
+        aliases=["__day_of_week_in"],
+        widget_func=lambda application_field: forms.SelectMultiple(choices=[(str(i), calendar.day_name[i-1]) for i in range(1,8)], attrs={"class": "select w-full"})
     )
 
 DATE_LOOKUPS = [
@@ -399,6 +406,7 @@ DATE_LOOKUPS = [
     Lookup.IS_NULL,
     Lookup.NOT_EQUALS,
     Lookup.DAY_OF_WEEK,
+    Lookup.DAY_OF_WEEK_IN,
 ]
 
 WEEK_LOOKUPS = [

@@ -1,4 +1,7 @@
-from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
+from django.test import override_settings
+
+from bloomerp.config.definition import ApiKeyAuthSettings, BloomerpAuthSettings, BloomerpConfig
+from bloomerp.models import ApiKey, Policy, FieldPolicy, RowPolicy, RowPolicyRule
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRuleCondition, RowPolicyRuleContent
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import (
@@ -945,6 +948,52 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         self.assertEqual(results[0].get("first_name"), target.first_name)
         self.assertNotIn("last_name", results[0])
         self.assertIn("first_name", results[0])
+
+    @override_settings(
+        BLOOMERP_CONFIG=BloomerpConfig(
+            auto_generate_api_endpoints=True,
+            auth=BloomerpAuthSettings(
+                api_key=ApiKeyAuthSettings(enabled=True),
+            ),
+        )
+    )
+    def test_api_key_list_uses_linked_account_permissions(self):
+        target = self.CustomerModel.objects.first()
+        row_rule = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.EQUALS.value.id,
+                        value=target.first_name,
+                    )
+                ],
+            ).model_dump(),
+        )
+        row_rule.add_permission("view_customer")
+        self.policy.assign_user(self.normal_user)
+
+        api_key = ApiKey(account=self.normal_user, name="SDK key")
+        raw_token = api_key.set_token()
+        api_key.save()
+
+        request = self.factory.get(
+            "/api/customers/",
+            HTTP_AUTHORIZATION=f"Bearer {raw_token}",
+        )
+        view = self.ApiViewSet.as_view({"get": "list"})
+        response = view(request)
+
+        self.assertEqual(response.status_code, 200)
+        results = self._extract_results(response)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].get("first_name"), target.first_name)
+        self.assertNotIn("last_name", results[0])
+
+        api_key.refresh_from_db()
+        self.assertIsNotNone(api_key.last_used_at)
 
     def test_api_update_denies_disallowed_field(self):
         """

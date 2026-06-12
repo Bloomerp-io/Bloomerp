@@ -21,6 +21,8 @@ class ForEachForm(forms.Form):
 class ForEachResult:
     items: list
     collection: list
+    
+
 
 
 def normalize_items(input_data: Any) -> list:
