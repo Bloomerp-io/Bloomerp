@@ -52,6 +52,16 @@ await sdk.auth.login({{
 const session = await sdk.auth.session();
 ```
 
+## Bulk Create
+
+```js
+const createdItems = await sdk.{client_name}.createMany([
+  {{
+    // fill in required fields here
+  }},
+]);
+```
+
 ## Filter / List
 
 ```js
@@ -421,6 +431,14 @@ export class ModelApi {{
       ...(options || {{}}),
       method: "POST",
       body: JSON.stringify(payload),
+    }});
+  }}
+
+  createMany(payloads, options = undefined) {{
+    return this.client.request(this.endpoint, {{
+      ...(options || {{}}),
+      method: "POST",
+      body: JSON.stringify(payloads),
     }});
   }}
 

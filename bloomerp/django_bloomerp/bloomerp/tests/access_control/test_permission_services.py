@@ -13,6 +13,7 @@ from bloomerp.models.definition import (
     UserAccessRule,
 )
 from bloomerp.services.permission_services import UserPermissionManager
+from bloomerp.services.permission_services import ensure_model_permissions
 from bloomerp.utils.api import generate_model_viewset_class, generate_serializer
 from bloomerp.views.api.api_views import BloomerpModelViewSet
 from bloomerp.models.users import User
@@ -102,20 +103,30 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
 
     def _ensure_permissions_for_model(self, model):
         """Create default permissions for dynamic models (if missing)."""
-        content_type = ContentType.objects.get_for_model(model)
-        for perm in model._meta.default_permissions:
-            codename = f"{perm}_{model._meta.model_name}"
-            Permission.objects.get_or_create(
-                codename=codename,
-                content_type=content_type,
-                defaults={"name": f"Can {perm} {model._meta.verbose_name}"},
-            )
+        ensure_model_permissions(model)
 
     def _extract_results(self, response):
         """Helper to normalize paginated vs. non-paginated responses."""
         if isinstance(response.data, dict) and "results" in response.data:
             return response.data["results"]
         return response.data
+
+    def test_ensure_model_permissions_creates_bulk_add_permission(self):
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        Permission.objects.filter(
+            content_type=content_type,
+            codename="bulk_add_customer",
+        ).delete()
+
+        created_count = ensure_model_permissions(self.CustomerModel)
+
+        self.assertGreaterEqual(created_count, 1)
+        self.assertTrue(
+            Permission.objects.filter(
+                content_type=content_type,
+                codename="bulk_add_customer",
+            ).exists()
+        )
 
     def _set_public_access(self, *rules: PublicAccessRule):
         previous = getattr(self.CustomerModel, "bloomerp_config", None)
@@ -1078,6 +1089,143 @@ class TestUserPermissionManager(BaseBloomerpModelTestCase):
         self.assertEqual(response.status_code, 200)
         target.refresh_from_db()
         self.assertEqual(target.first_name, "Allowed")
+
+    
+    def _grant_bulk_add_customer_access(self):
+        row_rule = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.CONTAINS.value.id,
+                        value="Bulk Allowed",
+                    )
+                ],
+            ).model_dump(),
+        )
+        row_rule.add_permission("bulk_add_customer")
+
+        self.field_policy.rule = {
+            "__all__": ["bulk_add_customer"],
+        }
+        self.field_policy.save(update_fields=["rule"])
+        self.policy.assign_user(self.normal_user)
+
+    def test_api_bulk_create_requires_bulk_add_permission(self):
+        """
+        POSTing a list should use bulk_add permissions, not ordinary add permissions.
+        """
+        row_rule = RowPolicyRule.objects.create(
+            row_policy=self.row_policy,
+            rule=RowPolicyRuleContent(
+                connector="OR",
+                conditions=[
+                    RowPolicyRuleCondition(
+                        application_field_id=str(self.first_name_field.id),
+                        operator=Lookup.CONTAINS.value.id,
+                        value="Bulk Allowed",
+                    )
+                ],
+            ).model_dump(),
+        )
+        row_rule.add_permission("add_customer")
+        self.field_policy.rule = {"__all__": ["add_customer"]}
+        self.field_policy.save(update_fields=["rule"])
+        self.policy.assign_user(self.normal_user)
+
+        before_count = self.CustomerModel.objects.count()
+        request = self.factory.post(
+            "/api/customers/",
+            [
+                {
+                    "first_name": "Bulk Allowed One",
+                    "last_name": "Person",
+                    "age": 31,
+                    "country": self.CountryModel.objects.get(name="Belgium").pk,
+                }
+            ],
+            format="json",
+        )
+        force_authenticate(request, user=self.normal_user)
+
+        view = self.ApiViewSet.as_view({"post": "create"})
+        response = view(request)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.CustomerModel.objects.count(), before_count)
+
+    def test_api_bulk_create_allows_bulk_add_permission(self):
+        """
+        POSTing a list should create all objects when each payload satisfies
+        bulk_add row and field policies.
+        """
+        self._grant_bulk_add_customer_access()
+
+        request = self.factory.post(
+            "/api/customers/",
+            [
+                {
+                    "first_name": "Bulk Allowed One",
+                    "last_name": "Person",
+                    "age": 31,
+                    "country": self.CountryModel.objects.get(name="Belgium").pk,
+                },
+                {
+                    "first_name": "Bulk Allowed Two",
+                    "last_name": "Person",
+                    "age": 32,
+                    "country": self.CountryModel.objects.get(name="Belgium").pk,
+                },
+            ],
+            format="json",
+        )
+        force_authenticate(request, user=self.normal_user)
+
+        view = self.ApiViewSet.as_view({"post": "create"})
+        response = view(request)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data), 2)
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="Bulk Allowed One").exists())
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="Bulk Allowed Two").exists())
+
+    def test_api_bulk_create_rejects_batch_when_any_item_fails_row_policy(self):
+        """
+        A bulk create request should fail before saving if any item falls
+        outside the bulk_add row policy.
+        """
+        self._grant_bulk_add_customer_access()
+
+        before_count = self.CustomerModel.objects.count()
+        request = self.factory.post(
+            "/api/customers/",
+            [
+                {
+                    "first_name": "Bulk Allowed One",
+                    "last_name": "Person",
+                    "age": 31,
+                    "country": self.CountryModel.objects.get(name="Belgium").pk,
+                },
+                {
+                    "first_name": "Blocked One",
+                    "last_name": "Person",
+                    "age": 32,
+                    "country": self.CountryModel.objects.get(name="Belgium").pk,
+                },
+            ],
+            format="json",
+        )
+        force_authenticate(request, user=self.normal_user)
+
+        view = self.ApiViewSet.as_view({"post": "create"})
+        response = view(request)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.CustomerModel.objects.count(), before_count)
+        self.assertFalse(self.CustomerModel.objects.filter(first_name="Bulk Allowed One").exists())
+        self.assertFalse(self.CustomerModel.objects.filter(first_name="Blocked One").exists())
 
     # TODO: Review these test cases
     def test_api_list_allows_anonymous_public_access_with_filtered_rows_and_fields(self):

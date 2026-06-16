@@ -94,6 +94,8 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("fetchOptions?: Record<string, unknown>", index_contents)
             self.assertIn("globalThis.fetch(input, init)", index_contents)
             self.assertIn("return normalizeListResponse(response);", index_contents)
+            self.assertIn("createMany(payloads: TCreate[]", index_contents)
+            self.assertIn('"createMany":true', index_contents.replace(" ", ""))
 
     def test_create_sdk_generates_javascript_sdk_file(self):
         """
@@ -131,6 +133,8 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn('"choices":[', sdk_contents.replace(" ", ""))
             self.assertIn('super(client, "/api/customers/");', sdk_contents)
             self.assertIn("globalThis.fetch(input, init)", sdk_contents)
+            self.assertIn("createMany(payloads, options = undefined)", sdk_contents)
+            self.assertIn('"createMany":true', sdk_contents.replace(" ", ""))
 
     def test_create_sdk_generates_python_sdk_file(self):
         """
@@ -171,6 +175,8 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("'choices': [", sdk_contents)
             self.assertIn("customers_public_access: dict[str, Any]", sdk_contents)
             self.assertIn('super().__init__(client, "/api/customers/")', sdk_contents)
+            self.assertIn("def create_many(self, payloads: list[TCreate]", sdk_contents)
+            self.assertIn("'createMany': True", sdk_contents)
 
     def test_create_sdk_uses_language_default_filename_when_filename_is_omitted(self):
         """

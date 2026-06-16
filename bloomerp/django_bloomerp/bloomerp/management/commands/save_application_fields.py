@@ -6,6 +6,7 @@ from bloomerp.models import ApplicationField
 from django.db import models
 from django import db
 from bloomerp.field_types import FieldType
+from bloomerp.services.permission_services import ensure_bloomerp_model_permissions
 from django.utils.encoding import force_str
 
 class Command(BaseCommand):
@@ -13,6 +14,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Starting to sync ApplicationField model'))
+        created_permissions = ensure_bloomerp_model_permissions()
+        if created_permissions:
+            self.stdout.write(
+                self.style.SUCCESS(f'Created {created_permissions} missing model permissions')
+            )
 
         # Get all models in the project
         model_list = apps.get_models()

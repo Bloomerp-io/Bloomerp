@@ -146,6 +146,7 @@ class BaseSdkGenerator(ABC):
                 "list": True,
                 "retrieve": True,
                 "create": True,
+                "createMany": True,
                 "update": True,
                 "partialUpdate": True,
                 "destroy": True,

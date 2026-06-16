@@ -9,6 +9,17 @@ from bloomerp.models.mixins.timestamp_model_mixin import TimestampModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models.mixins.uuid_model_mixin import UuidModelMixin
 
+BLOOMERP_MODEL_DEFAULT_PERMISSIONS = (
+    "add",
+    "change",
+    "delete",
+    "view",
+    "bulk_change",
+    "bulk_delete",
+    "bulk_add",
+    "export",
+)
+
 
 class LayoutItem(BaseModel):
     id: int | str
@@ -36,21 +47,14 @@ class BloomerpModel(
 ):
     class Meta:
         abstract = True
-        default_permissions = (
-            'add', 
-            'change', 
-            'delete', 
-            'view', 
-            'bulk_change', 
-            'bulk_delete', 
-            'bulk_add', 
-            'export'
-        )
+        default_permissions = BLOOMERP_MODEL_DEFAULT_PERMISSIONS
+    
     files = GenericRelation("bloomerp.File")
     comments = GenericRelation("bloomerp.Comment")
 
     field_layout:Optional[FieldLayout] = None # DEPR
     form_layout:dict = None # DEPR 
+
 
 
     

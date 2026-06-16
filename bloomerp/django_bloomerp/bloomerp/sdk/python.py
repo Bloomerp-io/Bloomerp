@@ -55,6 +55,16 @@ sdk.auth.login({{
 session = sdk.auth.session()
 ```
 
+## Bulk Create
+
+```python
+created_items = sdk.{client_name}.create_many([
+    {{
+        # fill in required fields here
+    }},
+])
+```
+
 ## Read One
 
 ```python
@@ -384,6 +394,9 @@ class ModelApi(Generic[TModel, TId, TCreate, TUpdate]):
 
     def create(self, payload: TCreate, options: BloomerpRequestOptions | None = None) -> TModel:
         return cast(TModel, self.client.request(self.endpoint, method="POST", data=payload, options=options))
+
+    def create_many(self, payloads: list[TCreate], options: BloomerpRequestOptions | None = None) -> list[TModel]:
+        return cast(list[TModel], self.client.request(self.endpoint, method="POST", data=payloads, options=options))
 
     def update(self, object_id: TId, payload: TUpdate, options: BloomerpRequestOptions | None = None) -> TModel:
         return cast(

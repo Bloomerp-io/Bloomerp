@@ -2,6 +2,7 @@ import os
 import sys
 
 from django.apps import AppConfig
+from django.db.models.signals import post_migrate
 from colorama import Fore, Style
 
 
@@ -21,6 +22,7 @@ class BloomerpApp(AppConfig):
         from django.db.utils import OperationalError, ProgrammingError
         from bloomerp.config.settings import configure_bloomerp_allauth_settings
         from bloomerp.config.validator import validate_runtime_configuration
+        from bloomerp.services.permission_services import ensure_bloomerp_model_permissions
         from bloomerp.signals.automations import setup_automation_signals
         from bloomerp.modules.definition import module_registry
         from bloomerp.signals.activity_log import before_save_of_object  # noqa: F401
@@ -29,6 +31,11 @@ class BloomerpApp(AppConfig):
         from bloomerp.signals.activity_log import after_delete_of_object  # noqa: F401
         
         configure_bloomerp_allauth_settings()
+        post_migrate.connect(
+            ensure_bloomerp_model_permissions,
+            sender=self,
+            dispatch_uid="bloomerp.ensure_bloomerp_model_permissions",
+        )
 
         try:
             setup_automation_signals()
