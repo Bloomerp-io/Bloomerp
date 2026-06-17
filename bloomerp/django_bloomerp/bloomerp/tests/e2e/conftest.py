@@ -36,3 +36,12 @@ def test_user(db):
         password="testpass123"
     )
     return user
+
+@pytest.fixture
+def authenticated_page(page, live_server_url, test_user):
+    page.goto(f"{live_server_url}/accounts/login/")
+    page.get_by_label("Username").fill("testuser")
+    page.get_by_label("Password").fill("testpass123")
+    page.get_by_role("button", name="Log in").click()
+    page.wait_for_url(f"{live_server_url}/dashboard/")
+    return page

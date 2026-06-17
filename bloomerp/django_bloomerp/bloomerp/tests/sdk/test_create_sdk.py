@@ -95,6 +95,7 @@ class TestCreateSdkCommand(BaseBloomerpModelTestCase):
             self.assertIn("globalThis.fetch(input, init)", index_contents)
             self.assertIn("return normalizeListResponse(response);", index_contents)
             self.assertIn("createMany(payloads: TCreate[]", index_contents)
+            self.assertIn("createMany: boolean;", index_contents)
             self.assertIn('"createMany":true', index_contents.replace(" ", ""))
 
     def test_create_sdk_generates_javascript_sdk_file(self):

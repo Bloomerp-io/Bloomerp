@@ -209,6 +209,7 @@ export interface BloomerpModelCapabilities {{
   list: boolean;
   retrieve: boolean;
   create: boolean;
+  createMany: boolean;
   update: boolean;
   partialUpdate: boolean;
   destroy: boolean;
