@@ -1,6 +1,7 @@
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
 from bloomerp.models.base_bloomerp_model import FieldLayout
+from bloomerp.services.one_to_many_field_services import collect_submitted_one_to_many_data
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.services.sectioned_layout_services import build_crud_layout_field_context, clamp_layout_colspan, get_object_field_value
 
@@ -15,6 +16,7 @@ from typing import Any
 class BloomerpLayoutFormMixin(ABC):
     template_name = "mixins/bloomerp_layout_form_mixin.html"
     layout_mode = "detail"
+    no_submitted_layout_value = object()
 
     @abstractmethod
     def get_layout_object(self) -> FieldLayout:
@@ -90,8 +92,42 @@ class BloomerpLayoutFormMixin(ABC):
     def get_layout_bound_object(self):
         return getattr(self, "object", None)
 
+    def get_layout_parent_model(self):
+        return self.model
+
     def get_layout_editable_field_names(self) -> list[str]:
         return []
+
+    def get_one_to_many_submitted_data_source(self):
+        if getattr(getattr(self, "request", None), "method", "").upper() == "POST":
+            return self.request.POST
+        return None
+
+    def get_submitted_one_to_many_values(self) -> dict[str, list[dict]]:
+        if hasattr(self, "_submitted_one_to_many_values"):
+            return self._submitted_one_to_many_values
+
+        submitted_data = self.get_one_to_many_submitted_data_source()
+        if submitted_data is None:
+            self._submitted_one_to_many_values = {}
+            return self._submitted_one_to_many_values
+
+        self._submitted_one_to_many_values = collect_submitted_one_to_many_data(
+            parent_model=self.get_layout_parent_model(),
+            layout=self.get_layout_object(),
+            submitted_data=submitted_data,
+        )
+        return self._submitted_one_to_many_values
+
+    def get_submitted_layout_field_value(self, application_field: ApplicationField):
+        field_type = application_field.get_field_type_enum().value
+        if field_type.id != "OneToManyField":
+            return self.no_submitted_layout_value
+
+        submitted_values = self.get_submitted_one_to_many_values()
+        if application_field.field not in submitted_values:
+            return self.no_submitted_layout_value
+        return submitted_values[application_field.field]
 
     def get_layout_visible_field_names(self) -> set[str]:
         layout = self.get_layout_object()
@@ -223,12 +259,26 @@ class BloomerpLayoutFormMixin(ABC):
         has_edit_permission = self.can_edit_application_field(application_field)
         field_type = application_field.get_field_type_enum().value
         can_edit = has_bound_field and has_edit_permission
+        submitted_value = self.get_submitted_layout_field_value(application_field)
 
         if has_bound_field:
             field_context = build_crud_layout_field_context(
                 application_field=application_field,
                 bound_field=form[application_field.field],
                 can_edit=True,
+                layout_config=config,
+            )
+        elif submitted_value is not self.no_submitted_layout_value:
+            field_context = build_crud_layout_field_context(
+                application_field=application_field,
+                value=submitted_value,
+                can_edit=(
+                    has_edit_permission
+                    or (
+                        bound_object is None
+                        and self.can_render_unbound_editable_layout_field(application_field)
+                    )
+                ) and field_type.editable_without_form_field,
                 layout_config=config,
             )
         elif bound_object is not None:

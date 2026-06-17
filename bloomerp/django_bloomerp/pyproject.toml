@@ -147,6 +147,9 @@ dependencies = [
     "vulture>=2.16",
     "pycountries>=1.2.1",
     "django-celery-beat>=2.9.0",
+    "playwright>=1.60.0",
+    "pytest-django>=4.11.1",
+    "pytest-playwright>=0.8.0",
 ]
 
 [project.optional-dependencies]

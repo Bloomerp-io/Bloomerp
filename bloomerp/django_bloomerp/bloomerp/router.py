@@ -534,6 +534,8 @@ class BloomerpRouteRegistry:
                         'description': _description,
                         'url_name': _url_name,
                         'override': override,
+                        'models': models,
+                        'exclude_models': exclude_models,
                         'view': view,
                         'view_type': view_type,
                         'registered_view': registered_view,
@@ -592,6 +594,9 @@ class BloomerpRouteRegistry:
         self._auto_import_views()  # Ensure templates are populated
 
         for template in self._model_route_templates:
+            if not self._template_applies_to_model(template, model):
+                continue
+
             module = module_registry.get_module_for_model(model)
             if not module:
                 continue
@@ -624,6 +629,33 @@ class BloomerpRouteRegistry:
                     override=template['override'],
                 )
                 self._add_route(route)
+
+    def _template_applies_to_model(self, template: dict, model: Model) -> bool:
+        models = template.get('models')
+        exclude_models = template.get('exclude_models')
+
+        if models == "__all__":
+            return not self._model_matches_selector(model, exclude_models)
+
+        if models:
+            return self._model_matches_selector(model, models)
+
+        if exclude_models:
+            return not self._model_matches_selector(model, exclude_models)
+
+        return False
+
+    def _model_matches_selector(self, model: Model, selector) -> bool:
+        if not selector:
+            return False
+
+        if selector == "__all__":
+            return True
+
+        if isinstance(selector, list):
+            return any(self._model_matches_selector(model, item) for item in selector)
+
+        return selector is model
 
     def get_routes(self) -> List[BloomerpRoute]:
         """Get all registered routes."""

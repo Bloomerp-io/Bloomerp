@@ -93,6 +93,17 @@ class BloomerpCreateView(
     def get_layout_editable_field_names(self) -> list[str]:
         return list(self.create_access_state.addable_fields.values_list("field", flat=True))
 
+    def get_model_form_field_names(self) -> list[str]:
+        field_names: list[str] = []
+        for application_field in self.create_access_state.addable_fields:
+            field_type = application_field.get_field_type_enum().value
+            if field_type.editable_without_form_field and not field_type.allow_in_model:
+                continue
+            if application_field.get_form_field() is None:
+                continue
+            field_names.append(application_field.field)
+        return field_names
+
     def get_layout_available_items_url(self) -> str:
         return ""
 
@@ -114,13 +125,14 @@ class BloomerpCreateView(
 
     def get_initial(self):
         initial = super().get_initial()
+        form_field_names = set(self.get_model_form_field_names())
         for key, value in self.request.GET.items():
-            if key in self.get_layout_editable_field_names():
+            if key in form_field_names:
                 initial[key] = value
         return initial
 
     def get_form_class(self):
-        return self.get_form_class_for_fields(self.get_layout_editable_field_names())
+        return self.get_form_class_for_fields(self.get_model_form_field_names())
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
@@ -161,6 +173,11 @@ class BloomerpCreateView(
 
     def get_hidden_initial_fields(self) -> list[tuple[str, str]]:
         return []
+
+    def get_one_to_many_submitted_data_source(self):
+        if self.request.method == "GET":
+            return self.request.GET
+        return super().get_one_to_many_submitted_data_source()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
