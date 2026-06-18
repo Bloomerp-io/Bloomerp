@@ -1,14 +1,20 @@
 from collections.abc import Mapping
 
+from django.contrib.auth.views import LoginView
+from django.urls import reverse_lazy
 from rest_framework import viewsets, status
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from django_filters import rest_framework as filters
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
+from django.db import transaction
 from django.db.models import Model, Q
 
+from bloomerp.auth import allauth_is_enabled, get_interactive_auth_settings, get_login_field_label, get_login_help_text, get_social_login_providers
+from bloomerp.forms.auth import BloomerpAuthenticationForm
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.services.permission_services import (
@@ -16,11 +22,17 @@ from bloomerp.services.permission_services import (
     create_permission_str,
 )
 from bloomerp.utils.api import apply_queryset_nesting
+from bloomerp.views.api.authentication import BloomerpApiKeyAuthentication
 
 class BloomerpModelViewSet(viewsets.ModelViewSet):
     # The model will be injected dynamically when the viewset is initialized
     queryset = None
     serializer_class = None
+    authentication_classes = (
+        BloomerpApiKeyAuthentication,
+        SessionAuthentication,
+        BasicAuthentication,
+    )
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_fields = '__all__'
     permission_classes = (IsAuthenticated,)
@@ -31,6 +43,7 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         "update": "change",
         "partial_update": "change",
         "destroy": "delete",
+        "bulk_create": "bulk_add",
     }
 
     def _get_permission_manager(self) -> UserPermissionManager:
@@ -287,43 +300,58 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
                 target.fields.pop(field_name)
         return serializer
 
+    def _get_write_payload_items(self) -> list[tuple[int | None, Mapping]]:
+        if isinstance(self.request.data, list):
+            return [
+                (index, item)
+                for index, item in enumerate(self.request.data)
+                if isinstance(item, Mapping)
+            ]
+        if isinstance(self.request.data, Mapping):
+            return [(None, self.request.data)]
+        return []
+
+    def _format_denied_fields_message(self, denied_fields: list[str], index: int | None = None) -> str:
+        denied = ", ".join(sorted(denied_fields))
+        if index is None:
+            return f"Permission denied for fields: {denied}"
+        return f"Permission denied for fields at index {index}: {denied}"
+
     def _enforce_write_field_permissions(self, permission_str: str, action: str | None = None):
         if self._should_use_user_access(action):
             allowed_fields = self._get_user_accessible_field_names(action)
             if allowed_fields is None:
                 return
 
-            if not isinstance(self.request.data, Mapping):
-                return
-
-            denied_fields = [
-                field_name
-                for field_name in self.request.data.keys()
-                if field_name not in allowed_fields
-            ]
-            if denied_fields:
-                denied = ", ".join(sorted(denied_fields))
-                raise PermissionDenied(f"Permission denied for fields: {denied}")
+            for index, payload in self._get_write_payload_items():
+                denied_fields = [
+                    field_name
+                    for field_name in payload.keys()
+                    if field_name not in allowed_fields
+                ]
+                if denied_fields:
+                    raise PermissionDenied(
+                        self._format_denied_fields_message(denied_fields, index)
+                    )
             return
 
         manager = self._get_permission_manager()
         if getattr(manager.user, "is_superuser", False):
             return
 
-        if not isinstance(self.request.data, Mapping):
-            return
+        for index, payload in self._get_write_payload_items():
+            denied_fields: list[str] = []
+            for field_name in payload.keys():
+                application_field = ApplicationField.get_by_field(self.model, field_name)
+                if not application_field:
+                    continue
+                if not manager.has_field_permission(application_field, permission_str):
+                    denied_fields.append(field_name)
 
-        denied_fields: list[str] = []
-        for field_name in self.request.data.keys():
-            application_field = ApplicationField.get_by_field(self.model, field_name)
-            if not application_field:
-                continue
-            if not manager.has_field_permission(application_field, permission_str):
-                denied_fields.append(field_name)
-
-        if denied_fields:
-            denied = ", ".join(sorted(denied_fields))
-            raise PermissionDenied(f"Permission denied for fields: {denied}")
+            if denied_fields:
+                raise PermissionDenied(
+                    self._format_denied_fields_message(denied_fields, index)
+                )
 
     def _resolve_candidate_value(self, candidate: Model, field_path: str):
         current = candidate
@@ -379,14 +407,20 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
 
         return False
 
-    def _build_candidate_data(self, serializer, instance=None) -> dict:
+    def _build_candidate_data_from_validated_data(self, validated_data: Mapping, instance=None) -> dict:
         candidate_data = {}
         if instance is not None:
             for field in self.model._meta.fields:
                 candidate_data[field.name] = getattr(instance, field.name)
 
-        candidate_data.update(serializer.validated_data)
+        candidate_data.update(validated_data)
         return candidate_data
+
+    def _build_candidate_data(self, serializer, instance=None) -> dict:
+        return self._build_candidate_data_from_validated_data(
+            serializer.validated_data,
+            instance,
+        )
 
     def _candidate_matches_user_rule(self, candidate: Model, rule) -> bool:
         through_field = getattr(rule, "through_field", "")
@@ -405,11 +439,8 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
 
         return True
 
-    def _enforce_user_row_permissions(self, serializer, action: str | None = None, instance=None):
-        if not self._should_use_user_access(action):
-            return
-
-        candidate = self.model(**self._build_candidate_data(serializer, instance))
+    def _enforce_user_row_permission_for_data(self, validated_data: Mapping, action: str | None = None, instance=None):
+        candidate = self.model(**self._build_candidate_data_from_validated_data(validated_data, instance))
         if hasattr(candidate, "created_by") and not getattr(candidate, "created_by", None):
             candidate.created_by = self.request.user
         if hasattr(candidate, "updated_by"):
@@ -420,6 +451,33 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
                 return
 
         raise PermissionDenied("You do not have permission to use this object with these values.")
+
+    def _get_validated_data_items(self, serializer) -> list[Mapping]:
+        if hasattr(serializer, "child"):
+            return list(serializer.validated_data)
+        return [serializer.validated_data]
+
+    def _enforce_user_row_permissions(self, serializer, action: str | None = None, instance=None):
+        if not self._should_use_user_access(action):
+            return
+
+        for validated_data in self._get_validated_data_items(serializer):
+            self._enforce_user_row_permission_for_data(validated_data, action, instance)
+
+    def _enforce_internal_create_row_permissions(self, serializer, permission_str: str):
+        manager = self._get_permission_manager()
+        if getattr(manager.user, "is_superuser", False):
+            return
+        if manager.has_global_permission(self.model, permission_str):
+            return
+
+        for validated_data in self._get_validated_data_items(serializer):
+            if not manager.candidate_matches_row_policies(
+                self.model,
+                permission_str,
+                dict(validated_data),
+            ):
+                raise PermissionDenied("You do not have permission to create an object with these values.")
 
     def get_queryset(self):
         if self._should_use_user_access():
@@ -472,17 +530,25 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        permission_str = self._get_permission_str("create")
-        self._enforce_write_field_permissions(permission_str, "create")
+        is_many = isinstance(request.data, list)
+        permission_action = "bulk_create" if is_many else "create"
+        access_action = "create"
+        permission_str = self._get_permission_str(permission_action)
+        self._enforce_write_field_permissions(permission_str, access_action)
 
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, many=is_many)
         serializer.is_valid(raise_exception=True)
-        self._enforce_user_row_permissions(serializer, "create")
-        self.perform_create(serializer)
+        if self._should_use_user_access(access_action):
+            self._enforce_user_row_permissions(serializer, access_action)
+        else:
+            self._enforce_internal_create_row_permissions(serializer, permission_str)
+
+        with transaction.atomic():
+            self.perform_create(serializer)
 
         headers = self.get_success_headers(serializer.data)
-        output_serializer = self.get_serializer(serializer.instance)
-        self._apply_field_permissions(output_serializer, permission_str, "create")
+        output_serializer = self.get_serializer(serializer.instance, many=is_many)
+        self._apply_field_permissions(output_serializer, permission_str, access_action)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
@@ -504,3 +570,25 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         kwargs["partial"] = True
         return self.update(request, *args, **kwargs)
+
+
+class BloomerpLoginView(LoginView):
+    authentication_form = BloomerpAuthenticationForm
+    template_name = "auth_views/login_view.html"
+    next_page = reverse_lazy("bloomerp_home_view")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        interactive_auth = get_interactive_auth_settings()
+        social_providers = get_social_login_providers()
+        context.update(
+            {
+                "interactive_auth": interactive_auth,
+                "login_field_label": get_login_field_label(),
+                "login_help_text": get_login_help_text(),
+                "social_login_providers": social_providers,
+                "social_login_enabled": bool(social_providers),
+                "social_login_runtime_ready": allauth_is_enabled(),
+            }
+        )
+        return context

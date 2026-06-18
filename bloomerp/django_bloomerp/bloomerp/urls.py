@@ -23,7 +23,7 @@ from django.urls import reverse_lazy
 from django.conf import settings
 from bloomerp.views.api.auth import csrf_view, login_view, logout_view, register_view, session_view
 from bloomerp.auth import allauth_is_enabled
-from bloomerp.views.auth import BloomerpLoginView
+from bloomerp.views.auth.login import BloomerpLoginView
 
 class PublicApiRootRouter(DefaultRouter):
     def _should_include_api_root_entry(self, request, viewset) -> bool:

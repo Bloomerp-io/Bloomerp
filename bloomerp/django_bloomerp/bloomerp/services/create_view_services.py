@@ -86,6 +86,10 @@ def get_addable_fields(*, content_type: ContentType, user) -> models.QuerySet[Ap
             model_field = application_field._get_model_field()
         except Exception:
             continue
+        field_type = application_field.get_field_type_enum().value
+        if field_type.editable_without_form_field:
+            allowed_ids.append(application_field.pk)
+            continue
         if not getattr(model_field, "editable", True):
             continue
         if not getattr(model_field, "concrete", True):

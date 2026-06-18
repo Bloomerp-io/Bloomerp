@@ -41,6 +41,40 @@ interface WorkflowNodeDefinition {
     icon: string;
 }
 
+const WORKFLOW_CANVAS_WIDTH = 4000;
+const WORKFLOW_CANVAS_HEIGHT = 3000;
+const WORKFLOW_CANVAS_OFFSET_X = 1200;
+const WORKFLOW_CANVAS_OFFSET_Y = 900;
+const WORKFLOW_DEFAULT_ZOOM_STEP = 0.05;
+const WORKFLOW_FIT_PADDING = 120;
+const WORKFLOW_FIT_MAX_ZOOM = 1;
+const WORKFLOW_FIT_MIN_ZOOM = 0.45;
+
+function parseDrawflowClientId(clientId: string): number | null {
+    const match = clientId.match(/^(?:node|draft)-(\d+)$/);
+    if (!match) return null;
+
+    const parsed = Number.parseInt(match[1], 10);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildWorkflowClientId(drawflowId: number, workflowNodeId?: number): string {
+    return workflowNodeId ? `node-${drawflowId}` : `draft-${drawflowId}`;
+}
+
+function normalizeDrawflowId(value: unknown): number | null {
+    const parsed = Number.parseInt(String(value), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toCanvasPosition(value: unknown, offset: number): number {
+    return safePosition(value) + offset;
+}
+
+function toStoredPosition(value: unknown, offset: number): number {
+    return safePosition(value) - offset;
+}
+
 function escapeHtml(value: string): string {
     const element = document.createElement('div');
     element.textContent = value;
@@ -110,8 +144,8 @@ interface Coordinates {
 
 function createRandomCoordinates() : Coordinates {
     return {
-        x:Math.random() * 300 + 200,
-        y:Math.random() * 200 + 100
+        x: Math.random() * 300 + WORKFLOW_CANVAS_OFFSET_X + 120,
+        y: Math.random() * 200 + WORKFLOW_CANVAS_OFFSET_Y + 120,
     }
 }
 
@@ -155,6 +189,7 @@ export default class Workflow extends BaseComponent {
         
         // Start DrawFlow first
         this.drawflow.start();
+        this.setupCanvasWorkspace(container);
         
         // Register events
         this.drawflow.on('nodeCreated', (id: number) => {
@@ -248,7 +283,7 @@ export default class Workflow extends BaseComponent {
         this.isImportingWorkflow = true;
 
         for (const node of workflow.nodes || []) {
-            const drawflowId = parseInt(String(node.client_id).replace('node-', ''), 10) || node.id;
+            const drawflowId = parseDrawflowClientId(String(node.client_id)) || node.id;
             const nodeSubType = node.config?.sub_type || '';
             const definition = this.getNodeDefinition(node.type, nodeSubType);
             const nodeData = {
@@ -264,8 +299,8 @@ export default class Workflow extends BaseComponent {
                 node.type,
                 inputs,
                 1,
-                node.pos_x || 0,
-                node.pos_y || 0,
+                toCanvasPosition(node.pos_x, WORKFLOW_CANVAS_OFFSET_X),
+                toCanvasPosition(node.pos_y, WORKFLOW_CANVAS_OFFSET_Y),
                 `${node.type}-${drawflowId}`,
                 nodeData,
                 createNodeHtml(node.type, nodeSubType, drawflowId, definition, nodeData.config, node.id),
@@ -285,6 +320,82 @@ export default class Workflow extends BaseComponent {
 
         this.nodeId = Math.max(this.nodeId, maxNodeId + 1);
         this.isImportingWorkflow = false;
+        this.fitWorkflowToViewport();
+    }
+
+    private setupCanvasWorkspace(container: HTMLElement): void {
+        const precanvas = (this.drawflow as any).precanvas as HTMLElement | null;
+        if (!precanvas) return;
+
+        precanvas.style.width = `${WORKFLOW_CANVAS_WIDTH}px`;
+        precanvas.style.height = `${WORKFLOW_CANVAS_HEIGHT}px`;
+        precanvas.style.minWidth = `${WORKFLOW_CANVAS_WIDTH}px`;
+        precanvas.style.minHeight = `${WORKFLOW_CANVAS_HEIGHT}px`;
+        precanvas.style.transformOrigin = '0 0';
+
+        (this.drawflow as any).zoom_value = WORKFLOW_DEFAULT_ZOOM_STEP;
+
+        const initialCanvasX = Math.round((container.clientWidth / 2) - WORKFLOW_CANVAS_OFFSET_X);
+        const initialCanvasY = Math.round((container.clientHeight / 2) - WORKFLOW_CANVAS_OFFSET_Y);
+        (this.drawflow as any).canvas_x = initialCanvasX;
+        (this.drawflow as any).canvas_y = initialCanvasY;
+        precanvas.style.transform = `translate(${(this.drawflow as any).canvas_x}px, ${(this.drawflow as any).canvas_y}px) scale(${(this.drawflow as any).zoom})`;
+    }
+
+    private fitWorkflowToViewport(): void {
+        window.requestAnimationFrame(() => {
+            const container = this.element?.querySelector<HTMLElement>('#drawflow');
+            const precanvas = (this.drawflow as any).precanvas as HTMLElement | null;
+            if (!container || !precanvas) return;
+
+            const nodeElements = Array.from(
+                container.querySelectorAll<HTMLElement>('.drawflow-node'),
+            );
+            if (!nodeElements.length) {
+                this.setupCanvasWorkspace(container);
+                return;
+            }
+
+            let minX = Number.POSITIVE_INFINITY;
+            let minY = Number.POSITIVE_INFINITY;
+            let maxX = Number.NEGATIVE_INFINITY;
+            let maxY = Number.NEGATIVE_INFINITY;
+
+            for (const nodeElement of nodeElements) {
+                const left = safePosition(nodeElement.style.left);
+                const top = safePosition(nodeElement.style.top);
+                const width = nodeElement.offsetWidth || 240;
+                const height = nodeElement.offsetHeight || 120;
+
+                minX = Math.min(minX, left);
+                minY = Math.min(minY, top);
+                maxX = Math.max(maxX, left + width);
+                maxY = Math.max(maxY, top + height);
+            }
+
+            const contentWidth = Math.max(1, maxX - minX);
+            const contentHeight = Math.max(1, maxY - minY);
+            const availableWidth = Math.max(1, container.clientWidth - (WORKFLOW_FIT_PADDING * 2));
+            const availableHeight = Math.max(1, container.clientHeight - (WORKFLOW_FIT_PADDING * 2));
+            const fitZoom = Math.min(
+                WORKFLOW_FIT_MAX_ZOOM,
+                Math.max(
+                    WORKFLOW_FIT_MIN_ZOOM,
+                    Math.min(availableWidth / contentWidth, availableHeight / contentHeight),
+                ),
+            );
+
+            const contentCenterX = minX + (contentWidth / 2);
+            const contentCenterY = minY + (contentHeight / 2);
+            const canvasX = Math.round((container.clientWidth / 2) - (contentCenterX * fitZoom));
+            const canvasY = Math.round((container.clientHeight / 2) - (contentCenterY * fitZoom));
+
+            (this.drawflow as any).zoom = fitZoom;
+            (this.drawflow as any).zoom_last_value = fitZoom;
+            (this.drawflow as any).canvas_x = canvasX;
+            (this.drawflow as any).canvas_y = canvasY;
+            precanvas.style.transform = `translate(${canvasX}px, ${canvasY}px) scale(${fitZoom})`;
+        });
     }
     
     /**
@@ -357,15 +468,34 @@ export default class Workflow extends BaseComponent {
         const exportData = this.drawflow.export();
         const workflowData = exportData.drawflow?.Home?.data || {};
         const nodes = Object.values(workflowData as Record<string, any>);
+        const normalizedNodes = (nodes as Array<any>)
+            .map((node) => ({
+                node,
+                drawflowId: normalizeDrawflowId(node.id),
+            }))
+            .filter(
+                (entry): entry is { node: any; drawflowId: number } =>
+                    entry.drawflowId !== null,
+            );
         const edges: Array<{ from_node: string; to_node: string }> = [];
+        const clientIdByDrawflowId = new Map<number, string>();
 
-        for (const node of nodes) {
+        for (const { node, drawflowId } of normalizedNodes) {
+            clientIdByDrawflowId.set(
+                drawflowId,
+                buildWorkflowClientId(drawflowId, node.data?.workflowNodeId),
+            );
+        }
+
+        for (const { node, drawflowId: fromDrawflowId } of normalizedNodes) {
             const outputs = node.outputs || {};
             for (const output of Object.values(outputs) as Array<any>) {
                 for (const connection of output.connections || []) {
+                    const toDrawflowId = normalizeDrawflowId(connection.node);
+                    if (toDrawflowId === null) continue;
                     edges.push({
-                        from_node: `node-${node.id}`,
-                        to_node: `node-${connection.node}`,
+                        from_node: clientIdByDrawflowId.get(fromDrawflowId) || buildWorkflowClientId(fromDrawflowId),
+                        to_node: clientIdByDrawflowId.get(toDrawflowId) || buildWorkflowClientId(toDrawflowId),
                     });
                 }
             }
@@ -374,16 +504,16 @@ export default class Workflow extends BaseComponent {
         return {
             ...(this.workflowId ? { workflow_id: parseInt(this.workflowId, 10) } : {}),
             name: this.workflowName,
-            nodes: nodes.map((node: any) => ({
+            nodes: normalizedNodes.map(({ node, drawflowId }) => ({
                 ...(node.data?.workflowNodeId ? { id: node.data.workflowNodeId } : {}),
-                client_id: `node-${node.id}`,
+                client_id: clientIdByDrawflowId.get(drawflowId) || buildWorkflowClientId(drawflowId),
                 type: node.data?.nodeType || node.name,
                 config: {
                     sub_type: node.data?.nodeSubType,
                     parameters: node.data?.config?.parameters || {},
                 },
-                pos_x: safePosition(node.pos_x),
-                pos_y: safePosition(node.pos_y),
+                pos_x: toStoredPosition(node.pos_x, WORKFLOW_CANVAS_OFFSET_X),
+                pos_y: toStoredPosition(node.pos_y, WORKFLOW_CANVAS_OFFSET_Y),
             })),
             edges,
         };
@@ -447,7 +577,8 @@ export default class Workflow extends BaseComponent {
                     this.workflowId = savedWorkflow.workflow_id?.toString() || this.workflowId;
 
                     for (const node of savedWorkflow.nodes || []) {
-                        const drawflowId = parseInt(String(node.client_id).replace('node-', ''), 10);
+                        const drawflowId = parseDrawflowClientId(String(node.client_id));
+                        if (!drawflowId) continue;
                         const drawflowNode = this.drawflow.getNodeFromId(drawflowId);
                         if (drawflowNode) {
                             const updatedData = {

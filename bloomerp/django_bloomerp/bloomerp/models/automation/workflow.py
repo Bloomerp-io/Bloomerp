@@ -124,7 +124,7 @@ class Workflow(
         help_text=_("Whether to enable logging for this workflow. Disabling logging may improve performance but will result in no detailed execution history being stored.")
     )
     
-    def get_trigger(self) -> "WorkflowNode":
+    def get_trigger(self) -> "WorkflowNode |None":
         """Returns the trigger of a workflow.
 
         Returns:
@@ -169,3 +169,4 @@ class Workflow(
             to_node=to_node
         )
         
+    

@@ -6,7 +6,7 @@ from django.shortcuts import render
 from bloomerp.models.application_field import ApplicationField
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.router import router
-from bloomerp.field_types import FieldType
+from bloomerp.field_types.types import FieldType
 
 FILTERABLE_FIELD_TYPES = [
     field_type.value.id for field_type in FieldType if field_type.value.allow_in_model
@@ -229,27 +229,7 @@ def value_input(
             )
         
         lookup = application_field.get_field_type_enum().get_lookup_by_id(lookup_value).value
-
-        # TODO: This needs to be handled on the lookup definition level instead of hardcoded here. We should add metadata to the lookup definitions to indicate what type of input they require and any special rendering instructions, instead of inferring it from the lookup id.
-        if lookup_value == "is_null":
-            return HttpResponse(_render_is_null_widget(field_path or application_field.field))
-
-        if application_field.field_type in {
-            FieldType.BOOLEAN_FIELD.id,
-            FieldType.NULL_BOOLEAN_FIELD.id,
-        }:
-            return HttpResponse(_render_boolean_widget(field_path or application_field.field))
-
-        if lookup.render_func is None:
-            return HttpResponse(_render_filter_value_widget(application_field, field_path))
-
-        if application_field.field_type in {
-            FieldType.FOREIGN_KEY.id,
-            FieldType.ONE_TO_ONE_FIELD.id,
-            FieldType.MANY_TO_MANY_FIELD.id,
-        }:
-            return HttpResponse(_render_foreign_filter_value_widget(application_field, field_path, current_value))
-
+        
         return HttpResponse(lookup.render(application_field, name_override=field_path))
         
     except ApplicationField.DoesNotExist:

@@ -1,6 +1,6 @@
 [project]
 name = "Bloomerp"
-version = "1.9.0beta9"
+version = "1.9.0beta16"
 description = "Bloomerp is an open-source Business Management Software framework that lets you create fully functional business management applications just by defining your Django database models."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -147,6 +147,9 @@ dependencies = [
     "vulture>=2.16",
     "pycountries>=1.2.1",
     "django-celery-beat>=2.9.0",
+    "playwright>=1.60.0",
+    "pytest-django>=4.11.1",
+    "pytest-playwright>=0.8.0",
 ]
 
 [project.optional-dependencies]

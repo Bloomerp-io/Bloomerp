@@ -66,6 +66,16 @@ const created = await sdk.{client_name}.create({{
 }});
 ```
 
+## Bulk Create
+
+```ts
+const createdItems = await sdk.{client_name}.createMany([
+  {{
+    // fill in required fields here
+  }},
+]);
+```
+
 ## Filter / List
 
 ```ts
@@ -199,6 +209,7 @@ export interface BloomerpModelCapabilities {{
   list: boolean;
   retrieve: boolean;
   create: boolean;
+  createMany: boolean;
   update: boolean;
   partialUpdate: boolean;
   destroy: boolean;
@@ -569,6 +580,14 @@ export class ModelApi<TModel, TId extends string | number, TCreate, TUpdate, TQu
       ...options,
       method: "POST",
       body: JSON.stringify(payload),
+    }});
+  }}
+
+  createMany(payloads: TCreate[], options?: BloomerpRequestOptions): Promise<TModel[]> {{
+    return this.client.request<TModel[]>(this.endpoint, {{
+      ...options,
+      method: "POST",
+      body: JSON.stringify(payloads),
     }});
   }}
 

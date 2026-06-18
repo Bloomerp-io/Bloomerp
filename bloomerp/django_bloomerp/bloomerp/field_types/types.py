@@ -252,7 +252,6 @@ class FieldType(Enum):
         display_name="Char Field",
         icon="fa-solid fa-font",
         model_field_cls=models.CharField,
-        widget_cls=InputSelectWidget,
         default_model_field_args={
             "max_length": 100,
         },
@@ -578,8 +577,8 @@ class FieldType(Enum):
         icon="fa-solid fa-link",
         model_field_cls=models.ForeignKey,
         lookups=[
-            Lookup.FOREIGN_EQUALS,
-            # TODO: fix this Lookup.FOREIGN_IN,
+            Lookup.EQUALS,
+            Lookup.IN,
             Lookup.FOREIGN_ADVANCED,
             Lookup.IS_NULL,
         ],
@@ -680,7 +679,7 @@ class FieldType(Enum):
         lookups=[
             Lookup.IS_NULL,
             Lookup.EQUALS_USER,
-            Lookup.FOREIGN_EQUALS
+            Lookup.EQUALS
         ],
         field_options=[
             VERBOSE_NAME_FIELD_OPTION,

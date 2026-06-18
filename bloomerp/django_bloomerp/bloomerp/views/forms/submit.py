@@ -47,6 +47,9 @@ class SubmitFormView(
     def get_layout_bound_object(self):
         return None
 
+    def get_layout_parent_model(self):
+        return self.get_layout_content_type().model_class()
+
     def can_view_application_field(self, application_field: ApplicationField) -> bool:
         return application_field.content_type_id == self.get_layout_content_type().id
 

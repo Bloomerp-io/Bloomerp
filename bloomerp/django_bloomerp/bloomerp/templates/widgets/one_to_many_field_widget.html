@@ -60,12 +60,14 @@
             </td>
         </tr>
     </template>
-    <div class="border-t border-gray-200 bg-white px-3 py-2 flex items-center gap-2">
-        <button type="button" class="btn btn-sm btn-secondary" data-one-to-many-add-row {% if not can_edit %}disabled{% endif %}>
-            <c-blocktrans>Add row</c-blocktrans>
-        </button>
-        <button type="button" class="btn btn-sm btn-danger hidden" data-one-to-many-delete-rows {% if not can_edit %}disabled{% endif %}>
-            <c-blocktrans>Remove selected</c-blocktrans>
-        </button>
+    <div class="border-t border-gray-200 bg-white px-3 py-2 flex items-center justify-between gap-2">
+        <div class="flex gap-2">
+            <button type="button" class="btn btn-sm btn-secondary" data-one-to-many-add-row {% if not can_edit %}disabled{% endif %}>
+                <c-blocktrans>Add row</c-blocktrans>
+            </button>
+            <button type="button" class="btn btn-sm btn-danger hidden" data-one-to-many-delete-rows {% if not can_edit %}disabled{% endif %}>
+                <c-blocktrans>Remove selected</c-blocktrans>
+            </button>
+        </div>
     </div>
 </div>

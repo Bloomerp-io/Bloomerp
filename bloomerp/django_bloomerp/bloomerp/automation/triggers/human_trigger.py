@@ -12,7 +12,8 @@ class HumanTriggerForm(forms.Form):
     data = forms.JSONField(
         widget=CodeEditorWidget(
             language="json"
-        )
+        ),
+        initial=dict,
     )
 
 
@@ -22,9 +23,8 @@ class HumanTrigger(BaseTrigger):
     input_description = "Manual test triggers start workflows and do not receive upstream input."
     
     def execute(self, trigger_data):
-        data = self.config.get("data")
-        if not data:
-            raise NodeExecutionError
+        data = self.config.get("data", {})
+
         if isinstance(data, dict) and isinstance(trigger_data, dict):
             merged_data = data.copy()
             merged_data.update(trigger_data)

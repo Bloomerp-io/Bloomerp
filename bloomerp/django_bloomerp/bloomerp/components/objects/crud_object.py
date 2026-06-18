@@ -35,7 +35,16 @@ class CreateObjectComponentView(BloomerpCreateView):
         self.model = self.content_type.model_class()
         if self.model is None:
             return HttpResponse("Invalid content type", status=400)
+        if self._create_view_is_overridden():
+            return HttpResponseClientRedirect(reverse(get_create_view_url(self.model)))
         return super().dispatch(request, *args, **kwargs)
+
+    def _create_view_is_overridden(self) -> bool:
+        create_url_name = get_create_view_url(self.model)
+        return any(
+            route.url_name == create_url_name and route.override
+            for route in router.get_routes_by_model(self.model)
+        )
 
     def get_form_hx_target(self) -> str:
         return "#create-object-modal-body"

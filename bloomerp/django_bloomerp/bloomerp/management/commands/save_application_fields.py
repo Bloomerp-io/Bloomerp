@@ -6,13 +6,32 @@ from bloomerp.models import ApplicationField
 from django.db import models
 from django import db
 from bloomerp.field_types import FieldType
+from bloomerp.services.permission_services import ensure_bloomerp_model_permissions
 from django.utils.encoding import force_str
 
 class Command(BaseCommand):
     help = 'Sync properties with @property decorator and fields in a Django model to ApplicationField'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--suppress-output',
+            '--surpress-output',
+            action='store_true',
+            dest='suppress_output',
+            help='Do not write non-error command output.',
+        )
+
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('Starting to sync ApplicationField model'))
+        suppress_output = bool(options.get('suppress_output'))
+
+        if not suppress_output:
+            self.stdout.write(self.style.SUCCESS('Starting to sync ApplicationField model'))
+
+        created_permissions = ensure_bloomerp_model_permissions()
+        if created_permissions and not suppress_output:
+            self.stdout.write(
+                self.style.SUCCESS(f'Created {created_permissions} missing model permissions')
+            )
 
         # Get all models in the project
         model_list = apps.get_models()
@@ -23,8 +42,20 @@ class Command(BaseCommand):
             
             try:
                 if hasattr(Model, '_meta'):
+                    def serialize_choice_value(value):
+                        if value is None or isinstance(value, (bool, int, float, str)):
+                            return value
+                        if isinstance(value, (list, tuple)):
+                            return [serialize_choice_value(item) for item in value]
+                        if isinstance(value, dict):
+                            return {
+                                force_str(key): serialize_choice_value(item)
+                                for key, item in value.items()
+                            }
+                        return force_str(value)
+
                     def serialize_choices(choices):
-                        """Convert choice labels (including lazy proxies) to plain strings.
+                        """Convert choices to JSON-serializable values.
 
                         Handles choices of form (value, label) and colored choices
                         of form (value, label, color).
@@ -33,15 +64,15 @@ class Command(BaseCommand):
                         try:
                             for c in choices:
                                 if not isinstance(c, (list, tuple)):
-                                    serialized.append(c)
+                                    serialized.append(serialize_choice_value(c))
                                     continue
                                 if len(c) == 2:
-                                    serialized.append((c[0], force_str(c[1])))
+                                    serialized.append((serialize_choice_value(c[0]), force_str(c[1])))
                                 elif len(c) == 3:
-                                    serialized.append((c[0], force_str(c[1]), c[2]))
+                                    serialized.append((serialize_choice_value(c[0]), force_str(c[1]), serialize_choice_value(c[2])))
                                 else:
-                                    # Fallback: convert all elements after the first to strings when possible
-                                    new = [c[0]] + [force_str(x) if isinstance(x, str) or hasattr(x, '__unicode__') or hasattr(x, '__str__') else x for x in c[1:]]
+                                    # Fallback: convert all choice elements to JSON-safe values.
+                                    new = [serialize_choice_value(x) for x in c]
                                     serialized.append(tuple(new))
                         except Exception:
                             return choices
@@ -133,7 +164,7 @@ class Command(BaseCommand):
                                 try:
                                     meta['choices'] = serialize_choices(getattr(field, 'choices', []))
                                     meta['colored_choices'] = serialize_choices(getattr(field, 'colored_choices', []))
-                                    meta['colors'] = {choice[0]: choice[2] for choice in meta.get('colored_choices', []) if len(choice) > 2}
+                                    meta['colors'] = {force_str(choice[0]): choice[2] for choice in meta.get('colored_choices', []) if len(choice) > 2}
                                 except Exception:
                                     pass
 
@@ -190,9 +221,10 @@ class Command(BaseCommand):
                                     'db_field_type' : db_field_type
                                 })
                         except Exception as e:
-                            print("Meta", meta)
-                            print("Field Type", field_type)
-                            self.stderr.write(self.style.ERROR(f"Error saving ApplicationField for {Model.__name__}.{field_name}: {e}"))
+                            if not suppress_output:
+                                self.stderr.write(self.style.ERROR(f"Meta {meta}"))
+                                self.stderr.write(self.style.ERROR(f"Field Type {field_type}"))
+                                self.stderr.write(self.style.ERROR(f"Error saving ApplicationField for {Model.__name__}.{field_name}: {e}"))
                         
                     # Delete stale ApplicationField entries
                     stale_entries = ApplicationField.objects.filter(
@@ -202,6 +234,8 @@ class Command(BaseCommand):
                     stale_entries.delete()
 
             except AttributeError as e:
+                if suppress_output:
+                    continue
                 self.stderr.write(self.style.ERROR(f"Error processing model {Model.__name__}: {e}"))
 
 
@@ -212,5 +246,6 @@ class Command(BaseCommand):
         )
         stale_entries.delete()
 
-        self.stdout.write(self.style.SUCCESS('ApplicationField model synced successfully'))
+        if not suppress_output:
+            self.stdout.write(self.style.SUCCESS('ApplicationField model synced successfully'))
         

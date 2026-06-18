@@ -20,7 +20,9 @@ class ConfigParamsForm(BaseContentTypeForm):
         required=False,
         widget=CodeEditorWidget(
             language="json",
-        )
+        ),
+        initial=dict,
+        help_text="Optional filters to apply to the queryset. Should be a JSON object where keys are field names and values are the values to filter by. For example: {\"status\": \"active\"} would filter the queryset to only include objects where the 'status' field is 'active'. You can also use Django's double underscore notation for related fields, e.g. {\"user__username\": \"john\"} would filter by the username of a related user object.",
     )
     
     

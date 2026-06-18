@@ -2,6 +2,7 @@ from .mixins import *
 from .base_bloomerp_model import *
 from .application_field import *
 from .activity_log import *
+from .api_key import *
 from .users import *
 from .files import *
 from .document_templates import *

@@ -7,7 +7,7 @@ import yaml
 from django.db import models
 from django.db.models import Model
 
-from bloomerp.field_types import FieldType, FieldTypeDefinition
+from bloomerp.field_types.types import FieldType, FieldTypeDefinition
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.modules.definition import FieldConfig, ModelConfig, ModuleConfig, module_registry

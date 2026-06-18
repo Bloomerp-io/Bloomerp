@@ -7,6 +7,7 @@ import django_filters
 from django.conf import settings
 from django.db.models import (
     ForeignKey, 
+    BooleanField,
     CharField, 
     DateField, 
     IntegerField,
@@ -18,6 +19,7 @@ from django.db.models import (
     BigAutoField,
     AutoField,
     DecimalField,
+    FloatField,
     UUIDField,
     Field
 )
@@ -135,6 +137,23 @@ class RelativeDateRangeFilter(django_filters.BooleanFilter):
             }
         )
 
+
+class DayOfWeekFilter(django_filters.NumberFilter):
+    def filter(self, queryset: QuerySet, value) -> QuerySet:
+        if value in django_filters.constants.EMPTY_VALUES:
+            return queryset
+
+        try:
+            day_of_week = int(value)
+        except (TypeError, ValueError):
+            return queryset.none()
+
+        if day_of_week < 0 or day_of_week > 6:
+            return queryset.none()
+
+        # UI uses calendar.day_name order: Monday=0 ... Sunday=6.
+        return queryset.filter(**{f"{self.field_name}__iso_week_day": day_of_week + 1})
+
 def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.FilterSet]:
     """
     Dynamically creates a FilterSet class for the given model. It generates filters
@@ -172,6 +191,13 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
             filter_overrides[f'{field_name}__ne'] = django_filters.CharFilter(field_name=field_name, method=filter_not_equal)
             return
 
+        if isinstance(field, BooleanField):
+            filter_overrides[f'{field_name}'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__equals'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__exact'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='exact')
+            filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
+            return
+
         if isinstance(field, CharField) or isinstance(field, TextField) or isinstance(field, StatusField):
             filter_overrides[f'{field_name}'] = django_filters.CharFilter(field_name=field_name, lookup_expr='exact')
             filter_overrides[f'{field_name}__icontains'] = django_filters.CharFilter(field_name=field_name, lookup_expr='icontains')
@@ -181,7 +207,7 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
             filter_overrides[f'{field_name}__endswith'] = django_filters.CharFilter(field_name=field_name, lookup_expr='endswith')
             return
 
-        if isinstance(field, IntegerField) or isinstance(field, BigAutoField) or isinstance(field, AutoField) or isinstance(field, DecimalField):
+        if isinstance(field, IntegerField) or isinstance(field, BigAutoField) or isinstance(field, AutoField) or isinstance(field, DecimalField) or isinstance(field, FloatField):
             filter_overrides[f'{field_name}__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='gte')
             filter_overrides[f'{field_name}__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='lte')
             filter_overrides[f'{field_name}__gt'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='gt')
@@ -225,6 +251,7 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
             filter_overrides[f'{field_name}__month'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='month')
             filter_overrides[f'{field_name}__day'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='day')
             filter_overrides[f'{field_name}__week'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='week')
+            filter_overrides[f'{field_name}__day_of_week'] = DayOfWeekFilter(field_name=field_name)
             filter_overrides[f'{field_name}__year__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='year__gte')
             filter_overrides[f'{field_name}__year__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='year__lte')
             filter_overrides[f'{field_name}__month__gte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='month__gte')

@@ -1,3 +1,5 @@
+from calendar import c
+
 from django.http import HttpResponse
 from django.test import TransactionTestCase, modify_settings
 from django.test.utils import override_settings
@@ -5,6 +7,7 @@ from django.db import models
 from django.apps import apps
 from django.db import connection
 from django.urls import clear_url_caches
+import re
 import tempfile
 from bloomerp.management.commands import save_application_fields
 from bloomerp.tests.utils.users import create_admin, create_normal_user
@@ -15,7 +18,7 @@ from bloomerp.tests.utils.names import FIRST_NAMES, LAST_NAMES
 class BaseBloomerpModelTestCase(TransactionTestCase):
     auto_create_customers = True
     auto_create_users = True
-    
+    use_bloomerp_base = True
     create_foreign_models = False
     
     @classmethod
@@ -32,11 +35,11 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
                     },
                     "Country" : {
                         "name"  : models.CharField(max_length=100),
-                        "planet" : models.ForeignKey(to="Planet", on_delete=models.CASCADE),
+                        "planet" : models.ForeignKey(to="Planet", on_delete=models.CASCADE, related_name="countries"),
                         "__str__" : lambda self: self.name
                     },
-                    
-                }
+                },
+                use_bloomerp_base=cls.use_bloomerp_base
             )
              
             cls.CountryModel = foreign_models["Country"]
@@ -62,7 +65,7 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
             model_defs={
                 "Customer": customer_def
             },
-            use_bloomerp_base=True,
+            use_bloomerp_base=cls.use_bloomerp_base,
         )["Customer"]
 
         # Collect dynamically created test models
@@ -126,7 +129,7 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
         self._media_override = override_settings(MEDIA_ROOT=self._media_tempdir.name)
         self._media_override.enable()
         # Create application fields
-        save_application_fields.Command().handle()
+        save_application_fields.Command().handle(suppress_output=True)
         
         # Create users
         if self.auto_create_users:
@@ -237,6 +240,56 @@ class BaseBloomerpModelTestCase(TransactionTestCase):
             wrapper = HttpResponse(response)
             return super().assertNotContains(wrapper, text, *args, **kwargs)
         return super().assertNotContains(response, text, *args, **kwargs)
+
+    def get_response_text(self, response) -> str:
+        if isinstance(response, bytes):
+            return response.decode("utf-8", errors="replace")
+        if isinstance(response, str):
+            return response
+        content = getattr(response, "content", b"")
+        charset = getattr(response, "charset", "utf-8") or "utf-8"
+        return content.decode(charset, errors="replace")
+
+    def get_compact_response_preview(self, response, limit: int = 1200) -> str:
+        response_text = self.get_response_text(response)
+        compact = re.sub(r"\s+", " ", response_text).strip()
+        if len(compact) <= limit:
+            return compact
+        return f"{compact[:limit]}... [truncated {len(compact) - limit} chars]"
+
+    def assertResponseContains(self, response, text, msg=None, preview_chars: int = 0):
+        response_text = self.get_response_text(response)
+        text = str(text)
+        if text in response_text:
+            return
+        status_code = getattr(response, "status_code", "unknown")
+        message = (
+            f"Response did not contain {text!r}.\n"
+            f"Status: {status_code}\n"
+            f"Response length: {len(response_text)} chars"
+        )
+        if preview_chars:
+            message = f"{message}\nResponse preview: {self.get_compact_response_preview(response, preview_chars)}"
+        self.fail(
+            msg or message
+        )
+
+    def assertResponseNotContains(self, response, text, msg=None, preview_chars: int = 0):
+        response_text = self.get_response_text(response)
+        text = str(text)
+        if text not in response_text:
+            return
+        status_code = getattr(response, "status_code", "unknown")
+        message = (
+            f"Response unexpectedly contained {text!r}.\n"
+            f"Status: {status_code}\n"
+            f"Response length: {len(response_text)} chars"
+        )
+        if preview_chars:
+            message = f"{message}\nResponse preview: {self.get_compact_response_preview(response, preview_chars)}"
+        self.fail(
+            msg or message
+        )
     
 
     def create_planet(self, name:str) -> models.Model:

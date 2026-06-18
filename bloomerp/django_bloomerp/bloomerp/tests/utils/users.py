@@ -16,5 +16,6 @@ def create_normal_user() -> User:
         password=make_password("testpass123"),
         email="johndoe@example.com",
         first_name="John",
-        last_name="Doe"
+        last_name="Doe",
+        is_staff=True,
     )

@@ -4,12 +4,17 @@ from typing import Optional
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
 
+from bloomerp.automation.actions.call_api import CallApiExecutor
+from bloomerp.automation.actions.compute import ComputeExecutor
 from bloomerp.automation.actions.delete_object import DeleteObjectExecutor
 from bloomerp.automation.actions.enrich import EnrichExecutor
 from bloomerp.automation.actions.extract_field import ExtractFieldExecutor
 from bloomerp.automation.actions.generate_pdf import GeneratePdfExecutor
+from bloomerp.automation.actions.get_object import GetObjectExecutor
 from bloomerp.automation.actions.list_objects import ListObjectsExecutor
+from bloomerp.automation.actions.merge_branches import MergeBranchExecutor
 from bloomerp.automation.actions.send_user_message import SendUserMessage
+from bloomerp.automation.actions.sql_query import SqlQueryActionExecutor
 from bloomerp.automation.actions.update_object import UpdateObjectExecutor
 from bloomerp.automation.base_executor import BaseExecutor
 from bloomerp.automation.actions.create_object import CreateObjectExecutor
@@ -17,6 +22,7 @@ from bloomerp.automation.actions.send_email import SendEmailExecutor
 from bloomerp.automation.flows.filter_objects import FilterObjectsExecutor
 from bloomerp.automation.flows.for_each import ForEachExecutor
 from bloomerp.automation.flows.if_condition import IfConditionExecutor
+from bloomerp.automation.flows.object_if_condition import ObjectIfConditionExecutor
 from bloomerp.automation.triggers.human_trigger import HumanTrigger
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.automation.triggers.on_schedule_trigger import ScheduleTrigger
@@ -102,6 +108,13 @@ class WorkflowNodeType(Enum):
             #     icon="fa-solid fa-envelope"
             # ),
             NodeSubTypeDefinition(
+                id="GET_OBJECT",
+                name="Get Object",
+                description="Get a specific object by ID",
+                executor_cls=GetObjectExecutor,
+                icon="fa-solid fa-database"
+            ),
+            NodeSubTypeDefinition(
                 id="CREATE_OBJECT",
                 name="Create Object",
                 description="Creates a new object in the database",
@@ -136,13 +149,13 @@ class WorkflowNodeType(Enum):
                 executor_cls=ExtractFieldExecutor,
                 icon="fa-solid fa-code"
             ),
-            # NodeSubTypeDefinition(
-            #     id="CALL_API",
-            #     name="Call API",
-            #     description="Makes an external API call",
-            #     executor_cls=None,  # Placeholder for actual function
-            #     icon="fa-solid fa-cloud-arrow-up"
-            # ),
+            NodeSubTypeDefinition(
+                id="CALL_API",
+                name="Call API",
+                description="Makes an external API call",
+                executor_cls=CallApiExecutor,
+                icon="fa-solid fa-cloud-arrow-up"
+            ),
             NodeSubTypeDefinition(
                 id="LIST_OBJECTS",
                 name="List Objects",
@@ -164,6 +177,20 @@ class WorkflowNodeType(Enum):
                 executor_cls=GeneratePdfExecutor,
                 icon="fa fa-file-pdf",
             ),
+            NodeSubTypeDefinition(
+                id="SQL_QUERY",
+                name="SQL Query",
+                description="Execute a raw SQL query against the database",
+                executor_cls=SqlQueryActionExecutor,
+                icon="fa-solid fa-database"
+            ),
+            NodeSubTypeDefinition(
+                id="COMPUTE",
+                name="Compute",
+                description="Compute a value using a custom Python function",
+                executor_cls=ComputeExecutor,
+                icon="fa-solid fa-calculator"
+            )
         ]
     )
 
@@ -193,6 +220,20 @@ class WorkflowNodeType(Enum):
                 executor_cls=ForEachExecutor,
                 icon="fa-solid fa-repeat"
             ),
+            NodeSubTypeDefinition(
+                id="MERGE_BRANCHES",
+                name="Merge Branches",
+                description="Waits for all upstream branches, then passes their outputs downstream as one object",
+                executor_cls=MergeBranchExecutor,
+                icon="fa-solid fa-code-merge"
+            ),
+            NodeSubTypeDefinition(
+                id="OBJECT_IF_CONDITION",
+                name="Object If Condition",
+                description="Branches the workflow based on the value of a field on an object",
+                executor_cls=ObjectIfConditionExecutor,  # Placeholder for actual function
+                icon="fa-solid fa-code-branch"
+            )
             # NodeSubTypeDefinition(
             #     id="SWITCH_CASE",
             #     name="Switch Case",

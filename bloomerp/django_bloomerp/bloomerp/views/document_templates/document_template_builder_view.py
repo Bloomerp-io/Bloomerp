@@ -6,7 +6,6 @@ from bloomerp.forms.core import BloomerpModelForm
 from bloomerp.router import router
 from bloomerp.models import ApplicationField
 from bloomerp.models.document_templates.document_template import DocumentTemplate, FreeVariableConfig
-from bloomerp.views.base import BaseBloomerpView
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django.views.generic import TemplateView
 from django.contrib.contenttypes.models import ContentType
@@ -15,7 +14,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from bloomerp.services.document_services import DocumentTemplateService, FreeVariableType
+from bloomerp.services.document_services import FreeVariableType
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
 
