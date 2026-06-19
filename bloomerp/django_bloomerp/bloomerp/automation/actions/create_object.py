@@ -147,13 +147,22 @@ class CreateObjectExecutor(BaseExecutor):
         
         # Get the model
         model = content_type.model_class()
+
+        resolved_config = self.resolve_config(input_data)
+        create_data = resolved_config.get("fields")
+        if create_data is None:
+            create_data = resolved_config.get("data")
+        if create_data is None:
+            create_data = input_data
+        if not isinstance(create_data, dict):
+            create_data = {}
         
         FormCls = modelform_factory(
             model=model,
-            fields=input_data.keys()
+            fields=create_data.keys()
         )
         
-        form = FormCls(input_data)
+        form = FormCls(create_data)
         if form.is_valid():
             object = form.save()
             return {
