@@ -1,55 +1,21 @@
 {% load bloomerp %}
 {% load crispy_forms_tags %}
 
-<!--Applied filters-->
-{% if request.htmx.target == 'data-view-data-section' %}
-<div hx-swap-oob="innerHTML" id="applied-filters-{{ content_type_id }}">
-    {% if applied_filters %}
-        <div class="flex flex-wrap gap-2 items-center">
-            {% for filter in applied_filters %}
-                <c-ui.tooltip text="{{ filter.tooltip }}">
-                    <span class="badge badge-primary" data-filter-key="{{ filter.key }}">
-                        <button type="button" class="badge-remove" data-filter-remove="true" aria-label="Remove filter">
-                            <i class="fa fa-x"></i>
-                        </button>
-                        <span>{{ filter.label }}</span>
-                    </span>
-                </c-ui.tooltip>
-            {% endfor %}
-            <button type="button" class="badge badge-neutral badge-sm" data-clear-filters="true">
-                Clear all
-            </button>
-        </div>
-    {% endif %}
-</div>
-{% endif %}
-<!--End applied filters-->
-
-
-
-<!--Options-->
-<div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
-    <c-ui.data_view.display_options 
-        :content_type_id="content_type_id"
-        :view_types="view_types"
-    />
-</div>
-<!--End options-->
-
-
 {% if not request.htmx.target == 'data-view-data-section' %}
 <div 
     id="data-view-{{ content_type_id }}"
     data-view-type="{{ preference.view_type }}"
     data-content-type-id="{{ content_type_id }}"
     data-render-id="{{ render_id }}"
-    data-url="{{ request.get_full_path }}"
-    data-base-url="{{ request.path }}"
+    data-url="{{ data_view_url }}"
+    data-base-url="{{ data_view_base_url }}"
     data-full-create-url="{{ full_create_url|default:'' }}"
     data-sync-url="{{ sync_url|yesno:'true,false' }}"
+    data-preference-id="{{ preference.pk }}"
     class="flex flex-col"
     bloomerp-component="{{ component_id | default:'dataview-container' }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
+    data-default-filters='{{ default_filters_json }}'
 
     {% if component_args %}
     {% for arg, value in component_args.items %}
@@ -77,35 +43,15 @@
                         value="{{ search_query }}"
                         placeholder="Search..."
                         class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-                        hx-get="{% url 'components_data_view' content_type_id=content_type_id %}{% if search_querystring %}?{{ search_querystring }}{% endif %}"
-                        hx-trigger="keyup changed delay:200ms"
-                        hx-target="#data-view-data-section"
-                        hx-swap="outerHTML"
-                        hx-animation-target="#data-table-body-{{ content_type_id }}"
                         id="data-view-search-input-{{ content_type_id }}"
                     />
                 </div>
             </c-ui.shortcut_tooltip>
 
-            <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex-1">
-                {% if applied_filters %}
-                    <div class="flex flex-wrap gap-2 items-center">
-                        {% for filter in applied_filters %}
-                            <c-ui.tooltip text="{{ filter.tooltip }}">
-                                <span class="badge badge-primary" data-filter-key="{{ filter.key }}">
-                                    <button type="button" class="badge-remove" data-filter-remove="true" aria-label="Remove filter">
-                                        <i class="fa fa-x"></i>
-                                    </button>
-                                    <span>{{ filter.label }}</span>
-                                </span>
-                            </c-ui.tooltip>
-                        {% endfor %}
-                        <button type="button" class="badge badge-neutral badge-sm" data-clear-filters="true">
-                            Clear all
-                        </button>
-                    </div>
-                {% endif %}
-            </div>
+            <!--Applied filters-->
+            <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex gap-2" data-applied-filters-section></div>
+            <!--End applied filters-->
+
         </div>
 
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">

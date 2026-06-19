@@ -455,8 +455,9 @@ class UserListViewPreference(BaseViewPreference):
     
     # Visible field IDs per view type (list of ApplicationField IDs in order)
     display_fields = models.JSONField(default=get_default_display_fields)
-    options = models.JSONField(default=dict)
-
+    options : dict = models.JSONField(default=dict)
+    default_filters : dict = models.JSONField(default=dict)
+    
     @classmethod
     def create_default_for_user(cls, user, content_type_or_model) -> "UserListViewPreference":
         content_type = cls.resolve_content_type(content_type_or_model)

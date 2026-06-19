@@ -59,6 +59,7 @@ import BaseWizard from './components/BaseWizard';
 import showMessage from './utils/messages';
 import Breadcrumb from './components/Breadcrumb';
 import ResizableDiv from './components/ResizableDiv';
+import { DataViewDisplayOptions } from './components/data_view_components/DisplayOptions';
 
 Object.assign(window, { showMessage });
 
@@ -72,10 +73,12 @@ registerComponent('resizable-div', ResizableDiv);
 // Dataview component
 registerComponent('dataview-container', DataViewContainer);
 registerComponent('document-templates-dataview', DocumentTemplateDataViewContainer);
+registerComponent('dataview-display-options', DataViewDisplayOptions);
 
 // Datatable
 registerComponent('datatable', DataTable);
 registerComponent('datatable-cell', DataTableCell);
+
 
 // Kanban
 registerComponent('kanban-board', KanbanBoard);

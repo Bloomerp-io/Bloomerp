@@ -13,7 +13,6 @@ from django.http import HttpRequest, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 
 from bloomerp.components.application_fields.filters import FILTERABLE_FIELD_TYPES
-from bloomerp.components.objects.dataviews.dataview import _format_applied_filters
 from bloomerp.dataviews.base import BaseDataviewRenderer
 from bloomerp.models import ApplicationField, File, FileFolder
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
@@ -56,6 +55,97 @@ FILE_BROWSER_RESERVED_QUERY_KEYS = {
     "view_type",
 }
 FILE_BROWSER_PAGE_SIZE = 25
+FILE_BROWSER_LOOKUP_LABELS = {
+    "exact": "is",
+    "equals": "is",
+    "icontains": "contains",
+    "contains": "contains",
+    "startswith": "starts with",
+    "endswith": "ends with",
+    "gte": ">=",
+    "lte": "<=",
+    "gt": ">",
+    "lt": "<",
+    "isnull": "is empty",
+    "in": "in",
+    "year": "year is",
+    "month": "month is",
+    "day": "day is",
+    "week": "week is",
+    "today": "is today",
+    "yesterday": "was yesterday",
+    "this_week": "is in this week",
+    "last_week": "is in last week",
+    "this_month": "is in this month",
+    "last_month": "is in last month",
+    "this_quarter": "is in this quarter",
+    "last_quarter": "is in last quarter",
+    "this_year": "is in this year",
+    "last_year": "is in last year",
+}
+
+
+def _humanize_filter_field_path(value: str) -> str:
+    parts = [part for part in value.split("__") if part]
+    labels = [part.replace("_", " ").title() for part in parts]
+    return " > ".join(labels)
+
+
+def _format_file_browser_applied_filters(
+    query_params: QueryDict,
+    reserved_keys: set[str] | None = None,
+) -> list[dict]:
+    applied = []
+    reserved_keys = reserved_keys or FILE_BROWSER_RESERVED_QUERY_KEYS
+
+    for key in query_params.keys():
+        if key in reserved_keys or key.startswith("_arg_"):
+            continue
+
+        values = query_params.getlist(key)
+        if not values:
+            continue
+
+        raw_value = ", ".join([str(value) for value in values if value != ""])
+        if raw_value == "":
+            continue
+
+        parts = [part for part in key.split("__") if part]
+        lookup = None
+        field_path = key
+        if len(parts) > 1 and parts[-1] in FILE_BROWSER_LOOKUP_LABELS:
+            lookup = parts[-1]
+            field_path = "__".join(parts[:-1])
+
+        field_label = _humanize_filter_field_path(field_path)
+        lookup_label = FILE_BROWSER_LOOKUP_LABELS.get(lookup, lookup or "is")
+
+        if lookup == "isnull":
+            lowered = raw_value.lower()
+            label = f"{field_label} is empty" if lowered in {"true", "1", "yes"} else f"{field_label} has value"
+        elif lookup in {
+            "today",
+            "yesterday",
+            "this_week",
+            "last_week",
+            "this_month",
+            "last_month",
+            "this_quarter",
+            "last_quarter",
+            "this_year",
+            "last_year",
+        }:
+            label = f"{field_label} {lookup_label}"
+        else:
+            label = f"{field_label} {lookup_label} {raw_value}"
+
+        applied.append({
+            "key": key,
+            "label": label,
+            "tooltip": f"{key} = {raw_value}",
+        })
+
+    return applied
 
 
 @dataclass
@@ -844,7 +934,7 @@ def _render_file_browser(
         "file_rows": _prepare_file_rows(request, page_obj.object_list, current_folder),
         "file_cards": _prepare_file_cards(request, page_obj.object_list, current_folder),
         "pagination_pages": BaseDataviewRenderer.build_pagination_range(page_obj),
-        "applied_filters": _format_applied_filters(applied_filter_query),
+        "applied_filters": _format_file_browser_applied_filters(applied_filter_query),
         "folder_options_json": json.dumps(folder_choices),
         "target": getattr(getattr(request, "htmx", None), "target", None),
         "is_data_section_target": getattr(getattr(request, "htmx", None), "target", None) == data_section_id,

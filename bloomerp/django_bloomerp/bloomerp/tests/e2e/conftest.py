@@ -1,7 +1,11 @@
+import os
+
 import pytest
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import sync_playwright
 from django.contrib.auth import get_user_model 
+
+os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 @pytest.fixture(scope="class")
 def live_server_url(request):
@@ -39,9 +43,9 @@ def test_user(db):
 
 @pytest.fixture
 def authenticated_page(page, live_server_url, test_user):
-    page.goto(f"{live_server_url}/accounts/login/")
-    page.get_by_label("Username").fill("testuser")
-    page.get_by_label("Password").fill("testpass123")
-    page.get_by_role("button", name="Log in").click()
-    page.wait_for_url(f"{live_server_url}/dashboard/")
+    page.goto(f"{live_server_url}/login/")
+    page.locator('input[name="username"]').fill("testuser")
+    page.locator('input[name="password"]').fill("testpass123")
+    page.get_by_role("button", name="Login").click()
+    page.wait_for_url(f"{live_server_url}/")
     return page

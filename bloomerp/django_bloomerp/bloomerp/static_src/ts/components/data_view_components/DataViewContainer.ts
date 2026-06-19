@@ -1,11 +1,18 @@
 import htmx from "htmx.org";
-import BaseComponent, { getComponent, componentIdentifier } from "../BaseComponent";
+import BaseComponent, { getComponent, componentIdentifier, initComponents } from "../BaseComponent";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { getLocalStorageValue, setLocalStorageValue } from "@/utils/localStorage";
-import FilterContainer from "../Filters";
+import FilterContainer, { FilterEntriesContainer, FilterEntry, getFiltersFromUrl } from "../Filters";
+import { getCsrfToken } from "@/utils/cookies";
+import { DataViewDisplayOptions } from "./DisplayOptions";
+
+
+
+
 
 export class DataViewContainer extends BaseComponent {
+
     private target:string = '#data-view-data-section'
     private baseUrl:string|null;
     private fullPath:string|null; // Includes query parameters
@@ -13,9 +20,11 @@ export class DataViewContainer extends BaseComponent {
     private contentTypeId:string|null = null;
     private splitViewEnabled:boolean = false;
     private syncUrl:boolean = false;
-    private appliedFiltersHandler: ((event: Event) => void) | null = null;
+    private defaultFilters: FilterEntry[] = [];
+    private pendingHistoryMode: "push" | "replace" | null = null;
+    
+
     private afterSwapHandler: ((event: Event) => void) | null = null;
-    private addButtonHandler: ((event: MouseEvent) => void) | null = null;
 
     private static readonly RESERVED_FILTER_KEYS = new Set<string>([
         "q",
@@ -37,6 +46,16 @@ export class DataViewContainer extends BaseComponent {
         this.setupKeydownListeners();
 
         this.setupSplitViewResize();
+
+        // Get the default filters
+        const defaultFiltersJson = this.element?.dataset.defaultFilters ?? '{}';
+        try {
+            const parsed = JSON.parse(defaultFiltersJson);
+            this.defaultFilters = getFiltersFromUrl(new URLSearchParams(parsed));
+        } catch (error) {
+            console.error('Failed to parse default filters JSON:', error);
+            this.defaultFilters = [];
+        }
 
         // Make sure the filtering mechanism is working
         const filterButton = this.element?.querySelector('#apply-filters-button');
@@ -63,25 +82,32 @@ export class DataViewContainer extends BaseComponent {
             });
         }
 
-        // Handle applied filters clicks (remove / clear all)
-        this.appliedFiltersHandler = (event: Event) => this.handleAppliedFiltersClick(event);
-        this.element?.addEventListener('click', this.appliedFiltersHandler);
-
-        this.addButtonHandler = (event: MouseEvent) => this.handleAddButtonClick(event);
-        this.getAddButton()?.addEventListener('click', this.addButtonHandler, true);
-
+        // Setup search
+        this.element.querySelector(`#data-view-search-input-${this.contentTypeId}`)?.addEventListener('input', (event) => {
+            const target = event.target as HTMLInputElement;
+            const query = target.value;
+            this.search(query);
+        });
+        
         this.afterSwapHandler = (event: Event) => this.handleAfterSwap(event);
         this.element?.addEventListener('htmx:afterSwap', this.afterSwapHandler);
 
         this.installCellClickOverrides();
+
+        // Render filters based on the current URL parameters
+        this.renderAppliedFilters();
+        this.renderDefaultFilters();
+
+        this.bindDisplayOptionsCallback();
     }
 
     /**
      * Filter's the current data view
      */
-    filter(
+    public filter(
         args: Record<string, string | string[] | number | boolean | null | undefined> = {},
-        resetParameters: boolean = false
+        resetParameters: boolean = false,
+        pushHistory: boolean = true
     ): void {
         const base = resetParameters ? this.baseUrl : this.fullPath ?? this.baseUrl;
         if (!base) return;
@@ -117,35 +143,41 @@ export class DataViewContainer extends BaseComponent {
 
         this.fullPath = baseUrl.toString();
 
-        console.log('Target', this.target, 'Loading data view with URL:', this.fullPath);
+        if (this.syncUrl) {
+            this.pendingHistoryMode = pushHistory ? "push" : "replace";
+        }
 
         htmx.ajax('get', this.fullPath, {
             target: this.target,
             swap: 'innerHTML',
         });
+
     }
 
-    private handleAppliedFiltersClick(event: Event): void {
-        const target = event.target as HTMLElement | null;
-        if (!target) return;
+    /**
+     * Refreshes the current data view, keeping the existing query parameters intact.
+     */
+    public refresh(): void {
+        const url = this.getCurrentUrl();
+        if (!url) return;
 
-        const clearBtn = target.closest('[data-clear-filters]');
-        if (clearBtn) {
-            this.clearAllFilters();
+        this.applyUrl(url, false);
+    }
+
+    /**
+     * Removes a filter from the current data view
+     * @param key The key of the filter to remove
+     * @param isDefaultFilter Whether the filter is a default filter
+     * @returns void
+     */
+    private removeFilter(key: string, isDefaultFilter:boolean=false): void {
+        if (isDefaultFilter) {
+            // Remove the filter from the default filters list
+            this.defaultFilters = this.defaultFilters.filter(filter => filter.getFilterKey() !== key);
+            this.saveFilterState(this.defaultFilters);
             return;
         }
 
-        const removeBtn = target.closest('[data-filter-remove]');
-        if (!removeBtn) return;
-
-        const badge = removeBtn.closest('[data-filter-key]') as HTMLElement | null;
-        const key = badge?.getAttribute('data-filter-key') || '';
-        if (!key) return;
-
-        this.removeFilter(key);
-    }
-
-    private removeFilter(key: string): void {
         const url = this.getCurrentUrl();
         if (!url) return;
 
@@ -154,7 +186,16 @@ export class DataViewContainer extends BaseComponent {
         this.applyUrl(url);
     }
 
-    private clearAllFilters(): void {
+    /**
+     * Removes all filters from the current data view
+     * @param isDefaultFilter Whether the filters to clear are default filters. 
+     * @returns void
+     */
+    private clearAllFilters(isDefaultFilter: boolean = false): void {
+        if (isDefaultFilter) {
+            this.saveFilterState([])
+        }
+
         const url = this.getCurrentUrl();
         if (!url) return;
 
@@ -167,8 +208,12 @@ export class DataViewContainer extends BaseComponent {
         this.applyUrl(url);
     }
 
-    private applyUrl(url: URL): void {
+    private applyUrl(url: URL, pushHistory: boolean = true): void {
         this.fullPath = url.toString();
+        if (this.syncUrl) {
+            this.pendingHistoryMode = pushHistory ? "push" : "replace";
+        }
+
         htmx.ajax('get', this.fullPath, {
             target: this.target,
             swap: 'innerHTML',
@@ -187,22 +232,110 @@ export class DataViewContainer extends BaseComponent {
         this.fullPath = new URL(responseUrl, window.location.origin).toString();
 
         if (this.syncUrl) {
-            this.syncBrowserUrl(new URL(this.fullPath, window.location.origin));
+            this.syncBrowserUrl(
+                new URL(this.fullPath, window.location.origin),
+                this.pendingHistoryMode ?? "replace",
+            );
+            this.pendingHistoryMode = null;
         }
 
         this.installCellClickOverrides();
+        this.setupSplitViewResize();
+        this.renderAppliedFilters();
     }
 
-    private handleAddButtonClick(event: MouseEvent): void {
-        if (this.onAdd(event) === false) {
+    private renderAppliedFilters(): void {
+        if (!this.contentTypeId) return;
+
+        const target = this.element?.querySelector<HTMLElement>(`#applied-filters-${this.contentTypeId}`);
+        if (!target) return;
+
+        const url = this.getCurrentUrl();
+        const defaultFilterKeys = new Set(
+            this.defaultFilters.map((filter) => filter.getFilterKey())
+        );
+        const filters = (url ? getFiltersFromUrl(url.searchParams) : []).filter(
+            (filter) => !defaultFilterKeys.has(filter.getFilterKey())
+        );
+        const filterList = new FilterEntriesContainer(
+            target,
+            (entry) => this.removeFilter(entry.getFilterKey()),
+            this.clearAllFilters.bind(this)
+        );
+
+        // Set default filters to be non-removable
+        this.defaultFilters.forEach(filter => filter.setRemovable(false));
+
+        filterList.setFilters(this.defaultFilters.concat(filters));
+        filterList.setClearable(filters.length > 0);
+        filterList.setSavable(filters.length > 0);
+        filterList.setSaveHandler(this.saveFilterState.bind(this));
+        filterList.render();
+    }
+
+    private renderDefaultFilters(): void {
+        if (!this.contentTypeId) return;
+        let target = this.element?.querySelector<HTMLElement>(`#default-filters-${this.contentTypeId}`);
+        if (!target) return;
+
+        const filterList = new FilterEntriesContainer(
+            target,
+            (entry) => {this.removeFilter(entry.getFilterKey(), true)}, 
+            (entry) => {this.clearAllFilters(true)},  
+        );
+
+        filterList.setFilters(this.defaultFilters);
+        filterList.setRemovable(true);
+        filterList.render();
+    }
+
+    private async saveFilterState(entries: FilterEntry[]): Promise<void> {
+        if (!this.contentTypeId) return;
+
+        const defaultFilters: Record<string, string | string[]> = {};
+        entries.forEach((entry) => {
+            const key = entry.getFilterKey();
+            if (!key || DataViewContainer.RESERVED_FILTER_KEYS.has(key) || key.startsWith("_arg_")) {
+                return;
+            }
+
+            if (entry.value === null || entry.value === "") {
+                return;
+            }
+
+            defaultFilters[key] = entry.value;
+        });
+
+        const csrfToken = getCsrfToken();
+        const formData = new FormData();
+        formData.set("default_filters", JSON.stringify(defaultFilters));
+        if (csrfToken) {
+            formData.set("csrfmiddlewaretoken", csrfToken);
+        }
+
+        const response = await fetch(`/components/change_data_view_preference/${this.contentTypeId}/`, {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+            },
+        });
+
+        if (!response.ok) {
+            console.error("Failed to save default filters:", response.statusText);
             return;
         }
 
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-    }
+        this.defaultFilters = entries;
+        this.renderAppliedFilters();
 
+        const html = await response.text();
+        this.replaceDisplayOptions(html);
+        this.refresh();
+    }
+    
     private installCellClickOverrides(): void {
         let dataView: BaseDataViewComponent;
 
@@ -234,14 +367,16 @@ export class DataViewContainer extends BaseComponent {
         });
     }
 
-    private getAddButton(): HTMLElement | null {
-        return this.element?.querySelector<HTMLElement>('[data-dataview-add-button]') ?? null;
-    }
-
-    private syncBrowserUrl(dataViewUrl: URL): void {
+    private syncBrowserUrl(dataViewUrl: URL, historyMode: "push" | "replace" = "replace"): void {
         const browserUrl = new URL(window.location.href);
         browserUrl.search = dataViewUrl.search;
-        window.history.replaceState(window.history.state, '', `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`);
+        const nextUrl = `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`;
+        if (historyMode === "push" && nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+            window.history.pushState(window.history.state, '', nextUrl);
+            return;
+        }
+
+        window.history.replaceState(window.history.state, '', nextUrl);
     }
 
     private getCurrentUrl(): URL | null {
@@ -289,6 +424,9 @@ export class DataViewContainer extends BaseComponent {
         throw new Error('No DataView component found inside DataViewContainer');
     }
 
+    /** 
+     * Search related methods
+    */
     public focusSearchInput(): void {
         if (this.searchInput) {
             this.searchInput.focus();
@@ -331,6 +469,11 @@ export class DataViewContainer extends BaseComponent {
             }
         });
     }
+
+    public search(query: string) : void {
+        this.filter({ q: query }, false, false);
+    }
+
 
     private setupSplitViewResize(): void {
         if (!this.splitViewEnabled || !this.element) return;
@@ -384,19 +527,8 @@ export class DataViewContainer extends BaseComponent {
             document.addEventListener("pointerup", onUp);
         });
     }
+    
 
-    public destroy(): void {
-        const addButton = this.getAddButton();
-        if (addButton && this.addButtonHandler) {
-            addButton.removeEventListener('click', this.addButtonHandler, true);
-        }
-        if (this.appliedFiltersHandler) {
-            this.element?.removeEventListener('click', this.appliedFiltersHandler);
-        }
-        if (this.afterSwapHandler) {
-            this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
-        }
-    }
 
     /**
      * Hides the filtered badge from the applied filter section.
@@ -412,22 +544,57 @@ export class DataViewContainer extends BaseComponent {
         }
     }
 
-    /**
-     * Retrieves the list of filter keys from the applied filter section.
-     * 
-     * A filter key is stored in the `data-filter-key` attribute of the badge element. This method collects all badges and extracts their keys to return as a list.
-     * 
-     * @returns list of filter keys
-     */
-    public getFilterKeys(): string[] {
-        const badges = this.element?.querySelectorAll<HTMLElement>('[data-filter-key]') ?? [];
-        const keys: string[] = [];
-        badges.forEach(badge => {
-            const key = badge.getAttribute('data-filter-key');
-            if (key) keys.push(key);
+    private bindDisplayOptionsCallback(): void {
+        const displayOptionsElement = this.element?.querySelector<HTMLElement>(
+            '[bloomerp-component="dataview-display-options"]'
+        );
+        if (!displayOptionsElement) return;
+
+        if (displayOptionsElement.dataset.viewType && this.element) {
+            this.element.dataset.viewType = displayOptionsElement.dataset.viewType;
+        }
+        if (displayOptionsElement.dataset.splitViewEnabled && this.element) {
+            this.element.dataset.splitViewEnabled = displayOptionsElement.dataset.splitViewEnabled;
+            this.splitViewEnabled = displayOptionsElement.dataset.splitViewEnabled === "True";
+        }
+
+        const displayOptionsComponent = getComponent(displayOptionsElement) as DataViewDisplayOptions | null;
+        if (!displayOptionsComponent) return;
+
+        displayOptionsComponent.setOptionChangedCallback(() => {
+            this.bindDisplayOptionsCallback();
+            this.renderDefaultFilters();
+            this.refresh();
         });
-        return keys;
+    }
+
+    private replaceDisplayOptions(html: string): void {
+        const displayOptionsElement = this.element?.querySelector<HTMLElement>(
+            '[bloomerp-component="dataview-display-options"]'
+        );
+        if (!displayOptionsElement || !displayOptionsElement.parentElement) return;
+
+        const template = document.createElement("template");
+        template.innerHTML = html.trim();
+        const replacement = template.content.firstElementChild as HTMLElement | null;
+        if (!replacement) return;
+
+        const parent = displayOptionsElement.parentElement;
+        displayOptionsElement.replaceWith(replacement);
+        initComponents(parent);
+        this.bindDisplayOptionsCallback();
+        this.renderDefaultFilters();
+    }
+
+    public onAfterSwap(): void {
+        this.bindDisplayOptionsCallback();
+        this.renderDefaultFilters();
     }
 
     
+    public destroy(): void {
+        if (this.afterSwapHandler) {
+            this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
+        }
+    }    
 }

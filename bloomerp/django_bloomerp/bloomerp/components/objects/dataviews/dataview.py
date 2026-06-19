@@ -1,13 +1,18 @@
+import json
+
 from django.forms import modelform_factory
 from django import forms
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from django.middleware.csrf import get_token
 from bloomerp.components.application_fields.filters import filters_init
 from bloomerp.models.definition import ObjectAction, get_model_config
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.utils.requests import render_message
 from bloomerp.router import router
-from django.http import HttpResponse
 from django.http import HttpRequest
+from django.http import HttpResponse
+from django.http import QueryDict
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.permission_services import create_permission_str
@@ -35,90 +40,6 @@ SHELL_RESERVED_QUERY_KEYS = {
     "_component_id",
 }
 
-# TODO: Refactor and get rid of this code
-LOOKUP_LABELS = {
-    "exact": "is",
-    "equals": "is",
-    "icontains": "contains",
-    "contains": "contains",
-    "startswith": "starts with",
-    "endswith": "ends with",
-    "gte": "≥",
-    "lte": "≤",
-    "gt": ">",
-    "lt": "<",
-    "isnull": "is empty",
-    "in": "in",
-    "year": "year is",
-    "month": "month is",
-    "day": "day is",
-    "week": "week is",
-    "today": "is today",
-    "yesterday": "was yesterday",
-    "this_week": "is in this week",
-    "last_week": "is in last week",
-    "this_month": "is in this month",
-    "last_month": "is in last month",
-    "this_quarter": "is in this quarter",
-    "last_quarter": "is in last quarter",
-    "this_year": "is in this year",
-    "last_year": "is in last year",
-}
-
-
-def _humanize_field_path(value: str) -> str:
-    parts = [part for part in value.split("__") if part]
-    labels = [part.replace("_", " ").title() for part in parts]
-    return " \u2192 ".join(labels)
-
-
-def _format_applied_filters(query_params, reserved_keys: set[str] | None = None) -> list[dict]:
-    # TODO: formatting function is also implemented in the frontend, we should unify this logic by moving this to the frontend
-    # we can do so by just creating a component which onload formats the applied filters or something like that
-    applied = []
-
-    reserved_keys = reserved_keys or SHELL_RESERVED_QUERY_KEYS
-
-    for key in query_params.keys():
-        if key in reserved_keys or key.startswith("_arg_"):
-            continue
-
-        values = query_params.getlist(key)
-        if not values:
-            continue
-
-        raw_value = ", ".join([str(v) for v in values if v != ""])
-        if raw_value == "":
-            continue
-
-        parts = [part for part in key.split("__") if part]
-        lookup = None
-        field_path = key
-        if len(parts) > 1 and parts[-1] in LOOKUP_LABELS:
-            lookup = parts[-1]
-            field_path = "__".join(parts[:-1])
-
-        field_label = _humanize_field_path(field_path)
-        lookup_label = LOOKUP_LABELS.get(lookup, lookup or "is")
-
-        if lookup == "isnull":
-            lowered = raw_value.lower()
-            if lowered in {"true", "1", "yes"}:
-                label = f"{field_label} is empty"
-            else:
-                label = f"{field_label} has value"
-        elif lookup in {"today", "yesterday", "this_week", "last_week", "this_month", "last_month", "this_quarter", "last_quarter", "this_year", "last_year"}:
-            label = f"{field_label} {lookup_label}"
-        else:
-            label = f"{field_label} {lookup_label} {raw_value}"
-
-        applied.append({
-            "key": key,
-            "label": label,
-            "tooltip": f"{key} = {raw_value}",
-        })
-
-    return applied
 
 @dataclass
 class DataViewQueryState:
@@ -175,6 +96,10 @@ def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> 
     for key in list(filter_querydict.keys()):
         if key.startswith("_arg_"):
             filter_querydict.pop(key, None)
+    filter_querydict = _apply_default_filters_to_querydict(
+        filter_querydict,
+        _normalize_default_filters(preference.default_filters or {}),
+    )
     queryset = filter_model(Model, filter_querydict, queryset)
 
     queryset, renderer_context = definition.renderer_cls.apply_sorting(
@@ -247,6 +172,50 @@ def _get_data_view_type_definition(view_type: str):
         return None
 
 
+def _normalize_default_filters(raw_filters) -> dict[str, str | list[str]]:
+    if not isinstance(raw_filters, dict):
+        return {}
+
+    normalized = {}
+    for raw_key, raw_value in raw_filters.items():
+        key = str(raw_key)
+        if not key or key in SHELL_RESERVED_QUERY_KEYS or key.startswith("_arg_"):
+            continue
+
+        if isinstance(raw_value, list):
+            values = [
+                str(value)
+                for value in raw_value
+                if value is not None and str(value) != ""
+            ]
+            if values:
+                normalized[key] = values
+            continue
+
+        if raw_value is None or str(raw_value) == "":
+            continue
+
+        normalized[key] = str(raw_value)
+
+    return normalized
+
+
+def _apply_default_filters_to_querydict(
+    querydict: QueryDict,
+    default_filters: dict[str, str | list[str]],
+) -> QueryDict:
+    merged = querydict.copy()
+
+    for key, value in default_filters.items():
+        merged.pop(key, None)
+        if isinstance(value, list):
+            merged.setlist(key, value)
+        else:
+            merged[key] = value
+
+    return merged
+
+
 def _get_data_view_options_initial(preference: UserListViewPreference, view_type: str) -> dict:
     definition = _get_data_view_type_definition(view_type)
     if definition is None:
@@ -287,13 +256,53 @@ def _get_data_view_options_form(
     return form_cls(initial=_get_data_view_options_initial(preference, definition.key))
 
 
+def _render_display_options(
+    request: HttpRequest,
+    content_type_id: int,
+    preference: UserListViewPreference,
+) -> HttpResponse:
+    data_view_fields = get_data_view_fields(preference)
+    return render(
+        request,
+        "cotton/ui/data_view/display_options.html",
+        {
+            "content_type_id": content_type_id,
+            "view_types": [vt.value for vt in ViewTypeEnum],
+            "preference": preference,
+            "fields": data_view_fields,
+            "accessible_fields": _get_accessible_application_fields(data_view_fields),
+            "dataview_options_form": _get_data_view_options_form(
+                preference,
+                _get_accessible_application_fields(data_view_fields),
+                request,
+            ),
+            "csrf_token": get_token(request),
+        },
+    )
+
+
 def _get_preference_operation(post_data) -> str | None:
     if "view_type" in post_data:
         return "change_type"
+    if "split_view_enabled" in post_data:
+        return "split_view"
     if "dataview_options_view_type" in post_data:
         return "opt"
     if "toggle_field_id" in post_data:
         return "field"
+    if "default_filters" in post_data:
+        return "default_filters"
+    return None
+
+
+def _change_default_filters(preference: UserListViewPreference, post_data) -> HttpResponse | None:
+    try:
+        payload = json.loads(post_data.get("default_filters") or "{}")
+    except json.JSONDecodeError:
+        return HttpResponse("Invalid default filters", status=400)
+
+    preference.default_filters = _normalize_default_filters(payload)
+    preference.save(update_fields=["default_filters"])
     return None
 
 
@@ -304,6 +313,12 @@ def _change_data_view_type(preference: UserListViewPreference, post_data) -> Htt
 
     preference.view_type = view_type
     preference.save(update_fields=["view_type"])
+    return None
+
+
+def _change_split_view(preference: UserListViewPreference, post_data) -> HttpResponse | None:
+    preference.split_view_enabled = str(post_data["split_view_enabled"]).lower() == "true"
+    preference.save(update_fields=["split_view_enabled"])
     return None
 
 
@@ -441,6 +456,17 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     sync_url = request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
     component_id = request.GET.get('_component_id')
 
+    data_view_base_url = reverse(
+        "components_data_view",
+        kwargs={"content_type_id": content_type_id},
+    )
+    data_view_querystring = request.GET.urlencode()
+    data_view_url = (
+        f"{data_view_base_url}?{data_view_querystring}"
+        if data_view_querystring
+        else data_view_base_url
+    )
+
     context = {
         'content_type_id': content_type_id,
         'queryset': pagination.queryset,
@@ -459,10 +485,6 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'page_querystring': page_querystring.urlencode(),
         'pagination_pages': pagination.pagination_pages or [],
         'show_global_pagination': pagination.show_global_pagination,
-        'applied_filters': _format_applied_filters(
-            request.GET,
-            SHELL_RESERVED_QUERY_KEYS | definition.renderer_cls.get_reserved_query_params(),
-        ),
         'component_id': component_id,
         'component_args' : _get_component_args(request),
         'object_actions' : _get_actions(state.queryset.model),
@@ -471,6 +493,11 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
             state.preference,
             _get_accessible_application_fields(state.data_view_fields),
             request,
+        ),
+        'data_view_base_url': data_view_base_url,
+        'data_view_url': data_view_url,
+        'default_filters_json': json.dumps(
+            _normalize_default_filters(state.preference.default_filters or {})
         ),
     }
     context.update(state.renderer_context)
@@ -524,6 +551,8 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
     match operation:
         case "change_type":
             error_response = _change_data_view_type(preference, request.POST)
+        case "split_view":
+            error_response = _change_split_view(preference, request.POST)
         case "opt":
             data_view_fields = get_data_view_fields(preference)
             error_response = _change_data_view_options(
@@ -533,69 +562,16 @@ def change_data_view_preference(request: HttpRequest, content_type_id: int) -> H
             )
         case "field":
             error_response = _change_data_view_field_visibility(request, content_type, preference, request.POST)
+        case "default_filters":
+            error_response = _change_default_filters(preference, request.POST)
         case _:
             error_response = None
 
     if error_response is not None:
         return error_response
     
-    return data_view(request, content_type_id)
+    return _render_display_options(request, content_type_id, preference)
 
-
-@router.register(
-    path="components/dataview_edit_field/<int:application_field_id>/<str:object_id>/",
-    name="components_dataview_edit_field",
-)
-def dataview_edit_field(request: HttpRequest, application_field_id:int, object_id: str) -> HttpResponse:
-    """Renders the inline edit component for a dataview field.
-
-    Args:
-        request (HttpRequest): The request object.
-        application_field_id (int): The application field ID to edit.
-
-    Returns:
-        HttpResponse: The rendered inline edit component.
-    """
-    # Retrieve the objects
-    application_field = get_object_or_404(ApplicationField, id=application_field_id)
-    model = application_field.get_model()
-    object = get_object_or_404(application_field.get_model(), id=object_id)
-    permission_str = f"change_{model._meta.model_name}"
-    
-    manager = UserPermissionManager(request.user)
-    if not manager.has_access_to_object(object, permission_str):
-        return HttpResponse(status=405)
-    
-    if not manager.has_field_permission(application_field, permission_str):
-        return HttpResponse(status=405)
-    
-    if request.method == "GET":
-        widget = application_field.get_widget()
-        widget_choices = getattr(widget, "get_choices", lambda *_args, **_kwargs: [])()
-        input_class = "select select-sm w-full bg-transparent border-0" if isinstance(widget, forms.Select) or widget_choices else "border-0 w-full bg-transparent input-sm"
-        
-        return HttpResponse(
-            widget.render(
-                name=application_field.field,
-                value=getattr(object, application_field.field),
-                attrs={
-                    "class" : input_class,
-                }
-        ))
-    elif request.method == "POST":
-        FormCls = modelform_factory(
-            model,
-            fields=[application_field.field],
-        )
-        form = FormCls(request.POST, instance=object)
-        if form.is_valid():
-            form.save()
-            return render_message(request, "Field updated successfully", "success")
-        else:
-            pass
-            
-
-    
 
     
     
