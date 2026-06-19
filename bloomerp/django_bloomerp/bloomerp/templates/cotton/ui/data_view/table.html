@@ -11,10 +11,11 @@ Parameters:
 {% load bloomerp %}
 {% load i18n %}
 
-<div 
+<c-ui.data_view.base_data_view 
+    component_name="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
+    content_type_id="{{ content_type_id }}"
     class="rounded-xl border border-b-0 border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
-    bloomerp-component="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
-    data-content-type-id="{{ content_type_id }}"
+    query_count="{{ count }}"
     >
     <table 
         id="data-table-{{ content_type_id }}" 
@@ -22,6 +23,9 @@ Parameters:
         >
         <thead>
             <tr>
+                <th>
+                    <c-ui.data_view.checkbox :all="True"/>
+                </th>
                 {% if avatar_field %}
                 <th class="w-14">
                     <span class="sr-only">{{ avatar_field.title }}</span>
@@ -62,6 +66,12 @@ Parameters:
                 <tr
                     class="cursor-pointer"
                 >   
+                    <td>
+                        <c-ui.data_view.checkbox 
+                            object_id="{{ object.pk }}" 
+                            content_type_id="{{ content_type_id }}" 
+                            />
+                    </td>
                     {% if avatar_field %}
                     <td
                         class="cursor-context-menu w-14"
@@ -104,5 +114,6 @@ Parameters:
             {% endif %}
         </tbody>
     </table>
-</div>
+</c-ui.data_view.base_data_view>
+
 

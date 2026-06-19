@@ -6,8 +6,9 @@ import { getLocalStorageValue, setLocalStorageValue } from "@/utils/localStorage
 import FilterContainer, { FilterEntriesContainer, FilterEntry, getFiltersFromUrl } from "../Filters";
 import { getCsrfToken } from "@/utils/cookies";
 import { DataViewDisplayOptions } from "./DisplayOptions";
-
-
+import ObjectCRUDViewContainer from "../detail_view_components/ObjectCRUDViewContainer";
+import { getModal } from "@/utils/modals";
+import { insertSkeleton } from "@/utils/animations";
 
 
 
@@ -18,13 +19,21 @@ export class DataViewContainer extends BaseComponent {
     private fullPath:string|null; // Includes query parameters
     private searchInput:HTMLInputElement|null = null;
     private contentTypeId:string|null = null;
-    private splitViewEnabled:boolean = false;
     private syncUrl:boolean = false;
     private defaultFilters: FilterEntry[] = [];
     private pendingHistoryMode: "push" | "replace" | null = null;
     
+    // Split view related properties
+    private splitViewEnabled:boolean = false;
+    private splitViewFocusOnListPane:boolean = true;
 
     private afterSwapHandler: ((event: Event) => void) | null = null;
+    private splitViewPaneShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
+    private bulkCheckboxChangeHandler: ((event: Event) => void) | null = null;
+    private bulkAllClickHandler: ((event: Event) => void) | null = null;
+    private bulkSelectionClickHandler: ((event: Event) => void) | null = null;
+    private bulkActionCompleteHandler: ((event: Event) => void) | null = null;
+    private selectedObjectIds: Set<string> = new Set();
 
     private static readonly RESERVED_FILTER_KEYS = new Set<string>([
         "q",
@@ -45,6 +54,7 @@ export class DataViewContainer extends BaseComponent {
         // Focus on search input
         this.setupKeydownListeners();
 
+        this.setupSplitViewFocusTargets();
         this.setupSplitViewResize();
 
         // Get the default filters
@@ -99,7 +109,17 @@ export class DataViewContainer extends BaseComponent {
         this.renderDefaultFilters();
 
         this.bindDisplayOptionsCallback();
+
+        // Setup bulk checkbox listeners
+        this.addBulkListeners();
+
+        this.bulkActionCompleteHandler = (event: Event) => this.handleBulkActionComplete(event);
+        document.body.addEventListener('bloomerp:bulk-action-complete', this.bulkActionCompleteHandler);
     }
+
+    /**
+     * FILTERING, SEARCHING, AND REFRESHING
+     */
 
     /**
      * Filter's the current data view
@@ -147,11 +167,12 @@ export class DataViewContainer extends BaseComponent {
             this.pendingHistoryMode = pushHistory ? "push" : "replace";
         }
 
+        insertSkeleton(document.querySelector(this.target) as HTMLElement);
+
         htmx.ajax('get', this.fullPath, {
             target: this.target,
             swap: 'innerHTML',
-        });
-
+        })
     }
 
     /**
@@ -213,7 +234,6 @@ export class DataViewContainer extends BaseComponent {
         if (this.syncUrl) {
             this.pendingHistoryMode = pushHistory ? "push" : "replace";
         }
-
         htmx.ajax('get', this.fullPath, {
             target: this.target,
             swap: 'innerHTML',
@@ -240,8 +260,10 @@ export class DataViewContainer extends BaseComponent {
         }
 
         this.installCellClickOverrides();
+        this.setupSplitViewFocusTargets();
         this.setupSplitViewResize();
         this.renderAppliedFilters();
+        this.syncBulkCheckboxes();
     }
 
     private renderAppliedFilters(): void {
@@ -347,15 +369,16 @@ export class DataViewContainer extends BaseComponent {
 
         const cells = dataView.getCells();
         for (const cell of cells) {
-            cell.onClickOverride = (clickedCell) => this.onCellClick(clickedCell);
+            cell.dataViewClickOverride = (clickedCell) => this.onCellClick(clickedCell);
         }
     }
-
+    
     protected onAdd(_event: MouseEvent): boolean {
         return false;
     }
 
     protected onCellClick(_cell: BaseDataViewCell): boolean {
+        this.splitViewFocusOnListPane = false;
         return false;
     }
 
@@ -447,9 +470,7 @@ export class DataViewContainer extends BaseComponent {
     }
 
     public setupKeydownListeners(): void {
-        if (!this.searchInput) return;
-
-        this.searchInput.addEventListener('keydown', (event: KeyboardEvent) => {
+        this.searchInput?.addEventListener('keydown', (event: KeyboardEvent) => {
 
             if (event.key === 'ArrowDown' && this.isFocusOnSearchInput()) {
                 event.preventDefault();
@@ -468,12 +489,219 @@ export class DataViewContainer extends BaseComponent {
                 this.getDataViewComponent().clearSelection();
             }
         });
+
+        this.splitViewPaneShortcutHandler = (event: KeyboardEvent) => this.handleSplitViewPaneShortcut(event);
+        this.element?.addEventListener('keydown', this.splitViewPaneShortcutHandler);
     }
 
     public search(query: string) : void {
         this.filter({ q: query }, false, false);
     }
 
+    /**
+     * BUTTON CONTROLS
+     */
+    public showButton(key:string) {
+        this.element?.querySelector<HTMLElement>(`[data-data-view-button="${key}"]`)?.classList.remove('hidden');
+    }
+
+    public hideButton(key:string) {
+        this.element?.querySelector<HTMLElement>(`[data-data-view-button="${key}"]`)?.classList.add('hidden');
+    }
+
+
+    /**
+     * BULK CONTROLS
+     */
+    private getBulkCheckboxes(): NodeListOf<HTMLInputElement> {
+        return this.element?.querySelectorAll<HTMLInputElement>('input[data-bulk-checkbox]') ?? document.querySelectorAll<HTMLInputElement>('input[data-bulk-checkbox]:not(*)');
+    }
+
+    private addBulkListeners() : void {
+        const openModalForAllBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-all-btn');
+        const openModalForSelectionBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-selection-btn');
+
+        if (openModalForAllBtn) {
+            this.bulkAllClickHandler = () => this.openBulkActionsModal(false);
+            openModalForAllBtn.addEventListener('click', this.bulkAllClickHandler);
+        }
+
+        if (openModalForSelectionBtn) {
+            this.bulkSelectionClickHandler = () => this.openBulkActionsModal(true);
+            openModalForSelectionBtn.addEventListener('click', this.bulkSelectionClickHandler);
+        }
+
+        this.bulkCheckboxChangeHandler = (event: Event) => this.handleBulkCheckboxChange(event);
+        this.element?.addEventListener('change', this.bulkCheckboxChangeHandler);
+        this.syncBulkCheckboxes();
+    }
+
+    private getBulkRowCheckboxes(): HTMLInputElement[] {
+        return Array.from(this.getBulkCheckboxes()).filter((checkbox) => checkbox.dataset.all !== 'true');
+    }
+
+    private handleBulkCheckboxChange(event: Event): void {
+        const checkbox = event.target as HTMLInputElement | null;
+        if (!checkbox?.matches('input[data-bulk-checkbox]')) return;
+
+        if (checkbox.dataset.all === 'true') {
+            this.getBulkRowCheckboxes().forEach((rowCheckbox) => {
+                rowCheckbox.checked = checkbox.checked;
+                const objectId = rowCheckbox.dataset.objectId;
+                if (!objectId) return;
+                if (checkbox.checked) {
+                    this.selectedObjectIds.add(objectId);
+                } else {
+                    this.selectedObjectIds.delete(objectId);
+                }
+            });
+            this.syncBulkCheckboxes();
+            return;
+        }
+
+        const objectId = checkbox.dataset.objectId;
+        if (objectId) {
+            if (checkbox.checked) {
+                this.selectedObjectIds.add(objectId);
+            } else {
+                this.selectedObjectIds.delete(objectId);
+            }
+        }
+
+        this.syncBulkCheckboxes();
+    }
+
+    private syncBulkCheckboxes(): void {
+        const rowCheckboxes = this.getBulkRowCheckboxes();
+        rowCheckboxes.forEach((checkbox) => {
+            const objectId = checkbox.dataset.objectId;
+            checkbox.checked = Boolean(objectId && this.selectedObjectIds.has(objectId));
+        });
+
+        const masterCheckbox = this.element?.querySelector<HTMLInputElement>('input[data-bulk-checkbox][data-all="true"]');
+        const allChecked = rowCheckboxes.length > 0 && rowCheckboxes.every((checkbox) => checkbox.checked);
+        const anyChecked = rowCheckboxes.some((checkbox) => checkbox.checked);
+        if (masterCheckbox) {
+            masterCheckbox.checked = allChecked;
+            masterCheckbox.indeterminate = !allChecked && anyChecked;
+        }
+    }
+
+    private buildBulkActionsUrl(useSelection: boolean): string | null {
+        if (!this.contentTypeId) return null;
+
+        const currentUrl = this.getCurrentUrl();
+        const url = new URL(`/components/data_view/${this.contentTypeId}/bulk_actions/`, window.location.origin);
+        url.searchParams.set('selection', useSelection ? 'selected' : 'filtered');
+        currentUrl?.searchParams.forEach((value, key) => {
+            if (key === 'page') return;
+            if (key === 'selection') return;
+            url.searchParams.append(key, value);
+        });
+
+        if (useSelection) {
+            this.selectedObjectIds.forEach((objectId) => {
+                url.searchParams.append('object_ids', objectId);
+            });
+        }
+
+        return url.toString();
+    }
+
+    private openBulkActionsModal(useSelection: boolean): void {
+        const url = this.buildBulkActionsUrl(useSelection);
+        const modal = getModal('bulk-actions-modal');
+        if (!url || !modal) return;
+
+        htmx.ajax('get', url, {
+            target: '#bulk-actions-modal-body',
+            swap: 'innerHTML',
+        });
+
+        modal.open();
+    }
+
+    private handleBulkActionComplete(event: Event): void {
+        const customEvent = event as CustomEvent<{ contentTypeId?: string }>;
+        if (customEvent.detail?.contentTypeId !== this.contentTypeId) return;
+
+        this.selectedObjectIds.clear();
+        this.refresh();
+    }
+
+
+
+
+    /**
+     * SPLIT VIEW CONTROLS
+     */
+    private handleSplitViewPaneShortcut(event: KeyboardEvent): void {
+        if (!this.isSplitViewPaneShortcut(event)) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Handle the focus toggle between the list pane and the detail pane
+        const listPane = this.getSplitViewListPane();
+        const detailPane = this.getSplitViewDetailPane();
+        if (!listPane || !detailPane) return;
+        
+        if (this.splitViewFocusOnListPane && detailPane) {
+            detailPane.focusFirstItemInRow(0);
+            this.splitViewFocusOnListPane = false;
+            return;
+        }
+
+        this.focusSplitViewListPane(listPane);
+        this.splitViewFocusOnListPane = true;
+    }
+
+    private isSplitViewPaneShortcut(event: KeyboardEvent): boolean {
+        if (!this.splitViewEnabled) return false;
+        if (event.ctrlKey || event.metaKey) return false;
+
+        const isMac = navigator.platform.toLowerCase().includes('mac');
+
+        if (isMac) {
+            return event.altKey && event.key === 'Tab';
+        }
+
+        return event.altKey && event.key === '.';
+    }
+
+    private setupSplitViewFocusTargets(): void {
+        if (!this.splitViewEnabled || !this.element) return;
+
+        const listPane = this.getSplitViewListPane();
+
+        listPane?.setAttribute('tabindex', '-1');
+    }
+
+    private focusSplitViewListPane(listPane: HTMLElement): void {
+        try {
+            const dataView = this.getDataViewComponent();
+            if (!dataView.currentCell) {
+                dataView.initFocus();
+                return;
+            }
+
+            dataView.element?.focus();
+            return;
+        } catch {
+            listPane.focus();
+        }
+    }
+
+    private getSplitViewListPane(): HTMLElement | null {
+        return this.element?.querySelector<HTMLElement>('[data-split-view-list-pane]') ?? null;
+    }
+
+    private getSplitViewDetailPane(): ObjectCRUDViewContainer | null {
+        let el = this.element?.querySelector<HTMLElement>('[bloomerp-component="object-crud-view-container"]') ?? null;
+        if (!el) return null;
+
+        return getComponent(el) as ObjectCRUDViewContainer | null;
+    }
 
     private setupSplitViewResize(): void {
         if (!this.splitViewEnabled || !this.element) return;
@@ -591,10 +819,26 @@ export class DataViewContainer extends BaseComponent {
         this.renderDefaultFilters();
     }
 
-    
     public destroy(): void {
         if (this.afterSwapHandler) {
             this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
+        }
+        if (this.splitViewPaneShortcutHandler) {
+            this.element?.removeEventListener('keydown', this.splitViewPaneShortcutHandler);
+        }
+        if (this.bulkCheckboxChangeHandler) {
+            this.element?.removeEventListener('change', this.bulkCheckboxChangeHandler);
+        }
+        if (this.bulkActionCompleteHandler) {
+            document.body.removeEventListener('bloomerp:bulk-action-complete', this.bulkActionCompleteHandler);
+        }
+        const openModalForAllBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-all-btn');
+        const openModalForSelectionBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-selection-btn');
+        if (openModalForAllBtn && this.bulkAllClickHandler) {
+            openModalForAllBtn.removeEventListener('click', this.bulkAllClickHandler);
+        }
+        if (openModalForSelectionBtn && this.bulkSelectionClickHandler) {
+            openModalForSelectionBtn.removeEventListener('click', this.bulkSelectionClickHandler);
         }
     }    
 }

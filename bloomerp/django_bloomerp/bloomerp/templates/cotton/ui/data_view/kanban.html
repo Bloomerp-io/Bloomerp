@@ -18,15 +18,13 @@ TODO: This and dataview_kanban_cards need to be merged
 
 {% load bloomerp %}
 
-<div 
-    id="kanban-board-{{ content_type_id }}" 
+<c-ui.data_view.base_data_view 
+    component_name="kanban-board"
+    content_type_id="{{ content_type_id }}"
+    id="kanban-board-{{ content_type_id }}"
+    query_count="{{ count }}"
     class="kanban-board flex gap-4 overflow-x-auto pb-4 h-full min-h-[400px] focus:outline-none focus:border-0 focus:ring-0"
-    data-content-type-id="{{ content_type_id }}"
-    data-group-by-field="{{ group_by_field.field|default:'' }}"
-    data-group-by-field-id="{{ group_by_field.id|default:'' }}"
-
-    bloomerp-component="kanban-board"
-
+    :component_args="component_args"
 >
     {% if kanban_groups %}
         {% for group in kanban_groups %}
@@ -67,7 +65,7 @@ TODO: This and dataview_kanban_cards need to be merged
             </div>
         </div>
     {% endif %}
-</div>
+</c-ui.data_view.base_data_view>
 
 <style>
 /* Kanban specific styles */

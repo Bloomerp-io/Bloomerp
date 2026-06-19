@@ -33,6 +33,10 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             "kanban_groups": kanban_groups,
             "group_by_field": group_by_field,
             "kanban_page_querystring": self.build_page_querystring(self.state.request),
+            "component_args" : {
+                "data-group-by-field-id": getattr(self.options, "group_by_field_id", ""),
+                "data-group-by-field" : group_by_field.field if group_by_field else "",
+            }
         })
         return context
 

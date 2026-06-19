@@ -140,6 +140,33 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         // Optional subclass hook
     }
 
+    protected isFnNavigationModifier(event: KeyboardEvent): boolean {
+        return event.getModifierState("Fn");
+    }
+
+    protected getFnNavigationKey(event: KeyboardEvent): string | null {
+        const fnModifierActive = this.isFnNavigationModifier(event);
+        const isMacPlatform = navigator.platform.toLowerCase().includes("mac");
+
+        switch (event.key) {
+            case "ArrowLeft":
+            case "ArrowRight":
+            case "ArrowUp":
+            case "ArrowDown":
+                return fnModifierActive ? event.key : null;
+            case "Home":
+                return fnModifierActive || isMacPlatform ? "ArrowLeft" : null;
+            case "End":
+                return fnModifierActive || isMacPlatform ? "ArrowRight" : null;
+            case "PageUp":
+                return fnModifierActive || isMacPlatform ? "ArrowUp" : null;
+            case "PageDown":
+                return fnModifierActive || isMacPlatform ? "ArrowDown" : null;
+            default:
+                return null;
+        }
+    }
+
     protected shouldApplyFocusedItemClass(): boolean {
         return this.editMode;
     }
@@ -614,7 +641,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         this.rowElements[bounded]?.focus();
     }
 
-    protected focusFirstItemInRow(rowIndex: number): void {
+    public focusFirstItemInRow(rowIndex: number): void {
         const rowEl = this.rowElements[rowIndex];
         const itemEl = rowEl?.querySelector<HTMLElement>(this.getItemSelector());
         if (!itemEl) return;

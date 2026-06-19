@@ -238,21 +238,21 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         const key = event.key;
         const isMeta = event.metaKey || event.ctrlKey;
         const isAlt = event.altKey;
-        const isShift = event.shiftKey;
+        const fnNavigationKey = this.getFnNavigationKey(event);
 
-        if (isShift && this.isArrowKey(key)) {
+        if (fnNavigationKey && this.isArrowKey(fnNavigationKey)) {
             event.preventDefault();
 
             const allItems = this.getAllItems();
             if (allItems.length === 0) return;
 
             if (!this.currentItem || !allItems.includes(this.currentItem)) {
-                this.currentItem = key === "ArrowLeft" || key === "ArrowUp"
+                this.currentItem = fnNavigationKey === "ArrowLeft" || fnNavigationKey === "ArrowUp"
                     ? allItems[allItems.length - 1]
                     : allItems[0];
             }
 
-            const next = isMeta ? this.getEdgeItem(key) : this.findNextItem(key);
+            const next = isMeta ? this.getEdgeItem(fnNavigationKey) : this.findNextItem(fnNavigationKey);
             if (!next) return;
 
             this.focusReadModeItem(next);

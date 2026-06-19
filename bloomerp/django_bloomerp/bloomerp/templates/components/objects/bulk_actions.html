@@ -1,0 +1,57 @@
+{% load crispy_forms_tags %}
+
+<div class="space-y-5">
+    <div class="rounded-xl border border-gray-200 bg-base p-3">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <p class="text-sm font-semibold text-slate-900">{{ count }} {{ content_type.name }} object(s)</p>
+                <p class="text-xs text-slate-600">Using {{ selection_label }}.</p>
+            </div>
+        </div>
+        <div class="mt-3 space-y-1 text-xs text-slate-600">
+            {% if query_search %}
+                <p><span class="font-medium text-slate-800">Search:</span> {{ query_search }}</p>
+            {% endif %}
+            {% if query_summary %}
+                {% for key, values in query_summary %}
+                    <p><span class="font-medium text-slate-800">{{ key }}:</span> {{ values|join:", " }}</p>
+                {% endfor %}
+            {% else %}
+                <p>No filters applied.</p>
+            {% endif %}
+            {% if object_ids %}
+                <p><span class="font-medium text-slate-800">Selected ids:</span> {{ object_ids|join:", " }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if count == 0 %}
+        <div class="rounded-xl bg-warning-light p-3 text-sm text-warning-dark">
+            No objects match this bulk action.
+        </div>
+    {% elif not form.fields.application_field_id.choices %}
+        <div class="rounded-xl bg-warning-light p-3 text-sm text-warning-dark">
+            No editable fields are available for your permissions.
+        </div>
+    {% else %}
+        <form
+            hx-post="{{ submit_url }}"
+            hx-target="#bulk-actions-modal-body"
+            hx-swap="innerHTML"
+            method="post"
+            class="space-y-4"
+        >
+            {% csrf_token %}
+            {{ form.application_field_id|as_crispy_field }}
+            <div id="bulk-action-field-value">
+                {% if selected_field %}
+                    {% include "components/objects/bulk_action_field.html" with application_field=selected_field field=selected_field_value %}
+                {% endif %}
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="btn btn-secondary" bloomerp-close-modal="bulk-actions-modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Apply bulk action</button>
+            </div>
+        </form>
+    {% endif %}
+</div>

@@ -44,10 +44,11 @@ function createTooltipNode(text: string, shortcutLabel: string, position: Positi
         "border",
         "border-gray-200",
         "bg-white",
-        "px-3",
-        "py-2",
+        "px-2.5",
+        "py-1.5",
         "text-xs",
-        "text-gray-800",
+        "leading-none",
+        "text-gray-900",
         "shadow-sm",
         "pointer-events-none",
         "opacity-0",
@@ -83,7 +84,7 @@ function createTooltipNode(text: string, shortcutLabel: string, position: Positi
     }
 
     const shortcutNode = document.createElement("span");
-    shortcutNode.className = "inline-flex shrink-0 items-center rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 font-medium text-gray-600";
+    shortcutNode.className = "shrink-0 text-gray-500";
     shortcutNode.textContent = shortcutLabel;
     row.appendChild(shortcutNode);
 

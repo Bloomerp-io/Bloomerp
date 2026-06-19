@@ -1,0 +1,14 @@
+<div 
+    bloomerp-component="{{ component_name }}"
+    data-content-type-id="{{ content_type_id }}"
+    data-query-count="{{ query_count }}"
+    class="{{ class }}"
+    id="{{ id }}"
+    {% if component_args %}
+    {% for key, value in component_args.items %}
+    {{ key }}="{{ value }}"
+    {% endfor %}
+    {% endif %}
+    >
+    {{ slot }}
+</div>

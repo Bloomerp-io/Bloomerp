@@ -522,6 +522,12 @@ export abstract class BaseDataViewComponent extends BaseComponent {
 
                 }
 
+                // fn + shift + arrow key
+                if (event.shiftKey && event.key.startsWith("Arrow")) {
+                    console.log("Shift + fn + arrow key pressed, but no action defined.");
+                    return
+                }
+
             },
             { signal: abortController.signal },
         )

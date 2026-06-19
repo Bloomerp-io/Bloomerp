@@ -56,7 +56,7 @@
 
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
             <!--Filter-->
-            <div class="w-full sm:w-auto">
+            <div class="w-full sm:w-auto" data-data-view-button="filter">
                 <c-ui.shortcut_tooltip 
                     position="bottom" 
                     shortcut="mod+1"
@@ -92,48 +92,74 @@
             </div>
 
             <!--Add button-->
-            <c-ui.shortcut_tooltip 
-                position="bottom"
-                action="click"
-                shortcut="mod+2"
-                >
-                <button 
-                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
-                    data-dataview-add-button="true"
-                    hx-push-url="false"
-                    bloomerp-open-modal="create-object-modal"
-                    hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
-                    hx-target="#create-object-modal-body"
-                    hx-swap="innerHTML"
-                >
-                    <i class="fa fa-plus"></i>
-                    <span>Add</span>
-                </button>
-            </c-ui.shortcut_tooltip>
-            
+            <div data-data-view-button="add">    
+                <c-ui.shortcut_tooltip 
+                    position="bottom"
+                    action="click"
+                    shortcut="mod+2"
+                    >
+                    <button 
+                        class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+                        data-dataview-add-button="true"
+                        hx-push-url="false"
+                        bloomerp-open-modal="create-object-modal"
+                        hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
+                        hx-target="#create-object-modal-body"
+                        hx-swap="innerHTML"
+                    >
+                        <i class="fa fa-plus"></i>
+                        <span>Add</span>
+                    </button>
+                </c-ui.shortcut_tooltip>
+            </div>
+
+            <!--Bulk actions button-->
+            <div data-data-view-button="bulk-actions">
+                <c-ui.shortcut_tooltip position="bottom" shortcut="mod+3">
+                    <c-ui.dropdown.body 
+                        trigger_text="Bulk Actions"
+                        trigger_icon_class="fa fa-list-check"
+                        trigger_button_class="btn-secondary"
+                        size="sm"
+                        >
+                        <c-ui.dropdown.item 
+                            text="Use current selection"
+                            id="bulk-actions-selection-btn"
+                            />
+                        <c-ui.dropdown.item 
+                            text="Select all filtered" 
+                            id="bulk-actions-all-btn"
+                            />
+                    </c-ui.dropdown.body>
+                </c-ui.shortcut_tooltip>
+            </div>
+
             <!--Export button-->
-            <c-ui.shortcut_tooltip 
-                position="bottom"  
-                shortcut="mod+3">
-                <button 
-                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
-                    data-dataview-add-button="true"
-                    hx-push-url="false"
-                    bloomerp-open-modal="export-objects-modal"
-                    hx-get="{% url 'components_export_objects' content_type_id=content_type_id %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
-                    hx-target="#export-objects-modal-body"
-                    hx-swap="innerHTML"
-                >
-                    <i class="fa-solid fa-download"></i>
-                    Export
-                </button>
-            </c-ui.shortcut_tooltip>
+            <div data-data-view-button="export">
+                <c-ui.shortcut_tooltip 
+                    position="bottom"  
+                    shortcut="mod+4">
+                    <button 
+                        class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+                        data-dataview-add-button="true"
+                        hx-push-url="false"
+                        bloomerp-open-modal="export-objects-modal"
+                        hx-get="{% url 'components_export_objects' content_type_id=content_type_id %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
+                        hx-target="#export-objects-modal-body"
+                        hx-swap="innerHTML"
+                    >
+                        <i class="fa-solid fa-download"></i>
+                        Export
+                    </button>
+                </c-ui.shortcut_tooltip>
+            </div>
+            
 
             <!--Display options-->
-            <div class="w-full sm:w-auto">
+            <div class="w-full sm:w-auto" data-data-view-button="display-options">
                 <c-ui.shortcut_tooltip 
                     position="bottom" 
-                    shortcut="mod+4">
+                    shortcut="mod+5">
                     <c-ui.dropdown.body 
                         trigger_text="Display"
                         trigger_icon_class="fa fa-sliders"
@@ -160,13 +186,15 @@
             </div>
             
             <!--Select-->
-            <c-select_preference_button
-                type="list"
-                :content_type_id="content_type_id"
-                selected_preference_name="{{ preference.name }}"
-            />
-
-            <!--Context menu-->
+            <div data-data-view-button="select-preference">
+                <c-ui.shortcut_tooltip position="bottom" shortcut="mod+6">
+                    <c-select_preference_button
+                        type="list"
+                        :content_type_id="content_type_id"
+                        selected_preference_name="{{ preference.name }}"
+                    />
+                </c-ui.shortcut_tooltip>
+            </div>
         </div>
     </div>
 {% endif %}
@@ -179,7 +207,7 @@
                 {{ rendered_dataview|safe }}
             </div>
             <div class="w-1 cursor-col-resize bg-gray-200 hover:bg-gray-300 transition-colors" data-split-view-divider></div>
-            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane" data-split-view-detail-pane>
+            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane" data-split-view-detail-pane id="split-view-detail-pane">
                 <div class="flex items-center justify-center h-full text-gray-400">
                     <div class="text-center">
                         <c-icons.sidebar_right size="48" class="mx-auto mb-2 opacity-50"/>
@@ -280,6 +308,7 @@
     <c-ui.modal id="edit-object-modal" header_class="" title="Edit object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
     <c-ui.modal id="delete-object-modal" header_class="" title="Delete object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
     <c-ui.modal id="export-objects-modal" title="Export"/>
+    <c-ui.modal id="bulk-actions-modal" title="Bulk actions"/>
 
 </div>
 {% endif %}

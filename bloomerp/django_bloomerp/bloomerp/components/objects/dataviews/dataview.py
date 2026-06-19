@@ -1,3 +1,4 @@
+from itertools import count
 import json
 
 from django.forms import modelform_factory
@@ -53,6 +54,7 @@ class DataViewQueryState:
     queryset: QuerySet
     query: str | None
     renderer_context: dict
+    count: int = 0
 
 
 def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> DataViewQueryState | HttpResponse:
@@ -120,6 +122,7 @@ def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> 
         queryset=queryset,
         query=query,
         renderer_context=renderer_context,
+        count=queryset.count()
     )
 
 
@@ -499,6 +502,7 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'default_filters_json': json.dumps(
             _normalize_default_filters(state.preference.default_filters or {})
         ),
+        'count' : state.count,
     }
     context.update(state.renderer_context)
     context["rendered_dataview"] = _render_data_view_body(request, state, pagination, context)

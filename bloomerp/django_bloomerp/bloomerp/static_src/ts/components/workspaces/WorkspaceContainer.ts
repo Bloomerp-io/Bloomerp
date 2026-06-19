@@ -268,23 +268,14 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     }
 
     protected override handleReadModeKeyDown(event: KeyboardEvent): void {
-        if (!event.shiftKey || event.altKey || event.ctrlKey) return;
-        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+        const navigationKey = this.getFnNavigationKey(event);
+        if (!navigationKey || event.altKey || event.ctrlKey) return;
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(navigationKey)) return;
         if (this.items.length === 0) return;
 
         event.preventDefault();
 
-        if (event.key === "Home") {
-            this.focusItemByIndex(0);
-            return;
-        }
-
-        if (event.key === "End") {
-            this.focusItemByIndex(this.items.length - 1);
-            return;
-        }
-
-        const delta = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+        const delta = navigationKey === "ArrowLeft" || navigationKey === "ArrowUp" ? -1 : 1;
         this.focusItemByIndex(this.focusedItemIndex + delta);
     }
 

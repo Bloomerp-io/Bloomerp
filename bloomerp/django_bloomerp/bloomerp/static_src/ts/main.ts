@@ -61,6 +61,9 @@ import Breadcrumb from './components/Breadcrumb';
 import ResizableDiv from './components/ResizableDiv';
 import { DataViewDisplayOptions } from './components/data_view_components/DisplayOptions';
 
+import { openModal } from './utils/modals';
+import { closeModal } from './utils/modals';
+
 Object.assign(window, { showMessage });
 
 // Register components here
