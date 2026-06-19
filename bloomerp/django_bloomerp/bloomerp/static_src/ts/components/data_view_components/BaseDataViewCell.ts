@@ -6,6 +6,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
     // Optional runtime click override. When set, `click()` will call this
     // instead of performing the default navigation behaviour.
     public onClickOverride: ((cell: BaseDataViewCell) => boolean | void) | null = null;
+    public dataViewClickOverride: ((cell: BaseDataViewCell) => boolean | void) | null = null;
     public objectString: string | null = null;
     public objectId: string | null = null;
 
@@ -93,20 +94,30 @@ export abstract class BaseDataViewCell extends BaseComponent {
      * overwritten.
      */
     public click(target?: string | HTMLElement): void {
-        // If an override is provided, prefer that (useful for selection UIs).
-        if (this.onClickOverride) {
-            try {
-                const handled = this.onClickOverride(this);
-                if (handled !== false) {
-                    return;
-                }
-            } catch (err) {
-                console.error('onClickOverride error', err);
-                return;
-            }
-        }
+        if (this.handleClickOverride(this.onClickOverride, 'onClickOverride')) return;
+        if (this.handleClickOverride(this.dataViewClickOverride, 'dataViewClickOverride')) return;
 
         this.performDefaultClick(target);
+    }
+
+    private handleClickOverride(
+        override: ((cell: BaseDataViewCell) => boolean | void) | null,
+        name: string,
+    ): boolean {
+        if (!override) return false;
+
+        try {
+            const handled = override(this);
+            if (handled !== false) {
+                console.debug(`Click handled by ${name}`);
+                return true;
+            }
+        } catch (err) {
+            console.error(`${name} error`, err);
+            return true;
+        }
+
+        return false;
     }
 
     public getDetailUrl(): string {
@@ -132,7 +143,7 @@ export abstract class BaseDataViewCell extends BaseComponent {
         if (!this.element) return;
 
         // Click event
-        this.element.addEventListener('click', (event)=>{
+        this.element.addEventListener('dblclick', (event)=>{
             this.click()
         })
     }

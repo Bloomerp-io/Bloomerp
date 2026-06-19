@@ -2,118 +2,9 @@ import BaseComponent, { getComponent } from "./BaseComponent";
 import htmx from "htmx.org";
 import { formatFilterLabel, formatFilterTooltip } from "@/utils/filterLabels";
 
-export interface FilterEntryData {
-    field: string;
-    applicationFieldId: string | null;
-    operator: string | null;
-    value: string | string[] | null;
-    key?: string | null;
-}
-
-export class FilterEntry implements FilterEntryData {
-    public field: string;
-    public applicationFieldId: string | null;
-    public operator: string | null;
-    public value: string | string[] | null;
-    public key: string | null;
-
-    public constructor({ field, applicationFieldId, operator, value, key = null }: FilterEntryData) {
-        this.field = field;
-        this.applicationFieldId = applicationFieldId;
-        this.operator = operator;
-        this.value = value;
-        this.key = key;
-    }
-
-    public static from(entry: FilterEntry | FilterEntryData): FilterEntry {
-        return entry instanceof FilterEntry ? entry : new FilterEntry(entry);
-    }
-
-    public getFilterKey(): string {
-        if (this.key) {
-            return this.key;
-        }
-
-        if (this.operator) {
-            return `${this.field}__${this.operator}`;
-        }
-
-        return this.field;
-    }
-
-    public stringifyValue(): string {
-        if (Array.isArray(this.value)) {
-            return this.value.join(", ");
-        }
-
-        return String(this.value ?? "");
-    }
-
-}
-
-export type FilterBoxRemoveHandler = (filter: FilterEntry, filterBox: FilterBox) => void;
-
-export class FilterBox {
-    public filter: FilterEntry;
-    private removeHandler: FilterBoxRemoveHandler | null;
-    private element: HTMLElement | null = null;
-
-    public constructor(filter: FilterEntry | FilterEntryData, removeHandler: FilterBoxRemoveHandler | null = null) {
-        this.filter = FilterEntry.from(filter);
-        this.removeHandler = removeHandler;
-    }
-
-    public setHandleRemove(removeHandler: FilterBoxRemoveHandler): void {
-        this.removeHandler = removeHandler;
-    }
-
-    public render(): HTMLElement {
-        const filterKey = this.filter.getFilterKey();
-        const badge = document.createElement("span");
-        badge.className = "badge badge-primary";
-        badge.dataset.filterKey = filterKey;
-        badge.title = this.filter.key
-            ? `${filterKey} = ${this.filter.stringifyValue()}`
-            : formatFilterTooltip(this.filter.field, this.filter.operator, this.filter.value);
-
-        const removeButton = document.createElement("button");
-        removeButton.type = "button";
-        removeButton.className = "badge-remove";
-        removeButton.dataset.filterRemove = "true";
-        removeButton.setAttribute("aria-label", "Remove filter");
-        removeButton.innerHTML = '<i class="fa fa-x"></i>';
-        removeButton.addEventListener("click", (event) => this.handleRemove(event));
-
-        const label = document.createElement("span");
-        label.textContent = formatFilterLabel(this.filter.field, this.filter.operator, this.filter.value);
-
-        badge.appendChild(removeButton);
-        badge.appendChild(label);
-        this.element = badge;
-        return badge;
-    }
-
-    public handleRemove(event?: Event): void {
-        event?.preventDefault();
-        event?.stopPropagation();
-        if (this.removeHandler) {
-            this.removeHandler(this.filter, this);
-            return;
-        }
-
-        this.remove();
-    }
-
-    public remove(): void {
-        if (this.element) {
-            this.element.remove();
-            this.element = null;
-        }
-    }
-}
-
-type FilterEntryLike = FilterEntry | FilterEntryData;
-
+/**
+ * Labels
+ */
 export const LOOKUP_LABELS : Map<string, string> = new Map([
     ["exact", "is"],
     ["equals", "is"],
@@ -151,6 +42,234 @@ const RESERVED_FILTER_KEYS = new Set([
     "direction",
     "_component_id",
 ]);
+
+
+/**
+ * Data
+ */
+export interface FilterEntryData {
+    field: string;
+    applicationFieldId: string | null;
+    operator: string | null;
+    value: string | string[] | null;
+    key?: string | null;
+}
+
+
+export class FilterEntry implements FilterEntryData {
+    // Data
+    public field: string;
+    public applicationFieldId: string | null;
+    public operator: string | null;
+    public value: string | string[] | null;
+    public key: string | null;
+
+    // UI
+    private removeHandler: FilterEntryUIRemoveHandler | null;
+    private removable: boolean;
+
+    public constructor(
+        { field, applicationFieldId, operator, value, key = null }: FilterEntryData,
+        removeHandler: FilterEntryUIRemoveHandler | null = null,
+        removable: boolean = true
+    ) {
+        this.field = field;
+        this.applicationFieldId = applicationFieldId;
+        this.operator = operator;
+        this.value = value;
+        this.key = key;
+        this.removeHandler = removeHandler;
+        this.removable = removable;
+    }
+
+    public static from(entry: FilterEntry | FilterEntryData): FilterEntry {
+        return entry instanceof FilterEntry ? entry : new FilterEntry(entry);
+    }
+
+    public getFilterKey(): string {
+        if (this.key) {
+            return this.key;
+        }
+
+        if (this.operator) {
+            return `${this.field}__${this.operator}`;
+        }
+
+        return this.field;
+    }
+
+    public stringifyValue(): string {
+        if (Array.isArray(this.value)) {
+            return this.value.join(", ");
+        }
+
+        return String(this.value ?? "");
+    }
+
+    public setRemoveHandler(handler: FilterEntryUIRemoveHandler): void {
+        this.removeHandler = handler;
+    }
+
+    public setRemovable(removable: boolean): void {
+        this.removable = removable;
+    }
+
+    public render(): HTMLElement {
+        // Create the badge element
+        const filterKey = this.getFilterKey();
+        const badgeClass = this.removable ? "badge badge-primary" : "badge badge-neutral";
+
+        const badge = document.createElement("span");
+        badge.className = badgeClass;
+        badge.dataset.filterKey = filterKey;
+        badge.title = this.key
+            ? `${filterKey} = ${this.stringifyValue()}`
+            : formatFilterTooltip(this.field, this.operator, this.value);
+
+        if (this.removable) {
+            const removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.className = "badge-remove";
+            removeButton.dataset.filterRemove = "true";
+            removeButton.setAttribute("aria-label", "Remove filter");
+            removeButton.innerHTML = '<i class="fa fa-x"></i>';
+            removeButton.addEventListener("click", (event) => this.handleRemove(event));
+
+            badge.appendChild(removeButton);
+        }
+
+        const label = document.createElement("span");
+        label.textContent = formatFilterLabel(this.field, this.operator, this.value);
+        badge.appendChild(label);
+        return badge;
+    }
+
+    private handleRemove(event: Event): void {
+        event.preventDefault();
+        event.stopPropagation();
+        if (this.removeHandler) {
+            this.removeHandler(this);
+        }
+
+        (event.target as HTMLElement)?.closest("[data-filter-key]")?.remove();
+    }
+}
+
+export type FilterEntryUIRemoveHandler = (entry: FilterEntry) => void;
+
+
+export class FilterEntriesContainer {
+    // List of filter entries
+    private entries: FilterEntry[] = [];
+    private targetElement: HTMLElement;
+    private removable: boolean| null = null;
+    private savable: boolean| null = null;
+    private clearable: boolean| null = null;
+
+    // Handler for when a filter entry is removed
+    private removeHandler: (entry: FilterEntry) => void = () => {};
+    private clearAllHandler: (entries: FilterEntry[]) => void = () => {};
+    private saveFilterStateHandler: (entries: FilterEntry[]) => void = () => {};
+
+    constructor(
+        targetElement: HTMLElement, 
+        removeHandler: (entry: FilterEntry) => void = () => {},
+        clearAllHandler: (entries: FilterEntry[]) => void = () => {},
+        saveFilterStateHandler: (entries: FilterEntry[]) => void = () => {},
+        removable: boolean | null = null,
+        savable: boolean | null = null
+    ) {
+        this.targetElement = targetElement;
+        this.removeHandler = removeHandler;
+        this.clearAllHandler = clearAllHandler;
+        this.saveFilterStateHandler = saveFilterStateHandler;
+        this.removable = removable;
+        this.savable = savable;
+    }
+
+    public setFilters(entries: FilterEntry[]): void {
+        this.entries = entries;
+    }
+
+    public render() : void {
+        this.targetElement.innerHTML = '';
+        this.entries.forEach((entry) => {
+            entry.setRemoveHandler(this.removeHandler);
+
+            // If removable is not equal to null, set the entry's removable property to the container's removable property
+            if (this.removable !== null) {
+                entry.setRemovable(this.removable);
+            }
+
+            const element = entry.render();
+            this.targetElement.appendChild(element);
+        });
+
+        if (this.entries.length > 0 && (this.clearable ?? this.removable)) {
+            const clearAllButton = this.createClearAllButton();
+            this.targetElement.appendChild(clearAllButton);
+        }
+
+        if (this.entries.length > 0 && this.savable) {
+            const saveButton = this.createSaveButton();
+            this.targetElement.appendChild(saveButton);
+        }
+    }
+
+    private handleClearAll(event: Event): void {
+        event.preventDefault();
+        this.clearAllHandler(this.entries);
+        this.targetElement.innerHTML = '';
+        this.entries = [];
+    }
+
+    private createClearAllButton(): HTMLElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "badge badge-neutral";
+        button.textContent = "Clear all";
+        button.addEventListener("click", (event) => {
+            this.handleClearAll(event);
+        });
+        return button;
+    }
+
+    private createSaveButton(): HTMLElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "badge badge-neutral";
+        button.textContent = "Save";
+        button.addEventListener("click", (event) => {
+            this.handleSave(event);
+        });
+        return button;
+    }
+
+    public setRemovable(removable: boolean): void {
+        this.removable = removable;
+    }
+
+    public setSavable(savable: boolean): void {
+        this.savable = savable;
+    }
+
+    public setClearable(clearable: boolean): void {
+        this.clearable = clearable;
+    }
+
+    private handleSave(event: Event): void {
+        event.preventDefault();
+        this.saveFilterStateHandler(this.entries);
+    }
+
+    public setSaveHandler(handler: (entries: FilterEntry[]) => void): void {
+        this.saveFilterStateHandler = handler;
+    }
+
+}
+
+type FilterEntryLike = FilterEntry | FilterEntryData;
+
 
 export default class FilterContainer extends BaseComponent {
     private static readonly MAX_ADVANCED_RELATION_DEPTH = 2;
@@ -976,6 +1095,7 @@ export default class FilterContainer extends BaseComponent {
     }
 
 }
+
 
 /**
  * Function that parses the filters from the

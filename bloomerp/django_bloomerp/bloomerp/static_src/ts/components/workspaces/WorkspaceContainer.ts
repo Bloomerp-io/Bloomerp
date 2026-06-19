@@ -6,7 +6,7 @@ import WorkspaceTile from "./WorkspaceTile";
 import getGeneralModal from "@/utils/modals";
 import BaseWizard from "../BaseWizard";
 import { Drawer } from "../Drawer";
-import FilterContainer, { FilterBox, getFiltersFromUrl } from "../Filters";
+import FilterContainer, { FilterEntriesContainer, getFiltersFromUrl } from "../Filters";
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
     private workspaceApplyFiltersHandler: ((event: Event) => void) | null = null;
@@ -20,7 +20,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             ?.querySelector<HTMLElement>("[data-workspace-apply-filters]")
             ?.addEventListener("click", this.workspaceApplyFiltersHandler);
 
-        this.renderWorkspaceFilterBoxes();
+        this.renderWorkspaceFilters();
     }
 
     protected override shouldApplyFocusedItemClass(): boolean {
@@ -133,42 +133,34 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         nextParams.delete("page");
         this.workspaceFilterParams = nextParams;
         this.syncWorkspaceUrl();
-        this.renderWorkspaceFilterBoxes();
+        this.renderWorkspaceFilters();
         void this.reloadWorkspaceTiles();
         this.resetWorkspaceFilterSection();
     }
 
-    private renderWorkspaceFilterBoxes(): void {
+    private renderWorkspaceFilters(): void {
         const filterSection = this.element?.querySelector<HTMLElement>("[data-layout-header-section-2]");
         if (!filterSection) return;
 
-        filterSection.querySelector<HTMLElement>("[data-workspace-applied-filters]")?.remove();
-
         const filters = getFiltersFromUrl(this.workspaceFilterParams);
         if (filters.length === 0) {
+            filterSection.innerHTML = "";
             return;
         }
 
-        const filterList = document.createElement("div");
-        filterList.className = "flex flex-wrap gap-2 items-center";
-        filterList.dataset.workspaceAppliedFilters = "true";
-
-        filters.forEach((filter) => {
-            const filterBox = new FilterBox(filter, (removedFilter, box) => {
-                box.remove();
-                this.removeWorkspaceFilter(removedFilter.getFilterKey());
-            });
-            filterList.appendChild(filterBox.render());
-        });
-
-        filterSection.appendChild(filterList);
+        const filterUIContainer = new FilterEntriesContainer(
+            filterSection,
+            (entry) => this.removeWorkspaceFilter(entry.getFilterKey())
+        );
+        filterUIContainer.setFilters(filters);
+        filterUIContainer.render();
     }
 
     private removeWorkspaceFilter(filterKey: string): void {
         this.workspaceFilterParams.delete(filterKey);
         this.workspaceFilterParams.delete("page");
         this.syncWorkspaceUrl();
-        this.renderWorkspaceFilterBoxes();
+        this.renderWorkspaceFilters();
         void this.reloadWorkspaceTiles();
         this.resetWorkspaceFilterSection();
     }
@@ -276,23 +268,14 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     }
 
     protected override handleReadModeKeyDown(event: KeyboardEvent): void {
-        if (!event.shiftKey || event.altKey || event.ctrlKey) return;
-        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+        const navigationKey = this.getFnNavigationKey(event);
+        if (!navigationKey || event.altKey || event.ctrlKey) return;
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(navigationKey)) return;
         if (this.items.length === 0) return;
 
         event.preventDefault();
 
-        if (event.key === "Home") {
-            this.focusItemByIndex(0);
-            return;
-        }
-
-        if (event.key === "End") {
-            this.focusItemByIndex(this.items.length - 1);
-            return;
-        }
-
-        const delta = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+        const delta = navigationKey === "ArrowLeft" || navigationKey === "ArrowUp" ? -1 : 1;
         this.focusItemByIndex(this.focusedItemIndex + delta);
     }
 

@@ -7,8 +7,8 @@
 <div bloomerp-component="document-template-builder" id="{{ id }}"
     data-catalog-url="{% url 'components_document_template_builder_catalog' %}">
     <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <section class="min-w-0 my-4">
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-slate-50 xl:min-h-[92vh]">
+        <section class="min-w-0">
+            <div class="overflow-hidden bg-slate-50 xl:min-h-[92vh]">
                 <div class="flex p-4 gap-2 justify-center">
                     <button class="btn btn-primary btn-sm">Save</button>
                     <div id="buttons-section" class="flex gap-2"></div>
@@ -28,7 +28,7 @@
                 <!--End Page container-->
             </div>
         </section>
-        <aside class="my-4 rounded-xl border border-gray-200 bg-slate-50 p-4" x-data="{ activeSection: 'variables' }">
+        <aside class= bg-slate-50 p-4" x-data="{ activeSection: 'variables' }">
             <div class="flex flex-wrap gap-2 mb-4">
                 <button class="btn btn-sm transition-colors" type="button" @click="activeSection = 'variables'"
                     :class="activeSection === 'variables' ? 'bg-black text-white' : 'bg-white text-slate-700'"

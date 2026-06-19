@@ -7,9 +7,9 @@ Parameters:
 - content_type_id (int): The content type ID for the model being displayed.
 - queryset (QuerySet): The Django queryset containing the records to be displayed.
 - preference (UserListViewPreference): The user's view preferences.
-- calendar_start_field (ApplicationField): The field representing the start date.
-- calendar_end_field (ApplicationField, optional): The field representing the end date.
-- calendar_view_mode (CalendarViewMode): The calendar view mode (DAY, WEEK, MONTH).
+- start_field (ApplicationField): The field representing the start date.
+- end_field (ApplicationField, optional): The field representing the end date.
+- view_mode (view mode): The calendar view mode (DAY, WEEK, MONTH).
 - calendar_events_by_date (dict): Events grouped by date.
 - calendar_current_date (date): The current date being displayed.
 - calendar_page_offset (int): The page offset for navigation.
@@ -23,13 +23,13 @@ Parameters:
 <div 
     class="flex flex-col h-full bg-white rounded-xl border border-gray-200 overflow-hidden"
     data-content-type-id="{{ content_type_id }}"
-    data-view-mode="{{ calendar_view_mode|default:'month' }}"
+    data-view-mode="{{ view_mode|default:'month' }}"
     data-page-offset="{{ calendar_page_offset|default:0 }}"
     data-url="{% url 'components_data_view' content_type_id=content_type_id %}"
 
     bloomerp-component="calendar"
 >
-    {% if not calendar_start_field %}
+    {% if not start_field %}
         <!-- Empty state: no start field selected -->
         <div class="flex-1 flex items-center justify-center text-gray-400">
             <div class="text-center">
@@ -70,9 +70,9 @@ Parameters:
 
             <!-- Current Date Title -->
             <div class="text-lg font-semibold text-gray-900">
-                {% if calendar_view_mode == 'day' %}
+                {% if view_mode == 'day' %}
                     {{ calendar_current_date|date:"l, F j, Y" }}
-                {% elif calendar_view_mode == 'week' %}
+                {% elif view_mode == 'week' %}
                     {{ calendar_date_range.start|date:"M j" }} – {{ calendar_date_range.end|date:"M j, Y" }}
                 {% else %}
                     {{ calendar_current_date|date:"F Y" }}
@@ -85,7 +85,7 @@ Parameters:
 
         <!-- Calendar Body -->
         <div class="calendar-body flex-1 overflow-auto">
-            {% if calendar_view_mode == 'month' %}
+            {% if view_mode == 'month' %}
                 <!-- Month View -->
                 <div class="h-full flex flex-col">
                     <!-- Day Headers -->
@@ -142,7 +142,7 @@ Parameters:
                     </div>
                 </div>
 
-            {% elif calendar_view_mode == 'week' %}
+            {% elif view_mode == 'week' %}
                 <!-- Week View -->
                 <div class="h-full flex flex-col">
                     <!-- Day Headers -->
@@ -215,7 +215,7 @@ Parameters:
                     </div>
                 </div>
 
-            {% elif calendar_view_mode == 'day' %}
+            {% elif view_mode == 'day' %}
                 <!-- Day View -->
                 <div class="h-full flex flex-col overflow-y-auto">
                     <div class="flex-1 min-h-[1200px]" data-calendar-grid>

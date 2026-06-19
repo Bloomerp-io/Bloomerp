@@ -1,4 +1,4 @@
-from bloomerp.models.users.user_list_view_preference import ViewType
+from bloomerp.models.users.user_list_view_preference import ViewTypeEnum
 
 
 from django import forms
@@ -16,6 +16,6 @@ class DataViewTileForm(Form):
 
     view_type = forms.ChoiceField(
         label=_("View Type"),
-        choices=ViewType.choices,
+        choices=ViewTypeEnum.choices(),
         required=True,
     )

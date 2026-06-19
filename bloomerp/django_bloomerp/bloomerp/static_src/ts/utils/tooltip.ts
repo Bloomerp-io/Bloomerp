@@ -10,28 +10,28 @@ type CleanupFn = () => void;
 
 function getTooltipMarkup(title: string, text: string, position: TooltipPosition): string {
     const content = `
-        ${title ? `<div class="font-semibold mb-1">${title}</div>` : ""}
+        ${title ? `<div class="font-medium">${title}</div>` : ""}
         ${text ? `<div>${text}</div>` : ""}
     `;
 
     switch (position) {
         case "bottom":
             return `
-                <div class="absolute top-full left-1/2 mt-1 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
+                <div class="absolute top-full left-1/2 mt-1 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs leading-none text-gray-900 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
                     ${content}
                     <div class="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-t border-l border-gray-200 bg-white"></div>
                 </div>
             `;
         case "left":
             return `
-                <div class="absolute right-full top-1/2 mr-1 -translate-y-1/2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
+                <div class="absolute right-full top-1/2 mr-1 -translate-y-1/2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs leading-none text-gray-900 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
                     ${content}
                     <div class="absolute right-0 top-1/2 h-2 w-2 translate-x-1/2 -translate-y-1/2 rotate-45 border-t border-r border-gray-200 bg-white"></div>
                 </div>
             `;
         case "right":
             return `
-                <div class="absolute left-full top-1/2 ml-1 -translate-y-1/2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
+                <div class="absolute left-full top-1/2 ml-1 -translate-y-1/2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs leading-none text-gray-900 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
                     ${content}
                     <div class="absolute left-0 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-l border-gray-200 bg-white"></div>
                 </div>
@@ -39,7 +39,7 @@ function getTooltipMarkup(title: string, text: string, position: TooltipPosition
         case "top":
         default:
             return `
-                <div class="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
+                <div class="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs leading-none text-gray-900 opacity-0 invisible transition-all duration-150 group-hover:opacity-100 group-hover:visible z-50 w-max max-w-64 whitespace-normal break-words text-left pointer-events-none shadow-sm">
                     ${content}
                     <div class="absolute bottom-0 left-1/2 h-2 w-2 -translate-x-1/2 translate-y-1/2 rotate-45 border-b border-r border-gray-200 bg-white"></div>
                 </div>

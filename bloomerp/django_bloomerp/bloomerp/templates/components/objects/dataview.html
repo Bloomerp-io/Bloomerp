@@ -1,60 +1,21 @@
 {% load bloomerp %}
 {% load crispy_forms_tags %}
 
-<!--Applied filters-->
-{% if request.htmx.target == 'data-view-data-section' %}
-<div hx-swap-oob="innerHTML" id="applied-filters-{{ content_type_id }}">
-    {% if applied_filters %}
-        <div class="flex flex-wrap gap-2 items-center">
-            {% for filter in applied_filters %}
-                <c-ui.tooltip text="{{ filter.tooltip }}">
-                    <span class="badge badge-primary" data-filter-key="{{ filter.key }}">
-                        <button type="button" class="badge-remove" data-filter-remove="true" aria-label="Remove filter">
-                            <i class="fa fa-x"></i>
-                        </button>
-                        <span>{{ filter.label }}</span>
-                    </span>
-                </c-ui.tooltip>
-            {% endfor %}
-            <button type="button" class="badge badge-neutral badge-sm" data-clear-filters="true">
-                Clear all
-            </button>
-        </div>
-    {% endif %}
-</div>
-{% endif %}
-<!--End applied filters-->
-
-
-<!--Options-->
-<div id="data-table-display-options-{{ content_type_id }}" class="p-2" hx-swap-oob="true">
-    <c-ui.data_view.display_options 
-        :content_type_id="content_type_id"
-        :view_types="view_types"
-        :preference="preference"
-        :fields="fields"
-        :page_types="page_types"
-        :page_sizes="page_sizes"
-        :accessible_fields="accessible_fields"
-        :calendar_view_modes="calendar_view_modes"
-    />
-</div>
-<!--End options-->
-
-
 {% if not request.htmx.target == 'data-view-data-section' %}
 <div 
     id="data-view-{{ content_type_id }}"
     data-view-type="{{ preference.view_type }}"
     data-content-type-id="{{ content_type_id }}"
     data-render-id="{{ render_id }}"
-    data-url="{{ request.get_full_path }}"
-    data-base-url="{{ request.path }}"
+    data-url="{{ data_view_url }}"
+    data-base-url="{{ data_view_base_url }}"
     data-full-create-url="{{ full_create_url|default:'' }}"
     data-sync-url="{{ sync_url|yesno:'true,false' }}"
+    data-preference-id="{{ preference.pk }}"
     class="flex flex-col"
     bloomerp-component="{{ component_id | default:'dataview-container' }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
+    data-default-filters='{{ default_filters_json }}'
 
     {% if component_args %}
     {% for arg, value in component_args.items %}
@@ -82,40 +43,20 @@
                         value="{{ search_query }}"
                         placeholder="Search..."
                         class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-                        hx-get="{% url 'components_data_view' content_type_id=content_type_id %}{% if search_querystring %}?{{ search_querystring }}{% endif %}"
-                        hx-trigger="keyup changed delay:200ms"
-                        hx-target="#data-view-data-section"
-                        hx-swap="outerHTML"
-                        hx-animation-target="#data-table-body-{{ content_type_id }}"
                         id="data-view-search-input-{{ content_type_id }}"
                     />
                 </div>
             </c-ui.shortcut_tooltip>
 
-            <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex-1">
-                {% if applied_filters %}
-                    <div class="flex flex-wrap gap-2 items-center">
-                        {% for filter in applied_filters %}
-                            <c-ui.tooltip text="{{ filter.tooltip }}">
-                                <span class="badge badge-primary" data-filter-key="{{ filter.key }}">
-                                    <button type="button" class="badge-remove" data-filter-remove="true" aria-label="Remove filter">
-                                        <i class="fa fa-x"></i>
-                                    </button>
-                                    <span>{{ filter.label }}</span>
-                                </span>
-                            </c-ui.tooltip>
-                        {% endfor %}
-                        <button type="button" class="badge badge-neutral badge-sm" data-clear-filters="true">
-                            Clear all
-                        </button>
-                    </div>
-                {% endif %}
-            </div>
+            <!--Applied filters-->
+            <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex gap-2" data-applied-filters-section></div>
+            <!--End applied filters-->
+
         </div>
 
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
             <!--Filter-->
-            <div class="w-full sm:w-auto">
+            <div class="w-full sm:w-auto" data-data-view-button="filter">
                 <c-ui.shortcut_tooltip 
                     position="bottom" 
                     shortcut="mod+1"
@@ -151,48 +92,74 @@
             </div>
 
             <!--Add button-->
-            <c-ui.shortcut_tooltip 
-                position="bottom"
-                action="click"
-                shortcut="mod+2"
-                >
-                <button 
-                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
-                    data-dataview-add-button="true"
-                    hx-push-url="false"
-                    bloomerp-open-modal="create-object-modal"
-                    hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
-                    hx-target="#create-object-modal-body"
-                    hx-swap="innerHTML"
-                >
-                    <i class="fa fa-plus"></i>
-                    <span>Add</span>
-                </button>
-            </c-ui.shortcut_tooltip>
-            
+            <div data-data-view-button="add">    
+                <c-ui.shortcut_tooltip 
+                    position="bottom"
+                    action="click"
+                    shortcut="mod+2"
+                    >
+                    <button 
+                        class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+                        data-dataview-add-button="true"
+                        hx-push-url="false"
+                        bloomerp-open-modal="create-object-modal"
+                        hx-get="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
+                        hx-target="#create-object-modal-body"
+                        hx-swap="innerHTML"
+                    >
+                        <i class="fa fa-plus"></i>
+                        <span>Add</span>
+                    </button>
+                </c-ui.shortcut_tooltip>
+            </div>
+
+            <!--Bulk actions button-->
+            <div data-data-view-button="bulk-actions">
+                <c-ui.shortcut_tooltip position="bottom" shortcut="mod+3">
+                    <c-ui.dropdown.body 
+                        trigger_text="Bulk Actions"
+                        trigger_icon_class="fa fa-list-check"
+                        trigger_button_class="btn-secondary"
+                        size="sm"
+                        >
+                        <c-ui.dropdown.item 
+                            text="Use current selection"
+                            id="bulk-actions-selection-btn"
+                            />
+                        <c-ui.dropdown.item 
+                            text="Select all filtered" 
+                            id="bulk-actions-all-btn"
+                            />
+                    </c-ui.dropdown.body>
+                </c-ui.shortcut_tooltip>
+            </div>
+
             <!--Export button-->
-            <c-ui.shortcut_tooltip 
-                position="bottom"  
-                shortcut="mod+3">
-                <button 
-                    class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
-                    data-dataview-add-button="true"
-                    hx-push-url="false"
-                    bloomerp-open-modal="export-objects-modal"
-                    hx-get="{% url 'components_export_objects' content_type_id=content_type_id %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
-                    hx-target="#export-objects-modal-body"
-                    hx-swap="innerHTML"
-                >
-                    <i class="fa-solid fa-download"></i>
-                    Export
-                </button>
-            </c-ui.shortcut_tooltip>
+            <div data-data-view-button="export">
+                <c-ui.shortcut_tooltip 
+                    position="bottom"  
+                    shortcut="mod+4">
+                    <button 
+                        class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+                        data-dataview-add-button="true"
+                        hx-push-url="false"
+                        bloomerp-open-modal="export-objects-modal"
+                        hx-get="{% url 'components_export_objects' content_type_id=content_type_id %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
+                        hx-target="#export-objects-modal-body"
+                        hx-swap="innerHTML"
+                    >
+                        <i class="fa-solid fa-download"></i>
+                        Export
+                    </button>
+                </c-ui.shortcut_tooltip>
+            </div>
+            
 
             <!--Display options-->
-            <div class="w-full sm:w-auto">
+            <div class="w-full sm:w-auto" data-data-view-button="display-options">
                 <c-ui.shortcut_tooltip 
                     position="bottom" 
-                    shortcut="mod+4">
+                    shortcut="mod+5">
                     <c-ui.dropdown.body 
                         trigger_text="Display"
                         trigger_icon_class="fa fa-sliders"
@@ -209,11 +176,8 @@
                             :view_types="view_types"
                             :preference="preference"
                             :fields="fields"
-                            :page_types="page_types"
-                            :page_sizes="page_sizes"
                             :accessible_fields="accessible_fields"
                             :csrf_token="csrf_token"
-                            :calendar_view_modes="calendar_view_modes"
                         />
                     </div>
                     
@@ -222,13 +186,15 @@
             </div>
             
             <!--Select-->
-            <c-select_preference_button
-                type="list"
-                :content_type_id="content_type_id"
-                selected_preference_name="{{ preference.name }}"
-            />
-
-            <!--Context menu-->
+            <div data-data-view-button="select-preference">
+                <c-ui.shortcut_tooltip position="bottom" shortcut="mod+6">
+                    <c-select_preference_button
+                        type="list"
+                        :content_type_id="content_type_id"
+                        selected_preference_name="{{ preference.name }}"
+                    />
+                </c-ui.shortcut_tooltip>
+            </div>
         </div>
     </div>
 {% endif %}
@@ -238,41 +204,10 @@
         {% if preference.split_view_enabled %}
         <div class="flex h-[calc(100vh-200px)] rounded-xl" data-split-view-container>
             <div class="flex-none resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane" data-split-view-list-pane>
-                {% if preference.view_type == 'table' %}
-                <c-ui.data_view.table 
-                        :content_type_id="content_type_id" 
-                        :fields="data_view_render_fields"
-                        :avatar_field="avatar_field"
-                        :queryset="queryset"
-                        :preference="preference"
-                        :current_sort_field="current_sort_field"
-                        :current_sort_direction="current_sort_direction"
-                        :table_sort_querystring="table_sort_querystring"
-                        :actions="{{ object_actions }}"
-                    />
-                {% elif preference.view_type == 'kanban' %}
-                    <c-ui.data_view.kanban 
-                        :content_type_id="content_type_id" 
-                        :fields="data_view_render_fields"
-                        :avatar_field="avatar_field"
-                        :queryset="queryset"
-                        :preference="preference"
-                        :kanban_groups="kanban_groups"
-                        :kanban_group_by_field="kanban_group_by_field"
-                    />
-                {% elif preference.view_type == 'card' %}
-                    <c-ui.data_view.card
-                        :content_type_id="content_type_id"
-                        :fields="data_view_render_fields"
-                        :avatar_field="avatar_field"
-                        :queryset="queryset"
-                    />
-                {% elif preference.view_type == 'calendar' %}
-                    <c-ui.data_view.calendar />
-                {% endif %}
+                {{ rendered_dataview|safe }}
             </div>
             <div class="w-1 cursor-col-resize bg-gray-200 hover:bg-gray-300 transition-colors" data-split-view-divider></div>
-            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane" data-split-view-detail-pane>
+            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane" data-split-view-detail-pane id="split-view-detail-pane">
                 <div class="flex items-center justify-center h-full text-gray-400">
                     <div class="text-center">
                         <c-icons.sidebar_right size="48" class="mx-auto mb-2 opacity-50"/>
@@ -282,37 +217,7 @@
             </div>
         </div>
         {% else %}
-            {% if preference.view_type == 'table' %}
-                <c-ui.data_view.table 
-                    :content_type_id="content_type_id" 
-                    :fields="data_view_render_fields"
-                    :avatar_field="avatar_field"
-                    :queryset="queryset"
-                    :preference="preference"
-                    :current_sort_field="current_sort_field"
-                    :current_sort_direction="current_sort_direction"
-                    :table_sort_querystring="table_sort_querystring"
-                />
-            {% elif preference.view_type == 'kanban' %}
-                <c-ui.data_view.kanban 
-                    :content_type_id="content_type_id" 
-                    :fields="data_view_render_fields"
-                    :avatar_field="avatar_field"
-                    :kanban_groups="kanban_groups"
-                    :kanban_group_by_field="kanban_group_by_field"
-                />
-            {% elif preference.view_type == 'card' %}
-                <c-ui.data_view.card
-                    :content_type_id="content_type_id"
-                    :fields="data_view_render_fields"
-                    :avatar_field="avatar_field"
-                    :queryset="queryset"
-                />
-            {% elif preference.view_type == 'calendar' %}
-                <c-ui.data_view.calendar 
-                    view_type="week"
-                />
-            {% endif %}
+            {{ rendered_dataview|safe }}
         {% endif %}
 
         {% if show_global_pagination and page_obj.paginator.num_pages > 1 %}
@@ -403,6 +308,7 @@
     <c-ui.modal id="edit-object-modal" header_class="" title="Edit object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
     <c-ui.modal id="delete-object-modal" header_class="" title="Delete object" body_class="" footer_class="" footer_slot="" size=""></c-ui.modal>
     <c-ui.modal id="export-objects-modal" title="Export"/>
+    <c-ui.modal id="bulk-actions-modal" title="Bulk actions"/>
 
 </div>
 {% endif %}

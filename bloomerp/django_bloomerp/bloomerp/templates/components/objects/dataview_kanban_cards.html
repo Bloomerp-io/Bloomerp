@@ -5,11 +5,8 @@
     class="kanban-card bg-white rounded-xl border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
     draggable="true"
     data-object-id="{{ object.pk }}"
-    hx-get="{{ object.get_absolute_url }}"
-    hx-target="#main-content"
-    hx-swap="innerHTML"
-    hx-trigger="click"
-    hx-push-url="true"
+    data-detail-url="{{ object.get_absolute_url }}"
+    data-object-string="{{ object }}"
     bloomerp-component="kanban-card"
 >
     <div class="mb-2 flex items-center gap-2">
@@ -19,6 +16,10 @@
         <div class="min-w-0 flex-1 font-medium text-gray-900 text-sm truncate" title="{{ object }}">
             {{ object }}
         </div>
+        <c-ui.data_view.checkbox 
+            object_id="{{ object.pk }}"
+            content_type_id="{{ content_type_id }}"
+            />
     </div>
 
     <div class="space-y-1">
@@ -46,7 +47,7 @@
 <div
     class="py-3 text-center text-xs text-gray-400"
     data-kanban-column-loader
-    hx-get="{% url 'components_data_view_kanban_column' content_type_id=content_type_id %}{% if kanban_page_querystring %}?{{ kanban_page_querystring }}&{% else %}?{% endif %}kanban_column={{ group.request_value|urlencode }}&kanban_page={{ group.next_page_number }}"
+    hx-get="{% url 'components_data_view_action' content_type_id=content_type_id action='column' %}{% if kanban_page_querystring %}?{{ kanban_page_querystring }}&{% else %}?{% endif %}kanban_column={{ group.request_value|urlencode }}&kanban_page={{ group.next_page_number }}"
     hx-trigger="intersect once"
     hx-target="this"
     hx-swap="outerHTML"

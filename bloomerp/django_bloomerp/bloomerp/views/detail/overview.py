@@ -172,4 +172,8 @@ class BloomerpDetailOverviewView(BloomerpLayoutFormMixin, BaseBloomerpDetailView
         self.object = self.get_object()
         context = super().get_context_data(**kwargs)
         context["content_type_id"] = self.get_layout_content_type_id()
+        
+        if self.request.htmx and self.request.htmx.target == "data-table-detail-pane":
+            context["form_hx_target"] = "#data-table-detail-pane"
+        
         return context

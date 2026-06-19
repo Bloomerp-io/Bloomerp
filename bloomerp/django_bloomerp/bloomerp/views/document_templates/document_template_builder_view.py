@@ -123,6 +123,7 @@ def parse_free_variables_json(raw_value: str) -> list[dict[str, Any]]:
 class DocumentTemplateBuilderContextMixin:
     template_name = "document_template_views/build_document_template.html"
     model = DocumentTemplate
+    htmx_include_addendum_padding = False
 
     def get_object(self) -> DocumentTemplate | None:
         pk = self.kwargs.get("pk")

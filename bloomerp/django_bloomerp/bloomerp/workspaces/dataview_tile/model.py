@@ -4,14 +4,14 @@ from typing import Self
 from django.utils.translation import gettext_lazy as _
 from pydantic import BaseModel, Field
 
-from bloomerp.models.users.user_list_view_preference import UserListViewPreference, ViewType
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference, ViewTypeEnum
 
 from bloomerp.workspaces.base import BaseTileConfig, TileOperationDefinition, TileOperationHandler, TileOperationHandlerRespone
 
 
 class DataViewTileConfig(BaseTileConfig):
     content_type_id:int | None = None
-    view_type:str = ViewType.TABLE
+    view_type:str = ViewTypeEnum.TABLE.value.key
     fields:list[int] = Field(default_factory=list)
     opts:dict = Field(default_factory=dict)
 
@@ -19,7 +19,7 @@ class DataViewTileConfig(BaseTileConfig):
     def get_default(cls, *args, **kwargs) -> Self:
         return cls(
             content_type_id=kwargs.get("content_type_id"),
-            view_type=kwargs.get("view_type") or ViewType.TABLE,
+            view_type=kwargs.get("view_type") or ViewTypeEnum.TABLE.value.key,
             fields=list(kwargs.get("fields") or []),
             opts=dict(kwargs.get("opts") or {}),
         )
@@ -52,15 +52,10 @@ def build_preview_preference(
     return UserListViewPreference(
         user=base_preference.user,
         content_type=base_preference.content_type,
-        page_size=base_preference.page_size,
-        page_type=base_preference.page_type,
         view_type=config.view_type,
         split_view_enabled=base_preference.split_view_enabled,
-        kanban_group_by_field=base_preference.kanban_group_by_field,
-        calendar_start_field=base_preference.calendar_start_field,
-        calendar_end_field=base_preference.calendar_end_field,
-        calendar_view_mode=base_preference.calendar_view_mode,
         display_fields=display_fields,
+        options={config.view_type: dict(config.opts or {})},
     )
     
 class SetContentTypeIdOperation(BaseModel):
@@ -70,7 +65,7 @@ class SetContentTypeIdHandler(TileOperationHandler):
     @staticmethod
     def handle(config:DataViewTileConfig, data:SetContentTypeIdOperation):
         config.content_type_id = data.content_type_id
-        config.view_type = ViewType.TABLE
+        config.view_type = ViewTypeEnum.TABLE.value.key
         config.fields = []
         config.opts = {}
 
@@ -87,7 +82,7 @@ class SetViewTypeOperation(BaseModel):
 class SetViewTypeHandler(TileOperationHandler):
     @staticmethod
     def handle(config: DataViewTileConfig, data: SetViewTypeOperation):
-        if data.view_type not in ViewType.values:
+        if data.view_type not in ViewTypeEnum.values():
             return TileOperationHandlerRespone(
                 config,
                 _("Invalid view type"),

@@ -11,10 +11,11 @@ Parameters:
 {% load bloomerp %}
 {% load i18n %}
 
-<div 
+<c-ui.data_view.base_data_view 
+    component_name="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
+    content_type_id="{{ content_type_id }}"
     class="rounded-xl border border-b-0 border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
-    bloomerp-component="{% if component_name %}{{ component_name }}{% else %}datatable{% endif %}"
-    data-content-type-id="{{ content_type_id }}"
+    query_count="{{ count }}"
     >
     <table 
         id="data-table-{{ content_type_id }}" 
@@ -22,6 +23,9 @@ Parameters:
         >
         <thead>
             <tr>
+                <th>
+                    <c-ui.data_view.checkbox :all="True"/>
+                </th>
                 {% if avatar_field %}
                 <th class="w-14">
                     <span class="sr-only">{{ avatar_field.title }}</span>
@@ -58,43 +62,49 @@ Parameters:
         </thead>
         <tbody id="data-table-body-{{ content_type_id }}">
             {% if queryset %}
-            {% for object in queryset %}
-            <tr
-                class="cursor-pointer"
-            >   
-                {% if avatar_field %}
-                <td
-                    class="cursor-context-menu w-14"
-                    data-dropdown="cell-menu"
-                    data-column-index="0"
-                    data-row-index="{{ forloop.counter0 }}"
-                    data-value=""
-                    data-object-id="{{ object.pk }}"
-                    data-object-string="{{ object }}"
-                    data-application-field-id="{{ avatar_field.id }}"
-                    data-application-field-name="{{ avatar_field.field }}"
-                    data-detail-url="{{ object.get_absolute_url }}"
-                    bloomerp-component="datatable-cell"
-                >
-                    <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover" />
-                </td>
-                {% endif %}
-                {% for field in fields %}
-                    {% if avatar_field %}
-                        {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0|add:1 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
-                    {% else %}
-                        {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
-                    {% endif %}
-                {% endfor %}
-                {% if object_actions %}
-                    <td class="w-32 whitespace-nowrap">
-                        {% for action in object_actions %}
-                            {% render_object_action action=action object=object request=request content_type_id=content_type_id %}
-                        {% endfor %}
+                {% for object in queryset %}
+                <tr
+                    class="cursor-pointer"
+                >   
+                    <td>
+                        <c-ui.data_view.checkbox 
+                            object_id="{{ object.pk }}" 
+                            content_type_id="{{ content_type_id }}" 
+                            />
                     </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
+                    {% if avatar_field %}
+                    <td
+                        class="cursor-context-menu w-14"
+                        data-dropdown="cell-menu"
+                        data-column-index="0"
+                        data-row-index="{{ forloop.counter0 }}"
+                        data-value=""
+                        data-object-id="{{ object.pk }}"
+                        data-object-string="{{ object }}"
+                        data-application-field-id="{{ avatar_field.id }}"
+                        data-application-field-name="{{ avatar_field.field }}"
+                        data-detail-url="{{ object.get_absolute_url }}"
+                        bloomerp-component="datatable-cell"
+                    >
+                        <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover" />
+                    </td>
+                    {% endif %}
+                    {% for field in fields %}
+                        {% if avatar_field %}
+                            {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0|add:1 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+                        {% else %}
+                            {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if object_actions %}
+                        <td class="w-32 whitespace-nowrap">
+                            {% for action in object_actions %}
+                                {% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+                            {% endfor %}
+                        </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
             {% else %}
             <tr>
                 <td colspan="{{ fields|length|add:1 }}" class="text-center text-gray-500 py-6">
@@ -104,5 +114,6 @@ Parameters:
             {% endif %}
         </tbody>
     </table>
-</div>
+</c-ui.data_view.base_data_view>
+
 

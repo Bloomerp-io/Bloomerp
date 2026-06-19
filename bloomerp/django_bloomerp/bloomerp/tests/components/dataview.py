@@ -27,64 +27,6 @@ class TestDataView(BaseBloomerpModelTestCase):
                 defaults={"name": f"Can {perm} {model._meta.verbose_name}"},
             )
         
-    def test_update_field_get(self):
-        """
-        This test checks whether it's possible to update fields
-        """
-        # Login the client
-        self.client.force_login(self.admin_user)
-        
-        # Get the customer object
-        customer = self.CustomerModel.objects.first()
-        
-        # Create url
-        url = reverse(
-            viewname="components_dataview_edit_field", 
-            kwargs={
-                    "application_field_id" : ApplicationField.get_by_field(self.CustomerModel, "first_name").id,
-                    "object_id" : str(customer.id)
-                }
-            )
-        
-        # Send GET request to the URL
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        
-        # Check if the response contains an input element
-        self.assertContains(response, '<input', html=False)
-    
-    def test_update_field_post_success(self):
-        """
-        This test checks whether it's possible to update fields via POST
-        """
-        # Login the client
-        self.client.force_login(self.admin_user)
-        
-        # Get the customer object
-        customer = self.CustomerModel.objects.first()
-        
-        # Get the application field for first_name
-        application_field = ApplicationField.get_by_field(self.CustomerModel, "first_name")
-        
-        # Create url
-        url = reverse(
-            viewname="components_dataview_edit_field", 
-            kwargs={
-                    "application_field_id" : application_field.id,
-                    "object_id" : str(customer.id)
-                }
-            )
-        
-        # Send POST request to the URL
-        new_first_name = "UpdatedName"
-        response = self.client.post(url, data={application_field.field: new_first_name})
-        self.assertEqual(response.status_code, 200)
-        
-        # Refresh the customer object from the database
-        customer.refresh_from_db()
-        
-        # Check if the first_name field was updated
-        self.assertEqual(customer.first_name, new_first_name)
         
     def test_list_view_includes_url_params(self):
         """
@@ -380,8 +322,12 @@ class TestDataView(BaseBloomerpModelTestCase):
         last_name_field = ApplicationField.get_by_field(self.CustomerModel, "last_name")
         preference = get_user_list_view_preference(self.admin_user, content_type)
         preference.view_type = "kanban"
-        preference.page_size = 10
-        preference.kanban_group_by_field = age_field
+        preference.options = {
+            "kanban": {
+                "page_size": 10,
+                "group_by_field_id": age_field.id,
+            }
+        }
         preference.display_fields = {
             **preference.display_fields,
             "kanban": [last_name_field.id],
@@ -405,8 +351,8 @@ class TestDataView(BaseBloomerpModelTestCase):
         self.assertNotContains(response, 'data-testid="data-view-pagination"', html=False)
 
         column_url = reverse(
-            viewname="components_data_view_kanban_column",
-            kwargs={"content_type_id": content_type.id},
+            viewname="components_data_view_action",
+            kwargs={"content_type_id": content_type.id, "action": "column"},
         )
         page_response = self.client.get(
             f"{column_url}?kanban_column=123&kanban_page=2",
@@ -602,7 +548,11 @@ class TestDataView(BaseBloomerpModelTestCase):
             name="Default",
             selected=True,
             view_type="kanban",
-            page_size=50,
+            options={
+                "kanban": {
+                    "page_size": 50,
+                }
+            },
             display_fields={
                 "table": [],
                 "kanban": [1, 2, 3],
@@ -636,7 +586,7 @@ class TestDataView(BaseBloomerpModelTestCase):
         self.assertFalse(source.selected)
         self.assertTrue(created.selected)
         self.assertEqual(created.view_type, "kanban")
-        self.assertEqual(created.page_size, 50)
+        self.assertEqual(created.options, source.options)
         self.assertEqual(created.display_fields, source.display_fields)
 
     def test_change_data_view_preference_uses_selected_preference_when_multiple_exist(self):
@@ -655,7 +605,11 @@ class TestDataView(BaseBloomerpModelTestCase):
             name="Current",
             selected=True,
             view_type="table",
-            page_size=25,
+            options={
+                "table": {
+                    "page_size": 25,
+                }
+            },
         )
 
         url = reverse(
@@ -665,11 +619,14 @@ class TestDataView(BaseBloomerpModelTestCase):
 
         response = self.client.post(
             url,
-            data={"page_size": "50"},
+            data={
+                "dataview_options_view_type": "table",
+                "page_size": "50",
+            },
             HTTP_HX_REQUEST="true",
         )
 
         self.assertEqual(response.status_code, 200)
 
         selected.refresh_from_db()
-        self.assertEqual(selected.page_size, 50)
+        self.assertEqual(selected.options["table"]["page_size"], 50)

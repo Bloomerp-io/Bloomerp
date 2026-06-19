@@ -54,6 +54,10 @@ export class DataTableCell extends BaseDataViewCell {
         super.destroy();
     }
 
+    public override onClickOverride: (cell: BaseDataViewCell) => boolean | void = (cell) => {
+        return false;
+    }
+
 }
 
 export class DataTable extends BaseDataViewComponent {
