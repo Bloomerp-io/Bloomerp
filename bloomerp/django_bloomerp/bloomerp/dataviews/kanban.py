@@ -3,6 +3,10 @@ from __future__ import annotations
 from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import render
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 
 from .base import BaseDataviewRenderer
 
@@ -26,6 +30,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             kanban_groups = self.build_groups(
                 self.state.queryset,
                 group_by_field,
+                preference=self.state.preference,
                 page_size=page_size,
             )
 
@@ -71,6 +76,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             state.queryset,
             group_by_field,
             column_value,
+            preference=state.preference,
             page_size=getattr(state.dataview_options, "page_size", 25),
             page_number=request.GET.get("kanban_page", 1),
         )
@@ -95,6 +101,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         queryset,
         group_by_field,
         column_value: str,
+        preference=None,
         page_size: int | None = None,
         page_number=1,
     ) -> dict | None:
@@ -103,7 +110,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         model_field = cls._get_model_field(queryset, field_name)
         value = cls._coerce_column_value(column_value, model_field)
 
-        column_queryset = cls._build_column_queryset(queryset, field_name, model_field, value)
+        column_queryset = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
         item_count = column_queryset.count()
         if item_count == 0 and value is not None:
             return None
@@ -125,7 +132,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         )
 
     @classmethod
-    def build_groups(cls, queryset, group_by_field, page_size: int | None = None, page_number=1) -> list[dict]:
+    def build_groups(cls, queryset, group_by_field, preference=None, page_size: int | None = None, page_number=1) -> list[dict]:
         field_name = group_by_field.field
         field_type = group_by_field.field_type
         model_field = cls._get_model_field(queryset, field_name)
@@ -144,7 +151,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             }
 
             if None in counts_by_value:
-                items = cls._build_column_queryset(queryset, field_name, model_field, None)
+                items = cls._build_column_queryset(queryset, field_name, model_field, None, preference=preference)
                 groups.append(cls._build_group(
                     None, "Unassigned", items, page_size, page_number,
                     item_count=counts_by_value[None]
@@ -162,7 +169,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             for row in count_rows:
                 value = row[field_name]
                 if value is not None:
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value)
+                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
                     label = related_labels.get(value, f"ID: {value}")
                     groups.append(cls._build_group(
                         value, label, items, page_size, page_number,
@@ -171,7 +178,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         else:
             empty_count = queryset.filter(cls._build_empty_filter(field_name, model_field)).count()
             if empty_count:
-                items = cls._build_column_queryset(queryset, field_name, model_field, None)
+                items = cls._build_column_queryset(queryset, field_name, model_field, None, preference=preference)
                 groups.append(cls._build_group(
                     None, "Unassigned", items, page_size, page_number,
                     item_count=empty_count
@@ -194,7 +201,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                     if choice_value in (None, ""):
                         continue
 
-                    choice_items = cls._build_column_queryset(queryset, field_name, model_field, choice_value)
+                    choice_items = cls._build_column_queryset(queryset, field_name, model_field, choice_value, preference=preference)
                     groups.append(cls._build_group(
                         choice_value, str(choice_label), choice_items, page_size, page_number,
                         item_count=counts_by_value.get(choice_value, 0)
@@ -204,7 +211,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 for value, item_count in counts_by_value.items():
                     if value in seen_values:
                         continue
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value)
+                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
                     groups.append(cls._build_group(
                         value, str(value), items, page_size, page_number,
                         item_count=item_count
@@ -219,7 +226,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 )
                 for row in count_rows:
                     value = row[field_name]
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value)
+                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
                     groups.append(cls._build_group(
                         value, str(value), items, page_size, page_number,
                         item_count=row["item_count"]
@@ -306,10 +313,22 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         return f"ID: {value}"
 
     @classmethod
-    def _build_column_queryset(cls, queryset, field_name: str, model_field, value):
+    def _build_column_queryset(cls, queryset, field_name: str, model_field, value, preference:UserListViewPreference=None):
+        sort_field = (preference.options if preference else {}).get("kanban", {}).get("sort_field", None)
+        sort_direction = (preference.options if preference else {}).get("kanban", {}).get("sort_direction", "asc")
+        
         if value is None:
-            return queryset.filter(cls._build_empty_filter(field_name, model_field))
-        return queryset.filter(**{field_name: value})
+            queryset = queryset.filter(cls._build_empty_filter(field_name, model_field))
+        else:
+            queryset = queryset.filter(**{field_name: value})
+        
+        if sort_field:
+            if sort_direction == "desc":
+                sort_field = f"-{sort_field}"
+            queryset = queryset.order_by(sort_field)
+            print(f"Sorting kanban column by {sort_field}")
+        
+        return queryset
 
     @classmethod
     def _build_group(

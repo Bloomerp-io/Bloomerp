@@ -270,6 +270,24 @@ class ViewTypeEnum(Enum):
                 data_type=int,
                 default_value=PageSize.SIZE_25,
             ),
+            PreferenceOption(
+                key="sort_field",
+                label="Sort on",
+                field_cls=forms.TypedChoiceField,
+                field_attrs_func=_sort_field_choices,
+                description="The field used for table sorting.",
+                data_type=str | None,
+                default_value=None,
+            ),
+            PreferenceOption(
+                key="sort_direction",
+                label="Sort direction",
+                field_cls=forms.ChoiceField,
+                field_attrs_func=_sort_direction_choices,
+                description="The direction used for table sorting.",
+                data_type=str,
+                default_value="asc",
+            ),
         ],
     )
 
