@@ -2,13 +2,13 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.definition import BloomerpModelConfig, ObjectHTML, DetailViewSettings
 from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
 from django.utils.translation import gettext_lazy as _
-from django.template.loader import render_to_string
 from bloomerp.services.sectioned_layout_services import create_default_layout
-
+from django.db.models.query import QuerySet
 
 class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
     
@@ -30,8 +30,9 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
                     columns=2,
                     title="Settings",
                     items=[
-                        LayoutItem(id="requires_review"),
+                        LayoutItem(id="requires_review", colspan=2),
                         LayoutItem(id="requires_authentication"),
+                        LayoutItem(id="public_embed_enabled"),
                         LayoutItem(id="max_submissions"),
                         LayoutItem(id="max_submissions_per_ip"),
                         LayoutItem(id="opens_at"),
@@ -48,7 +49,11 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
         object_actions=[
             ObjectHTML(
                 template_name="models/forms/links_btn.html"
-            )
+            ),
+            ObjectHTML(
+                template_name="models/forms/public_embed_btn.html",
+                should_render_func=lambda request, obj: obj.public_embed_enabled,
+            ),
         ]
     )
     
@@ -79,6 +84,10 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
     requires_authentication = models.BooleanField(
         default=False,
         help_text=_("Whether the form requires an authenticated user in order to be accessible.")
+    )
+    public_embed_enabled = models.BooleanField(
+        default=False,
+        help_text=_("Whether the form can be embedded in a public page.")
     )
     max_submissions = models.IntegerField(
         null=True,
@@ -147,13 +156,27 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
             .exists()
         )
 
+        
+    @property
+    def submit_api_url(self) -> str:
+        """Returns the form submit API URL
+
+        Returns:
+            str: The API URL to submit the form
+        """
+        return reverse(
+            "api_form_submit",
+            kwargs={
+                "pk": self.pk
+            }
+        )
     
     @property
     def submit_url(self) -> str:
         """Returns the submit URL
 
         Returns:
-            str: _description_
+            str: The URL to submit the form
         """
         return reverse(
             "forms_detail_submit",
@@ -162,4 +185,26 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
             }
         )
     
+    def get_fields(self) -> QuerySet[ApplicationField]:
+        """Returns the fields associated with the form's content type
+
+        Returns:
+            list[str]: The fields associated with the form's content type
+        """
+        field_ids = []
+        for row in self.layout_obj.rows:
+            for item in row.items:
+                field_ids.append(item.id)
+                
+        return ApplicationField.objects.filter(
+            content_type=self.content_type,
+            id__in=field_ids
+        )
     
+    def get_field_names(self) -> list[str]:
+        """Returns the field names associated with the form's content type
+
+        Returns:
+            list[str]: The field names associated with the form's content type
+        """
+        return [field.field for field in self.get_fields()]

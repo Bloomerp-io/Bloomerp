@@ -92,7 +92,7 @@ class ActivityLogManager:
             return None
 
         return ActivityLog.objects.create(
-            actor=self.get_actor(),
+            actor=self.get_actor() if self.get_actor() and not self.get_actor().is_anonymous else None,
             is_create=self.is_create,
             payload=self._make_json_safe(self.payload),
             source=self.get_activity_log_source(),

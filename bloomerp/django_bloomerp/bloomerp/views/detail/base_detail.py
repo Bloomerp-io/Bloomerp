@@ -1,19 +1,16 @@
-from typing import Any, Optional
+from typing import Any
 from django.views.generic.detail import DetailView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import ObjectHTML, get_model_config
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
 from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from bloomerp.services.detail_view_services import resolve_tabs_with_state
-from django.contrib.auth.mixins import PermissionRequiredMixin
 
-from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 
 class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, DetailView):
     htmx_template = "bloomerp_htmx_base_view.html"

@@ -1,12 +1,9 @@
-from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.models.files import File
-from bloomerp.models.users.user_detail_view_preference import UserDetailViewPreference
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
 from django.db.models import JSONField
-from uuid import UUID
 from bloomerp.utils.models import (
     get_bloomerp_file_fields_for_model,
     get_foreign_key_fields_for_model
@@ -15,7 +12,6 @@ from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from django.forms.widgets import DateInput, DateTimeInput
 from bloomerp.forms.layouts import BloomerpModelformHelper
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
-from bloomerp.models import UserDetailViewPreference
 
 
 class BloomerpModelForm(forms.ModelForm):

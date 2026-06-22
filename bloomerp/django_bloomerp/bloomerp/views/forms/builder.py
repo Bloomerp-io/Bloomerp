@@ -73,9 +73,24 @@ class BuilderView(BloomerpLayoutFormMixin, BaseBloomerpDetailView):
             ).values_list("field", flat=True)
         )
 
+    def get_model_form_field_names(self) -> list[str]:
+        field_names: list[str] = []
+        for application_field in get_addable_fields(
+            content_type=self.get_layout_content_type(),
+            user=self.request.user,
+        ):
+            field_type = application_field.get_field_type_enum().value
+            if field_type.editable_without_form_field and not field_type.allow_in_model:
+                continue
+            if application_field.get_form_field() is None:
+                continue
+            field_names.append(application_field.field)
+        return field_names
+
+    # TODO: This should probs be refactored so that the model form is allowing for one-to-many fields
     def build_layout_form(self):
         target_model = self.get_target_model()
-        field_names = self.get_layout_editable_field_names()
+        field_names = self.get_model_form_field_names()
         if target_model is None or not field_names:
             return None
         form_class = bloomerp_modelform_factory(target_model, fields=field_names)

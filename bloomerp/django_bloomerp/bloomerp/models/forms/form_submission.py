@@ -19,7 +19,6 @@ def execute_persist(request:HttpRequest, obj:"FormSubmission") -> HttpResponse:
     manager = FormManager(obj.form)
     try:
         manager.persist_form_submission(obj, request)
-        print("Persisting successfulllay")
         return render_message(
             request,
             "Form persisted succesfully",
@@ -64,7 +63,8 @@ class FormSubmission(BloomerpModel):
         to="bloomerp.Form",
         on_delete=models.SET_NULL, # We probs don't wanna lose all of our submissions if the form is deleted.
         blank=False,
-        null=True
+        null=True,
+        related_name="submissions"
     )
     data : dict = models.JSONField(
         
