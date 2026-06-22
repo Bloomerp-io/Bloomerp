@@ -4,6 +4,7 @@ from django.forms import modelform_factory
 from bloomerp.automation.schema import WorkflowIOSchema, WorkflowValueType, WorkflowInputRequirement, WorkflowValueField, WorkflowValueType
 from bloomerp.automation.utils import get_parameters_from_config, model_to_schema_field
 from bloomerp.forms.base_content_type_form import BaseContentTypeForm
+from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.automation.base_executor import BaseExecutor
@@ -157,10 +158,7 @@ class CreateObjectExecutor(BaseExecutor):
         if not isinstance(create_data, dict):
             create_data = {}
         
-        FormCls = modelform_factory(
-            model=model,
-            fields=create_data.keys()
-        )
+        FormCls = bloomerp_modelform_factory(model, fields=create_data.keys())
         
         form = FormCls(create_data)
         if form.is_valid():
