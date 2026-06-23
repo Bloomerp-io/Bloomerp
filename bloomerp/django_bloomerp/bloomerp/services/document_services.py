@@ -11,7 +11,7 @@ from django.template import engines
 from django.utils import timezone
 from django.utils.text import slugify
 
-from bloomerp.field_types import FieldType
+from bloomerp.field_types.types import FieldType
 from bloomerp.forms.document_templates import DocumentTemplateForm
 from bloomerp.models import AbstractBloomerpUser, ApplicationField, DocumentTemplate
 from bloomerp.models.document_templates.document_template import FreeVariableConfig

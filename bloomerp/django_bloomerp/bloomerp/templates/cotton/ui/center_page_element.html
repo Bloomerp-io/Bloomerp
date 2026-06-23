@@ -1,0 +1,13 @@
+
+<c-ui.container class="flex h-[calc(100vh-7rem)] flex-col items-center justify-center px-6 text-center {{ class }}">
+    {% if icon %}
+        <i class="{{ icon }} mb-4 text-6xl text-primary"></i>
+    {% endif %}
+    <c-ui.text.subtitle class="text-xl">{{ title }}</c-ui.text.subtitle>
+    <c-ui.text.text class="mt-3 max-w-xl">
+        {{ text }}
+    </c-ui.text.text>
+    <div class="mt-6">
+        {{ slot }}
+    </div>
+</c-ui.container>

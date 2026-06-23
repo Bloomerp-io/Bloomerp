@@ -1,4 +1,10 @@
-<c-ui.container>
+<c-ui.center_page_element icon="fa-solid fa-tachograph-digital" title="Create workspace">
+    <c-slot name="text">
+        A workspace is your personal and personalizable page on which you can place tiles of various kinds,
+        like links, charts, kpi's, and even your own whiteboard. You can similarly share your workspace
+        with other users for collaboration    
+    </c-slot>
+
     <form
         class="flex flex-col space-y-3"
         method="post"
@@ -9,12 +15,6 @@
         bloomerp-component="focus-in"
     >
         {% csrf_token %}
-        <c-ui.text.muted class="">
-            A workspace is your personal and personalizable page on which you can place tiles of various kinds,
-            like links, charts, kpi's, and even your own whiteboard. You can similarly share your workspace
-            with other users for collaboration
-        </c-ui.text.muted>
-
         <div class="flex flex-col">
             <c-ui.text.label>Name</c-ui.text.label>
             {{ form.name }}
@@ -44,13 +44,13 @@
             </label>
         </div>
 
-        <div class="mt-3 flex gap-2">
+        <div class="mt-3 flex gap-2 justify-center">
             <button class="btn btn-primary" type="submit">
                 Create
             </button>
         </div>
     </form>
-</c-ui.container>
+</c-ui.center_page_element>
 
 <script>
 (() => {

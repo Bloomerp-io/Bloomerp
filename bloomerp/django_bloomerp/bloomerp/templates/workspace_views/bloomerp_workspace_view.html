@@ -95,14 +95,14 @@
 </c-workspaces.container>
 {% else %}
 
-<c-ui.container class="h-full flex items-center justify-center">
-    <div class="flex max-w-xl flex-col space-y-5 text-center">
-        <c-ui.text.subtitle class="">No workspaces yet</c-ui.text.subtitle>
-        <c-ui.text.text class="">
-            Workspaces help you organize this module around the way you work. You can create your own space for the information, tiles, and shortcuts you want to see first, and switch between different workspaces when you need a different focus.
-        </c-ui.text.text>
-        <div class="flex justify-center gap-4">
-            {% if module_id %}
+<c-ui.center_page_element
+    icon="fa-solid fa-tachograph-digital"
+    title="No workspaces yet">
+    <c-slot name="text">
+        Workspaces help you organize this module around the way you work. You can create your own space for the information, tiles, and shortcuts you want to see first, and switch between different workspaces when you need a different focus.
+    </c-slot>
+    <div class="flex justify-center gap-4">
+        {% if module_id %}
             <form
                 method="post"
                 hx-post="."
@@ -110,7 +110,7 @@
                 hx-push-url="false"
             >
                 {% csrf_token %}
-                <button 
+                <button
                     class="btn btn-primary"
                     type="submit"
                     name="action"
@@ -119,19 +119,17 @@
                     <c-blocktrans>Create default</c-blocktrans>
                 </button>
             </form>
-            {% endif %}
-            <button 
-                class="btn btn-secondary"
-                bloomerp-open-modal="create-new-workspace-modal"
-                hx-get="{{ create_url }}"
-                hx-target="#create-new-workspace-modal-body"
-                >
-                <c-blocktrans>Start from scratch</c-blocktrans>
-            </button>
-        </div>
+        {% endif %}
+        <button
+            class="btn btn-secondary"
+            hx-get="{{ create_url }}"
+            hx-target="#main-content"
+            hx-push-url="true"
+        >
+            <c-blocktrans>Start from scratch</c-blocktrans>
+        </button>
     </div>
-</c-ui.container>
+</c-ui.center_page_element>
 
 {% endif %}
 
-<c-ui.modal id="create-new-workspace-modal" title="Create new workspace"/>
