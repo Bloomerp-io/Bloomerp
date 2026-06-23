@@ -1064,6 +1064,54 @@ class TestAutomation(TransactionTestCase):
         for field in output_schema.fields:
             self.assertTrue(field.path in required_fields)
         
+    def test_action_update_with_partial_fields_only(self):
+        """
+        UC: Sometimes updates only include partial fields
+        Expected results: partial fields are updated, even if other required fields are not provided.
+        """
+        # 1. Create a test customer
+        customer = self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
+
+        # 2. Create workflow
+        workflow = Workflow.objects.create(name="Update Object Partial Fields Test Workflow")
+        
+        # 3. Add trigger
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {"data": {"run": True}},
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        # 4. Create the action node
+        action = WorkflowNode.objects.create(
+            workflow=workflow,
+            type=WorkflowNodeType.ACTION.value.id,
+            config={
+                "sub_type" : "UPDATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
+                    "object_id": str(customer.id),
+                    "fields": {
+                        "age": "{{ input.age }}",
+                    }
+                }
+            }
+        )
+        
+        # 5. Connect the nodes
+        workflow.connect_nodes(trigger, action)
+        
+        # 6. Run the workflow with only the age field provided
+        run_workflow(workflow, {"age" : 35})
+
+        # 7. Refresh the customer from the database and check that it was updated
+        customer.refresh_from_db()
+        self.assertEqual(customer.age, 35)
+        self.assertEqual(customer.first_name, "Alice")
+        self.assertEqual(customer.last_name, "Smith")
     
     # ----------------------------------------
     # Action: DELETE_OBJECT
