@@ -2,7 +2,7 @@ from dataclasses import dataclass, field as dataclass_field
 
 from bloomerp.field_types.display_options import FieldDisplayOption
 from bloomerp.field_types.lookups import BOOLEAN_LOOKUPS, DATE_LOOKUPS, NUMERIC_LOOKUPS, TEXT_LOOKUPS, WEEK_LOOKUPS, Lookup
-from bloomerp.field_types.options import AUTO_NOW_ADD_FIELD_OPTION, AUTO_NOW_FIELD_OPTION, BLANK_FIELD_OPTION, COMMON_CHOICE_FIELD_OPTIONS, COMMON_FIELD_OPTIONS, COMMON_RELATION_FIELD_OPTIONS, COMMON_TEXT_FIELD_OPTIONS, DB_INDEX_FIELD_OPTION, DECIMAL_PLACES_FIELD_OPTION, DEFAULT_FIELD_OPTION, HELP_TEXT_FIELD_OPTION, MAX_DIGITS_FIELD_OPTION, NULL_FIELD_OPTION, ON_DELETE_FIELD_OPTION, RELATED_NAME_FIELD_OPTION, TO_FIELD_OPTION, UNIQUE_FIELD_OPTION, UPLOAD_TO_FIELD_OPTION, VERBOSE_NAME_FIELD_OPTION, FieldOption
+from bloomerp.field_types.options import AUTO_NOW_ADD_FIELD_OPTION, AUTO_NOW_FIELD_OPTION, BLANK_FIELD_OPTION, COMMON_CHOICE_FIELD_OPTIONS, COMMON_FIELD_OPTIONS, COMMON_RELATION_FIELD_OPTIONS, COMMON_TEXT_FIELD_OPTIONS, DB_INDEX_FIELD_OPTION, DECIMAL_PLACES_FIELD_OPTION, DEFAULT_FIELD_OPTION, HELP_TEXT_FIELD_OPTION, MAX_DIGITS_FIELD_OPTION, NULL_FIELD_OPTION, ON_DELETE_FIELD_OPTION, PROPERTY_EXPRESSION, RELATED_NAME_FIELD_OPTION, TO_FIELD_OPTION, UNIQUE_FIELD_OPTION, UPLOAD_TO_FIELD_OPTION, VERBOSE_NAME_FIELD_OPTION, FieldOption
 from bloomerp.form_fields.address_field import AddressFormField
 from bloomerp.form_fields.icon_field import IconFormField
 from bloomerp.form_fields.ordered_multiple_choice_field import OrderedMultipleChoiceField
@@ -220,6 +220,9 @@ class FieldType(Enum):
         display_name="Property",
         icon="fa-solid fa-sliders",
         allow_in_model=False,
+        field_options=[
+            PROPERTY_EXPRESSION
+        ]
     )
 
     AUTO_FIELD = FieldTypeDefinition(

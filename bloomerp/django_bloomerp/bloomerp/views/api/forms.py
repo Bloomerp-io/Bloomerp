@@ -12,10 +12,15 @@ from bloomerp.models.forms.form import Form
 from bloomerp.services.form_services import FormManager
 
 
-def _cors_response(response: HttpResponse) -> HttpResponse:
+def _cors_response(response: HttpResponse, request: HttpRequest | None = None) -> HttpResponse:
+    requested_headers = ""
+    if request is not None:
+        requested_headers = request.headers.get("Access-Control-Request-Headers", "")
+
     response["Access-Control-Allow-Origin"] = "*"
     response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response["Access-Control-Allow-Headers"] = "Content-Type, X-Requested-With"
+    response["Access-Control-Allow-Headers"] = requested_headers or "Content-Type, X-Requested-With"
+    response["Access-Control-Max-Age"] = "86400"
     return response
 
 
@@ -57,7 +62,7 @@ def _get_public_form(pk) -> tuple[Form | None, JsonResponse | None]:
 @require_http_methods(["GET", "POST", "OPTIONS"])
 def form_submit_view(request: HttpRequest, pk) -> HttpResponse:
     if request.method == "OPTIONS":
-        return _cors_response(HttpResponse(status=204))
+        return _cors_response(HttpResponse(status=204), request=request)
 
     form, error_response = _get_public_form(pk)
     if error_response is not None:

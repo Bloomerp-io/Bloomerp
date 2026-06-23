@@ -162,6 +162,16 @@ CHOICES_FIELD_OPTION = FieldOption(
     default_value=[],
     python_type=list[tuple[Any, Any]],
 )
+PROPERTY_EXPRESSION = FieldOption(
+    id="property_expression",
+    label="Property Expression",
+    primitive_input_type="text",
+    description="Python expression used to compute the value of this property field.",
+    required=True,
+    default_value="return self",
+    python_type=str,
+)
+
 COMMON_FIELD_OPTIONS = [
     VERBOSE_NAME_FIELD_OPTION,
     NULL_FIELD_OPTION,

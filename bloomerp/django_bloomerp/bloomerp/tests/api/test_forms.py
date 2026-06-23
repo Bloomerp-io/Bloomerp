@@ -3,6 +3,7 @@
 from bloomerp.models.forms.form import Form
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from django.contrib.contenttypes.models import ContentType
+import json
 import requests
 
 class TestFormAPI(BaseBloomerpModelTestCase):
@@ -110,4 +111,39 @@ class TestFormAPI(BaseBloomerpModelTestCase):
         self.assertEqual(submission.data["first_name"], "John")
         self.assertEqual(submission.data["last_name"], "Doe")
         self.assertEqual(submission.data["age"], "42")
+
+    def test_public_endpoint_supports_cors_preflight(self):
+        form = self.create_form(public_embed_enabled=True)
+        endpoint = form.submit_api_url
+
+        response = self.client.options(
+            endpoint,
+            HTTP_ORIGIN="https://example.com",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="content-type",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["Access-Control-Allow-Origin"], "*")
+        self.assertIn("POST", response["Access-Control-Allow-Methods"])
+        self.assertEqual(response["Access-Control-Allow-Headers"], "content-type")
+
+    def test_public_endpoint_accepts_json_submission(self):
+        form = self.create_form(public_embed_enabled=True)
+        endpoint = form.submit_api_url
+
+        response = self.client.post(
+            endpoint,
+            data=json.dumps({"first_name": "David", "last_name": "Bloomer", "age": 42}),
+            content_type="application/json",
+            HTTP_ORIGIN="https://example.com",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Access-Control-Allow-Origin"], "*")
+        submission = form.submissions.first()
+        self.assertIsNotNone(submission)
+        self.assertEqual(submission.data["first_name"], "David")
+        self.assertEqual(submission.data["last_name"], "Bloomer")
+        self.assertEqual(submission.data["age"], 42)
     
