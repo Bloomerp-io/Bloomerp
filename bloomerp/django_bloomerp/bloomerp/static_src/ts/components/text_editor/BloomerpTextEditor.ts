@@ -183,7 +183,7 @@ export class BloomerpTextEditor extends BaseWidget {
      * Returns the actions available for this editor
      */
     public getActions() : Array<Action> {
-        return [...Object.values(ACTIONS), ...this.actions]
+        return Array.from(new Set([...Object.values(ACTIONS), ...this.actions]))
     }
 
     /**

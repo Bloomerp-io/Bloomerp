@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django import forms
@@ -20,6 +21,10 @@ class IfConditionForm(forms.Form):
             ("contains", "Contains"),
             ("truthy", "Is truthy"),
             ("falsy", "Is falsy"),
+            ("greater_than", "Greater than"),
+            ("less_than", "Less than"),
+            ("greater_than_or_equal", "Greater than or equal to"),
+            ("less_than_or_equal", "Less than or equal to"),
         ],
         initial="exact",
     )
@@ -48,6 +53,16 @@ def _coerce_expected(value: Any) -> Any:
     return value
 
 
+def _coerce_number(value: Any) -> Decimal | None:
+    if value is None or isinstance(value, bool):
+        return None
+
+    try:
+        return Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+
+
 def _matches(value: Any, expected: Any, operator: str) -> bool:
     expected = _coerce_expected(expected)
     if operator == "not_exact":
@@ -58,6 +73,24 @@ def _matches(value: Any, expected: Any, operator: str) -> bool:
         return bool(value)
     if operator == "falsy":
         return not bool(value)
+    if operator in {
+        "greater_than",
+        "less_than",
+        "greater_than_or_equal",
+        "less_than_or_equal",
+    }:
+        numeric_value = _coerce_number(value)
+        numeric_expected = _coerce_number(expected)
+        if numeric_value is None or numeric_expected is None:
+            return False
+        if operator == "greater_than":
+            return numeric_value > numeric_expected
+        if operator == "less_than":
+            return numeric_value < numeric_expected
+        if operator == "greater_than_or_equal":
+            return numeric_value >= numeric_expected
+        if operator == "less_than_or_equal":
+            return numeric_value <= numeric_expected
     return str(value) == str(expected)
 
 

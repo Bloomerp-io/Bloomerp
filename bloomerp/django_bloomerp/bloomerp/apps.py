@@ -5,7 +5,6 @@ from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 from colorama import Fore, Style
 
-
 class BloomerpApp(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "bloomerp"

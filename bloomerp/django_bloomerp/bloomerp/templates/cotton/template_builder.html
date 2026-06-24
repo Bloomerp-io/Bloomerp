@@ -1,8 +1,9 @@
 {% load crispy_forms_tags %}
 
-{% with field_config_id=id|add:"-fields" variable_catalog_id=id|add:"-variable-catalog" %}
+{% with field_config_id=id|add:"-fields" variable_catalog_id=id|add:"-variable-catalog" template_tags_id=id|add:"-template-tags" %}
 {{ template_builder_fields|json_script:field_config_id }}
 {{ template_builder_variable_catalog|json_script:variable_catalog_id }}
+{{ template_builder_template_tags|json_script:template_tags_id }}
 
 <div 
     bloomerp-component="document-template-builder" 
@@ -10,6 +11,8 @@
     data-catalog-url="{% url 'components_document_template_builder_catalog' %}"
     data-document-template-id="{{ document_template_id|default:'' }}"
     data-preview-url="{% url 'components_generate_document_template' id=document_template_id %}"
+    data-template-tags="{{ template_builder_template_tags_json }}"
+    data-template-tags-id="{{ template_tags_id }}"
     class="-m-4"
     >
     <div class="grid xl:grid-cols-[minmax(0,1fr)_340px]">

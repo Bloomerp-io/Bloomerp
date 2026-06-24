@@ -132,6 +132,7 @@ def configure_bloomerp_allauth_settings() -> None:
 
 BLOOMERP_APPS = [
     'django.forms',
+    "django.contrib.humanize",
     "bloomerp",
     "django_htmx",
     "crispy_forms",

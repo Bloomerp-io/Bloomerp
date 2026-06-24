@@ -1,3 +1,4 @@
+import inspect
 import re
 from dataclasses import asdict, dataclass, field as dataclass_field
 from enum import Enum
@@ -263,6 +264,14 @@ class DocumentTemplateValidationResult:
 
 
 class DocumentTemplateService:
+    TEMPLATE_LIBRARIES = [
+        "document_template_tags",
+        #"l10n",
+        #"i18n",
+        "humanize",
+    ]
+
+
     def __init__(self, document_template: DocumentTemplate, user: AbstractBloomerpUser | None = None):
         self.document_template = document_template
         self.user = user
@@ -369,7 +378,7 @@ class DocumentTemplateService:
         form_attrs["variable_name_by_field_name"] = variable_name_by_field_name
         form_attrs["preset_instance"] = instance
         form_attrs["preset_variable_name"] = preset_variable_name
-        
+
         generated_form_class = type("DocumentTemplateGeneratedForm", (DocumentTemplateForm,), form_attrs)
         return generated_form_class
 
@@ -387,14 +396,14 @@ class DocumentTemplateService:
                 object_id=str(instance.pk),
                 content_type=ContentType.objects.get_for_model(instance),
             )
-            
+
         return qs
-    
+
     def create_file(
-        self, 
+        self,
         file_bytes:bytes,
         instance:Optional[Model] = None,
-        filename:Optional[str] = None 
+        filename:Optional[str] = None
         ) -> File:
         """Creates a file from the given bytes and associates it with the given instance and this document template.
 
@@ -428,7 +437,7 @@ class DocumentTemplateService:
         )
         file_object.file.save(filename, ContentFile(file_bytes), save=True)
         return file_object
-    
+
     def generate_default_filename(self, instance: Optional[Model] = None) -> str:
         """Generates a default filename
 
@@ -444,7 +453,7 @@ class DocumentTemplateService:
         timestamp = timezone.now().strftime("%Y%m%d-%H%M%S")
         filename_base = slugify(" ".join(name_parts)) or "generated-document"
         return f"{filename_base}-{timestamp}.pdf"
-    
+
     def get_cleaned_free_variable_values(self, form: forms.Form) -> dict[str, Any]:
         free_variable_slugs = self.document_template.get_free_variable_slugs()
         return {
@@ -504,10 +513,112 @@ class DocumentTemplateService:
 
     def format_html(self, data: dict[str, Any]) -> str:
         django_engine = engines["django"]
-        temp = django_engine.from_string("{% load document_template_tags %}" + self.document_template.template)
+        template_loads = "\n".join(
+            f"{{% load {library_name} %}}"
+            for library_name in self.TEMPLATE_LIBRARIES
+        )
+        temp = django_engine.from_string(f"{template_loads}\n{self.document_template.template}")
         return temp.render(data)
 
     def get_content_type_variable_name(self, content_type: ContentType) -> str:
         model_class = content_type.model_class()
         model_name = model_class.__name__ if model_class else content_type.model
         return re.sub(r"(?<!^)(?=[A-Z])", "_", model_name).lower()
+
+    @classmethod
+    def available_template_tags(cls) -> list[dict[str, Any]]:
+        django_engine = engines["django"].engine
+        catalog: list[dict[str, Any]] = []
+
+        for library_name in cls.TEMPLATE_LIBRARIES:
+            library = django_engine.template_libraries.get(library_name)
+            if library is None:
+                continue
+
+            for filter_name, func in sorted(library.filters.items()):
+                catalog.append(cls._template_callable_payload(
+                    library_name=library_name,
+                    name=filter_name,
+                    kind="filter",
+                    func=func,
+                ))
+
+            for tag_name, func in sorted(library.tags.items()):
+                catalog.append(cls._template_callable_payload(
+                    library_name=library_name,
+                    name=tag_name,
+                    kind="tag",
+                    func=func,
+                ))
+
+        return catalog
+
+    @classmethod
+    def _template_callable_payload(
+        cls,
+        *,
+        library_name: str,
+        name: str,
+        kind: str,
+        func: Any,
+    ) -> dict[str, Any]:
+        doc = inspect.getdoc(func) or ""
+        params = cls._template_callable_params(func, kind)
+        description = cls._template_callable_description(name, doc)
+        example = cls._template_callable_example(name, kind, params, doc)
+
+        return {
+            "name": name,
+            "library": library_name,
+            "kind": kind,
+            "description": description,
+            "example": example,
+            "params": params,
+        }
+
+    @staticmethod
+    def _template_callable_params(func: Any, kind: str) -> list[dict[str, Any]]:
+        try:
+            signature = inspect.signature(func)
+        except (TypeError, ValueError):
+            return []
+
+        params: list[dict[str, Any]] = []
+        for param in signature.parameters.values():
+            if kind == "tag" and param.name in {"parser", "token"}:
+                continue
+
+            annotation = "" if param.annotation is inspect.Signature.empty else str(param.annotation).replace("<class '", "").replace("'>", "")
+            default = None if param.default is inspect.Signature.empty else param.default
+            params.append({
+                "name": param.name,
+                "required": param.default is inspect.Signature.empty,
+                "default": default,
+                "annotation": annotation,
+            })
+
+        return params
+
+    @staticmethod
+    def _template_callable_description(name: str, doc: str) -> str:
+        for line in doc.splitlines():
+            clean_line = line.strip()
+            if clean_line and clean_line not in {"Args:", "Returns:", "Usage::", "Usage:"} and "_description_" not in clean_line:
+                return clean_line.rstrip(".")
+        return name.replace("_", " ").capitalize()
+
+    @staticmethod
+    def _template_callable_example(name: str, kind: str, params: list[dict[str, Any]], doc: str) -> str:
+        usage_match = re.search(r"Usage::?\s*\n\s*(.+)", doc, re.IGNORECASE)
+        if usage_match:
+            return usage_match.group(1).strip()
+
+        param_names = [param["name"] for param in params]
+        if kind == "filter":
+            value = param_names[0] if param_names else "value"
+            args = param_names[1:]
+            suffix = f":{args[0]}" if args else ""
+            return f"{{{{ {value}|{name}{suffix} }}}}"
+
+        args = " ".join(param_names)
+        return f"{{% {name}{f' {args}' if args else ''} %}}"

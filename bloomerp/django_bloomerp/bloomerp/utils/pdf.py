@@ -12,7 +12,6 @@ from PIL import Image
 from typing import Optional
 from enum import Enum
 from django.conf import settings
-from weasyprint import HTML, default_url_fetcher
 
 
 def _configure_weasyprint_native_library_path() -> None:
@@ -25,6 +24,18 @@ def _configure_weasyprint_native_library_path() -> None:
 
 
 _configure_weasyprint_native_library_path()
+
+
+def _import_weasyprint():
+    try:
+        from weasyprint import HTML, default_url_fetcher
+    except OSError as exc:
+        raise RuntimeError(
+            "WeasyPrint native libraries are not available. On macOS, run "
+            "`brew install pango` and start Django with "
+            "`DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib`."
+        ) from exc
+    return HTML, default_url_fetcher
 
 
 def fetch_image(image_url):
@@ -99,6 +110,7 @@ def _resolve_image_path_for_dimensions(uri: str) -> str:
 
 def weasyprint_url_fetcher(url: str):
     """Resolve local media/file URLs before delegating to WeasyPrint."""
+    _, default_url_fetcher = _import_weasyprint()
     return default_url_fetcher(_as_weasyprint_url(url))
 
 
@@ -266,6 +278,7 @@ def generate_pdf(
     </html>
     '''    
 
+    HTML, _ = _import_weasyprint()
     return HTML(
         string=document,
         base_url=get_weasyprint_base_url(),

@@ -1,22 +1,21 @@
-
 import json
 from typing import Any
 
-from bloomerp.forms.core import BloomerpModelForm
-from bloomerp.router import router
-from bloomerp.models import ApplicationField
-from bloomerp.models.document_templates.document_template import DocumentTemplate, FreeVariableConfig
-from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
-from django.views.generic import TemplateView
-from django.contrib.contenttypes.models import ContentType
 from django import forms
 from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from bloomerp.services.document_services import FreeVariableType
+
+from bloomerp.forms.core import BloomerpModelForm
+from bloomerp.models import ApplicationField
+from bloomerp.models.document_templates.document_template import DocumentTemplate, FreeVariableConfig
+from bloomerp.router import router
+from bloomerp.services.document_services import DocumentTemplateService, FreeVariableType
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
+
 
 class DocumentTemplateBuilderForm(BloomerpModelForm):
 
@@ -179,6 +178,8 @@ class DocumentTemplateBuilderContextMixin:
         form = kwargs.get("form") or self.get_form()
         context["builder_form"] = form
         context["free_variable_types"] = FreeVariableType.choices_payload()
+        context["template_builder_template_tags"] = DocumentTemplateService.available_template_tags()
+        context["template_builder_template_tags_json"] = json.dumps(context["template_builder_template_tags"])
         return context
 
 

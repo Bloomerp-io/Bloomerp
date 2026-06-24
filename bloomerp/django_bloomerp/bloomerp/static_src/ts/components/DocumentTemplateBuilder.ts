@@ -63,6 +63,35 @@ type VariablePickerLayout = {
     results: HTMLDivElement;
 };
 
+type TemplateTagParam = {
+    name: string;
+    required: boolean;
+    default: string | number | boolean | null;
+    annotation: string;
+};
+
+type TemplateTagEntry = {
+    name: string;
+    library: string;
+    kind: 'tag' | 'filter';
+    description: string;
+    example: string;
+    params: TemplateTagParam[];
+    searchText: string;
+};
+
+type TemplateTagPickerItem = {
+    entry: TemplateTagEntry;
+    element: HTMLButtonElement;
+};
+
+type TemplateTagPickerLayout = {
+    root: HTMLDivElement;
+    searchInput: HTMLInputElement;
+    emptyState: HTMLParagraphElement;
+    results: HTMLDivElement;
+};
+
 /**
  * Returns the default injection method
  */
@@ -299,6 +328,73 @@ function createVariablePickerLayout(): VariablePickerLayout {
     }
 }
 
+function createTemplateTagPickerLayout(): TemplateTagPickerLayout {
+    const root = document.createElement('div')
+    root.className = 'space-y-4'
+
+    const searchInput = document.createElement('input')
+    searchInput.type = 'text'
+    searchInput.className = 'input w-full'
+    searchInput.placeholder = 'Search template tags and filters'
+    searchInput.setAttribute('aria-label', 'Search template tags and filters')
+    root.appendChild(searchInput)
+
+    const emptyState = document.createElement('p')
+    emptyState.className = 'hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500'
+    root.appendChild(emptyState)
+
+    const results = document.createElement('div')
+    results.className = 'max-h-[60vh] overflow-y-auto overflow-x-hidden pr-1 space-y-2'
+    root.appendChild(results)
+
+    return {
+        root,
+        searchInput,
+        emptyState,
+        results,
+    }
+}
+
+function normalizeTemplateTagEntry(entry: any): TemplateTagEntry | null {
+    const name = String(entry?.name || '').trim()
+    const kind = String(entry?.kind || '').trim()
+    if (!name || !['tag', 'filter'].includes(kind)) { return null }
+
+    const params = Array.isArray(entry.params)
+        ? entry.params.map((param: any) => ({
+            name: String(param?.name || '').trim(),
+            required: Boolean(param?.required),
+            default: param?.default ?? null,
+            annotation: String(param?.annotation || ''),
+        })).filter((param: TemplateTagParam) => Boolean(param.name))
+        : []
+
+    const normalizedEntry = {
+        name,
+        library: String(entry?.library || ''),
+        kind: kind as 'tag' | 'filter',
+        description: String(entry?.description || ''),
+        example: String(entry?.example || ''),
+        params,
+        searchText: '',
+    }
+    normalizedEntry.searchText = [
+        normalizedEntry.name,
+        normalizedEntry.library,
+        normalizedEntry.kind,
+        normalizedEntry.description,
+        normalizedEntry.example,
+        ...params.map((param) => param.name),
+    ].join(' ').toLowerCase()
+
+    return normalizedEntry
+}
+
+function matchesTemplateTagEntry(entry: TemplateTagEntry, query: string) {
+    const normalizedQuery = query.trim().toLowerCase()
+    return !normalizedQuery || entry.searchText.includes(normalizedQuery)
+}
+
 /**
  * Creates a variable div
  * @param label the label
@@ -425,6 +521,9 @@ export class DocumentTemplateBuilder extends BaseComponent {
     private variablePickerItems: VariablePickerItem[] = [];
     private variablePickerActiveIndex: number = -1;
     private variablePickerActiveMethodIndex: number = 0;
+    private templateTags: TemplateTagEntry[] = [];
+    private templateTagPickerItems: TemplateTagPickerItem[] = [];
+    private templateTagPickerActiveIndex: number = -1;
 
     private documentTemplateId: string | null = null;
     private stylingRequestSequence: number = 0;
@@ -439,6 +538,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
         // Get dataset
         this.documentTemplateId = this.element.dataset.documentTemplateId || null;
         this.previewUrl = this.element.dataset.previewUrl || null;
+        this.templateTags = this.readTemplateTags();
 
         this.editor = getComponent(
             this.element.querySelector('[bloomerp-component="bloomerp-text-editor"]') as HTMLElement
@@ -535,7 +635,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
             freeVariableRequired.checked = false;
         })
 
-        // Add command
+        // Register actions
         this.editor.registerAction(
             {
                 label: "Add variable",
@@ -550,9 +650,22 @@ export class DocumentTemplateBuilder extends BaseComponent {
 
         this.editor.registerAction(
             {
+                label: "Insert template tag",
+                icon: "fa-solid fa-code",
+                handler: () => {
+                    this.openTemplateTagPicker()
+                }
+            },
+            'template_tags',
+            true
+        )
+
+        this.editor.registerAction(
+            {
                 label: "Preview document",
                 icon: "fa-solid fa-eye",
                 handler: (editor) => {
+                    this.saveDocumentTemplate(false)
                     const modal = getGeneralModal()
                     modal.setSize('full')
                     modal.setTitle('Document preview')
@@ -572,7 +685,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
                 }
             },
             'preview',
-            true,
+            false,
             false
         )
 
@@ -585,7 +698,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
                 }
             },
             'save_document_template',
-            true,
+            false,
             false
         )
         
@@ -1046,6 +1159,284 @@ export class DocumentTemplateBuilder extends BaseComponent {
             .filter((entry) => matchesVariablePickerEntry(entry, query))
     }
 
+    private readTemplateTags(): TemplateTagEntry[] {
+        const parseCatalog = (rawValue: string | null | undefined): TemplateTagEntry[] | null => {
+            if (!rawValue) { return null }
+            try {
+                const parsedValue = JSON.parse(rawValue)
+                if (!Array.isArray(parsedValue)) { return null }
+                return parsedValue
+                    .map((entry) => normalizeTemplateTagEntry(entry))
+                    .filter((entry): entry is TemplateTagEntry => entry !== null)
+            } catch {
+                return null
+            }
+        }
+
+        const fromDataset = parseCatalog(this.element.dataset.templateTags)
+        if (fromDataset) { return fromDataset }
+
+        const templateTagsScriptId = this.element.dataset.templateTagsId
+        const scriptElement = templateTagsScriptId
+            ? document.getElementById(templateTagsScriptId)
+            : null
+        return parseCatalog(scriptElement?.textContent) || []
+    }
+
+    private getTemplateTagEntries(query: string = '') {
+        return this.templateTags.filter((entry) => matchesTemplateTagEntry(entry, query))
+    }
+
+    private openTemplateTagPicker() {
+        const modal = getGeneralModal()
+        const modalBody = modal.getBodyElement()
+        if (!modalBody) { return }
+
+        modal.resetToDefaults()
+        modal.setSize('lg')
+        modal.setTitle('Insert template tag')
+        modalBody.innerHTML = ''
+
+        const layout = createTemplateTagPickerLayout()
+        modalBody.appendChild(layout.root)
+
+        this.templateTagPickerActiveIndex = -1
+        this.renderTemplateTagPickerResults(layout.results, layout.emptyState, '')
+
+        layout.searchInput.addEventListener('input', () => {
+            this.renderTemplateTagPickerResults(layout.results, layout.emptyState, layout.searchInput.value)
+        })
+
+        layout.searchInput.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                this.moveTemplateTagPickerSelection(1)
+                return
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                this.moveTemplateTagPickerSelection(-1)
+                return
+            }
+
+            if (event.key === 'Enter') {
+                const activeItem = this.getActiveTemplateTagPickerItem()
+                if (!activeItem) { return }
+
+                event.preventDefault()
+                this.openTemplateTagInputStep(activeItem.entry)
+            }
+        })
+
+        modal.open()
+        window.setTimeout(() => {
+            layout.searchInput.focus()
+        }, 80)
+    }
+
+    private renderTemplateTagPickerResults(
+        container: HTMLDivElement,
+        emptyState: HTMLParagraphElement,
+        query: string,
+    ) {
+        container.innerHTML = ''
+        this.templateTagPickerItems = this.getTemplateTagEntries(query).map((entry) => {
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.className = 'w-full rounded-xl border border-gray-200 bg-white p-3 text-left transition-colors hover:border-primary-300 hover:bg-primary-50'
+
+            const row = document.createElement('div')
+            row.className = 'flex items-start gap-3'
+
+            const icon = document.createElement('span')
+            icon.className = 'mt-0.5 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary'
+            icon.innerHTML = `<i class="fa-solid ${entry.kind === 'filter' ? 'fa-filter' : 'fa-code'}"></i>`
+            row.appendChild(icon)
+
+            const content = document.createElement('span')
+            content.className = 'min-w-0 flex-1'
+
+            const title = document.createElement('span')
+            title.className = 'block text-sm font-medium text-slate-800'
+            title.textContent = entry.name
+            content.appendChild(title)
+
+            const description = document.createElement('span')
+            description.className = 'block text-xs text-slate-500'
+            description.textContent = entry.description || entry.example
+            content.appendChild(description)
+
+            const example = document.createElement('code')
+            example.className = 'mt-2 block truncate rounded bg-slate-50 px-2 py-1 text-xs text-slate-600'
+            example.textContent = entry.example
+            content.appendChild(example)
+
+            row.appendChild(content)
+
+            const badge = document.createElement('span')
+            badge.className = 'inline-flex flex-shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-600'
+            badge.textContent = entry.kind
+            row.appendChild(badge)
+
+            button.appendChild(row)
+            button.addEventListener('click', () => this.openTemplateTagInputStep(entry))
+            container.appendChild(button)
+
+            return { entry, element: button }
+        })
+
+        const hasQuery = Boolean(query.trim())
+        emptyState.textContent = hasQuery
+            ? `No template tags match "${query.trim()}".`
+            : 'No template tags are available.'
+        emptyState.classList.toggle('hidden', this.templateTagPickerItems.length > 0)
+
+        this.templateTagPickerActiveIndex = this.templateTagPickerItems.length > 0 ? 0 : -1
+        this.updateTemplateTagPickerActiveState()
+    }
+
+    private moveTemplateTagPickerSelection(delta: 1 | -1) {
+        if (!this.templateTagPickerItems.length) { return }
+
+        this.templateTagPickerActiveIndex = getWrappedIndex(
+            this.templateTagPickerActiveIndex,
+            delta,
+            this.templateTagPickerItems.length,
+        )
+        this.updateTemplateTagPickerActiveState()
+        this.templateTagPickerItems[this.templateTagPickerActiveIndex]?.element.scrollIntoView({ block: 'nearest' })
+    }
+
+    private updateTemplateTagPickerActiveState() {
+        this.templateTagPickerItems.forEach((item) => {
+            item.element.classList.remove('border-primary-300', 'bg-primary-50', 'ring-1', 'ring-primary-200')
+        })
+
+        if (this.templateTagPickerActiveIndex < 0) { return }
+        this.templateTagPickerItems[this.templateTagPickerActiveIndex]?.element.classList.add('border-primary-300', 'bg-primary-50', 'ring-1', 'ring-primary-200')
+    }
+
+    private getActiveTemplateTagPickerItem() {
+        if (this.templateTagPickerActiveIndex < 0 || this.templateTagPickerActiveIndex >= this.templateTagPickerItems.length) {
+            return null
+        }
+        return this.templateTagPickerItems[this.templateTagPickerActiveIndex]
+    }
+
+    private openTemplateTagInputStep(entry: TemplateTagEntry) {
+        const modal = getModal('bloomerp-general-use-modal')
+        const modalBody = modal.getBodyElement()
+        if (!modalBody) { return }
+
+        if (!entry.params.length) {
+            this.insertTemplateTag(entry, {})
+            modal.close()
+            return
+        }
+
+        modal.setTitle(entry.name)
+        modalBody.innerHTML = ''
+
+        const wrapper = document.createElement('div')
+        wrapper.className = 'space-y-4'
+
+        const description = document.createElement('p')
+        description.className = 'text-sm text-slate-600'
+        description.textContent = entry.description || entry.example
+        wrapper.appendChild(description)
+
+        const inputWrapper = document.createElement('div')
+        inputWrapper.className = 'space-y-3'
+        const inputs = new Map<string, HTMLInputElement>()
+
+        entry.params.forEach((param) => {
+            const label = document.createElement('label')
+            label.className = 'block'
+
+            const labelText = document.createElement('span')
+            labelText.className = 'mb-1 block text-sm font-medium text-slate-700'
+            labelText.textContent = param.required ? param.name : `${param.name} (optional)`
+            label.appendChild(labelText)
+
+            const input = document.createElement('input')
+            input.type = 'text'
+            input.className = 'input w-full'
+            input.placeholder = param.annotation || param.name
+            input.value = param.default === null ? '' : String(param.default)
+            input.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key !== 'Enter') { return }
+                event.preventDefault()
+                this.insertTemplateTagFromInputs(entry, inputs)
+            })
+            label.appendChild(input)
+            inputWrapper.appendChild(label)
+            inputs.set(param.name, input)
+        })
+        wrapper.appendChild(inputWrapper)
+
+        const example = document.createElement('code')
+        example.className = 'block rounded bg-slate-50 px-3 py-2 text-xs text-slate-600'
+        example.textContent = entry.example
+        wrapper.appendChild(example)
+
+        const buttonRow = document.createElement('div')
+        buttonRow.className = 'flex justify-end gap-2'
+
+        const backButton = document.createElement('button')
+        backButton.type = 'button'
+        backButton.className = 'btn btn-secondary'
+        backButton.textContent = 'Back'
+        backButton.addEventListener('click', () => this.openTemplateTagPicker())
+        buttonRow.appendChild(backButton)
+
+        const insertButton = document.createElement('button')
+        insertButton.type = 'button'
+        insertButton.className = 'btn btn-primary'
+        insertButton.innerHTML = '<i class="fa-solid fa-plus"></i> Insert'
+        insertButton.addEventListener('click', () => this.insertTemplateTagFromInputs(entry, inputs))
+        buttonRow.appendChild(insertButton)
+
+        wrapper.appendChild(buttonRow)
+        modalBody.appendChild(wrapper)
+
+        window.setTimeout(() => {
+            Array.from(inputs.values())[0]?.focus()
+        }, 80)
+    }
+
+    private insertTemplateTagFromInputs(entry: TemplateTagEntry, inputs: Map<string, HTMLInputElement>) {
+        this.insertTemplateTag(
+            entry,
+            Object.fromEntries(Array.from(inputs.entries()).map(([name, input]) => [name, input.value.trim()]))
+        )
+        getModal('bloomerp-general-use-modal').close()
+    }
+
+    private insertTemplateTag(entry: TemplateTagEntry, values: Record<string, string>) {
+        const getParamValue = (param: TemplateTagParam) => values[param.name] || String(param.default ?? param.name)
+        let snippet = entry.example
+
+        if (!snippet) {
+            if (entry.kind === 'filter') {
+                const valueParam = entry.params[0]
+                const filterArgs = entry.params.slice(1).map((param) => getParamValue(param)).filter(Boolean)
+                snippet = `{{ ${valueParam ? getParamValue(valueParam) : 'value'}|${entry.name}${filterArgs.length ? `:${filterArgs[0]}` : ''} }}`
+            } else {
+                const tagArgs = entry.params.map((param) => getParamValue(param)).filter(Boolean).join(' ')
+                snippet = `{% ${entry.name}${tagArgs ? ` ${tagArgs}` : ''} %}`
+            }
+        } else {
+            entry.params.forEach((param) => {
+                const value = getParamValue(param)
+                snippet = snippet.replace(new RegExp(`\\b${param.name}\\b`, 'g'), value)
+            })
+        }
+
+        this.removeSlashTriggerWord()
+        this.editor.insertNode(() => $createTextNode(snippet))
+    }
+
     private openVariablePicker() {
         const modal = getModal('add-variable-modal')
         const modalBody = modal.getBodyElement()
@@ -1276,4 +1667,3 @@ export class DocumentTemplateBuilder extends BaseComponent {
 function $wrapNodeInElement(node: LexicalNode, $createParagraphNode: () => ParagraphNode) {
     throw new Error("Function not implemented.");
 }
-

@@ -1770,6 +1770,353 @@ class TestAutomation(TransactionTestCase):
             "branch_stopped",
         )
 
+    def test_if_condition_greater_than_operator(self):
+        """
+        UC: User wants to check if a field value is greater than a specified value
+        Expected results: The workflow should continue if the condition is met, and stop if not.
+        """
+        workflow = Workflow.objects.create(name="If Condition Greater Than Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "age": 20,
+                    },
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        if_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "greater_than",
+                    "value": "18",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        workflow.connect_nodes(trigger, if_node)
+        workflow.connect_nodes(if_node, create_node)
+
+        workflow_run = run_workflow(workflow, {"age": 20})
+
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION", "CREATE_OBJECT"],
+        )
+    
+    def test_if_condition_less_than_operator(self):
+        """
+        UC: User wants to check if a field value is less than a specified value
+        Expected results: The workflow should continue if the condition is met, and stop if not.
+        """
+        workflow = Workflow.objects.create(name="If Condition Less Than Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "age": 25,
+                    },
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        if_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "less_than",
+                    "value": "30",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        workflow.connect_nodes(trigger, if_node)
+        workflow.connect_nodes(if_node, create_node)
+
+        workflow_run = run_workflow(workflow, {"age": 25})
+
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION", "CREATE_OBJECT"],
+        )
+    
+    def test_if_condition_greater_than_or_equal_operator(self):
+        """
+        UC: User wants to check if a field value is greater than or equal to a specified value
+        Expected results: The workflow should continue if the condition is met, and stop if not.
+        """
+        workflow = Workflow.objects.create(name="If Condition Greater Than Or Equal Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "age": 18,
+                    },
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        if_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "greater_than_or_equal",
+                    "value": "18",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        workflow.connect_nodes(trigger, if_node)
+        workflow.connect_nodes(if_node, create_node)
+
+        workflow_run = run_workflow(workflow, {"age": 18})
+
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION", "CREATE_OBJECT"],
+        )
+    
+    def test_if_condition_less_than_or_equal_operator(self):
+        """
+        UC: User wants to check if a field value is less than or equal to a specified value
+        Expected results: The workflow should continue if the condition is met, and stop if not.
+        """
+        workflow = Workflow.objects.create(name="If Condition Less Than Or Equal Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "age": 30,
+                    },
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        if_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "less_than_or_equal",
+                    "value": "30",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        workflow.connect_nodes(trigger, if_node)
+        workflow.connect_nodes(if_node, create_node)
+
+        workflow_run = run_workflow(workflow, {"age": 30})
+
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION", "CREATE_OBJECT"],
+        )
+    
+    def test_if_condition_with_gt_lt_gte_lte_operator_and_non_numeric_values(self):
+        """
+        UC: User wants to check if a field value is greater than, less than, greater than or equal to, or less than or equal to a specified value, but the values are non-numeric.
+        Expected results: The workflow should return False for the condition check, and the branch should stop.
+        """
+        workflow = Workflow.objects.create(name="If Condition Non-Numeric Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "age": 20,
+                    },
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        if_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "name",
+                    "operator": "greater_than",
+                    "value": "Alice",
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        workflow.connect_nodes(trigger, if_node)
+        workflow.connect_nodes(if_node, create_node)
+
+        workflow_run = run_workflow(workflow, {"name": "Bob"})
+
+        self.assertFalse(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION"],
+        )
+    
+    def test_if_condition_with_gt_lt_gte_lte_with_float_and_integer_values(self):
+        """
+        UC: User wants to check if a field value is greater than, less than, greater than or equal to, or less than or equal to a specified value, and the values are float and integer.
+        Expected results: The workflow should correctly evaluate the condition and continue or stop the branch accordingly.
+        """
+        workflow = Workflow.objects.create(name="If Condition Float and Integer Test Workflow")
+        trigger = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "HUMAN_TRIGGER",
+                "parameters": {
+                    "data": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "age": 80,
+                    },
+                },
+            },
+            type=WorkflowNodeType.TRIGGER.value.id,
+        )
+        
+        if_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "IF_CONDITION",
+                "parameters": {
+                    "field": "age",
+                    "operator": "greater_than",
+                    "value": 75.5,
+                },
+            },
+            type=WorkflowNodeType.FLOW.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        create_node = WorkflowNode.objects.create(
+            workflow=workflow,
+            config={
+                "sub_type": "CREATE_OBJECT",
+                "parameters": {
+                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
+                },
+            },
+            type=WorkflowNodeType.ACTION.value.id,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        workflow.connect_nodes(trigger, if_node)
+        workflow.connect_nodes(if_node, create_node)
+
+        workflow_run = run_workflow(workflow, {"age": 80})
+
+        self.assertTrue(self.CustomerModel.objects.filter(first_name="John").exists())
+        self.assertEqual(
+            [entry["node_sub_type"] for entry in workflow_run.execution_trace],
+            ["HUMAN_TRIGGER", "IF_CONDITION", "CREATE_OBJECT"],
+        )
     
     # ----------------------------------------
     # Flow: MERGE_BRANCHES
