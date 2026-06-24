@@ -12,6 +12,7 @@ from PIL import Image
 from typing import Optional
 from enum import Enum
 from django.conf import settings
+from weasyprint import HTML, default_url_fetcher
 
 
 def _configure_weasyprint_native_library_path() -> None:
@@ -25,7 +26,6 @@ def _configure_weasyprint_native_library_path() -> None:
 
 _configure_weasyprint_native_library_path()
 
-from weasyprint import HTML, default_url_fetcher
 
 def fetch_image(image_url):
     """Helper function to download image from a URL and save it temporarily."""
@@ -72,6 +72,7 @@ def _resolve_local_path(uri: str, rel: str | None = None) -> str:
             return candidate
 
     return uri
+
 
 def link_callback(uri, rel):
     """Link callback function to handle external images."""
