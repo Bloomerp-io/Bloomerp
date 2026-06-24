@@ -9,8 +9,8 @@ from django.views.generic import TemplateView
     path="generate",
     route_type="detail",
     models=DocumentTemplate,
-    name="Generate",
-    description="Generate document templates"
+    name="Generate PDF",
+    description="Generate pdf from document template"
 )
 class DocumentTemplateGenerateView(BaseBloomerpDetailView):
     template_name = "load_component_view.html"

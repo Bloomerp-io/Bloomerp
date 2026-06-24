@@ -29,10 +29,11 @@ class DocumentTemplateBuilderForm(BloomerpModelForm):
             "page_size",
             "page_margin",
             "include_page_numbers",
-            "styling",
+            "custom_styling",
+            "style_sets",
             "template_header",
             "template",
-            "free_variables"
+            "free_variables",
         ]
 
     def clean_free_variables_json(self) -> list[dict[str, Any]]:
@@ -159,10 +160,6 @@ class DocumentTemplateBuilderContextMixin:
     def form_valid(self, form: DocumentTemplateBuilderForm):
         with transaction.atomic():
             self.object = form.save(commit=False)
-            if hasattr(self.object, "updated_by"):
-                self.object.updated_by = self.request.user
-            if hasattr(self.object, "created_by") and not self.object.created_by:
-                self.object.created_by = self.request.user
             self.object.save()
             form.save_m2m()
         messages.success(self.request, "Document template saved.")
@@ -179,7 +176,6 @@ class DocumentTemplateBuilderContextMixin:
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        instance = kwargs.get("instance") or self.get_initial_object()
         form = kwargs.get("form") or self.get_form()
         context["builder_form"] = form
         context["free_variable_types"] = FreeVariableType.choices_payload()
@@ -196,4 +192,4 @@ class DocumentTemplateBuilderContextMixin:
     models=[DocumentTemplate],
 )
 class DocumentTemplateBuilderEditView(DocumentTemplateBuilderContextMixin, BaseBloomerpDetailView):
-    pass
+    htmx_include_addendum_padding = False

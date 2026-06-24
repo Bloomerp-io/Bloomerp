@@ -1,4 +1,4 @@
-import { $createTextNode, $getSelection } from "lexical";
+import { $createParagraphNode, $createTextNode, $getSelection, $isNodeSelection, $isRangeSelection, $isTextNode, LexicalNode, ParagraphNode } from "lexical";
 import BaseComponent, { getComponent } from "./BaseComponent";
 import { BloomerpTextEditor } from "./text_editor/BloomerpTextEditor";
 import ForeignFieldWidget from "./widgets/ForeignFieldWidget";
@@ -66,7 +66,7 @@ type VariablePickerLayout = {
 /**
  * Returns the default injection method
  */
-function getDefaultInjectionMethod() : InjectionMethod {
+function getDefaultInjectionMethod(): InjectionMethod {
     return {
         id: 'value',
         label: 'Value',
@@ -79,8 +79,8 @@ function getDefaultInjectionMethod() : InjectionMethod {
  * Returns a known injection method
  * @param methodId 
  */
-function getKnownInjectionMethod(methodId:string) : InjectionMethod {
-    const knownMethods:Record<string, InjectionMethod> = {
+function getKnownInjectionMethod(methodId: string): InjectionMethod {
+    const knownMethods: Record<string, InjectionMethod> = {
         value: getDefaultInjectionMethod(),
         formatted_date: {
             id: 'formatted_date',
@@ -108,8 +108,8 @@ function getKnownInjectionMethod(methodId:string) : InjectionMethod {
  * Returns injection methods from a catalog element
  * @param element 
  */
-function getInjectionMethods(element:HTMLElement) : InjectionMethod[] {
-    const methods = Array.from(element.querySelectorAll('[data-injection-method]')).map((methodElement)=> {
+function getInjectionMethods(element: HTMLElement): InjectionMethod[] {
+    const methods = Array.from(element.querySelectorAll('[data-injection-method]')).map((methodElement) => {
         const method = methodElement as HTMLElement
         return {
             id: method.dataset.id || 'value',
@@ -127,9 +127,9 @@ function getInjectionMethods(element:HTMLElement) : InjectionMethod[] {
  * @param freeVariableType 
  * @param type 
  */
-function getFreeVariableTypeDefinition(freeVariableType:HTMLSelectElement, type:string) : FreeVariableTypeDefinition|null {
-    const option = Array.from(freeVariableType.options).find((item)=>item.value === type)
-    if (!option) {return null}
+function getFreeVariableTypeDefinition(freeVariableType: HTMLSelectElement, type: string): FreeVariableTypeDefinition | null {
+    const option = Array.from(freeVariableType.options).find((item) => item.value === type)
+    if (!option) { return null }
 
     return {
         id: option.value,
@@ -139,7 +139,7 @@ function getFreeVariableTypeDefinition(freeVariableType:HTMLSelectElement, type:
         injectionMethods: (option.dataset.injectionMethods || 'value')
             .split(',')
             .filter(Boolean)
-            .map((methodId)=>getKnownInjectionMethod(methodId)),
+            .map((methodId) => getKnownInjectionMethod(methodId)),
     }
 }
 
@@ -147,12 +147,12 @@ function getFreeVariableTypeDefinition(freeVariableType:HTMLSelectElement, type:
  * Parses the choices input into the model json format
  * @param value 
  */
-function parseChoices(value:string) : Array<{ value: string; label: string }> {
+function parseChoices(value: string): Array<{ value: string; label: string }> {
     return value
         .split(',')
-        .map((choice)=>choice.trim())
+        .map((choice) => choice.trim())
         .filter(Boolean)
-        .map((choice)=>{
+        .map((choice) => {
             const [rawValue, rawLabel] = choice.split(':')
             const choiceValue = (rawValue || '').trim()
             return {
@@ -160,19 +160,19 @@ function parseChoices(value:string) : Array<{ value: string; label: string }> {
                 label: (rawLabel || choiceValue).trim(),
             }
         })
-        .filter((choice)=>Boolean(choice.value))
+        .filter((choice) => Boolean(choice.value))
 }
 
 /**
  * Returns a readable choices summary
  * @param choices 
  */
-function getChoicesDescription(choices:Array<{ value: string; label: string }>) {
-    if (!choices.length) {return ''}
+function getChoicesDescription(choices: Array<{ value: string; label: string }>) {
+    if (!choices.length) { return '' }
     return `${choices.length} ${choices.length === 1 ? 'choice' : 'choices'}`
 }
 
-function getFreeVariableDescription(variable:FreeVariable) {
+function getFreeVariableDescription(variable: FreeVariable) {
     const choiceDescription = getChoicesDescription(variable.choices)
     return choiceDescription ? `${variable.typeLabel} · ${choiceDescription}` : variable.typeLabel
 }
@@ -181,7 +181,7 @@ function getFreeVariableDescription(variable:FreeVariable) {
  * Normalizes a variable slug
  * @param value 
  */
-function normalizeSlug(value:string) {
+function normalizeSlug(value: string) {
     return value
         .trim()
         .toLowerCase()
@@ -194,10 +194,10 @@ function normalizeSlug(value:string) {
  * @param value 
  * @param freeVariables 
  */
-function getUniqueSlug(value:string, freeVariables:FreeVariable[]) {
+function getUniqueSlug(value: string, freeVariables: FreeVariable[]) {
     const baseSlug = normalizeSlug(value) || 'variable'
-    const usedSlugs = new Set(freeVariables.map((variable)=>variable.slug))
-    if (!usedSlugs.has(baseSlug)) {return baseSlug}
+    const usedSlugs = new Set(freeVariables.map((variable) => variable.slug))
+    if (!usedSlugs.has(baseSlug)) { return baseSlug }
 
     let suffix = 2
     while (usedSlugs.has(`${baseSlug}_${suffix}`)) {
@@ -215,7 +215,7 @@ function createVariablePickerEntry(args: {
     token: string;
     isFreeVariable: boolean;
     injectionMethods: InjectionMethod[];
-}) : VariablePickerEntry {
+}): VariablePickerEntry {
     const searchText = [
         args.sourceLabel,
         args.label,
@@ -230,9 +230,9 @@ function createVariablePickerEntry(args: {
     }
 }
 
-function createModelVariablePickerEntry(variableElement:HTMLElement) : VariablePickerEntry|null {
+function createModelVariablePickerEntry(variableElement: HTMLElement): VariablePickerEntry | null {
     const token = variableElement.dataset.token
-    if (!token) {return null}
+    if (!token) { return null }
 
     return createVariablePickerEntry({
         id: `model:${token}`,
@@ -246,7 +246,7 @@ function createModelVariablePickerEntry(variableElement:HTMLElement) : VariableP
     })
 }
 
-function createFreeVariablePickerEntry(variable:FreeVariable) : VariablePickerEntry {
+function createFreeVariablePickerEntry(variable: FreeVariable): VariablePickerEntry {
     return createVariablePickerEntry({
         id: `free:${variable.slug}`,
         sourceLabel: 'Free variable',
@@ -259,20 +259,20 @@ function createFreeVariablePickerEntry(variable:FreeVariable) : VariablePickerEn
     })
 }
 
-function matchesVariablePickerEntry(entry:VariablePickerEntry, query:string) {
+function matchesVariablePickerEntry(entry: VariablePickerEntry, query: string) {
     const normalizedQuery = query.trim().toLowerCase()
     return !normalizedQuery || entry.searchText.includes(normalizedQuery)
 }
 
-function getWrappedIndex(currentIndex:number, delta:1|-1, length:number) {
-    if (length === 0) {return -1}
+function getWrappedIndex(currentIndex: number, delta: 1 | -1, length: number) {
+    if (length === 0) { return -1 }
     if (currentIndex === -1) {
         return delta === 1 ? 0 : length - 1
     }
     return (currentIndex + delta + length) % length
 }
 
-function createVariablePickerLayout() : VariablePickerLayout {
+function createVariablePickerLayout(): VariablePickerLayout {
     const root = document.createElement('div')
     root.className = 'space-y-4'
 
@@ -306,14 +306,14 @@ function createVariablePickerLayout() : VariablePickerLayout {
  * @returns the variable div
  */
 function createVariableDiv(
-    sourceLabel:string,
-    label:string,
-    icon:string,
-    description:string,
-    injectionMethods:InjectionMethod[],
-    onInjectionMethodClick:(methodId:string)=>void,
-    onRemove?:()=>void,
-) : HTMLDivElement {
+    sourceLabel: string,
+    label: string,
+    icon: string,
+    description: string,
+    injectionMethods: InjectionMethod[],
+    onInjectionMethodClick: (methodId: string) => void,
+    onRemove?: () => void,
+): HTMLDivElement {
     // Create wrapper div
     const containerDiv = document.createElement('div')
     containerDiv.classList = 'border border-gray-200 rounded-xl p-3 flex-col flex mb-2'
@@ -354,12 +354,12 @@ function createVariableDiv(
 
     anotherDiv.appendChild(iconWrapper)
     anotherDiv.appendChild(labelWrapper)
-    
+
     containerDiv.appendChild(anotherDiv)
 
     const actionsDiv = document.createElement('div')
     actionsDiv.className = 'flex flex-wrap gap-1'
-    injectionMethods.forEach((injectionMethod)=>{
+    injectionMethods.forEach((injectionMethod) => {
         const button = document.createElement('button')
         button.type = 'button'
         button.className = 'badge bg-primary/8 badge-xs border-0 cursor-pointer'
@@ -367,7 +367,7 @@ function createVariableDiv(
         button.dataset.variableMethodButton = 'true'
         button.dataset.methodId = injectionMethod.id
         button.innerHTML = `<i class="${injectionMethod.icon}"></i> ${injectionMethod.label}`
-        button.addEventListener('click', ()=>onInjectionMethodClick(injectionMethod.id))
+        button.addEventListener('click', () => onInjectionMethodClick(injectionMethod.id))
         actionsDiv.appendChild(button)
     })
 
@@ -376,7 +376,7 @@ function createVariableDiv(
         removeButton.type = 'button'
         removeButton.className = 'badge badge-danger badge-xs'
         removeButton.innerHTML = '<i class="fa-solid fa-trash"></i> Remove'
-        removeButton.addEventListener('click', ()=>onRemove())
+        removeButton.addEventListener('click', () => onRemove())
         actionsDiv.appendChild(removeButton)
     }
 
@@ -386,14 +386,14 @@ function createVariableDiv(
 }
 
 function renderVariableEntryList(
-    container:HTMLDivElement,
-    entries:VariablePickerEntry[],
-    onSelect:(entry:VariablePickerEntry, methodId:string)=>void,
-    onRemoveFreeVariable?:(slug:string)=>void,
-) : VariablePickerItem[] {
+    container: HTMLDivElement,
+    entries: VariablePickerEntry[],
+    onSelect: (entry: VariablePickerEntry, methodId: string) => void,
+    onRemoveFreeVariable?: (slug: string) => void,
+): VariablePickerItem[] {
     container.innerHTML = ''
 
-    return entries.map((entry)=>{
+    return entries.map((entry) => {
         const item = createVariableDiv(
             entry.sourceLabel,
             entry.label,
@@ -412,27 +412,27 @@ function renderVariableEntryList(
 export class DocumentTemplateBuilder extends BaseComponent {
     private editor: BloomerpTextEditor;
     private pageContainer: HTMLDivElement;
-    private pageContentSection:HTMLDivElement;
-    private pageHeaderSection:HTMLDivElement;
+    private pageContentSection: HTMLDivElement;
+    private pageHeaderSection: HTMLDivElement;
     private currentPageSize: 'A4' | 'A3' | 'Letter' = 'A4';
     private currentPageOrientation: 'landscape' | 'portrait' = 'portrait';
-    
+
     private freeVariables: FreeVariable[] = [];
     private modelVariableEntries: VariablePickerEntry[] = [];
-    private freeVariableField: CodeEditorWidget|null = null;
-    private freeVariableInput: HTMLTextAreaElement|null = null;
-    private sidebarVariableSearchInput: HTMLInputElement|null = null;
+    private freeVariableField: CodeEditorWidget | null = null;
+    private freeVariableInput: HTMLTextAreaElement | null = null;
+    private sidebarVariableSearchInput: HTMLInputElement | null = null;
     private variablePickerItems: VariablePickerItem[] = [];
     private variablePickerActiveIndex: number = -1;
     private variablePickerActiveMethodIndex: number = 0;
 
-    private documentTemplateId: string|null = null;
+    private documentTemplateId: string | null = null;
     private stylingRequestSequence: number = 0;
 
-    
+
 
     // Preview URL
-    private previewUrl: string|null = null;
+    private previewUrl: string | null = null;
 
 
     public initialize(): void {
@@ -450,32 +450,32 @@ export class DocumentTemplateBuilder extends BaseComponent {
         this.pageHeaderSection = this.element.querySelector('#page-header-section')
 
         // Clicking somewhere in pageContainer should focus on editor
-        this.pageContainer.addEventListener('click', ()=>{this.editor.editor.focus()})
+        this.pageContainer.addEventListener('click', () => { this.editor.editor.focus() })
 
         // Apply initial styling
         const pageMarginField = this.getFormField('page_margin')
         this.applyPageMargin(pageMarginField.value)
-        pageMarginField.addEventListener('change', ()=>{
+        pageMarginField.addEventListener('change', () => {
             this.applyPageMargin(pageMarginField.value)
         })
 
         // Apply page size
         const pageSizeField = this.getFormField('page_size')
         this.applyPageSize(pageSizeField.value)
-        pageSizeField.addEventListener('change', ()=>{
+        pageSizeField.addEventListener('change', () => {
             this.applyPageSize(pageSizeField.value)
         })
 
         const pageOrientationField = this.getFormField('page_orientation')
         this.applyPageOrientation(pageOrientationField.value)
-        pageOrientationField.addEventListener('change', ()=>{
+        pageOrientationField.addEventListener('change', () => {
             this.applyPageOrientation(pageOrientationField.value)
         })
 
         // Apply page header
         const pageHeaderField = getComponent(this.getFormField('template_header')) as ForeignFieldWidget;
-        this.applyPageHeader(pageHeaderField.getValue() as string|null)
-        pageHeaderField.element.addEventListener('bloomerp:widget-change', ()=>{this.applyPageHeader(pageHeaderField.getValue() as string|null)})
+        this.applyPageHeader(pageHeaderField.getValue() as string | null)
+        pageHeaderField.element.addEventListener('bloomerp:widget-change', () => { this.applyPageHeader(pageHeaderField.getValue() as string | null) })
 
         // Apply custom styling
         const customStylingField = this.getFieldComponent<CodeEditorWidget>('custom_styling');
@@ -496,20 +496,20 @@ export class DocumentTemplateBuilder extends BaseComponent {
         // Render content types
         const contentTypes = getComponent(this.getFormField('content_types')) as ForeignFieldWidget;
         this.renderContentTypes(contentTypes.getValue() as string[])
-        contentTypes.element.addEventListener('bloomerp:widget-change', ()=>{this.renderContentTypes(contentTypes.getValue() as string[])})
+        contentTypes.element.addEventListener('bloomerp:widget-change', () => { this.renderContentTypes(contentTypes.getValue() as string[]) })
 
         // Free variables
-        this.freeVariableInput = this.getFormField('free_variables') as HTMLTextAreaElement|null;
-        const freeVariableComponent = this.freeVariableInput?.closest('[bloomerp-component="code-editor-widget"]') as HTMLElement|null;
+        this.freeVariableInput = this.getFormField('free_variables') as HTMLTextAreaElement | null;
+        const freeVariableComponent = this.freeVariableInput?.closest('[bloomerp-component="code-editor-widget"]') as HTMLElement | null;
         this.freeVariableField = freeVariableComponent ? getComponent(freeVariableComponent) as CodeEditorWidget : null;
         this.freeVariables = this.readFreeVariables();
         this.syncFreeVariablesInput();
         this.sidebarVariableSearchInput = this.element.querySelector('#variable-search-input') as HTMLInputElement | null;
-        this.sidebarVariableSearchInput?.addEventListener('input', ()=>{
+        this.sidebarVariableSearchInput?.addEventListener('input', () => {
             this.renderSidebarVariables()
         })
         this.renderSidebarVariables();
-        
+
         const freeVariableLabel = this.getFormField('free_variable_label')
         const freeVariableType = this.getFormField('free_variable_type');
         const freeVariableChoices = this.getFormField('free_variable_choices');
@@ -523,7 +523,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
         syncChoicesVisibility()
         freeVariableType.addEventListener('change', syncChoicesVisibility)
 
-        freeVariableAddBtn.addEventListener('click', ()=>{
+        freeVariableAddBtn.addEventListener('click', () => {
             this.addFreeVariable(
                 freeVariableLabel.value,
                 freeVariableType.value,
@@ -556,7 +556,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
                     const modal = getGeneralModal()
                     modal.setSize('full')
                     modal.setTitle('Document preview')
-                    
+
                     htmx.ajax(
                         'get',
                         this.previewUrl,
@@ -564,10 +564,11 @@ export class DocumentTemplateBuilder extends BaseComponent {
                             target: modal.getBodyElement(),
                             swap: 'innerHTML'
                         }
-                    ).then(()=>{
-                        modal.open()}
+                    ).then(() => {
+                        modal.open()
+                    }
                     )
-                    
+
                 }
             },
             'preview',
@@ -587,7 +588,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
             true,
             false
         )
-
+        
         // Initialize autosave
         this.initializeAutosave()
     }
@@ -595,7 +596,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     /**
      * Renders the document template header
      */
-    private applyPageHeader(headerId:string|null) : void {
+    private applyPageHeader(headerId: string | null): void {
         const sdk = getSdk();
         const headerSection = this.pageHeaderSection
         headerSection.innerHTML = ''
@@ -603,7 +604,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
         headerSection.style.boxSizing = ''
 
         if (headerId) {
-            sdk.documentTemplateHeaders.retrieve(headerId).then((header)=>{
+            sdk.documentTemplateHeaders.retrieve(headerId).then((header) => {
                 headerSection.style.paddingTop = `${header.margin_top}in`
                 headerSection.style.paddingRight = `${header.margin_right}in`
                 headerSection.style.paddingBottom = `${header.margin_bottom}in`
@@ -621,11 +622,11 @@ export class DocumentTemplateBuilder extends BaseComponent {
                 image.style.objectPosition = 'left top'
 
                 // Also change the page margin
-                
+
                 headerSection.appendChild(image)
                 return
-        })
-        
+            })
+
         }
     }
 
@@ -633,15 +634,15 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Renders the content types
      * @param contentTypeIds 
      */
-    private renderContentTypes(contentTypeIds:string[]) {
-        if (!contentTypeIds) {return}
+    private renderContentTypes(contentTypeIds: string[]) {
+        if (!contentTypeIds) { return }
 
-        let catalogUrl = this.element.dataset.catalogUrl +"?";
-        contentTypeIds.forEach((v)=>{
-            catalogUrl+='content_types='+encodeURIComponent(v) +"&"
+        let catalogUrl = this.element.dataset.catalogUrl + "?";
+        contentTypeIds.forEach((v) => {
+            catalogUrl += 'content_types=' + encodeURIComponent(v) + "&"
         })
 
-        fetch(catalogUrl, {credentials: 'same-origin'})
+        fetch(catalogUrl, { credentials: 'same-origin' })
             .then((response) => response.ok ? response.text() : '')
             .then((html) => this.renderModelVariables(html))
     }
@@ -650,28 +651,28 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Add's extra styling to the document
      * @param styling the content of the styling css
      */
-    private applyPageStyling(styleIds:string[]|null, customStyling:string = '') : void{
+    private applyPageStyling(styleIds: string[] | null, customStyling: string = ''): void {
         const sdk = getSdk();
         const requestSequence = ++this.stylingRequestSequence;
         const normalizedStyleIds = this.normalizeStyleIds(styleIds);
 
         Promise.all(
-            normalizedStyleIds.map((styleId)=>sdk.documentTemplateStylings.retrieve(styleId))
+            normalizedStyleIds.map((styleId) => sdk.documentTemplateStylings.retrieve(styleId))
         )
-            .then((styleSets)=>{
-                if (requestSequence !== this.stylingRequestSequence) {return}
+            .then((styleSets) => {
+                if (requestSequence !== this.stylingRequestSequence) { return }
 
                 const styling = [
                     customStyling,
-                    ...styleSets.map((styleSet)=>styleSet.styling || ''),
+                    ...styleSets.map((styleSet) => styleSet.styling || ''),
                 ]
-                    .map((style)=>style.trim())
+                    .map((style) => style.trim())
                     .filter(Boolean)
                     .join('\n\n')
 
                 this.editor.setStyling(styling)
             })
-            .catch((error)=>{
+            .catch((error) => {
                 console.error('Error applying document template styling:', error)
                 if (requestSequence === this.stylingRequestSequence) {
                     this.editor.setStyling(customStyling)
@@ -682,7 +683,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     /**
      * Applies page orientation to the editor
      */
-    private applyPageOrientation(orientation:'landscape' | 'portrait') {
+    private applyPageOrientation(orientation: 'landscape' | 'portrait') {
         this.currentPageOrientation = orientation
         this.applyPageDimensions()
     }
@@ -690,7 +691,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     /**
      * Applies page margin
      */
-    private applyPageMargin(margin:number|string) {
+    private applyPageMargin(margin: number | string) {
         this.pageContentSection.style.padding = `${margin.toString()}in`
     }
 
@@ -698,27 +699,27 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Returns a form field based on the ID
      * @param id 
      */
-    private getFormField(id:string) : HTMLInputElement | any {
-        return this.element.querySelector('#id_'+id)
+    private getFormField(id: string): HTMLInputElement | any {
+        return this.element.querySelector('#id_' + id)
     }
 
-    private getFieldComponent<T>(id:string) : T|null {
+    private getFieldComponent<T>(id: string): T | null {
         const field = this.getFormField(id) as HTMLElement | null
         const componentElement = field?.closest('[bloomerp-component]') as HTMLElement | null
-        if (!componentElement) {return null}
-        return getComponent(componentElement) as T|null
+        if (!componentElement) { return null }
+        return getComponent(componentElement) as T | null
     }
 
-    private normalizeStyleIds(value:string[]|string|null|undefined) : string[] {
-        if (!value) {return []}
+    private normalizeStyleIds(value: string[] | string | null | undefined): string[] {
+        if (!value) { return [] }
         const values = Array.isArray(value) ? value : [value]
-        return values.map((item)=>String(item).trim()).filter(Boolean)
+        return values.map((item) => String(item).trim()).filter(Boolean)
     }
 
     /**
      * Applies the correct page size to the container by tweaking the margins
      */
-    private applyPageSize(size:'A4' | 'A3' | 'Letter') {
+    private applyPageSize(size: 'A4' | 'A3' | 'Letter') {
         this.currentPageSize = size
 
         this.applyPageDimensions()
@@ -760,14 +761,14 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * @param required 
      */
     private addFreeVariable(
-        label:string,
-        type:string,
-        required:boolean,
-        choices:string,
+        label: string,
+        type: string,
+        required: boolean,
+        choices: string,
     ) {
         const trimmedLabel = label.trim();
         const typeDefinition = getFreeVariableTypeDefinition(this.getFormField('free_variable_type') as HTMLSelectElement, type);
-        if (!trimmedLabel || !typeDefinition) {return}
+        if (!trimmedLabel || !typeDefinition) { return }
 
         const parsedChoices = typeDefinition.supportsChoices ? parseChoices(choices) : []
         const slug = getUniqueSlug(trimmedLabel, this.freeVariables);
@@ -793,7 +794,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     private renderSidebarVariables() {
         const variableResults = this.element.querySelector('#variable-results') as HTMLDivElement | null
         const emptyState = this.element.querySelector('#variable-results-empty') as HTMLParagraphElement | null
-        if (!variableResults || !emptyState) {return}
+        if (!variableResults || !emptyState) { return }
 
         const query = this.sidebarVariableSearchInput?.value || ''
         const entries = this.getVariableEntries(query)
@@ -815,16 +816,16 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Renders the model variables from the data returned by the catalog endpoint
      * @param html 
      */
-    private renderModelVariables(html:string) {
+    private renderModelVariables(html: string) {
         this.modelVariableEntries = []
 
         const template = document.createElement('template')
         template.innerHTML = html
 
-        template.content.querySelectorAll('[data-model-variable]').forEach((element)=>{
+        template.content.querySelectorAll('[data-model-variable]').forEach((element) => {
             const variableElement = element as HTMLElement
             const entry = createModelVariablePickerEntry(variableElement)
-            if (!entry) {return}
+            if (!entry) { return }
             this.modelVariableEntries.push(entry)
         })
 
@@ -834,9 +835,9 @@ export class DocumentTemplateBuilder extends BaseComponent {
     /**
      * Reads the free variables from the hidden json field
      */
-    private readFreeVariables() : FreeVariable[] {
+    private readFreeVariables(): FreeVariable[] {
         const rawValue = this.freeVariableField?.getValue() || this.freeVariableInput?.value || '[]';
-        let parsedValue:unknown = []
+        let parsedValue: unknown = []
 
         try {
             parsedValue = JSON.parse(rawValue || '[]')
@@ -844,14 +845,14 @@ export class DocumentTemplateBuilder extends BaseComponent {
             parsedValue = []
         }
 
-        if (!Array.isArray(parsedValue)) {return []}
+        if (!Array.isArray(parsedValue)) { return [] }
 
-        return parsedValue.map((item)=>{
+        return parsedValue.map((item) => {
             const typeDefinition = getFreeVariableTypeDefinition(this.getFormField('free_variable_type') as HTMLSelectElement, String(item.type || 'text'))
             const label = String(item.label || item.slug || '').trim()
             const slug = normalizeSlug(String(item.slug || label))
 
-            if (!label || !slug) {return null}
+            if (!label || !slug) { return null }
 
             return {
                 slug,
@@ -870,7 +871,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Updates the hidden json field with the free variables
      */
     private syncFreeVariablesInput() {
-        const value = JSON.stringify(this.freeVariables.map((variable)=>({
+        const value = JSON.stringify(this.freeVariables.map((variable) => ({
             slug: variable.slug,
             label: variable.label,
             type: variable.type,
@@ -892,26 +893,26 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Removes a free variable
      * @param slug 
      */
-    private removeFreeVariable(slug:string) {
-        this.freeVariables = this.freeVariables.filter((variable)=>variable.slug !== slug)
+    private removeFreeVariable(slug: string) {
+        this.freeVariables = this.freeVariables.filter((variable) => variable.slug !== slug)
         this.syncFreeVariablesInput()
         this.renderSidebarVariables()
         this.scheduleAutosave()
     }
-    
+
     /**
      * AUTOSAVE LOGIC
      */
-    private autosaveTimer: number|null = null;
+    private autosaveTimer: number | null = null;
     private autosaveInFlight: boolean = false;
     private autosaveQueued: boolean = false;
-    private lastAutosavePayload: Record<string, unknown>|null = null;
+    private lastAutosavePayload: Record<string, unknown> | null = null;
 
     private initializeAutosave() {
-        if (!this.documentTemplateId) {return}
+        if (!this.documentTemplateId) { return }
 
         this.lastAutosavePayload = this.getAutosavePayload()
-        this.editor.element.addEventListener('bloomerp:widget-change', ()=>this.scheduleAutosave())
+        this.editor.element.addEventListener('bloomerp:widget-change', () => this.scheduleAutosave())
 
         const autosaveFields = [
             'name',
@@ -927,30 +928,29 @@ export class DocumentTemplateBuilder extends BaseComponent {
             'template',
         ]
 
-        autosaveFields.forEach((fieldId)=>{
-            const field = this.getFormField(fieldId) as HTMLElement|null
-            console.log(fieldId, field)
-            const component = field?.closest('[bloomerp-component]') as HTMLElement|null
+        autosaveFields.forEach((fieldId) => {
+            const field = this.getFormField(fieldId) as HTMLElement | null
+            const component = field?.closest('[bloomerp-component]') as HTMLElement | null
             const eventTarget = component || field
-            eventTarget?.addEventListener('change', ()=>this.scheduleAutosave())
-            eventTarget?.addEventListener('bloomerp:widget-change', ()=>this.scheduleAutosave())
+            eventTarget?.addEventListener('change', () => this.scheduleAutosave())
+            eventTarget?.addEventListener('bloomerp:widget-change', () => this.scheduleAutosave())
         })
     }
 
     private scheduleAutosave() {
-        if (!this.documentTemplateId) {return}
+        if (!this.documentTemplateId) { return }
         if (this.autosaveTimer) {
             window.clearTimeout(this.autosaveTimer)
         }
-        this.autosaveTimer = window.setTimeout(()=>this.flushAutosave(), AUTO_SAVE_INTERVAL_MS)
+        this.autosaveTimer = window.setTimeout(() => this.flushAutosave(), AUTO_SAVE_INTERVAL_MS)
     }
 
     private flushAutosave() {
         this.saveDocumentTemplate(false)
     }
 
-    private saveDocumentTemplate(showFeedback:boolean = false) {
-        if (!this.documentTemplateId) {return}
+    private saveDocumentTemplate(showFeedback: boolean = false) {
+        if (!this.documentTemplateId) { return }
 
         if (this.autosaveTimer) {
             window.clearTimeout(this.autosaveTimer)
@@ -976,19 +976,19 @@ export class DocumentTemplateBuilder extends BaseComponent {
 
         this.autosaveInFlight = true
         getSdk().documentTemplates.partialUpdate(this.documentTemplateId, changedPayload as any)
-            .then(()=>{
+            .then(() => {
                 this.lastAutosavePayload = payload
                 if (showFeedback) {
                     showMessage('Document template saved.', MessageType.SUCCESS)
                 }
             })
-            .catch((error)=>{
+            .catch((error) => {
                 console.error('Error auto-saving document template:', error)
                 if (showFeedback) {
                     showMessage('Could not save document template. Please try again.', MessageType.ERROR)
                 }
             })
-            .finally(()=>{
+            .finally(() => {
                 this.autosaveInFlight = false
                 if (this.autosaveQueued) {
                     this.autosaveQueued = false
@@ -997,19 +997,19 @@ export class DocumentTemplateBuilder extends BaseComponent {
             })
     }
 
-    private getAutosavePayload() : Record<string, unknown> {
+    private getAutosavePayload(): Record<string, unknown> {
         return {
             name: this.getFieldValue('name'),
             template: this.editor.getValue(),
-            content_types: this.normalizeStyleIds(this.getFieldValue('content_types') as string[]|string|null|undefined),
+            content_types: this.normalizeStyleIds(this.getFieldValue('content_types') as string[] | string | null | undefined),
             page_orientation: this.getFieldValue('page_orientation'),
             page_size: this.getFieldValue('page_size'),
             page_margin: Number.parseFloat(String(this.getFieldValue('page_margin') || 0)),
             include_page_numbers: Boolean(this.getFieldValue('include_page_numbers')),
             template_header: this.getFieldValue('template_header') || null,
             custom_styling: this.getFieldValue('custom_styling') || '',
-            style_sets: this.normalizeStyleIds(this.getFieldValue('style_sets') as string[]|string|null|undefined),
-            free_variables: this.freeVariables.map((variable)=>({
+            style_sets: this.normalizeStyleIds(this.getFieldValue('style_sets') as string[] | string | null | undefined),
+            free_variables: this.freeVariables.map((variable) => ({
                 slug: variable.slug,
                 label: variable.label,
                 type: variable.type,
@@ -1019,37 +1019,37 @@ export class DocumentTemplateBuilder extends BaseComponent {
         }
     }
 
-    private getFieldValue(id:string) : unknown {
-        const field = this.getFormField(id) as HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement|null
-        const componentElement = field?.closest('[bloomerp-component]') as HTMLElement|null
-        const component = componentElement ? getComponent(componentElement) as { getValue?: () => unknown }|null : null
-        if (component?.getValue) {return component.getValue()}
-        if (field?.type === 'checkbox') {return (field as HTMLInputElement).checked}
+    private getFieldValue(id: string): unknown {
+        const field = this.getFormField(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null
+        const componentElement = field?.closest('[bloomerp-component]') as HTMLElement | null
+        const component = componentElement ? getComponent(componentElement) as { getValue?: () => unknown } | null : null
+        if (component?.getValue) { return component.getValue() }
+        if (field?.type === 'checkbox') { return (field as HTMLInputElement).checked }
         return field?.value || ''
     }
 
-    private getChangedAutosavePayload(payload: Record<string, unknown>) : Record<string, unknown> {
-        if (!this.lastAutosavePayload) {return payload}
+    private getChangedAutosavePayload(payload: Record<string, unknown>): Record<string, unknown> {
+        if (!this.lastAutosavePayload) { return payload }
 
         return Object.fromEntries(
-            Object.entries(payload).filter(([key, value])=>(
+            Object.entries(payload).filter(([key, value]) => (
                 JSON.stringify(value) !== JSON.stringify(this.lastAutosavePayload?.[key])
             ))
         )
     }
 
-    private getVariableEntries(query:string = '') {
+    private getVariableEntries(query: string = '') {
         return [
             ...this.modelVariableEntries,
-            ...this.freeVariables.map((variable)=>createFreeVariablePickerEntry(variable)),
+            ...this.freeVariables.map((variable) => createFreeVariablePickerEntry(variable)),
         ]
-            .filter((entry)=>matchesVariablePickerEntry(entry, query))
+            .filter((entry) => matchesVariablePickerEntry(entry, query))
     }
 
     private openVariablePicker() {
         const modal = getModal('add-variable-modal')
         const modalBody = modal.getBodyElement()
-        if (!modalBody) {return}
+        if (!modalBody) { return }
 
         modal.resetToDefaults()
         modal.setSize('lg')
@@ -1095,7 +1095,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
             if (event.key === 'Enter') {
                 const activeItem = this.getActiveVariablePickerItem()
                 const activeMethodId = this.getActiveVariablePickerMethodId(activeItem)
-                if (!activeItem || !activeMethodId) {return}
+                if (!activeItem || !activeMethodId) { return }
 
                 event.preventDefault()
                 this.insertVariableFromPicker(activeItem.entry, activeMethodId)
@@ -1109,9 +1109,9 @@ export class DocumentTemplateBuilder extends BaseComponent {
     }
 
     private renderVariablePickerResults(
-        container:HTMLDivElement,
-        emptyState:HTMLParagraphElement,
-        query:string,
+        container: HTMLDivElement,
+        emptyState: HTMLParagraphElement,
+        query: string,
     ) {
         this.variablePickerItems = renderVariableEntryList(
             container,
@@ -1119,15 +1119,15 @@ export class DocumentTemplateBuilder extends BaseComponent {
             (entry, methodId) => this.insertVariableFromPicker(entry, methodId),
         )
 
-        this.variablePickerItems.forEach((item)=>{
+        this.variablePickerItems.forEach((item) => {
             item.element.classList.add('cursor-pointer', 'transition-colors')
             item.element.dataset.variablePickerId = item.entry.id
             item.element.addEventListener('click', (event: MouseEvent) => {
                 const target = event.target as HTMLElement | null
-                if (target?.closest('button')) {return}
+                if (target?.closest('button')) { return }
 
                 const defaultMethod = item.entry.injectionMethods[0]?.id
-                if (!defaultMethod) {return}
+                if (!defaultMethod) { return }
                 this.insertVariableFromPicker(item.entry, defaultMethod)
             })
         })
@@ -1143,9 +1143,9 @@ export class DocumentTemplateBuilder extends BaseComponent {
         this.updateVariablePickerActiveState(this.variablePickerItems)
     }
 
-    private moveVariablePickerSelection(delta:1|-1) {
+    private moveVariablePickerSelection(delta: 1 | -1) {
         const visibleItems = this.getVisibleVariablePickerItems()
-        if (!visibleItems.length) {return}
+        if (!visibleItems.length) { return }
 
         this.variablePickerActiveIndex = getWrappedIndex(this.variablePickerActiveIndex, delta, visibleItems.length)
         this.variablePickerActiveMethodIndex = 0
@@ -1155,12 +1155,12 @@ export class DocumentTemplateBuilder extends BaseComponent {
         activeItem?.element.scrollIntoView({ block: 'nearest' })
     }
 
-    private moveVariablePickerMethodSelection(delta:1|-1) {
+    private moveVariablePickerMethodSelection(delta: 1 | -1) {
         const activeItem = this.getActiveVariablePickerItem()
-        if (!activeItem) {return}
+        if (!activeItem) { return }
 
         const methodButtons = this.getVariablePickerMethodButtons(activeItem)
-        if (!methodButtons.length) {return}
+        if (!methodButtons.length) { return }
 
         this.variablePickerActiveMethodIndex = getWrappedIndex(
             this.variablePickerActiveMethodIndex,
@@ -1171,15 +1171,15 @@ export class DocumentTemplateBuilder extends BaseComponent {
         methodButtons[this.variablePickerActiveMethodIndex]?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     }
 
-    private updateVariablePickerActiveState(visibleItems:VariablePickerItem[]) {
-        this.variablePickerItems.forEach((item)=>{
+    private updateVariablePickerActiveState(visibleItems: VariablePickerItem[]) {
+        this.variablePickerItems.forEach((item) => {
             item.element.classList.remove('border-primary-300', 'bg-primary-50', 'ring-1', 'ring-primary-200')
-            this.getVariablePickerMethodButtons(item).forEach((button)=>{
+            this.getVariablePickerMethodButtons(item).forEach((button) => {
                 button.classList.remove('ring-2', 'ring-primary-300', 'bg-primary/16')
             })
         })
 
-        if (visibleItems.length === 0) {return}
+        if (visibleItems.length === 0) { return }
 
         const nextIndex = this.variablePickerActiveIndex >= 0 ? this.variablePickerActiveIndex : 0
         this.variablePickerActiveIndex = Math.min(nextIndex, visibleItems.length - 1)
@@ -1188,7 +1188,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
         activeItem.element.classList.add('border-primary-300', 'bg-primary-50', 'ring-1', 'ring-primary-200')
 
         const methodButtons = this.getVariablePickerMethodButtons(activeItem)
-        if (!methodButtons.length) {return}
+        if (!methodButtons.length) { return }
 
         this.variablePickerActiveMethodIndex = Math.min(this.variablePickerActiveMethodIndex, methodButtons.length - 1)
         const activeMethodButton = methodButtons[this.variablePickerActiveMethodIndex]
@@ -1196,7 +1196,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     }
 
     private getVisibleVariablePickerItems() {
-        return this.variablePickerItems.filter((item)=>!item.element.classList.contains('hidden'))
+        return this.variablePickerItems.filter((item) => !item.element.classList.contains('hidden'))
     }
 
     private getActiveVariablePickerItem() {
@@ -1207,24 +1207,24 @@ export class DocumentTemplateBuilder extends BaseComponent {
         return visibleItems[this.variablePickerActiveIndex]
     }
 
-    private getVariablePickerMethodButtons(item:VariablePickerItem) {
+    private getVariablePickerMethodButtons(item: VariablePickerItem) {
         return Array.from(
             item.element.querySelectorAll<HTMLButtonElement>('[data-variable-method-button="true"]')
         )
     }
 
-    private getActiveVariablePickerMethodId(item:VariablePickerItem | null) {
-        if (!item) {return null}
+    private getActiveVariablePickerMethodId(item: VariablePickerItem | null) {
+        if (!item) { return null }
 
         const methodButtons = this.getVariablePickerMethodButtons(item)
-        if (!methodButtons.length) {return null}
+        if (!methodButtons.length) { return null }
 
         const nextIndex = Math.min(this.variablePickerActiveMethodIndex, methodButtons.length - 1)
         this.variablePickerActiveMethodIndex = nextIndex
         return methodButtons[nextIndex].dataset.methodId || null
     }
 
-    private insertVariableFromPicker(entry:VariablePickerEntry, methodId:string) {
+    private insertVariableFromPicker(entry: VariablePickerEntry, methodId: string) {
         this.insertVariable(entry.token, methodId, entry.isFreeVariable)
         getModal('add-variable-modal').close()
     }
@@ -1235,7 +1235,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * @param methodId 
      * @param isFreeVariable 
      */
-    private insertVariable(token:string, methodId:string, isFreeVariable:boolean) {
+    private insertVariable(token: string, methodId: string, isFreeVariable: boolean) {
         const variableToken = isFreeVariable ? `vars.${token}` : token
         let snippet = `{{ ${variableToken} }}`
 
@@ -1251,11 +1251,11 @@ export class DocumentTemplateBuilder extends BaseComponent {
             snippet = `{{ ${variableToken}.count }}`
         } else if (methodId === 'table') {
             const fields = window.prompt('Table fields, comma separated', '')
-            if (!fields) {return}
+            if (!fields) { return }
             snippet = `{% document_table ${variableToken}.all "${fields.trim()}" %}`
         } else if (methodId === 'nested_field') {
             const field = window.prompt('Related field', '')
-            if (!field) {return}
+            if (!field) { return }
             snippet = `{{ ${variableToken}.${field.trim()} }}`
         }
 
@@ -1273,3 +1273,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     }
 
 }
+function $wrapNodeInElement(node: LexicalNode, $createParagraphNode: () => ParagraphNode) {
+    throw new Error("Function not implemented.");
+}
+

@@ -6,18 +6,21 @@
     class="relative rounded-xl {% if not height %}min-h-72{% endif %} {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}" 
     data-placeholder="{{ placeholder|default:'' }}"
     data-disabled="{{ disabled|yesno:'true,false' }}"
-    data-styling="{{ styling|default:'prose max-w-none' }}"
+    data-styling="{{ styling|default:'' }}"
+    data-override-default-styling="{{ override_default_styling|default:'False'}}"
     data-name="{{ name }}"
     data-actions-toolbar-section-id="{{ actions_toolbar_section_id }}"
     data-editor-id="{{ editor_uuid }}"
     data-include-toolbar="{{ include_toolbar }}"
     {% if height %}style="height: {{ height }};"{% endif %}
     >
+    <style id="text-editor-styling-{{ editor_uuid }}"></style>
+
     <!--Toolbar-->
     {% if include_toolbar != False and include_toolbar != "false" and include_toolbar != "False" %}
     <div class="" id="actions-toolbar-{{ editor_uuid }}"></div>
     {% endif %}
     <!--End toolbar-->
     <div id="editor-{{ editor_uuid }}" class="outline-none bloomerp-text-editor" contenteditable></div>
-    <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value }}">
+    <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value }}" id="id_{{ name }}">
 </div>

@@ -1,6 +1,6 @@
 [project]
 name = "Bloomerp"
-version = "1.9.0beta21"
+version = "1.9.0beta22"
 description = "Bloomerp is an open-source Business Management Software framework that lets you create fully functional business management applications just by defining your Django database models."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -138,7 +138,6 @@ dependencies = [
     "urllib3==2.2.3",
     "webencodings==0.5.1",
     "websocket-client==1.8.0",
-    "xhtml2pdf==0.2.16",
     "zipp==3.21.0",
     "zopfli==0.2.3",
     "crispy-tailwind==1.0.3",
@@ -150,6 +149,7 @@ dependencies = [
     "playwright>=1.60.0",
     "pytest-django>=4.11.1",
     "pytest-playwright>=0.8.0",
+    "weasyprint>=62.3",
 ]
 
 [project.optional-dependencies]

@@ -1,15 +1,19 @@
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
+import { registerHtmlBehavior } from "./utils/htmlBehavior";
 import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 
 import {
+    $isBlockElementNode,
     $createParagraphNode,
     $getRoot,
     $getSelection,
     $insertNodes,
+    $isInlineElementOrDecoratorNode,
     $isRangeSelection,
+    $isTextNode,
     COMMAND_PRIORITY_LOW,
     createEditor,
     LexicalEditor,
@@ -39,6 +43,9 @@ import { Action, ACTIONS } from "./actions";
 import { BaseWidget } from "../widgets/BaseWidget";
 import { parseBoolean } from "../../utils/booleans";
 
+import HtmlNode from "./nodes/HtmlNode";
+import SpanNode from "./nodes/SpanNode";
+
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
     private unregister: (() => void) | null = null;
@@ -67,7 +74,7 @@ export class BloomerpTextEditor extends BaseWidget {
         
         // Get the editor
         const editorRef = this.element.querySelector("#editor-" + this.editorId) as HTMLElement | null;
-
+        
         // Throw error if the editor is not found
         if (!editorRef) {
             throw new Error("Could not find #lexical-editor");
@@ -113,6 +120,8 @@ export class BloomerpTextEditor extends BaseWidget {
                 TableRowNode,
                 TableCellNode,
                 ImageNode,
+                HtmlNode,
+                SpanNode
             ],
             onError: (error: Error) => {
                 throw error;
@@ -130,6 +139,7 @@ export class BloomerpTextEditor extends BaseWidget {
             registerRichText(this.editor),
             registerHistory(this.editor, historyState, 300),
             registerTableBehavior(this.editor, this.element),
+            registerHtmlBehavior(this.editor),
             registerImageBehavior(this.editor, this.element),
             this.editor.registerUpdateListener(() => {
                 if (this.isInitializing || this.suppressNextChange) {
@@ -250,12 +260,7 @@ export class BloomerpTextEditor extends BaseWidget {
             const nodes = $generateNodesFromDOM(editor, document);
 
             if (nodes.length > 0) {
-                // Filter nodes to only include root-compatible nodes
-                // Only ElementNodes and DecoratorNodes can be root children
-                const validNodes = nodes.filter((node) => {
-                    const type = node.getType();
-                    return ['paragraph', 'heading', 'quote', 'list', 'table'].includes(type);
-                });
+                const validNodes = this.normalizeImportedNodesForRoot(nodes);
 
                 if (validNodes.length > 0) {
                     root.append(...validNodes);
@@ -269,6 +274,42 @@ export class BloomerpTextEditor extends BaseWidget {
         if (this.hiddenInput) {
             this.hiddenInput.value = this.getValue();
         }
+    }
+
+    private normalizeImportedNodesForRoot(nodes: LexicalNode[]): LexicalNode[] {
+        const rootNodes: LexicalNode[] = [];
+        let inlineParagraph: ReturnType<typeof $createParagraphNode> | null = null;
+
+        const flushInlineParagraph = () => {
+            if (inlineParagraph && !inlineParagraph.isEmpty()) {
+                rootNodes.push(inlineParagraph);
+            }
+            inlineParagraph = null;
+        };
+
+        for (const node of nodes) {
+            if (this.isRootCompatibleImportedNode(node)) {
+                flushInlineParagraph();
+                rootNodes.push(node);
+                continue;
+            }
+
+            if ($isTextNode(node) || $isInlineElementOrDecoratorNode(node)) {
+                inlineParagraph ??= $createParagraphNode();
+                inlineParagraph.append(node);
+                continue;
+            }
+
+            flushInlineParagraph();
+        }
+
+        flushInlineParagraph();
+        return rootNodes;
+    }
+
+    private isRootCompatibleImportedNode(node: LexicalNode): boolean {
+        const type = node.getType();
+        return ['paragraph', 'heading', 'quote', 'list', 'table'].includes(type) || $isBlockElementNode(node);
     }
 
     public getValue(): string {
@@ -373,7 +414,32 @@ export class BloomerpTextEditor extends BaseWidget {
             return;
         }
 
-        stylingElement.textContent = this.styling ? this.scopeStylingToEditor(this.styling) : '';
+        const scopedStyling = this.styling ? this.scopeStylingToEditor(this.styling) : '';
+        stylingElement.textContent = [
+            this.overrideDefaultStyling ? this.getDocumentResetStyling() : '',
+            scopedStyling,
+        ].filter(Boolean).join('\n\n');
+    }
+
+    private getDocumentResetStyling(): string {
+        if (!this.editorRootSelector) {
+            return '';
+        }
+
+        return `
+:where(${this.editorRootSelector}, ${this.editorRootSelector} *) {
+    all: revert;
+}
+
+:where(${this.editorRootSelector}) {
+    display: block;
+    min-height: inherit;
+    outline: none;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+}
+`.trim();
     }
 
     /**
@@ -401,7 +467,7 @@ export class BloomerpTextEditor extends BaseWidget {
         if (rule instanceof CSSStyleRule) {
             const selectorText = rule.selectorText
                 .split(',')
-                .map((selector)=>`${this.editorRootSelector} ${selector.trim()}`)
+                .map((selector)=>this.scopeCssSelector(selector.trim()))
                 .join(', ');
             return `${selectorText} { ${rule.style.cssText} }`;
         }
@@ -415,6 +481,38 @@ export class BloomerpTextEditor extends BaseWidget {
         }
 
         return rule.cssText;
+    }
+
+    private scopeCssSelector(selector: string): string {
+        if (['body', 'html', ':root'].includes(selector)) {
+            return this.editorRootSelector;
+        }
+
+        if (selector.startsWith('body.')) {
+            return `${this.editorRootSelector}${selector.slice(4)}`;
+        }
+
+        if (selector.startsWith('html.')) {
+            return `${this.editorRootSelector}${selector.slice(4)}`;
+        }
+
+        if (selector.startsWith(':root.')) {
+            return `${this.editorRootSelector}${selector.slice(5)}`;
+        }
+
+        if (selector.startsWith('body ')) {
+            return `${this.editorRootSelector} ${selector.slice(5)}`;
+        }
+
+        if (selector.startsWith('html ')) {
+            return `${this.editorRootSelector} ${selector.slice(5)}`;
+        }
+
+        if (selector.startsWith(':root ')) {
+            return `${this.editorRootSelector} ${selector.slice(6)}`;
+        }
+
+        return `${this.editorRootSelector} ${selector}`;
     }
 
 }

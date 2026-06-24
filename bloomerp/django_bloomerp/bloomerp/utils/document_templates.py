@@ -51,12 +51,7 @@ class DocumentController:
         temp = django_engine.from_string("{% load document_template_tags %}" + document_template.template)
         formatted_html = temp.render(data)        
 
-        # Get the styling
-        # Check if the template has styling
-        if not document_template.styling:
-            styling = None
-        else:
-            styling = document_template.styling.styling
+        styling = document_template.get_combined_styling()
 
         # Check if document_template has a header
         if document_template.template_header:
@@ -145,11 +140,7 @@ class DocumentController:
         formatted_html = temp.render(data)
         
 
-        # Check if the document_template has styling
-        if not document_template.styling:
-            styling = None
-        else:
-            styling = document_template.styling.styling
+        styling = document_template.get_combined_styling()
 
         # Check if document_template has a header
         if document_template.template_header:
@@ -189,6 +180,7 @@ class DocumentController:
             page_margin=document_template.page_margin,
             footer=document_template.footer,
             is_landscape=is_landscape,
+            include_page_numbers=document_template.include_page_numbers,
         )
 
         content_file = ContentFile(document_bytes)
@@ -249,5 +241,4 @@ class DocumentController:
 
         return signed_file_obj
         
-
 

@@ -7,6 +7,7 @@
     {% endif %}
     <c-template_builder 
         id="document-template-builder" 
+        document_template_id="{{ builder_form.instance.pk }}"
         content_type_id="{{ content_type_id }}" 
         name="{{ document_template_name|default:'Untitled template' }}"
         content="{{ template_content|default:'' }}"
