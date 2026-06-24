@@ -9,6 +9,7 @@ from bloomerp.form_fields.ordered_multiple_choice_field import OrderedMultipleCh
 from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
 from bloomerp.form_fields.week_field import WeekFormField
 from bloomerp.model_fields.address_field import AddressField
+from bloomerp.model_fields.code_field import CodeField
 from bloomerp.model_fields.icon_field import IconField
 from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.model_fields.user_field import UserField
@@ -270,6 +271,13 @@ class FieldType(Enum):
         ]
     )
 
+    CODE_FIELD = FieldTypeDefinition(
+        id="CodeField",
+        display_name="Code Field",
+        icon="fa-solid fa-code",
+        model_field_cls=CodeField,
+    )
+    
     CHOICE_FIELD = FieldTypeDefinition(
         id="ChoiceField",
         display_name="Choice Field",

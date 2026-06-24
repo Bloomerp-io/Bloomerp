@@ -2,8 +2,8 @@ import BaseComponent from "./BaseComponent";
 import { getCookie, setCookie } from "../utils/cookies";
 
 const DEFAULT_START_WIDTH = "320px";
-const MIN_WIDTH = 240;
-const MAX_WIDTH_RATIO = 0.4;
+const MIN_WIDTH = 0;
+const MAX_WIDTH_RATIO = 0.5;
 const DESKTOP_MEDIA_QUERY = "(min-width: 1280px)";
 const HANDLE_SELECTOR = "[data-resizable-div-handle]";
 const PANEL_SELECTOR = "[data-resizable-div-panel]";
@@ -17,6 +17,7 @@ function parseWidth(value: string | undefined): string {
 export default class ResizableDiv extends BaseComponent {
     private handle: HTMLElement | null = null;
     private pointerDownHandler: ((event: PointerEvent) => void) | null = null;
+    private handleDoubleClickHandler: ((event: MouseEvent) => void) | null = null;
     private resizeObserver: ResizeObserver | null = null;
     private resizeHandler: (() => void) | null = null;
     private cookieKey = "";
@@ -81,6 +82,9 @@ export default class ResizableDiv extends BaseComponent {
         if (this.element && this.pointerDownHandler) {
             this.element.removeEventListener("pointerdown", this.pointerDownHandler);
         }
+        if (this.handle && this.handleDoubleClickHandler) {
+            this.handle.removeEventListener("dblclick", this.handleDoubleClickHandler);
+        }
 
         this.resizeObserver?.disconnect();
         if (this.resizeHandler) {
@@ -92,6 +96,7 @@ export default class ResizableDiv extends BaseComponent {
         this.resizeObserver = null;
         this.resizeHandler = null;
         this.pointerDownHandler = null;
+        this.handleDoubleClickHandler = null;
         this.currentWidth = "";
         this.cookieKey = "";
         super.destroy();
@@ -191,13 +196,26 @@ export default class ResizableDiv extends BaseComponent {
         return this.element?.dataset.fitToMainBottom === "true";
     }
 
+    private toggleCollapsedWidth(): void {
+        if (!this.element) return;
+
+        const currentWidthPx = this.clampWidth(this.element.getBoundingClientRect().width);
+        const nextWidth = Math.round(currentWidthPx) <= MIN_WIDTH
+            ? parseWidth(this.element.dataset.startWidth)
+            : `${MIN_WIDTH}px`;
+
+        this.applyWidth(nextWidth);
+        setCookie(this.cookieKey, nextWidth, 30);
+    }
+
     private ensureHandle(): void {
         if (!this.element) return;
 
         this.element.querySelectorAll(HANDLE_SELECTOR).forEach((existingHandle) => existingHandle.remove());
 
-        const panel = this.element.querySelector<HTMLElement>(PANEL_SELECTOR) || this.element;
-        panel.classList.add("relative");
+        const panel = this.element.querySelector<HTMLElement>(PANEL_SELECTOR);
+        panel?.classList.add("relative");
+        this.element.classList.add("relative");
 
         const handle = document.createElement("div");
         handle.className = [
@@ -216,7 +234,14 @@ export default class ResizableDiv extends BaseComponent {
         handle.setAttribute("role", "separator");
         handle.setAttribute("data-resizable-div-handle", "true");
 
-        panel.appendChild(handle);
+        this.handleDoubleClickHandler = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.toggleCollapsedWidth();
+        };
+        handle.addEventListener("dblclick", this.handleDoubleClickHandler);
+
+        this.element.appendChild(handle);
         this.handle = handle;
     }
 }

@@ -44,17 +44,22 @@ export class BloomerpTextEditor extends BaseWidget {
     private unregister: (() => void) | null = null;
     private commands: Array<Command> = [];
     private actions: Array<Action> = [];
-    private button:HTMLButtonElement;
+    
     private actionsToolbar: HTMLElement | null = null;
     private hiddenInput:HTMLInputElement;
     private suppressNextChange: boolean = false;
     private isInitializing: boolean = false;
     private editorId:string;
     private includeToolbar:boolean = true;
+    private editorRootSelector:string = '';
 
     // Extra commands
     public slashExtraActions:string[] = []
     public rangeExtraActions:string[] = []
+
+    // Styling for the editor
+    public styling: string | null = null;
+    public overrideDefaultStyling: boolean = false;
 
     public initialize(): void {
         // Get the editor ID
@@ -63,29 +68,40 @@ export class BloomerpTextEditor extends BaseWidget {
         // Get the editor
         const editorRef = this.element.querySelector("#editor-" + this.editorId) as HTMLElement | null;
 
+        // Throw error if the editor is not found
         if (!editorRef) {
             throw new Error("Could not find #lexical-editor");
         }
+        this.editorRootSelector = `#editor-${CSS.escape(this.editorId)}`;
 
+        // Get the hidden input
         this.hiddenInput = this.element.querySelector('[data-text-editor-input="true"]') as HTMLInputElement;
+
+        // Get the styling from the data attribute
+        const styling = this.element.dataset.styling ?? null;
+        this.setStyling(styling);
+
+        // Get the override styling from the data attribute
+        const overrideDefaultStyling = this.element.dataset.overrideDefaultStyling ?? 'False';
+        this.overrideDefaultStyling = parseBoolean(overrideDefaultStyling, false);
 
         this.editor = createEditor({
             namespace: "BloomerpTextEditor",
             theme: {
-                paragraph: 'text-md',
+                paragraph: !this.overrideDefaultStyling ? 'text-md' : '',
                 heading: {
-                    h1: 'text-4xl font-bold mb-2',
-                    h2: 'text-2xl font-bold mb-1',
-                    h3: 'text-2xl font-bold',
+                    h1: !this.overrideDefaultStyling ? 'text-4xl font-bold mb-2' : '',
+                    h2: !this.overrideDefaultStyling ? 'text-2xl font-bold mb-1' : '',
+                    h3: !this.overrideDefaultStyling ? 'text-2xl font-bold' : '',
                 },
                 list: {
-                    ul: 'list-disc list-inside pl-4',
-                    ol: 'list-decimal list-inside pl-4',
+                    ul: !this.overrideDefaultStyling ? 'list-disc list-inside pl-4' : '',
+                    ol: !this.overrideDefaultStyling ? 'list-decimal list-inside pl-4' : '',
                 },
-                table: 'my-3 w-full table-fixed border-collapse overflow-hidden rounded-lg border border-gray-200 text-left',
-                tableRow: 'border-b border-gray-200 last:border-b-0',
-                tableCell: 'min-w-24 border-r border-gray-200 px-1 py-1 align-top text-sm outline-none last:border-r-0',
-                tableCellHeader: 'bg-gray-100 font-medium',
+                table: !this.overrideDefaultStyling ? 'my-3 w-full table-fixed border-collapse overflow-hidden rounded-lg border border-gray-200 text-left' : '',
+                tableRow: !this.overrideDefaultStyling ? 'border-b border-gray-200 last:border-b-0' : '',
+                tableCell: !this.overrideDefaultStyling ? 'min-w-24 border-r border-gray-200 px-1 py-1 align-top text-sm outline-none last:border-r-0' : '',
+                tableCellHeader: !this.overrideDefaultStyling ? 'bg-gray-100 font-medium' : '',
             },
             nodes: [
                 HeadingNode, 
@@ -102,7 +118,6 @@ export class BloomerpTextEditor extends BaseWidget {
                 throw error;
             },
         });
-        this.button = this.element.querySelector('#h1-button')
         this.includeToolbar = parseBoolean(this.element.dataset.includeToolbar, true);
 
         this.editor.setRootElement(editorRef);
@@ -304,8 +319,6 @@ export class BloomerpTextEditor extends BaseWidget {
     /**
      * Hook to register extra commands
      * @param command the command to register
-     * @param addToSlash whether to add it to the slash command
-     * @param addToRange whether to add it to the range command
      */
     public registerCommand(command:Command) {
         this.commands.push(command);
@@ -330,6 +343,9 @@ export class BloomerpTextEditor extends BaseWidget {
     /**
      * Hook to register extra actions
      * @param action the action to register
+     * @param key the key to register the action under
+     * @param addToSlash whether to add the action to the slash menu
+     * @param addToRange whether to add the action to the range menu
      */
     public registerAction(action:Action, key:string, addToSlash:boolean=false, addToRange:boolean=false) {
         this.actions.push(action);
@@ -345,6 +361,60 @@ export class BloomerpTextEditor extends BaseWidget {
         if (addToRange) {this.rangeExtraActions.push(key)}
     }
 
-    
+    /**
+     * Set the styling for the editor
+     * @param styling the styling to apply
+     */
+    public setStyling(styling: string | null) {
+        this.styling = styling;
+
+        const stylingElement = this.element.querySelector('#text-editor-styling-' + this.editorId) as HTMLStyleElement | null;
+        if (!stylingElement) {
+            return;
+        }
+
+        stylingElement.textContent = this.styling ? this.scopeStylingToEditor(this.styling) : '';
+    }
+
+    /**
+     * Scopes caller-provided CSS so selectors only affect this editor root.
+     */
+    private scopeStylingToEditor(styling: string): string {
+        const trimmedStyling = styling.trim();
+        if (!trimmedStyling || !this.editorRootSelector) {
+            return '';
+        }
+
+        try {
+            const stylesheet = new CSSStyleSheet();
+            stylesheet.replaceSync(trimmedStyling);
+            return Array.from(stylesheet.cssRules)
+                .map((rule)=>this.scopeCssRule(rule))
+                .filter(Boolean)
+                .join('\n');
+        } catch {
+            return `${this.editorRootSelector} {\n${trimmedStyling}\n}`;
+        }
+    }
+
+    private scopeCssRule(rule: CSSRule): string {
+        if (rule instanceof CSSStyleRule) {
+            const selectorText = rule.selectorText
+                .split(',')
+                .map((selector)=>`${this.editorRootSelector} ${selector.trim()}`)
+                .join(', ');
+            return `${selectorText} { ${rule.style.cssText} }`;
+        }
+
+        if (rule instanceof CSSMediaRule) {
+            const childRules = Array.from(rule.cssRules)
+                .map((childRule)=>this.scopeCssRule(childRule))
+                .filter(Boolean)
+                .join('\n');
+            return childRules ? `@media ${rule.conditionText} {\n${childRules}\n}` : '';
+        }
+
+        return rule.cssText;
+    }
 
 }

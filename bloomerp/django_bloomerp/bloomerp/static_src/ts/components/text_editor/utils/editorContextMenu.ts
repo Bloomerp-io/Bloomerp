@@ -78,6 +78,32 @@ function getSlashRect(editor: LexicalEditor): DOMRect {
     return rect ?? getCaretRect(root);
 }
 
+function getSelectionRect(editor: LexicalEditor): DOMRect {
+    const root = editor.getRootElement();
+    if (!root) {
+        return new DOMRect();
+    }
+
+    const selection = window.getSelection();
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (!range) {
+        return getCaretRect(root);
+    }
+
+    const ancestor = range.commonAncestorContainer;
+    const ancestorElement = ancestor instanceof HTMLElement ? ancestor : ancestor.parentElement;
+    if (!ancestorElement || !root.contains(ancestorElement)) {
+        return getCaretRect(root);
+    }
+
+    const rect = Array.from(range.getClientRects()).at(-1) ?? range.getBoundingClientRect();
+    if (rect.width > 0 || rect.height > 0) {
+        return rect;
+    }
+
+    return getCaretRect(root);
+}
+
 function getTextEditorComponent(editor: LexicalEditor): BloomerpTextEditor | null {
     const root = editor.getRootElement();
     const componentElement = root?.closest<HTMLElement>(`[${componentIdentifier}="bloomerp-text-editor"]`);
@@ -92,7 +118,8 @@ export function launchContextMenu(
     editor:LexicalEditor, 
     contextMenu:ContextMenuController,
     insertKeys?:Array<string>,
-    query?:string
+    query?:string,
+    anchor:'caret'|'selection' = 'caret',
 ) {
     const root = editor.getRootElement()
     if (!root) {
@@ -124,8 +151,13 @@ export function launchContextMenu(
             },
         }));
 
+    if (!items.length) {
+        contextMenu.hide();
+        return;
+    }
+
     requestAnimationFrame(() => {
-            const rect = getSlashRect(editor);
+            const rect = anchor === 'selection' ? getSelectionRect(editor) : getSlashRect(editor);
 
             contextMenu.showAt(
                 {
@@ -133,7 +165,8 @@ export function launchContextMenu(
                     y: rect.bottom + 8,
                 },
                 root,
-                items
+                items,
+                { hideOnViewportChange: anchor !== 'selection' },
             );
         });
 }

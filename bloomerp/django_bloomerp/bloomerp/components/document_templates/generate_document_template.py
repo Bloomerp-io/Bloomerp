@@ -78,11 +78,13 @@ def generate_document_template(
         "form" : form,
         "id" : id,
         "form_action": request.get_full_path(),
-        "files" : service.get_files(instance).order_by("-datetime_created")
+        "files" : service.get_files(instance).order_by("-datetime_created"),
+        "apply_mx" : False
     }
     
     match request.method:
         case "GET":
+            context["apply_mx"] = True          
             return render(
                 request,
                 "components/document_templates/generate_document_template.html",

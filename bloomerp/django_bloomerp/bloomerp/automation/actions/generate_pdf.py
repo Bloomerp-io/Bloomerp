@@ -1,5 +1,6 @@
 from bloomerp.automation.schema import WorkflowIOSchema, WorkflowValueType, WorkflowInputRequirement, WorkflowValueField, WorkflowValueType
 from bloomerp.models.document_templates.document_template import DocumentTemplate
+from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from ..base_executor import BaseExecutor
 from django.contrib.contenttypes.models import ContentType
@@ -14,6 +15,13 @@ class ConfigParamsForm(forms.Form):
             attrs={
                 "class" : "input w-full"
             }
+        )
+    )
+    data = forms.JSONField(
+        required=True,
+        label="Enrichment Data",
+        widget=CodeEditorWidget(
+            language="json",
         )
     )
 

@@ -3,15 +3,15 @@
 
 {% generate_uuid as uuid %}
 
-<div id="id-{{ uuid }}">
-    <div class="grid min-h-[72vh] gap-5 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]" >
-        <div class="flex min-h-0 flex-col gap-4">
+<div id="id-{{ uuid }}" class="h-[calc(100dvh-8rem)] min-h-[72vh] {% if apply_mx %} -m-4 {% endif %}">
+    <div class="grid h-full items-stretch lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]" >
+        <div class="flex min-h-0 flex-col border-r border-gray-200 bg-slate-50">
             <form
                 hx-post="{{ form_action|default:request.get_full_path }}"
                 hx-target="#id-{{ uuid }}"
-                class="flex min-h-0 flex-1 flex-col rounded-xl border border-gray-200 bg-slate-50"
+                class="flex min-h-0 flex-1 flex-col"
             >
-                <div class="border-b border-gray-200 bg-white px-5 py-4">
+                <div class="bg-white px-5 py-4 border-b border-gray-200">
                     <h3 class="text-base font-semibold text-slate-900">Document details</h3>
                     <p class="mt-1 text-sm text-slate-500">Choose the source records and values for this document.</p>
                 </div>
@@ -32,8 +32,8 @@
                 </div>
             </form>
 
-            <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
-                <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+            <div class="border-t border-gray-200 bg-white">
+                <div class="flex items-center justify-between px-5 py-3">
                     <h3 class="text-sm font-semibold text-slate-900">Generated files</h3>
                     {% if files %}
                         <span class="text-xs font-medium text-slate-500">{{ files|length }}</span>
@@ -48,7 +48,7 @@
                     <div class="max-h-56 divide-y divide-gray-100 overflow-y-auto">
                         {% for file in files %}
                             <div class="flex items-center gap-3 px-5 py-3">
-                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center bg-slate-50 text-slate-500">
                                     <i class="fa-regular fa-file-pdf" aria-hidden="true"></i>
                                 </div>
                                 <div class="min-w-0 flex-1">
@@ -86,12 +86,13 @@
             </div>
         </div>
 
-        <div class="min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
+        <div class="flex min-h-0 flex-col overflow-hidden bg-white">
             <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
                 <div>
                     <h3 class="text-base font-semibold text-slate-900">
                         <c-blocktrans>Preview</c-blocktrans>
                     </h3>
+                    <p class="mt-1 text-sm text-slate-500">Review the generated PDF before using it.</p>
                 </div>
                 {% if file_bytes %}
                     <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Generated</span>
@@ -99,9 +100,9 @@
                     <span class="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Waiting</span>
                 {% endif %}
             </div>
-            <div id="id-{{ uuid }}-preview-body">
+            <div id="id-{{ uuid }}-preview-body" class="min-h-0 flex-1">
                 {% if file_bytes %}
-                    <div class="h-[calc(72vh-73px)] bg-slate-900">
+                    <div class="h-full bg-slate-900">
                         <iframe
                             src="data:application/pdf;base64,{{ file_bytes }}"
                             class="h-full w-full"
@@ -109,7 +110,7 @@
                         ></iframe>
                     </div>
                 {% else %}
-                    <div class="flex h-[calc(72vh-73px)] items-center justify-center bg-slate-50 px-8 text-center">
+                    <div class="flex h-full items-center justify-center bg-slate-50 px-8 text-center">
                         <div class="max-w-sm">
                             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-slate-400 shadow-xs">
                                 <i class="fa-regular fa-file-pdf text-2xl" aria-hidden="true"></i>

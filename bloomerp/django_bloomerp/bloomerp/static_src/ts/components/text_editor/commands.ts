@@ -23,6 +23,9 @@ import { launchContextMenu } from "./utils/editorContextMenu";
 import { getCurrentWord, removeTextFromCurrentNode } from "./utils/wordSelector";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 
+const COMMAND_CONTEXT_MENU_ID = 'bloomerp-text-editor-command-menu';
+const RANGE_CONTEXT_MENU_ID = 'bloomerp-text-editor-range-menu';
+
 export type Command = {
     command: LexicalCommand<KeyboardEvent>;
     handler: (this: BloomerpTextEditor, event?: KeyboardEvent) => boolean;
@@ -187,13 +190,16 @@ export let COMMANDS: Record<string, Command> = {
                 if (!editor) {return}
 
                 const currentWord = getCurrentWord(editor);
-                const contextMenu = getContextMenu();
+                const contextMenu = getContextMenu(COMMAND_CONTEXT_MENU_ID);
 
                 if (currentWord[0] !== "/") {
-                    contextMenu.hide();
+                    if (currentWord[0] !== "@") {
+                        contextMenu.hide();
+                    }
                     return;
                 }
-                console.log(this.slashExtraActions)
+
+                getContextMenu(RANGE_CONTEXT_MENU_ID).hide();
                 launchContextMenu(
                     editor,
                     contextMenu,
@@ -209,8 +215,36 @@ export let COMMANDS: Record<string, Command> = {
     },
     range: {
         command: SELECTION_CHANGE_COMMAND,
-        handler: () => {
+        handler: function () {
+            requestAnimationFrame(() => {
+                const editor = this.editor;
+                if (!editor) {return}
 
+                const contextMenu = getContextMenu(RANGE_CONTEXT_MENU_ID);
+                let shouldShowRangeMenu = false;
+
+                editor.getEditorState().read(() => {
+                    const selection = $getSelection();
+                    shouldShowRangeMenu = Boolean(
+                        $isRangeSelection(selection)
+                        && !selection.isCollapsed()
+                        && this.rangeExtraActions.length > 0
+                    );
+                });
+
+                if (!shouldShowRangeMenu) {
+                    contextMenu.hide();
+                    return;
+                }
+
+                launchContextMenu(
+                    editor,
+                    contextMenu,
+                    this.rangeExtraActions,
+                    undefined,
+                    'selection',
+                );
+            });
 
             return false
         },
@@ -223,13 +257,16 @@ export let COMMANDS: Record<string, Command> = {
                 if (!editor) {return}
 
                 const currentWord = getCurrentWord(editor);
-                const contextMenu = getContextMenu();
+                const contextMenu = getContextMenu(COMMAND_CONTEXT_MENU_ID);
 
                 if (currentWord[0] !== "@") {
-                    contextMenu.hide();
+                    if (currentWord[0] !== "/") {
+                        contextMenu.hide();
+                    }
                     return;
                 }
 
+                getContextMenu(RANGE_CONTEXT_MENU_ID).hide();
                 launchContextMenu(
                     editor,
                     contextMenu,

@@ -1,10 +1,17 @@
-import { $createTextNode } from "lexical";
+import { $createTextNode, $getSelection } from "lexical";
 import BaseComponent, { getComponent } from "./BaseComponent";
 import { BloomerpTextEditor } from "./text_editor/BloomerpTextEditor";
 import ForeignFieldWidget from "./widgets/ForeignFieldWidget";
 import getSdk from "@/sdk/getSdk";
 import CodeEditorWidget from "./widgets/CodeEditorWidget";
-import { getModal } from "@/utils/modals";
+import getGeneralModal, { getModal } from "@/utils/modals";
+import { edit } from "ace-builds";
+import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./text_editor/utils/wordSelector";
+import htmx from "htmx.org";
+import showMessage from "@/utils/messages";
+import { MessageType } from "./UiMessage";
+
+const AUTO_SAVE_INTERVAL_MS = 5000;
 
 type InjectionMethod = {
     id: string;
@@ -419,12 +426,23 @@ export class DocumentTemplateBuilder extends BaseComponent {
     private variablePickerActiveIndex: number = -1;
     private variablePickerActiveMethodIndex: number = 0;
 
+    private documentTemplateId: string|null = null;
+    private stylingRequestSequence: number = 0;
+
+    
+
+    // Preview URL
+    private previewUrl: string|null = null;
+
 
     public initialize(): void {
+        // Get dataset
+        this.documentTemplateId = this.element.dataset.documentTemplateId || null;
+        this.previewUrl = this.element.dataset.previewUrl || null;
+
         this.editor = getComponent(
             this.element.querySelector('[bloomerp-component="bloomerp-text-editor"]') as HTMLElement
         ) as BloomerpTextEditor;
-
 
         // Get page container
         this.pageContainer = this.element.querySelector('#page-container')
@@ -459,9 +477,21 @@ export class DocumentTemplateBuilder extends BaseComponent {
         this.applyPageHeader(pageHeaderField.getValue() as string|null)
         pageHeaderField.element.addEventListener('bloomerp:widget-change', ()=>{this.applyPageHeader(pageHeaderField.getValue() as string|null)})
 
-        // Apply page styling
-        const pageStyling = getComponent(this.getFormField('styling')) as ForeignFieldWidget;
-        this.applyPageStyling(pageStyling.getValue() as string|null)
+        // Apply custom styling
+        const customStylingField = this.getFieldComponent<CodeEditorWidget>('custom_styling');
+
+
+        // Apply style sets
+        const styleSetsField = this.getFieldComponent<ForeignFieldWidget>('style_sets');
+        const applyTemplateStyling = () => {
+            const customStyling = customStylingField?.getValue() as string | null;
+            const styleSetIds = this.normalizeStyleIds(styleSetsField?.getValue() as string[] | string | null | undefined);
+            this.applyPageStyling(styleSetIds, customStyling || '');
+        }
+        applyTemplateStyling()
+        customStylingField?.element.addEventListener('bloomerp:widget-change', applyTemplateStyling)
+        styleSetsField?.element.addEventListener('bloomerp:widget-change', applyTemplateStyling)
+
 
         // Render content types
         const contentTypes = getComponent(this.getFormField('content_types')) as ForeignFieldWidget;
@@ -518,6 +548,48 @@ export class DocumentTemplateBuilder extends BaseComponent {
             true
         )
 
+        this.editor.registerAction(
+            {
+                label: "Preview document",
+                icon: "fa-solid fa-eye",
+                handler: (editor) => {
+                    const modal = getGeneralModal()
+                    modal.setSize('full')
+                    modal.setTitle('Document preview')
+                    
+                    htmx.ajax(
+                        'get',
+                        this.previewUrl,
+                        {
+                            target: modal.getBodyElement(),
+                            swap: 'innerHTML'
+                        }
+                    ).then(()=>{
+                        modal.open()}
+                    )
+                    
+                }
+            },
+            'preview',
+            true,
+            false
+        )
+
+        this.editor.registerAction(
+            {
+                label: "Save",
+                icon: "fa-solid fa-floppy-disk",
+                handler: () => {
+                    this.saveDocumentTemplate(true)
+                }
+            },
+            'save_document_template',
+            true,
+            false
+        )
+
+        // Initialize autosave
+        this.initializeAutosave()
     }
 
     /**
@@ -550,7 +622,6 @@ export class DocumentTemplateBuilder extends BaseComponent {
 
                 // Also change the page margin
                 
-
                 headerSection.appendChild(image)
                 return
         })
@@ -579,8 +650,33 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Add's extra styling to the document
      * @param styling the content of the styling css
      */
-    private applyPageStyling(styling:string) : void{
+    private applyPageStyling(styleIds:string[]|null, customStyling:string = '') : void{
         const sdk = getSdk();
+        const requestSequence = ++this.stylingRequestSequence;
+        const normalizedStyleIds = this.normalizeStyleIds(styleIds);
+
+        Promise.all(
+            normalizedStyleIds.map((styleId)=>sdk.documentTemplateStylings.retrieve(styleId))
+        )
+            .then((styleSets)=>{
+                if (requestSequence !== this.stylingRequestSequence) {return}
+
+                const styling = [
+                    customStyling,
+                    ...styleSets.map((styleSet)=>styleSet.styling || ''),
+                ]
+                    .map((style)=>style.trim())
+                    .filter(Boolean)
+                    .join('\n\n')
+
+                this.editor.setStyling(styling)
+            })
+            .catch((error)=>{
+                console.error('Error applying document template styling:', error)
+                if (requestSequence === this.stylingRequestSequence) {
+                    this.editor.setStyling(customStyling)
+                }
+            })
     }
 
     /**
@@ -604,6 +700,19 @@ export class DocumentTemplateBuilder extends BaseComponent {
      */
     private getFormField(id:string) : HTMLInputElement | any {
         return this.element.querySelector('#id_'+id)
+    }
+
+    private getFieldComponent<T>(id:string) : T|null {
+        const field = this.getFormField(id) as HTMLElement | null
+        const componentElement = field?.closest('[bloomerp-component]') as HTMLElement | null
+        if (!componentElement) {return null}
+        return getComponent(componentElement) as T|null
+    }
+
+    private normalizeStyleIds(value:string[]|string|null|undefined) : string[] {
+        if (!value) {return []}
+        const values = Array.isArray(value) ? value : [value]
+        return values.map((item)=>String(item).trim()).filter(Boolean)
     }
 
     /**
@@ -675,6 +784,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
 
         this.syncFreeVariablesInput()
         this.renderSidebarVariables()
+        this.scheduleAutosave()
     }
 
     /**
@@ -786,6 +896,146 @@ export class DocumentTemplateBuilder extends BaseComponent {
         this.freeVariables = this.freeVariables.filter((variable)=>variable.slug !== slug)
         this.syncFreeVariablesInput()
         this.renderSidebarVariables()
+        this.scheduleAutosave()
+    }
+    
+    /**
+     * AUTOSAVE LOGIC
+     */
+    private autosaveTimer: number|null = null;
+    private autosaveInFlight: boolean = false;
+    private autosaveQueued: boolean = false;
+    private lastAutosavePayload: Record<string, unknown>|null = null;
+
+    private initializeAutosave() {
+        if (!this.documentTemplateId) {return}
+
+        this.lastAutosavePayload = this.getAutosavePayload()
+        this.editor.element.addEventListener('bloomerp:widget-change', ()=>this.scheduleAutosave())
+
+        const autosaveFields = [
+            'name',
+            'content_types',
+            'page_orientation',
+            'page_size',
+            'page_margin',
+            'include_page_numbers',
+            'template_header',
+            'custom_styling',
+            'style_sets',
+            'free_variables',
+            'template',
+        ]
+
+        autosaveFields.forEach((fieldId)=>{
+            const field = this.getFormField(fieldId) as HTMLElement|null
+            console.log(fieldId, field)
+            const component = field?.closest('[bloomerp-component]') as HTMLElement|null
+            const eventTarget = component || field
+            eventTarget?.addEventListener('change', ()=>this.scheduleAutosave())
+            eventTarget?.addEventListener('bloomerp:widget-change', ()=>this.scheduleAutosave())
+        })
+    }
+
+    private scheduleAutosave() {
+        if (!this.documentTemplateId) {return}
+        if (this.autosaveTimer) {
+            window.clearTimeout(this.autosaveTimer)
+        }
+        this.autosaveTimer = window.setTimeout(()=>this.flushAutosave(), AUTO_SAVE_INTERVAL_MS)
+    }
+
+    private flushAutosave() {
+        this.saveDocumentTemplate(false)
+    }
+
+    private saveDocumentTemplate(showFeedback:boolean = false) {
+        if (!this.documentTemplateId) {return}
+
+        if (this.autosaveTimer) {
+            window.clearTimeout(this.autosaveTimer)
+            this.autosaveTimer = null
+        }
+
+        const payload = this.getAutosavePayload()
+        const changedPayload = this.getChangedAutosavePayload(payload)
+        if (!Object.keys(changedPayload).length) {
+            if (showFeedback) {
+                showMessage('Document template is already saved.', MessageType.INFO)
+            }
+            return
+        }
+
+        if (this.autosaveInFlight) {
+            this.autosaveQueued = true
+            if (showFeedback) {
+                showMessage('Save already in progress. Your latest changes will be saved next.', MessageType.INFO)
+            }
+            return
+        }
+
+        this.autosaveInFlight = true
+        getSdk().documentTemplates.partialUpdate(this.documentTemplateId, changedPayload as any)
+            .then(()=>{
+                this.lastAutosavePayload = payload
+                if (showFeedback) {
+                    showMessage('Document template saved.', MessageType.SUCCESS)
+                }
+            })
+            .catch((error)=>{
+                console.error('Error auto-saving document template:', error)
+                if (showFeedback) {
+                    showMessage('Could not save document template. Please try again.', MessageType.ERROR)
+                }
+            })
+            .finally(()=>{
+                this.autosaveInFlight = false
+                if (this.autosaveQueued) {
+                    this.autosaveQueued = false
+                    this.scheduleAutosave()
+                }
+            })
+    }
+
+    private getAutosavePayload() : Record<string, unknown> {
+        return {
+            name: this.getFieldValue('name'),
+            template: this.editor.getValue(),
+            content_types: this.normalizeStyleIds(this.getFieldValue('content_types') as string[]|string|null|undefined),
+            page_orientation: this.getFieldValue('page_orientation'),
+            page_size: this.getFieldValue('page_size'),
+            page_margin: Number.parseFloat(String(this.getFieldValue('page_margin') || 0)),
+            include_page_numbers: Boolean(this.getFieldValue('include_page_numbers')),
+            template_header: this.getFieldValue('template_header') || null,
+            custom_styling: this.getFieldValue('custom_styling') || '',
+            style_sets: this.normalizeStyleIds(this.getFieldValue('style_sets') as string[]|string|null|undefined),
+            free_variables: this.freeVariables.map((variable)=>({
+                slug: variable.slug,
+                label: variable.label,
+                type: variable.type,
+                required: variable.required,
+                choices: variable.choices,
+            })),
+        }
+    }
+
+    private getFieldValue(id:string) : unknown {
+        const field = this.getFormField(id) as HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement|null
+        const componentElement = field?.closest('[bloomerp-component]') as HTMLElement|null
+        const component = componentElement ? getComponent(componentElement) as { getValue?: () => unknown }|null : null
+        if (component?.getValue) {return component.getValue()}
+        if (field?.type === 'checkbox') {return (field as HTMLInputElement).checked}
+        return field?.value || ''
+    }
+
+    private getChangedAutosavePayload(payload: Record<string, unknown>) : Record<string, unknown> {
+        if (!this.lastAutosavePayload) {return payload}
+
+        return Object.fromEntries(
+            Object.entries(payload).filter(([key, value])=>(
+                JSON.stringify(value) !== JSON.stringify(this.lastAutosavePayload?.[key])
+            ))
+        )
     }
 
     private getVariableEntries(query:string = '') {
@@ -1009,7 +1259,17 @@ export class DocumentTemplateBuilder extends BaseComponent {
             snippet = `{{ ${variableToken}.${field.trim()} }}`
         }
 
+        this.removeSlashTriggerWord()
         this.editor.insertNode(() => $createTextNode(snippet))
+    }
+
+    private removeSlashTriggerWord() {
+        this.editor.editor?.update(() => {
+            const currentWord = getCurrentWordFromSelection()
+            if (currentWord[0] === '/') {
+                removeTextFromCurrentSelection(currentWord)
+            }
+        })
     }
 
 }

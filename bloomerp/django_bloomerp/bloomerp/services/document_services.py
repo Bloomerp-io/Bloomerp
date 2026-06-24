@@ -280,9 +280,19 @@ class DocumentTemplateService:
         })
         bytes =  generate_pdf(
             formatted_html,
+            css_content=self.document_template.get_combined_styling(),
             page_margin=self.document_template.page_margin,
+            is_landscape=self.document_template.page_orientation == "landscape",
             header_url=self.document_template.template_header.header.url if self.document_template.template_header else None,
-            
+            header_height=self.document_template.template_header.height if self.document_template.template_header else 0,
+            header_margin_top=self.document_template.template_header.margin_top if self.document_template.template_header else 0,
+            header_margin_bottom=self.document_template.template_header.margin_bottom if self.document_template.template_header else 0,
+            header_margin_left=self.document_template.template_header.margin_left if self.document_template.template_header else 0,
+            header_margin_right=self.document_template.template_header.margin_right if self.document_template.template_header else 0,
+            page_size=self.document_template.page_size,
+            include_page_numbers=self.document_template.include_page_numbers,
+            footer=self.document_template.footer,
+            title=self.document_template.name,
         )
         return bytes
 

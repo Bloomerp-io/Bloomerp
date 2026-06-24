@@ -66,6 +66,7 @@ export interface BloomerpModelCapabilities {
   list: boolean;
   retrieve: boolean;
   create: boolean;
+  createMany: boolean;
   update: boolean;
   partialUpdate: boolean;
   destroy: boolean;
@@ -439,6 +440,14 @@ export class ModelApi<TModel, TId extends string | number, TCreate, TUpdate, TQu
     });
   }
 
+  createMany(payloads: TCreate[], options?: BloomerpRequestOptions): Promise<TModel[]> {
+    return this.client.request<TModel[]>(this.endpoint, {
+      ...options,
+      method: "POST",
+      body: JSON.stringify(payloads),
+    });
+  }
+
   update(id: TId, payload: TUpdate, options?: BloomerpRequestOptions): Promise<TModel> {
     return this.client.request<TModel>(`${this.endpoint}${id}/`, {
       ...options,
@@ -510,7 +519,7 @@ export const aiConversationsFields: Record<AIConversationFieldName, BloomerpFiel
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const aiConversationsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const aiConversationsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const aiConversationsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class AIConversationApi extends ModelApi<AIConversation, AIConversationId, AIConversationCreate, AIConversationUpdate, AIConversationQuery, AIConversationFieldName> {
@@ -520,37 +529,46 @@ export class AIConversationApi extends ModelApi<AIConversation, AIConversationId
 }
 
 export interface ActivityLog {
+  action: string;
+  actor: number | null;
   content_type: number;
   id: number;
+  is_create: boolean;
   object_id: string;
   payload: unknown;
+  source: string;
   timestamp: string;
-  user: number | null;
 }
 
 export type ActivityLogId = number;
-export type ActivityLogFieldName = "content_type" | "id" | "object_id" | "payload" | "timestamp" | "user";
+export type ActivityLogFieldName = "action" | "actor" | "content_type" | "id" | "is_create" | "object_id" | "payload" | "source" | "timestamp";
 
 export interface ActivityLogCreate {
+  action?: string;
+  actor?: number | null;
   content_type: number;
+  is_create?: boolean;
   object_id: string;
   payload?: unknown;
-  user?: number | null;
+  source?: string;
 }
 
 export type ActivityLogUpdate = Partial<ActivityLogCreate>;
 export type ActivityLogQuery = Partial<Record<ActivityLogFieldName | `${ActivityLogFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
 export const activityLogsFields: Record<ActivityLogFieldName, BloomerpFieldMetadata> = {
+  "action": {"name": "action", "title": "Action", "fieldType": "CharField", "dbFieldType": "varchar(12)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "CHANGE", "label": "Change"}, {"value": "CREATE", "label": "Create"}, {"value": "DELETE", "label": "Delete"}]},
+  "actor": {"name": "actor", "title": "Actor", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "is_create": {"name": "is_create", "title": "Is Create", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "object_id": {"name": "object_id", "title": "Object Id", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "payload": {"name": "payload", "title": "Payload", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "source": {"name": "source", "title": "Source", "fieldType": "CharField", "dbFieldType": "varchar(12)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "timestamp": {"name": "timestamp", "title": "Timestamp", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const activityLogsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const activityLogsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const activityLogsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class ActivityLogApi extends ModelApi<ActivityLog, ActivityLogId, ActivityLogCreate, ActivityLogUpdate, ActivityLogQuery, ActivityLogFieldName> {
@@ -594,13 +612,13 @@ export const applicationFieldsFields: Record<ApplicationFieldFieldName, Bloomerp
   "db_field_type": {"name": "db_field_type", "title": "Db Field Type", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "db_table": {"name": "db_table", "title": "Db Table", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "field": {"name": "field", "title": "Field", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
-  "field_type": {"name": "field_type", "title": "Field Type", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "Property", "label": "Property"}, {"value": "AutoField", "label": "Auto Field"}, {"value": "BigAutoField", "label": "Big Auto Field"}, {"value": "SmallAutoField", "label": "Small Auto Field"}, {"value": "CharField", "label": "Char Field"}, {"value": "ChoiceField", "label": "Choice Field"}, {"value": "TextField", "label": "Text Field"}, {"value": "EmailField", "label": "Email Field"}, {"value": "URLField", "label": "URL Field"}, {"value": "PhoneNumberField", "label": "Phone Number Field"}, {"value": "SlugField", "label": "Slug Field"}, {"value": "IntegerField", "label": "Integer Field"}, {"value": "FloatField", "label": "Float Field"}, {"value": "DecimalField", "label": "Decimal Field"}, {"value": "PositiveIntegerField", "label": "Positive Integer Field"}, {"value": "PositiveSmallIntegerField", "label": "Positive Small Integer Field"}, {"value": "BigIntegerField", "label": "Big Integer Field"}, {"value": "SmallIntegerField", "label": "Small Integer Field"}, {"value": "BooleanField", "label": "Boolean Field"}, {"value": "NullBooleanField", "label": "Null Boolean Field"}, {"value": "DateField", "label": "Date Field"}, {"value": "DateTimeField", "label": "DateTime Field"}, {"value": "TimeField", "label": "Time Field"}, {"value": "DurationField", "label": "Duration Field"}, {"value": "FileField", "label": "File Field"}, {"value": "ImageField", "label": "Image Field"}, {"value": "ForeignKey", "label": "Foreign Key"}, {"value": "OneToOneField", "label": "One To One Field"}, {"value": "ManyToManyField", "label": "Many To Many Field"}, {"value": "OneToManyField", "label": "One To Many Field"}, {"value": "UserField", "label": "User Field"}, {"value": "UUIDField", "label": "UUID Field"}, {"value": "BinaryField", "label": "Binary Field"}, {"value": "IPAddressField", "label": "IP Address Field"}, {"value": "GenericIPAddressField", "label": "Generic IP Address Field"}, {"value": "JSONField", "label": "JSON Field"}, {"value": "ArrayField", "label": "Array Field"}, {"value": "HStoreField", "label": "HStore Field"}, {"value": "GenericRelation", "label": "Generic Relation"}, {"value": "GenericForeignKey", "label": "Generic Foreign Key"}, {"value": "StatusField", "label": "Status Field"}, {"value": "IconField", "label": "Icon Field"}, {"value": "BloomerpFileField", "label": "Bloomerp File Field"}]},
+  "field_type": {"name": "field_type", "title": "Field Type", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "Property", "label": "Property"}, {"value": "AutoField", "label": "Auto Field"}, {"value": "BigAutoField", "label": "Big Auto Field"}, {"value": "SmallAutoField", "label": "Small Auto Field"}, {"value": "CharField", "label": "Char Field"}, {"value": "CodeField", "label": "Code Field"}, {"value": "ChoiceField", "label": "Choice Field"}, {"value": "TextField", "label": "Text Field"}, {"value": "EmailField", "label": "Email Field"}, {"value": "URLField", "label": "URL Field"}, {"value": "AddressField", "label": "Address Field"}, {"value": "PhoneNumberField", "label": "Phone Number Field"}, {"value": "SlugField", "label": "Slug Field"}, {"value": "IntegerField", "label": "Integer Field"}, {"value": "FloatField", "label": "Float Field"}, {"value": "DecimalField", "label": "Decimal Field"}, {"value": "PositiveIntegerField", "label": "Positive Integer Field"}, {"value": "PositiveSmallIntegerField", "label": "Positive Small Integer Field"}, {"value": "BigIntegerField", "label": "Big Integer Field"}, {"value": "SmallIntegerField", "label": "Small Integer Field"}, {"value": "BooleanField", "label": "Boolean Field"}, {"value": "NullBooleanField", "label": "Null Boolean Field"}, {"value": "DateField", "label": "Date Field"}, {"value": "WeekField", "label": "Week Field"}, {"value": "DateTimeField", "label": "DateTime Field"}, {"value": "TimeField", "label": "Time Field"}, {"value": "DurationField", "label": "Duration Field"}, {"value": "FileField", "label": "File Field"}, {"value": "ImageField", "label": "Image Field"}, {"value": "ForeignKey", "label": "Foreign Key"}, {"value": "OneToOneField", "label": "One To One Field"}, {"value": "ManyToManyField", "label": "Many To Many Field"}, {"value": "OneToManyField", "label": "One To Many Field"}, {"value": "UserField", "label": "User Field"}, {"value": "UUIDField", "label": "UUID Field"}, {"value": "BinaryField", "label": "Binary Field"}, {"value": "IPAddressField", "label": "IP Address Field"}, {"value": "GenericIPAddressField", "label": "Generic IP Address Field"}, {"value": "JSONField", "label": "JSON Field"}, {"value": "ArrayField", "label": "Array Field"}, {"value": "HStoreField", "label": "HStore Field"}, {"value": "GenericRelation", "label": "Generic Relation"}, {"value": "GenericForeignKey", "label": "Generic Foreign Key"}, {"value": "StatusField", "label": "Status Field"}, {"value": "IconField", "label": "Icon Field"}, {"value": "BloomerpFileField", "label": "Bloomerp File Field"}, {"value": "FilesRelationField", "label": "Files"}]},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "meta": {"name": "meta", "title": "Meta", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "related_model": {"name": "related_model", "title": "Related Model", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const applicationFieldsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const applicationFieldsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const applicationFieldsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class ApplicationFieldApi extends ModelApi<ApplicationField, ApplicationFieldId, ApplicationFieldCreate, ApplicationFieldUpdate, ApplicationFieldQuery, ApplicationFieldFieldName> {
@@ -637,7 +655,7 @@ export const bookmarksFields: Record<BookmarkFieldName, BloomerpFieldMetadata> =
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const bookmarksCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const bookmarksCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const bookmarksPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class BookmarkApi extends ModelApi<Bookmark, BookmarkId, BookmarkCreate, BookmarkUpdate, BookmarkQuery, BookmarkFieldName> {
@@ -682,7 +700,7 @@ export const commentsFields: Record<CommentFieldName, BloomerpFieldMetadata> = {
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const commentsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const commentsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const commentsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class CommentApi extends ModelApi<Comment, CommentId, CommentCreate, CommentUpdate, CommentQuery, CommentFieldName> {
@@ -694,6 +712,7 @@ export class CommentApi extends ModelApi<Comment, CommentId, CommentCreate, Comm
 export interface DocumentTemplate {
   content_types: Array<number>;
   created_by: number | null;
+  custom_styling: string;
   datetime_created: string;
   datetime_updated: string;
   footer: string | null;
@@ -705,18 +724,19 @@ export interface DocumentTemplate {
   page_orientation: string;
   page_size: string;
   save_to_folder: number | null;
-  styling: string | null;
+  style_sets: Array<string>;
   template: string;
   template_header: string | null;
   updated_by: number | null;
 }
 
 export type DocumentTemplateId = string;
-export type DocumentTemplateFieldName = "content_types" | "created_by" | "datetime_created" | "datetime_updated" | "footer" | "free_variables" | "id" | "include_page_numbers" | "name" | "page_margin" | "page_orientation" | "page_size" | "save_to_folder" | "styling" | "template" | "template_header" | "updated_by";
+export type DocumentTemplateFieldName = "content_types" | "created_by" | "custom_styling" | "datetime_created" | "datetime_updated" | "footer" | "free_variables" | "id" | "include_page_numbers" | "name" | "page_margin" | "page_orientation" | "page_size" | "save_to_folder" | "style_sets" | "template" | "template_header" | "updated_by";
 
 export interface DocumentTemplateCreate {
   content_types?: Array<number>;
   created_by?: number | null;
+  custom_styling?: string;
   footer?: string | null;
   free_variables?: unknown;
   include_page_numbers?: boolean;
@@ -725,7 +745,7 @@ export interface DocumentTemplateCreate {
   page_orientation?: string;
   page_size?: string;
   save_to_folder?: number | null;
-  styling?: string | null;
+  style_sets?: Array<string>;
   template?: string;
   template_header?: string | null;
   updated_by?: number | null;
@@ -737,6 +757,7 @@ export type DocumentTemplateQuery = Partial<Record<DocumentTemplateFieldName | `
 export const documentTemplatesFields: Record<DocumentTemplateFieldName, BloomerpFieldMetadata> = {
   "content_types": {"name": "content_types", "title": "Content Types", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "custom_styling": {"name": "custom_styling", "title": "Custom Styling", "fieldType": "TextField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "footer": {"name": "footer", "title": "Footer", "fieldType": "TextField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
@@ -748,13 +769,13 @@ export const documentTemplatesFields: Record<DocumentTemplateFieldName, Bloomerp
   "page_orientation": {"name": "page_orientation", "title": "Page Orientation", "fieldType": "CharField", "dbFieldType": "varchar(10)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "portrait", "label": "Portrait"}, {"value": "landscape", "label": "Landscape"}]},
   "page_size": {"name": "page_size", "title": "Page Size", "fieldType": "CharField", "dbFieldType": "varchar(10)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "A4", "label": "A4"}, {"value": "Letter", "label": "Letter"}, {"value": "A3", "label": "A3"}]},
   "save_to_folder": {"name": "save_to_folder", "title": "Save To Folder", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "FileFolder", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "styling": {"name": "styling", "title": "Styling", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "DocumentTemplateStyling", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "style_sets": {"name": "style_sets", "title": "Style Sets", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "DocumentTemplateStyling", "editable": true, "requiredOnCreate": false, "tsType": "Array<string>", "choices": null},
   "template": {"name": "template", "title": "Template", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "template_header": {"name": "template_header", "title": "Template Header", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "DocumentTemplateHeader", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const documentTemplatesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const documentTemplatesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const documentTemplatesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class DocumentTemplateApi extends ModelApi<DocumentTemplate, DocumentTemplateId, DocumentTemplateCreate, DocumentTemplateUpdate, DocumentTemplateQuery, DocumentTemplateFieldName> {
@@ -811,7 +832,7 @@ export const documentTemplateHeadersFields: Record<DocumentTemplateHeaderFieldNa
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const documentTemplateHeadersCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const documentTemplateHeadersCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const documentTemplateHeadersPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class DocumentTemplateHeaderApi extends ModelApi<DocumentTemplateHeader, DocumentTemplateHeaderId, DocumentTemplateHeaderCreate, DocumentTemplateHeaderUpdate, DocumentTemplateHeaderQuery, DocumentTemplateHeaderFieldName> {
@@ -853,7 +874,7 @@ export const documentTemplateStylingsFields: Record<DocumentTemplateStylingField
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const documentTemplateStylingsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const documentTemplateStylingsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const documentTemplateStylingsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class DocumentTemplateStylingApi extends ModelApi<DocumentTemplateStyling, DocumentTemplateStylingId, DocumentTemplateStylingCreate, DocumentTemplateStylingUpdate, DocumentTemplateStylingQuery, DocumentTemplateStylingFieldName> {
@@ -888,7 +909,7 @@ export const accessControlFieldPoliciesFields: Record<FieldPolicyFieldName, Bloo
   "rule": {"name": "rule", "title": "Rule", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "unknown", "choices": null},
 } as const;
 
-export const accessControlFieldPoliciesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const accessControlFieldPoliciesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const accessControlFieldPoliciesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class FieldPolicyApi extends ModelApi<FieldPolicy, FieldPolicyId, FieldPolicyCreate, FieldPolicyUpdate, FieldPolicyQuery, FieldPolicyFieldName> {
@@ -945,7 +966,7 @@ export const filesFields: Record<FileFieldName, BloomerpFieldMetadata> = {
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const filesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const filesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const filesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class FileApi extends ModelApi<File, FileId, FileCreate, FileUpdate, FileQuery, FileFieldName> {
@@ -996,12 +1017,134 @@ export const fileFoldersFields: Record<FileFolderFieldName, BloomerpFieldMetadat
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const fileFoldersCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const fileFoldersCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const fileFoldersPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class FileFolderApi extends ModelApi<FileFolder, FileFolderId, FileFolderCreate, FileFolderUpdate, FileFolderQuery, FileFolderFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/file_folders/");
+  }
+}
+
+export interface Form {
+  avatar: string | null;
+  closes_at: string;
+  content_type: number;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  description: string | null;
+  id: string;
+  initial_payload: unknown;
+  layout: unknown;
+  max_submissions: number;
+  max_submissions_per_ip: number;
+  name: string;
+  opens_at: string;
+  public_embed_enabled: boolean;
+  requires_authentication: boolean;
+  requires_review: boolean;
+  updated_by: number | null;
+}
+
+export type FormId = string;
+export type FormFieldName = "avatar" | "closes_at" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "initial_payload" | "layout" | "max_submissions" | "max_submissions_per_ip" | "name" | "opens_at" | "public_embed_enabled" | "requires_authentication" | "requires_review" | "updated_by";
+
+export interface FormCreate {
+  avatar?: string | null;
+  closes_at?: string;
+  content_type: number;
+  created_by?: number | null;
+  description?: string | null;
+  initial_payload?: unknown;
+  layout?: unknown;
+  max_submissions?: number;
+  max_submissions_per_ip?: number;
+  name?: string;
+  opens_at?: string;
+  public_embed_enabled?: boolean;
+  requires_authentication?: boolean;
+  requires_review?: boolean;
+  updated_by?: number | null;
+}
+
+export type FormUpdate = Partial<FormCreate>;
+export type FormQuery = Partial<Record<FormFieldName | `${FormFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const formsFields: Record<FormFieldName, BloomerpFieldMetadata> = {
+  "avatar": {"name": "avatar", "title": "Avatar", "fieldType": "FileField", "dbFieldType": "varchar(100)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "closes_at": {"name": "closes_at", "title": "Closes At", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "description": {"name": "description", "title": "Description", "fieldType": "TextField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "id": {"name": "id", "title": "Id", "fieldType": "UUIDField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "initial_payload": {"name": "initial_payload", "title": "Initial Payload", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "layout": {"name": "layout", "title": "Layout", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "max_submissions": {"name": "max_submissions", "title": "Max Submissions", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "max_submissions_per_ip": {"name": "max_submissions_per_ip", "title": "Max Submissions Per Ip", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "opens_at": {"name": "opens_at", "title": "Opens At", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "public_embed_enabled": {"name": "public_embed_enabled", "title": "Public Embed Enabled", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "requires_authentication": {"name": "requires_authentication", "title": "Requires Authentication", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "requires_review": {"name": "requires_review", "title": "Requires Review", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const formsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const formsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class FormApi extends ModelApi<Form, FormId, FormCreate, FormUpdate, FormQuery, FormFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/forms/");
+  }
+}
+
+export interface FormSubmission {
+  created_by: number | null;
+  data: unknown;
+  datetime_created: string;
+  datetime_updated: string;
+  form: string | null;
+  id: string;
+  ip_address: unknown;
+  persisted: boolean;
+  updated_by: number | null;
+}
+
+export type FormSubmissionId = string;
+export type FormSubmissionFieldName = "created_by" | "data" | "datetime_created" | "datetime_updated" | "form" | "id" | "ip_address" | "persisted" | "updated_by";
+
+export interface FormSubmissionCreate {
+  created_by?: number | null;
+  data: unknown;
+  form?: string | null;
+  ip_address?: unknown;
+  updated_by?: number | null;
+}
+
+export type FormSubmissionUpdate = Partial<FormSubmissionCreate>;
+export type FormSubmissionQuery = Partial<Record<FormSubmissionFieldName | `${FormSubmissionFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const formSubmissionsFields: Record<FormSubmissionFieldName, BloomerpFieldMetadata> = {
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "data": {"name": "data", "title": "Data", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "unknown", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "form": {"name": "form", "title": "Form", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "Form", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "id": {"name": "id", "title": "Id", "fieldType": "UUIDField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "ip_address": {"name": "ip_address", "title": "Ip Address", "fieldType": "GenericIPAddressField", "dbFieldType": "char(39)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "persisted": {"name": "persisted", "title": "Persisted", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const formSubmissionsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const formSubmissionsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class FormSubmissionApi extends ModelApi<FormSubmission, FormSubmissionId, FormSubmissionCreate, FormSubmissionUpdate, FormSubmissionQuery, FormSubmissionFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/form_submissions/");
   }
 }
 
@@ -1053,7 +1196,7 @@ export const accessControlPoliciesFields: Record<PolicyFieldName, BloomerpFieldM
   "users": {"name": "users", "title": "Users", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
 } as const;
 
-export const accessControlPoliciesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const accessControlPoliciesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const accessControlPoliciesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class PolicyApi extends ModelApi<Policy, PolicyId, PolicyCreate, PolicyUpdate, PolicyQuery, PolicyFieldName> {
@@ -1085,7 +1228,7 @@ export const accessControlRowPoliciesFields: Record<RowPolicyFieldName, Bloomerp
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
 } as const;
 
-export const accessControlRowPoliciesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const accessControlRowPoliciesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const accessControlRowPoliciesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class RowPolicyApi extends ModelApi<RowPolicy, RowPolicyId, RowPolicyCreate, RowPolicyUpdate, RowPolicyQuery, RowPolicyFieldName> {
@@ -1120,7 +1263,7 @@ export const accessControlRowPolicyRulesFields: Record<RowPolicyRuleFieldName, B
   "rule": {"name": "rule", "title": "Rule", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "unknown", "choices": null},
 } as const;
 
-export const accessControlRowPolicyRulesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const accessControlRowPolicyRulesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const accessControlRowPolicyRulesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class RowPolicyRuleApi extends ModelApi<RowPolicyRule, RowPolicyRuleId, RowPolicyRuleCreate, RowPolicyRuleUpdate, RowPolicyRuleQuery, RowPolicyRuleFieldName> {
@@ -1152,7 +1295,7 @@ export const rowPolicyRulePermissionsFields: Record<RowPolicyRulePermissionField
   "row_policy_rule": {"name": "row_policy_rule", "title": "Row Policy Rule", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "RowPolicyRule", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const rowPolicyRulePermissionsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const rowPolicyRulePermissionsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const rowPolicyRulePermissionsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class RowPolicyRulePermissionApi extends ModelApi<RowPolicyRulePermission, RowPolicyRulePermissionId, RowPolicyRulePermissionCreate, RowPolicyRulePermissionUpdate, RowPolicyRulePermissionQuery, RowPolicyRulePermissionFieldName> {
@@ -1187,7 +1330,7 @@ export const sidebarsFields: Record<SidebarFieldName, BloomerpFieldMetadata> = {
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const sidebarsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const sidebarsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const sidebarsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class SidebarApi extends ModelApi<Sidebar, SidebarId, SidebarCreate, SidebarUpdate, SidebarQuery, SidebarFieldName> {
@@ -1237,7 +1380,7 @@ export const sidebarItemsFields: Record<SidebarItemFieldName, BloomerpFieldMetad
   "url": {"name": "url", "title": "Url", "fieldType": "CharField", "dbFieldType": "varchar(2048)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
 } as const;
 
-export const sidebarItemsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const sidebarItemsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const sidebarItemsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class SidebarItemApi extends ModelApi<SidebarItem, SidebarItemId, SidebarItemCreate, SidebarItemUpdate, SidebarItemQuery, SidebarItemFieldName> {
@@ -1282,7 +1425,7 @@ export const sqlQueriesFields: Record<SqlQueryFieldName, BloomerpFieldMetadata> 
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const sqlQueriesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const sqlQueriesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const sqlQueriesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class SqlQueryApi extends ModelApi<SqlQuery, SqlQueryId, SqlQueryCreate, SqlQueryUpdate, SqlQueryQuery, SqlQueryFieldName> {
@@ -1335,11 +1478,11 @@ export const tilesFields: Record<TileFieldName, BloomerpFieldMetadata> = {
   "id": {"name": "id", "title": "Id", "fieldType": "UUIDField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "schema": {"name": "schema", "title": "Schema", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "unknown", "choices": null},
-  "type": {"name": "type", "title": "Type", "fieldType": "CharField", "dbFieldType": "varchar(32)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "ANALYTICS_TILE", "label": "Analytics Tile"}, {"value": "CANVAS_TILE", "label": "Canvas"}, {"value": "LINKS_TILE", "label": "Links"}, {"value": "TEXT_TILE", "label": "Text"}]},
+  "type": {"name": "type", "title": "Type", "fieldType": "CharField", "dbFieldType": "varchar(32)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "ANALYTICS_TILE", "label": "Analytics Tile"}, {"value": "CANVAS_TILE", "label": "Canvas"}, {"value": "LINKS_TILE", "label": "Links"}, {"value": "TEXT_TILE", "label": "Text"}, {"value": "FORM_TILE", "label": "Form"}]},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const tilesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const tilesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const tilesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class TileApi extends ModelApi<Tile, TileId, TileCreate, TileUpdate, TileQuery, TileFieldName> {
@@ -1410,7 +1553,7 @@ export const todosFields: Record<TodoFieldName, BloomerpFieldMetadata> = {
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const todosCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const todosCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const todosPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class TodoApi extends ModelApi<Todo, TodoId, TodoCreate, TodoUpdate, TodoQuery, TodoFieldName> {
@@ -1442,7 +1585,7 @@ export const todoLabelsFields: Record<TodoLabelFieldName, BloomerpFieldMetadata>
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
 } as const;
 
-export const todoLabelsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const todoLabelsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const todoLabelsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class TodoLabelApi extends ModelApi<TodoLabel, TodoLabelId, TodoLabelCreate, TodoLabelUpdate, TodoLabelQuery, TodoLabelFieldName> {
@@ -1516,7 +1659,7 @@ export const usersFields: Record<UserFieldName, BloomerpFieldMetadata> = {
   "username": {"name": "username", "title": "Username", "fieldType": "CharField", "dbFieldType": "varchar(150)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
 } as const;
 
-export const usersCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const usersCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const usersPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class UserApi extends ModelApi<User, UserId, UserCreate, UserUpdate, UserQuery, UserFieldName> {
@@ -1527,19 +1670,19 @@ export class UserApi extends ModelApi<User, UserId, UserCreate, UserUpdate, User
 
 export interface UserCreateViewPreference {
   content_type: number;
-  field_layout: unknown;
   id: number;
+  layout: unknown;
   name: string;
   selected: boolean;
   user: number;
 }
 
 export type UserCreateViewPreferenceId = number;
-export type UserCreateViewPreferenceFieldName = "content_type" | "field_layout" | "id" | "name" | "selected" | "user";
+export type UserCreateViewPreferenceFieldName = "content_type" | "id" | "layout" | "name" | "selected" | "user";
 
 export interface UserCreateViewPreferenceCreate {
   content_type: number;
-  field_layout?: unknown;
+  layout?: unknown;
   name?: string;
   selected?: boolean;
   user: number;
@@ -1550,14 +1693,14 @@ export type UserCreateViewPreferenceQuery = Partial<Record<UserCreateViewPrefere
 
 export const userCreateViewPreferencesFields: Record<UserCreateViewPreferenceFieldName, BloomerpFieldMetadata> = {
   "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
-  "field_layout": {"name": "field_layout", "title": "Field Layout", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "layout": {"name": "layout", "title": "Layout", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "selected": {"name": "selected", "title": "Selected", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const userCreateViewPreferencesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const userCreateViewPreferencesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const userCreateViewPreferencesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class UserCreateViewPreferenceApi extends ModelApi<UserCreateViewPreference, UserCreateViewPreferenceId, UserCreateViewPreferenceCreate, UserCreateViewPreferenceUpdate, UserCreateViewPreferenceQuery, UserCreateViewPreferenceFieldName> {
@@ -1568,8 +1711,8 @@ export class UserCreateViewPreferenceApi extends ModelApi<UserCreateViewPreferen
 
 export interface UserDetailViewPreference {
   content_type: number;
-  field_layout: unknown;
   id: number;
+  layout: unknown;
   name: string;
   selected: boolean;
   tab_state: unknown;
@@ -1577,11 +1720,11 @@ export interface UserDetailViewPreference {
 }
 
 export type UserDetailViewPreferenceId = number;
-export type UserDetailViewPreferenceFieldName = "content_type" | "field_layout" | "id" | "name" | "selected" | "tab_state" | "user";
+export type UserDetailViewPreferenceFieldName = "content_type" | "id" | "layout" | "name" | "selected" | "tab_state" | "user";
 
 export interface UserDetailViewPreferenceCreate {
   content_type: number;
-  field_layout?: unknown;
+  layout?: unknown;
   name?: string;
   selected?: boolean;
   tab_state?: unknown;
@@ -1593,15 +1736,15 @@ export type UserDetailViewPreferenceQuery = Partial<Record<UserDetailViewPrefere
 
 export const userDetailViewPreferencesFields: Record<UserDetailViewPreferenceFieldName, BloomerpFieldMetadata> = {
   "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
-  "field_layout": {"name": "field_layout", "title": "Field Layout", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "layout": {"name": "layout", "title": "Layout", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "selected": {"name": "selected", "title": "Selected", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "tab_state": {"name": "tab_state", "title": "Tab State", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const userDetailViewPreferencesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const userDetailViewPreferencesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const userDetailViewPreferencesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class UserDetailViewPreferenceApi extends ModelApi<UserDetailViewPreference, UserDetailViewPreferenceId, UserDetailViewPreferenceCreate, UserDetailViewPreferenceUpdate, UserDetailViewPreferenceQuery, UserDetailViewPreferenceFieldName> {
@@ -1611,16 +1754,12 @@ export class UserDetailViewPreferenceApi extends ModelApi<UserDetailViewPreferen
 }
 
 export interface UserListViewPreference {
-  calendar_end_field: number | null;
-  calendar_start_field: number | null;
-  calendar_view_mode: string;
   content_type: number;
+  default_filters: unknown;
   display_fields: unknown;
   id: number;
-  kanban_group_by_field: number | null;
   name: string;
-  page_size: number;
-  page_type: string;
+  options: unknown;
   selected: boolean;
   split_view_enabled: boolean;
   user: number;
@@ -1628,18 +1767,14 @@ export interface UserListViewPreference {
 }
 
 export type UserListViewPreferenceId = number;
-export type UserListViewPreferenceFieldName = "calendar_end_field" | "calendar_start_field" | "calendar_view_mode" | "content_type" | "display_fields" | "id" | "kanban_group_by_field" | "name" | "page_size" | "page_type" | "selected" | "split_view_enabled" | "user" | "view_type";
+export type UserListViewPreferenceFieldName = "content_type" | "default_filters" | "display_fields" | "id" | "name" | "options" | "selected" | "split_view_enabled" | "user" | "view_type";
 
 export interface UserListViewPreferenceCreate {
-  calendar_end_field?: number | null;
-  calendar_start_field?: number | null;
-  calendar_view_mode?: string;
   content_type: number;
+  default_filters?: unknown;
   display_fields?: unknown;
-  kanban_group_by_field?: number | null;
   name?: string;
-  page_size?: number;
-  page_type?: string;
+  options?: unknown;
   selected?: boolean;
   split_view_enabled?: boolean;
   user: number;
@@ -1650,23 +1785,19 @@ export type UserListViewPreferenceUpdate = Partial<UserListViewPreferenceCreate>
 export type UserListViewPreferenceQuery = Partial<Record<UserListViewPreferenceFieldName | `${UserListViewPreferenceFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
 export const userListViewPreferencesFields: Record<UserListViewPreferenceFieldName, BloomerpFieldMetadata> = {
-  "calendar_end_field": {"name": "calendar_end_field", "title": "Calendar End Field", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "ApplicationField", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "calendar_start_field": {"name": "calendar_start_field", "title": "Calendar Start Field", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "ApplicationField", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "calendar_view_mode": {"name": "calendar_view_mode", "title": "Calendar View Mode", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "day", "label": "Day"}, {"value": "week", "label": "Week"}, {"value": "month", "label": "Month"}]},
   "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "default_filters": {"name": "default_filters", "title": "Default Filters", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "display_fields": {"name": "display_fields", "title": "Display Fields", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
-  "kanban_group_by_field": {"name": "kanban_group_by_field", "title": "Kanban Group By Field", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "ApplicationField", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "page_size": {"name": "page_size", "title": "Page Size", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": [{"value": 10, "label": "10"}, {"value": 25, "label": "25"}, {"value": 50, "label": "50"}, {"value": 100, "label": "100"}]},
-  "page_type": {"name": "page_type", "title": "Page Type", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "pagination", "label": "Pagination"}, {"value": "infinite_scroll", "label": "Infinite Scroll"}]},
+  "options": {"name": "options", "title": "Options", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "selected": {"name": "selected", "title": "Selected", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "split_view_enabled": {"name": "split_view_enabled", "title": "Split View Enabled", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
   "view_type": {"name": "view_type", "title": "View Type", "fieldType": "CharField", "dbFieldType": "varchar(50)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "table", "label": "Table"}, {"value": "kanban", "label": "Kanban"}, {"value": "card", "label": "Card"}, {"value": "calendar", "label": "Calendar"}, {"value": "gant", "label": "Gant"}, {"value": "pivot_table", "label": "Pivot"}]},
 } as const;
 
-export const userListViewPreferencesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const userListViewPreferencesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const userListViewPreferencesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class UserListViewPreferenceApi extends ModelApi<UserListViewPreference, UserListViewPreferenceId, UserListViewPreferenceCreate, UserListViewPreferenceUpdate, UserListViewPreferenceQuery, UserListViewPreferenceFieldName> {
@@ -1676,20 +1807,26 @@ export class UserListViewPreferenceApi extends ModelApi<UserListViewPreference, 
 }
 
 export interface Workflow {
+  active: boolean;
   created_by: number | null;
   datetime_created: string;
   datetime_updated: string;
+  enable_logging: boolean;
   id: number;
   name: string;
+  run_asynchronously: boolean;
   updated_by: number | null;
 }
 
 export type WorkflowId = number;
-export type WorkflowFieldName = "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "updated_by";
+export type WorkflowFieldName = "active" | "created_by" | "datetime_created" | "datetime_updated" | "enable_logging" | "id" | "name" | "run_asynchronously" | "updated_by";
 
 export interface WorkflowCreate {
+  active?: boolean;
   created_by?: number | null;
+  enable_logging?: boolean;
   name: string;
+  run_asynchronously?: boolean;
   updated_by?: number | null;
 }
 
@@ -1697,15 +1834,18 @@ export type WorkflowUpdate = Partial<WorkflowCreate>;
 export type WorkflowQuery = Partial<Record<WorkflowFieldName | `${WorkflowFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
 export const workflowsFields: Record<WorkflowFieldName, BloomerpFieldMetadata> = {
+  "active": {"name": "active", "title": "Active", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "enable_logging": {"name": "enable_logging", "title": "Enable Logging", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "run_asynchronously": {"name": "run_asynchronously", "title": "Run Asynchronously", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const workflowsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const workflowsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const workflowsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class WorkflowApi extends ModelApi<Workflow, WorkflowId, WorkflowCreate, WorkflowUpdate, WorkflowQuery, WorkflowFieldName> {
@@ -1737,7 +1877,7 @@ export const workflowEdgesFields: Record<WorkflowEdgeFieldName, BloomerpFieldMet
   "to_node": {"name": "to_node", "title": "To Node", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "WorkflowNode", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const workflowEdgesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const workflowEdgesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const workflowEdgesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class WorkflowEdgeApi extends ModelApi<WorkflowEdge, WorkflowEdgeId, WorkflowEdgeCreate, WorkflowEdgeUpdate, WorkflowEdgeQuery, WorkflowEdgeFieldName> {
@@ -1752,6 +1892,7 @@ export interface WorkflowNode {
   datetime_created: string;
   datetime_updated: string;
   id: number;
+  name: string | null;
   pos_x: number;
   pos_y: number;
   type: string;
@@ -1760,11 +1901,12 @@ export interface WorkflowNode {
 }
 
 export type WorkflowNodeId = number;
-export type WorkflowNodeFieldName = "config" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "pos_x" | "pos_y" | "type" | "updated_by" | "workflow";
+export type WorkflowNodeFieldName = "config" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "pos_x" | "pos_y" | "type" | "updated_by" | "workflow";
 
 export interface WorkflowNodeCreate {
   config?: unknown;
   created_by?: number | null;
+  name?: string | null;
   pos_x?: number;
   pos_y?: number;
   type: string;
@@ -1781,6 +1923,7 @@ export const workflowNodesFields: Record<WorkflowNodeFieldName, BloomerpFieldMet
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "pos_x": {"name": "pos_x", "title": "Pos X", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "pos_y": {"name": "pos_y", "title": "Pos Y", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "type": {"name": "type", "title": "Type", "fieldType": "CharField", "dbFieldType": "varchar(32)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "TRIGGER", "label": "Trigger"}, {"value": "ACTION", "label": "Action"}, {"value": "FLOW", "label": "Flow"}]},
@@ -1788,7 +1931,7 @@ export const workflowNodesFields: Record<WorkflowNodeFieldName, BloomerpFieldMet
   "workflow": {"name": "workflow", "title": "Workflow", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "Workflow", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const workflowNodesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const workflowNodesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const workflowNodesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class WorkflowNodeApi extends ModelApi<WorkflowNode, WorkflowNodeId, WorkflowNodeCreate, WorkflowNodeUpdate, WorkflowNodeQuery, WorkflowNodeFieldName> {
@@ -1798,41 +1941,76 @@ export class WorkflowNodeApi extends ModelApi<WorkflowNode, WorkflowNodeId, Work
 }
 
 export interface WorkflowRun {
-  created_by: number | null;
   datetime_created: string;
   datetime_updated: string;
   id: number;
-  updated_by: number | null;
   workflow: number;
 }
 
 export type WorkflowRunId = number;
-export type WorkflowRunFieldName = "created_by" | "datetime_created" | "datetime_updated" | "id" | "updated_by" | "workflow";
+export type WorkflowRunFieldName = "datetime_created" | "datetime_updated" | "id" | "workflow";
 
 export interface WorkflowRunCreate {
-  created_by?: number | null;
-  updated_by?: number | null;
-  workflow: number;
 }
 
 export type WorkflowRunUpdate = Partial<WorkflowRunCreate>;
 export type WorkflowRunQuery = Partial<Record<WorkflowRunFieldName | `${WorkflowRunFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
 export const workflowRunsFields: Record<WorkflowRunFieldName, BloomerpFieldMetadata> = {
-  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
-  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "workflow": {"name": "workflow", "title": "Workflow", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "Workflow", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "workflow": {"name": "workflow", "title": "Workflow", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "Workflow", "editable": false, "requiredOnCreate": false, "tsType": "number", "choices": null},
 } as const;
 
-export const workflowRunsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const workflowRunsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const workflowRunsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class WorkflowRunApi extends ModelApi<WorkflowRun, WorkflowRunId, WorkflowRunCreate, WorkflowRunUpdate, WorkflowRunQuery, WorkflowRunFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/workflow_runs/");
+  }
+}
+
+export interface WorkflowRunStep {
+  action_id: string;
+  datetime_created: string;
+  datetime_updated: string;
+  id: number;
+  sequence: number;
+  status: string;
+  workflow_run: number;
+}
+
+export type WorkflowRunStepId = number;
+export type WorkflowRunStepFieldName = "action_id" | "datetime_created" | "datetime_updated" | "id" | "sequence" | "status" | "workflow_run";
+
+export interface WorkflowRunStepCreate {
+  action_id: string;
+  sequence: number;
+  status?: string;
+  workflow_run: number;
+}
+
+export type WorkflowRunStepUpdate = Partial<WorkflowRunStepCreate>;
+export type WorkflowRunStepQuery = Partial<Record<WorkflowRunStepFieldName | `${WorkflowRunStepFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const workflowRunStepsFields: Record<WorkflowRunStepFieldName, BloomerpFieldMetadata> = {
+  "action_id": {"name": "action_id", "title": "Action Id", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "Id", "fieldType": "BigAutoField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "sequence": {"name": "sequence", "title": "Sequence", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "COMPLETED", "label": "Completed"}, {"value": "FAILED", "label": "Failed"}]},
+  "workflow_run": {"name": "workflow_run", "title": "Workflow Run", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "WorkflowRun", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+} as const;
+
+export const workflowRunStepsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const workflowRunStepsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class WorkflowRunStepApi extends ModelApi<WorkflowRunStep, WorkflowRunStepId, WorkflowRunStepCreate, WorkflowRunStepUpdate, WorkflowRunStepQuery, WorkflowRunStepFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/workflow_run_steps/");
   }
 }
 
@@ -1871,7 +2049,7 @@ export const workspacesFields: Record<WorkspaceFieldName, BloomerpFieldMetadata>
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
-export const workspacesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const workspacesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
 export const workspacesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
 export class WorkspaceApi extends ModelApi<Workspace, WorkspaceId, WorkspaceCreate, WorkspaceUpdate, WorkspaceQuery, WorkspaceFieldName> {
@@ -1951,6 +2129,18 @@ export class BloomerpSdk {
         capabilities: fileFoldersCapabilities,
         publicAccess: fileFoldersPublicAccess,
         fields: fileFoldersFields,
+      },
+      forms: {
+        endpoint: "/api/forms/",
+        capabilities: formsCapabilities,
+        publicAccess: formsPublicAccess,
+        fields: formsFields,
+      },
+      formSubmissions: {
+        endpoint: "/api/form_submissions/",
+        capabilities: formSubmissionsCapabilities,
+        publicAccess: formSubmissionsPublicAccess,
+        fields: formSubmissionsFields,
       },
       accessControlPolicies: {
         endpoint: "/api/access_control_policies/",
@@ -2060,6 +2250,12 @@ export class BloomerpSdk {
         publicAccess: workflowRunsPublicAccess,
         fields: workflowRunsFields,
       },
+      workflowRunSteps: {
+        endpoint: "/api/workflow_run_steps/",
+        capabilities: workflowRunStepsCapabilities,
+        publicAccess: workflowRunStepsPublicAccess,
+        fields: workflowRunStepsFields,
+      },
       workspaces: {
         endpoint: "/api/workspaces/",
         capabilities: workspacesCapabilities,
@@ -2079,6 +2275,8 @@ export class BloomerpSdk {
   public readonly accessControlFieldPolicies: FieldPolicyApi;
   public readonly files: FileApi;
   public readonly fileFolders: FileFolderApi;
+  public readonly forms: FormApi;
+  public readonly formSubmissions: FormSubmissionApi;
   public readonly accessControlPolicies: PolicyApi;
   public readonly accessControlRowPolicies: RowPolicyApi;
   public readonly accessControlRowPolicyRules: RowPolicyRuleApi;
@@ -2097,6 +2295,7 @@ export class BloomerpSdk {
   public readonly workflowEdges: WorkflowEdgeApi;
   public readonly workflowNodes: WorkflowNodeApi;
   public readonly workflowRuns: WorkflowRunApi;
+  public readonly workflowRunSteps: WorkflowRunStepApi;
   public readonly workspaces: WorkspaceApi;
 
   constructor(config: BloomerpSdkConfig) {
@@ -2113,6 +2312,8 @@ export class BloomerpSdk {
     this.accessControlFieldPolicies = new FieldPolicyApi(this.client);
     this.files = new FileApi(this.client);
     this.fileFolders = new FileFolderApi(this.client);
+    this.forms = new FormApi(this.client);
+    this.formSubmissions = new FormSubmissionApi(this.client);
     this.accessControlPolicies = new PolicyApi(this.client);
     this.accessControlRowPolicies = new RowPolicyApi(this.client);
     this.accessControlRowPolicyRules = new RowPolicyRuleApi(this.client);
@@ -2131,6 +2332,7 @@ export class BloomerpSdk {
     this.workflowEdges = new WorkflowEdgeApi(this.client);
     this.workflowNodes = new WorkflowNodeApi(this.client);
     this.workflowRuns = new WorkflowRunApi(this.client);
+    this.workflowRunSteps = new WorkflowRunStepApi(this.client);
     this.workspaces = new WorkspaceApi(this.client);
   }
 }

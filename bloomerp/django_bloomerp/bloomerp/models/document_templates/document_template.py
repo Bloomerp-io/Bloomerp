@@ -5,12 +5,13 @@ from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from pydantic import BaseModel
+from bloomerp.model_fields.code_field import CodeField
 from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from django.utils.translation import gettext_lazy as _
 from bloomerp.models.definition import BloomerpModelConfig
-from bloomerp.models.document_templates.document_tempate_styling import DocumentTemplateStyling
+from bloomerp.models.document_templates.document_template_styling import DocumentTemplateStyling
 from bloomerp.models.document_templates.document_template_header import DocumentTemplateHeader
 from bloomerp.models.files.file_folder import FileFolder
 
@@ -27,6 +28,47 @@ class FreeVariableChoice(BaseModel):
     value: str
     label: str
 
+
+DEFAULT_CSS = """
+p {
+    font-size: 11pt;
+    line-height: 1.5;
+    margin: 0 0 8pt 0;
+}
+p:last-child {
+    margin-bottom: 0;
+}
+h1 {
+    font-size: 24px;
+    font-weight: bold;
+}
+h2 {
+    font-size: 20px;
+    font-weight: bold;
+}
+h3 {
+    font-size: 18px;
+    font-weight: bold;
+}
+ul {
+    list-style-type: disc;
+    margin-left: 20px;
+}
+ol {
+    list-style-type: decimal;
+    margin-left: 20px;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+th, td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: left;
+}
+
+"""
 
 class FreeVariableConfig(BaseModel):
     slug: str
@@ -104,13 +146,6 @@ class DocumentTemplate(BloomerpModel):
         blank=True,
         null=True
         )
-    styling = models.ForeignKey(
-        "DocumentTemplateStyling",
-        on_delete=models.SET_NULL,
-        null=True, 
-        blank=True,
-        help_text=_("Styling of the document template.")
-        ) # Foreign key to the document template styling
     page_orientation = models.CharField(
         max_length=10,
         default='portrait',
@@ -138,16 +173,33 @@ class DocumentTemplate(BloomerpModel):
         help_text=_('Signifies to which folder a file generated from the template needs to be saved upon creation.'),
         on_delete=models.SET_NULL
     )
-    styling = models.ForeignKey(
-        to=DocumentTemplateStyling,
-        null=True,
+    
+    # STYLING
+    style_sets = models.ManyToManyField(
+        DocumentTemplateStyling,
         blank=True,
-        help_text=_('Signifies the styling to be applied to the document template'),
-        on_delete=models.SET_NULL,
+        help_text=_("Styling sets that can be applied to the document template."),
+        related_name="document_templates",
     )
+    custom_styling = CodeField(
+        language='css',
+        default=DEFAULT_CSS,
+        blank=True,
+        help_text=_("Custom CSS styling for the document template.")
+    )
+    
 
     def __str__(self):
         return self.name
+
+    def get_combined_styling(self) -> str:
+        styles = [self.custom_styling or ""]
+        if self.pk:
+            styles.extend(
+                style_set.styling or ""
+                for style_set in self.style_sets.all().order_by("name", "pk")
+            )
+        return "\n\n".join(style.strip() for style in styles if style and style.strip())
 
 
     def get_related_content_types(model):

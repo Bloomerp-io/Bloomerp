@@ -18,18 +18,24 @@ export type ContextMenuContext = {
 export type ContextMenuController = {
 	element: HTMLDivElement;
 	show: (event: MouseEvent|KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]) => void;
-	showAt: (position: { x: number; y: number }, trigger: HTMLElement, items: ContextMenuItem[]) => void;
+	showAt: (position: { x: number; y: number }, trigger: HTMLElement, items: ContextMenuItem[], options?: ContextMenuShowOptions) => void;
 	hide: () => void;
 	destroy: () => void;
 };
 
+export type ContextMenuShowOptions = {
+	hideOnViewportChange?: boolean;
+};
+
 const DEFAULT_MENU_CLASS =
-	'fixed hidden bg-white shadow-lg rounded-xl border border-gray-200 z-50 min-w-[160px]';
+	'fixed hidden bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[140px]';
 
 const menuCache = new Map<string, ContextMenuController>();
 
 // Tracks the currently open context menu so we can route keyboard navigation.
 let activeMenu: ContextMenuController | null = null;
+let activeTrigger: HTMLElement | null = null;
+let activeHideOnViewportChange = true;
 
 function getOrCreateMenuElement(id: string): HTMLDivElement {
 	const existing = document.getElementById(id);
@@ -81,6 +87,8 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 		activeIndex = -1;
 		upAtFirstArmed = false;
 		if (activeMenu === controller) activeMenu = null;
+		if (activeMenu === null) activeTrigger = null;
+		activeHideOnViewportChange = true;
 	};
 
 	const isVisible = (): boolean => !element.classList.contains('hidden');
@@ -128,6 +136,7 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 		(event: MouseEvent) => {
 			if (element.classList.contains('hidden')) return;
 			if (element.contains(event.target as Node)) return;
+			if (activeTrigger?.contains(event.target as Node)) return;
 			hide();
 		},
 		{ signal: abortController.signal }
@@ -191,13 +200,18 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 	);
 
 	// Hide on scroll/resize to avoid "floating" menu
-	window.addEventListener('scroll', hide, { signal: abortController.signal, capture: true });
-	window.addEventListener('resize', hide, { signal: abortController.signal });
+	window.addEventListener('scroll', () => {
+		if (activeHideOnViewportChange) hide();
+	}, { signal: abortController.signal, capture: true });
+	window.addEventListener('resize', () => {
+		if (activeHideOnViewportChange) hide();
+	}, { signal: abortController.signal });
 
 	const showAt = (
 		position: { x: number; y: number },
 		trigger: HTMLElement,
-		items: ContextMenuItem[]
+		items: ContextMenuItem[],
+		options: ContextMenuShowOptions = {},
 	): void => {
 		// Populate
 		const ul = clearMenu(element);
@@ -219,8 +233,8 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 			const btn = document.createElement('button');
 			btn.type = 'button';
 			btn.setAttribute('data-context-menu-item', 'true');
-			btn.className =
-				'w-full text-left px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2';
+	btn.className =
+		'w-full text-left px-2 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5';
 
 			if (item.icon) {
 				const icon = document.createElement('i');
@@ -232,6 +246,10 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 
 			btn.appendChild(document.createTextNode(item.label));
 			if (item.disabled) btn.disabled = true;
+
+			btn.addEventListener('mousedown', (e) => {
+				e.preventDefault();
+			}, { signal: abortController.signal });
 
 			btn.addEventListener(
 				'click',
@@ -250,6 +268,8 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 
 		// Show and position
 		element.classList.remove('hidden');
+		activeTrigger = trigger;
+		activeHideOnViewportChange = options.hideOnViewportChange ?? true;
 
 		// First place at cursor, then clamp based on measured size.
 		element.style.left = `${position.x}px`;
@@ -285,5 +305,3 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 export function getActiveContextMenu(): ContextMenuController | null {
 	return activeMenu;
 }
-
-

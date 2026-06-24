@@ -5,6 +5,7 @@ import {
 import { $setBlocksType } from "@lexical/selection";
 import { $createTableNodeWithDimensions } from "@lexical/table";
 import { $createParagraphNode, $getSelection, $insertNodes, $isRangeSelection, LexicalEditor } from "lexical"
+import ace from 'ace-builds/src-noconflict/ace';
 import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./utils/wordSelector";
 import getGeneralModal from "@/utils/modals";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
@@ -43,6 +44,56 @@ function handleHeading(textEditor: BloomerpTextEditor, heading: "h1" | "h2" | "h
         }
 
         $setBlocksType(selection, () => $createHeadingNode(heading))
+    });
+}
+
+// TODO: Move this somewhere else, as it is not specific to the text editor
+function configureAceModuleLoader(): void {
+    const aceConfig = (ace as any).config;
+    if (!aceConfig?.setLoader) return;
+
+    aceConfig.setLoader((moduleName: string, cb: (error: unknown, module?: unknown) => void) => {
+        const normalized = moduleName.startsWith('./') ? `ace/${moduleName.slice(2)}` : moduleName;
+
+        const resolveModule = (): Promise<unknown> => {
+            if (normalized === 'ace/theme/chrome') {
+                return import('ace-builds/src-noconflict/theme-chrome');
+            }
+
+            if (normalized === 'ace/mode/json') {
+                return import('ace-builds/src-noconflict/mode-json');
+            }
+
+            if (normalized === 'ace/mode/python') {
+                return import('ace-builds/src-noconflict/mode-python');
+            }
+
+            if (normalized === 'ace/mode/javascript') {
+                return import('ace-builds/src-noconflict/mode-javascript');
+            }
+
+            if (normalized === 'ace/mode/sql') {
+                return import('ace-builds/src-noconflict/mode-sql');
+            }
+
+            if (normalized === 'ace/mode/html') {
+                return import('ace-builds/src-noconflict/mode-html');
+            }
+
+            if (normalized === 'ace/mode/css') {
+                return import('ace-builds/src-noconflict/mode-css');
+            }
+
+            if (normalized === 'ace/ext/language_tools') {
+                return import('ace-builds/src-noconflict/ext-language_tools');
+            }
+
+            return Promise.reject(new Error(`Unsupported Ace module: ${normalized}`));
+        };
+
+        void resolveModule()
+            .then((module) => cb(null, (module as any)?.default || module))
+            .catch((error) => cb(error));
     });
 }
 
@@ -150,24 +201,48 @@ export let ACTIONS: Record<string, Action> = {
         label: "HTML",
         icon: "fa-solid fa-code",
         handler: (textEditor) => {
+            configureAceModuleLoader();
+
             const modal = getGeneralModal();
             const body = modal.getBodyElement();
             if (!body) {
                 return;
             }
 
+            modal.setSize('full')
             modal.setTitle('Raw HTML')
             body.innerHTML = ''
 
             const wrapper = document.createElement('div')
             wrapper.className = 'flex flex-col gap-3'
 
-            const textarea = document.createElement('textarea')
-            textarea.className = 'input min-h-80 w-full font-mono text-sm'
-            textarea.value = textEditor.getValue()
+            const editorContainer = document.createElement('div')
+            editorContainer.className = 'w-full rounded-md border border-gray-300'
+            editorContainer.style.height = '520px'
+            editorContainer.style.width = '100%'
 
             const actions = document.createElement('div')
             actions.className = 'flex justify-end gap-2'
+
+            let htmlEditor: any = null;
+            let cleanedUp = false;
+
+            const cleanupEditor = () => {
+                if (cleanedUp) {
+                    return;
+                }
+
+                cleanedUp = true;
+
+                if (htmlEditor) {
+                    htmlEditor.destroy();
+                    htmlEditor = null;
+                }
+
+                editorContainer.textContent = '';
+                delete (editorContainer as any).env;
+                modal.element?.removeEventListener('bloomerp:modal-closed', cleanupEditor);
+            };
 
             const cancelButton = document.createElement('button')
             cancelButton.type = 'button'
@@ -182,15 +257,33 @@ export let ACTIONS: Record<string, Action> = {
             applyButton.className = 'btn btn-primary'
             applyButton.textContent = 'Apply'
             applyButton.addEventListener('click', () => {
-                textEditor.setValue(textarea.value, true)
+                textEditor.setValue(htmlEditor?.getValue() ?? textEditor.getValue(), true)
                 modal.close()
             })
 
             actions.append(cancelButton, applyButton)
-            wrapper.append(textarea, actions)
+            wrapper.append(editorContainer, actions)
             body.appendChild(wrapper)
+
+            modal.element?.addEventListener('bloomerp:modal-closed', cleanupEditor, { once: true });
             modal.open()
-            textarea.focus()
+
+            htmlEditor = ace.edit(editorContainer);
+            htmlEditor.setTheme('ace/theme/chrome');
+            htmlEditor.setOptions({
+                showPrintMargin: false,
+                fontSize: 14,
+                tabSize: 2,
+                useSoftTabs: true,
+            });
+            htmlEditor.session.setUseWrapMode(true);
+            htmlEditor.session.setMode('ace/mode/html');
+            htmlEditor.setValue(textEditor.getValue(), -1);
+
+            requestAnimationFrame(() => {
+                htmlEditor?.resize(true);
+                htmlEditor?.focus();
+            });
         }
     }
 }

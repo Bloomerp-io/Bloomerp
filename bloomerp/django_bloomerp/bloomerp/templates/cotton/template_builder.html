@@ -4,14 +4,20 @@
 {{ template_builder_fields|json_script:field_config_id }}
 {{ template_builder_variable_catalog|json_script:variable_catalog_id }}
 
-<div bloomerp-component="document-template-builder" id="{{ id }}"
-    data-catalog-url="{% url 'components_document_template_builder_catalog' %}">
-    <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+<div 
+    bloomerp-component="document-template-builder" 
+    id="{{ id }}"
+    data-catalog-url="{% url 'components_document_template_builder_catalog' %}"
+    data-document-template-id="{{ document_template_id|default:'' }}"
+    data-preview-url="{% url 'components_generate_document_template' id=document_template_id %}"
+    class="-m-4"
+    >
+    <div class="grid xl:grid-cols-[minmax(0,1fr)_340px]">
         <section class="min-w-0">
-            <div class="overflow-hidden bg-slate-50 xl:min-h-[92vh]">
-                <div class="flex p-4 gap-2 justify-center">
-                    <button class="btn btn-primary btn-sm">Save</button>
-                    <div id="buttons-section" class="flex gap-2"></div>
+            <div class="overflow-hidden bg-base xl:min-h-[92vh]">
+                <div class="flex flex-wrap p-4 gap-2 justify-center">
+                    <div id="buttons-section" class="flex flex-wrap gap-2 overflow-scroll">
+                    </div>
                 </div>
 
                 <!--Page container-->
@@ -21,14 +27,19 @@
 
                     <!--Page section-->
                     <div id="page-content-section">
-                        <c-ui.inputs.text_editor name="template" :has_border="False"
-                            actions_toolbar_section_id="buttons-section" value="{{ builder_form.template.value }}" />
+                        <c-ui.inputs.text_editor 
+                            name="template" 
+                            :has_border="False"
+                            actions_toolbar_section_id="buttons-section" 
+                            value="{{ builder_form.template.value }}" 
+                            override_default_styling="True"
+                            />
                     </div>
                 </div>
                 <!--End Page container-->
             </div>
         </section>
-        <aside class= bg-slate-50 p-4" x-data="{ activeSection: 'variables' }">
+        <aside class="bg-base p-4" x-data="{ activeSection: 'variables' }">
             <div class="flex flex-wrap gap-2 mb-4">
                 <button class="btn btn-sm transition-colors" type="button" @click="activeSection = 'variables'"
                     :class="activeSection === 'variables' ? 'bg-black text-white' : 'bg-white text-slate-700'"
@@ -63,7 +74,7 @@
                         {{ builder_form.content_types|as_crispy_field }}
                     </div>
 
-                    <details class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2">
+                    <details class="rounded-xl border border-slate-200 bg-base/70 px-3 py-2">
                         <summary class="cursor-pointer list-none text-sm font-medium text-slate-700">
                             <span class="inline-flex items-center gap-2">
                                 <i class="fa-solid fa-plus text-xs"></i>
@@ -112,7 +123,7 @@
                     <div class="space-y-2 my-2">
                         <input class="input w-full" type="text" placeholder="Search variables" id="variable-search-input">
                         <p
-                            class="hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500"
+                            class="hidden rounded-xl border border-dashed border-slate-200 bg-base px-4 py-6 text-sm text-slate-500"
                             id="variable-results-empty"
                         ></p>
                         <div class="max-h-[52vh] overflow-y-auto overflow-x-hidden pr-1" id="variable-results"></div>
@@ -125,8 +136,9 @@
 
             <!--Styling-->
             <div x-show="activeSection === 'styling'" x-cloak>
-                {{ builder_form.styling|as_crispy_field }}
                 {{ builder_form.template_header|as_crispy_field }}
+                {{ builder_form.style_sets|as_crispy_field }}
+                {{ builder_form.custom_styling|as_crispy_field }}
             </div>
             <!--End styling-->
 

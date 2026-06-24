@@ -50,7 +50,6 @@ import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
 import ShortcutTooltip from './components/ShortcutTooltip';
 import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
-import TemplateBuilder from './components/template_builder/TemplateBuilder';
 import FocusOnForm from './components/FocusOnForm';
 import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor';
 import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
@@ -99,7 +98,6 @@ registerComponent('filter-container', FilterContainer)
 
 // Website builder
 registerComponent('website-builder', WebsiteBuilder)
-registerComponent('template-builder', TemplateBuilder)
 registerComponent('document-template-builder', DocumentTemplateBuilder)
 
 // Permission checkboxes
