@@ -12,6 +12,13 @@ class WorkflowEdge(
         verbose_name = "Workflow Edge"
         verbose_name_plural = "Workflow Edges"
     
+    name = models.CharField(
+        max_length=1000,
+        help_text="A descriptive name for the edge.",
+        null=True,
+        blank=True
+    )
+
     from_node = models.ForeignKey(
         'WorkflowNode',
         on_delete=models.CASCADE,

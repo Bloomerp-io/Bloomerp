@@ -5,19 +5,23 @@ import { BaseWidget } from "../widgets/BaseWidget";
 import { Drawer } from "../Drawer";
 import DrawFlow from 'drawflow';
 import htmx from "htmx.org";
+import getSdk from "@/sdk/getSdk";
 
 interface SavedWorkflowNode {
     id: number;
     client_id: string;
     type: string;
+    name?: string | null;
     config: WorkflowNodeConfig;
     pos_x: number;
     pos_y: number;
 }
 
 interface SavedWorkflowEdge {
+    id?: number;
     from_node: string;
     to_node: string;
+    name?: string | null;
 }
 
 interface SavedWorkflow {
@@ -39,6 +43,11 @@ interface WorkflowNodeDefinition {
     subTypeName: string;
     description: string;
     icon: string;
+}
+
+interface WorkflowEdgeMetadata {
+    id?: number;
+    name: string;
 }
 
 const WORKFLOW_CANVAS_WIDTH = 4000;
@@ -92,6 +101,58 @@ function stringifyConfigValue(value: any): string {
     return truncate(String(value), 56);
 }
 
+function createWorkflowEdgeKey(
+    fromNodeId: number | string,
+    toNodeId: number | string,
+    outputClass: string = 'output_1',
+    inputClass: string = 'input_1',
+): string {
+    return `${fromNodeId}:${outputClass}->${toNodeId}:${inputClass}`;
+}
+
+function connectionInfoToEdgeKey(info: any): string {
+    return createWorkflowEdgeKey(
+        info.output_id,
+        info.input_id,
+        info.output_class || 'output_1',
+        info.input_class || 'input_1',
+    );
+}
+
+function getConnectionElement(
+    container: HTMLElement,
+    fromNodeId: number | string,
+    toNodeId: number | string,
+    outputClass: string = 'output_1',
+    inputClass: string = 'input_1',
+): SVGElement | null {
+    return container.querySelector<SVGElement>(
+        `.connection.node_in_node-${toNodeId}.node_out_node-${fromNodeId}.${outputClass}.${inputClass}`,
+    );
+}
+
+function getConnectionInfoFromElement(connectionElement: Element): {
+    fromNodeId: string;
+    toNodeId: string;
+    outputClass: string;
+    inputClass: string;
+} | null {
+    const classes = Array.from(connectionElement.classList);
+    const toNodeClass = classes.find((className) => className.startsWith('node_in_node-'));
+    const fromNodeClass = classes.find((className) => className.startsWith('node_out_node-'));
+    const outputClass = classes.find((className) => className.startsWith('output_')) || 'output_1';
+    const inputClass = classes.find((className) => className.startsWith('input_')) || 'input_1';
+
+    if (!fromNodeClass || !toNodeClass) return null;
+
+    return {
+        fromNodeId: fromNodeClass.replace('node_out_node-', ''),
+        toNodeId: toNodeClass.replace('node_in_node-', ''),
+        outputClass,
+        inputClass,
+    };
+}
+
 function createConfigSummary(config?: WorkflowNodeConfig): string {
     const parameters = config?.parameters || {};
     const entries = Object.entries(parameters).filter(([key]) => key !== 'csrfmiddlewaretoken');
@@ -114,12 +175,13 @@ function createNodeHtml(
     definition?: Partial<WorkflowNodeDefinition>,
     config?: WorkflowNodeConfig,
     workflowNodeId?: number,
+    nodeName?: string | null,
 ): string {
     const typeLabel = definition?.typeName || nodeType;
     const subTypeLabel = definition?.subTypeName || nodeSubType;
+    const titleLabel = nodeName?.trim() || subTypeLabel || typeLabel;
     const icon = definition?.icon || 'fa-solid fa-circle-nodes';
     const cardType = nodeType.toLowerCase();
-    const persistedLabel = workflowNodeId ? `Saved #${workflowNodeId}` : `Draft #${nodeId}`;
 
     return `
         <div class="node-content workflow-node-card workflow-node-card--${escapeHtml(cardType)}">
@@ -127,7 +189,7 @@ function createNodeHtml(
                 <div class="workflow-node-icon"><i class="${escapeHtml(icon)}"></i></div>
                 <div class="workflow-node-title-wrap">
                     <div class="workflow-node-kicker">${escapeHtml(typeLabel)}</div>
-                    <div class="workflow-node-title">${escapeHtml(subTypeLabel)}</div>
+                    <div class="workflow-node-title">${escapeHtml(titleLabel)}</div>
                 </div>
             </div>
             <div class="node-body">
@@ -161,6 +223,7 @@ export default class Workflow extends BaseComponent {
     private workflowName: string = 'Workflow';
     private editingNodeId: number | null = null;
     private nodeDefinitions: Map<string, WorkflowNodeDefinition> = new Map();
+    private edgeMetadata: Map<string, WorkflowEdgeMetadata> = new Map();
     private isImportingWorkflow: boolean = false;
     private autosaveTimer: number | null = null;
     private nodeConfigAutosaveTimer: number | null = null;
@@ -169,8 +232,6 @@ export default class Workflow extends BaseComponent {
     private saveInFlight: Promise<void> | null = null;
     private saveAgainAfterCurrent: boolean = false;
     private nodeDrawerLoadPromise: Promise<void> | null = null;
-
-    private saveWorkflowBtn: HTMLButtonElement
 
     private nodeFormEditMode: 'form' | 'json' = 'form';
 
@@ -193,32 +254,32 @@ export default class Workflow extends BaseComponent {
         
         // Register events
         this.drawflow.on('nodeCreated', (id: number) => {
-            console.log('Node created:', id);
             this.scheduleAutosave();
         });
         
         this.drawflow.on('connectionCreated', (info: any) => {
-            console.log('Connection created:', info);
+            this.edgeMetadata.set(connectionInfoToEdgeKey(info), { name: '' });
+            this.refreshWorkflowEdgeLabels();
             this.scheduleAutosave();
         });
         
         this.drawflow.on('nodeRemoved', (id: number) => {
-            console.log('Node removed:', id);
             this.scheduleAutosave();
         });
 
         this.drawflow.on('connectionRemoved', (info: any) => {
-            console.log('Connection removed:', info);
+            this.edgeMetadata.delete(connectionInfoToEdgeKey(info));
+            this.refreshWorkflowEdgeLabels();
             this.scheduleAutosave();
         });
 
         this.drawflow.on('nodeMoved', (id: number) => {
-            console.log('Node moved:', id);
+            this.refreshWorkflowEdgeLabels();
             this.scheduleAutosave();
         });
         
         this.drawflow.on('nodeSelected', (id: number) => {
-            console.log('Node selected:', id);
+
         });
         
         // Create initial editor module
@@ -235,6 +296,11 @@ export default class Workflow extends BaseComponent {
         // Setup double-click handler for nodes
         this.setupNodeDoubleClickHandler();
 
+        // Setup context menu for nodes
+        this.setupNodeContextMenu();
+        this.setupEdgeContextMenu();
+
+        //
         this.setupNodeDrawer();
     }
 
@@ -290,6 +356,7 @@ export default class Workflow extends BaseComponent {
                 workflowNodeId: node.id,
                 nodeType: node.type,
                 nodeSubType,
+                nodeName: node.name || '',
                 nodeDefinition: definition,
                 config: node.config || { sub_type: nodeSubType, parameters: {} },
             };
@@ -303,7 +370,7 @@ export default class Workflow extends BaseComponent {
                 toCanvasPosition(node.pos_y, WORKFLOW_CANVAS_OFFSET_Y),
                 `${node.type}-${drawflowId}`,
                 nodeData,
-                createNodeHtml(node.type, nodeSubType, drawflowId, definition, nodeData.config, node.id),
+                createNodeHtml(node.type, nodeSubType, drawflowId, definition, nodeData.config, node.id, node.name),
                 false
             ));
 
@@ -316,10 +383,18 @@ export default class Workflow extends BaseComponent {
             const toNode = nodeIdMap.get(edge.to_node);
             if (!fromNode || !toNode) continue;
             this.drawflow.addConnection(fromNode, toNode, 'output_1', 'input_1');
+            this.edgeMetadata.set(
+                createWorkflowEdgeKey(fromNode, toNode),
+                {
+                    id: edge.id,
+                    name: edge.name || '',
+                },
+            );
         }
 
         this.nodeId = Math.max(this.nodeId, maxNodeId + 1);
         this.isImportingWorkflow = false;
+        this.refreshWorkflowEdgeLabels();
         this.fitWorkflowToViewport();
     }
 
@@ -418,7 +493,338 @@ export default class Workflow extends BaseComponent {
         });
     }
     
-    
+    /**
+     * Setup the context menu for a workflow node to allow editing the node title
+     */
+    private setupNodeContextMenu(): void {
+        const container = this.element.querySelector('#drawflow') as HTMLElement;
+        if (!container) return;
+
+        container.addEventListener('contextmenu', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const nodeElement = target.closest('.drawflow-node') as HTMLElement;
+
+            if (nodeElement) {
+                const nodeId = parseInt(nodeElement.getAttribute('id')?.replace('node-', '') || '0');
+                const nodeData = this.drawflow.getNodeFromId(nodeId);
+                if (!nodeData) return;
+
+                // Get the title element and turn it into an editable input
+                const titleElement = nodeElement.querySelector('.workflow-node-title') as HTMLElement;
+                if (titleElement) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const currentTitle = titleElement.textContent || '';
+                    const currentName = nodeData.data?.nodeName || '';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = currentName || currentTitle;
+                    input.setAttribute('aria-label', 'Node name');
+                    input.style.width = '100%';
+                    input.style.minWidth = '0';
+                    input.style.border = '0';
+                    input.style.borderBottom = '1px solid #94a3b8';
+                    input.style.borderRadius = '0';
+                    input.style.background = 'transparent';
+                    input.style.padding = '0';
+                    input.style.font = 'inherit';
+                    input.style.fontWeight = 'inherit';
+                    input.style.lineHeight = 'inherit';
+                    input.style.color = 'inherit';
+                    input.style.outline = 'none';
+
+                    let finished = false;
+                    const finishEditing = async (commit: boolean) => {
+                        if (finished) return;
+                        finished = true;
+
+                        const nextName = input.value.trim();
+                        input.replaceWith(titleElement);
+
+                        if (!commit) {
+                            titleElement.textContent = currentTitle;
+                            return;
+                        }
+
+                        const updatedData = {
+                            ...nodeData.data,
+                            nodeName: nextName,
+                        };
+                        this.drawflow.updateNodeDataFromId(nodeId, updatedData);
+                        this.refreshNodeCard(nodeId, updatedData);
+
+                        await this.flushAutosave();
+                        const persistedNodeData = this.drawflow.getNodeFromId(nodeId);
+                        const workflowNodeId = persistedNodeData?.data?.workflowNodeId;
+                        if (!workflowNodeId) return;
+
+                        try {
+                            const savedNode = await getSdk().workflowNodes.partialUpdate(
+                                workflowNodeId,
+                                { name: nextName || null },
+                            );
+                            const refreshedNodeData = this.drawflow.getNodeFromId(nodeId);
+                            if (!refreshedNodeData) return;
+                            const savedData = {
+                                ...refreshedNodeData.data,
+                                nodeName: savedNode.name || '',
+                            };
+                            this.drawflow.updateNodeDataFromId(nodeId, savedData);
+                            this.refreshNodeCard(nodeId, savedData);
+                        } catch (error) {
+                            console.error('Failed to rename workflow node', error);
+                            const revertedData = {
+                                ...this.drawflow.getNodeFromId(nodeId)?.data,
+                                nodeName: currentName,
+                            };
+                            this.drawflow.updateNodeDataFromId(nodeId, revertedData);
+                            this.refreshNodeCard(nodeId, revertedData);
+                        }
+                    };
+
+                    input.addEventListener('click', (event) => event.stopPropagation());
+                    input.addEventListener('dblclick', (event) => event.stopPropagation());
+                    input.addEventListener('contextmenu', (event) => event.stopPropagation());
+                    input.addEventListener('keydown', (event: KeyboardEvent) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void finishEditing(true);
+                        }
+                        if (event.key === 'Escape') {
+                            event.preventDefault();
+                            void finishEditing(false);
+                        }
+                    });
+                    input.addEventListener('blur', () => void finishEditing(true));
+
+                    titleElement.replaceWith(input);
+                    input.focus();
+                    input.select();
+                }
+
+            }
+        });
+    }
+
+    private setupEdgeContextMenu(): void {
+        const container = this.element.querySelector('#drawflow') as HTMLElement;
+        if (!container) return;
+
+        container.addEventListener('contextmenu', (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            const label = target.closest<HTMLElement>('[data-workflow-edge-label]');
+            const connectionPath = target.closest<SVGPathElement>('.main-path');
+            const connectionElement = label
+                ? getConnectionElement(
+                    container,
+                    label.dataset.fromNodeId || '',
+                    label.dataset.toNodeId || '',
+                    label.dataset.outputClass || 'output_1',
+                    label.dataset.inputClass || 'input_1',
+                )
+                : connectionPath?.closest<SVGElement>('.connection');
+
+            if (!connectionElement) return;
+
+            const edgeInfo = getConnectionInfoFromElement(connectionElement);
+            if (!edgeInfo) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            void this.startEditingWorkflowEdge(edgeInfo);
+        });
+    }
+
+    private async startEditingWorkflowEdge(edgeInfo: {
+        fromNodeId: string;
+        toNodeId: string;
+        outputClass: string;
+        inputClass: string;
+    }): Promise<void> {
+        const edgeKey = createWorkflowEdgeKey(
+            edgeInfo.fromNodeId,
+            edgeInfo.toNodeId,
+            edgeInfo.outputClass,
+            edgeInfo.inputClass,
+        );
+        const currentMetadata = this.edgeMetadata.get(edgeKey) || { name: '' };
+        const label = this.ensureWorkflowEdgeLabel(edgeInfo);
+        if (!label) return;
+
+        const textarea = document.createElement('textarea');
+        textarea.value = currentMetadata.name;
+        textarea.rows = Math.max(1, currentMetadata.name.split('\n').length);
+        textarea.setAttribute('aria-label', 'Edge name');
+        textarea.style.width = '160px';
+        textarea.style.minHeight = '28px';
+        textarea.style.maxHeight = '140px';
+        textarea.style.resize = 'both';
+        textarea.style.border = '0';
+        textarea.style.borderBottom = '1px solid #94a3b8';
+        textarea.style.borderRadius = '0';
+        textarea.style.background = 'rgba(255, 255, 255, 0.92)';
+        textarea.style.padding = '2px 4px';
+        textarea.style.font = 'inherit';
+        textarea.style.fontSize = '12px';
+        textarea.style.lineHeight = '1.25';
+        textarea.style.color = '#0f172a';
+        textarea.style.outline = 'none';
+        textarea.style.boxShadow = '0 1px 3px rgba(15, 23, 42, 0.12)';
+
+        let finished = false;
+        const finishEditing = async (commit: boolean) => {
+            if (finished) return;
+            finished = true;
+
+            const nextName = textarea.value.trim();
+            textarea.remove();
+
+            if (!commit) {
+                this.refreshWorkflowEdgeLabels();
+                return;
+            }
+
+            this.edgeMetadata.set(edgeKey, {
+                ...currentMetadata,
+                name: nextName,
+            });
+            this.refreshWorkflowEdgeLabels();
+            await this.flushAutosave();
+
+            const persistedMetadata = this.edgeMetadata.get(edgeKey);
+            if (!persistedMetadata?.id) return;
+
+            try {
+                const savedEdge = await (getSdk().workflowEdges as any).partialUpdate(
+                    persistedMetadata.id,
+                    { name: nextName || null },
+                );
+                this.edgeMetadata.set(edgeKey, {
+                    id: savedEdge.id || persistedMetadata.id,
+                    name: savedEdge.name || '',
+                });
+                this.refreshWorkflowEdgeLabels();
+            } catch (error) {
+                console.error('Failed to rename workflow edge', error);
+                this.edgeMetadata.set(edgeKey, currentMetadata);
+                this.refreshWorkflowEdgeLabels();
+            }
+        };
+
+        textarea.addEventListener('click', (event) => event.stopPropagation());
+        textarea.addEventListener('dblclick', (event) => event.stopPropagation());
+        textarea.addEventListener('contextmenu', (event) => event.stopPropagation());
+        textarea.addEventListener('keydown', (event: KeyboardEvent) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                event.preventDefault();
+                void finishEditing(true);
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                void finishEditing(false);
+            }
+        });
+        textarea.addEventListener('blur', () => void finishEditing(true));
+
+        label.replaceChildren(textarea);
+        label.style.display = 'block';
+        textarea.focus();
+        textarea.select();
+    }
+
+    private ensureWorkflowEdgeLabel(edgeInfo: {
+        fromNodeId: string;
+        toNodeId: string;
+        outputClass: string;
+        inputClass: string;
+    }): HTMLElement | null {
+        const container = this.element.querySelector<HTMLElement>('#drawflow');
+        const precanvas = (this.drawflow as any).precanvas as HTMLElement | null;
+        if (!container || !precanvas) return null;
+
+        const edgeKey = createWorkflowEdgeKey(
+            edgeInfo.fromNodeId,
+            edgeInfo.toNodeId,
+            edgeInfo.outputClass,
+            edgeInfo.inputClass,
+        );
+        let label = precanvas.querySelector<HTMLElement>(`[data-workflow-edge-label="${CSS.escape(edgeKey)}"]`);
+        if (!label) {
+            label = document.createElement('div');
+            label.dataset.workflowEdgeLabel = edgeKey;
+            label.dataset.fromNodeId = edgeInfo.fromNodeId;
+            label.dataset.toNodeId = edgeInfo.toNodeId;
+            label.dataset.outputClass = edgeInfo.outputClass;
+            label.dataset.inputClass = edgeInfo.inputClass;
+            label.style.position = 'absolute';
+            label.style.transform = 'translate(-50%, -50%)';
+            label.style.zIndex = '4';
+            label.style.maxWidth = '220px';
+            label.style.minHeight = '18px';
+            label.style.padding = '2px 5px';
+            label.style.borderRadius = '4px';
+            label.style.background = 'rgba(255, 255, 255, 0.88)';
+            label.style.color = '#334155';
+            label.style.fontSize = '12px';
+            label.style.lineHeight = '1.25';
+            label.style.textAlign = 'center';
+            label.style.whiteSpace = 'pre-wrap';
+            label.style.overflowWrap = 'anywhere';
+            label.style.cursor = 'text';
+            label.style.boxShadow = '0 1px 2px rgba(15, 23, 42, 0.08)';
+            precanvas.appendChild(label);
+        }
+
+        const connectionElement = getConnectionElement(
+            container,
+            edgeInfo.fromNodeId,
+            edgeInfo.toNodeId,
+            edgeInfo.outputClass,
+            edgeInfo.inputClass,
+        );
+        const path = connectionElement?.querySelector<SVGPathElement>('.main-path');
+        if (!path) return label;
+
+        try {
+            const point = path.getPointAtLength(path.getTotalLength() / 2);
+            label.style.left = `${point.x}px`;
+            label.style.top = `${point.y}px`;
+        } catch {
+            label.style.display = 'none';
+        }
+
+        return label;
+    }
+
+    private refreshWorkflowEdgeLabels(): void {
+        const container = this.element.querySelector<HTMLElement>('#drawflow');
+        const precanvas = (this.drawflow as any).precanvas as HTMLElement | null;
+        if (!container || !precanvas) return;
+
+        precanvas.querySelectorAll<HTMLElement>('[data-workflow-edge-label]').forEach((label) => {
+            label.remove();
+        });
+
+        container.querySelectorAll<SVGElement>('.connection').forEach((connectionElement) => {
+            const edgeInfo = getConnectionInfoFromElement(connectionElement);
+            if (!edgeInfo) return;
+            const edgeKey = createWorkflowEdgeKey(
+                edgeInfo.fromNodeId,
+                edgeInfo.toNodeId,
+                edgeInfo.outputClass,
+                edgeInfo.inputClass,
+            );
+            const metadata = this.edgeMetadata.get(edgeKey);
+            if (!metadata?.name) return;
+            const label = this.ensureWorkflowEdgeLabel(edgeInfo);
+            if (!label) return;
+            label.textContent = metadata.name;
+            label.style.display = 'block';
+        });
+    }
+
+
     private setupToolbar(): void {
         const addNodeBtn = this.element.querySelector('#add-node-btn');
         const clearBtn = this.element.querySelector('#clear-btn');
@@ -455,6 +861,7 @@ export default class Workflow extends BaseComponent {
     private clearAll(): void {
         if (confirm('Are you sure you want to clear all nodes?')) {
             this.drawflow.clear();
+            this.edgeMetadata.clear();
             this.nodeId = 1;
         }
     }
@@ -477,7 +884,7 @@ export default class Workflow extends BaseComponent {
                 (entry): entry is { node: any; drawflowId: number } =>
                     entry.drawflowId !== null,
             );
-        const edges: Array<{ from_node: string; to_node: string }> = [];
+        const edges: Array<{ id?: number; from_node: string; to_node: string; name?: string | null }> = [];
         const clientIdByDrawflowId = new Map<number, string>();
 
         for (const { node, drawflowId } of normalizedNodes) {
@@ -489,13 +896,19 @@ export default class Workflow extends BaseComponent {
 
         for (const { node, drawflowId: fromDrawflowId } of normalizedNodes) {
             const outputs = node.outputs || {};
-            for (const output of Object.values(outputs) as Array<any>) {
+            for (const [outputClass, output] of Object.entries(outputs) as Array<[string, any]>) {
                 for (const connection of output.connections || []) {
                     const toDrawflowId = normalizeDrawflowId(connection.node);
                     if (toDrawflowId === null) continue;
+                    const inputClass = connection.output || 'input_1';
+                    const edgeMetadata = this.edgeMetadata.get(
+                        createWorkflowEdgeKey(fromDrawflowId, toDrawflowId, outputClass, inputClass),
+                    );
                     edges.push({
+                        ...(edgeMetadata?.id ? { id: edgeMetadata.id } : {}),
                         from_node: clientIdByDrawflowId.get(fromDrawflowId) || buildWorkflowClientId(fromDrawflowId),
                         to_node: clientIdByDrawflowId.get(toDrawflowId) || buildWorkflowClientId(toDrawflowId),
+                        name: edgeMetadata?.name || null,
                     });
                 }
             }
@@ -508,6 +921,7 @@ export default class Workflow extends BaseComponent {
                 ...(node.data?.workflowNodeId ? { id: node.data.workflowNodeId } : {}),
                 client_id: clientIdByDrawflowId.get(drawflowId) || buildWorkflowClientId(drawflowId),
                 type: node.data?.nodeType || node.name,
+                name: node.data?.nodeName || null,
                 config: {
                     sub_type: node.data?.nodeSubType,
                     parameters: node.data?.config?.parameters || {},
@@ -584,11 +998,14 @@ export default class Workflow extends BaseComponent {
                             const updatedData = {
                                 ...drawflowNode.data,
                                 workflowNodeId: node.id,
+                                nodeName: node.name || '',
                             };
                             this.drawflow.updateNodeDataFromId(drawflowId, updatedData);
                             this.refreshNodeCard(drawflowId, updatedData);
                         }
                     }
+
+                    this.updateWorkflowEdgeMetadataFromSavedWorkflow(savedWorkflow);
                 } while (this.saveAgainAfterCurrent);
             } catch (error) {
                 console.error('Failed to save workflow', error);
@@ -601,6 +1018,32 @@ export default class Workflow extends BaseComponent {
         })();
 
         await this.saveInFlight;
+    }
+
+    private updateWorkflowEdgeMetadataFromSavedWorkflow(savedWorkflow: SavedWorkflow): void {
+        const drawflowIdByClientId = new Map<string, number>();
+        const existingMetadata = new Map(this.edgeMetadata);
+
+        for (const node of savedWorkflow.nodes || []) {
+            const drawflowId = parseDrawflowClientId(String(node.client_id));
+            if (drawflowId) drawflowIdByClientId.set(node.client_id, drawflowId);
+        }
+
+        this.edgeMetadata.clear();
+        for (const edge of savedWorkflow.edges || []) {
+            const fromNodeId = drawflowIdByClientId.get(edge.from_node);
+            const toNodeId = drawflowIdByClientId.get(edge.to_node);
+            if (!fromNodeId || !toNodeId) continue;
+
+            const edgeKey = createWorkflowEdgeKey(fromNodeId, toNodeId);
+            const previousMetadata = existingMetadata.get(edgeKey);
+            this.edgeMetadata.set(edgeKey, {
+                id: edge.id,
+                name: edge.name ?? previousMetadata?.name ?? '',
+            });
+        }
+
+        this.refreshWorkflowEdgeLabels();
     }
 
     private setupNodeDrawer(): void {
@@ -658,6 +1101,7 @@ export default class Workflow extends BaseComponent {
                 nodeType,
                 nodeSubType,
                 nodeDefinition: definition,
+                nodeName: '',
                 config,
             },
             createNodeHtml(nodeType, nodeSubType, this.nodeId, definition, config),
@@ -974,6 +1418,7 @@ export default class Workflow extends BaseComponent {
             definition,
             nodeData.config,
             nodeData.workflowNodeId,
+            nodeData.nodeName,
         );
         const wrapper = document.createElement('div');
         wrapper.innerHTML = html;

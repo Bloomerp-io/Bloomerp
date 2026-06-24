@@ -44,6 +44,12 @@ class WorkflowNodeSerializer(serializers.Serializer):
     type = serializers.ChoiceField(
         choices=WorkflowNode._meta.get_field("type").choices,
     )
+    name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=255,
+    )
     config = serializers.JSONField()
     pos_x = PositionIntegerField(required=False, allow_null=True, default=0)
     pos_y = PositionIntegerField(required=False, allow_null=True, default=0)
@@ -60,6 +66,12 @@ class WorkflowEdgeSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
     from_node = serializers.CharField(max_length=255)
     to_node = serializers.CharField(max_length=255)
+    name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=1000,
+    )
 
 
 class WorkflowSerializer(serializers.ModelSerializer):
@@ -140,6 +152,7 @@ class WorkflowSerializer(serializers.ModelSerializer):
                     "id": node.id,
                     "client_id": node_key_map[node.id],
                     "type": node.type,
+                    "name": node.name,
                     "config": node.config,
                     "pos_x": node.pos_x,
                     "pos_y": node.pos_y,
@@ -151,6 +164,7 @@ class WorkflowSerializer(serializers.ModelSerializer):
                     "id": edge.id,
                     "from_node": node_key_map[edge.from_node_id],
                     "to_node": node_key_map[edge.to_node_id],
+                    "name": edge.name,
                 }
                 for edge in WorkflowEdge.objects.filter(from_node__workflow=instance)
             ],
@@ -245,6 +259,7 @@ class WorkflowSerializer(serializers.ModelSerializer):
                 WorkflowEdge(
                     from_node=node_lookup[from_node_key],
                     to_node=node_lookup[to_node_key],
+                    name=edge_data.get("name") or None,
                 )
             )
 
