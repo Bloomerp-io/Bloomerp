@@ -16,6 +16,7 @@ from bloomerp.models import (
     UserCreateViewPreference,
     File,
 )
+from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.router import router
 from bloomerp.tests.views.crud_test_mixin import CrudViewTestMixin
 
@@ -595,6 +596,28 @@ class TestCreateView(CrudViewTestMixin):
         self.assertEqual(response["Location"], component_url)
         self.assertNotIn("HX-Refresh", response)
         self.assertEqual(self.CustomerModel.objects.count(), 1)
+
+    def test_component_POST_creates_todo_label_without_redirect_url(self):
+        # UC: Creating a model without an absolute URL through the create-object component should not crash. Expected Result: The object is created and the modal requests a refresh.
+        # 1. Get the TodoLabel content type and component URL.
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(TodoLabel)
+        component_url = reverse("components_create_object", kwargs={"content_type_id": content_type.pk})
+
+        # 2. Post a valid todo label through the HTMX create-object component.
+        response = self.client.post(
+            component_url,
+            {
+                "name": "Backend",
+                "color": "#000000",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        # 3. Confirm the component completes successfully and creates the label.
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Refresh"], "true")
+        self.assertTrue(TodoLabel.objects.filter(name="Backend", color="#000000").exists())
 
     def test_component_GET_redirects_when_create_view_is_overridden(self):
         """
