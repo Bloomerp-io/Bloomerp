@@ -26,6 +26,7 @@ class TodoLabel(BloomerpModel):
         managed = True
         db_table = 'bloomerp_todo_label'
     
+    avatar = None
     name = models.CharField(max_length=100)
     color = models.CharField(max_length=7)  # Hex color code
 
