@@ -35,7 +35,7 @@ from django.db.models import Model
 
 User = get_user_model()
 
-def _redirect_url(model:type[Model], object:Model) -> str:
+def _redirect_url(model:type[Model], object:Model) -> str | None:
     if hasattr(model, "bloomerp_config"):
         config = getattr(model, "bloomerp_config")
         if isinstance(config, BloomerpModelConfig):
@@ -145,7 +145,7 @@ class BloomerpCreateView(
     def get_success_url(self):
         if getattr(self, "object", None) is None:
             return self.request.path
-        return _redirect_url(self.model, self.object)
+        return _redirect_url(self.model, self.object) or self.request.path
         
 
     def get_save_and_create_new_url(self) -> str | None:
