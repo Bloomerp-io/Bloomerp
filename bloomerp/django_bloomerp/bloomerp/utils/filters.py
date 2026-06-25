@@ -32,7 +32,7 @@ from typing import Type, Optional
 from django.db.models import Model
 from django.db.models.query import QuerySet
 
-MAX_RELATION_FILTER_DEPTH = 2
+MAX_RELATION_FILTER_DEPTH = 6
 
 RELATIVE_DATE_LOOKUPS = (
     "today",
@@ -260,15 +260,7 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
             filter_overrides[f'{field_name}__day__lte'] = django_filters.NumberFilter(field_name=field_name, lookup_expr='day__lte')
             return
 
-    def add_model_filters(current_model: Type[Model], prefix: str = "", depth: int = 0, seen: Optional[set[str]] = None) -> None:
-        if seen is None:
-            seen = set()
-
-        model_label = current_model._meta.label_lower
-        if model_label in seen:
-            return
-        seen.add(model_label)
-
+    def add_model_filters(current_model: Type[Model], prefix: str = "", depth: int = 0) -> None:
         for field in current_model._meta.get_fields():
             field = field  # type: Field
 
@@ -298,7 +290,7 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
                 filter_overrides[f'{field_name}__isnull'] = django_filters.BooleanFilter(field_name=field_name, lookup_expr='isnull')
                 if depth < MAX_RELATION_FILTER_DEPTH:
                     if related_model:
-                        add_model_filters(related_model, prefix=f"{field_name}__", depth=depth + 1, seen=set(seen))
+                        add_model_filters(related_model, prefix=f"{field_name}__", depth=depth + 1)
                 continue
 
             if field.many_to_many and not field.auto_created:
@@ -331,7 +323,7 @@ def dynamic_filterset_factory(model : Type[Model]) -> Type[django_filters.Filter
                         distinct=True
                     )
                 if depth < MAX_RELATION_FILTER_DEPTH and related_model:
-                    add_model_filters(related_model, prefix=f"{field_name}__", depth=depth + 1, seen=set(seen))
+                    add_model_filters(related_model, prefix=f"{field_name}__", depth=depth + 1)
                 continue
 
             add_scalar_filters(field, prefix)
