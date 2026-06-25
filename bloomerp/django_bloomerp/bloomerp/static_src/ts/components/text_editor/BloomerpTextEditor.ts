@@ -44,7 +44,7 @@ import { BaseWidget } from "../widgets/BaseWidget";
 import { parseBoolean } from "../../utils/booleans";
 
 import HtmlNode from "./nodes/HtmlNode";
-import SpanNode from "./nodes/SpanNode";
+
 
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
@@ -121,7 +121,6 @@ export class BloomerpTextEditor extends BaseWidget {
                 TableCellNode,
                 ImageNode,
                 HtmlNode,
-                SpanNode
             ],
             onError: (error: Error) => {
                 throw error;
