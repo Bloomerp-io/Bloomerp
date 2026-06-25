@@ -13,11 +13,24 @@
                     <option value="">
                         <c-i18n.blocktrans>Select field</c-i18n.blocktrans>
                     </option>
-                    {% for field in application_fields %}
-                    <option value="{{ field.id }}">
-                        {{ field.title }}
-                    </option>
-                    {% endfor %}
+                    {% if model_fields %}
+                        <optgroup label="Model fields">
+                            {% for field in model_fields %}
+                                <option value="{{ field.id }}">
+                                    {{ field.title }}
+                                </option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endif %}
+                    {% if related_fields %}
+                        <optgroup label="Related fields">
+                            {% for field in related_fields %}
+                                <option value="{{ field.id }}">
+                                    {{ field.title }}
+                                </option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endif %}
                 </select>
             {% elif selected_application_field %}
                 <div class="input">{{ selected_application_field.title }}</div>

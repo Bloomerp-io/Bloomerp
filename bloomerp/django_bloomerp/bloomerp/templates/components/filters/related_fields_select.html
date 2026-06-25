@@ -13,8 +13,8 @@
                 value="{{ field.id }}"
                 data-field-name="{{ field.field }}"
                 data-field-type="{{ field.field_type }}"
-                {% if field.related_model_id and field.field_type in expandable_field_types %}
-                    data-related-content-type-id="{{ field.related_model_id }}"
+                {% if field.filter_related_content_type_id and field.field_type in expandable_field_types %}
+                    data-related-content-type-id="{{ field.filter_related_content_type_id }}"
                 {% endif %}
             >
                 {{ field.title }}

@@ -9,68 +9,36 @@ from bloomerp.router import router
 from bloomerp.field_types.types import FieldType
 
 FILTERABLE_FIELD_TYPES = [
-    field_type.value.id for field_type in FieldType if field_type.value.allow_in_model
+    field_type.value.id for field_type in FieldType if len(field_type.value.lookups) > 0
 ]
 
 
-def _render_filter_value_widget(application_field: ApplicationField, field_path: str | None) -> str:
-    """Render the default step-3 filter input using the field's standard widget.
+def _get_related_model(application_field: ApplicationField):
+    related_model = application_field.get_related_model()
+    if related_model:
+        return related_model
 
-    This keeps filter inputs aligned with normal application field rendering,
-    including choice-backed selects and date/datetime input attributes, while
-    still allowing advanced lookups to override the submitted field name.
-    """
-    field_name = field_path or application_field.field
-    widget = application_field.get_widget()
-    widget_choices = getattr(widget, "get_choices", lambda *_args, **_kwargs: [])()
+    try:
+        model_field = application_field._get_model_field()
+    except Exception:
+        return None
 
-    input_class = (
-        "select w-full"
-        if isinstance(widget, forms.Select) or widget_choices
-        else "input w-full"
-    )
-
-    return widget.render(
-        name=field_name,
-        value=None,
-        attrs={
-            "class": input_class,
-        },
-    )
+    return getattr(model_field, "related_model", None)
 
 
-def _render_foreign_filter_value_widget(application_field: ApplicationField, field_path: str | None, value: str | None) -> str:
-    from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+def _get_related_content_type_id(application_field: ApplicationField) -> int | None:
+    related_model = _get_related_model(application_field)
+    if not related_model:
+        return None
 
-    widget_attrs = {}
-    widget_attrs.update(application_field.meta or {})
-    return ForeignFieldWidget(attrs=widget_attrs).render(
-        name=field_path or application_field.field,
-        value=value,
-        attrs={
-            "class": "input w-full",
-        },
-    )
+    return ContentType.objects.get_for_model(related_model).id
 
 
-def _render_is_null_widget(field_name: str) -> str:
-    return forms.Select(
-        choices=[
-            ("true", "True"),
-            ("false", "False"),
-        ],
-        attrs={"class": "select w-full"},
-    ).render(name=field_name, value=None)
-
-
-def _render_boolean_widget(field_name: str) -> str:
-    return forms.Select(
-        choices=[
-            ("true", "True"),
-            ("false", "False"),
-        ],
-        attrs={"class": "select w-full"},
-    ).render(name=field_name, value=None)
+def _prepare_related_fields(application_fields):
+    fields = list(application_fields)
+    for field in fields:
+        field.filter_related_content_type_id = _get_related_content_type_id(field)
+    return fields
 
 
 @router.register(
@@ -86,7 +54,7 @@ def filters_init(request:HttpRequest, content_type_id:int) -> HttpResponse:
     selected_application_field = None
     html_content = ""
     initial_filter = None
-
+    
     if initial_filter_raw:
         try:
             parsed_initial_filter = json.loads(initial_filter_raw)
@@ -98,10 +66,20 @@ def filters_init(request:HttpRequest, content_type_id:int) -> HttpResponse:
             initial_filter = None
     
     # TODO: integrate with permissions
+    model_fields = None
+    related_fields = None
+
     if not application_field_id:
         application_fields = ApplicationField.get_for_content_type_id(content_type_id).filter(
             field_type__in=FILTERABLE_FIELD_TYPES
         )
+        related_field_type_ids = [
+            field_type.value.id
+            for field_type in FieldType
+            if not field_type.value.allow_in_model and field_type.value.lookups
+        ]
+        model_fields = application_fields.exclude(field_type__in=related_field_type_ids)
+        related_fields = application_fields.filter(field_type__in=related_field_type_ids)
     else:
         application_fields = None
         selected_application_field = ApplicationField.objects.get(id=application_field_id)
@@ -119,6 +97,8 @@ def filters_init(request:HttpRequest, content_type_id:int) -> HttpResponse:
         {
             "content_type_id": content_type_id,
             "application_fields": application_fields,
+            "model_fields": model_fields,
+            "related_fields": related_fields,
             "selected_application_field": selected_application_field,
             "html_content": html_content,
             "initial_filter_json": json.dumps(initial_filter) if initial_filter else "",
@@ -206,9 +186,9 @@ def value_input(
         if not lookup_option:
             return HttpResponse("Invalid lookup operator.", status=400)
         
-        # Special handling for advanced foreign key lookups
-        if lookup_value == "foreign_advanced":
-            related_model = application_field.get_related_model()
+        # Special handling for advanced relation lookups
+        if lookup_value in {"foreign_advanced", "one_to_many_advanced"}:
+            related_model = _get_related_model(application_field)
             if not related_model:
                 return HttpResponse("Related model not found.", status=400)
             related_content_type_id = ContentType.objects.get_for_model(related_model).id
@@ -223,7 +203,7 @@ def value_input(
                     "base_field": application_field,
                     "base_field_path": field_path or application_field.field,
                     "base_field_id": base_application_field_id or application_field.id,
-                    "related_fields": related_fields,
+                    "related_fields": _prepare_related_fields(related_fields),
                     "related_content_type_id": related_content_type_id,
                 }
             )
@@ -260,13 +240,14 @@ def related_fields(
         FieldType.FOREIGN_KEY.id,
         FieldType.MANY_TO_MANY_FIELD.id,
         FieldType.ONE_TO_ONE_FIELD.id,
+        FieldType.ONE_TO_MANY_FIELD.id,
     }
 
     return render(
         request,
         "components/filters/related_fields_select.html",
         {
-            "application_fields": application_fields,
+            "application_fields": _prepare_related_fields(application_fields),
             "level": level,
             "path_prefix": path_prefix,
             "expandable_field_types": expandable_field_types,

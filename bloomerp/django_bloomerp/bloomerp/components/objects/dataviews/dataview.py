@@ -102,8 +102,9 @@ def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> 
         filter_querydict,
         _normalize_default_filters(preference.default_filters or {}),
     )
+    
     queryset = filter_model(Model, filter_querydict, queryset)
-
+    
     queryset, renderer_context = definition.renderer_cls.apply_sorting(
         queryset,
         request,

@@ -43,6 +43,8 @@ const RESERVED_FILTER_KEYS = new Set([
     "_component_id",
 ]);
 
+const ADVANCED_LOOKUP_IDS = new Set(["foreign_advanced", "one_to_many_advanced"]);
+
 
 /**
  * Data
@@ -498,7 +500,7 @@ export default class FilterContainer extends BaseComponent {
             return false;
         }
 
-        const advancedOption = Array.from(operatorSelect.options).find((option) => option.value === "foreign_advanced");
+        const advancedOption = Array.from(operatorSelect.options).find((option) => ADVANCED_LOOKUP_IDS.has(option.value));
         if (!advancedOption) {
             return false;
         }
@@ -557,7 +559,7 @@ export default class FilterContainer extends BaseComponent {
             }
 
             const nestedAdvancedOption = Array.from(nestedAdvancedOperatorSelect.options).find((option) => {
-                return option.value === "foreign_advanced";
+                return ADVANCED_LOOKUP_IDS.has(option.value);
             });
             if (!nestedAdvancedOption) {
                 return false;
