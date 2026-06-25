@@ -233,6 +233,11 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
         self.assertContains(response, 'max="53"', html=False)
 
     def test_value_input_renders_day_of_week_select_for_date_lookup(self):
+        """
+        Use case: A date field day-of-week lookup is rendered for filtering.
+        Expected result: The select uses Monday=0 through Sunday=6 values.
+        """
+        # 1. Render the day-of-week lookup value input for a date field.
         application_field = ApplicationField.get_by_field(self.EventModel, "starts_on")
         url = reverse(
             "components_filters_value_input",
@@ -244,6 +249,7 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
 
         response = self.client.get(url, {"lookup_value": "day_of_week"})
 
+        # 2. Verify the rendered options match the filter's expected weekday values.
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<select', html=False)
         self.assertContains(response, 'class="select w-full"', html=False)
@@ -474,6 +480,11 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
         self.assertCountEqual(filtered_false.values_list("id", flat=True), [inactive_event.id])
 
     def test_filter_model_filters_date_fields_for_day_of_week_lookup(self):
+        """
+        Use case: A date field is filtered by day of week.
+        Expected result: Monday=0 and Sunday=6 match the correct dates.
+        """
+        # 1. Create events on a Monday and a Sunday.
         monday_event = self.EventModel.objects.create(
             starts_on=date(2026, 5, 18),
             starts_at=timezone.make_aware(datetime(2026, 5, 18, 9, 0, 0), timezone.get_current_timezone()),
@@ -483,8 +494,10 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
             starts_at=timezone.make_aware(datetime(2026, 5, 24, 9, 0, 0), timezone.get_current_timezone()),
         )
 
+        # 2. Filter with the weekday values emitted by the lookup widget.
         filtered_monday = filter_model(self.EventModel, {"starts_on__day_of_week": "0"})
         filtered_sunday = filter_model(self.EventModel, {"starts_on__day_of_week": "6"})
 
+        # 3. Verify each weekday value selects only the matching event.
         self.assertCountEqual(filtered_monday.values_list("id", flat=True), [monday_event.id])
         self.assertCountEqual(filtered_sunday.values_list("id", flat=True), [sunday_event.id])
