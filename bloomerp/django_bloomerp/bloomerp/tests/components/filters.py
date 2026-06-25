@@ -31,6 +31,22 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
             },
             use_bloomerp_base=True,
         )["FilterEvent"]
+        cls.EmployeeModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "FilterEmployee": {
+                    "name": models.CharField(max_length=100),
+                    "manager": models.ForeignKey(
+                        "self",
+                        null=True,
+                        blank=True,
+                        on_delete=models.SET_NULL,
+                        related_name="direct_reports",
+                    ),
+                }
+            },
+            use_bloomerp_base=True,
+        )["FilterEmployee"]
 
     def test_value_input_renders_full_width_text_input_for_plain_char_field(self):
         application_field = ApplicationField.get_by_field(self.CustomerModel, "first_name")
@@ -233,6 +249,11 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
         self.assertContains(response, 'max="53"', html=False)
 
     def test_value_input_renders_day_of_week_select_for_date_lookup(self):
+        """
+        Use case: A date field day-of-week lookup is rendered for filtering.
+        Expected result: The select uses Monday=0 through Sunday=6 values.
+        """
+        # 1. Render the day-of-week lookup value input for a date field.
         application_field = ApplicationField.get_by_field(self.EventModel, "starts_on")
         url = reverse(
             "components_filters_value_input",
@@ -244,6 +265,7 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
 
         response = self.client.get(url, {"lookup_value": "day_of_week"})
 
+        # 2. Verify the rendered options match the filter's expected weekday values.
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<select', html=False)
         self.assertContains(response, 'class="select w-full"', html=False)
@@ -473,7 +495,36 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
         self.assertCountEqual(filtered_true.values_list("id", flat=True), [active_event.id])
         self.assertCountEqual(filtered_false.values_list("id", flat=True), [inactive_event.id])
 
+    def test_filter_model_filters_with_level_5_nesting(self):
+        """
+        Use case: A recursive manager relationship is filtered through five levels.
+        Expected result: The deeply nested manager filter returns the matching employee.
+        """
+        # 1. Create a six-person management chain.
+        ceo = self.EmployeeModel.objects.create(name="CEO")
+        level_1 = self.EmployeeModel.objects.create(name="Level 1", manager=ceo)
+        level_2 = self.EmployeeModel.objects.create(name="Level 2", manager=level_1)
+        level_3 = self.EmployeeModel.objects.create(name="Level 3", manager=level_2)
+        level_4 = self.EmployeeModel.objects.create(name="Level 4", manager=level_3)
+        level_5 = self.EmployeeModel.objects.create(name="Level 5", manager=level_4)
+        unrelated = self.EmployeeModel.objects.create(name="Unrelated")
+
+        # 2. Filter through five manager hops.
+        filtered_qs = filter_model(
+            self.EmployeeModel,
+            {"manager__manager__manager__manager__manager": str(ceo.id)},
+        )
+
+        # 3. Verify only the employee at the fifth nested level matches.
+        self.assertCountEqual(filtered_qs.values_list("id", flat=True), [level_5.id])
+        self.assertNotIn(unrelated.id, filtered_qs.values_list("id", flat=True))
+
     def test_filter_model_filters_date_fields_for_day_of_week_lookup(self):
+        """
+        Use case: A date field is filtered by day of week.
+        Expected result: Monday=0 and Sunday=6 match the correct dates.
+        """
+        # 1. Create events on a Monday and a Sunday.
         monday_event = self.EventModel.objects.create(
             starts_on=date(2026, 5, 18),
             starts_at=timezone.make_aware(datetime(2026, 5, 18, 9, 0, 0), timezone.get_current_timezone()),
@@ -483,8 +534,10 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
             starts_at=timezone.make_aware(datetime(2026, 5, 24, 9, 0, 0), timezone.get_current_timezone()),
         )
 
+        # 2. Filter with the weekday values emitted by the lookup widget.
         filtered_monday = filter_model(self.EventModel, {"starts_on__day_of_week": "0"})
         filtered_sunday = filter_model(self.EventModel, {"starts_on__day_of_week": "6"})
 
+        # 3. Verify each weekday value selects only the matching event.
         self.assertCountEqual(filtered_monday.values_list("id", flat=True), [monday_event.id])
         self.assertCountEqual(filtered_sunday.values_list("id", flat=True), [sunday_event.id])
