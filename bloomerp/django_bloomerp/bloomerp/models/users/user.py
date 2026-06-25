@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, QuerySet
 from django.contrib.auth.models import Permission
 from django.utils.translation import gettext as _
-from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout
+from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.mixins import (
     StringSearchModelMixin,
@@ -17,7 +17,30 @@ from bloomerp.models.workspaces.sidebar_item import Sidebar
 
 USER_CONFIG = BloomerpModelConfig(
     module="users",
-    layout=FieldLayout(),
+    layout=FieldLayout(
+        rows=[
+            LayoutRow(
+                columns=2,
+                title="Profile",
+                items=[
+                    LayoutItem(id="username"),
+                    LayoutItem(id="email"),
+                    LayoutItem(id="first_name"),
+                    LayoutItem(id="last_name"),
+                ],
+            ),
+            LayoutRow(
+                columns=2,
+                title="Access",
+                items=[
+                    LayoutItem(id="is_active"),
+                    LayoutItem(id="is_staff"),
+                    LayoutItem(id="is_superuser"),
+                    LayoutItem(id="groups"),
+                ],
+            ),
+        ]
+    ),
 )
 
 class AbstractBloomerpUser(
