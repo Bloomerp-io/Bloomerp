@@ -2,10 +2,11 @@ from bloomerp.forms.auth import BloomerpUserCreationForm
 from bloomerp.router import router
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.models.users.user import User
+from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.base import BaseBloomerpView
 
 from django.contrib.messages.views import SuccessMessageMixin
-from django.urls import reverse_lazy
+from django.urls import reverse
 from django.views.generic.edit import FormView
 
 
@@ -24,8 +25,6 @@ class UserCreateView(BaseBloomerpView, SuccessMessageMixin, FormView):
     exclude = []
     success_message = "Object was created successfully."
     form_class = BloomerpUserCreationForm
-    success_url = reverse_lazy("users_list")
-
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -33,8 +32,11 @@ class UserCreateView(BaseBloomerpView, SuccessMessageMixin, FormView):
         return context
 
     def form_valid(self, form):
-        form.save()
+        self.object = form.save()
         return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse(get_detail_view_url(User), kwargs={"pk": self.object.pk})
 
     def has_permission(self):
         manager = UserPermissionManager(self.request.user)
