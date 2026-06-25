@@ -6,6 +6,169 @@ import django.utils.timezone
 import uuid
 from django.conf import settings
 from django.db import migrations, models
+from django.db.migrations.exceptions import IrreversibleError
+
+
+def migrate_todolabel_id_to_uuid(apps, schema_editor):
+    vendor = schema_editor.connection.vendor
+    if vendor == "postgresql":
+        migrate_todolabel_id_to_uuid_postgresql(schema_editor)
+        return
+    if vendor == "sqlite":
+        migrate_todolabel_id_to_uuid_sqlite(schema_editor)
+        return
+    raise NotImplementedError(
+        f"TodoLabel bigint-to-UUID migration is not implemented for {vendor}."
+    )
+
+
+def reverse_todolabel_id_to_uuid(apps, schema_editor):
+    raise IrreversibleError("TodoLabel UUID primary keys cannot be converted back to their original bigint values.")
+
+
+def migrate_todolabel_id_to_uuid_postgresql(schema_editor):
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute('ALTER TABLE "bloomerp_todo_label" ADD COLUMN "_uuid_id" uuid;')
+        cursor.execute('SELECT "id" FROM "bloomerp_todo_label";')
+        for (label_id,) in cursor.fetchall():
+            cursor.execute(
+                'UPDATE "bloomerp_todo_label" SET "_uuid_id" = %s WHERE "id" = %s;',
+                [uuid.uuid4(), label_id],
+            )
+        cursor.execute('ALTER TABLE "bloomerp_todo_label" ALTER COLUMN "_uuid_id" SET NOT NULL;')
+        cursor.execute('ALTER TABLE "bloomerp_todo_labels" ADD COLUMN "_todolabel_uuid_id" uuid;')
+        cursor.execute(
+            """
+            UPDATE "bloomerp_todo_labels" todo_labels
+            SET "_todolabel_uuid_id" = todo_label."_uuid_id"
+            FROM "bloomerp_todo_label" todo_label
+            WHERE todo_labels."todolabel_id" = todo_label."id";
+            """
+        )
+        cursor.execute('ALTER TABLE "bloomerp_todo_labels" ALTER COLUMN "_todolabel_uuid_id" SET NOT NULL;')
+        cursor.execute(
+            """
+            DO $$
+            DECLARE constraint_name text;
+            BEGIN
+                FOR constraint_name IN
+                    SELECT con.conname
+                    FROM pg_constraint con
+                    JOIN pg_attribute att
+                        ON att.attrelid = con.conrelid
+                        AND att.attnum = ANY(con.conkey)
+                    WHERE con.conrelid = 'bloomerp_todo_labels'::regclass
+                        AND att.attname = 'todolabel_id'
+                LOOP
+                    EXECUTE format('ALTER TABLE "bloomerp_todo_labels" DROP CONSTRAINT %I', constraint_name);
+                END LOOP;
+            END $$;
+            """
+        )
+        cursor.execute(
+            """
+            DO $$
+            DECLARE constraint_name text;
+            BEGIN
+                SELECT conname INTO constraint_name
+                FROM pg_constraint
+                WHERE conrelid = 'bloomerp_todo_label'::regclass
+                    AND contype = 'p';
+
+                IF constraint_name IS NOT NULL THEN
+                    EXECUTE format('ALTER TABLE "bloomerp_todo_label" DROP CONSTRAINT %I', constraint_name);
+                END IF;
+            END $$;
+            """
+        )
+        cursor.execute('ALTER TABLE "bloomerp_todo_labels" DROP COLUMN "todolabel_id";')
+        cursor.execute('ALTER TABLE "bloomerp_todo_labels" RENAME COLUMN "_todolabel_uuid_id" TO "todolabel_id";')
+        cursor.execute('ALTER TABLE "bloomerp_todo_label" DROP COLUMN "id";')
+        cursor.execute('ALTER TABLE "bloomerp_todo_label" RENAME COLUMN "_uuid_id" TO "id";')
+        cursor.execute('ALTER TABLE "bloomerp_todo_label" ADD PRIMARY KEY ("id");')
+        cursor.execute(
+            """
+            ALTER TABLE "bloomerp_todo_labels"
+            ADD CONSTRAINT "bloomerp_todo_labels_todolabel_id_fk"
+            FOREIGN KEY ("todolabel_id")
+            REFERENCES "bloomerp_todo_label" ("id")
+            DEFERRABLE INITIALLY DEFERRED;
+            """
+        )
+        cursor.execute(
+            """
+            ALTER TABLE "bloomerp_todo_labels"
+            ADD CONSTRAINT "bloomerp_todo_labels_todo_todolabel_uniq"
+            UNIQUE ("todo_id", "todolabel_id");
+            """
+        )
+        cursor.execute(
+            """
+            CREATE INDEX "bloomerp_todo_labels_todolabel_id_uuid_idx"
+            ON "bloomerp_todo_labels" ("todolabel_id");
+            """
+        )
+
+
+def migrate_todolabel_id_to_uuid_sqlite(schema_editor):
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute('CREATE TEMPORARY TABLE "_todolabel_id_map" ("old_id" bigint PRIMARY KEY, "new_id" char(32) NOT NULL);')
+        cursor.execute('SELECT "id" FROM "bloomerp_todo_label";')
+        for (label_id,) in cursor.fetchall():
+            cursor.execute(
+                'INSERT INTO "_todolabel_id_map" ("old_id", "new_id") VALUES (?, ?);',
+                [label_id, uuid.uuid4().hex],
+            )
+        cursor.execute(
+            """
+            CREATE TABLE "new__bloomerp_todo_label" (
+                "id" char(32) NOT NULL PRIMARY KEY,
+                "name" varchar(100) NOT NULL,
+                "color" varchar(7) NOT NULL,
+                "avatar" varchar(100) NULL,
+                "created_by_id" bigint NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "datetime_created" datetime NOT NULL,
+                "datetime_updated" datetime NOT NULL,
+                "updated_by_id" bigint NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED
+            );
+            """
+        )
+        cursor.execute(
+            """
+            INSERT INTO "new__bloomerp_todo_label" (
+                "id", "name", "color", "avatar", "created_by_id", "datetime_created", "datetime_updated", "updated_by_id"
+            )
+            SELECT id_map."new_id", todo_label."name", todo_label."color", todo_label."avatar",
+                todo_label."created_by_id", todo_label."datetime_created", todo_label."datetime_updated", todo_label."updated_by_id"
+            FROM "bloomerp_todo_label" todo_label
+            JOIN "_todolabel_id_map" id_map ON id_map."old_id" = todo_label."id";
+            """
+        )
+        cursor.execute('DROP TABLE "bloomerp_todo_label";')
+        cursor.execute('ALTER TABLE "new__bloomerp_todo_label" RENAME TO "bloomerp_todo_label";')
+        cursor.execute(
+            """
+            CREATE TABLE "new__bloomerp_todo_labels" (
+                "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+                "todo_id" char(32) NOT NULL REFERENCES "bloomerp_todo" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "todolabel_id" char(32) NOT NULL REFERENCES "bloomerp_todo_label" ("id") DEFERRABLE INITIALLY DEFERRED
+            );
+            """
+        )
+        cursor.execute(
+            """
+            INSERT INTO "new__bloomerp_todo_labels" ("id", "todo_id", "todolabel_id")
+            SELECT todo_labels."id", todo_labels."todo_id", id_map."new_id"
+            FROM "bloomerp_todo_labels" todo_labels
+            JOIN "_todolabel_id_map" id_map ON id_map."old_id" = todo_labels."todolabel_id";
+            """
+        )
+        cursor.execute('DROP TABLE "bloomerp_todo_labels";')
+        cursor.execute('ALTER TABLE "new__bloomerp_todo_labels" RENAME TO "bloomerp_todo_labels";')
+        cursor.execute('CREATE UNIQUE INDEX "bloomerp_todo_labels_todo_todolabel_uniq" ON "bloomerp_todo_labels" ("todo_id", "todolabel_id");')
+        cursor.execute('CREATE INDEX "bloomerp_todo_labels_todo_id_idx" ON "bloomerp_todo_labels" ("todo_id");')
+        cursor.execute('CREATE INDEX "bloomerp_todo_labels_todolabel_id_uuid_idx" ON "bloomerp_todo_labels" ("todolabel_id");')
+        cursor.execute('DROP TABLE "_todolabel_id_map";')
 
 
 class Migration(migrations.Migration):
@@ -41,10 +204,20 @@ class Migration(migrations.Migration):
             name='updated_by',
             field=bloomerp.model_fields.user_field.UserField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_updated', to=settings.AUTH_USER_MODEL),
         ),
-        migrations.AlterField(
-            model_name='todolabel',
-            name='id',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    migrate_todolabel_id_to_uuid,
+                    reverse_code=reverse_todolabel_id_to_uuid,
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='todolabel',
+                    name='id',
+                    field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+                ),
+            ],
         ),
         migrations.AlterField(
             model_name='workflowedge',
