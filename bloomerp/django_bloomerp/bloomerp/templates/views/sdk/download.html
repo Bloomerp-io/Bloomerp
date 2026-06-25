@@ -1,0 +1,43 @@
+<c-ui.container>
+    <c-ui.text.text>
+        
+    </c-ui.text.text>
+</c-ui.container>
+
+<c-ui.container class="h-full flex items-center justify-center">
+    <div class="flex max-w-xl flex-col space-y-5 text-center">
+        <div class="mx-auto">
+            <i class="fa text-4xl fa-code text-secondary mb-16"></i>
+        </div>
+        <c-ui.text.subtitle class="">Download SDK</c-ui.text.subtitle>
+        <c-ui.text.text class="">
+            You can download the SDK for your application by clicking the download button.
+            For more information on how to use the SDK, we refer to our 
+            <a href="https://bloomerp.io/resources" class="text-primary hover:underline">documentation.</a>
+        </c-ui.text.text>
+        <div class="flex justify-center gap-4">
+            <form
+                method="post"
+                action="{% url 'misc_module_download_sdk' %}"
+                class="flex flex-col space-y-5"
+            >
+                {% csrf_token %}
+                <div class="">
+                    <select id="sdk-language" name="language" class="select select-bordered" aria-label="SDK language">
+                        <option value="typescript" selected>TypeScript</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                    </select>
+                </div>
+                <button 
+                    class="btn btn-primary"
+                    type="submit"
+                    name="action"
+                    value="create_default"
+                >
+                    <c-i18n.blocktrans>Download</c-i18n.blocktrans>
+                </button>
+            </form>
+        </div>
+    </div>
+</c-ui.container>

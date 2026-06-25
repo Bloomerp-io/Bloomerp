@@ -9,7 +9,7 @@ from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.router import router
 from bloomerp.utils.models import get_create_view_url, get_detail_view_url
 from bloomerp.utils.requests import render_blank_form
-from bloomerp.views.core.create_view import BloomerpCreateView
+from bloomerp.views.generic.detail.create_view import BloomerpCreateView
 from django_htmx.http import HttpResponseClientRedirect
 
 

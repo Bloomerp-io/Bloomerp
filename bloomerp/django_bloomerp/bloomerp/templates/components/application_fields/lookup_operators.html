@@ -9,7 +9,7 @@
     {% endif %}
 >
     <option disabled selected value="">
-        <c-blocktrans>Select operator</c-blocktrans>
+        <c-i18n.blocktrans>Select operator</c-i18n.blocktrans>
     </option>
     {% for lookup in lookups %}
         <option value="{{ lookup.value.id }}" data-lookup-django="{{ lookup.value.django_representation }}">

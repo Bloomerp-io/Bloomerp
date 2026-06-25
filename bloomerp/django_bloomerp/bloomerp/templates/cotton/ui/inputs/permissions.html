@@ -24,7 +24,7 @@
                 name="{{ name }}"
                 value="__all__"
                 {% if permissions and permissions|length > 0 and selected_permissions|length == permissions|length %}checked{% endif %}>
-            <span class="text-gray-800 font-medium text-sm"><c-blocktrans>All Permissions</c-blocktrans></span>
+            <span class="text-gray-800 font-medium text-sm"><c-i18n.blocktrans>All Permissions</c-i18n.blocktrans></span>
         </label>
     {% endif %}
 </div>

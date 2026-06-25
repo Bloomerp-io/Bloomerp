@@ -288,28 +288,28 @@ def pcs_policy_details(request: HttpRequest, view, orchestrator: BaseStateOrches
     description="Create an access control policies for {model}",
 )
 class ManageAccessControlForModelView(WizardMixin, BaseBloomerpView, TemplateView):
-    template_name = "base_wizard.html"
+    template_name = "views/base_wizard.html"
     model: type[Model] = None
 
     steps = [
         WizardStep(
             name=_("Global access control"),
             description=_("Choose which model-level permissions this policy grants."),
-            template_name="access_control_views/manage_permissions/wizard_global_permissions.html",
+            template_name="views/access_control/manage_permissions/wizard_global_permissions.html",
             context_func=ctx_global_permissions,
             process_func=pcs_global_permissions,
         ),
         WizardStep(
             name=_("Field based access control"),
             description=_("Configure row and field rules using only the global permissions selected in step 1."),
-            template_name="access_control_views/manage_permissions/wizard_object_access_control.html",
+            template_name="views/access_control/manage_permissions/wizard_object_access_control.html",
             context_func=ctx_object_access_control,
             process_func=pcs_object_access_control,
         ),
         WizardStep(
             name=_("Policy details"),
             description=_("Give the policy a name and description before saving."),
-            template_name="access_control_views/manage_permissions/wizard_policy_details.html",
+            template_name="views/access_control/manage_permissions/wizard_policy_details.html",
             context_func=ctx_policy_details,
             process_func=pcs_policy_details,
         ),

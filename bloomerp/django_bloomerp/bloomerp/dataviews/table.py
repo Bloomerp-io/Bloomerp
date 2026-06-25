@@ -11,7 +11,7 @@ SORT_DIRECTIONS = {"asc", "desc"}
 
 
 class TableDataviewRenderer(BaseDataviewRenderer):
-    template_name = "cotton/ui/data_view/table.html"
+    template_name = "cotton/features/dataviews/table.html"
     reserved_query_params = {"sort", "direction"}
 
     def get_context_data(self, pagination) -> dict:

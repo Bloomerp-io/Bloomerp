@@ -11,7 +11,7 @@
             {% if application_fields %}
                 <select class="select w-full">
                     <option value="">
-                        <c-blocktrans>Select field</c-blocktrans>
+                        <c-i18n.blocktrans>Select field</c-i18n.blocktrans>
                     </option>
                     {% for field in application_fields %}
                     <option value="{{ field.id }}">

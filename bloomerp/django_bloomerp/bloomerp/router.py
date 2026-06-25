@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from optparse import Option
-from sre_constants import LITERAL
 from django.views import View
 from typing import Union
 import logging

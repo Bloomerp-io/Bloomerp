@@ -1,5 +1,5 @@
 from bloomerp.router import router
-from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
+from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 
 from ..models.sample import SampleModel
 

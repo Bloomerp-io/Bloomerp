@@ -2,7 +2,7 @@
 
 {% if query %}
 	<div class="px-4 py-2 border-t text-xs text-gray-500 uppercase tracking-wide flex flex-wrap items-center gap-2">
-		<span class="font-semibold text-gray-700"><c-blocktrans>Searching:</c-blocktrans></span>
+		<span class="font-semibold text-gray-700"><c-i18n.blocktrans>Searching:</c-i18n.blocktrans></span>
 		<span class="text-gray-700">{{ search_label }}</span>
 		<span class="text-gray-400">"{{ query }}"</span>
 		{% if search_scope.module %}
@@ -15,7 +15,7 @@
 
 	{% if search_type == "slash" and slash_error %}
 		<div class="px-4 py-4 text-sm text-gray-500">
-			<c-blocktrans>{{ slash_error }}</c-blocktrans>
+			<c-i18n.blocktrans>{{ slash_error }}</c-i18n.blocktrans>
 		</div>
 	{% elif search_type == "routes" %}
 		{% if route_results %}
@@ -48,7 +48,7 @@
 				</div>
 			{% endfor %}
 		{% else %}
-			<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>No routes found.</c-blocktrans></div>
+			<div class="px-4 py-4 text-sm text-gray-500"><c-i18n.blocktrans>No routes found.</c-i18n.blocktrans></div>
 		{% endif %}
 	{% elif search_type == "users" %}
 		{% if user_results %}
@@ -68,7 +68,7 @@
 				</div>
 			{% endfor %}
 		{% else %}
-			<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>No users found.</c-blocktrans></div>
+			<div class="px-4 py-4 text-sm text-gray-500"><c-i18n.blocktrans>No users found.</c-i18n.blocktrans></div>
 		{% endif %}
 	{% else %}
 		{% if object_results %}
@@ -132,13 +132,13 @@
 				{% endfor %}
 			{% endfor %}
 		{% else %}
-			<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>No results found.</c-blocktrans></div>
+			<div class="px-4 py-4 text-sm text-gray-500"><c-i18n.blocktrans>No results found.</c-i18n.blocktrans></div>
 		{% endif %}
 	{% endif %}
 
 	{% if results_truncated %}
-		<div class="px-4 py-2 text-xs text-gray-400"><c-blocktrans>Showing first {{ results_limit }} results.</c-blocktrans></div>
+		<div class="px-4 py-2 text-xs text-gray-400"><c-i18n.blocktrans>Showing first {{ results_limit }} results.</c-i18n.blocktrans></div>
 	{% endif %}
 {% else %}
-	<div class="px-4 py-4 text-sm text-gray-500"><c-blocktrans>Start typing to search.</c-blocktrans></div>
+	<div class="px-4 py-4 text-sm text-gray-500"><c-i18n.blocktrans>Start typing to search.</c-i18n.blocktrans></div>
 {% endif %}

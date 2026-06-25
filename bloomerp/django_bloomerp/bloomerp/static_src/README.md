@@ -164,7 +164,7 @@ The datatable module (`static_src/ts/modules/datatable.ts`) demonstrates:
 
 Templates now include the bundled JavaScript:
 
-**`templates/bloomerp_base.html`:**
+**`templates/views/base.html`:**
 ```django
 <!-- TypeScript Bundle (Vite) -->
 {% include 'snippets/vite_bundle.html' %}

@@ -1,0 +1,145 @@
+{% load bloomerp %}
+
+
+<div
+    bloomerp-component="{{ component_name }}"
+    data-layout="{{ layout | dump_layout_json }}"
+    data-layout-available-items-url="{% url 'components_available_layout_items' layout_object_content_type_id %}"
+    data-layout-render-item-url="{% url 'components_render_layout_item' layout_object_content_type_id %}"
+    data-layout-save-url="{% url 'components_save_layout_object' layout_object_content_type_id layout_object_id  %}"
+    data-layout-object-id="{{ layout_object_id }}"
+    data-init-edit="{{ init_edit }}"
+    {% for attr,value in extra_attrs.items %}
+    {{attr}}="{{value}}"
+    {% endfor %}
+>
+    <!--Header Section-->    
+    <div 
+        class="flex items-center justify-between mb-4 gap-4"
+        data-layout-header-section
+    >   
+        <!--Right Section-->
+        <div class="flex gap-2">
+            <c-ui.shortcut_tooltip 
+                shortcut="mod+/" 
+                action="click" 
+                position="bottom" 
+                >
+                <button class="btn btn-sm btn-secondary" type="button" data-search-button aria-pressed="false">
+                    <i class="fa fa-search"></i>
+                    <c-i18n.blocktrans>Search</c-i18n.blocktrans>
+                </button>
+            </c-ui.shortcut_tooltip>
+
+            {{ buttons_left }}
+        </div>
+        <!--End Right Section-->
+
+        <!--Left section-->
+        <div class="flex gap-2">
+            {{ buttons_right }}
+            {% if can_edit %}
+            <c-ui.shortcut_tooltip 
+                shortcut="mod+e" 
+                action="click" 
+                position="bottom">
+                <button class="btn btn-sm btn-secondary" type="button" data-layout-edit-toggle>
+                    <i class="fa fa-gear"></i>
+                    <c-i18n.blocktrans>Edit</c-i18n.blocktrans>
+                </button>
+            </c-ui.shortcut_tooltip>
+
+            <div class="hidden flex gap-2" data-layout-open-sidebar>
+                <c-ui.shortcut_tooltip 
+                    shortcut="mod+m" 
+                    action="click" 
+                    position="bottom">
+                    <button 
+                        class="btn btn-sm btn-secondary" 
+                        bloomerp-open-drawer="layout-drawer-items"
+                        type="button"
+                        >
+                        <i class="fa fa-grip"></i>
+                        <c-i18n.blocktrans>Add items</c-i18n.blocktrans>
+                    </button>
+                </c-ui.shortcut_tooltip>
+
+                {% if can_delete %}
+                    <c-ui.shortcut_tooltip 
+                        shortcut="mod+j" 
+                        action="click" 
+                        position="bottom">
+                        <button 
+                            class="btn btn-sm btn-danger" 
+                            bloomerp-open-modal="layout-object-delete-modal"
+                            hx-get="{% url 'components_delete_layout_object' layout_object_content_type_id layout_object_id %}"
+                            hx-target="#layout-object-delete-modal-body"
+                            hx-trigger="click"
+                            hx-push-url="false"
+                            type="button"
+                            >
+                            <i class="fa fa-trash"></i>
+                            <c-i18n.blocktrans>Delete</c-i18n.blocktrans>
+                        </button>
+                    </c-ui.shortcut_tooltip>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <!--End Left section-->
+    </div>
+    <!--End Header Section-->
+
+    <div data-layout-header-section-2>
+        
+    </div>
+
+    <!--Layout items-->
+    <div class="space-y-4" data-layout-root>
+        {{ slot }}
+    </div>
+    <!--End layout items-->
+
+    <!--Drawer section-->
+    <c-ui.drawer 
+        id="layout-drawer-items" 
+        side="right" 
+        backdrop="False"
+        >
+        <div class="p-4">
+            <c-ui.text.subtitle>Available Items</c-ui.text.subtitle>
+            <div class="mt-4" data-layout-available-items></div>
+        </div>
+    </c-ui.drawer>
+    <!--End drawer section-->
+
+    <!--Display options modal-->
+    <c-ui.modal id="field-display-option-modal" title="Edit display options"></c-ui.modal>
+    <!--End display options modal-->
+
+    <!--Display options modal-->
+    <c-ui.modal id="layout-object-delete-modal" title="Delete"></c-ui.modal>
+    <!--End display options modal-->
+
+
+    <!--Search panel-->
+    <div
+        class="hidden absolute right-6 top-16 z-40 rounded-xl border border-gray-200 bg-white p-2 shadow-sm"
+        data-form-search-panel
+        aria-hidden="true"
+    >
+        <div class="flex items-center gap-2">
+            <input
+                type="text"
+                class="input input-sm"
+                placeholder="Find item"
+                data-form-search-input
+                aria-label="Search layout items"
+            >
+            <span class="text-muted whitespace-nowrap text-sm" data-form-search-status>
+                0 results
+            </span>
+        </div>
+    </div>
+    <!--End Search panel-->
+</div>

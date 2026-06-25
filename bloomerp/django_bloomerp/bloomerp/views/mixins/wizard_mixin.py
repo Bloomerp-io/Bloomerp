@@ -82,7 +82,7 @@ class WizardError:
 class WizardMixin:
     state_orchestrator_cls : Type[BaseStateOrchestrator] = BaseStateOrchestrator
     steps : list[WizardStep] = None
-    template_name:str = "base_wizard.html"
+    template_name:str = "views/base_wizard.html"
     session_key:str = "default_session_key"
     step_query_param: str = "step"
     allow_step_query_navigation: bool = False

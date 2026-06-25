@@ -10,7 +10,7 @@ from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.sql_services import DatabaseTable
 from bloomerp.utils.requests import parse_bool_parameter
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator
-from bloomerp.views.workspace.create_tile import (
+from bloomerp.views.workspaces.create_tile import (
     CREATE_TILE_SESSION_KEY,
     TILE_DESCRIPTION_SESSION_KEY,
     TILE_ICON_SESSION_KEY,

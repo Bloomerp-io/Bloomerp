@@ -21,7 +21,7 @@ class SubmitFormView(
     BloomerpLayoutFormMixin,
     DetailView,
 ):
-    template_name = "form_views/submit.html"
+    template_name = "views/forms/submit.html"
     model = Form
     module = None
     layout_mode = "form-submit"

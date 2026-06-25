@@ -46,7 +46,7 @@ class EmployeeSendEmailView(Context, DetailView):
 ```
 Let's now also add the template.
 ```html
-{% extends detail_views/bloomerp_base_detail_view.html %}
+{% extends views/generic/detail/overview.html %}
 
 ```
 

@@ -2,7 +2,7 @@ from django.urls import reverse
 
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.router import router
-from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
+from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 from django.views.generic import TemplateView
 
 @router.register(
@@ -13,7 +13,7 @@ from django.views.generic import TemplateView
     description="Generate pdf from document template"
 )
 class DocumentTemplateGenerateView(BaseBloomerpDetailView):
-    template_name = "load_component_view.html"
+    template_name = "utils/load_component_view.html"
     model = DocumentTemplate
     
     def get_context_data(self, **kwargs):

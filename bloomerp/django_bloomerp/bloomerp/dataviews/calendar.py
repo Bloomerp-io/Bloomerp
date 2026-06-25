@@ -7,7 +7,7 @@ from .base import BaseDataviewRenderer
 
 
 class CalendarDataviewRenderer(BaseDataviewRenderer):
-    template_name = "cotton/ui/data_view/calendar.html"
+    template_name = "cotton/features/dataviews/calendar.html"
     reserved_query_params = {"calendar_page"}
 
     def get_context_data(self, pagination) -> dict:

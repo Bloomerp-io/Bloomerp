@@ -8,7 +8,7 @@ from .base import DataviewPagination
 
 
 class CardDataviewRenderer(BaseDataviewRenderer):
-    template_name = "cotton/ui/data_view/card.html"
+    template_name = "cotton/features/dataviews/card.html"
 
     @classmethod
     def paginate_queryset(

@@ -8,7 +8,7 @@ from bloomerp.field_types import Lookup
 from bloomerp.models import ApplicationField, FieldPolicy, Policy, RowPolicy, RowPolicyRule
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
-from bloomerp.views.detail.foreign_relationship import ForeignRelationshipView
+from bloomerp.views.generic.detail.foreign_relationship import ForeignRelationshipView
 
 
 class TestForeignRelationshipView(BaseBloomerpModelTestCase):

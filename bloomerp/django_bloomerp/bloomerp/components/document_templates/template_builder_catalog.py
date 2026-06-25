@@ -53,7 +53,7 @@ def document_template_builder_catalog(request: HttpRequest) -> HttpResponse:
     return HttpResponse(
         render_component(
             request,
-            "components.document_templates.variable_catalog",
+            "features.document_templates.variable_catalog",
             {
                 "variables": variables,
             },

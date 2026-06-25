@@ -267,7 +267,7 @@ def _render_display_options(
     data_view_fields = get_data_view_fields(preference)
     return render(
         request,
-        "cotton/ui/data_view/display_options.html",
+        "cotton/features/dataviews/display_options.html",
         {
             "content_type_id": content_type_id,
             "view_types": [vt.value for vt in ViewTypeEnum],

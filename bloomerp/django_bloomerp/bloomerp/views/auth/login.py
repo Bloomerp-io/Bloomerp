@@ -8,7 +8,7 @@ from django.urls import reverse_lazy
 
 class BloomerpLoginView(LoginView):
     authentication_form = BloomerpAuthenticationForm
-    template_name = "auth_views/login_view.html"
+    template_name = "views/auth/login.html"
     next_page = reverse_lazy("bloomerp_home_view")
 
     def get_context_data(self, **kwargs):

@@ -13,9 +13,9 @@ from typing import Any
 
 class HtmxMixin:
     """Updates the template name based on the request.htmx attribute."""
-    htmx_template = 'bloomerp_htmx_base_view.html'
-    htmx_addendum_template = 'htmx_addendum.html'
-    base_detail_template = 'detail_views/bloomerp_base_detail_view.html'
+    htmx_template = 'views/htmx_base.html'
+    htmx_addendum_template = 'views/htmx_addendum.html'
+    base_detail_template = 'views/generic/detail/base.html'
     htmx_detail_target = 'detail-view-content'
     htmx_main_target = 'main-content'
     htmx_include_addendum = True

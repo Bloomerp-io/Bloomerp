@@ -15,7 +15,7 @@ KANBAN_EMPTY_COLUMN_VALUE = "__none__"
 
 
 class KanbanDataviewRenderer(BaseDataviewRenderer):
-    template_name = "cotton/ui/data_view/kanban.html"
+    template_name = "cotton/features/dataviews/kanban.html"
     reserved_query_params = {"kanban_page", "kanban_column"}
 
     def get_context_data(self, pagination) -> dict:

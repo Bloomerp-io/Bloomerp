@@ -171,7 +171,7 @@
                         >
                     
                     <div class="p-2" id="data-table-display-options-{{ content_type_id }}">
-                        <c-ui.data_view.display_options 
+                        <c-features.dataviews.display_options 
                             :content_type_id="content_type_id"
                             :view_types="view_types"
                             :preference="preference"
@@ -188,7 +188,7 @@
             <!--Select-->
             <div data-data-view-button="select-preference">
                 <c-ui.shortcut_tooltip position="bottom" shortcut="mod+6">
-                    <c-select_preference_button
+                    <c-features.preferences.select_preference_button
                         type="list"
                         :content_type_id="content_type_id"
                         selected_preference_name="{{ preference.name }}"

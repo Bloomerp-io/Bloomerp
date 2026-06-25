@@ -1,0 +1,91 @@
+{% comment %}
+kanban
+
+A kanban view for displaying records from a queryset in a kanban board format.
+Supports drag-and-drop functionality for moving items between columns.
+
+Parameters:
+- content_type_id (int): The content type ID for the model being displayed.
+- queryset (QuerySet): The Django queryset containing the records to be displayed.
+- fields (list): The list of fields to display on each card.
+- avatar_field (ApplicationField): The selected avatar field, when visible.
+- preference (UserListViewPreference): The user's view preferences.
+- kanban_groups (list): List of groups with 'value', 'label', 'items', 'count' keys.
+- group_by_field (ApplicationField): The field used for grouping.
+
+TODO: This and dataview_kanban_cards need to be merged
+{% endcomment %}
+
+{% load bloomerp %}
+
+<c-features.dataviews.base_data_view 
+    component_name="kanban-board"
+    content_type_id="{{ content_type_id }}"
+    id="kanban-board-{{ content_type_id }}"
+    query_count="{{ count }}"
+    class="kanban-board flex gap-4 overflow-x-auto pb-4 h-full min-h-[400px] focus:outline-none focus:border-0 focus:ring-0"
+    :component_args="component_args"
+>
+    {% if kanban_groups %}
+        {% for group in kanban_groups %}
+        <div 
+            class="kanban-column flex-shrink-0 w-72 bg-base rounded-xl border border-gray-200 flex flex-col max-h-full"
+            data-column-value="{{ group.request_value }}"
+            data-kanban-total-count="{{ group.count }}"
+        >
+            <!-- Column Header -->
+            <div class="kanban-column-header p-3 border-b border-gray-200 bg-base rounded-t-lg">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-medium text-gray-900 text-sm truncate" title="{{ group.label }}">
+                        {{ group.label }}
+                    </h3>
+                    <span class="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full" data-kanban-count>
+                        {{ group.count }}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Column Body (Drop Zone) -->
+            <div 
+                class="kanban-column-body flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]"
+                data-kanban-dropzone
+                data-column-value="{{ group.request_value }}"
+            >
+                {% include "components/objects/dataview_kanban_cards.html" %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <!-- No grouping selected state -->
+        <div class="flex-1 flex items-center justify-center text-gray-400">
+            <div class="text-center">
+                <c-icons.kanban size="48" class="mx-auto mb-2 opacity-50"/>
+                <p class="text-lg font-medium mb-1">No grouping selected</p>
+                <p class="text-sm">Select a field to group by in the display options</p>
+            </div>
+        </div>
+    {% endif %}
+</c-features.dataviews.base_data_view>
+
+<style>
+/* Kanban specific styles */
+.kanban-card.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
+}
+
+.kanban-column-body.drag-over {
+    background-color: rgb(219 234 254); /* blue-100 */
+    border: 2px dashed rgb(59 130 246); /* blue-500 */
+    border-radius: 0.375rem;
+}
+
+.kanban-card.drag-preview {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.9;
+    transform: rotate(3deg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+</style>

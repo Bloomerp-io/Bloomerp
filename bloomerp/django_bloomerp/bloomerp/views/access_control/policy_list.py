@@ -15,7 +15,7 @@ from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalSt
     models='__all__',
 )
 class ManageAccessControlForModelView(BaseBloomerpView, TemplateView):
-    template_name = "access_control_views/policy_list.html"
+    template_name = "views/access_control/policy_list.html"
     model : Model = None
     
     def get_context_data(self, **kwargs):

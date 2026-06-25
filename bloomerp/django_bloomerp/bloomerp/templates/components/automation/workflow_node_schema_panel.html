@@ -46,7 +46,7 @@
                 <div class="mt-4 border-l border-slate-200 pl-4">
                     <div class="space-y-2">
                     {% for field in incoming_schema.fields %}
-                        <c-automation.value_field :field="field" draggable="true"/>
+                        <c-features.automation.value_field :field="field" draggable="true"/>
                     {% endfor %}
                     </div>
                 </div>
@@ -100,7 +100,7 @@
                 <div class="mt-4 border-l border-slate-200 pl-4">
                     <div class="space-y-2">
                     {% for field in output_schema.fields %}
-                        <c-automation.value_field :field="field" draggable="false"/>
+                        <c-features.automation.value_field :field="field" draggable="false"/>
                     {% endfor %}
                     </div>
                 </div>

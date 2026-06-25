@@ -3,7 +3,7 @@ from typing import Any, Dict
 from django.http import HttpRequest, HttpResponse
 from bloomerp.router import router
 from bloomerp.services.activity_log_services import ActivityLogManager
-from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
+from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 from django.apps import apps
 from django.shortcuts import render
 
@@ -37,7 +37,7 @@ def activity_log(request:HttpRequest) -> HttpResponse:
     
     return render(
         request,
-        "detail_views/bloomerp_detail_activity_view.html",
+        "views/generic/detail/activity.html",
         context={
             "object_id": object_id,
             "content_type_id": content_type_id,

@@ -40,7 +40,7 @@
             <input type="hidden" name="{{ field_name }}" value="{{ value }}">
         {% endfor %}
 
-        <c-layout.container
+        <c-features.sectioned_layouts.container
             component_name="object-crud-view-container"
             :layout="layout"
             :layout_object_id="layout_object_id"
@@ -62,9 +62,9 @@
                         >
                             <i class="fa fa-asterisk"></i>
                             <span data-toggle-non-required-fields-label>
-                                <c-blocktrans>
+                                <c-i18n.blocktrans>
                                     Show Required Only
-                                </c-blocktrans>
+                                </c-i18n.blocktrans>
                             </span>
                         </button>
                     </c-ui.shortcut_tooltip>
@@ -73,7 +73,7 @@
 
             {% if full_form_url %}
             <c-slot name="buttons_right">
-                <c-select_preference_button
+                <c-features.preferences.select_preference_button
                     type="{{ layout_mode }}"
                     :content_type_id="content_type_id"
                     selected_preference_name="{{ layout_preference_object.name }}"
@@ -82,15 +82,15 @@
                 <div class="hidden flex gap-3" id="object-crud-container-buttons">
                     <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-back-button">
                         <i class="fa fa-arrow-left"></i>
-                        <c-blocktrans>
+                        <c-i18n.blocktrans>
                             Back
-                        </c-blocktrans>
+                        </c-i18n.blocktrans>
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-reset-button">
                         <i class="fa fa-rotate-left"></i>
-                        <c-blocktrans>
+                        <c-i18n.blocktrans>
                             Reset
-                        </c-blocktrans>
+                        </c-i18n.blocktrans>
                     </button>
                     <c-ui.shortcut_tooltip
                         shortcut="mod+s"
@@ -98,9 +98,9 @@
                         position="bottom">
                         <button type="submit" class="btn btn-sm btn-primary" id="object-crud-container-save-button">
                             <i class="fa fa-save"></i>
-                            <c-blocktrans>
+                            <c-i18n.blocktrans>
                                 Save
-                            </c-blocktrans>
+                            </c-i18n.blocktrans>
                         </button>
                     </c-ui.shortcut_tooltip>
                     {% if layout_is_create %}
@@ -112,9 +112,9 @@
                         id="object-crud-container-save-and-create-new-button"
                     >
                         <i class="fa fa-plus"></i>
-                        <c-blocktrans>
+                        <c-i18n.blocktrans>
                             Save and Create New
-                        </c-blocktrans>
+                        </c-i18n.blocktrans>
                     </button>
                     {% endif %}
                 </div>
@@ -131,7 +131,7 @@
             </c-slot>
             {% else %}
             <c-slot name="buttons_right">
-                <c-select_preference_button
+                <c-features.preferences.select_preference_button
                     type="{{ layout_mode }}"
                     :content_type_id="content_type_id"
                     selected_preference_name="{{ layout_preference_object.name }}"
@@ -140,15 +140,15 @@
                 <div class="hidden flex gap-3" id="object-crud-container-buttons">
                     <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-back-button">
                         <i class="fa fa-arrow-left"></i>
-                        <c-blocktrans>
+                        <c-i18n.blocktrans>
                             Back
-                        </c-blocktrans>
+                        </c-i18n.blocktrans>
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-reset-button">
                         <i class="fa fa-rotate-left"></i>
-                        <c-blocktrans>
+                        <c-i18n.blocktrans>
                             Reset
-                        </c-blocktrans>
+                        </c-i18n.blocktrans>
                     </button>
                     <c-ui.shortcut_tooltip
                         shortcut="mod+s"
@@ -156,9 +156,9 @@
                         position="bottom">
                         <button type="submit" class="btn btn-sm btn-primary" id="object-crud-container-save-button">
                             <i class="fa fa-save"></i>
-                            <c-blocktrans>
+                            <c-i18n.blocktrans>
                                 Save
-                            </c-blocktrans>
+                            </c-i18n.blocktrans>
                         </button>
                     </c-ui.shortcut_tooltip>
                     {% if layout_is_create %}
@@ -175,9 +175,9 @@
                             id="object-crud-container-save-and-create-new-button"
                         >
                             <i class="fa fa-plus"></i>
-                            <c-blocktrans>
+                            <c-i18n.blocktrans>
                                 Save and Create New
-                            </c-blocktrans>
+                            </c-i18n.blocktrans>
                         </button>
                     </c-ui.shortcut_tooltip>
                     {% endif %}
@@ -186,10 +186,10 @@
             {% endif %}
 
             {% include "inclusion_tags/sectioned_layout_rows.html" %}
-        </c-layout.container>
+        </c-features.sectioned_layouts.container>
     </form>
     {% else %}
-    <c-layout.container
+    <c-features.sectioned_layouts.container
         component_name="object-crud-view-container"
         :layout="layout"
         :layout_object_id="layout_object_id"
@@ -211,9 +211,9 @@
                     >
                         <i class="fa fa-asterisk"></i>
                         <span data-toggle-non-required-fields-label>
-                            <c-blocktrans>
+                            <c-i18n.blocktrans>
                                 Show Required Only
-                            </c-blocktrans>
+                            </c-i18n.blocktrans>
                         </span>
                     </button>
                 </c-ui.shortcut_tooltip>
@@ -221,7 +221,7 @@
         </c-slot>
 
         <c-slot name="buttons_right">
-            <c-select_preference_button
+            <c-features.preferences.select_preference_button
                 type="{{ layout_mode }}"
                 :content_type_id="content_type_id"
                 selected_preference_name="{{ layout_preference_object.name }}"
@@ -229,7 +229,7 @@
         </c-slot>
 
         {% include "inclusion_tags/sectioned_layout_rows.html" %}
-    </c-layout.container>
+    </c-features.sectioned_layouts.container>
     {% endif %}
 {% else %}
     {% if form.non_field_errors %}

@@ -7,7 +7,7 @@ from bloomerp.models.forms.form import Form
 from bloomerp.services.create_view_services import get_addable_fields
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
+from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
 
 @router.register(
@@ -19,7 +19,7 @@ from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
 )
 class BuilderView(BloomerpLayoutFormMixin, BaseBloomerpDetailView):
     model = Form
-    template_name = "form_views/builder.html"
+    template_name = "views/forms/builder.html"
     layout_mode = "form"
 
     def has_permission(self) -> bool:

@@ -20,7 +20,7 @@
         {% endif %}
 
         {% for item in root_items %}
-            <c-sidebar.item :sidebar="sidebar" :item="item" />
+            <c-app.sidebar.item :sidebar="sidebar" :item="item" />
         {% empty %}
         <li class="px-2 py-3 text-sm text-gray-500">
             Drop a link here or create your first item.

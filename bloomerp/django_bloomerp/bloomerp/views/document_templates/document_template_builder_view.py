@@ -14,7 +14,7 @@ from bloomerp.models.document_templates.document_template import DocumentTemplat
 from bloomerp.router import router
 from bloomerp.services.document_services import DocumentTemplateService, FreeVariableType
 from bloomerp.utils.models import get_detail_view_url
-from bloomerp.views.detail.base_detail import BaseBloomerpDetailView
+from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 
 
 class DocumentTemplateBuilderForm(BloomerpModelForm):
@@ -121,7 +121,7 @@ def parse_free_variables_json(raw_value: str) -> list[dict[str, Any]]:
 
 
 class DocumentTemplateBuilderContextMixin:
-    template_name = "document_template_views/build_document_template.html"
+    template_name = "views/document_templates/build_document_template.html"
     model = DocumentTemplate
     htmx_include_addendum_padding = False
 
