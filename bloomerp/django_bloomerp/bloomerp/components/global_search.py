@@ -131,7 +131,7 @@ def _ignore_model(model) -> bool:
     
     if hasattr(model, "bloomerp_config") and isinstance(getattr(model, "bloomerp_config"), BloomerpModelConfig):
         config : BloomerpModelConfig = getattr(model, "bloomerp_config")
-        if config.is_internal:
+        if config.is_internal or not config.allow_string_search:
             return True
 
     return False
