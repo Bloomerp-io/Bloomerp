@@ -133,6 +133,14 @@ class Todo(BloomerpModel):
         blank=True,
         help_text=_("Labels assigned to the todo")
         )
+    initiative = models.ForeignKey(
+        'bloomerp.Initiative',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='todos',
+        help_text=_("The initiative this todo belongs to")
+        )
 
     # For if the todo is related to a model
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
