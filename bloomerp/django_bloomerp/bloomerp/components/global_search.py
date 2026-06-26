@@ -44,6 +44,7 @@ from bloomerp.services.permission_services import UserPermissionManager, create_
 from bloomerp.services.object_services import string_search_on_queryset
 
 from django.contrib.auth.models import Permission
+from django.contrib.admin.models import LogEntry
 from django.contrib.sessions.models import Session
 
 # -------------------------------
@@ -121,6 +122,7 @@ def _ignore_model(model) -> bool:
         ContentType,
         ApplicationField,
         Permission,
+        LogEntry,
         Session
     ]
 
