@@ -23,7 +23,7 @@ TODO: This and dataview_kanban_cards need to be merged
     content_type_id="{{ content_type_id }}"
     id="kanban-board-{{ content_type_id }}"
     query_count="{{ count }}"
-    class="kanban-board flex gap-4 overflow-x-auto pb-4 h-full min-h-[400px] focus:outline-none focus:border-0 focus:ring-0"
+    class="kanban-board flex h-full min-h-[400px] w-full min-w-0 max-w-full gap-4 overflow-x-auto pb-4 focus:outline-none focus:border-0 focus:ring-0"
     :component_args="component_args"
 >
     {% if kanban_groups %}

@@ -366,6 +366,56 @@ class TestDataView(BaseBloomerpModelTestCase):
         )
         self.assertContains(page_response, "kanban_column=123&kanban_page=3", html=False)
 
+    def test_kanban_split_view_constrains_overflow_to_list_pane(self):
+        """
+        Use case:
+        Expected result:
+        """
+        # 1. Enable Kanban and split view for a grouped customer data view.
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        age_field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        last_name_field = ApplicationField.get_by_field(self.CustomerModel, "last_name")
+        preference = get_user_list_view_preference(self.admin_user, content_type)
+        preference.view_type = "kanban"
+        preference.split_view_enabled = True
+        preference.options = {
+            "kanban": {
+                "group_by_field_id": age_field.id,
+            }
+        }
+        preference.display_fields = {
+            **preference.display_fields,
+            "kanban": [last_name_field.id],
+        }
+        preference.save()
+        self.create_customer("Split", "Kanban", 123)
+
+        # 2. Request the dataview component.
+        url = reverse(
+            viewname="components_data_view",
+            kwargs={"content_type_id": content_type.id},
+        )
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+
+        # 3. Verify the split view and kanban board render with shrinkable overflow boundaries.
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'class="flex h-[calc(100vh-200px)] w-full min-w-0 overflow-hidden rounded-xl"',
+            html=False,
+        )
+        self.assertContains(
+            response,
+            'class="flex-none w-1/2 min-w-[260px] max-w-[calc(100%-260px)] resize-x overflow-auto',
+            html=False,
+        )
+        self.assertContains(
+            response,
+            'class="kanban-board flex h-full min-h-[400px] w-full min-w-0 max-w-full gap-4 overflow-x-auto',
+            html=False,
+        )
+
     def test_filter_dataview_with_foreign_key_field(self):
         """
         This test checks whether the dataview correctly applies filters
