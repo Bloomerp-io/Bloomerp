@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 
+import django_filters
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Model, Q, QuerySet
@@ -13,7 +15,27 @@ from bloomerp.services.permission_services import (
     UserPermissionManager,
     create_permission_str,
 )
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.utils.filters import dynamic_filterset_factory
+
+logger = logging.getLogger(__name__)
+
+
+def _fallback_filterset_class(model: type[Model]) -> type[django_filters.FilterSet]:
+    return type(
+        f"{model.__name__}FilterSet",
+        (django_filters.FilterSet,),
+        {
+            "Meta": type(
+                "Meta",
+                (object,),
+                {
+                    "model": model,
+                    "fields": [],
+                },
+            )
+        },
+    )
 
 
 @dataclass
@@ -580,10 +602,38 @@ def generate_model_viewset_class(
     Dynamically generate a viewset class for a given
     model.
     '''
+
+    def get_filterset_class(self):
+        filterset_class = getattr(self.__class__, "_bloomerp_filterset_class", None)
+        if filterset_class is not None:
+            return filterset_class
+
+        try:
+            if not ApplicationField.get_for_model(model).exists():
+                logger.warning(
+                    "ApplicationField records are not available for API filterset model %s.%s",
+                    model._meta.app_label,
+                    model.__name__,
+                )
+                return _fallback_filterset_class(model)
+
+            filterset_class = dynamic_filterset_factory(model)
+        except Exception:
+            logger.exception(
+                "Error generating API filterset for model %s.%s",
+                model._meta.app_label,
+                model.__name__,
+            )
+            return _fallback_filterset_class(model)
+
+        self.__class__._bloomerp_filterset_class = filterset_class
+        return filterset_class
+
     Class = type(f'{model.__name__}ViewSet', (base_viewset,), {
         'model': model,
         'serializer_class': serializer,
-        'filterset_class': dynamic_filterset_factory(model)
+        '_bloomerp_filterset_class': None,
+        'filterset_class': property(get_filterset_class)
     })
     
     return Class

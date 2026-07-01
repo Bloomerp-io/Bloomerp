@@ -1,3 +1,5 @@
+import logging
+
 from django.apps import apps
 from django.contrib.auth import views as auth_views
 from django.urls import include, path,  register_converter
@@ -24,6 +26,9 @@ from django.conf import settings
 from bloomerp.views.api.auth import csrf_view, login_view, logout_view, register_view, session_view
 from bloomerp.auth import allauth_is_enabled
 from bloomerp.views.auth.login import BloomerpLoginView
+
+logger = logging.getLogger(__name__)
+
 
 class PublicApiRootRouter(DefaultRouter):
     def _should_include_api_root_entry(self, request, viewset) -> bool:
@@ -109,7 +114,7 @@ def register_model_api(model: type[Model]) -> None:
         serializer=serializer_class,
         base_viewset=BloomerpModelViewSet
     )
-
+    
     config = getattr(model, "bloomerp_config", None)
     if isinstance(config, BloomerpModelConfig):
         if not config.should_enable_api_auto_generation():
@@ -155,10 +160,12 @@ for model in get_api_models():
 
     try:
         register_model_api(model)
-    except Exception as e:
-        # Don't fail URL loading if a single model registration errors
-        print(f"Error registering API for model {model.__name__}: {e}")
-        pass
+    except Exception:
+        logger.exception(
+            "Error registering generated API for model %s.%s",
+            model._meta.app_label,
+            model.__name__,
+        )
 
 # Register models
 drf_router.register(
