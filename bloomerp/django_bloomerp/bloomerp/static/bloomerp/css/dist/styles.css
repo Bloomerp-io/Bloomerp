@@ -3586,6 +3586,11 @@
     padding-block: calc(var(--spacing) * 0.5);
     font-size: 11px;
   }
+  .badge-xs {
+    padding-inline: calc(var(--spacing) * 1);
+    padding-block: calc(var(--spacing) * 0.5);
+    font-size: 11px;
+  }
   .badge-primary {
     background-color: var(--color-primary);
     color: var(--color-white);

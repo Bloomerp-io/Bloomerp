@@ -25,11 +25,9 @@
     <div class="space-y-1">
         {% for field in fields %}
         <div class="flex items-center text-xs text-gray-600">
-            <span class="text-gray-400 mr-1 truncate w-20">{{ field.field|title }}:</span>
+            <span class="text-gray-400 mr-1 truncate w-20">{{ field.title }}:</span>
             <span class="truncate flex-1">
-                {% with value=object|getattr_filter:field.field %}
-                    {{ value|default:"-" }}
-                {% endwith %}
+                {% render_dataview_value object=object application_field=field user=request.user row_index=forloop.parentloop.counter0 column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
             </span>
         </div>
         {% endfor %}

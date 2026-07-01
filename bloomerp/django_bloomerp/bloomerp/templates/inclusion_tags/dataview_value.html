@@ -18,49 +18,5 @@ TODO: M2M relationship should be enhanced
 
     bloomerp-component="datatable-cell"
     >
-    {% if is_field_type.foreign_key %}
-        {% if value.get_absolute_url %}
-        <a 
-            hx-get="{{ value.get_absolute_url }}"
-            hx-swap="innerHTML"
-            hx-trigger="click"
-            hx-target="{% if split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
-            hx-push-url="true"
-            class="text-primary"
-            data-no-row-click
-            data-preview-object-id="{{ value.pk }}"
-            data-preview-content-type-id="{{ value_content_type_id }}"
-            >{{ value }}</a>
-        {% else %}
-            {{ value }}
-        {% endif %}
-    {% elif is_field_type.boolean_field %}
-        {% if value %}
-            <span class="badge bg-success">Yes</span>
-        {% else %}
-            <span class="badge bg-danger">No</span>
-        {% endif %}
-    {% elif is_field_type.many_to_many_field %}
-        {% for i in value.all|slice:":4" %}
-            {% if i.get_absolute_url %}
-            <a
-                hx-get="{{ i.get_absolute_url }}"
-                hx-swap="innerHTML"
-                hx-trigger="click"
-                hx-target="{% if split_view_enabled %}#data-table-detail-pane{% else %}#main-content{% endif %}"
-                hx-push-url="true"
-                class="badge badge-primary text-primary"
-                data-no-row-click
-                data-preview-object-id="{{ i.pk }}"
-                >{{ i }}</a>
-            {% else %}
-                <span class="badge badge-primary">{{ i }}</span>
-            {% endif %}
-            {% if forloop.counter == 4 %}
-            <span class="badge badge-secondary">...</span>
-            {% endif %}
-        {% endfor %}
-    {% else %}
-        {{ value }}
-    {% endif %}
+    {{ value | safe }}
 </td>
