@@ -202,12 +202,12 @@
     <!--Table section-->
     <div id="data-view-data-section" class="h-full">
         {% if preference.split_view_enabled %}
-        <div class="flex h-[calc(100vh-200px)] rounded-xl" data-split-view-container>
-            <div class="flex-none resize-x overflow-auto border-r border-gray-200 pr-2 min-w-[300px]" id="data-table-list-pane" data-split-view-list-pane>
+        <div class="flex h-[calc(100vh-200px)] w-full min-w-0 overflow-hidden rounded-xl" data-split-view-container>
+            <div class="flex-none w-1/2 min-w-[260px] max-w-[calc(100%-260px)] resize-x overflow-auto border-r border-gray-200 pr-2" id="data-table-list-pane" data-split-view-list-pane>
                 {{ rendered_dataview|safe }}
             </div>
             <div class="w-1 cursor-col-resize bg-gray-200 hover:bg-gray-300 transition-colors" data-split-view-divider></div>
-            <div class="flex-1 pl-2 overflow-auto" id="data-table-detail-pane" data-split-view-detail-pane id="split-view-detail-pane">
+            <div class="min-w-0 flex-1 overflow-auto pl-2" id="data-table-detail-pane" data-split-view-detail-pane id="split-view-detail-pane">
                 <div class="flex items-center justify-center h-full text-gray-400">
                     <div class="text-center">
                         <c-icons.sidebar_right size="48" class="mx-auto mb-2 opacity-50"/>
