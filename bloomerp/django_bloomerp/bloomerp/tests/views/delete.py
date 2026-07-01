@@ -4,6 +4,7 @@ from django.db import models
 
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
+from bloomerp.utils.labels import safe_object_label
 
 
 class TestDeleteView(BaseBloomerpModelTestCase):
@@ -119,3 +120,23 @@ class TestDeleteView(BaseBloomerpModelTestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response["HX-Redirect"], reverse("customers_model"))
         self.assertFalse(self.CustomerModel.objects.filter(pk=self.customer.pk).exists())
+
+    def test_safe_object_label_falls_back_when_str_recurses(self):
+        class RecursiveLabel:
+            pk = "abc123"
+            _meta = self.CustomerModel._meta
+
+            def __str__(self):
+                raise RecursionError("maximum recursion depth exceeded")
+
+        self.assertEqual(safe_object_label(RecursiveLabel()), "Customer abc123")
+
+    def test_safe_object_label_falls_back_for_dynamic_model_str_error(self):
+        class ErrorLabel:
+            pk = "abc123"
+            _meta = self.CustomerModel._meta
+
+            def __str__(self):
+                return "<EmployeeContract (error in __str__: maximum recursion depth exceeded)>"
+
+        self.assertEqual(safe_object_label(ErrorLabel()), "Customer abc123")

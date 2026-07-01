@@ -13,6 +13,7 @@ from bloomerp.models.workspaces import SqlQuery, Tile
 from bloomerp.router import router
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.permission_services import create_permission_str
+from bloomerp.utils.labels import safe_object_label
 from bloomerp.utils.models import get_delete_view_url
 from bloomerp.utils.models import get_list_view_url
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
@@ -21,6 +22,7 @@ from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 User = get_user_model()
 
 # TODO: messaging using messages api does not show up...
+
 
 @router.register(
     path="delete",
@@ -103,7 +105,7 @@ def _build_delete_preview(obj) -> dict:
     try:
         collector.collect([obj])
     except (ProtectedError, RestrictedError) as exc:
-        protected_objects = [str(item) for item in exc.protected_objects]
+        protected_objects = [safe_object_label(item) for item in exc.protected_objects]
 
     related_objects = []
     total_objects = 1
@@ -122,7 +124,7 @@ def _build_delete_preview(obj) -> dict:
             {
                 "model_name": model._meta.verbose_name_plural.title(),
                 "count": len(filtered_instances),
-                "objects": [str(instance) for instance in filtered_instances[:5]],
+                "objects": [safe_object_label(instance) for instance in filtered_instances[:5]],
             }
         )
 

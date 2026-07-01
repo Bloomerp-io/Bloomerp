@@ -2,6 +2,9 @@ from django.db.models import Model
 from typing import TYPE_CHECKING
 
 from django.urls import reverse
+
+from bloomerp.utils.labels import safe_object_label
+
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
 
@@ -33,7 +36,7 @@ def render_m2m_dataview_value(application_field: "ApplicationField", object: Mod
     for obj in related_objects:
         # Get the URL for the related object (assuming it has a get_absolute_url method)
         url = getattr(obj, "get_absolute_url", lambda: "#")()
-        name = str(obj)
+        name = safe_object_label(obj)
         a_tag_formatted = a_tag.format(url=url, name=name)
         div = div.replace("{content}", a_tag_formatted + "{content}")
     
@@ -64,7 +67,7 @@ def render_foreign_key_dataview_value(application_field: "ApplicationField", obj
     
     # Render the related object as a link to its detail page (assuming it has a get_absolute_url method)
     url = getattr(related_object, "get_absolute_url", lambda: "#")()
-    name = str(related_object)
+    name = safe_object_label(related_object)
     return f'<a href="{url}" class="text-primary hover:underline">{name}</a>'
 
 def render_generic_relation_value(application_field: "ApplicationField", object: Model) -> str:

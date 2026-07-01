@@ -8,6 +8,8 @@ from django.forms import widgets
 from django.db.models import Model
 from django.urls import reverse
 
+from bloomerp.utils.labels import safe_object_label
+
 
 class ForeignFieldWidget(widgets.Widget):
     template_name = 'widgets/foreign_field_widget.html'
@@ -137,14 +139,14 @@ class ForeignFieldWidget(widgets.Widget):
                         continue
                     if isinstance(item, Model) or hasattr(item, "pk"):
                         selected_ids.append(item.pk)
-                        selected_labels.append(str(item))
+                        selected_labels.append(safe_object_label(item))
                         selected_urls.append(self.get_object_detail_url(item))
                     elif related_model_class is not None:
                         # Fetch the model instance by ID
                         try:
                             instance = related_model_class.objects.get(pk=normalized_item)
                             selected_ids.append(str(instance.pk))
-                            selected_labels.append(str(instance))
+                            selected_labels.append(safe_object_label(instance))
                             selected_urls.append(self.get_object_detail_url(instance))
                         except (ObjectDoesNotExist, ValidationError, ValueError, TypeError):
                             selected_ids.append(str(normalized_item))
@@ -157,7 +159,7 @@ class ForeignFieldWidget(widgets.Widget):
             else:
                 if isinstance(value, Model) or hasattr(value, "pk"):
                     selected_ids = [str(value.pk)]
-                    selected_labels = [str(value)]
+                    selected_labels = [safe_object_label(value)]
                     selected_urls = [self.get_object_detail_url(value)]
                 elif related_model_class is not None:
                     normalized_value = self._normalize_related_pk(value)
@@ -167,7 +169,7 @@ class ForeignFieldWidget(widgets.Widget):
                     try:
                         instance = related_model_class.objects.get(pk=normalized_value)
                         selected_ids = [str(instance.pk)]
-                        selected_labels = [str(instance)]
+                        selected_labels = [safe_object_label(instance)]
                         selected_urls = [self.get_object_detail_url(instance)]
                     except (ObjectDoesNotExist, ValidationError, ValueError, TypeError):
                         if normalized_value not in ("", None):
