@@ -47,12 +47,12 @@ class Todo(BloomerpModel):
                     title="Details",
                     columns=4,
                     items=[
-                        LayoutItem(id="title", colspan=4),
+                        LayoutItem(id="title", colspan=3),
                         LayoutItem(id="status", colspan=1),
-                        LayoutItem(id="effort", colspan=1),
                         LayoutItem(id="priority", colspan=1),
-                        LayoutItem(id="assigned_to", colspan=1),
-                        LayoutItem(id="assigned_to", colspan=1),
+                        LayoutItem(id="effort", colspan=1),
+                        LayoutItem(id="labels", colspan=1),
+                        LayoutItem(id="initiative", colspan=1),
                         LayoutItem(id="content", colspan=4),
                     ],
                 ),
@@ -61,7 +61,15 @@ class Todo(BloomerpModel):
                     columns=4,
                     items=[
                         LayoutItem(id="requested_by"),
-                        LayoutItem(id="requested_by"),
+                        LayoutItem(id="assigned_to"),
+                    ],
+                ),
+                LayoutRow(
+                    title="Timeline",
+                    columns=4,
+                    items=[
+                        LayoutItem(id="required_by"),
+                        LayoutItem(id="datetime_completed"),
                     ],
                 ),
             ]
