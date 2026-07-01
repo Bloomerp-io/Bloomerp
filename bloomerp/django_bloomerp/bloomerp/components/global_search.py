@@ -44,6 +44,7 @@ from bloomerp.services.permission_services import UserPermissionManager, create_
 from bloomerp.services.object_services import string_search_on_queryset
 
 from django.contrib.auth.models import Permission
+from django.contrib.admin.models import LogEntry
 from django.contrib.sessions.models import Session
 
 # -------------------------------
@@ -121,6 +122,7 @@ def _ignore_model(model) -> bool:
         ContentType,
         ApplicationField,
         Permission,
+        LogEntry,
         Session
     ]
 
@@ -131,7 +133,7 @@ def _ignore_model(model) -> bool:
     
     if hasattr(model, "bloomerp_config") and isinstance(getattr(model, "bloomerp_config"), BloomerpModelConfig):
         config : BloomerpModelConfig = getattr(model, "bloomerp_config")
-        if config.is_internal:
+        if config.is_internal or not config.allow_string_search:
             return True
 
     return False

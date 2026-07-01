@@ -9,6 +9,8 @@ from bloomerp.components.global_search import global_search
 from bs4 import BeautifulSoup
 from bloomerp.models import Policy, RowPolicy, FieldPolicy, RowPolicyRule
 from bloomerp.models import ApplicationField
+from bloomerp.models.activity_log import ActivityLog, ActivityLogAction
+from django.contrib.admin.models import ADDITION, LogEntry
 from django.contrib.auth.models import Permission
 from django.contrib.auth import get_user_model
 
@@ -90,6 +92,72 @@ class SearchResultsTests(BaseBloomerpModelTestCase):
         soup = BeautifulSoup(results, 'html.parser')
         self.assertIn("No results found.", soup.get_text())
         self.assertNotIn(cust2.__str__(), soup.get_text())
+
+    def test_activity_log_does_not_appear(self):
+        """
+        Use case: An activity log entry matches a global search query.
+        Expected result: Activity log entries are excluded from global search.
+        """
+        # 1. Give the admin explicit view access to activity logs.
+        activity_log_content_type = ContentType.objects.get_for_model(ActivityLog)
+        permission = Permission.objects.get(
+            content_type=activity_log_content_type,
+            codename="view_activitylog",
+        )
+        self.admin_user.user_permissions.add(permission)
+
+        # 2. Create an activity log entry with a unique searchable object id.
+        ActivityLog.objects.create(
+            actor=self.admin_user,
+            content_type=self.content_type,
+            object_id="activity-log-global-search-target",
+            action=ActivityLogAction.CHANGE,
+        )
+
+        # 3. Call the global search component for the activity log object id.
+        request = self.get_request("activity-log-global-search-target")
+        response = global_search(request)
+
+        # 4. Check that activity logs are not included in the rendered results.
+        results = response.content.decode("utf-8")
+        soup = BeautifulSoup(results, "html.parser")
+        result_text = soup.get_text()
+        self.assertIn("No results found.", result_text)
+        self.assertNotIn("Activity Logs", result_text)
+
+    def test_django_admin_log_entry_does_not_appear(self):
+        """
+        Use case: A Django admin log entry matches a global search query.
+        Expected result: Django admin log entries are excluded from global search.
+        """
+        # 1. Give the admin explicit view access to Django admin log entries.
+        log_entry_content_type = ContentType.objects.get_for_model(LogEntry)
+        permission = Permission.objects.get(
+            content_type=log_entry_content_type,
+            codename="view_logentry",
+        )
+        self.admin_user.user_permissions.add(permission)
+
+        # 2. Create a Django admin log entry with a unique searchable object representation.
+        LogEntry.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            object_id="admin-log-global-search-target",
+            object_repr="admin-log-global-search-target",
+            action_flag=ADDITION,
+            change_message="admin-log-global-search-target",
+        )
+
+        # 3. Call the global search component for the admin log entry text.
+        request = self.get_request("admin-log-global-search-target")
+        response = global_search(request)
+
+        # 4. Check that Django admin logs are not included in the rendered results.
+        results = response.content.decode("utf-8")
+        soup = BeautifulSoup(results, "html.parser")
+        result_text = soup.get_text()
+        self.assertIn("No results found.", result_text)
+        self.assertNotIn("Log Entries", result_text)
     
     def test_general_search_as_normal_user_with_permission(self):
         """
@@ -373,3 +441,4 @@ class SearchResultsTests(BaseBloomerpModelTestCase):
         results = response.content.decode('utf-8')
         soup = BeautifulSoup(results, 'html.parser')
         self.assertIn(cust1.__str__(), soup.get_text())
+        

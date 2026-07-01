@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from pydantic import BaseModel
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.users.user import User
     
     
@@ -30,6 +31,10 @@ class ActivityLog(models.Model):
     """
     Model to log activities performed by users.
     """
+    bloomerp_config = BloomerpModelConfig(
+        allow_string_search=False,
+    )
+
     class Meta:
         verbose_name = "Activity Log"
         verbose_name_plural = "Activity Logs"
