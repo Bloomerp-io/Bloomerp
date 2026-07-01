@@ -172,7 +172,18 @@ class BloomerpCreateView(
         return None
 
     def get_hidden_initial_fields(self) -> list[tuple[str, str]]:
-        return []
+        """Returns the initial fields based on the query params
+
+        Returns:
+            list[tuple[str, str]]: A list of tuples containing the field name and its initial value
+        """
+        # TODO: This is a hack -> will cause problems when the field is not hidden bcs now you'd have two fields
+        hidden_initial_fields = []
+    
+        for key, value in self.request.GET.items():
+            hidden_initial_fields.append((key, value))
+        
+        return hidden_initial_fields
 
     def get_one_to_many_submitted_data_source(self):
         if self.request.method == "GET":

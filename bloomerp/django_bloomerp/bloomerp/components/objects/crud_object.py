@@ -9,8 +9,8 @@ from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.router import router
 from bloomerp.utils.models import get_create_view_url, get_detail_view_url
 from bloomerp.utils.requests import render_blank_form
-from bloomerp.views.generic.detail.create_view import BloomerpCreateView
-from django_htmx.http import HttpResponseClientRedirect
+from bloomerp.views.generic.model.create import BloomerpCreateView
+from django_htmx.http import HttpResponseClientRedirect, HttpResponseClientRefresh
 
 
 def _get_detail_url(obj) -> str:
@@ -93,11 +93,9 @@ class CreateObjectComponentView(BloomerpCreateView):
             return htmx_response
 
         if self.request.POST.get("next"):
-            return response
-
-        htmx_response = HttpResponse(status=204)
-        htmx_response["HX-Refresh"] = "true"
-        return htmx_response
+            return HttpResponseClientRedirect(self.request.POST.get("next"))
+        
+        return HttpResponseClientRefresh()
 
 
 @router.register(

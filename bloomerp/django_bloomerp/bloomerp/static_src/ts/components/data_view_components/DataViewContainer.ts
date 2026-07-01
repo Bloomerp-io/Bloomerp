@@ -276,9 +276,18 @@ export class DataViewContainer extends BaseComponent {
         const defaultFilterKeys = new Set(
             this.defaultFilters.map((filter) => filter.getFilterKey())
         );
+
+        // Get the hidden filters which are comma seperated in the data-hide-filters attribute
+        const hiddenFilters = this.element.dataset.hideFilters?.split(',').map((key) => key.trim()).filter((key) => key.length > 0) ?? [];
+        const hiddenFilterSet = new Set(hiddenFilters);
+        
         const filters = (url ? getFiltersFromUrl(url.searchParams) : []).filter(
-            (filter) => !defaultFilterKeys.has(filter.getFilterKey())
+            (filter) => {
+                const key = filter.getFilterKey();
+                return !defaultFilterKeys.has(key) && !hiddenFilterSet.has(key);
+            }
         );
+
         const filterList = new FilterEntriesContainer(
             target,
             (entry) => this.removeFilter(entry.getFilterKey()),
@@ -287,7 +296,7 @@ export class DataViewContainer extends BaseComponent {
 
         // Set default filters to be non-removable
         this.defaultFilters.forEach(filter => filter.setRemovable(false));
-
+        
         filterList.setFilters(this.defaultFilters.concat(filters));
         filterList.setClearable(filters.length > 0);
         filterList.setSavable(filters.length > 0);
