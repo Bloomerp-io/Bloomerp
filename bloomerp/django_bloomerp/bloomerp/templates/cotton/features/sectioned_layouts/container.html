@@ -1,38 +1,5 @@
 {% load bloomerp %}
 
-<style>
-    @media (max-width: 640px) {
-        [bloomerp-component="{{ component_name }}"] [data-layout-grid] {
-            grid-template-columns: minmax(0, 1fr) !important;
-        }
-
-        [bloomerp-component="{{ component_name }}"] [data-layout-grid] > [data-layout-item-id] {
-            grid-column: span 1 / span 1 !important;
-        }
-
-        [bloomerp-component="{{ component_name }}"] .workspace-row__header,
-        [bloomerp-component="{{ component_name }}"] .workspace-row__controls {
-            flex-wrap: wrap;
-        }
-
-        [bloomerp-component="{{ component_name }}"] .workspace-row__controls {
-            width: 100%;
-        }
-
-        [bloomerp-component="{{ component_name }}"] .workspace-row__controls [data-row-title-input] {
-            min-width: 0;
-            flex: 1 1 10rem;
-        }
-
-        [bloomerp-component="{{ component_name }}"] .dropdown-menu.filter-dropdown-menu {
-            width: calc(100vw - 1rem);
-            max-width: calc(100vw - 1rem);
-            max-height: calc(100vh - 6rem);
-            overflow: auto;
-        }
-    }
-</style>
-
 <div
     bloomerp-component="{{ component_name }}"
     data-layout="{{ layout | dump_layout_json }}"
@@ -51,7 +18,7 @@
         data-layout-header-section
     >   
         <!--Right Section-->
-        <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto" data-layout-action-group>
             <c-ui.shortcut_tooltip 
                 shortcut="mod+/" 
                 action="click" 
@@ -68,7 +35,7 @@
         <!--End Right Section-->
 
         <!--Left section-->
-        <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end" data-layout-action-group>
             {{ buttons_right }}
             {% if can_edit %}
             <c-ui.shortcut_tooltip 
@@ -81,7 +48,7 @@
                 </button>
             </c-ui.shortcut_tooltip>
 
-            <div class="hidden flex-wrap gap-2" data-layout-open-sidebar>
+            <div class="hidden flex-wrap gap-2" data-layout-open-sidebar data-layout-action-group>
                 <c-ui.shortcut_tooltip 
                     shortcut="mod+m" 
                     action="click" 
