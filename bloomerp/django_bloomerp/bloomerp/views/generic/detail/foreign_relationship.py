@@ -36,13 +36,18 @@ class ForeignRelationshipView(BaseBloomerpDetailView):
         )
 
     def get_context_data(self, **kwargs: Any) -> dict:
-        context = super().get_context_data(**kwargs)
-        context["foreign_content_type_id"] = ContentType.objects.get_for_model(self.related_model).id
-        query_params = self.request.GET.copy()
-        if self.relationship_field_name:
-            query_params[self.relationship_field_name] = str(self.object.pk)
-        context["foreign_relationship_querystring"] = query_params.urlencode()
-        return context
+        ctx = super().get_context_data(**kwargs)
+        ctx["foreign_content_type_id"] = ContentType.objects.get_for_model(self.related_model).id
+        
+        filters = {
+            self.relationship_field_name: str(self.object.pk)
+        }
+        ctx["filters"] = filters
+        ctx["args"] = {
+            "hide_filters" : self.relationship_field_name
+        }
+        
+        return ctx
 
 
 def _iter_foreign_relationship_specs() -> list[dict[str, Any]]:

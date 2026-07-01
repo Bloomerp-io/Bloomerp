@@ -282,7 +282,10 @@ def render_dataview_value(
     {% render_dataview_value object application_field user %}
     """
     # Get the value of the field
-    value = getattr(object, application_field.field, None)
+    try:
+        value = application_field.field_type_enum.value.dataview_value_func(application_field, object)
+    except Exception:
+        value = None
     
     return {
         "value": value,

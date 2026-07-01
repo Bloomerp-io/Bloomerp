@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field as dataclass_field
 
+from bloomerp.field_types.dataview_value_functions import render_foreign_key_dataview_value, render_generic_relation_value, render_m2m_dataview_value
 from bloomerp.field_types.display_options import FieldDisplayOption
 from bloomerp.field_types.lookups import BOOLEAN_LOOKUPS, DATE_LOOKUPS, NUMERIC_LOOKUPS, ONE_TO_MANY_LOOKUPS, TEXT_LOOKUPS, TIME_LOOKUPS, WEEK_LOOKUPS, Lookup
 from bloomerp.field_types.options import AUTO_NOW_ADD_FIELD_OPTION, AUTO_NOW_FIELD_OPTION, BLANK_FIELD_OPTION, COMMON_CHOICE_FIELD_OPTIONS, COMMON_FIELD_OPTIONS, COMMON_RELATION_FIELD_OPTIONS, COMMON_TEXT_FIELD_OPTIONS, DB_INDEX_FIELD_OPTION, DECIMAL_PLACES_FIELD_OPTION, DEFAULT_FIELD_OPTION, HELP_TEXT_FIELD_OPTION, MAX_DIGITS_FIELD_OPTION, NULL_FIELD_OPTION, ON_DELETE_FIELD_OPTION, PROPERTY_EXPRESSION, RELATED_NAME_FIELD_OPTION, TO_FIELD_OPTION, UNIQUE_FIELD_OPTION, UPLOAD_TO_FIELD_OPTION, VERBOSE_NAME_FIELD_OPTION, FieldOption
@@ -32,6 +33,7 @@ from django.db import models
 from django.forms import Widget
 from enum import Enum
 from typing import Any, Callable, Type
+from django.db.models import Model
 
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
@@ -116,9 +118,9 @@ class FieldTypeDefinition:
 
     # Additional form field
     form_field_cls : Optional[type[forms.Field]] = None
-    default_form_field_args: dict = dataclass_field(default_factory=dict)
 
     # Widget class or callable that returns a widget class
+    # TODO: refactor this to be callable only -> callable can have the default attrs
     widget_cls:Optional[Widget|Callable] = None
     default_widget_args: dict = dataclass_field(default_factory=dict)
     widget_init_kwargs: dict = dataclass_field(default_factory=dict)
@@ -136,6 +138,9 @@ class FieldTypeDefinition:
     # Display options
     field_display_options : list[FieldDisplayOption] = dataclass_field(default_factory=list)
 
+    # Dataview display
+    dataview_value_func : Callable[["ApplicationField", Model], str] = lambda application_field, object: getattr(object, application_field.field, None)
+    
     def get_widget_cls(self) -> Type[Widget]:
         """Returns the widget_cls for the field type."""
         if self.widget_cls:
@@ -605,6 +610,7 @@ class FieldType(Enum):
             *COMMON_RELATION_FIELD_OPTIONS,
             ON_DELETE_FIELD_OPTION,
         ],
+        dataview_value_func=render_foreign_key_dataview_value
     )
 
     ONE_TO_ONE_FIELD = FieldTypeDefinition(
@@ -625,6 +631,7 @@ class FieldType(Enum):
             ON_DELETE_FIELD_OPTION,
             UNIQUE_FIELD_OPTION,
         ],
+        dataview_value_func=render_foreign_key_dataview_value
     )
 
     MANY_TO_MANY_FIELD = FieldTypeDefinition(
@@ -648,6 +655,7 @@ class FieldType(Enum):
             RELATED_NAME_FIELD_OPTION,
             HELP_TEXT_FIELD_OPTION,
         ],
+        dataview_value_func = render_m2m_dataview_value
     )
 
     ONE_TO_MANY_FIELD = FieldTypeDefinition(
@@ -677,6 +685,7 @@ class FieldType(Enum):
             ),
         ],
         lookups=ONE_TO_MANY_LOOKUPS,
+        
     )
 
     USER_FIELD = FieldTypeDefinition(
@@ -784,7 +793,7 @@ class FieldType(Enum):
         display_name="Generic Relation",
         icon="fa-solid fa-share-nodes",
         allow_in_model=False,
-
+        dataview_value_func=render_m2m_dataview_value
     )
 
     GENERIC_FOREIGN_KEY = FieldTypeDefinition(
@@ -792,6 +801,7 @@ class FieldType(Enum):
         display_name="Generic Foreign Key",
         icon="fa-solid fa-link",
         allow_in_model=False,
+        dataview_value_func=render_foreign_key_dataview_value
     )
 
     # Custom Bloomerp Fields
@@ -828,6 +838,7 @@ class FieldType(Enum):
         widget_cls=ObjectFilesWidget,
         allow_in_model=False,
         editable_without_form_field=True,
+        dataview_value_func=render_m2m_dataview_value # TODO: Make a custom dataview value function for this
     )
 
     @property

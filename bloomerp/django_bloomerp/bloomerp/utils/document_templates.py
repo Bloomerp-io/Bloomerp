@@ -1,11 +1,10 @@
 from bloomerp.models.document_templates import DocumentTemplate
-from bloomerp.models.files import FileFolder, File
+from bloomerp.models.files import File
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.utils.pdf import generate_pdf
 from django.db.models import Model
 from django.core.files.base import ContentFile
 from django.template import engines
-from django.template.loader import render_to_string
 from bloomerp.utils.pdf import PdfHandler
 
 from django.contrib.auth import get_user_model

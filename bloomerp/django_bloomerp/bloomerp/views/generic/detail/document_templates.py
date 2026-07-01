@@ -31,7 +31,10 @@ class DocumentTemplateListDetailView(BaseBloomerpDetailView):
         url = reverse("components_generate_document_template", kwargs={"id": "INSERT_ID"}) + f"?content_type_id={content_type_id}&object_id={self.get_object().id}"
         
         ctx["data_view_args"] = {
-            "generate_template_url": url
+            "generate_template_url": url,
+            "hide_filters" : "content_types"
         }
         return ctx
+    
+    
 

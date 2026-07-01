@@ -215,7 +215,9 @@
     .badge-sm {
         @apply px-2 py-0.5 text-[11px];
     }
-
+    .badge-xs {
+        @apply px-1 py-0.5 text-[11px];
+    }
     .badge-primary {
         @apply bg-primary text-white;
     }
