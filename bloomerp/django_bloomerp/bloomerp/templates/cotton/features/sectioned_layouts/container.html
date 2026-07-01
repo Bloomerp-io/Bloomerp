@@ -1,6 +1,5 @@
 {% load bloomerp %}
 
-
 <div
     bloomerp-component="{{ component_name }}"
     data-layout="{{ layout | dump_layout_json }}"
@@ -15,11 +14,11 @@
 >
     <!--Header Section-->    
     <div 
-        class="flex items-center justify-between mb-4 gap-4"
+        class="flex flex-wrap items-center justify-between mb-4 gap-4"
         data-layout-header-section
     >   
         <!--Right Section-->
-        <div class="flex gap-2">
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto" data-layout-action-group>
             <c-ui.shortcut_tooltip 
                 shortcut="mod+/" 
                 action="click" 
@@ -36,7 +35,7 @@
         <!--End Right Section-->
 
         <!--Left section-->
-        <div class="flex gap-2">
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end" data-layout-action-group>
             {{ buttons_right }}
             {% if can_edit %}
             <c-ui.shortcut_tooltip 
@@ -49,7 +48,7 @@
                 </button>
             </c-ui.shortcut_tooltip>
 
-            <div class="hidden flex gap-2" data-layout-open-sidebar>
+            <div class="hidden flex-wrap gap-2" data-layout-open-sidebar data-layout-action-group>
                 <c-ui.shortcut_tooltip 
                     shortcut="mod+m" 
                     action="click" 
