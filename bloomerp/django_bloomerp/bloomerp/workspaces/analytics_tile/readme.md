@@ -210,7 +210,7 @@ The normal path is:
 5. Define any global options in `opts`.
 6. Reuse existing `OptionDefinition`s where possible.
 7. Add new helpers to `utils.py` only if the subtype needs shared logic.
-8. Add a template under `templates/cotton/workspaces/tiles/`.
+8. Add a template under `templates/cotton/features/workspaces/tiles/`.
 
 If the subtype fits the current builder model, that is enough for it to appear in the analytics builder automatically.
 

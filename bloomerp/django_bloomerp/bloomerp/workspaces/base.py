@@ -44,8 +44,6 @@ class BaseTileConfig(BaseModel):
 
 class BaseTileRenderer(ABC):
     template_name: str = ""
-    legacy_template_prefix: str = "cotton/workspaces/"
-    current_template_prefix: str = "cotton/features/workspaces/"
 
     @classmethod
     @abstractmethod
@@ -60,14 +58,7 @@ class BaseTileRenderer(ABC):
 
     @classmethod
     def render_to_string(cls, context: dict) -> str:
-        template_name = cls.template_name
-        if template_name.startswith(cls.legacy_template_prefix):
-            template_name = template_name.replace(
-                cls.legacy_template_prefix,
-                cls.current_template_prefix,
-                1,
-            )
-        return render_to_string(template_name, context)
+        return render_to_string(cls.template_name, context)
     
     
     

@@ -106,7 +106,7 @@ def _build_vars(row:pd.Series) -> dict:
 
 
 class AnalyticsTableRenderer(BaseTileRenderer):
-    template_name = "cotton/workspaces/tiles/table.html"
+    template_name = "cotton/features/workspaces/tiles/table.html"
 
     @classmethod
     def render(cls, config: AnalyticsTileConfig, request:HttpRequest):

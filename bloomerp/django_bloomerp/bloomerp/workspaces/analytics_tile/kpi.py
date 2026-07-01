@@ -167,7 +167,7 @@ def _render_section(
 
 
 class AnalyticsKpiRenderer(BaseTileRenderer):
-    template_name = "cotton/workspaces/tiles/kpi.html"
+    template_name = "cotton/features/workspaces/tiles/kpi.html"
 
     @classmethod
     def render(cls, config: AnalyticsTileConfig, request):

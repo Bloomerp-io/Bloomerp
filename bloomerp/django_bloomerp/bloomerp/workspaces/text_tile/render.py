@@ -102,7 +102,7 @@ def render_markdown(markdown: str) -> str:
 
 
 class TextTileRenderer(BaseTileRenderer):
-    template_name = "cotton/workspaces/tiles/text.html"
+    template_name = "cotton/features/workspaces/tiles/text.html"
 
     @classmethod
     def render(cls, config: TextTileConfig, request:HttpRequest) -> str:
