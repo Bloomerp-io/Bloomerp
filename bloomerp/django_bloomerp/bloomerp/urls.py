@@ -155,8 +155,9 @@ for model in get_api_models():
 
     try:
         register_model_api(model)
-    except Exception:
+    except Exception as e:
         # Don't fail URL loading if a single model registration errors
+        print(f"Error registering API for model {model.__name__}: {e}")
         pass
 
 # Register models
