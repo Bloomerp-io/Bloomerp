@@ -33,6 +33,7 @@ class ActivityLog(models.Model):
     """
     bloomerp_config = BloomerpModelConfig(
         allow_string_search=False,
+        record_activity_log=False,
     )
 
     class Meta:

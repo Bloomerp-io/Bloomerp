@@ -54,6 +54,15 @@ class ActivityLogManagerTestCase(BaseBloomerpModelTestCase):
         self.assertEqual(ActivityLog.objects.count(), 1)
         self.assertEqual(activity_log.payload[0]["to"], str(related_id))
 
+    def test_activity_log_model_does_not_record_activity_logs_for_itself(self):
+        ActivityLog.objects.create(
+            content_type=ActivityLogManager(self.customer).get_content_type(),
+            object_id=str(self.customer.pk),
+            payload=[],
+        )
+
+        self.assertEqual(ActivityLog.objects.count(), 1)
+
     def test_persist_skips_empty_change_payloads(self):
         manager = ActivityLogManager(self.customer)
         manager.payload = []

@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
+import logging
 from django.db.models.deletion import Collector
 from django.db.models.deletion import ProtectedError
 from django.db.models.deletion import RestrictedError
@@ -20,6 +21,7 @@ from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 # TODO: messaging using messages api does not show up...
 
@@ -79,8 +81,16 @@ class BloomerpDeleteView(BaseBloomerpDetailView):
             context = self.get_context_data(object=self.object)
             return self.render_to_response(context, status=409)
 
-        self.object.delete()
-        messages.success(self.request, "Object was created successfully.")
+        deleted_count, deleted_by_model = self.object.delete()
+        logger.info(
+            "Deleted %s object(s) for %s.%s pk=%s: %s",
+            deleted_count,
+            self.model._meta.app_label,
+            self.model.__name__,
+            self.kwargs.get("pk"),
+            deleted_by_model,
+        )
+        messages.success(self.request, "Object was deleted successfully.")
         return self.handle_success_response()
 
     def get_success_url(self):

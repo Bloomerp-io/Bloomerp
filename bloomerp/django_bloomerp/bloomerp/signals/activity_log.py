@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Any
 
 from django.db.models import Model
@@ -9,6 +10,7 @@ import uuid
 from bloomerp.services.activity_log_services import ActivityLogManager
 
 
+logger = logging.getLogger(__name__)
 TRANSIENT_ATTRIBUTE_NAME = "_event_id"
 _data : dict[str, ActivityLogManager] = {}
 
@@ -73,19 +75,23 @@ def compute_field_changes(instance: Model, event_id: str) -> list[dict[str, Any]
 
 @receiver(pre_save)
 def before_save_of_object(sender, instance: Model, **kwargs):
-    manager = ActivityLogManager(instance, current_request())
-    
     if not ActivityLogManager.should_record_change(instance._meta.model):
         return
-    
-    # Calculate changes from serialized before/after snapshots
-    manager.set_changes()
-    
-    # Set the transient attribute
-    event_id = set_transient_attribute(instance)
-    
-    if event_id is not None:
-        _data[event_id] = manager
+
+    try:
+        manager = ActivityLogManager(instance, current_request())
+        manager.set_changes()
+        event_id = set_transient_attribute(instance)
+
+        if event_id is not None:
+            _data[event_id] = manager
+    except Exception:
+        logger.exception(
+            "Failed to prepare activity log for save of %s.%s pk=%s",
+            instance._meta.app_label,
+            instance.__class__.__name__,
+            instance.pk,
+        )
     
 
 @receiver(post_save)
@@ -101,22 +107,34 @@ def after_save_of_object(sender, instance: Model, created: bool, **kwargs):
         del _data[id]
         clear_transient_attribute(instance)
         
-    except Exception as e:
-        print(e)
+    except Exception:
+        logger.exception(
+            "Failed to persist activity log for save of %s.%s pk=%s",
+            instance._meta.app_label,
+            instance.__class__.__name__,
+            instance.pk,
+        )
 
 
 @receiver(pre_delete)
 def before_delete_of_object(sender, instance: Model, **kwargs):
-    manager = ActivityLogManager(instance, current_request())
-
     if not ActivityLogManager.should_record_change(instance._meta.model):
         return
 
-    manager.set_delete()
-    event_id = set_transient_attribute(instance)
+    try:
+        manager = ActivityLogManager(instance, current_request())
+        manager.set_delete()
+        event_id = set_transient_attribute(instance)
 
-    if event_id is not None:
-        _data[event_id] = manager
+        if event_id is not None:
+            _data[event_id] = manager
+    except Exception:
+        logger.exception(
+            "Failed to prepare activity log for delete of %s.%s pk=%s",
+            instance._meta.app_label,
+            instance.__class__.__name__,
+            instance.pk,
+        )
 
 
 @receiver(post_delete)
@@ -132,8 +150,13 @@ def after_delete_of_object(sender, instance: Model, **kwargs):
         del _data[id]
         clear_transient_attribute(instance)
 
-    except Exception as e:
-        print(e)
+    except Exception:
+        logger.exception(
+            "Failed to persist activity log for delete of %s.%s pk=%s",
+            instance._meta.app_label,
+            instance.__class__.__name__,
+            instance.pk,
+        )
     
 
 
