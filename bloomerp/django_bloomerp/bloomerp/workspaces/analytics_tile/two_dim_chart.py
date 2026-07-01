@@ -109,7 +109,7 @@ def _render_plotly_chart_html(figure: go.Figure) -> str:
     )
 
 class AnalyticsTwoDimChartRenderer(BaseTileRenderer):
-    template_name = "cotton/workspaces/tiles/two_dim_chart.html"
+    template_name = "cotton/features/workspaces/tiles/two_dim_chart.html"
 
     @classmethod
     def render(cls, config: AnalyticsTileConfig, request):

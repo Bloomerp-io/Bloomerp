@@ -104,7 +104,7 @@ def _format_value(value, field: FieldConfig) -> str:
 
 
 class AnalyticsPieChartRenderer(BaseTileRenderer):
-    template_name = "cotton/workspaces/tiles/pie_chart.html"
+    template_name = "cotton/features/workspaces/tiles/pie_chart.html"
 
     @classmethod
     def render(cls, config: AnalyticsTileConfig, request):
