@@ -7,14 +7,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import redirect
-from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic.edit import CreateView
 
 from bloomerp.models import UserCreateViewPreference
-from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.definition import BloomerpModelConfig
-from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.files import File
 from bloomerp.models.workspaces import SqlQuery, Tile
 from bloomerp.models.workspaces.workspace import Workspace
@@ -26,9 +23,7 @@ from bloomerp.services.create_view_services import (
 from bloomerp.services.one_to_many_field_services import save_submitted_one_to_many_fields
 from bloomerp.services.object_file_field_services import save_layout_uploaded_files
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
-from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.mixins.message_mixin import MessageMixin
 from bloomerp.views.mixins.model_form_view_mixin import BloomerpModelFormViewMixin
 from bloomerp.views.mixins.layout_form_mixin import BloomerpLayoutFormMixin
 from django.db.models import Model
