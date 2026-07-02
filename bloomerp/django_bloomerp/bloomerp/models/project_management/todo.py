@@ -1,4 +1,6 @@
 from django.db import models
+from django.http import HttpRequest, HttpResponse
+from slugify import slugify
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from bloomerp.models import BloomerpModel
 from django.conf import settings
@@ -8,7 +10,9 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import ValidationError
 
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.models.definition import BloomerpModelConfig, ObjectAction, ObjectHTML
+from bloomerp.utils.requests import render_message
+from bloomerp.workspaces.form_tile import render
 
 class TodoPriority(models.TextChoices):
     URGENT = ('urgent', 'Urgent')
@@ -34,6 +38,23 @@ class TodoStatus(models.TextChoices):
     CANCELLED = ('cancelled', 'Cancelled')
     DUPLICATE = ('duplicate', 'Duplicate')
 
+
+def _mark_as_completed(request:HttpRequest, object:"Todo") -> HttpResponse:
+    """
+    Marks the todo as completed and sets the datetime_completed field to the current time.
+    """
+    from bloomerp.services.permission_services import UserPermissionManager
+    manager = UserPermissionManager(request.user)
+    
+    if not manager.has_access_to_object(object, "change_todo"):
+        message = _("You do not have permission to mark this todo as completed.")
+    else:
+        message = _("Todo marked as completed.")
+        object.status = TodoStatus.COMPLETED
+        object.save()
+    
+    return render_message(request, message, "info")
+    
 
 class Todo(BloomerpModel):
     """
@@ -75,6 +96,17 @@ class Todo(BloomerpModel):
             ]
         ),
         string_search_fields=["title", "content"],
+        object_actions=[
+            ObjectHTML(
+                template_name="models/todo/copy_git_branch_name.html"
+            ),
+            ObjectAction(
+                id="mark_as_completed",
+                label="Mark as Completed",
+                should_render_func=lambda _, object: object.status != TodoStatus.COMPLETED,
+                execution_func=_mark_as_completed
+            )
+        ]
     )
 
     class Meta(BloomerpModel.Meta):
@@ -198,3 +230,16 @@ class Todo(BloomerpModel):
     def save(self, *args, **kwargs):
         self.full_clean()  # This will call the clean method and raise a ValidationError if there are any validation errors
         super().save(*args, **kwargs)
+
+    
+    @property
+    def git_branch_name(self) -> str:
+        """Returns a git branch name based on the todo title and id
+
+        Returns:
+            str: the git branch name
+        """
+        if not self.id:
+            return ""
+        
+        return f"todo/{str(self.id)[-4:]}-{slugify(self.title)}"
