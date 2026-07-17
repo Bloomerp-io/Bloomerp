@@ -539,4 +539,99 @@ class TestDataViewE2E:
         
         # 3. Assert that the bloomerp-component="dataview-container" is still visible
         expect(page.locator("[bloomerp-component='dataview-container']")).to_be_visible()
+
+    def test_clear_all_active_clears_all_active_non_default_filters(
+        self,
+        authenticated_dataview_page: Page,
+        dataview_admin,
+        dataview_model,
+    ):
+        """
+        Use case: A user has saved default filters and then adds active filters.
+        Expected result: Clear all removes only the active filters and keeps default filters applied.
+        """
+        page = authenticated_dataview_page
+
+        # 1. Save Last Name = Away as a default filter.
+        apply_filter(page, "last_name", "Away", response_timeout=5000)
+        with page.expect_response(
+            lambda response: "change_data_view_preference" in response.url,
+            timeout=5000,
+        ):
+            page.get_by_role("button", name="Save").click()
+
+        # 2. Apply an additional active First Name = Another filter.
+        apply_filter(page, "first_name", "Another", response_timeout=5000)
+        data_section = get_dataview_section(page)
+        expect(data_section).to_contain_text("Another Away")
+        expect(data_section).not_to_contain_text("Filtered Away")
+
+        # 3. Clear active filters from the applied filter badges.
+        applied_filters = page.locator("[data-applied-filters-section]")
+        with page.expect_response(
+            lambda response: "components/data_view" in response.url,
+            timeout=5000,
+        ):
+            applied_filters.get_by_role("button", name="Clear all").click()
+
+        # 4. Assert that the default filter still limits the result set.
+        data_section = get_dataview_section(page)
+        expect(data_section).to_contain_text("Another Away")
+        expect(data_section).to_contain_text("Filtered Away")
+        expect(data_section).not_to_contain_text("Playwright Target")
+        expect(applied_filters.locator("[data-filter-key='last_name__exact']")).to_have_count(1)
+        expect(applied_filters.locator("[data-filter-key='first_name__exact']")).to_have_count(0)
+
+        # 5. Assert that saved default filters were not changed.
+        content_type = ContentType.objects.get_for_model(dataview_model)
+        preference = UserListViewPreference.objects.get(
+            user=dataview_admin,
+            content_type=content_type,
+            selected=True,
+        )
+        assert preference.default_filters == {"last_name__exact": "Away"}
+
+    def test_clear_all_default_clears_all_default_filters(
+        self,
+        authenticated_dataview_page: Page,
+        dataview_admin,
+        dataview_model,
+    ):
+        """
+        Use case: A user clears saved default filters from the Display dropdown.
+        Expected result: Saved default filters are removed and the full dataview is shown.
+        """
+        page = authenticated_dataview_page
+
+        # 1. Save First Name = Playwright as a default filter.
+        _apply_first_name_filter(page, "Playwright")
+        with page.expect_response(
+            lambda response: "change_data_view_preference" in response.url,
+            timeout=5000,
+        ):
+            page.get_by_role("button", name="Save").click()
+
+        # 2. Clear default filters from the Display dropdown.
+        display_menu = get_display_options_menu(page)
+        default_filters = display_menu.locator("[id^='default-filters-']")
+        with page.expect_response(
+            lambda response: "change_data_view_preference" in response.url,
+            timeout=5000,
+        ):
+            default_filters.get_by_role("button", name="Clear all").click()
+
+        # 3. Assert that saved default filters were cleared.
+        content_type = ContentType.objects.get_for_model(dataview_model)
+        preference = UserListViewPreference.objects.get(
+            user=dataview_admin,
+            content_type=content_type,
+            selected=True,
+        )
+        assert preference.default_filters == {}
+
+        # 4. Assert that the dataview returns to the full result set.
+        data_section = get_dataview_section(page)
+        expect(data_section).to_contain_text("Playwright Target")
+        expect(data_section).to_contain_text("Another Away")
+        expect(data_section).to_contain_text("Filtered Away")
     

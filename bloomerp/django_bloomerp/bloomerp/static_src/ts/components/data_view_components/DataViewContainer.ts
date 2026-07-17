@@ -218,14 +218,20 @@ export class DataViewContainer extends BaseComponent {
      */
     private clearAllFilters(isDefaultFilter: boolean = false): void {
         if (isDefaultFilter) {
-            this.saveFilterState([])
+            void this.saveFilterState([]);
+            return;
         }
 
         const url = this.getCurrentUrl();
         if (!url) return;
 
+        const defaultFilterKeys = new Set(
+            this.defaultFilters.map((filter) => filter.getFilterKey())
+        );
+
         Array.from(url.searchParams.keys()).forEach((key) => {
             if (DataViewContainer.RESERVED_FILTER_KEYS.has(key)) return;
+            if (defaultFilterKeys.has(key)) return;
             url.searchParams.delete(key);
         });
         url.searchParams.delete('page');
