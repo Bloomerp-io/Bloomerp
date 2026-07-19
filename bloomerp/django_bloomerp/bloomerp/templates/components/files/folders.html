@@ -1,0 +1,85 @@
+{% load i18n %}
+
+<div
+    class="mb-4 flex flex-col gap-3"
+    data-file-browser-folders
+    data-current-folder-id="{% if current_folder %}{{ current_folder.id }}{% endif %}"
+    data-scope-content-type-id="{{ scoped_content_type_id|default:'' }}"
+    data-scope-object-id="{{ scoped_object_id|default:'' }}"
+    data-folder-options="{{ folder_options_json }}"
+>
+    <input type="file" multiple class="hidden" data-upload-input />
+
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        {% if breadcrumbs %}
+            <c-ui.breadcrumb.body>
+                {% for crumb in breadcrumbs %}
+                    {% if crumb.active %}
+                        <c-ui.breadcrumb.item text="{{ crumb.label }}" separator="chevron" :active="True" />
+                    {% else %}
+                        <c-ui.breadcrumb.item
+                            text="{{ crumb.label }}"
+                            hx_get="{{ crumb.url }}"
+                            hx_target="#data-view-data-section"
+                            hx_swap="innerHTML"
+                            separator="chevron"
+                            :active="False"
+                        />
+                    {% endif %}
+                {% endfor %}
+            </c-ui.breadcrumb.body>
+        {% endif %}
+
+        <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-trigger-upload>
+                <i class="fa fa-upload"></i>
+                <span>{% trans "Upload files" %}</span>
+            </button>
+            {% if can_create_folder %}
+                <button type="button" class="btn btn-secondary btn-sm" data-create-folder>
+                    <i class="fa fa-folder-plus"></i>
+                    <span>{% trans "Create folder" %}</span>
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if navigation_items %}
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-folder-list>
+            {% for item in navigation_items %}
+                <div
+                    class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-xs"
+                    data-folder-dropzone="{{ item.id }}"
+                    data-folder-id="{{ item.id }}"
+                    data-item-type="folder"
+                    draggable="true"
+                >
+                    <button
+                        type="button"
+                        class="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        hx-get="{% url 'components_files' %}?folder={{ item.id }}"
+                        hx-target="#data-view-data-section"
+                        hx-swap="innerHTML"
+                    >
+                        <i class="{{ item.icon_class }} shrink-0"></i>
+                        <span class="truncate font-medium text-gray-800">{{ item.name }}</span>
+                    </button>
+                    {% if item.rename_allowed or item.delete_allowed %}
+                        <c-ui.dropdown.body trigger_icon_class="fa fa-ellipsis-vertical" trigger_button_class="btn-ghost" size="xs">
+                            {% if item.rename_allowed and perms.bloomerp.change_filefolder %}
+                                <button type="button" class="btn btn-ghost btn-xs w-full justify-start" data-rename-folder="{{ item.id }}" data-current-name="{{ item.name }}">
+                                    {% trans "Rename" %}
+                                </button>
+                            {% endif %}
+                            {% if item.delete_allowed and perms.bloomerp.delete_filefolder %}
+                                <button type="button" class="btn btn-ghost btn-xs w-full justify-start text-danger-dark" data-delete-folder="{{ item.id }}">
+                                    {% trans "Delete" %}
+                                </button>
+                            {% endif %}
+                        </c-ui.dropdown.body>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

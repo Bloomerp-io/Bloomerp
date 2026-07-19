@@ -9,6 +9,20 @@ from bloomerp.models.mixins.timestamp_model_mixin import TimestampModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from django.db.models.query import QuerySet
 from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
+from bloomerp.models.definition import BloomerpModelConfig, ObjectHTML
+
+
+def _can_manage_file(request, file: "File") -> bool:
+    from bloomerp.services.file_permission_services import user_can_mutate_file
+
+    return file.persisted and user_can_mutate_file(request, file, ("change", "add"))
+
+
+def _can_delete_file(request, file: "File") -> bool:
+    from bloomerp.services.file_permission_services import user_can_mutate_file
+
+    return file.persisted and user_can_mutate_file(request, file, ("delete",))
+
 
 class File(
     TimestampModelMixin,
@@ -16,6 +30,21 @@ class File(
     UserStampModelMixin,
     models.Model,
 ):
+    bloomerp_config = BloomerpModelConfig(
+        string_search_fields=["name"],
+        object_actions=[
+            ObjectHTML(template_name="models/files/view_download_actions.html"),
+            ObjectHTML(
+                template_name="models/files/manage_actions.html",
+                should_render_func=_can_manage_file,
+            ),
+            ObjectHTML(
+                template_name="models/files/delete_action.html",
+                should_render_func=_can_delete_file,
+            ),
+        ],
+    )
+
     class Meta(BloomerpModel.Meta):
         managed = True
         db_table = "bloomerp_file"

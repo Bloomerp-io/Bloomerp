@@ -1,6 +1,7 @@
 
 
 from ast import mod
+import re
 
 from django.urls import reverse
 from urllib.parse import urlencode
@@ -51,12 +52,61 @@ class TestFilesComponent(BaseBloomerpModelTestCase):
         return url
 
     def assert_current_breadcrumb(self, response, label: str, count: int = 1):
-        self.assertContains(
-            response.content,
-            f'<span class="inline-flex items-center text-sm font-medium text-gray-400" aria-current="page">{label}</span>',
-            html=True,
-            count=count,
+        matches = re.findall(
+            rf'aria-current="page"[^>]*>\s*{re.escape(label)}\s*</a>',
+            response.content.decode("utf-8"),
         )
+        self.assertEqual(len(matches), count)
+
+    def test_files_endpoint_wraps_the_default_data_view(self):
+        """
+        Use case: Open the files component.
+        Expected result: The shared DataView renders with the file-specific container.
+        """
+        # 1. Log in and request the files component.
+        self.client.force_login(self.admin_user)
+        response = self.client.get(self.get_url())
+
+        # 2. Assert the generic DataView shell and custom container are present.
+        self.assertContains(response, 'bloomerp-component="file-dataview-container"', html=False)
+        self.assertContains(response, 'id="data-view-data-section"', html=False)
+        self.assertContains(response, 'bloomerp-component="datatable"', html=False)
+
+    def test_folders_render_above_the_default_data_view(self):
+        """
+        Use case: Open a file scope containing a folder.
+        Expected result: Folder navigation renders before the shared DataView output.
+        """
+        # 1. Create a root folder and request the files component.
+        FileFolder.objects.create(
+            name="Contracts",
+            created_by=self.admin_user,
+            updated_by=self.admin_user,
+        )
+        self.client.force_login(self.admin_user)
+        content = self.client.get(self.get_url()).content.decode("utf-8")
+
+        # 2. Assert the folder section is before the rendered table.
+        self.assertIn("Contracts", content)
+        self.assertLess(content.index("data-file-browser-folders"), content.index('bloomerp-component="datatable"'))
+
+    def test_file_model_actions_render_in_the_default_data_view(self):
+        """
+        Use case: View a persisted file in the migrated file DataView.
+        Expected result: Actions declared by File.bloomerp_config render for the row.
+        """
+        # 1. Create a persisted file and request the files component.
+        file = self.create_file(user=self.admin_user, file_name="contract.txt")
+        file.persisted = True
+        file.save(update_fields=["persisted"])
+        self.client.force_login(self.admin_user)
+        response = self.client.get(self.get_url())
+
+        # 2. Assert the model-defined actions are rendered.
+        self.assertContains(response, f'data-file-view="{file.pk}"', html=False)
+        self.assertContains(response, f'data-rename-file="{file.pk}"', html=False)
+        self.assertContains(response, f'data-move-file="{file.pk}"', html=False)
+        self.assertContains(response, f'data-delete-file="{file.pk}"', html=False)
     
     def test_creating_file_with_object_creates_model_level_folder_under_module_folder(self):
         """
@@ -135,19 +185,18 @@ class TestFilesComponent(BaseBloomerpModelTestCase):
             file_name="unique_file_name.txt",
         )
 
-        render_id = "files-test-render"
         self.client.force_login(self.admin_user)
         response = self.client.get(
-            self.get_url(q="unique", _render_id=render_id),
+            self.get_url(q="unique"),
             HTTP_HX_REQUEST="true",
-            HTTP_HX_TARGET=f"file-browser-data-section-{render_id}",
+            HTTP_HX_TARGET="data-view-data-section",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response.content, f'id="file-browser-data-section-{render_id}"', html=False)
+        self.assertContains(response.content, 'id="data-view-data-section"', html=False)
         self.assertContains(response.content, "unique_file_name.txt")
-        self.assertNotContains(response.content, f'id="file-browser-{render_id}"', html=False)
-        self.assertNotContains(response.content, 'data-search-input', html=False)
+        self.assertNotContains(response.content, 'bloomerp-component="file-dataview-container"', html=False)
+        self.assertNotContains(response.content, 'id="data-view-search-input-', html=False)
 
     def test_root_view_shows_root_breadcrumb(self):
         """

@@ -58,7 +58,13 @@ class DataViewQueryState:
     count: int = 0
 
 
-def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> DataViewQueryState | HttpResponse:
+def _build_data_view_query_state(
+    request: HttpRequest,
+    content_type_id: int,
+    *,
+    base_queryset: QuerySet | None = None,
+    additional_reserved_query_keys: set[str] | None = None,
+) -> DataViewQueryState | HttpResponse:
     """Builds the dataview query state
 
     Args:
@@ -76,7 +82,11 @@ def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> 
 
     # Get the permissions manager and initial queryset
     permission_manager = UserPermissionManager(request.user)
-    queryset = permission_manager.get_queryset(Model, create_permission_str(Model, "view"))
+    queryset = (
+        base_queryset
+        if base_queryset is not None
+        else permission_manager.get_queryset(Model, create_permission_str(Model, "view"))
+    )
     
     # Get preference and options
     preference = PreferenceManager(request.user).get_or_create_selected(UserListViewPreference, {
@@ -94,7 +104,11 @@ def _build_data_view_query_state(request: HttpRequest, content_type_id: int) -> 
     if definition is None:
         return HttpResponse("Invalid view type", status=400)
 
-    reserved_query_keys = SHELL_RESERVED_QUERY_KEYS | definition.renderer_cls.get_reserved_query_params()
+    reserved_query_keys = (
+        SHELL_RESERVED_QUERY_KEYS
+        | definition.renderer_cls.get_reserved_query_params()
+        | (additional_reserved_query_keys or set())
+    )
     filter_querydict = request.GET.copy()
     for key in reserved_query_keys:
         filter_querydict.pop(key, None)
@@ -446,7 +460,17 @@ def _render_data_view_body(
     path="components/data_view/<int:content_type_id>/",
     name="components_data_view",
 )
-def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
+def data_view(
+    request: HttpRequest,
+    content_type_id: int,
+    *,
+    base_queryset: QuerySet | None = None,
+    additional_reserved_query_keys: set[str] | None = None,
+    component_id: str | None = None,
+    component_args: dict[str, str] | None = None,
+    data_view_base_url: str | None = None,
+    before_data_view: str = "",
+) -> HttpResponse:
     """
     Renders the data table component. A data table is a table that takes in a content type 
     id and renders a table of the corresponding model's data.
@@ -455,7 +479,12 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
     - permissions management
     - string searching
     """
-    state = _build_data_view_query_state(request, content_type_id)
+    state = _build_data_view_query_state(
+        request,
+        content_type_id,
+        base_queryset=base_queryset,
+        additional_reserved_query_keys=additional_reserved_query_keys,
+    )
     if isinstance(state, HttpResponse):
         return state
     
@@ -486,9 +515,9 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         create_querystring.pop(key, None)
         export_querystring.pop(key, None)
     sync_url = request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
-    component_id = request.GET.get('_component_id')
+    component_id = component_id or request.GET.get('_component_id')
 
-    data_view_base_url = reverse(
+    data_view_base_url = data_view_base_url or reverse(
         "components_data_view",
         kwargs={"content_type_id": content_type_id},
     )
@@ -518,7 +547,7 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
         'pagination_pages': pagination.pagination_pages or [],
         'show_global_pagination': pagination.show_global_pagination,
         'component_id': component_id,
-        'component_args' : _get_component_args(request),
+        'component_args' : {**_get_component_args(request), **(component_args or {})},
         'object_actions' : _get_actions(state.queryset.model),
         'view_types' : [vt.value for vt in ViewTypeEnum],
         'dataview_options_form': _get_data_view_options_form(
@@ -532,6 +561,7 @@ def data_view(request: HttpRequest, content_type_id: int) -> HttpResponse:
             _normalize_default_filters(state.preference.default_filters or {})
         ),
         'count' : state.count,
+        'before_data_view': before_data_view,
     }
     context.update(state.renderer_context)
     context["rendered_dataview"] = _render_data_view_body(request, state, pagination, context)

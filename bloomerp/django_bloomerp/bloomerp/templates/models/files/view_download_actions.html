@@ -1,0 +1,4 @@
+{% if object.file %}
+    <a href="{{ object.url }}" class="btn btn-ghost btn-xs" target="_blank" rel="noreferrer" data-file-view="{{ object.pk }}">View</a>
+    <a href="{{ object.url }}" class="btn btn-ghost btn-xs" download>Download</a>
+{% endif %}
