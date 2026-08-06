@@ -8,7 +8,10 @@ from bloomerp.communication.inbox_sources import InboxEventSource, InboxJobSourc
 from bloomerp.communication.system_messages.base import SystemMessage
 from bloomerp.components.communication.emails.download_attachment import download_attachment  # noqa: F401
 from bloomerp.components.communication.emails.new_email import new_email
-from bloomerp.components.communication.emails.reply_to_email import reply_to_email
+from bloomerp.components.communication.emails.reply_to_email import (
+    email_reply_is_available,
+    reply_to_email,
+)
 from bloomerp.components.communication.emails.sync_emails import sync_emails
 from bloomerp.utils.base_type_definition import BaseTypeDefinition
 
@@ -88,6 +91,11 @@ class InboxActionDefinition:
     execution_func : Callable[[HttpRequest, "InboxItem | InboxFolder"], HttpResponse] = lambda request,_: render_message(request, "Action executed successfully", "info")
     http_method: Literal["get", "post"] = "get"
     target: Literal['modal', 'items', 'message', 'render-item'] = "message"
+    availability_func: Optional[Callable[["InboxItem | InboxFolder"], bool]] = None
+
+    def is_available_for(self, target: "InboxItem | InboxFolder") -> bool:
+        """Return whether this action can be used for the selected target."""
+        return self.availability_func(target) if self.availability_func else True
 
 @dataclass
 class InboxItemTypeDefinition:
@@ -235,7 +243,8 @@ REPLY_TO_EMAIL_ACTION = InboxActionDefinition(
     name="Reply",
     icon="fa fa-reply",
     target="render-item",
-    execution_func=reply_to_email
+    execution_func=reply_to_email,
+    availability_func=email_reply_is_available,
 )
 
 DELETE_INBOX_FOLDER_ACTION = InboxActionDefinition(

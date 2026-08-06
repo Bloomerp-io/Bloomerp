@@ -26,7 +26,11 @@ def render_inbox_item(request: HttpRequest, item_id: str) -> HttpResponse:
     )
     
     inbox_item_type = inbox_item.get_inbox_item_type()
-    actions = inbox_item_type.actions or []
+    actions = [
+        action
+        for action in inbox_item_type.actions or []
+        if action.is_available_for(inbox_item)
+    ]
     content = ""
     error_message = None
     if inbox_item_type.on_render:
