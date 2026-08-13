@@ -39,6 +39,7 @@ from django.forms import Widget
 from enum import Enum
 from typing import Any, Callable, Type
 from django.db.models import Model
+from django_countries.fields import CountryField
 
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
@@ -960,6 +961,21 @@ class FieldType(Enum):
         allow_in_model=False,
         editable_without_form_field=True,
         dataview_value_func=render_m2m_dataview_value # TODO: Make a custom dataview value function for this
+    )
+
+    # Third party fields
+    COUNTRY_FIELD = FieldTypeDefinition(
+        id="CountryField",
+        display_name="Country Field",
+        icon="fa-solid fa-globe",
+        model_field_cls=CountryField,
+        lookups=[
+            Lookup.EQUALS,
+            Lookup.NOT_EQUALS,
+            Lookup.IN,
+            Lookup.IS_NULL,
+        ],
+        field_options=COMMON_FIELD_OPTIONS,
     )
 
     @property

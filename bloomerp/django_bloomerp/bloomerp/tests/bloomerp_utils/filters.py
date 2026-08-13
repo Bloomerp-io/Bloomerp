@@ -5,6 +5,7 @@ import uuid
 
 from django.db import models
 from django.utils import timezone
+from django_countries.fields import CountryField
 
 from bloomerp.field_types.types import FieldType
 from bloomerp.model_fields.week_field import WeekField
@@ -40,6 +41,7 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
                     "boolean_field": models.BooleanField(null=True, blank=True),
                     "uuid_field": models.UUIDField(default=uuid.uuid4, null=True, blank=True),
                     "week_field": WeekField(null=True, blank=True),
+                    "country_field": CountryField(null=True, blank=True),
                     "foreign_key_field": models.ForeignKey(
                         "FilterTag",
                         on_delete=models.SET_NULL,
@@ -96,6 +98,7 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
             "time_field": time(9, 30),
             "boolean_field": True,
             "week_field": "2026-W21",
+            "country_field": "NL",
         }
         defaults.update(kwargs)
         return self.PrimaryModel.objects.create(**defaults)
@@ -127,6 +130,7 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
             "boolean_field": FieldType.BOOLEAN_FIELD,
             "uuid_field": FieldType.UUID_FIELD,
             "week_field": FieldType.WEEK_FIELD,
+            "country_field": FieldType.COUNTRY_FIELD,
             "foreign_key_field": FieldType.FOREIGN_KEY,
             "one_to_one_field": FieldType.ONE_TO_ONE_FIELD,
             "many_to_many_field": FieldType.MANY_TO_MANY_FIELD,
@@ -156,6 +160,27 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
         self.assert_filtered_ids({"char_field__in": "Alpha,Beta"}, [alpha.id, beta.id])
         self.assert_filtered_ids({"char_field__ne": "Alpha"}, [beta.id, alphabet.id])
         self.assert_filtered_ids({"char_field__not_equals": "Alpha"}, [beta.id, alphabet.id])
+
+    def test_country_lookup_filters_use_country_codes(self):
+        """
+        Use case: Records are filtered using submitted ISO country codes.
+        Expected result: Country equality, inclusion, and exclusion filters return the matching records.
+        """
+        # 1. Create records for multiple countries.
+        netherlands = self.create_primary(country_field="NL")
+        belgium = self.create_primary(country_field="BE")
+        germany = self.create_primary(country_field="DE")
+
+        # 2. Filter using the country field's supported lookups.
+        self.assert_filtered_ids({"country_field": "NL"}, [netherlands.id])
+        self.assert_filtered_ids(
+            {"country_field__in": "NL,BE"},
+            [netherlands.id, belgium.id],
+        )
+        self.assert_filtered_ids(
+            {"country_field__not_equals": "NL"},
+            [belgium.id, germany.id],
+        )
 
     def test_numeric_lookup_filters_use_declared_aliases(self):
         small = self.create_primary(integer_field=5)

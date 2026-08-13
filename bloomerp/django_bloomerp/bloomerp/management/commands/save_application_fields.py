@@ -96,7 +96,14 @@ class Command(BaseCommand):
                         try:
                             # Try-catch block needed to filter out reverse relation fields
                             meta = {}
-                            field_type = field.get_internal_type()
+                            registered_field_type = FieldType.from_model_field_cls(
+                                field.__class__
+                            )
+                            field_type = (
+                                registered_field_type.id
+                                if registered_field_type is not None
+                                else field.get_internal_type()
+                            )
 
                             if field.name == "files":
                                 field_type = FieldType.FILES_RELATION_FIELD.id

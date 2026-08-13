@@ -87,6 +87,10 @@ def _equals_widget(application_field: "ApplicationField") -> forms.Widget:
             return forms.DateInput(attrs={"class": "input w-full", "type": "date"})
         case FieldType.DATE_TIME_FIELD:
             return forms.DateTimeInput(attrs={"class": "input w-full", "type": "datetime-local"})
+        case FieldType.COUNTRY_FIELD:
+            form_field = application_field.get_form_field()
+            form_field.widget.attrs.update({"class": "select w-full"})
+            return form_field.widget
         case _:
             return forms.TextInput(attrs={"class": "input w-full"})
 

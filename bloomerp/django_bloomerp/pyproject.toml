@@ -153,6 +153,7 @@ dependencies = [
     "weasyprint>=62.3",
     "drf-spectacular>=0.30.0",
     "sqlglot>=30.12.0",
+    "django-countries==9.0.0",
 ]
 
 [project.optional-dependencies]
