@@ -1,0 +1,11 @@
+<div style="border-top: 1px solid #d1d5db; margin-top: 24px; padding-top: 16px; color: #374151;">
+    <div style="margin-bottom: 16px; font-size: 13px; line-height: 1.5;">
+        <div><strong><c-i18n.blocktrans>From:</c-i18n.blocktrans></strong> {{ quoted_email.from }}</div>
+        <div><strong><c-i18n.blocktrans>To:</c-i18n.blocktrans></strong> {{ quoted_email.to }}</div>
+        <div><strong><c-i18n.blocktrans>Sent:</c-i18n.blocktrans></strong> {{ quoted_email.sent }}</div>
+        <div><strong><c-i18n.blocktrans>Subject:</c-i18n.blocktrans></strong> {{ quoted_email.subject }}</div>
+    </div>
+    <div style="border-left: 3px solid #d1d5db; padding-left: 16px;">
+        {{ quoted_email.content_html|safe }}
+    </div>
+</div>

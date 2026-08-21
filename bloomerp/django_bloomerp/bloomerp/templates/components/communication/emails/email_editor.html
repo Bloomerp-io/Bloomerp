@@ -4,7 +4,6 @@
     bloomerp-component="email-editor"
     class="flex h-full min-h-0 flex-col bg-white"
     data-from-email="{{ from_email }}"
-    data-parent-email="{{ parent_email }}"
     >
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-5">
         <div class="min-w-0">
@@ -121,6 +120,16 @@
                 :has_border="False"
                 class="min-h-96 bg-white"
             />
+
+            {% if quoted_email %}
+                <div
+                    class="mt-6 select-text rounded-xl border border-gray-200 bg-base p-5"
+                    data-email-quoted-content
+                    contenteditable="false"
+                >
+                    {% include "components/communication/emails/quoted_email.html" %}
+                </div>
+            {% endif %}
         </div>
 
         <footer class="flex shrink-0 items-center justify-between border-t border-gray-200 px-5 py-3">

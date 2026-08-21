@@ -1,9 +1,18 @@
-import { $getRoot } from "lexical";
 import BaseComponent, { getComponent } from "../BaseComponent";
 import { BloomerpTextEditor } from "../text_editor/BloomerpTextEditor";
 
 export class EmailEditor extends BaseComponent {
     private editor: BloomerpTextEditor;
+    private showCcButton: Element | null = null;
+    private showBccButton: Element | null = null;
+    private ccField: Element | null = null;
+    private bccField: Element | null = null;
+    private readonly showCcHandler = (): void => {
+        this.ccField?.classList.toggle("hidden");
+    };
+    private readonly showBccHandler = (): void => {
+        this.bccField?.classList.toggle("hidden");
+    };
     
     public initialize(): void {
         this.setupCcBccListeners();
@@ -11,47 +20,35 @@ export class EmailEditor extends BaseComponent {
     }
 
     public setupEditor(): void {
+        if (!this.element) return;
         const editorElement = this.element?.querySelector('[bloomerp-component="bloomerp-text-editor"]') as HTMLElement;
         this.editor = getComponent(editorElement) as BloomerpTextEditor;
-
-        const parentEmail = this.getDataAttribute("parentEmail") || "";
-        if (!parentEmail.trim()) return;
-
-        const quotedEmail = `
-            <div data-text-editor-html-node="true">
-                <hr style="border: 0; border-top: 1px solid #d1d5db; margin: 24px 0;">
-                ${parentEmail}
-            </div>
-        `;
-        const replyContent = this.editor.getValue() || "<p><br></p>";
-
-        // Keep a dedicated editable paragraph above the quoted email.
-        this.editor.setValue(`${replyContent}${quotedEmail}`);
-        this.editor.editor?.update(() => {
-            $getRoot().getLastChild()?.getPreviousSibling()?.selectEnd();
-        }, { discrete: true });
         this.editor.editor?.focus();
     }
 
     public setupCcBccListeners() : void {
         if (!this.element) return;
 
-        const showCcButton = this.element.querySelector("#show-cc-field");
-        const showBccButton = this.element.querySelector("#show-bcc-field");
-        const ccField = this.element.querySelector("#cc-field");
-        const bccField = this.element.querySelector("#bcc-field");
+        this.showCcButton = this.element.querySelector("#show-cc-field");
+        this.showBccButton = this.element.querySelector("#show-bcc-field");
+        this.ccField = this.element.querySelector("#cc-field");
+        this.bccField = this.element.querySelector("#bcc-field");
 
-        if (showCcButton && ccField) {
-            showCcButton.addEventListener("click", () => {
-                ccField.classList.toggle("hidden");
-            });
+        if (this.showCcButton && this.ccField) {
+            this.showCcButton.addEventListener("click", this.showCcHandler);
         }
 
-        if (showBccButton && bccField) {
-            showBccButton.addEventListener("click", () => {
-                bccField.classList.toggle("hidden");
-            });
+        if (this.showBccButton && this.bccField) {
+            this.showBccButton.addEventListener("click", this.showBccHandler);
         }
     }
 
+    public destroy(): void {
+        this.showCcButton?.removeEventListener("click", this.showCcHandler);
+        this.showBccButton?.removeEventListener("click", this.showBccHandler);
+        this.showCcButton = null;
+        this.showBccButton = null;
+        this.ccField = null;
+        this.bccField = null;
+    }
 }

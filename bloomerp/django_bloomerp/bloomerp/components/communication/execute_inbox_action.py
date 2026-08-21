@@ -58,13 +58,13 @@ def execute_inbox_action(request: HttpRequest, level: str, item_id: str, action_
 
 def _get_folder_action(folder: InboxFolder, action_key: str) -> InboxActionDefinition:
     for action in folder.inbox_folder_type().actions or []:
-        if action.key == action_key:
+        if action.key == action_key and action.is_available_for(folder):
             return action
     raise ValidationError("This action is not available for the selected folder.")
 
 
 def _get_item_action(item: InboxItem, action_key: str) -> InboxActionDefinition:
     for action in item.get_inbox_item_type().actions or []:
-        if action.key == action_key:
+        if action.key == action_key and action.is_available_for(item):
             return action
     raise ValidationError("This action is not available for the selected inbox item.")

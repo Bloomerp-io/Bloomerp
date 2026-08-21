@@ -76,33 +76,46 @@ def render_email(inbox_item:"InboxItem", request: HttpRequest) -> str:
     Returns:
         str: _description_
     """
+    metadata = inbox_item.raw_meta_data or {}
+    content = metadata.get("outbound_body_html")
+    if content is None:
+        content = fetch_email_content(inbox_item)
+
+    attachment_metadata = metadata.get("attachments") or []
+    files = [
+        {
+            **attachment,
+            "download_url": reverse(
+                "components_emails_download_attachment",
+                kwargs={
+                    "inbox_item_id": inbox_item.pk,
+                    "attachment_id": attachment["id"],
+                },
+            ),
+        }
+        for attachment in attachment_metadata
+    ]
+    return render_to_string(
+        "inbox_items/email.html",
+        {
+            "content": content,
+            "files": files,
+        },
+        request=request,
+    )
+
+
+def fetch_email_content(inbox_item: "InboxItem") -> str:
+    """Fetch an email body, falling back to a locally stored outbound body."""
+    stored_content = (inbox_item.raw_meta_data or {}).get("outbound_body_html")
+    if stored_content is not None:
+        return str(stored_content)
+
     adapter, provider_message_id, mailbox = _resolve_email_access(inbox_item)
     try:
-        content = adapter.fetch_email_content(
+        return adapter.fetch_email_content(
             email_id=provider_message_id,
             mailbox=mailbox,
-        )
-        attachment_metadata = (inbox_item.raw_meta_data or {}).get("attachments") or []
-        files = [
-            {
-                **attachment,
-                "download_url": reverse(
-                    "components_emails_download_attachment",
-                    kwargs={
-                        "inbox_item_id": inbox_item.pk,
-                        "attachment_id": attachment["id"],
-                    },
-                ),
-            }
-            for attachment in attachment_metadata
-        ]
-        return render_to_string(
-            "inbox_items/email.html",
-            {
-                "content": content,
-                "files": files,
-            },
-            request=request,
         )
     finally:
         close = getattr(adapter, "close", None)
@@ -250,6 +263,7 @@ def _upsert_email_inbox_item_result(
         inbox_item.actor = email.sender
         inbox_item.is_read = email.is_read
         inbox_item.raw_meta_data = {
+            **metadata,
             **provider_metadata,
             "locations": locations,
         }
