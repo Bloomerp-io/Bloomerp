@@ -6,11 +6,38 @@ from django.shortcuts import render
 from bloomerp.models.application_field import ApplicationField
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.router import router
+from bloomerp.field_types.lookups import Lookup, get_address_component_lookups
 from bloomerp.field_types.types import FieldType
+from bloomerp.widgets.address_widget import ADDRESS_COMPONENTS, COUNTRY_CHOICES
 
 FILTERABLE_FIELD_TYPES = [
     field_type.value.id for field_type in FieldType if len(field_type.value.lookups) > 0
 ]
+
+# TODO: This is a bit of a mess -> this component should ideally be agnostic of the field type.
+ADDRESS_COMPONENT_KEYS = {component for component, _label, _autocomplete in ADDRESS_COMPONENTS}
+def _address_component_from_path(field_path: str | None) -> str | None:
+    if not field_path:
+        return None
+    component = field_path.rsplit("__", 1)[-1]
+    return component if component in ADDRESS_COMPONENT_KEYS else None
+
+
+def _render_address_lookup_value(
+    application_field: ApplicationField,
+    lookup: Lookup,
+    field_path: str,
+    component: str,
+) -> str:
+    if component != "country" or lookup == Lookup.IS_NULL:
+        return lookup.value.render(application_field, name_override=field_path)
+
+    widget_cls = forms.SelectMultiple if lookup in {Lookup.IN, Lookup.NOT_IN} else forms.Select
+    widget = widget_cls(
+        choices=COUNTRY_CHOICES,
+        attrs={"class": "select w-full"},
+    )
+    return widget.render(name=field_path, value=None)
 
 
 def _get_related_model(application_field: ApplicationField):
@@ -132,13 +159,19 @@ def filters_lookup_operators(
         
         # Get the field type
         field_type = application_field.get_field_type_enum()
+        address_component = _address_component_from_path(field_path)
+        lookups = (
+            get_address_component_lookups(address_component)
+            if field_type == FieldType.ADDRESS_FIELD and address_component
+            else field_type.lookups
+        )
         
         return render(
             request,
             "components/application_fields/lookup_operators.html",
             {
                 "application_field": application_field,
-                "lookups": field_type.lookups,
+                "lookups": lookups,
                 "field_path": field_path,
                 "base_application_field_id": base_application_field_id,
             }
@@ -176,12 +209,18 @@ def value_input(
         
         field_type = application_field.get_field_type_enum()
         
-        # Get the lookup value
-        lookup_option = None
-        for option in field_type.lookups:
-            if option.value.id == lookup_value:
-                lookup_option = option
-                break
+        # Get the lookup value. Address component operators are selected after
+        # the top-level Address Lookup entry and are not top-level field lookups.
+        address_component = _address_component_from_path(field_path)
+        lookup_options = (
+            get_address_component_lookups(address_component)
+            if field_type == FieldType.ADDRESS_FIELD and address_component
+            else field_type.lookups
+        )
+        lookup_option = next(
+            (option for option in lookup_options if option.value.id == lookup_value),
+            None,
+        )
         
         if not lookup_option:
             return HttpResponse("Invalid lookup operator.", status=400)
@@ -206,6 +245,28 @@ def value_input(
                     "related_fields": _prepare_related_fields(related_fields),
                     "related_content_type_id": related_content_type_id,
                 }
+            )
+
+        if lookup_value == "address_advanced":
+            return render(
+                request,
+                "components/filters/address_lookup.html",
+                {
+                    "base_field": application_field,
+                    "base_field_path": field_path or application_field.field,
+                    "base_field_id": base_application_field_id or application_field.id,
+                    "address_components": ADDRESS_COMPONENTS,
+                },
+            )
+
+        if field_type == FieldType.ADDRESS_FIELD and address_component and field_path:
+            return HttpResponse(
+                _render_address_lookup_value(
+                    application_field,
+                    lookup_option,
+                    field_path,
+                    address_component,
+                )
             )
         
         lookup = application_field.get_field_type_enum().get_lookup_by_id(lookup_value).value

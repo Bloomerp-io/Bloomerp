@@ -1,0 +1,38 @@
+{% load i18n %}
+<div
+    class="flex flex-col gap-2"
+    data-advanced-builder="true"
+    data-base-field="{{ base_field_path }}"
+    data-base-label="{{ base_field.title }}"
+    data-base-field-id="{{ base_field_id }}"
+>
+    <div class="text-sm font-medium text-gray-900" data-advanced-path>
+        {{ base_field.title }}
+    </div>
+
+    <div class="flex flex-col gap-2" data-advanced-selects>
+        <div class="advanced-field-select-row" data-advanced-level="1">
+            <select
+                class="select w-full"
+                data-advanced-related-select="true"
+                data-level="1"
+                data-path-prefix="{{ base_field_path }}"
+            >
+                <option value="">
+                    {% blocktrans %}Select address field{% endblocktrans %}
+                </option>
+                {% for component, label, autocomplete in address_components %}
+                    <option
+                        value="{{ base_field.id }}"
+                        data-field-name="{{ component }}"
+                    >
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="mt-1" data-advanced-operator></div>
+    <div class="mt-1" data-advanced-value></div>
+</div>

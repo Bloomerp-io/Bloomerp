@@ -57,9 +57,14 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
         for part in remaining:
             if value is None:
                 return None
-            try:
-                value = getattr(value, part)
-            except (AttributeError, ObjectDoesNotExist):
+            if isinstance(value, dict):
+                value = value.get(part, MISSING)
+            else:
+                try:
+                    value = getattr(value, part)
+                except (AttributeError, ObjectDoesNotExist):
+                    return MISSING
+            if value is MISSING:
                 return MISSING
         return value
 
@@ -137,7 +142,11 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
                 Lookup.EQUALS_USER
                 if self.resolve_lookup_globally(operator) == Lookup.EQUALS_USER
                 or str(condition.value) == "$user"
-                else self.resolve_lookup(application_field, operator)
+                else (
+                    self.resolve_lookup_globally(operator)
+                    if "__" in str(condition.field or "")
+                    else self.resolve_lookup(application_field, operator)
+                )
             )
         if lookup is None or lookup.value.python_eval is None:
             return None

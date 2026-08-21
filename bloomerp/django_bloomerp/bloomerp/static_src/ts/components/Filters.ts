@@ -20,6 +20,7 @@ export const LOOKUP_LABELS : Map<string, string> = new Map([
     ["lt", "<"],
     ["isnull", "is empty"],
     ["in", "in"],
+    ["not_in", "not in"],
     ["year", "year is"],
     ["month", "month is"],
     ["day", "day is"],
@@ -45,7 +46,7 @@ const RESERVED_FILTER_KEYS = new Set([
     "_component_id",
 ]);
 
-const ADVANCED_LOOKUP_IDS = new Set(["foreign_advanced", "one_to_many_advanced"]);
+const ADVANCED_LOOKUP_IDS = new Set(["foreign_advanced", "one_to_many_advanced", "address_advanced"]);
 
 
 /**

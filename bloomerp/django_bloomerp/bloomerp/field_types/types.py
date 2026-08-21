@@ -415,7 +415,7 @@ class FieldType(Enum):
         model_field_cls=AddressField,
         form_field_cls=AddressFormField,
         widget_cls=AddressWidget,
-        lookups=TEXT_LOOKUPS,
+        lookups=[Lookup.ADDRESS_ADVANCED],
         field_options=[
             NULL_FIELD_OPTION,
             BLANK_FIELD_OPTION,

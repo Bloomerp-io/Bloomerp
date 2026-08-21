@@ -13,7 +13,9 @@ from typing import Optional
 from typing import TYPE_CHECKING
 
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
-from django.db.models import BooleanField, Count, DateField, DateTimeField, DecimalField, DurationField, Field, FloatField, IntegerField, QuerySet, TimeField, UUIDField
+from django.db.models import BooleanField, Count, DateField, DateTimeField, DecimalField, DurationField, Field, FloatField, IntegerField, Q, QuerySet, TextField, TimeField, UUIDField
+from django.db.models.functions import Cast
+from django.db.models.fields.json import KeyTextTransform
 from django.conf import settings
 from django.utils import timezone
 
@@ -105,6 +107,58 @@ def _hidden_true(application_field: "ApplicationField") -> forms.Widget:
 # Filter class funcs
 # ---------------------
 class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
+    pass
+
+
+class AddressComponentFilterMixin:
+    """Filter an address JSON component with a composable ORM condition."""
+
+    def __init__(
+        self,
+        *args,
+        address_field_name: str,
+        component: str,
+        lookup_enum: "Lookup",
+        **kwargs,
+    ):
+        self.address_field_name = address_field_name
+        self.component = component
+        self.lookup_enum = lookup_enum
+        super().__init__(*args, **kwargs)
+
+    def as_q(self, value) -> Q:
+        expression = Cast(
+            KeyTextTransform(self.component, self.address_field_name),
+            output_field=TextField(),
+        )
+        lookup_expr = self.lookup_enum.value.django_representation
+        exclude = self.lookup_enum in {Lookup.NOT_EQUALS, Lookup.NOT_IN}
+        if self.lookup_enum == Lookup.NOT_EQUALS:
+            lookup_expr = "exact"
+        elif self.lookup_enum == Lookup.NOT_IN:
+            lookup_expr = "in"
+        elif self.lookup_enum == Lookup.IS_NULL:
+            lookup_expr = "isnull"
+
+        lookup_cls = expression.get_lookup(lookup_expr)
+        condition = Q(lookup_cls(expression, value))
+        return ~condition if exclude else condition
+
+    def filter(self, queryset: QuerySet, value) -> QuerySet:
+        if value in django_filters.constants.EMPTY_VALUES:
+            return queryset
+        return queryset.filter(self.as_q(value))
+
+
+class AddressCharFilter(AddressComponentFilterMixin, django_filters.CharFilter):
+    pass
+
+
+class AddressCharInFilter(AddressComponentFilterMixin, CharInFilter):
+    pass
+
+
+class AddressBooleanFilter(AddressComponentFilterMixin, django_filters.BooleanFilter):
     pass
 
 
@@ -243,6 +297,39 @@ def _not_equals_filter_class(application_field: "ApplicationField", lookup: "Loo
         name: filter_cls(field_name=application_field.field, method=filter_not_equal)
         for name in _filter_names(application_field, lookup)
     }
+
+
+def _address_filter_classes(application_field: "ApplicationField") -> dict[str, django_filters.Filter]:
+    """Build filters for each structured address component stored in JSON."""
+    from bloomerp.widgets.address_widget import ADDRESS_COMPONENTS
+
+    filters: dict[str, django_filters.Filter] = {}
+    for component, _label, _autocomplete in ADDRESS_COMPONENTS:
+        field_name = f"{application_field.field}__{component}"
+        for lookup_enum in get_address_component_lookups(component):
+            lookup = lookup_enum.value
+            names = [f"{field_name}{alias}" for alias in lookup.aliases]
+
+            if lookup_enum == Lookup.IS_NULL:
+                filter_cls = AddressBooleanFilter
+            elif lookup_enum in {Lookup.IN, Lookup.NOT_IN}:
+                filter_cls = AddressCharInFilter
+            else:
+                filter_cls = AddressCharFilter
+
+            filters.update(
+                {
+                    name: filter_cls(
+                        field_name=field_name,
+                        address_field_name=application_field.field,
+                        component=component,
+                        lookup_enum=lookup_enum,
+                    )
+                    for name in names
+                }
+            )
+
+    return filters
 
 
 def _relative_date_filter_class(application_field: "ApplicationField", lookup: "LookupDefinition") -> dict[str, django_filters.Filter]:
@@ -720,6 +807,24 @@ class Lookup(Enum):
         python_eval=lambda actual, expected: not _python_equals(actual, expected),
     )
 
+    NOT_IN = LookupDefinition(
+        id="not_in",
+        display_name="Not In",
+        django_representation="not_in",
+        aliases=["__not_in"],
+        description="Checks if value is not in a list of values.",
+        sql_operator=lambda value: f"NOT {_sql_in_values(value)}",
+        widget_func=_in_widget,
+        python_eval=lambda actual, expected: not _python_in(actual, expected),
+    )
+
+    ADDRESS_ADVANCED = LookupDefinition(
+        id="address_advanced",
+        display_name="Address Lookup",
+        django_representation="",
+        filter_class_funcs=_address_filter_classes,
+    )
+
     EQUALS_USER = LookupDefinition(
         id="equals_user",
         display_name="Equals Current User",
@@ -1041,3 +1146,16 @@ TEXT_LOOKUPS = [
     Lookup.IS_NULL,
     Lookup.NOT_EQUALS,
 ]
+
+ADDRESS_COUNTRY_LOOKUPS = [
+    Lookup.EQUALS,
+    Lookup.NOT_EQUALS,
+    Lookup.IS_NULL,
+    Lookup.IN,
+    Lookup.NOT_IN,
+]
+
+
+def get_address_component_lookups(component: str) -> list[Lookup]:
+    """Return the supported lookups for a structured address component."""
+    return ADDRESS_COUNTRY_LOOKUPS if component == "country" else TEXT_LOOKUPS

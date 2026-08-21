@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from bloomerp.models import ApplicationField
+from bloomerp.model_fields.address_field import AddressField
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.utils.filters import filter_model
@@ -47,6 +48,90 @@ class TestFilterComponent(BaseBloomerpModelTestCase):
             },
             use_bloomerp_base=True,
         )["FilterEmployee"]
+        cls.AddressModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "FilterAddress": {
+                    "address": AddressField(null=True, blank=True),
+                }
+            },
+            use_bloomerp_base=True,
+        )["FilterAddress"]
+
+    def test_address_lookup_builder_exposes_components_and_country_operators(self):
+        """
+        Use case: A user adds a filter for an AddressField.
+        Expected result: Address parts are selectable and country exposes only its supported operators.
+        """
+        # 1. Open the top-level address lookup and its value builder.
+        application_field = ApplicationField.get_by_field(self.AddressModel, "address")
+        operators_url = reverse(
+            "components_filters_lookup_operators",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+        operators_response = self.client.get(operators_url)
+        value_url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+        builder_response = self.client.get(value_url, {"lookup_value": "address_advanced"})
+
+        # 2. Verify the builder lists address components instead of JSON text operators.
+        self.assertContains(operators_response, 'value="address_advanced"', html=False)
+        self.assertNotContains(operators_response, 'value="contains"', html=False)
+        self.assertContains(builder_response, 'data-field-name="street_1"', html=False)
+        self.assertContains(builder_response, 'data-field-name="country"', html=False)
+
+        # 3. Load nested country operators and verify the constrained lookup set.
+        country_response = self.client.get(
+            operators_url,
+            {
+                "field_path": "address__country",
+                "base_application_field_id": application_field.id,
+            },
+        )
+        self.assertContains(country_response, 'value="equals"', html=False)
+        self.assertContains(country_response, 'value="not_equals"', html=False)
+        self.assertContains(country_response, 'value="is_null"', html=False)
+        self.assertContains(country_response, 'value="in"', html=False)
+        self.assertContains(country_response, 'value="not_in"', html=False)
+        self.assertNotContains(country_response, 'value="contains"', html=False)
+
+    def test_address_country_value_inputs_use_country_selects(self):
+        """
+        Use case: A user chooses a country comparison for an address filter.
+        Expected result: Single-value and list comparisons render country selects.
+        """
+        # 1. Request equals and in inputs for the nested country path.
+        application_field = ApplicationField.get_by_field(self.AddressModel, "address")
+        url = reverse(
+            "components_filters_value_input",
+            kwargs={
+                "content_type_id": application_field.content_type_id,
+                "application_field_id": application_field.id,
+            },
+        )
+        equals_response = self.client.get(
+            url,
+            {"lookup_value": "equals", "field_path": "address__country"},
+        )
+        in_response = self.client.get(
+            url,
+            {"lookup_value": "in", "field_path": "address__country"},
+        )
+
+        # 2. Verify country choices and single/multiple selection modes.
+        self.assertContains(equals_response, '<select name="address__country"', html=False)
+        self.assertContains(equals_response, '<option value="BE">Belgium</option>', html=False)
+        self.assertNotContains(equals_response, "multiple", html=False)
+        self.assertContains(in_response, "multiple", html=False)
+        self.assertContains(in_response, '<option value="FR">France</option>', html=False)
 
     def test_value_input_renders_full_width_text_input_for_plain_char_field(self):
         application_field = ApplicationField.get_by_field(self.CustomerModel, "first_name")

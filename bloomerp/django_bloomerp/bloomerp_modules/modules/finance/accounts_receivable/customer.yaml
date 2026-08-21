@@ -86,3 +86,10 @@ fields:
     options:
       null: true
       blank: true
+  - id: address
+    name: Address
+    type: AddressField
+    options:
+      null: true
+      blank: true
+    

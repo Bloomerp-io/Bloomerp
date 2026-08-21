@@ -289,7 +289,7 @@ class TestApplicationField(BaseBloomerpModelTestCase):
         self.assertIs(field_type.model_field_cls, AddressField)
         self.assertIs(field_type.form_field_cls, AddressFormField)
         self.assertIs(field_type.widget_cls, AddressWidget)
-        self.assertIn(Lookup.CONTAINS, field_type.lookups)
+        self.assertEqual(field_type.lookups, [Lookup.ADDRESS_ADVANCED])
 
     def test_week_field_type_uses_week_field_parts(self):
         field_type = FieldType.WEEK_FIELD.value

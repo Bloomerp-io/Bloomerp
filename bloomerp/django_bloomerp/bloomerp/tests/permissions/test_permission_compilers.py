@@ -23,5 +23,9 @@ class TestPermissionCompilers(SimpleTestCase):
         }
         self.assertEqual(
             without_evaluator,
-            {Lookup.FOREIGN_ADVANCED, Lookup.ONE_TO_MANY_ADVANCED},
+            {
+                Lookup.ADDRESS_ADVANCED,
+                Lookup.FOREIGN_ADVANCED,
+                Lookup.ONE_TO_MANY_ADVANCED,
+            },
         )

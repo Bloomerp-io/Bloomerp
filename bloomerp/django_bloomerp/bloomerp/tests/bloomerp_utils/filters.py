@@ -7,6 +7,7 @@ from django.db import models
 from django.utils import timezone
 
 from bloomerp.field_types.types import FieldType
+from bloomerp.model_fields.address_field import AddressField
 from bloomerp.model_fields.week_field import WeekField
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.tests.utils.dynamic_models import create_test_models
@@ -38,6 +39,7 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
                     "datetime_field": models.DateTimeField(null=True, blank=True),
                     "time_field": models.TimeField(null=True, blank=True),
                     "boolean_field": models.BooleanField(null=True, blank=True),
+                    "address_field": AddressField(null=True, blank=True),
                     "uuid_field": models.UUIDField(default=uuid.uuid4, null=True, blank=True),
                     "week_field": WeekField(null=True, blank=True),
                     "foreign_key_field": models.ForeignKey(
@@ -95,6 +97,14 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
             ),
             "time_field": time(9, 30),
             "boolean_field": True,
+            "address_field": {
+                "street_1": "Main Street 1",
+                "street_2": "Suite 2",
+                "postal_code": "1000",
+                "city": "Brussels",
+                "state": "Brussels",
+                "country": "BE",
+            },
             "week_field": "2026-W21",
         }
         defaults.update(kwargs)
@@ -125,6 +135,7 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
             "datetime_field": FieldType.DATE_TIME_FIELD,
             "time_field": FieldType.TIME_FIELD,
             "boolean_field": FieldType.BOOLEAN_FIELD,
+            "address_field": FieldType.ADDRESS_FIELD,
             "uuid_field": FieldType.UUID_FIELD,
             "week_field": FieldType.WEEK_FIELD,
             "foreign_key_field": FieldType.FOREIGN_KEY,
@@ -141,6 +152,63 @@ class TestFilterUtil(BaseBloomerpModelTestCase):
 
         self.assertNotIn("time_field__today", FilterSet.base_filters)
         self.assertNotIn("foreign_key_field__foreign_advanced", FilterSet.base_filters)
+
+    def test_address_text_components_use_char_field_lookups(self):
+        """
+        Use case: A user filters records by any textual part of an address.
+        Expected result: Every text component supports the same lookups as a CharField.
+        """
+        # 1. Create records that differ across the structured address components.
+        brussels = self.create_primary()
+        paris = self.create_primary(
+            address_field={
+                "street_1": "Rue de Rivoli 10",
+                "street_2": "",
+                "postal_code": "75001",
+                "city": "Paris",
+                "state": "Ile-de-France",
+                "country": "FR",
+            },
+        )
+
+        # 2. Verify representative CharField lookups on every text component.
+        filter_names = dynamic_filterset_factory(self.PrimaryModel).base_filters.keys()
+        for component in ("street_1", "street_2", "postal_code", "city", "state"):
+            for lookup in FieldType.CHAR_FIELD.lookups:
+                for alias in lookup.value.aliases:
+                    self.assertIn(f"address_field__{component}{alias}", filter_names)
+
+        self.assert_filtered_ids({"address_field__street_1__icontains": "main"}, [brussels.id])
+        self.assert_filtered_ids({"address_field__street_2__isnull": "false"}, [brussels.id, paris.id])
+        self.assert_filtered_ids({"address_field__postal_code__startswith": "75"}, [paris.id])
+        self.assert_filtered_ids({"address_field__city__equals": "Brussels"}, [brussels.id])
+        self.assert_filtered_ids({"address_field__state__not_equals": "Brussels"}, [paris.id])
+
+    def test_address_country_supports_select_lookup_set(self):
+        """
+        Use case: A user filters the country component of an address.
+        Expected result: Equals, not-equals, null, in, and not-in filters work.
+        """
+        # 1. Create Belgian, French, and missing-address records.
+        belgium = self.create_primary()
+        france = self.create_primary(
+            address_field={
+                "street_1": "Rue de Rivoli 10",
+                "street_2": "",
+                "postal_code": "75001",
+                "city": "Paris",
+                "state": "Ile-de-France",
+                "country": "FR",
+            },
+        )
+        missing = self.create_primary(address_field=None)
+
+        # 2. Exercise every supported country lookup.
+        self.assert_filtered_ids({"address_field__country__equals": "BE"}, [belgium.id])
+        self.assert_filtered_ids({"address_field__country__not_equals": "BE"}, [france.id])
+        self.assert_filtered_ids({"address_field__country__isnull": "true"}, [missing.id])
+        self.assert_filtered_ids({"address_field__country__in": "BE,FR"}, [belgium.id, france.id])
+        self.assert_filtered_ids({"address_field__country__not_in": "BE"}, [france.id])
 
     def test_text_lookup_filters_use_declared_aliases(self):
         alpha = self.create_primary(char_field="Alpha")

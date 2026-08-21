@@ -155,41 +155,6 @@ class UserPermissionManager:
             .distinct()
         )
 
-    def _resolve_lookup(self, application_field: ApplicationField, operator_str: str) -> Lookup | None:
-        if not application_field or not operator_str:
-            return None
-
-        field_type = application_field.get_field_type_enum()
-        lookup_enum = field_type.get_lookup_by_id(operator_str)
-        if lookup_enum:
-            return lookup_enum
-
-        for lookup in field_type.lookups:
-            if lookup.value.django_representation == operator_str:
-                return lookup
-            if operator_str in (lookup.value.aliases or []):
-                return lookup
-
-        return None
-
-    def _normalize_lookup_value(self, lookup: str, value, application_field: ApplicationField | None = None):
-        normalized_lookup = str(lookup or "").strip().lower()
-
-        if normalized_lookup == "in" and isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-
-        if application_field and application_field.field_type in {"BooleanField", "NullBooleanField"}:
-            if isinstance(value, str):
-                return value.lower() in {"true", "1", "yes", "on"}
-            return bool(value)
-
-        if normalized_lookup == "isnull":
-            if isinstance(value, str):
-                return value.lower() in {"true", "1", "yes"}
-            return bool(value)
-
-        return value
-
     def _normalize_row_policy_rule_content(self, rule: dict) -> dict:
         try:
             return RowPolicyRuleContent.model_validate(rule).model_dump(exclude_none=True)
@@ -201,41 +166,24 @@ class UserPermissionManager:
             return None
 
         application_field_id = rule_condition.get("application_field_id")
-        operator_id = rule_condition.get("operator")
-        value = rule_condition.get("value")
         field_path = rule_condition.get("field")
 
         if field_path == "__all__" or application_field_id == "__all__":
             return Q()
 
-        if not application_field_id or not operator_id:
+        if not application_field_id or not rule_condition.get("operator"):
             return None
 
         application_field = ApplicationField.objects.filter(id=application_field_id).first()
         if not application_field:
             return None
 
-        operator_str = str(operator_id)
-        field_name = application_field.field
-        if isinstance(field_path, str) and "__" in field_path:
-            field_name = field_path
+        from bloomerp.permissions.compilers import DjangoQPermissionCompiler
 
-        if operator_str.startswith("__"):
-            filter_key = operator_str.lstrip("_")
-            advanced_lookup = filter_key.rsplit("__", 1)[-1] if "__" in filter_key else ""
-            return Q(**{filter_key: self._normalize_lookup_value(advanced_lookup, value, application_field)})
-
-        lookup_enum = self._resolve_lookup(application_field, operator_str)
-        django_lookup = (lookup_enum.value.django_representation or "").strip() if lookup_enum else operator_str
-
-        if lookup_enum == Lookup.EQUALS_USER or str(value) == "$user":
-            return Q(**{field_name: self.user})
-
-        if lookup_enum == Lookup.NOT_EQUALS:
-            return ~Q(**{field_name: value})
-
-        filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
-        return Q(**{filter_key: self._normalize_lookup_value(django_lookup, value, application_field)})
+        return DjangoQPermissionCompiler([], user=self.user).compile_condition(
+            rule_condition,
+            {str(application_field.pk): application_field},
+        )
 
     def build_q_for_rule_dict(self, rule_dict: dict) -> Q | None:
         if not isinstance(rule_dict, dict):
@@ -245,24 +193,25 @@ class UserPermissionManager:
         if not isinstance(conditions, list) or not conditions:
             return None
 
-        condition_qs: list[Q] = []
-        for condition in conditions:
-            condition_q = self.build_q_for_rule_condition(condition)
-            if condition_q is not None:
-                condition_qs.append(condition_q)
+        application_field_ids = {
+            str(condition.get("application_field_id"))
+            for condition in conditions
+            if isinstance(condition, dict)
+            and condition.get("application_field_id") not in (None, "", "__all__")
+        }
+        application_fields = {
+            str(field.pk): field
+            for field in ApplicationField.objects.filter(
+                pk__in=application_field_ids
+            ).select_related("content_type", "related_model")
+        }
 
-        if not condition_qs:
-            return None
+        from bloomerp.permissions.compilers import DjangoQPermissionCompiler
 
-        connector = str(rule_dict.get("connector") or "AND").upper()
-        combined_q = condition_qs[0]
-        for condition_q in condition_qs[1:]:
-            if connector == "OR":
-                combined_q |= condition_q
-            else:
-                combined_q &= condition_q
-
-        return combined_q
+        return DjangoQPermissionCompiler([], user=self.user).compile_row_rule(
+            rule_dict,
+            application_fields,
+        )
 
     def build_queryset_from_rule_dicts(
         self,

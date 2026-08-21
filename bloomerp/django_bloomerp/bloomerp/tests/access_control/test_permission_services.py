@@ -14,6 +14,7 @@ from bloomerp.models.definition import (
 )
 from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.permission_services import ensure_model_permissions
+from bloomerp.permissions.compilers import DjangoQPermissionCompiler, PythonPermissionCompiler
 from bloomerp.utils.api import generate_model_viewset_class, generate_serializer
 from bloomerp.api.base import BloomerpModelViewSet
 from bloomerp.views.api.docs.schema import filter_openapi_schema_for_request
@@ -21,9 +22,109 @@ from bloomerp.models.users import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.models import AnonymousUser
+from django.db import models
 from bloomerp.field_types.lookups import Lookup
+from bloomerp.model_fields.address_field import AddressField
 from bloomerp.tests.base import BaseBloomerpModelTestCase
+from bloomerp.tests.utils.dynamic_models import create_test_models
 from rest_framework.test import APIRequestFactory, force_authenticate
+
+
+class TestAddressRowPolicy(BaseBloomerpModelTestCase):
+    auto_create_customers = False
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.AddressPolicyModel = create_test_models(
+            app_label="bloomerp",
+            model_defs={
+                "AddressPolicyRecord": {
+                    "name": models.CharField(max_length=100),
+                    "address": AddressField(null=True, blank=True),
+                }
+            },
+            use_bloomerp_base=True,
+        )["AddressPolicyRecord"]
+
+    def test_country_equals_rule_validates_and_filters_address_records(self):
+        """
+        Use case: An administrator creates a row policy for address country equals Belgium.
+        Expected result: The nested rule saves and its preview includes only Belgian records.
+        """
+        # 1. Create records with Belgian and French structured addresses.
+        belgian_record = self.AddressPolicyModel.objects.create(
+            name="Belgian customer",
+            address={"city": "Brussels", "country": "BE"},
+        )
+        self.AddressPolicyModel.objects.create(
+            name="French customer",
+            address={"city": "Paris", "country": "FR"},
+        )
+        content_type = ContentType.objects.get_for_model(self.AddressPolicyModel)
+        address_field = ApplicationField.get_by_field(self.AddressPolicyModel, "address")
+        address_field = ApplicationField.objects.select_related(
+            "content_type",
+            "related_model",
+        ).get(pk=address_field.pk)
+        rule = {
+            "connector": "AND",
+            "conditions": [
+                {
+                    "application_field_id": address_field.id,
+                    "field": "address__country",
+                    "operator": "exact",
+                    "value": "BE",
+                }
+            ],
+        }
+
+        # 2. Save the row-policy rule through the model validation path.
+        row_policy = RowPolicy.objects.create(
+            content_type=content_type,
+            name="Belgian addresses",
+        )
+        saved_rule = RowPolicyRule.objects.create(row_policy=row_policy, rule=rule)
+
+        # 3. Build the same filtered queryset used by the permissions preview.
+        queryset = UserPermissionManager(self.normal_user).build_queryset_from_rule_dicts(
+            content_type,
+            [saved_rule.rule],
+        )
+        self.assertQuerySetEqual(
+            queryset,
+            [belgian_record],
+            transform=lambda value: value,
+            ordered=False,
+        )
+
+        # 4. Verify the production queryset compiler uses the same generated filter.
+        application_fields = {str(address_field.id): address_field}
+        with self.assertNumQueries(0):
+            compiled_q = DjangoQPermissionCompiler(
+                [],
+                user=self.normal_user,
+            ).compile_condition(rule["conditions"][0], application_fields)
+        self.assertIsNotNone(compiled_q)
+        compiled_queryset = self.AddressPolicyModel.objects.filter(compiled_q)
+        self.assertNotIn(" IN (SELECT", str(compiled_queryset.query).upper())
+        self.assertQuerySetEqual(
+            compiled_queryset,
+            [belgian_record],
+            transform=lambda value: value,
+            ordered=False,
+        )
+
+        # 5. Verify unsaved-candidate checks can traverse the address dictionary.
+        condition = RowPolicyRuleCondition.model_validate(rule["conditions"][0])
+        candidate = self.AddressPolicyModel(
+            name="New Belgian customer",
+            address={"city": "Ghent", "country": "BE"},
+        )
+        evaluator = PythonPermissionCompiler([], user=self.normal_user)
+        self.assertTrue(
+            evaluator._evaluate_condition(condition, candidate, application_fields)
+        )
 
 class TestUserPermissionManager(BaseBloomerpModelTestCase):
     auto_create_customers = False

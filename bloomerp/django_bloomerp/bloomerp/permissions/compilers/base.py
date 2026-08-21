@@ -169,5 +169,7 @@ class BasePermissionCompiler(ABC, Generic[CompiledPermission]):
                 continue
         return {
             str(field.pk): field
-            for field in ApplicationField.objects.filter(pk__in=valid_ids)
+            for field in ApplicationField.objects.filter(
+                pk__in=valid_ids
+            ).select_related("content_type", "related_model")
         }
