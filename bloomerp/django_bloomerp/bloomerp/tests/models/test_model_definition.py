@@ -1,7 +1,12 @@
 from django.test import SimpleTestCase
 from pydantic import ValidationError
 
-from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailTab,
+    DetailTabFolder,
+    DetailViewSettings,
+)
 from bloomerp.workspaces.text_tile.model import TextTileConfig
 
 
@@ -62,5 +67,67 @@ class BloomerpModelConfigTileTests(SimpleTestCase):
                 tiles=[
                     TextTileConfig(id="summary", markdown="First"),
                     TextTileConfig(id="summary", markdown="Second"),
+                ]
+            )
+
+
+class DetailViewSettingsTests(SimpleTestCase):
+    def test_detail_view_settings_accept_declarative_default_tabs(self):
+        """
+        Use case: A model declares an ordered default detail-tab layout.
+        Expected result: Tabs and folders retain their concrete types and payloads.
+        """
+        # 1. Define a default layout with a top-level tab and folder.
+        settings = DetailViewSettings(
+            default_tabs=[
+                DetailTab(name=" Overview ", url=" /todos/{{pk}}/ "),
+                DetailTabFolder(
+                    name="Related",
+                    tabs=[
+                        DetailTab(
+                            name="Initiative",
+                            url="/todos/{{pk}}/initiative/",
+                        )
+                    ],
+                ),
+            ]
+        )
+
+        # 2. Confirm normalization and the easy-to-consume concrete models.
+        self.assertEqual(settings.default_tabs[0].name, "Overview")
+        self.assertEqual(settings.default_tabs[0].url, "/todos/{{pk}}/")
+        self.assertIsInstance(settings.default_tabs[1], DetailTabFolder)
+        self.assertEqual(settings.default_tabs[1].tabs[0].name, "Initiative")
+
+        # 3. Confirm absent and explicitly empty overrides remain distinguishable.
+        self.assertIsNone(DetailViewSettings().default_tabs)
+        self.assertEqual(DetailViewSettings(default_tabs=[]).default_tabs, [])
+
+    def test_detail_view_settings_reject_invalid_default_tabs(self):
+        """
+        Use case: A model declares malformed default tabs or nested folders.
+        Expected result: Configuration validation fails during application startup.
+        """
+        # 1. Reject unsupported URL templates.
+        with self.assertRaisesRegex(ValidationError, "Only the.*pk.*placeholder"):
+            DetailViewSettings(
+                default_tabs=[
+                    DetailTab(name="Invalid", url="/todos/{{user_id}}/")
+                ]
+            )
+
+        # 2. Reject folders inside folders through the concrete child type.
+        with self.assertRaises(ValidationError):
+            DetailViewSettings(
+                default_tabs=[
+                    {
+                        "name": "Parent",
+                        "tabs": [
+                            {
+                                "name": "Nested",
+                                "tabs": [],
+                            }
+                        ],
+                    }
                 ]
             )

@@ -15,14 +15,17 @@ from django.db.models import Q
 from bloomerp.models.definition import (
     ApiSettings,
     BloomerpModelConfig,
+    DetailTab,
+    DetailTabFolder,
     UserAccessRule,
+    get_model_config,
+    validate_detail_tab_url,
 )
 from bloomerp.models.users.base_preference import BasePreference
 from bloomerp.router import router
 
 
 PK_ROUTE_ARGUMENT = re.compile(r"<(?:[^:>]+:)?pk>")
-TEMPLATE_ARGUMENT = re.compile(r"{{\s*([^{}]+?)\s*}}")
 MAX_TAB_ITEMS = 250
 RELATIONSHIPS_FOLDER_NAME = "Relationships"
 
@@ -150,29 +153,10 @@ class UserDetailViewTabsPreference(BasePreference):
     @staticmethod
     def validate_tab_url(url: str) -> str:
         """Validate a root-relative or HTTP(S) URL using only ``{{pk}}``."""
-        normalized = url.strip()
-        if not normalized:
-            raise ValidationError("URL is required.")
-
-        arguments = {
-            argument.strip()
-            for argument in TEMPLATE_ARGUMENT.findall(normalized)
-        }
-        if arguments - {"pk"}:
-            raise ValidationError("Only the {{pk}} placeholder is supported.")
-
-        parsed = urlsplit(normalized)
-        is_internal = (
-            not parsed.scheme
-            and not parsed.netloc
-            and normalized.startswith("/")
-        )
-        is_external = parsed.scheme in {"http", "https"} and bool(parsed.netloc)
-        if not is_internal and not is_external:
-            raise ValidationError(
-                "Enter an internal URL beginning with / or a complete http(s) URL."
-            )
-        return normalized
+        try:
+            return validate_detail_tab_url(url)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
 
     @staticmethod
     def resolve_tab_url(url: str, object_pk: Any) -> str:
@@ -181,7 +165,19 @@ class UserDetailViewTabsPreference(BasePreference):
 
     def create_default_items(self) -> None:
         """Populate default routes and group relationship routes in one folder."""
-        options = self.get_detail_route_options(self.content_type.model_class())
+        model = self.content_type.model_class()
+        model_config = get_model_config(model) if model is not None else None
+        detail_view_settings = (
+            model_config.detail_view_settings if model_config is not None else None
+        )
+        if (
+            detail_view_settings is not None
+            and detail_view_settings.default_tabs is not None
+        ):
+            self.create_configured_default_items(detail_view_settings.default_tabs)
+            return
+
+        options = self.get_detail_route_options(model)
         relationship_options = [
             option for option in options if option["is_relationship"]
         ]
@@ -223,6 +219,41 @@ class UserDetailViewTabsPreference(BasePreference):
                     preference=self,
                     name=option["name"],
                     url=option["url"],
+                    position=position,
+                )
+
+    def create_configured_default_items(
+        self,
+        default_tabs: list[DetailTab | DetailTabFolder],
+    ) -> None:
+        """Materialize the model's declarative default tab layout."""
+        with transaction.atomic():
+            for position, item in enumerate(default_tabs):
+                if isinstance(item, DetailTabFolder):
+                    folder = UserDetailViewTabItem.objects.create(
+                        preference=self,
+                        name=item.name,
+                        url=None,
+                        position=position,
+                    )
+                    UserDetailViewTabItem.objects.bulk_create(
+                        [
+                            UserDetailViewTabItem(
+                                preference=self,
+                                parent=folder,
+                                name=tab.name,
+                                url=tab.url,
+                                position=child_position,
+                            )
+                            for child_position, tab in enumerate(item.tabs)
+                        ]
+                    )
+                    continue
+
+                UserDetailViewTabItem.objects.create(
+                    preference=self,
+                    name=item.name,
+                    url=item.url,
                     position=position,
                 )
 

@@ -1,5 +1,6 @@
 import json
 import uuid
+from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -7,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from bloomerp.models import Todo, User
+from bloomerp.models.definition import DetailTab, DetailTabFolder, DetailViewSettings
 from bloomerp.models.users.user_detail_view_tabs_preference import (
     UserDetailViewTabItem,
     UserDetailViewTabsPreference,
@@ -57,6 +59,89 @@ class UserDetailViewTabsPreferenceTests(TestCase):
                 list(folder.children.values_list("url", flat=True)),
                 [option["url"] for option in relationship_options],
             )
+
+    def test_model_config_default_tabs_override_router_generated_tabs(self):
+        """
+        Use case: A model declares a custom default detail-tab layout.
+        Expected result: The preference materializes only that ordered tab and folder tree.
+        """
+        # 1. Configure a custom top-level layout for the Todo model.
+        detail_view_settings = DetailViewSettings(
+            default_tabs=[
+                DetailTab(name="Summary", url="/todos/{{pk}}/summary/"),
+                DetailTabFolder(
+                    name="Related work",
+                    tabs=[
+                        DetailTab(
+                            name="Initiative",
+                            url="/todos/{{pk}}/initiative/",
+                        ),
+                        DetailTab(
+                            name="Dependencies",
+                            url="/todos/{{pk}}/dependencies/",
+                        ),
+                    ],
+                ),
+                DetailTab(name="Documentation", url="https://docs.example.com/"),
+            ]
+        )
+
+        # 2. Create the default preference while that model configuration is active.
+        with patch.object(
+            Todo.bloomerp_config,
+            "detail_view_settings",
+            detail_view_settings,
+        ):
+            preference = UserDetailViewTabsPreference.create_default_for_user(
+                self.owner,
+                content_type_id=self.content_type.pk,
+            )
+
+        # 3. Confirm exact top-level order and folder membership were materialized.
+        top_level = list(
+            preference.items.filter(parent=None).order_by("position", "id")
+        )
+        self.assertEqual(
+            [(item.name, item.url, item.position) for item in top_level],
+            [
+                ("Summary", "/todos/{{pk}}/summary/", 0),
+                ("Related work", None, 1),
+                ("Documentation", "https://docs.example.com/", 2),
+            ],
+        )
+        self.assertEqual(
+            list(
+                top_level[1].children.order_by("position", "id").values_list(
+                    "name",
+                    "url",
+                    "position",
+                )
+            ),
+            [
+                ("Initiative", "/todos/{{pk}}/initiative/", 0),
+                ("Dependencies", "/todos/{{pk}}/dependencies/", 1),
+            ],
+        )
+        self.assertEqual(preference.items.count(), 5)
+
+    def test_explicit_empty_model_config_default_tabs_create_no_items(self):
+        """
+        Use case: A model explicitly declares an empty default tab layout.
+        Expected result: Router-derived tabs are suppressed and no items are created.
+        """
+        # 1. Configure an explicit empty override and create the preference.
+        with patch.object(
+            Todo.bloomerp_config,
+            "detail_view_settings",
+            DetailViewSettings(default_tabs=[]),
+        ):
+            preference = UserDetailViewTabsPreference.create_default_for_user(
+                self.owner,
+                content_type_id=self.content_type.pk,
+            )
+
+        # 2. Confirm the empty override did not fall back to router defaults.
+        self.assertFalse(preference.items.exists())
 
     def test_preference_api_is_owner_scoped_and_items_are_not_exposed(self):
         """

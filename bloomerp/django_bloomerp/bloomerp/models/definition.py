@@ -1,12 +1,14 @@
 import json
 import inspect
+import re
 from typing import Any, Callable, Literal, Optional, Type
+from urllib.parse import urlsplit
 
 from django.http import HttpRequest, HttpResponse
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.field_types.lookups import Lookup
 from bloomerp.workspaces.base import BaseTileConfig
-from pydantic import BaseModel, Field, SerializeAsAny, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, field_validator
 from django.conf import settings
 from django.db.models import Model
 
@@ -56,6 +58,75 @@ class FieldLayout(BaseLayout):
 
 class WorkspaceLayout(BaseLayout):
     pass
+
+
+DETAIL_TAB_TEMPLATE_ARGUMENT = re.compile(r"{{\s*([^{}]+?)\s*}}")
+
+
+def validate_detail_tab_url(url: str) -> str:
+    """Validate and normalize a declarative detail-tab URL template."""
+    normalized = url.strip()
+    if not normalized:
+        raise ValueError("URL is required.")
+
+    arguments = {
+        argument.strip()
+        for argument in DETAIL_TAB_TEMPLATE_ARGUMENT.findall(normalized)
+    }
+    if arguments - {"pk"}:
+        raise ValueError("Only the {{pk}} placeholder is supported.")
+
+    parsed = urlsplit(normalized)
+    is_internal = (
+        not parsed.scheme
+        and not parsed.netloc
+        and normalized.startswith("/")
+    )
+    is_external = parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+    if not is_internal and not is_external:
+        raise ValueError(
+            "Enter an internal URL beginning with / or a complete http(s) URL."
+        )
+    return normalized
+
+
+class DetailTab(BaseModel):
+    """A declarative tab shown on a model's detail view."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    url: str = Field(min_length=1, max_length=2048)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Name is required.")
+        return normalized
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        return validate_detail_tab_url(value)
+
+
+class DetailTabFolder(BaseModel):
+    """A top-level folder containing declarative detail tabs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    tabs: list[DetailTab] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Name is required.")
+        return normalized
 
 
 def validate_declarative_tile_configs(
@@ -340,10 +411,14 @@ class ModelViewSettings(BaseModel):
     skip_views : Optional[list[str]] = None
 
 class DetailViewSettings(BaseModel):
+    """Settings regarding detail views for a model.
+
+    ``default_tabs=None`` retains router-derived defaults, while an explicit
+    list (including an empty list) replaces those defaults for new users.
     """
-    Settings regarding detail views for certain models
-    """
+
     skip_views : Optional[list[str]] = None
+    default_tabs: list[DetailTab | DetailTabFolder] | None = None
     
 class BloomerpModelConfig(BaseModel):
     """
