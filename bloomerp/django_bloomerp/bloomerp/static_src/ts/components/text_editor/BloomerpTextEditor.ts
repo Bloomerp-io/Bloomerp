@@ -114,6 +114,9 @@ export class BloomerpTextEditor extends BaseWidget {
                 list: {
                     ul: !this.overrideDefaultStyling ? 'list-disc list-inside pl-4' : '',
                     ol: !this.overrideDefaultStyling ? 'list-decimal list-inside pl-4' : '',
+                    nested: {
+                        listitem: 'list-none',
+                    },
                 },
                 table: !this.overrideDefaultStyling ? 'my-3 w-full table-fixed border-collapse overflow-hidden rounded-lg border border-gray-200 text-left' : '',
                 tableRow: !this.overrideDefaultStyling ? 'border-b border-gray-200 last:border-b-0' : '',
