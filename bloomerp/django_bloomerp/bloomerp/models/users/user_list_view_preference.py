@@ -1,13 +1,23 @@
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q, QuerySet
 
 from bloomerp.dataviews.base import BaseDataviewRenderer
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import (
+    BaseDataView,
+    CalendarDataView,
+    CardDataView,
+    GanttDataView,
+    KanbanDataView,
+    PivotTableDataView,
+    TableDataView,
+    get_model_config,
+)
 from bloomerp.models.users.base_view_preference import BaseViewPreference
 from bloomerp.dataviews.calendar import CalendarDataviewRenderer
 from bloomerp.dataviews.card import CardDataviewRenderer
@@ -19,6 +29,9 @@ from pydantic import BaseModel, create_model, model_validator
 from dataclasses import dataclass, field
 from django import forms
 from pydantic import Field as PydanticField
+
+if TYPE_CHECKING:
+    from bloomerp.models.users.user import AbstractBloomerpUser
 
 class PageSize(models.IntegerChoices):
     SIZE_10 = 10, _('10')
@@ -663,10 +676,240 @@ class UserListViewPreference(BaseViewPreference):
         Expected scope: ``content_type_id``.
         """
         content_type = ContentType.objects.get(pk=scope["content_type_id"])
+        model = content_type.model_class()
+        config = get_model_config(model) if model is not None else None
+        default_dataviews = (
+            config.model_view_settings.default_dataviews
+            if config is not None and config.model_view_settings is not None
+            else []
+        )
+
+        if default_dataviews:
+            return cls._create_configured_defaults(
+                user=user,
+                content_type=content_type,
+                default_dataviews=default_dataviews,
+            )
+
         return cls.objects.create(
             user=user,
             content_type=content_type,
         )
+
+    @classmethod
+    def _create_configured_defaults(
+        cls,
+        *,
+        user: "AbstractBloomerpUser",
+        content_type: ContentType,
+        default_dataviews: list[BaseDataView],
+    ) -> "UserListViewPreference":
+        """Materialize all configured data views and return the selected one."""
+        from bloomerp.services.permission_services import (
+            UserPermissionManager,
+            create_permission_str,
+        )
+
+        model = content_type.model_class()
+        application_fields = list(
+            ApplicationField.objects.filter(content_type=content_type)
+        )
+        fields_by_name = {
+            application_field.field: application_field
+            for application_field in application_fields
+        }
+        accessible_field_ids = set(
+            UserPermissionManager(user).get_accessible_fields(
+                content_type,
+                create_permission_str(model, "view"),
+            ).values_list("id", flat=True)
+        )
+
+        selected_preference: UserListViewPreference | None = None
+        with transaction.atomic():
+            for data_view in default_dataviews:
+                display_fields = get_default_display_fields()
+                display_fields[data_view.view_type] = cls._resolve_field_ids(
+                    data_view.display_fields,
+                    fields_by_name=fields_by_name,
+                    accessible_field_ids=accessible_field_ids,
+                )
+                options = {
+                    data_view.view_type: cls._resolve_data_view_options(
+                        data_view,
+                        fields_by_name=fields_by_name,
+                        accessible_field_ids=accessible_field_ids,
+                    )
+                }
+                default_filters = cls._resolve_default_filters(
+                    data_view.default_filters,
+                    fields_by_name=fields_by_name,
+                    accessible_field_ids=accessible_field_ids,
+                )
+
+                preference = cls.objects.create(
+                    user=user,
+                    content_type=content_type,
+                    name=data_view.name,
+                    selected=data_view.is_default,
+                    view_type=data_view.view_type,
+                    split_view_enabled=data_view.split_view_enabled,
+                    display_fields=display_fields,
+                    options=options,
+                    default_filters=default_filters,
+                )
+                if data_view.is_default:
+                    selected_preference = preference
+
+        if selected_preference is None:
+            raise ValueError("Configured data views must define one default.")
+        return selected_preference
+
+    @staticmethod
+    def _resolve_field(
+        field_name: str | None,
+        *,
+        fields_by_name: dict[str, ApplicationField],
+        accessible_field_ids: set[int],
+    ) -> ApplicationField | None:
+        """Resolve a declared field name without granting inaccessible fields."""
+        if field_name is None:
+            return None
+
+        normalized_name = field_name.strip()
+        application_field = fields_by_name.get(normalized_name)
+        if application_field is None:
+            raise ValueError(f"Unknown data view field '{normalized_name}'.")
+        if application_field.id not in accessible_field_ids:
+            return None
+        return application_field
+
+    @classmethod
+    def _resolve_field_ids(
+        cls,
+        field_names: list[str],
+        *,
+        fields_by_name: dict[str, ApplicationField],
+        accessible_field_ids: set[int],
+    ) -> list[int]:
+        """Resolve declared field names to accessible ApplicationField IDs."""
+        resolved_ids: list[int] = []
+        for field_name in field_names:
+            application_field = cls._resolve_field(
+                field_name,
+                fields_by_name=fields_by_name,
+                accessible_field_ids=accessible_field_ids,
+            )
+            if application_field is not None:
+                resolved_ids.append(application_field.id)
+        return resolved_ids
+
+    @classmethod
+    def _resolve_data_view_options(
+        cls,
+        data_view: BaseDataView,
+        *,
+        fields_by_name: dict[str, ApplicationField],
+        accessible_field_ids: set[int],
+    ) -> dict[str, Any]:
+        """Translate developer-facing field names to persisted view options."""
+        def field_id(field_name: str | None) -> int | None:
+            application_field = cls._resolve_field(
+                field_name,
+                fields_by_name=fields_by_name,
+                accessible_field_ids=accessible_field_ids,
+            )
+            return application_field.id if application_field is not None else None
+
+        def field_name(field: str | None) -> str | None:
+            application_field = cls._resolve_field(
+                field,
+                fields_by_name=fields_by_name,
+                accessible_field_ids=accessible_field_ids,
+            )
+            return application_field.field if application_field is not None else None
+
+        if isinstance(data_view, TableDataView):
+            return {
+                "page_size": data_view.page_size,
+                "sort_field": field_name(data_view.sort_field),
+                "sort_direction": data_view.sort_direction,
+            }
+        if isinstance(data_view, KanbanDataView):
+            return {
+                "group_by_field_id": field_id(data_view.group_by_field),
+                "page_size": data_view.page_size,
+                "sort_field": field_name(data_view.sort_field),
+                "sort_direction": data_view.sort_direction,
+            }
+        if isinstance(data_view, CardDataView):
+            return {"page_size": data_view.page_size}
+        if isinstance(data_view, CalendarDataView):
+            return {
+                "start_field_id": field_id(data_view.start_field),
+                "end_field_id": field_id(data_view.end_field),
+                "view_mode": data_view.view_mode,
+                "color_grouping_field_id": field_id(
+                    data_view.color_grouping_field
+                ),
+            }
+        if isinstance(data_view, GanttDataView):
+            return {
+                "start_field_id": field_id(data_view.start_field),
+                "end_field_id": field_id(data_view.end_field),
+                "dependency_from_field_id": field_id(
+                    data_view.dependency_from_field
+                ),
+                "dependency_for_field_id": field_id(
+                    data_view.dependency_for_field
+                ),
+                "page_size": data_view.page_size,
+            }
+        if isinstance(data_view, PivotTableDataView):
+            return {
+                "row_field_ids": cls._resolve_field_ids(
+                    data_view.row_fields,
+                    fields_by_name=fields_by_name,
+                    accessible_field_ids=accessible_field_ids,
+                ),
+                "column_field_ids": cls._resolve_field_ids(
+                    data_view.column_fields,
+                    fields_by_name=fields_by_name,
+                    accessible_field_ids=accessible_field_ids,
+                ),
+                "value_field_ids": cls._resolve_field_ids(
+                    data_view.value_fields,
+                    fields_by_name=fields_by_name,
+                    accessible_field_ids=accessible_field_ids,
+                ),
+                "aggregation": data_view.aggregation,
+                "show_row_totals": data_view.show_row_totals,
+                "show_column_totals": data_view.show_column_totals,
+                "totals_scope": data_view.totals_scope,
+                "page_size": data_view.page_size,
+            }
+        raise ValueError(f"Unsupported default data view '{data_view.view_type}'.")
+
+    @classmethod
+    def _resolve_default_filters(
+        cls,
+        default_filters: dict[str, str | list[str]],
+        *,
+        fields_by_name: dict[str, ApplicationField],
+        accessible_field_ids: set[int],
+    ) -> dict[str, str | list[str]]:
+        """Keep configured filters only when their root field is accessible."""
+        resolved_filters: dict[str, str | list[str]] = {}
+        for filter_key, value in default_filters.items():
+            root_field_name = filter_key.split("__", 1)[0]
+            application_field = cls._resolve_field(
+                root_field_name,
+                fields_by_name=fields_by_name,
+                accessible_field_ids=accessible_field_ids,
+            )
+            if application_field is not None:
+                resolved_filters[filter_key] = value
+        return resolved_filters
 
     @classmethod
     def copy_preference_for_user(

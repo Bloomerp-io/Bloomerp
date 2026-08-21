@@ -11,7 +11,14 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import ValidationError
 
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import BloomerpModelConfig, ObjectAction, ObjectHTML
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    KanbanDataView,
+    ModelViewSettings,
+    ObjectAction,
+    ObjectHTML,
+    TableDataView,
+)
 from bloomerp.utils.models import get_list_view_url
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileFilter, FieldConfig
 from bloomerp.permissions.definition import BloomerpPermission
@@ -121,6 +128,35 @@ class Todo(BloomerpModel):
             ]
         ),
         string_search_fields=["title", "content"],
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                KanbanDataView(
+                    name="Todo workflow",
+                    display_fields=[
+                        "title",
+                        "priority",
+                        "effort",
+                        "assigned_to",
+                        "required_by",
+                    ],
+                    group_by_field="status",
+                    sort_field="priority",
+                ),
+                TableDataView(
+                    name="All todos",
+                    is_default=False,
+                    display_fields=[
+                        "title",
+                        "status",
+                        "priority",
+                        "assigned_to",
+                        "initiative",
+                        "required_by",
+                    ],
+                    sort_field="required_by",
+                ),
+            ]
+        ),
         object_actions=[
             ObjectHTML(
                 template_name="models/todo/copy_git_branch_name.html"

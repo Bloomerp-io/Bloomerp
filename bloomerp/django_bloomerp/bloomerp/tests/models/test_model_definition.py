@@ -1,7 +1,13 @@
 from django.test import SimpleTestCase
 from pydantic import ValidationError
 
-from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    KanbanDataView,
+    ModelViewSettings,
+    TableDataView,
+)
+from bloomerp.models.project_management.todo import Todo
 from bloomerp.workspaces.text_tile.model import TextTileConfig
 
 
@@ -64,3 +70,73 @@ class BloomerpModelConfigTileTests(SimpleTestCase):
                     TextTileConfig(id="summary", markdown="Second"),
                 ]
             )
+
+
+class BloomerpModelConfigDataViewTests(SimpleTestCase):
+    def test_model_view_settings_accept_multiple_typed_default_dataviews(self):
+        """
+        Use case: A model declares multiple developer-friendly default data views.
+        Expected result: Pydantic retains each concrete setup and its field names.
+        """
+        # 1. Define a selected Kanban view and an optional table view.
+        settings = ModelViewSettings(
+            default_dataviews=[
+                KanbanDataView(
+                    name="Workflow",
+                    display_fields=["title", "priority"],
+                    group_by_field="status",
+                ),
+                TableDataView(
+                    name="All records",
+                    is_default=False,
+                    display_fields=["title", "status"],
+                    sort_field="title",
+                ),
+            ]
+        )
+
+        # 2. Verify the concrete types and declarative field names are retained.
+        self.assertIsInstance(settings.default_dataviews[0], KanbanDataView)
+        self.assertEqual(settings.default_dataviews[0].group_by_field, "status")
+        self.assertIsInstance(settings.default_dataviews[1], TableDataView)
+        self.assertEqual(settings.default_dataviews[1].sort_field, "title")
+
+    def test_model_view_settings_require_one_unique_default_dataview(self):
+        """
+        Use case: A developer misconfigures multiple model data views.
+        Expected result: Duplicate names and ambiguous selections fail validation.
+        """
+        # 1. Verify multiple selected defaults are rejected.
+        with self.assertRaisesRegex(ValidationError, "Exactly one configured"):
+            ModelViewSettings(
+                default_dataviews=[
+                    KanbanDataView(name="Workflow"),
+                    TableDataView(name="All records"),
+                ]
+            )
+
+        # 2. Verify duplicate preference names are rejected.
+        with self.assertRaisesRegex(ValidationError, "names must be unique"):
+            ModelViewSettings(
+                default_dataviews=[
+                    KanbanDataView(name="Workflow"),
+                    TableDataView(name="Workflow", is_default=False),
+                ]
+            )
+
+    def test_todo_model_demonstrates_kanban_and_table_defaults(self):
+        """
+        Use case: A developer needs a concrete example of the new capability.
+        Expected result: Todo declares a Kanban workflow and a secondary table view.
+        """
+        # 1. Read the Todo model's configured data views.
+        data_views = Todo.bloomerp_config.model_view_settings.default_dataviews
+
+        # 2. Verify the Kanban setup is selected and grouped by status.
+        self.assertEqual(data_views[0].name, "Todo workflow")
+        self.assertTrue(data_views[0].is_default)
+        self.assertEqual(data_views[0].group_by_field, "status")
+
+        # 3. Verify the table remains available as an alternative setup.
+        self.assertEqual(data_views[1].name, "All todos")
+        self.assertFalse(data_views[1].is_default)
