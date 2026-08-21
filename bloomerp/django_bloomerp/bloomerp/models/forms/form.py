@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.base_bloomerp_model import BloomerpModel, FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import BloomerpModelConfig, ObjectHTML, DetailViewSettings
+from bloomerp.models.definition import BloomerpModelConfig, ObjectHTMLAction, DetailViewSettings
 from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
 from django.utils.translation import gettext_lazy as _, gettext_noop
 from bloomerp.services.sectioned_layout_services import create_default_layout
@@ -51,10 +51,10 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
             ]
         ),
         object_actions=[
-            ObjectHTML(
+            ObjectHTMLAction(
                 template_name="models/forms/links_btn.html"
             ),
-            ObjectHTML(
+            ObjectHTMLAction(
                 template_name="models/forms/public_embed_btn.html",
                 should_render_func=lambda request, obj: obj.public_embed_enabled,
             ),

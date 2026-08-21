@@ -1,0 +1,34 @@
+<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+    <c-ui.shortcut_tooltip
+        position="bottom"
+        action="click"
+        shortcut="{{ action.shortcut }}"
+        focus_target="select"
+    >
+        <c-ui.dropdown.body
+            trigger_text="Filter"
+            trigger_icon_class="fa fa-filter"
+            trigger_button_class="btn-secondary"
+            trigger_class="w-full justify-center gap-2"
+            wrapper_class="w-full"
+            size="sm"
+            width="w-128"
+            fixed=True
+            menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
+        >
+            <div class="p-3">
+                <div>
+                    <div class="mb-2">
+                        <c-ui.text.subtitle class="mb-2">Filter</c-ui.text.subtitle>
+                        <div id="filter-section-{{ content_type_id }}">
+                            {{ filter_section|safe }}
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" id="apply-filters-button">
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+        </c-ui.dropdown.body>
+    </c-ui.shortcut_tooltip>
+</div>

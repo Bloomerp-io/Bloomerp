@@ -1,0 +1,12 @@
+{% load i18n %}
+
+<button
+    type="button"
+    class="btn btn-sm btn-{{ action.style }} w-full justify-center sm:w-auto"
+    hx-post="{{ execution_url }}"
+    hx-target="#data-view-data-section"
+    hx-swap="innerHTML"
+>
+    {% if action.icon %}<i class="{{ action.icon }}"></i>{% endif %}
+    <span>{% translate action.label %}</span>
+</button>

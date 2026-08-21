@@ -1,0 +1,23 @@
+<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+    <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
+        <c-ui.dropdown.body
+            trigger_text="Bulk Actions"
+            trigger_icon_class="fa fa-list-check"
+            trigger_button_class="btn-secondary"
+            trigger_class="w-full justify-center gap-2"
+            wrapper_class="w-full"
+            size="sm"
+        >
+            <c-ui.dropdown.item
+                text="Use current selection"
+                id="bulk-actions-selection-btn"
+                icon="fa fa-list-check"
+            />
+            <c-ui.dropdown.item
+                text="Select all filtered"
+                id="bulk-actions-all-btn"
+                icon="fa fa-filter"
+            />
+        </c-ui.dropdown.body>
+    </c-ui.shortcut_tooltip>
+</div>

@@ -1,0 +1,11 @@
+{% load i18n %}
+
+<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+    {% if action.shortcut %}
+        <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
+            {% include "components/objects/dataview_actions/modal_action_button.html" %}
+        </c-ui.shortcut_tooltip>
+    {% else %}
+        {% include "components/objects/dataview_actions/modal_action_button.html" %}
+    {% endif %}
+</div>

@@ -5,7 +5,7 @@ from django import template
 from django.conf import settings
 from django.db.models import Model
 from django.http import HttpRequest
-from bloomerp.models.definition import ObjectAction, ObjectHTML, ObjectModalAction
+from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, ObjectModalAction
 from bloomerp.models.users.base_preference import BasePreference
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_initials, get_detail_view_url, get_delete_view_url
@@ -480,7 +480,7 @@ def parse_icon_value(value):
 
 @register.simple_tag
 def should_render_action(
-    action:ObjectAction|ObjectHTML,
+    action:ObjectAction|ObjectHTMLAction,
     object:Model,
     request:HttpRequest,
 ) -> bool:
@@ -502,7 +502,7 @@ def should_render_action(
 
 @register.simple_tag
 def render_object_action(
-    action:ObjectAction|ObjectHTML,
+    action:ObjectAction|ObjectHTMLAction,
     object:Model,
     request:HttpRequest,
     content_type_id:int|None=None,
@@ -510,7 +510,7 @@ def render_object_action(
     if not should_render_action(action, object, request):
         return ""
 
-    if isinstance(action, ObjectHTML):
+    if isinstance(action, ObjectHTMLAction):
         return mark_safe(
             render_to_string(
                 action.template_name,

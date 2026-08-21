@@ -8,7 +8,7 @@
     data-content-type-id="{{ content_type_id }}"
     data-render-id="{{ render_id }}"
     data-url="{{ data_view_url }}"
-    data-base-url="{{ data_view_base_url }}"
+    data-base-url="{{ dataview_base_url }}"
     data-full-create-url="{{ full_create_url|default:'' }}"
     data-sync-url="{{ sync_url|yesno:'true,false' }}"
     data-preference-id="{{ preference.pk }}"
@@ -55,164 +55,16 @@
         </div>
 
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
-            <!--Filter-->
-            <div class="w-full sm:w-auto" data-data-view-button="filter">
-                <c-ui.shortcut_tooltip 
-                    position="bottom" 
-                    shortcut="mod+1"
-                    focus_target="select"
-                    >
-                    <c-ui.dropdown.body 
-                        trigger_text="Filter"
-                        trigger_icon_class="fa fa-filter"
-                        trigger_button_class="btn-secondary"
-                        trigger_class="w-full justify-center gap-2"
-                        wrapper_class="w-full"
-                        size="sm"
-                        width="w-128"
-                        fixed=True
-                        menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
-                        >
-                        <div class="p-3">
-                            <div>
-                                <div class="mb-2">
-                                    <c-ui.text.subtitle class="mb-2">
-                                        Filter
-                                    </c-ui.text.subtitle>
-                                    
-                                    <div id="filter-section-{{ content_type_id }}">
-                                        {{ filter_section | safe }}
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-primary btn-sm" id="apply-filters-button">
-                                    Apply Filters
-                                </button>
-                            </div>
-                        </div>
-                    </c-ui.dropdown.body>
-                </c-ui.shortcut_tooltip>
-            </div>
-
-            <!--Add button-->
-            <div class="w-full sm:w-auto" data-data-view-button="add">
-                <c-ui.shortcut_tooltip 
-                    position="bottom"
-                    action="click"
-                    shortcut="mod+2"
-                    >
-                    <button 
-                        class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
-                        data-dataview-add-button="true"
-                        data-dataview-create-button="true"
-                        data-modal-id="create-object-modal"
-                        data-create-url="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
-                        data-target="#create-object-modal-body"
-                    >
-                        <i class="fa fa-plus"></i>
-                        <span>Add</span>
-                    </button>
-                </c-ui.shortcut_tooltip>
-            </div>
-
-            <!--Bulk actions button-->
-            <div class="w-full sm:w-auto" data-data-view-button="bulk-actions">
-                <c-ui.shortcut_tooltip position="bottom" shortcut="mod+3">
-                    <c-ui.dropdown.body 
-                        trigger_text="Bulk Actions"
-                        trigger_icon_class="fa fa-list-check"
-                        trigger_button_class="btn-secondary"
-                        trigger_class="w-full justify-center gap-2"
-                        wrapper_class="w-full"
-                        size="sm"
-                        >
-                        <c-ui.dropdown.item 
-                            text="Use current selection"
-                            id="bulk-actions-selection-btn"
-                            icon="fa fa-list-check"
-                            />
-                        <c-ui.dropdown.item 
-                            text="Select all filtered" 
-                            id="bulk-actions-all-btn"
-                            icon="fa fa-filter"
-                            />
-                    </c-ui.dropdown.body>
-                </c-ui.shortcut_tooltip>
-            </div>
-
-            <!--Export button-->
-            <div class="w-full sm:w-auto" data-data-view-button="export">
-                <c-ui.shortcut_tooltip 
-                    position="bottom"  
-                    shortcut="mod+4">
-                    <button 
-                        class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
-                        data-dataview-add-button="true"
-                        hx-push-url="false"
-                        bloomerp-open-modal="export-objects-modal"
-                        hx-get="{% url 'components_export_objects' content_type_id=content_type_id %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
-                        hx-target="#export-objects-modal-body"
-                        hx-swap="innerHTML"
-                    >
-                        <i class="fa-solid fa-download"></i>
-                        Export
-                    </button>
-                </c-ui.shortcut_tooltip>
-            </div>
-            
-
-            <!--Display options-->
-            {% can_manage_preference_object request.user preference as can_manage %}
-            {% if can_manage %}
-            <div class="w-full sm:w-auto" data-data-view-button="display-options">
-                <c-ui.shortcut_tooltip 
-                    position="bottom" 
-                    shortcut="mod+5">
-                    <c-ui.dropdown.body 
-                        trigger_text="Display"
-                        trigger_icon_class="fa fa-sliders"
-                        trigger_button_class="btn-secondary"
-                        trigger_class="w-full justify-center gap-2"
-                        wrapper_class="w-full"
-                        size="sm"
-                        width="w-80"
-                        fixed=True
-                        menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
-                        >
-                    
-                    <div class="p-2" id="data-table-display-options-{{ content_type_id }}">
-                        <c-features.dataviews.display_options 
-                            :content_type_id="content_type_id"
-                            :view_types="view_types"
-                            :preference="preference"
-                            :fields="fields"
-                            :accessible_fields="accessible_fields"
-                            :csrf_token="csrf_token"
-                        />
-                    </div>
-                    
-                    </c-ui.dropdown.body>
-                </c-ui.shortcut_tooltip>
-            </div>
-            {% endif %}
-            
-            <!--Select-->
-            <div class="w-full sm:w-auto" data-data-view-button="select-preference">
-                <c-ui.shortcut_tooltip position="bottom" shortcut="mod+6">
-                    <c-features.preferences.select_preference_button
-                        model="UserListViewPreference"
-                        :args="{
-                            'content_type_id': '{{ content_type_id }}',
-                        }"
-                        selected_preference_name="{{ preference.name }}"
-                    />
-                </c-ui.shortcut_tooltip>
-            </div>
+            {% for rendered_action in rendered_dataview_actions %}
+                {{ rendered_action|safe }}
+            {% endfor %}
         </div>
     </div>
 {% endif %}
 
     <!--Table section-->
     <div id="data-view-data-section" class="h-full">
+        {{ before_data_view|safe }}
         {% if preference.split_view_enabled %}
         <div class="flex h-[calc(100vh-200px)] w-full min-w-0 overflow-hidden rounded-xl" data-split-view-container>
             <div class="flex-none w-1/2 min-w-[260px] max-w-[calc(100%-260px)] resize-x overflow-auto border-r border-gray-200 pr-2" id="data-table-list-pane" data-split-view-list-pane>

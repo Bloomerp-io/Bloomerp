@@ -1,18 +1,49 @@
-from django.utils.translation import gettext_lazy as _
-from typing import Iterable
-
-from django.db import models
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
 import os
 import uuid
+from typing import Iterable
+
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import UploadedFile
+from django.db import models
+from django.http import HttpRequest, HttpResponse
+from django.urls import reverse
+from django.utils.translation import gettext_lazy as _, gettext_noop
+
 from bloomerp.models.base_bloomerp_model import BloomerpModel
+from bloomerp.models.definition import BloomerpModelConfig, ObjectAction, ObjectModalAction
 from bloomerp.models.mixins.string_search_model_mixin import StringSearchModelMixin
 from bloomerp.models.mixins.timestamp_model_mixin import TimestampModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
-from django.db.models.query import QuerySet
 from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
-from django.core.files.uploadedfile import UploadedFile
+
+
+def _can_view_file(request: HttpRequest, file: "File") -> bool:
+    from bloomerp.services.file_permission_services import user_can_view_file
+
+    return file.persisted and bool(file.file) and user_can_view_file(request, file)
+
+
+def _view_file(request: HttpRequest, file: "File") -> HttpResponse:
+    """Redirect an HTMX object action to the stored file URL."""
+    if not _can_view_file(request, file):
+        return HttpResponse(status=403)
+    response = HttpResponse(status=204)
+    response["HX-Redirect"] = file.url
+    return response
+
+
+def _can_manage_file(request: HttpRequest, file: "File") -> bool:
+    from bloomerp.services.file_permission_services import user_can_mutate_file
+
+    return file.persisted and user_can_mutate_file(request, file, ("change", "add"))
+
+
+def _can_delete_file(request: HttpRequest, file: "File") -> bool:
+    from bloomerp.services.file_permission_services import user_can_mutate_file
+
+    return file.persisted and user_can_mutate_file(request, file, ("delete",))
+
 
 class File(
     TimestampModelMixin,
@@ -26,35 +57,100 @@ class File(
         managed = True
         db_table = "bloomerp_file"
 
+    bloomerp_config = BloomerpModelConfig(
+        string_search_fields=["name"],
+        object_actions=[
+            ObjectAction(
+                id="view_file",
+                label=gettext_noop("View"),
+                execution_func=_view_file,
+                should_render_func=_can_view_file,
+            ),
+            ObjectModalAction(
+                id="rename_file",
+                label=gettext_noop("Rename"),
+                endpoint=lambda file: reverse(
+                    "components_files_rename",
+                    kwargs={"file_id": file.pk},
+                ),
+                should_render_func=_can_manage_file,
+                modal_title=gettext_noop("Rename file"),
+            ),
+            ObjectModalAction(
+                id="move_file",
+                label=gettext_noop("Move"),
+                endpoint=lambda file: reverse(
+                    "components_files_move",
+                    kwargs={"file_id": file.pk},
+                ),
+                should_render_func=_can_manage_file,
+                modal_title=gettext_noop("Move file"),
+            ),
+            ObjectModalAction(
+                id="delete_file",
+                label=gettext_noop("Delete"),
+                endpoint=lambda file: reverse(
+                    "components_files_delete",
+                    kwargs={"file_id": file.pk},
+                ),
+                should_render_func=_can_delete_file,
+                modal_title=gettext_noop("Delete file"),
+            ),
+        ],
+    )
 
-    def upload_to(self, filename):
-        '''Returns the upload path for the file'''
+    def upload_to(self, filename: str) -> str:
+        """Return the upload path for the file."""
         # TODO: Can fetch this from settings in the future
-        ROOT = 'bloomerp'
+        root = "bloomerp"
 
         if self.content_type is None:
             # Default folder for files with no content type
-            folder = f'others'
+            folder = "others"
         else:
             # Use the content type's app_label for organization
-            folder = f'{self.content_type.app_label}'
-        
+            folder = self.content_type.app_label
+
         # Ensure unique file names
         unique_filename = f"{uuid.uuid4()}_{filename}"
-        
+
         # Return the full path
-        return f'{ROOT}/{folder}/{unique_filename}'
-    
-    # -----------------------------
-    # File Fields
-    # -----------------------------
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, verbose_name=_("ID"))
-    file = models.FileField(upload_to=upload_to, verbose_name=_("File"))
-    name = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Name"))
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, verbose_name=_("Content Type"))
-    object_id = models.CharField(max_length=36, null=True, blank=True, verbose_name=_("Object ID")) # In order to support both UUID and integer primary keys
-    content_object = GenericForeignKey("content_type", "object_id")
-    folder : "FileFolder" = models.ForeignKey(
+        return f"{root}/{folder}/{unique_filename}"
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        verbose_name=_("ID"),
+    )
+    file = models.FileField(
+        upload_to=upload_to,
+        verbose_name=_("File"),
+    )
+    name = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name=_("Name"),
+    )
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name=_("Content Type"),
+    )
+    object_id = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name=_("Object ID"),
+    )  # In order to support both UUID and integer primary keys
+    content_object = GenericForeignKey(
+        "content_type",
+        "object_id",
+    )
+    folder: "FileFolder" = models.ForeignKey(
         "bloomerp.FileFolder",
         on_delete=models.SET_NULL,
         null=True,
@@ -62,7 +158,10 @@ class File(
         related_name="files",
         verbose_name=_("Folder"),
     )
-    persisted = models.BooleanField(default=False, verbose_name=_("Persisted")) # A field to indicate if the file is temporary or persisted
+    persisted = models.BooleanField(
+        default=False,
+        verbose_name=_("Persisted"),
+    )  # A field to indicate if the file is temporary or persisted
 
     # Created/updated utils
     meta = models.JSONField(blank=True, null=True, verbose_name=_("Meta"))

@@ -1,0 +1,31 @@
+{% load bloomerp %}
+
+{% can_manage_preference_object request.user preference as can_manage %}
+{% if can_manage %}
+    <div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+        <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
+            <c-ui.dropdown.body
+                trigger_text="Display"
+                trigger_icon_class="fa fa-sliders"
+                trigger_button_class="btn-secondary"
+                trigger_class="w-full justify-center gap-2"
+                wrapper_class="w-full"
+                size="sm"
+                width="w-80"
+                fixed=True
+                menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
+            >
+                <div class="p-2" id="data-table-display-options-{{ content_type_id }}">
+                    <c-features.dataviews.display_options
+                        :content_type_id="content_type_id"
+                        :view_types="view_types"
+                        :preference="preference"
+                        :fields="fields"
+                        :accessible_fields="accessible_fields"
+                        :csrf_token="csrf_token"
+                    />
+                </div>
+            </c-ui.dropdown.body>
+        </c-ui.shortcut_tooltip>
+    </div>
+{% endif %}

@@ -1,0 +1,11 @@
+<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+    <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
+        <c-features.preferences.select_preference_button
+            model="UserListViewPreference"
+            :args="{
+                'content_type_id': '{{ content_type_id }}',
+            }"
+            selected_preference_name="{{ preference.name }}"
+        />
+    </c-ui.shortcut_tooltip>
+</div>

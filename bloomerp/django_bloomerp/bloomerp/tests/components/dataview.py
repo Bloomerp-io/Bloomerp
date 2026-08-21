@@ -3,6 +3,7 @@ import re
 from datetime import date, datetime, timedelta
 
 from django.db import models
+from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
@@ -11,10 +12,35 @@ from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import BaseBloomerpModelTestCase
 from bloomerp.models import ApplicationField, Todo
 from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DataviewAction,
+    DataviewHTMLAction,
+    DataviewModalAction,
+    ModelViewSettings,
+    get_model_config,
+)
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.components.objects.dataviews.dataview import _select_related_rendered_relations
 from bloomerp.tests.utils.dynamic_models import create_test_models
+
+
+def _execute_test_dataview_action(context) -> HttpResponse:
+    return HttpResponse(
+        f"Executed {context.model.__name__}:{context.querystring}:{context.queryset.count()}"
+    )
+
+
+def _test_dataview_modal_endpoint(context) -> str:
+    return reverse(
+        "components_dataview",
+        kwargs={"content_type_id": context.content_type.pk},
+    )
+
+
+def _deny_test_dataview_action(context) -> bool:
+    return False
 
 
 class TestDataView(BaseBloomerpModelTestCase):
@@ -22,6 +48,187 @@ class TestDataView(BaseBloomerpModelTestCase):
 
     def extendedSetup(self):
         return super().extendedSetup()    
+
+    def _set_dataview_actions(self, actions) -> None:
+        config = get_model_config(self.CustomerModel)
+        if config is not None:
+            original_settings = config.model_view_settings
+            config.model_view_settings = ModelViewSettings(dataview_actions=actions)
+            self.addCleanup(setattr, config, "model_view_settings", original_settings)
+            return
+
+        self.CustomerModel.bloomerp_config = BloomerpModelConfig(
+            model_view_settings=ModelViewSettings(dataview_actions=actions)
+        )
+        self.addCleanup(delattr, self.CustomerModel, "bloomerp_config")
+
+    def test_model_view_settings_have_independent_default_dataview_actions(self):
+        """
+        Use case: Create model-view settings without an explicit toolbar override.
+        Expected result: Each instance receives the current six actions in a new list.
+        """
+        first_settings = ModelViewSettings()
+        second_settings = ModelViewSettings()
+
+        self.assertEqual(
+            [action.id for action in first_settings.dataview_actions],
+            [
+                "filter",
+                "add",
+                "bulk-actions",
+                "export",
+                "display-options",
+                "select-preference",
+            ],
+        )
+        self.assertIsNot(
+            first_settings.dataview_actions,
+            second_settings.dataview_actions,
+        )
+
+    def test_default_dataview_actions_preserve_toolbar_and_shortcuts(self):
+        """
+        Use case: Render a model without a Dataview toolbar override.
+        Expected result: The six existing toolbar actions and shortcuts remain present.
+        """
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+
+        response = self.client.get(
+            reverse(
+                "components_dataview",
+                kwargs={"content_type_id": content_type.pk},
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        for index, action_id in enumerate(
+            (
+                "filter",
+                "add",
+                "bulk-actions",
+                "export",
+                "display-options",
+                "select-preference",
+            ),
+            start=1,
+        ):
+            self.assertContains(
+                response,
+                f'data-data-view-button="{action_id}"',
+                html=False,
+            )
+            self.assertContains(
+                response,
+                f'data-shortcut="mod+{index}"',
+                html=False,
+            )
+        self.assertNotContains(response, "should_render_func=&lt;function", html=False)
+
+    def test_dataview_actions_can_replace_default_toolbar(self):
+        """
+        Use case: Configure HTML, immediate, and modal actions for a model Dataview.
+        Expected result: Only the override renders and each action keeps its shortcut.
+        """
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        modal_url = reverse(
+            "components_dataview",
+            kwargs={"content_type_id": content_type.pk},
+        )
+        execute_url = reverse(
+            "components_dataview_configured_action",
+            kwargs={
+                "content_type_id": content_type.pk,
+                "action_id": "run-test",
+            },
+        )
+        self._set_dataview_actions(
+            [
+                DataviewHTMLAction(
+                    id="custom-export",
+                    template_name="components/objects/dataview_actions/export.html",
+                    shortcut="mod+7",
+                ),
+                DataviewAction(
+                    id="run-test",
+                    label="Run test",
+                    execution_func=_execute_test_dataview_action,
+                    shortcut="mod+8",
+                    icon="fa fa-play",
+                ),
+                DataviewModalAction(
+                    id="open-test",
+                    label="Open test",
+                    endpoint=_test_dataview_modal_endpoint,
+                    shortcut="mod+9",
+                    modal_title="Test modal",
+                ),
+            ]
+        )
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(
+            f"{modal_url}?first_name=xyz",
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertNotContains(response, 'data-data-view-button="filter"', html=False)
+        self.assertContains(response, 'data-data-view-button="custom-export"', html=False)
+        self.assertContains(response, 'data-shortcut="mod+7"', html=False)
+        self.assertContains(
+            response,
+            f'hx-post="{execute_url}?first_name=xyz"',
+            html=False,
+        )
+        self.assertContains(response, 'data-shortcut="mod+8"', html=False)
+        self.assertContains(response, f'hx-get="{modal_url}"', html=False)
+        self.assertContains(response, 'data-shortcut="mod+9"', html=False)
+        self.assertContains(response, 'bloomerp-set-modal-title-to="Test modal"', html=False)
+
+        execute_response = self.client.post(f"{execute_url}?first_name=xyz")
+        self.assertEqual(execute_response.status_code, 200)
+        self.assertEqual(
+            execute_response.content.decode("utf-8"),
+            f"Executed {self.CustomerModel.__name__}:first_name=xyz:0",
+        )
+
+    def test_dataview_action_predicate_is_enforced_during_execution(self):
+        """
+        Use case: Invoke an immediate action whose visibility predicate denies access.
+        Expected result: It is hidden in the toolbar and direct execution returns 403.
+        """
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        action_url = reverse(
+            "components_dataview_configured_action",
+            kwargs={
+                "content_type_id": content_type.pk,
+                "action_id": "denied-test",
+            },
+        )
+        self._set_dataview_actions(
+            [
+                DataviewAction(
+                    id="denied-test",
+                    label="Denied test",
+                    execution_func=_execute_test_dataview_action,
+                    should_render_func=_deny_test_dataview_action,
+                    shortcut="mod+7",
+                )
+            ]
+        )
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(
+            reverse(
+                "components_dataview",
+                kwargs={"content_type_id": content_type.pk},
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertNotContains(response, "Denied test", html=False)
+
+        execute_response = self.client.post(action_url)
+        self.assertEqual(execute_response.status_code, 403)
 
     def test_data_view_eager_loads_rendered_foreign_keys(self):
         planet = self.PlanetModel.objects.create(name="Test planet")

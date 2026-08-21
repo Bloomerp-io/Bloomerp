@@ -1,0 +1,15 @@
+{% load i18n %}
+
+<button
+    type="button"
+    class="btn btn-sm btn-{{ action.style }} w-full justify-center sm:w-auto"
+    hx-get="{{ endpoint }}"
+    hx-target="#bloomerp-general-use-modal-body"
+    bloomerp-set-modal-title-for="bloomerp-general-use-modal"
+    bloomerp-set-modal-title-to="{% translate action.modal_title %}"
+    bloomerp-set-modal-size-to="{{ action.modal_size }}"
+    bloomerp-open-modal="bloomerp-general-use-modal"
+>
+    {% if action.icon %}<i class="{{ action.icon }}"></i>{% endif %}
+    <span>{% translate action.label %}</span>
+</button>

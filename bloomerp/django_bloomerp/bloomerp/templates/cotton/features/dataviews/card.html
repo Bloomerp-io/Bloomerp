@@ -45,6 +45,13 @@ Parameters:
                     </div>
                     {% endfor %}
                 </div>
+                {% if object_actions %}
+                    <div class="mt-3 flex flex-wrap gap-1" data-no-row-click>
+                        {% for action in object_actions %}
+                            {% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>

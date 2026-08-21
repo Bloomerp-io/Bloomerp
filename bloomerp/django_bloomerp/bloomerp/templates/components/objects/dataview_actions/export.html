@@ -1,0 +1,16 @@
+<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+    <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
+        <button
+            class="btn btn-sm btn-secondary w-full justify-center sm:w-auto"
+            data-dataview-add-button="true"
+            hx-push-url="false"
+            bloomerp-open-modal="export-objects-modal"
+            hx-get="{% url 'components_export_objects' content_type_id=content_type_id %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
+            hx-target="#export-objects-modal-body"
+            hx-swap="innerHTML"
+        >
+            <i class="fa-solid fa-download"></i>
+            Export
+        </button>
+    </c-ui.shortcut_tooltip>
+</div>
