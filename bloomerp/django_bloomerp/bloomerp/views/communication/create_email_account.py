@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from django import forms
-from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
@@ -11,8 +10,9 @@ from bloomerp.communication.emails.actions import get_mailboxes_for_account
 from bloomerp.communication.utils.crypto import encrypt_email_secret
 from bloomerp.communication.emails.email_providers import EmailProvider
 from bloomerp.models.communication import EmailAccount
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardError, WizardMixin, WizardStep
 
@@ -185,10 +185,10 @@ class CreateEmailAccountView(WizardMixin, BaseBloomerpView, TemplateView):
     session_key = CREATE_EMAIL_ACCOUNT_SESSION_KEY
 
     def has_permission(self):
-        manager = UserPermissionManager(self.request.user)
+        manager = UserPolicyManager(self.request.user)
         return manager.has_global_permission(
             self.model,
-            create_permission_str(self.model, "add"),
+            BloomerpPermission.ADD
         )
 
     def normalize_step_index(self, step: int) -> int:

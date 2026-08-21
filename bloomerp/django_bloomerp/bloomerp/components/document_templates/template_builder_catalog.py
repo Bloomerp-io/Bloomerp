@@ -2,9 +2,10 @@ from django.http import HttpRequest, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django_cotton import render_component
 
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.services.document_services import FIELD_TYPE_TEMPLATE_INJECTIONS, DocumentTemplateService
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.document_templates.document_template_builder_view import (
     get_template_content_types,
 )
@@ -25,7 +26,7 @@ def document_template_builder_catalog(request: HttpRequest) -> HttpResponse:
     )
 
     # Get the permission manager
-    manager = UserPermissionManager(request.user)
+    manager = UserPolicyManager(request.user)
     service = DocumentTemplateService(document_template=None)
     variables = []
     
@@ -33,10 +34,7 @@ def document_template_builder_catalog(request: HttpRequest) -> HttpResponse:
         root_name = service.get_content_type_variable_name(content_type)
         fields = manager.get_accessible_fields(
             content_type,
-            create_permission_str(
-                content_type.model_class(),
-                "view"
-            )
+            BloomerpPermission.VIEW
         )
         
         for field in fields:

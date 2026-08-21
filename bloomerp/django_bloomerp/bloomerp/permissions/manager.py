@@ -322,6 +322,43 @@ class UserPolicyManager:
             match,
         ).filter(pk=field.pk).exists()
 
+    def get_accessible_content_types(
+        self,
+        permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission,
+        match: PermissionMatch = PermissionMatch.ANY,
+    ) -> QuerySet[ContentType]:
+        """Returns a queryset of content types for which the user has access.
+
+        Args:
+            permissions (list[str] | list[BloomerpPermission] | str | BloomerpPermission): the permissions
+            match (PermissionMatch, optional): Whether to resolve for all or any permission. Defaults to PermissionMatch.ANY.
+        Returns:
+            QuerySet[ContentType]: queryset of content types
+        """
+        if getattr(self.user, "is_superuser", False):
+            return ContentType.objects.all()
+        if self.is_anonymous:
+            return ContentType.objects.none()
+
+        content_type_ids: set[int] = set()
+        for policy in self.get_user_policies():
+            if not policy.row_policy_id:
+                continue
+            granted = {
+                permission.codename
+                for rule in policy.row_policy.rules.all()
+                for permission in rule.permissions.all()
+            }
+            requested = PolicyManager._qualify_permission_codenames(
+                policy.row_policy.content_type.model_class(),
+                permissions,
+            )
+            if not self._permission_matches(granted, requested, match):
+                continue
+            content_type_ids.add(policy.row_policy.content_type_id)
+
+        return ContentType.objects.filter(pk__in=content_type_ids)
+    
     def get_accessible_queryset(
         self,
         model_or_content_type: Type[models.Model] | ContentType,

@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from bloomerp.forms.bulk_upload_form import BloomerpBulkForm
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import get_object_or_404
@@ -12,7 +13,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Model, QuerySet
 
 from bloomerp.services.export_services import ExportService, wrap_export_bytes
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
 
 
 def _validation_error_to_text(exc: ValidationError) -> str:
@@ -93,10 +94,13 @@ def _get_permission_string(model: type[Model]) -> str:
     Returns:
         str: _description_
     """
-    if ("export" not in model._meta.permissions) and ("export" not in model._meta.default_permissions):
-        return create_permission_str(model, "view")
+    export_codename = BloomerpPermission.EXPORT.value.codename
+    view_codename = BloomerpPermission.VIEW.value.codename
     
-    return create_permission_str(model, "export")
+    if (export_codename not in model._meta.permissions) and ("export" not in model._meta.default_permissions):
+        return create_permission_str(model, view_codename)
+
+    return create_permission_str(model, export_codename)
 
 @router.register(
     path="components/objects/export/<int:content_type_id>/",
@@ -113,15 +117,15 @@ def export_objects(request: HttpRequest, content_type_id: int):
 
     # Check permissions
     permission_str = _get_permission_string(content_type.model_class())
-    permission_manager = UserPermissionManager(request.user)
-    if not permission_manager.has_global_permission(
+    policy_manager = UserPolicyManager(request.user)
+    if not policy_manager.has_global_permission(
         content_type,
         permission_str,
     ):
         return HttpResponse("You do not have permission to export these objects.")
     
     # Get the application fields
-    application_fields = permission_manager.get_accessible_fields(
+    application_fields = policy_manager.get_accessible_fields(
         content_type,
         permission_str,
     )

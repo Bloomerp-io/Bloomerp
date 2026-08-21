@@ -4,6 +4,8 @@ from typing import Any
 from django.views.generic.detail import DetailView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import ObjectHTML, get_model_config
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
@@ -15,6 +17,7 @@ from bloomerp.models.users.user_detail_view_tabs_preference import (
 )
 from bloomerp.services.preference_services import PreferenceManager
 
+# Note: we'd wanna make sure all the detail views adhere to the permission checks
 
 class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, DetailView):
     htmx_template = "views/htmx_base.html"
@@ -55,11 +58,10 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         if not avatar_field:
             return False
 
-        permission_manager = UserPermissionManager(self.request.user)
-        permission_str = create_permission_str(obj, "change")
+        permission_manager = UserPolicyManager(self.request.user)
         return (
-            permission_manager.has_access_to_object(obj, permission_str)
-            and permission_manager.has_field_permission(avatar_field, permission_str)
+            permission_manager.has_access_to_object(obj, BloomerpPermission.CHANGE)
+            and permission_manager.has_field_permission(avatar_field, BloomerpPermission.CHANGE)
         )
 
     def has_permission(self) -> bool:
@@ -70,7 +72,7 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         if self.request.user.is_superuser:
             return True
 
-        manager = UserPermissionManager(self.request.user)
+        manager = UserPolicyManager(self.request.user)
         obj = self.get_object()
         content_type = ContentType.objects.get_for_model(self.model)
         

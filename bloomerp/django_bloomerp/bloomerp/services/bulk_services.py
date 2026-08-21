@@ -25,7 +25,8 @@ from bloomerp.forms.bulk_upload_form import (
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
 from bloomerp.models.files import File
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.celery.utils import is_celery_available
 from bloomerp.utils.model_io import BloomerpModelIO
 from bloomerp.utils.realtime import ToastPayload, send_toast_message
@@ -78,10 +79,10 @@ class BulkCrudService:
         self.model = model
         self.user = user
         self.content_type = ContentType.objects.get_for_model(model)
-        self.permission_manager = UserPermissionManager(user)
+        self.permission_manager = UserPolicyManager(user)
         self.model_io = BloomerpModelIO(model)
-        self.bulk_add_permission = create_permission_str(model, "bulk_add")
-        self.add_permission = create_permission_str(model, "add")
+        self.bulk_add_permission = BloomerpPermission.IMPORT
+        self.add_permission = BloomerpPermission.ADD
 
     @classmethod
     def from_content_type_id(cls, content_type_id: int, user) -> "BulkCrudService":

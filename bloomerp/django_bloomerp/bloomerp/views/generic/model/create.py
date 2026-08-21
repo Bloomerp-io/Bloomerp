@@ -13,7 +13,7 @@ from bloomerp.models.workspaces import SqlQuery, Tile
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.services.permission_services import create_permission_str
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.layout_model_form_mixin import LayoutModelFormMixin
 

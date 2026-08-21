@@ -4,11 +4,9 @@ from typing import Any
 
 import pandas as pd
 
-from bloomerp.models import ApplicationField
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.sql import SqlQueryExecutor
 from bloomerp.workspaces.analytics_tile.utils import TileFieldType, get_primitive_field_icon, to_primitive_field_type
 from pydantic import BaseModel

@@ -11,8 +11,6 @@ from bloomerp.config.definition import BloomerpConfig
 from bloomerp.serializers.model_serializers import set_serializer_cls
 from django.db.models import Model
 from bloomerp.utils.models import (model_name_plural_underline)
-from bloomerp.utils.api import generate_serializer, generate_model_viewset_class
-from bloomerp.api.base import BloomerpModelViewSet
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.urls import IntOrUUIDConverter

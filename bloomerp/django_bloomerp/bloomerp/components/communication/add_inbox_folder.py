@@ -2,7 +2,8 @@ from bloomerp.communication.inbox_folder_definition import InboxFolderType, Inbo
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.communication.utils.permissions import manageable_inboxes
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.wizard_mixin import WizardError, WizardMixin, WizardStep
 from django.http import HttpResponse
@@ -76,10 +77,10 @@ class AddInboxFolder(WizardMixin, BaseBloomerpView, TemplateView):
             
             # Get the items the user has access to
             # Note: change permission because the user will 
-            manager = UserPermissionManager(self.request.user)
+            manager = UserPolicyManager(self.request.user)
             objects = manager.get_queryset(
                 source_model,
-                create_permission_str(source_model, "change")
+                BloomerpPermission.CHANGE
             )
             
             return WizardStep(

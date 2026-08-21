@@ -8,7 +8,6 @@ from django.utils.translation import gettext_lazy as _
 from bloomerp.forms.workspaces import DEFAULT_TILE_ICON, TileMetadataForm
 from bloomerp.models.base_bloomerp_model import LayoutItem
 from bloomerp.router import router
-from bloomerp.services.permission_services import UserPermissionManager
 from bloomerp.services.sql_services import DatabaseTable
 from bloomerp.utils.requests import parse_bool_parameter
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator
@@ -19,7 +18,6 @@ from bloomerp.views.workspaces.create_tile import (
     TILE_NAME_SESSION_KEY,
 )
 from bloomerp.widgets.icon_picker_widget import IconPickerWidget
-from bloomerp.workspaces import orchestrator
 from bloomerp.workspaces.analytics_tile.model import (
     AnalyticsTileConfig,
     AnalyticsTileType,

@@ -9,17 +9,15 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
 
-from bloomerp.field_types import FieldTypeDefinition
-from bloomerp.forms.model_form import (
-    bloomerp_modelform_factory,
-)
+from bloomerp.field_types.types import FieldTypeDefinition
 from bloomerp.models import ApplicationField
 from bloomerp.models.base_bloomerp_model import FieldLayout, LayoutItem
 from bloomerp.models.forms.form import Form
 from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
 from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.utils.requests import render_blank_form
 from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
 
@@ -167,19 +165,19 @@ def _user_can_configure_field(request: HttpRequest, target: LayoutConfigTarget, 
         return False
 
     if isinstance(layout_object, Form):
-        manager = UserPermissionManager(request.user)
-        if not manager.has_access_to_object(layout_object, create_permission_str(layout_object, "change")):
+        manager = UserPolicyManager(request.user)
+        if not manager.has_access_to_object(layout_object, BloomerpPermission.CHANGE):
             return False
         accessible_fields = manager.get_accessible_fields(
             target.content_type,
-            create_permission_str(model, "add"),
+            BloomerpPermission.ADD
         )
         return accessible_fields.filter(pk=application_field.pk).exists()
 
-    permission_manager = UserPermissionManager(request.user)
-    return permission_manager.has_field_permission(
+    manager = UserPolicyManager(request.user)
+    return manager.has_field_permission(
         application_field,
-        create_permission_str(model, "view"),
+        BloomerpPermission.VIEW
     )
 
 

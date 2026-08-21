@@ -6,10 +6,9 @@ from django.db import models
 from django.db.models import QuerySet
 
 from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
-from bloomerp.services.permission_services import (
-    create_permission_str,
-)
+
 
 # TODO: opportunity to generalise resolvers in the future
 class UserParameterResolver:
@@ -186,14 +185,12 @@ class UserParameterResolver:
             return value
 
         if isinstance(value, QuerySet):
-            permission_str = create_permission_str(value.model, "view")
-            allowed_queryset = self.policy_manager.get_queryset(value.model, permission_str)
+            allowed_queryset = self.policy_manager.get_queryset(value.model, BloomerpPermission.VIEW)
             return value.filter(pk__in=allowed_queryset.values_list("pk", flat=True))
 
         if isinstance(value, models.Model):
-            permission_str = create_permission_str(value, "view")
             if (
-                self.policy_manager.get_queryset(value._meta.model, permission_str)
+                self.policy_manager.get_queryset(value._meta.model, BloomerpPermission.VIEW)
                 .filter(pk=value.pk)
                 .exists()
             ):

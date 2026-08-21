@@ -1,24 +1,22 @@
 from __future__ import annotations
 
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest
 from django.shortcuts import redirect
 from django.views.generic import TemplateView
 from django_htmx.http import HttpResponseClientRedirect
 
 from bloomerp.forms.bulk_upload_form import BulkUploadWizardUploadForm
 from bloomerp.models.files import File
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.services.bulk_services import (
     DEFAULT_REVIEW_PAGE_SIZE,
     BulkCrudService,
 )
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.mixins.conditional_staff_required_mixin import ConditionalStaffRequiredMixin
-from bloomerp.views.mixins.htmx_mixin import HtmxMixin
 from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardMixin, WizardStep
 from bloomerp.views.mixins.wizard_mixin import WizardError
 
@@ -260,10 +258,9 @@ class BloomerpBulkUploadView(WizardMixin, BaseBloomerpView, TemplateView):
         super().setup(request, *args, **kwargs)
 
     def has_permission(self):
-        manager = UserPermissionManager(self.request.user)
-        return manager.has_global_permission(
+        return UserPolicyManager(self.request.user).has_global_permission(
             self.model,
-            create_permission_str(self.model, "bulk_add"),
+            BloomerpPermission.IMPORT
         )
 
     def get_htmx_include_addendum(self) -> bool:

@@ -4,8 +4,9 @@ from django.db.models.fields.reverse_related import ManyToOneRel
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.communication import Comment
 from bloomerp.models.files import File
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 from django.contrib.contenttypes.models import ContentType
 
@@ -23,16 +24,15 @@ class ForeignRelationshipView(BaseBloomerpDetailView):
         return ApplicationField.get_by_field(self.model, field_name)
 
     def has_permission(self) -> bool:
-        permission_manager = UserPermissionManager(self.request.user)
-        permission_str = create_permission_str(self.model, "view")
+        permission_manager = UserPolicyManager(self.request.user)
         relationship_field = self.get_relationship_field()
 
         if relationship_field is None:
             return False
 
         return (
-            permission_manager.has_access_to_object(self.get_object(), permission_str)
-            and permission_manager.has_field_permission(relationship_field, permission_str)
+            permission_manager.has_access_to_object(self.get_object(), BloomerpPermission.VIEW)
+            and permission_manager.has_field_permission(relationship_field, BloomerpPermission.VIEW)
         )
 
     def get_context_data(self, **kwargs: Any) -> dict:

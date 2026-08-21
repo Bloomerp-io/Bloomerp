@@ -1,9 +1,7 @@
 from bloomerp.forms.auth import BloomerpUserCreationForm
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.permission_services import (
-    UserPermissionManager,
-    create_permission_str,
-)
 from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.base import BaseBloomerpView
 
@@ -45,11 +43,11 @@ class UserCreateView(BaseBloomerpView, SuccessMessageMixin, FormView):
         return reverse(get_detail_view_url(self.model), kwargs={"pk": self.object.pk})
 
     def has_permission(self):
-        manager = UserPermissionManager(self.request.user)
+        manager = UserPolicyManager(self.request.user)
 
         return manager.has_global_permission(
             self.model,
-            create_permission_str(self.model, "add"),
+            BloomerpPermission.ADD
         )
 
     def get_success_message(self, cleaned_data):

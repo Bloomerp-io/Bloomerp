@@ -1,5 +1,7 @@
 import base64
 
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
@@ -8,8 +10,6 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from bloomerp.services.document_services import DocumentTemplateService
 from django.contrib.contenttypes.models import ContentType
-
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 
 @router.register(
     path='components/document_templates/generate/<str:id>/', 
@@ -42,14 +42,11 @@ def generate_document_template(
     
     # Perform permission check
     # TODO: We need a more elaborate permission system that checks the fields here
-    permission_manager = UserPermissionManager(request.user)
+    policy_manager = UserPolicyManager(request.user)
     for content_type in list(document_template.content_types.all()) + [ContentType.objects.get_for_model(DocumentTemplate)]:
-        if not permission_manager.has_global_permission(
+        if not policy_manager.has_global_permission(
             content_type,
-            create_permission_str(
-                content_type.model_class(),
-                "view"
-            )
+            BloomerpPermission.VIEW
         ):
             return HttpResponse("You do not have permission to view this document template.", status=403)
     

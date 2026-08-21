@@ -6,7 +6,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
-from bloomerp.field_types import FieldType
+from bloomerp.field_types.types import FieldType
 from bloomerp.models import ApplicationField
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRuleContent
 from bloomerp.router import router
@@ -14,7 +14,7 @@ from bloomerp.services.permission_services import UserPermissionManager
 from pydantic import ValidationError as PydanticValidationError
 PREVIEW_PAGE_SIZE = 10
 
-
+# PERM_MIGRATION: Low priority
 def _parse_json_payload(raw_value: str | None, fallback):
     if not raw_value:
         return fallback

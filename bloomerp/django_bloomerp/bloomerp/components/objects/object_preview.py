@@ -7,7 +7,6 @@ from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.services.detail_view_services import get_default_layout
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.sectioned_layout_services import resolve_detail_layout_rows
 
