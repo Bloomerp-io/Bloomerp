@@ -1,7 +1,7 @@
 import renderDataView from "@/utils/dataview";
 import { getComponent } from "../BaseComponent";
 import { Modal } from "../Modal";
-import { BaseDataViewCell } from "@/components/data_view_components/BaseDataViewCell";
+import type { ForeignFieldSelection } from "@/components/data_view_components/ForeignFieldDataViewContainer";
 import htmx from "htmx.org";
 import { attachObjectPreviewTooltip, hideObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
 import { BaseWidget, type BaseWidgetSerializableState } from "./BaseWidget";
@@ -14,6 +14,7 @@ type ForeignFieldWidgetSerializableState = BaseWidgetSerializableState & {
 export default class ForeignFieldWidget extends BaseWidget {
     private readonly maxVisibleSelections = 4;
     private readonly createSuccessEventName = 'bloomerp:foreign-field-object-created';
+    private readonly advancedSelectionEventName = 'bloomerp:foreign-field-dataview-select';
     private input: HTMLInputElement | null = null;
     private dropdown: HTMLElement | null = null;
     private resultsList: HTMLUListElement | null = null;
@@ -35,6 +36,8 @@ export default class ForeignFieldWidget extends BaseWidget {
     private previewCleanupFns: Array<() => void> = [];
     private widgetInstanceId: string = '';
     private createSuccessHandler: ((event: Event) => void) | null = null;
+    private advancedSelectionHandler: ((event: Event) => void) | null = null;
+    private advancedSelectionTarget: HTMLElement | null = null;
 
     private createControlEl: HTMLElement | null = null;
     private advancedControlEl: HTMLElement | null = null;
@@ -99,6 +102,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         if (this.debounceTimer) window.clearTimeout(this.debounceTimer);
         this.cleanupPreviewHandlers();
         this.teardownCreateSuccessListener();
+        this.teardownAdvancedSelectionListener();
     }
 
     private onFocus(e: Event) {
@@ -172,34 +176,16 @@ export default class ForeignFieldWidget extends BaseWidget {
         // 1. Get the modal
         let modal = getComponent(document.querySelector('#advanced-query-modal')) as Modal;
         modal.open();
+        this.setupAdvancedSelectionListener(modal);
 
         // 2. Populate the modal with the 
         // 3. Render the data view into the modal body and wait for the container instance
         try {
-            const dataViewContainer = await renderDataView(modal.getBodyElement(), Number(this.contentTypeId));
-
-            // 4. Get the actual data view component (table/kanban/calendar) inside the container
-            const dataView = dataViewContainer.getDataViewComponent();
-
-            // 5. Install click overrides on each cell so clicking selects the object
-            if (dataView) {
-                const cells = dataView.getCells();
-                for (const cellComp of cells) {
-                    (cellComp as BaseDataViewCell).onClickOverride = (cell) => {
-                        const objectId = cell.objectId;
-                        const label = cell.objectString;
-                        const detailUrl = cell.element?.dataset.detailUrl || '';
-                        if (objectId) {
-                            this.selectObject(String(objectId), String(label || objectId), detailUrl);
-                            if (!this.isM2M) {
-                                modal.close();
-                            }
-                        }
-                    };
-                }
-            }
-
-            console.log('DataViewContainer:', dataViewContainer, 'Inner data view:', dataView);
+            await renderDataView(
+                modal.getBodyElement(),
+                Number(this.contentTypeId),
+                'foreign-field-dataview',
+            );
         } catch (err) {
             // handle render/init errors gracefully
             console.error('Error rendering data view:', err);
@@ -600,6 +586,40 @@ export default class ForeignFieldWidget extends BaseWidget {
         if (!this.createSuccessHandler) return;
         document.body.removeEventListener(this.createSuccessEventName, this.createSuccessHandler);
         this.createSuccessHandler = null;
+    }
+
+    private setupAdvancedSelectionListener(modal: Modal): void {
+        this.teardownAdvancedSelectionListener();
+        this.advancedSelectionTarget = modal.getBodyElement();
+        this.advancedSelectionHandler = (event: Event) => {
+            const selection = (event as CustomEvent<ForeignFieldSelection>).detail;
+            if (!selection?.objectId) return;
+
+            this.selectObject(
+                String(selection.objectId),
+                String(selection.objectString || selection.objectId),
+                selection.detailUrl || '',
+            );
+            if (!this.isM2M) {
+                modal.close();
+                this.teardownAdvancedSelectionListener();
+            }
+        };
+        this.advancedSelectionTarget.addEventListener(
+            this.advancedSelectionEventName,
+            this.advancedSelectionHandler,
+        );
+    }
+
+    private teardownAdvancedSelectionListener(): void {
+        if (this.advancedSelectionTarget && this.advancedSelectionHandler) {
+            this.advancedSelectionTarget.removeEventListener(
+                this.advancedSelectionEventName,
+                this.advancedSelectionHandler,
+            );
+        }
+        this.advancedSelectionTarget = null;
+        this.advancedSelectionHandler = null;
     }
 
     private attachPreview(element: HTMLElement, objectId: string): void {

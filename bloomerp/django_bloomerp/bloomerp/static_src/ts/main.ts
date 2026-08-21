@@ -46,6 +46,7 @@ import SqlQueryEditor from './components/inputs/SqlQueryEditor';
 import Canvas from './components/workspaces/tiles/Canvas';
 import FileBrowser from './components/files/FileBrowser';
 import DocumentTemplateDataViewContainer from './components/data_view_components/DocumentTemplateDataViewContainer';
+import ForeignFieldDataViewContainer from './components/data_view_components/ForeignFieldDataViewContainer';
 import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
 import ShortcutTooltip from './components/ShortcutTooltip';
@@ -87,6 +88,7 @@ registerComponent('theme-provider', ThemeProvider);
 // Dataview component
 registerComponent('dataview-container', DataViewContainer);
 registerComponent('document-templates-dataview', DocumentTemplateDataViewContainer);
+registerComponent('foreign-field-dataview', ForeignFieldDataViewContainer);
 registerComponent('dataview-display-options', DataViewDisplayOptions);
 registerComponent('pivot-table', PivotTable);
 registerComponent('calendar', Calendar);
