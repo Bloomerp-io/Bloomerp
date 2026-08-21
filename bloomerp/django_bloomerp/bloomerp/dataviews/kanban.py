@@ -1,17 +1,23 @@
 from __future__ import annotations
 
-from django.db.models import Count, Q
+from django.db.models import Count, ForeignKey, OneToOneField, Q, QuerySet
 from django.http import HttpResponse
 from django.shortcuts import render
 from typing import TYPE_CHECKING
 
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
+
 if TYPE_CHECKING:
+    from bloomerp.models import ApplicationField
+    from bloomerp.models.users.user import AbstractBloomerpUser
     from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 
 from .base import BaseDataviewRenderer
 
 
 KANBAN_EMPTY_COLUMN_VALUE = "__none__"
+KANBAN_MAX_RELATED_COLUMNS = 50
 
 
 class KanbanDataviewRenderer(BaseDataviewRenderer):
@@ -26,16 +32,35 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         )
         page_size = getattr(self.options, "page_size", 25)
         kanban_groups = None
+        kanban_too_many_groups = False
         if group_by_field:
-            kanban_groups = self.build_groups(
+            model_field = self._get_model_field(
                 self.state.queryset,
-                group_by_field,
-                preference=self.state.preference,
-                page_size=page_size,
+                group_by_field.field,
             )
+            allowed_related_queryset = None
+            if isinstance(model_field, (ForeignKey, OneToOneField)):
+                allowed_related_queryset = self.get_allowed_related_queryset(
+                    group_by_field,
+                    self.state.request.user,
+                )
+                kanban_too_many_groups = self.has_too_many_related_columns(
+                    allowed_related_queryset
+                )
+
+            if not kanban_too_many_groups:
+                kanban_groups = self.build_groups(
+                    self.state.queryset,
+                    group_by_field,
+                    user=self.state.request.user,
+                    allowed_related_queryset=allowed_related_queryset,
+                    preference=self.state.preference,
+                    page_size=page_size,
+                )
 
         context.update({
             "kanban_groups": kanban_groups,
+            "kanban_too_many_groups": kanban_too_many_groups,
             "group_by_field": group_by_field,
             "kanban_page_querystring": self.build_page_querystring(self.state.request),
             "component_args" : {
@@ -44,6 +69,31 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             }
         })
         return context
+
+    @staticmethod
+    def get_allowed_related_queryset(
+        group_by_field: ApplicationField,
+        user: AbstractBloomerpUser,
+    ) -> QuerySet:
+        """Return related lane values allowed by permissions and field limits."""
+        model_field = group_by_field._get_model_field()
+        if not isinstance(model_field, (ForeignKey, OneToOneField)):
+            raise ValueError("Kanban related lanes require a foreign-key field.")
+
+        related_model = model_field.remote_field.model
+        queryset = UserPolicyManager(user).get_queryset(
+            related_model,
+            BloomerpPermission.VIEW,
+        )
+        limit_choices_to = model_field.get_limit_choices_to()
+        if limit_choices_to:
+            queryset = queryset.complex_filter(limit_choices_to)
+        return queryset.distinct()
+
+    @staticmethod
+    def has_too_many_related_columns(related_queryset: QuerySet) -> bool:
+        """Return whether the eligible foreign-key lane count exceeds the limit."""
+        return related_queryset.order_by().count() > KANBAN_MAX_RELATED_COLUMNS
 
     @classmethod
     def build_page_querystring(cls, request) -> str:
@@ -132,13 +182,21 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         )
 
     @classmethod
-    def build_groups(cls, queryset, group_by_field, preference=None, page_size: int | None = None, page_number=1) -> list[dict]:
+    def build_groups(
+        cls,
+        queryset,
+        group_by_field,
+        user=None,
+        allowed_related_queryset=None,
+        preference=None,
+        page_size: int | None = None,
+        page_number=1,
+    ) -> list[dict]:
         field_name = group_by_field.field
-        field_type = group_by_field.field_type
         model_field = cls._get_model_field(queryset, field_name)
         groups = []
 
-        if field_type in ["ForeignKey", "OneToOneField"]:
+        if isinstance(model_field, (ForeignKey, OneToOneField)):
             count_rows = list(
                 queryset
                 .values(field_name)
@@ -157,24 +215,29 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                     item_count=counts_by_value[None]
                 ))
 
-            related_labels = {}
-            if model_field and getattr(model_field, "remote_field", None):
-                related_model = model_field.remote_field.model
-                related_values = [value for value in counts_by_value if value is not None]
-                related_labels = {
-                    pk: str(related_obj)
-                    for pk, related_obj in related_model.objects.in_bulk(related_values).items()
-                }
+            if allowed_related_queryset is None:
+                allowed_related_queryset = cls.get_allowed_related_queryset(
+                    group_by_field,
+                    user,
+                )
 
-            for row in count_rows:
-                value = row[field_name]
-                if value is not None:
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
-                    label = related_labels.get(value, f"ID: {value}")
-                    groups.append(cls._build_group(
-                        value, label, items, page_size, page_number,
-                        item_count=row["item_count"]
-                    ))
+            for related_object in allowed_related_queryset:
+                value = related_object.pk
+                items = cls._build_column_queryset(
+                    queryset,
+                    field_name,
+                    model_field,
+                    value,
+                    preference=preference,
+                )
+                groups.append(cls._build_group(
+                    value,
+                    str(related_object),
+                    items,
+                    page_size,
+                    page_number,
+                    item_count=counts_by_value.get(value, 0),
+                ))
         else:
             empty_count = queryset.filter(cls._build_empty_filter(field_name, model_field)).count()
             if empty_count:

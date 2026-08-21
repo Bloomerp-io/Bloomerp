@@ -26,7 +26,11 @@ TODO: This and dataview_kanban_cards need to be merged
     class="kanban-board flex h-full min-h-[400px] w-full min-w-0 max-w-full gap-4 overflow-x-auto pb-4 focus:outline-none focus:border-0 focus:ring-0"
     :component_args="component_args"
 >
-    {% if kanban_groups %}
+    {% if kanban_too_many_groups %}
+        <div class="flex-1 flex items-center justify-center text-gray-500">
+            <p class="text-sm"><c-i18n.blocktrans>This field has more than 50 values. Choose another grouping field.</c-i18n.blocktrans></p>
+        </div>
+    {% elif kanban_groups %}
         {% for group in kanban_groups %}
         <div 
             class="kanban-column flex-shrink-0 w-72 bg-base rounded-xl border border-gray-200 flex flex-col max-h-full"
@@ -46,7 +50,7 @@ TODO: This and dataview_kanban_cards need to be merged
             </div>
             
             <!-- Column Body (Drop Zone) -->
-            <div 
+            <div
                 class="kanban-column-body flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]"
                 data-kanban-dropzone
                 data-column-value="{{ group.request_value }}"

@@ -1,6 +1,7 @@
 from bloomerp.models import ApplicationField
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.permission_services import UserPermissionManager, create_permission_str
 
 
 from django.contrib.contenttypes.models import ContentType
@@ -42,12 +43,11 @@ def kanban_move_card(request: HttpRequest, content_type_id: int) -> HttpResponse
     )
 
     obj = get_object_or_404(model, id=object_id)
-    permission_str = create_permission_str(model, "change")
 
-    permission_manager = UserPermissionManager(request.user)
-    if not permission_manager.has_access_to_object(obj, permission_str):
+    permission_manager = UserPolicyManager(request.user)
+    if not permission_manager.has_access_to_object(obj, BloomerpPermission.CHANGE):
         return HttpResponse("Permission denied", status=403)
-    if not permission_manager.has_field_permission(application_field, permission_str):
+    if not permission_manager.has_field_permission(application_field, BloomerpPermission.CHANGE):
         return HttpResponse("Permission denied", status=403)
 
     model_field = model._meta.get_field(application_field.field)
