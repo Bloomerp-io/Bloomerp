@@ -96,6 +96,27 @@
 
 }
 
+/* Dark-mode overrides for component classes that use @apply. */
+@layer utilities {
+  .dark .card,
+  .dark .workspace-edit-mode .workspace-row,
+  .dark .workspace-row__controls,
+  .dark .layout-item--bordered,
+  .dark .layout-item--editing {
+    background-color: var(--color-zinc-800);
+    border-color: var(--color-zinc-700);
+  }
+
+  .dark .workspace-row__title,
+  .dark .card-title {
+    color: var(--color-primary-300);
+  }
+
+  .dark [data-layout-item-header] {
+    color: var(--color-zinc-300);
+  }
+}
+
 /*
 * Base typography
 */
@@ -123,6 +144,7 @@
 */
 @layer utilities {
   .dark .bg-white { background-color: var(--color-zinc-800); }
+  .dark .bg-white\/95 { background-color: var(--color-zinc-800); }
   .dark .bg-gray-50 { background-color: var(--color-zinc-900); }
   .dark .bg-gray-100 { background-color: var(--color-zinc-800); }
   .dark .bg-gray-200 { background-color: var(--color-zinc-700); }
@@ -166,6 +188,7 @@
   .dark .text-dark { color: var(--color-zinc-100); }
 
   .dark .text-slate-700 { color: var(--color-zinc-300); }
+  .dark .layout-item__body .text-slate-800 { color: var(--color-primary-300); }
 
   /* Components using @apply need dark selectors of their own because the
    * generated declaration no longer carries the original utility class. */
@@ -315,7 +338,7 @@
     }
 
     .dark .btn-primary:not(.btn-outline) {
-        @apply bg-zinc-800 border-zinc-600 text-zinc-100;
+        @apply bg-primary text-white border-[var(--color-primary-500)];
     }
 
     .btn-primary:hover:not(:disabled) {
@@ -323,7 +346,7 @@
     }
 
     .dark .btn-primary:not(.btn-outline):hover:not(:disabled) {
-        @apply bg-zinc-700 border-zinc-500 text-zinc-100;
+        @apply bg-[var(--color-primary-700)] border-[var(--color-primary-700)] text-white;
     }
 
     /* Reset primary button hover text color to override generic link hover */
