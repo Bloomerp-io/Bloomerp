@@ -1,7 +1,7 @@
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from bloomerp.models.automation.workflow import Workflow
-from bloomerp.services.workflow_services import run_workflow
+from bloomerp.automation.run import run_workflow
 from bloomerp.router import router
 
 @router.register(

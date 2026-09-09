@@ -42,7 +42,7 @@ class HumanTrigger(BaseTrigger):
         )
 
     @classmethod
-    def get_output_schema(cls, config=None, input_schema=None):
+    def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
         data = (config or {}).get("data")
         if data is None:
             return WorkflowIOSchema(

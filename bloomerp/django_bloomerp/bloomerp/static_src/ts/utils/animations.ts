@@ -9,6 +9,11 @@ function insertSkeleton(target: HTMLElement) {
     // Create skeleton element
     const skeleton = document.createElement('div');
     skeleton.className = 'skeleton-loader';
+    // Keep the loader readable even when it is rendered outside the element
+    // that owns the theme class (for example, in a table body or drawer).
+    if (target.closest('.dark') || document.documentElement.classList.contains('dark')) {
+        skeleton.classList.add('skeleton-loader--dark');
+    }
     // The loader is transient UI, not a valid page snapshot. If this request
     // pushes a URL, make HTMX fetch the outgoing page again rather than cache
     // and later restore the skeleton as its history content.

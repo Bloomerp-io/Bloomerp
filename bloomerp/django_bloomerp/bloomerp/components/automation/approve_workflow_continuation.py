@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from bloomerp.automation.run import load_step_output, resume_workflow
 from bloomerp.models import WorkflowRun
 from bloomerp.models.automation.workflow_run_step import WorkflowRunStep, WorkflowRunStepStatus
 from bloomerp.permissions.definition import BloomerpPermission
@@ -11,7 +12,6 @@ from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from django import forms
 
-from bloomerp.services.workflow_services import load_step_output, resume_workflow
 from bloomerp.utils.requests import ExtraButton, render_blank_form, render_message, render_page_refresh_with_message
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 

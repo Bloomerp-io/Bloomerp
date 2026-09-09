@@ -83,6 +83,7 @@ class FilterObjectsExecutor(BaseExecutor):
         cls,
         config: dict | None = None,
         input_schema: WorkflowIOSchema | None = None,
+        port_id: str = "default",
     ) -> WorkflowIOSchema:
         if input_schema and input_schema.value_type == "list" and input_schema.fields:
             return WorkflowIOSchema(

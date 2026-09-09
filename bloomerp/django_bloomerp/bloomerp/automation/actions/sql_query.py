@@ -25,7 +25,7 @@ class SqlQueryActionExecutor(BaseExecutor):
     config_form = SqlQueryForm
 
     @classmethod
-    def get_output_schema(cls, config = None, input_schema = None):
+    def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
         return WorkflowIOSchema(
             value_type=WorkflowValueType.OBJECT,
             label="SQL Query Result",

@@ -1,7 +1,8 @@
 
 
 from bloomerp.automation.base_executor import BaseExecutor
-from bloomerp.automation.flows.if_condition import BranchStopped
+from bloomerp.automation.ports import WorkflowNodeOutputPort
+from bloomerp.automation.results import RouteResult
 from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowValueType
 from bloomerp.components.filters.fields import filterable_field_type_ids
 from bloomerp.field_types.lookups import Lookup
@@ -104,6 +105,10 @@ def _resolve_lookup_allias(lookup_id:str, application_field:ApplicationField) ->
 
 class ObjectIfConditionExecutor(BaseExecutor):
     config_form = ObjectIfCondtionForm
+    output_ports = (
+        WorkflowNodeOutputPort("true", "True", max_connections=None),
+        WorkflowNodeOutputPort("false", "False", max_connections=None),
+    )
     input_requirement = WorkflowInputRequirement(
         value_type=WorkflowValueType.OBJECT,
         label="A database object",
@@ -117,10 +122,15 @@ class ObjectIfConditionExecutor(BaseExecutor):
         return is_object and has_id_field
     
     @classmethod
-    def get_output_schema(cls, config = None, input_schema = None):
+    def get_output_schema(
+        cls,
+        config=None,
+        input_schema=None,
+        port_id="default",
+    ):
         return input_schema
     
-    def execute(self, input_data: dict) -> bool:
+    def execute(self, input_data: dict) -> RouteResult:
         # Get the content type id
         params = self.resolve_config(input_data)
         
@@ -155,6 +165,7 @@ class ObjectIfConditionExecutor(BaseExecutor):
     
         # Check if any objects match the filter
         exists = filter_model(ModelCls, filter_kwargs, queryset=ModelCls.objects.filter(id=str(input_data.get("id")))).exists()
-        if exists:
-            return input_data
-        return BranchStopped(f"No {ModelCls._meta.verbose_name} matches the condition {application_field.field} {alias} {value}")
+        return RouteResult(
+            port_id="true" if exists else "false",
+            output=input_data,
+        )

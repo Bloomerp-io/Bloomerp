@@ -14,6 +14,17 @@ class TestDocumentTemplateBuilderEditView(BloomerpDetailViewTestCase):
     view_name = 'builder'
     model = DocumentTemplate
 
+    def create_test_object(self):
+        return DocumentTemplate.objects.create(
+            name="A name"
+        )
+    
     def get_request_setups(self) -> list[RequestSetup]:
         # Add only the route scenarios this callable needs.
-        return []
+        return [
+            RequestSetup(
+                name="View loads normally",
+                method="GET",
+                user=self.admin_user,
+            )
+        ]

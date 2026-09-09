@@ -1,31 +1,37 @@
 {% load i18n %}
 <div 
-    bloomerp-component="workflow" class="w-full"
+    bloomerp-component="workflow" class="workflow-builder"
     data-workflow-id="{{ workflow_id }}"
     data-workflow-json='{{ workflow_json|default:"" }}'
     >
     <!-- Toolbar -->
-    <div class="flex justify-between w-full mb-2">
+    <div class="workflow-toolbar" role="toolbar" aria-label="Workflow tools">
         <div class="flex gap-2">
             <button class="btn btn-primary btn-sm" id="add-node-btn" type="button">
                 {% blocktrans %}Add Node{% endblocktrans %}
             </button>
-            <button id="zoom-in-btn" class="btn btn-secondary btn-sm">
+            <button id="zoom-in-btn" class="btn btn-secondary btn-sm" type="button" aria-label="Zoom in">
                 <i class="fa-solid fa-magnifying-glass-plus"></i>
             </button>
-            <button id="zoom-out-btn" class="btn btn-secondary btn-sm">
+            <button id="zoom-out-btn" class="btn btn-secondary btn-sm" type="button" aria-label="Zoom out">
                 <i class="fa-solid fa-magnifying-glass-minus"></i>
             </button>
             <button id="focus-first-node-btn" class="btn btn-secondary btn-sm" type="button">
                 <i class="fa-solid fa-crosshairs"></i>
                 {% blocktrans %}Recenter{% endblocktrans %}
             </button>
-            
         </div>
     </div>
 
     <!-- DrawFlow Canvas -->
-    <div id="drawflow" class="border border-1 border-gray-200 mt-3 rounded-xl" style="height: calc(75vh);"></div>
+    <div id="drawflow" tabindex="0" aria-label="Workflow canvas"></div>
+    <div class="workflow-selection-actions" data-selection-actions hidden role="toolbar" aria-label="Selection actions">
+        <button type="button" class="btn btn-secondary btn-sm" data-selection-rename>{% translate "Rename" %}</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-selection-duplicate>{% translate "Duplicate" %}</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-selection-delete>{% translate "Delete" %}</button>
+        <small data-selection-notice hidden></small>
+    </div>
+    <span class="sr-only" role="status" data-selection-status></span>
 
     <div class="hidden" aria-hidden="true" data-workflow-node-definition-registry>
         {% for node_type in node_types %}
@@ -37,12 +43,13 @@
                 data-node-subtype-icon="{{ sub_type.icon }}"
                 data-node-type-id="{{ node_type.id }}"
                 data-node-type-name="{{ node_type.name }}"
+                data-node-output-ports="{{ sub_type.default_output_ports_json }}"
             ></div>
             {% endfor %}
         {% endfor %}
     </div>
 
-    <c-ui.drawer id="node-drawer">
+    <c-ui.drawer id="node-drawer" portal_to_body="true">
         <div data-workflow-drawer-content></div>
     </c-ui.drawer>
 

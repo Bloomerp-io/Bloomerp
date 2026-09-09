@@ -80,7 +80,7 @@ class ExtractFieldExecutor(BaseExecutor):
         return super().accepts_input_schema(incoming_schema, config)
     
     @classmethod
-    def get_output_schema(cls, config = None, input_schema = None):
+    def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
         params = config or {}
         field_path = params.get("field_path")
         normalized_path = cls._normalize_field_path(field_path or "")

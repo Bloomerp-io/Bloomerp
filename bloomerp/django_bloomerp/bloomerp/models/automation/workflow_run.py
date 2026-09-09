@@ -1,5 +1,8 @@
 from datetime import datetime
+import json
+from typing import TYPE_CHECKING, Any
 
+from django.core.files.base import ContentFile
 from django.db import connection, models
 from django.urls import reverse
 from bloomerp.models.automation import workflow
@@ -13,6 +16,12 @@ from django.db.models import Max, Min
 from django.db.models import Case, IntegerField, Value, When
 
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileType, FieldConfig
+from bloomerp.automation.serialization import OUTPUT_UNSET, serialize_workflow_value
+
+if TYPE_CHECKING:
+    from bloomerp.automation.workflow_state import WorkflowRunState
+    from bloomerp.models.automation.workflow_node import WorkflowNode
+    from bloomerp.models.automation.workflow_run_step import WorkflowRunStep
 
 
 def _recent_datetime_predicate(column: str, days: int) -> str:
@@ -380,6 +389,42 @@ class WorkflowRun(
     
     def __str__(self):
         return f"{self.workflow.name} - {self.datetime_created}"
+
+    def create_step(
+        self,
+        *,
+        node: "WorkflowNode",
+        sequence: int,
+        status: WorkflowRunStepStatus,
+        state: "WorkflowRunState",
+        enabled: bool,
+        output_data: Any = OUTPUT_UNSET,
+    ) -> "WorkflowRunStep | None":
+        """Persist one workflow step and its resumable execution state."""
+        if not enabled:
+            return None
+
+        from bloomerp.models.automation.workflow_run_step import WorkflowRunStep
+
+        step = WorkflowRunStep(
+            workflow_run=self,
+            sequence=sequence,
+            action_id=node.node_sub_type_id or str(node.id),
+            status=status,
+            node=node,
+        )
+        if output_data is not OUTPUT_UNSET:
+            serialized_output = serialize_workflow_value(output_data)
+            step.output_file.save(
+                f"workflow-run-{self.pk}-step-{sequence}.json",
+                ContentFile(json.dumps(serialized_output).encode("utf-8")),
+                save=False,
+            )
+        step.save()
+        state.current_step_id = step.id
+        step.state = state.model_dump(mode="json")
+        step.save(update_fields=["state", "datetime_updated"])
+        return step
 
 
     @property

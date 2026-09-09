@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.enrich import EnrichExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,28 @@ class TestEnrichDataNode(BloomerpWorkflowNodeTestCase):
     node_id = 'ENRICH_DATA'
     executor_class = EnrichExecutor
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
-        return []
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+        return [
+            WorkflowNodeSimulation(
+                name="Node adds configured fields to input",
+                parameters={"data": {"full_name": "John Doe"}},
+                trigger_data={"first_name": "John", "last_name": "Doe"},
+                expected_output={
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "full_name": "John Doe",
+                },
+            ),
+            WorkflowNodeSimulation(
+                name="Node overwrites overlapping input fields",
+                parameters={
+                    "data": {"first_name": "Jane", "full_name": "Jane Doe"},
+                },
+                trigger_data={"first_name": "John", "last_name": "Doe"},
+                expected_output={
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                    "full_name": "Jane Doe",
+                },
+            ),
+        ]

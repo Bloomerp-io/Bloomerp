@@ -35,7 +35,7 @@ from bloomerp.tests.base.view_test_case import (
 from bloomerp.tests.base.widget_test_case import BloomerpWidgetTestCase
 from bloomerp.tests.base.workflow_node_test_case import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -72,5 +72,5 @@ __all__ = [
     "RequestSetup",
     "RequestTestCaseMixin",
     "ResponseValidator",
-    "WorkflowSimulation",
+    "WorkflowNodeSimulation",
 ]

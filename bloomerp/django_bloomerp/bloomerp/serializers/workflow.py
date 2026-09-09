@@ -83,6 +83,7 @@ class WorkflowEdgeSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
     from_node = serializers.CharField(max_length=255)
     to_node = serializers.CharField(max_length=255)
+    output_port = serializers.CharField(required=False, default="default", max_length=100)
     name = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -139,6 +140,37 @@ class WorkflowSerializer(serializers.ModelSerializer):
                     f"Edge {index} references unknown to_node `{edge['to_node']}`."
                 )
 
+        nodes_by_client_id = {node["client_id"]: node for node in nodes}
+        port_connection_counts: dict[tuple[str, str], int] = {}
+        for index, edge in enumerate(edges):
+            source = nodes_by_client_id.get(edge["from_node"])
+            if source is None:
+                continue
+            definition = WORKFLOW_NODE_REGISTRY.get(source["sub_type"])
+            if definition is None or definition.executor_cls is None:
+                continue
+            ports = {
+                port.id: port
+                for port in definition.get_output_ports(source.get("parameters") or {})
+            }
+            output_port = edge.get("output_port", "default")
+            port = ports.get(output_port)
+            if port is None:
+                errors.setdefault("edges", []).append(
+                    f"Edge {index} references unknown output port `{output_port}`."
+                )
+                continue
+            key = (edge["from_node"], output_port)
+            port_connection_counts[key] = port_connection_counts.get(key, 0) + 1
+            if (
+                port.max_connections is not None
+                and port_connection_counts[key] > port.max_connections
+            ):
+                errors.setdefault("edges", []).append(
+                    f"Output port `{output_port}` on `{edge['from_node']}` "
+                    "has reached its connection limit."
+                )
+
         if errors:
             raise serializers.ValidationError(errors)
 
@@ -174,6 +206,10 @@ class WorkflowSerializer(serializers.ModelSerializer):
                     "parameters": node.parameters,
                     "pos_x": node.pos_x,
                     "pos_y": node.pos_y,
+                    "output_ports": [
+                        port.to_dict()
+                        for port in node.get_output_ports()
+                    ],
                 }
                 for node in nodes
             ],
@@ -183,6 +219,7 @@ class WorkflowSerializer(serializers.ModelSerializer):
                     "from_node": node_key_map[edge.from_node_id],
                     "to_node": node_key_map[edge.to_node_id],
                     "name": edge.name,
+                    "output_port": edge.output_port,
                 }
                 for edge in WorkflowEdge.objects.filter(from_node__workflow=instance)
             ],
@@ -278,6 +315,7 @@ class WorkflowSerializer(serializers.ModelSerializer):
                     from_node=node_lookup[from_node_key],
                     to_node=node_lookup[to_node_key],
                     name=edge_data.get("name") or None,
+                    output_port=edge_data.get("output_port", "default"),
                 )
             )
 

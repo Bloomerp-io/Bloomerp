@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.wait import WaitExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestWaitNode(BloomerpWorkflowNodeTestCase):
     node_id = 'WAIT'
     executor_class = WaitExecutor
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

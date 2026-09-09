@@ -3,7 +3,7 @@ import { BaseWidget } from './BaseWidget';
 
 export default class CodeEditorWidget extends BaseWidget {
     private static readonly editorsByContainer = new WeakMap<HTMLElement, any>();
-    private static readonly editorHostClassNames = ['ace_editor', 'ace_hidpi', 'ace-chrome'];
+    private static readonly editorHostClassNames = ['ace_editor', 'ace_hidpi'];
 
     private textarea: HTMLTextAreaElement | null = null;
     private editorContainer: HTMLElement | null = null;
@@ -14,6 +14,8 @@ export default class CodeEditorWidget extends BaseWidget {
     private lastCommittedValue: string = '';
     private boundOnEditorChange: (() => void) | null = null;
     private boundOnModalClosed: ((event: Event) => void) | null = null;
+    private boundOnTextareaInput: (() => void) | null = null;
+    private readonly boundOnThemeChange = (): void => this.updateEditorTheme();
 
     public initialize(): void {
         if (!this.element) return;
@@ -26,13 +28,46 @@ export default class CodeEditorWidget extends BaseWidget {
         if (!this.textarea || !this.editorContainer) return;
         this.lastCommittedValue = this.textarea.value || this.textarea.textContent || '';
 
-        this.configureAceModuleLoader();
+        if (this.element.closest("[bloomerp-component='document-template-builder']")) {
+            this.initializePlainTextEditor();
+        } else {
+            this.configureAceModuleLoader();
+            this.initializeEditor();
+        }
+
+        window.addEventListener('bloomerp:theme-change', this.boundOnThemeChange);
+
+        if (this.launchFromButton && this.modalId) {
+            this.boundOnModalClosed = (event: Event) => {
+                const customEvent = event as CustomEvent<{ modalId?: string }>;
+                if (customEvent.detail?.modalId !== this.modalId) return;
+
+                this.commitTextareaChange();
+            };
+            document.body.addEventListener('bloomerp:modal-closed', this.boundOnModalClosed);
+        }
+    }
+
+    private initializePlainTextEditor(): void {
+        if (!this.editorContainer || !this.textarea) return;
+
+        this.editorContainer.hidden = true;
+        this.textarea.hidden = false;
+        this.textarea.classList.add('textarea', 'w-full', 'font-mono');
+        this.textarea.style.minHeight = '300px';
+        this.boundOnTextareaInput = () => this.onChange();
+        this.textarea.addEventListener('input', this.boundOnTextareaInput);
+    }
+
+    private initializeEditor(): void {
+        if (!this.editorContainer || !this.textarea || this.editor) return;
+
         this.disposeEditorForContainer(this.editorContainer);
 
         this.editor = ace.edit(this.editorContainer);
         CodeEditorWidget.editorsByContainer.set(this.editorContainer, this.editor);
 
-        this.editor.setTheme('ace/theme/chrome');
+        this.updateEditorTheme();
         this.editor.setOptions({
             showPrintMargin: false,
             fontSize: 14,
@@ -53,16 +88,6 @@ export default class CodeEditorWidget extends BaseWidget {
             this.onChange();
         };
         this.editor.session.on('change', this.boundOnEditorChange);
-
-        if (this.launchFromButton && this.modalId) {
-            this.boundOnModalClosed = (event: Event) => {
-                const customEvent = event as CustomEvent<{ modalId?: string }>;
-                if (customEvent.detail?.modalId !== this.modalId) return;
-
-                this.commitTextareaChange();
-            };
-            document.body.addEventListener('bloomerp:modal-closed', this.boundOnModalClosed);
-        }
     }
 
     public destroy(): void {
@@ -81,6 +106,11 @@ export default class CodeEditorWidget extends BaseWidget {
         if (this.boundOnModalClosed) {
             document.body.removeEventListener('bloomerp:modal-closed', this.boundOnModalClosed);
         }
+        window.removeEventListener('bloomerp:theme-change', this.boundOnThemeChange);
+
+        if (this.textarea && this.boundOnTextareaInput) {
+            this.textarea.removeEventListener('input', this.boundOnTextareaInput);
+        }
 
         if (this.editorContainer) {
             const registeredEditor = CodeEditorWidget.editorsByContainer.get(this.editorContainer);
@@ -93,6 +123,7 @@ export default class CodeEditorWidget extends BaseWidget {
         this.editor = null;
         this.boundOnEditorChange = null;
         this.boundOnModalClosed = null;
+        this.boundOnTextareaInput = null;
     }
 
     private configureAceModuleLoader(): void {
@@ -105,6 +136,10 @@ export default class CodeEditorWidget extends BaseWidget {
             const resolveModule = (): Promise<unknown> => {
                 if (normalized === 'ace/theme/chrome') {
                     return import('ace-builds/src-noconflict/theme-chrome');
+                }
+
+                if (normalized === 'ace/theme/tomorrow_night') {
+                    return import('ace-builds/src-noconflict/theme-tomorrow_night');
                 }
 
                 if (normalized === 'ace/mode/json') {
@@ -232,5 +267,14 @@ export default class CodeEditorWidget extends BaseWidget {
 
         this.editorContainer.classList.add(...CodeEditorWidget.editorHostClassNames);
         this.editorContainer.style.fontSize = '14px';
+    }
+
+    private updateEditorTheme(): void {
+        if (!this.editor) return;
+
+        const theme = document.documentElement.classList.contains('dark')
+            ? 'ace/theme/tomorrow_night'
+            : 'ace/theme/chrome';
+        this.editor.setTheme(theme);
     }
 }

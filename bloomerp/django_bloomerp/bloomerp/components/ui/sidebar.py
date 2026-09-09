@@ -12,10 +12,18 @@ from django.utils.translation import gettext_lazy as _
 from bloomerp.forms.sidebar import CreateLinkSidebarItemForm, CreateSidebarFolderForm
 from bloomerp.models import Sidebar, SidebarItem
 from bloomerp.router import router
+from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.requests import render_blank_form, render_page_refresh, render_template_and_message
 
 SIDEBAR_CONTENT_TEMPLATE = "components/ui/sidebar/content.html"
 SIDEBAR_SELECT_ITEMS_TEMPLATE = "components/ui/sidebar/select_items.html"
+
+
+def _sidebar_content_context(request: HttpRequest, sidebar: Sidebar) -> dict[str, object]:
+    return {
+        "sidebar": sidebar,
+        "can_manage": PreferenceManager(request.user).can_manage(sidebar),
+    }
 
 
 def _get_item_id_from_request(request: HttpRequest, key: str) -> str | None:
@@ -110,7 +118,7 @@ def _render_sidebar_success_response(request: HttpRequest, sidebar: Sidebar, mes
         message=message,
         type="success",
         template_name=SIDEBAR_CONTENT_TEMPLATE,
-        context={"sidebar": sidebar},
+        context=_sidebar_content_context(request, sidebar),
         hx_swap_oob="outerHTML",
         hx_swap_oob_id="sidebar-content",
     )
@@ -132,9 +140,7 @@ def sidebar_set_selected(request: HttpRequest, sidebar_id: int) -> HttpResponse:
     return render(
         request,
         SIDEBAR_CONTENT_TEMPLATE,
-        {
-            "sidebar": sidebar,
-        },
+        _sidebar_content_context(request, sidebar),
     )
 
 
@@ -183,9 +189,7 @@ def sidebar_create(request: HttpRequest) -> HttpResponse:
         "Sidebar created",
         "success",
         SIDEBAR_CONTENT_TEMPLATE,
-        {
-            "sidebar": sidebar,
-        },
+        _sidebar_content_context(request, sidebar),
     )
     response["HX-Trigger"] = json.dumps({"dropdown-close": True})
     return response
@@ -368,7 +372,7 @@ def sidebar_delete_item(request: HttpRequest, item_id: int) -> HttpResponse:
         _('Item removed'),
         "success",
         SIDEBAR_CONTENT_TEMPLATE,
-        {"sidebar":sidebar}
+        _sidebar_content_context(request, sidebar),
     )
 
 

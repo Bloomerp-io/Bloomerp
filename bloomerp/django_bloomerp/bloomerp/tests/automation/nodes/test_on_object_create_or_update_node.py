@@ -2,7 +2,7 @@
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestOnObjectCreateOrUpdateNode(BloomerpWorkflowNodeTestCase):
     node_id = 'ON_OBJECT_CREATE_OR_UPDATE'
     executor_class = ObjectCrudTrigger
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

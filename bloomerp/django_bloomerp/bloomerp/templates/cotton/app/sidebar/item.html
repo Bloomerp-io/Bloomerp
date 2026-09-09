@@ -19,24 +19,23 @@
     data-url="{{ item.url }}"
     data-sidebar-id="{{ sidebar.id }}"
     class="relative overflow-visible"
-    x-data="{ open: false, expanded: false, actionsPinned: false }" 
+    x-data="{ open: false, actionsPinned: false }"
     @mouseenter="if (!actionsPinned) open = true" 
     @mouseleave="if (!actionsPinned) open = false"
     @click.away="open = false; actionsPinned = false"
     @dropdown-close="open = false; actionsPinned = false"
     >
     <div
-        bloomerp-component="sidebar-item"
         data-sidebar-item-draggable
         data-sidebar-item-id="{{ item.id }}"
         draggable="true"
         {% if item.is_folder %}
+        data-sidebar-folder-toggle
         data-sidebar-folder-dropzone
         data-drop-parent-id="{{ item.id }}"
         data-drop-position="{{ children|length }}"
         {% endif %}
         class="relative flex items-center overflow-visible rounded-xl cursor-grab active:cursor-grabbing"
-        @click="if ({{ item.is_folder|yesno:'true,false' }} && !$event.target.closest('[data-ignore-toggle]')) expanded = !expanded"
     >
         {% if item.is_folder %}
         <div class="text-gray-700 flex min-w-0 flex-1 items-center gap-3 px-1 py-0.5 rounded">
@@ -68,10 +67,11 @@
 
             {% if item.is_folder and children %}
             <button
-                @click.stop="expanded = !expanded"
-                :aria-expanded="expanded.toString()"
+                type="button"
+                data-sidebar-folder-button
+                aria-expanded="false"
                 class="btn btn-sm ml-auto shrink-0 p-1 text-xs rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer">
-                <i :class="(expanded ? 'fa-solid fa-caret-down' : 'fa-solid fa-caret-right') + ' text-secondary text-sm'"></i>
+                <i data-sidebar-folder-caret class="fa-solid fa-caret-right text-secondary text-sm"></i>
             </button>
             {% endif %}
         {% if item.is_folder %}
@@ -90,7 +90,7 @@
             >
                 <c-ui.dropdown.body data-ignore-toggle trigger_icon_class="fa-solid fa-ellipsis"
                     trigger_button_class="p-1 text-xs rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer"
-                    size="sm" direction="down">
+                    size="sm" direction="down" fixed=True>
                 {% if item.is_folder %}
                 <c-ui.dropdown.submenu 
                         text="Add Subfolder" 
@@ -156,15 +156,9 @@
     </div>
 
     {% if children %}
-    <ul x-show="expanded" x-cloak x-transition:enter="transition ease-out duration-150"
-        x-transition:enter-start="opacity-0 transform -translate-y-1"
-        x-transition:enter-end="opacity-100 transform translate-y-0"
-        x-transition:leave="transition ease-in duration-100"
-        x-transition:leave-start="opacity-100 transform translate-y-0"
-        x-transition:leave-end="opacity-0 transform -translate-y-1"
-        class="mt-1 ml-8 text-gray-500 text-sm overflow-visible">
+    <ul data-sidebar-children hidden class="mt-1 ml-8 text-gray-500 text-sm overflow-visible">
         {% for child in children %}
-        <c-app.sidebar.item :sidebar="sidebar" :item="child" />
+        <c-app.sidebar.item :sidebar="sidebar" :item="child" :can_manage="can_manage" />
         {% endfor %}
     </ul>
     {% endif %}

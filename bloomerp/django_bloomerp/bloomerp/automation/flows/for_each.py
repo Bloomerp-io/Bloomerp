@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 from typing import Any
 
 from django import forms
 
 from bloomerp.automation.base_executor import BaseExecutor
+from bloomerp.automation.results import FanOutResult
 from bloomerp.automation.schema import (
     WorkflowIOFlowKind,
     WorkflowInputRequirement,
@@ -15,13 +15,6 @@ from bloomerp.automation.schema import (
 
 class ForEachForm(forms.Form):
     pass
-
-
-@dataclass
-class ForEachResult:
-    items: list
-    
-
 
 
 def normalize_items(input_data: Any) -> list:
@@ -64,6 +57,7 @@ class ForEachExecutor(BaseExecutor):
         cls,
         config: dict | None = None,
         input_schema: WorkflowIOSchema | None = None,
+        port_id: str = "default",
     ) -> WorkflowIOSchema:
         if input_schema and input_schema.value_type == "list" and input_schema.fields:
             
@@ -90,6 +84,6 @@ class ForEachExecutor(BaseExecutor):
         
         return cls.output_schema
 
-    def execute(self, input_data: Any) -> ForEachResult:
+    def execute(self, input_data: Any) -> FanOutResult:
         items = normalize_items(input_data)
-        return ForEachResult(items=items)
+        return FanOutResult(items=items)

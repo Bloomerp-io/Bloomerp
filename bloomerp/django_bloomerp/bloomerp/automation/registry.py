@@ -1,8 +1,10 @@
 """Registry for BloomERP automation nodes."""
 
 from dataclasses import dataclass
+import json
 from typing import Literal, Optional, Type
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.automation.actions.call_api import CallApiExecutor
@@ -16,12 +18,14 @@ from bloomerp.automation.actions.get_object import GetObjectExecutor
 from bloomerp.automation.actions.human_in_the_loop import HumanInTheLoopExecutor
 from bloomerp.automation.actions.list_objects import ListObjectsExecutor
 from bloomerp.automation.actions.merge_branches import MergeBranchExecutor
+from bloomerp.automation.actions.run_workflow import RunWorkflowExecutor
 from bloomerp.automation.actions.send_email import SendEmailExecutor
 from bloomerp.automation.actions.send_user_message import SendUserMessage
 from bloomerp.automation.actions.sql_query import SqlQueryActionExecutor
 from bloomerp.automation.actions.update_object import UpdateObjectExecutor
 from bloomerp.automation.actions.wait import WaitExecutor
 from bloomerp.automation.base_executor import BaseExecutor
+from bloomerp.automation.ports import WorkflowNodeOutputPort
 from bloomerp.automation.flows.collect import CollectExecutor
 from bloomerp.automation.flows.filter_objects import FilterObjectsExecutor
 from bloomerp.automation.flows.for_each import ForEachExecutor
@@ -65,6 +69,21 @@ class WorkflowNodeDefinition:
     description: str
     executor_cls: Optional[Type[BaseExecutor]] = None
     icon: Optional[str] = None
+
+    def get_output_ports(
+        self,
+        config: dict | None = None,
+    ) -> tuple[WorkflowNodeOutputPort, ...]:
+        if self.executor_cls is None:
+            return ()
+        return self.executor_cls.get_output_ports(config or {})
+
+    @property
+    def default_output_ports_json(self) -> str:
+        return json.dumps(
+            [port.to_dict() for port in self.get_output_ports({})],
+            cls=DjangoJSONEncoder,
+        )
 
 
 class WorkflowNodeRegistry(BaseRegistry[WorkflowNodeDefinition]):
@@ -132,12 +151,20 @@ WORKFLOW_NODES = [
     WorkflowNodeDefinition("COMPUTE", "ACTION", "Compute", "Compute a value using a custom Python function", ComputeExecutor, "fa-solid fa-calculator"),
     WorkflowNodeDefinition("HUMAN_IN_THE_LOOP", "ACTION", "Human in the Loop", "Pauses the workflow and waits for a human to provide input", HumanInTheLoopExecutor, "fa-solid fa-hand-paper"),
     WorkflowNodeDefinition("WAIT", "ACTION", "Wait", "Pauses the workflow for a certain amount of seconds", WaitExecutor, "fa-solid fa-clock"),
-    WorkflowNodeDefinition("IF_CONDITION", "FLOW", "If Condition", "Continues only when a condition is true", IfConditionExecutor, "fa-solid fa-code-branch"),
+    WorkflowNodeDefinition("IF_CONDITION", "FLOW", "If Condition", "Routes input through a true or false output", IfConditionExecutor, "fa-solid fa-code-branch"),
     WorkflowNodeDefinition("FILTER_OBJECTS", "FLOW", "Filter Objects", "Filters a collection of objects based on field values", FilterObjectsExecutor, "fa-solid fa-filter"),
     WorkflowNodeDefinition("FOR_EACH", "FLOW", "For Each", "Runs the downstream branch once for each item in a collection", ForEachExecutor, "fa-solid fa-repeat"),
     WorkflowNodeDefinition("COLLECT", "FLOW", "Collect", "Collects all results from a For Each into one ordered list", CollectExecutor, "fa-solid fa-layer-group"),
     WorkflowNodeDefinition("MERGE_BRANCHES", "FLOW", "Merge Branches", "Waits for all upstream branches, then passes their outputs downstream as one object", MergeBranchExecutor, "fa-solid fa-code-merge"),
-    WorkflowNodeDefinition("OBJECT_IF_CONDITION", "FLOW", "Object If Condition", "Branches the workflow based on the value of a field on an object", ObjectIfConditionExecutor, "fa-solid fa-code-branch"),
+    WorkflowNodeDefinition("OBJECT_IF_CONDITION", "FLOW", "Object If Condition", "Routes an object through a true or false output", ObjectIfConditionExecutor, "fa-solid fa-code-branch"),
+    WorkflowNodeDefinition(
+        "RUN_WORKFLOW",
+        "ACTION",
+        "Run workflow",
+        "Run's another workflow with this workflow's input data",
+        executor_cls=RunWorkflowExecutor,
+        icon="fa-solid fa-code-branch"
+    )
 ]
 
 for workflow_node in WORKFLOW_NODES:

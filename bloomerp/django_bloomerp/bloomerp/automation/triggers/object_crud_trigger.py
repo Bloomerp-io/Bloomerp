@@ -71,6 +71,7 @@ class ObjectCrudTrigger(BaseTrigger):
         cls,
         config: dict | None = None,
         input_schema: WorkflowIOSchema | None = None,
+        port_id: str = "default",
     ) -> WorkflowIOSchema:
         content_type_id = (config or {}).get("content_type_id")
         if not content_type_id:

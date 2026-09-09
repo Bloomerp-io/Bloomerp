@@ -50,7 +50,6 @@
     --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-blue-800: oklch(42.4% 0.199 265.638);
     --color-purple-100: oklch(94.6% 0.033 307.174);
-    --color-purple-500: oklch(62.7% 0.265 303.9);
     --color-purple-700: oklch(49.6% 0.265 301.924);
     --color-rose-50: oklch(96.9% 0.015 12.422);
     --color-rose-200: oklch(89.2% 0.058 10.001);
@@ -3807,6 +3806,11 @@
       background-color: var(--color-zinc-950);
     }
   }
+  .dark\:text-gray-100 {
+    &:where(.dark, .dark *) {
+      color: var(--color-gray-100);
+    }
+  }
   .dark\:text-zinc-100 {
     &:where(.dark, .dark *) {
       color: var(--color-zinc-100);
@@ -3815,6 +3819,15 @@
   .dark\:text-zinc-200 {
     &:where(.dark, .dark *) {
       color: var(--color-zinc-200);
+    }
+  }
+  .dark\:hover\:bg-zinc-700 {
+    &:where(.dark, .dark *) {
+      &:hover {
+        @media (hover: hover) {
+          background-color: var(--color-zinc-700);
+        }
+      }
     }
   }
   .dark\:hover\:bg-zinc-800 {
@@ -3971,6 +3984,15 @@
   .dark .text-slate-700 {
     color: var(--color-zinc-300);
   }
+  .dark .text-slate-900 {
+    color: var(--color-zinc-100);
+  }
+  .dark .text-slate-800 {
+    color: var(--color-zinc-200);
+  }
+  .dark .text-slate-600 {
+    color: var(--color-zinc-400);
+  }
   .dark .layout-item__body .text-slate-800 {
     color: var(--color-primary-300);
   }
@@ -4021,6 +4043,37 @@
   .dark input[type='checkbox']:focus, .dark input[type='radio']:focus {
     --tw-ring-offset-color: var(--color-zinc-900);
   }
+}
+.bulk-actions-content {
+  font-family: var(--font-sans);
+}
+.dark [bloomerp-component="modal"] > [id$="-container"] {
+  background-color: var(--color-zinc-800);
+  color: var(--color-zinc-100);
+}
+.dark [bloomerp-component="modal"] > [id$="-container"] .border-gray-200 {
+  border-color: var(--color-zinc-700);
+}
+.dark .bulk-actions-content .bg-base {
+  background-color: var(--color-zinc-900);
+  border-color: var(--color-zinc-700);
+}
+.dark .bulk-actions-content .text-slate-900, .dark .bulk-actions-content .text-slate-800 {
+  color: var(--color-zinc-100);
+}
+.dark .bulk-actions-content .text-slate-700, .dark .bulk-actions-content .text-slate-600 {
+  color: var(--color-zinc-300);
+}
+.dark .ace_editor {
+  background: var(--color-zinc-900);
+  color: var(--color-zinc-100);
+}
+.dark .ace_editor .ace_gutter {
+  background: var(--color-zinc-800);
+  color: var(--color-zinc-400);
+}
+.dark .ace_editor .ace_gutter-active-line {
+  background: var(--color-zinc-700);
 }
 @layer components {
   .markdown-view-layout {
@@ -5220,6 +5273,14 @@
   .skeleton-line.short {
     width: calc(2/3 * 100%);
   }
+  .dark .skeleton-loader, .skeleton-loader--dark {
+    background-color: #27272a;
+  }
+  .dark .skeleton-header, .dark .skeleton-line, .skeleton-loader--dark .skeleton-header, .skeleton-loader--dark .skeleton-line {
+    background: #3f3f46;
+    background: linear-gradient(110deg, #3f3f46 8%, #52525b 18%, #3f3f46 33%);
+    background-size: 200% 100%;
+  }
 }
 @layer components {
   .alert {
@@ -5677,6 +5738,131 @@
   .drawflow .connection .point:hover {
     fill: #9ca3af !important;
   }
+  .dark #drawflow {
+    background-color: #18181b;
+    background-image: radial-gradient(circle, #3f3f46 1px, transparent 1px);
+  }
+  .dark .drawflow .drawflow-node {
+    background: #27272a !important;
+    border-color: #52525b !important;
+    color: #f4f4f5 !important;
+  }
+  .dark .drawflow .drawflow-node:hover, .dark .drawflow .drawflow-node.selected {
+    border-color: var(--color-primary-500) !important;
+  }
+  .dark .drawflow .node-header {
+    background: linear-gradient(135deg, #27272a 0%, #18181b 100%) !important;
+    border-color: #3f3f46 !important;
+    color: #f4f4f5 !important;
+  }
+  .dark .drawflow .workflow-node-kicker, .dark .drawflow .workflow-node-meta, .dark .drawflow .workflow-node-config-key {
+    color: #a1a1aa;
+  }
+  .dark .drawflow .workflow-node-title, .dark .drawflow .workflow-node-config-value {
+    color: #f4f4f5;
+  }
+  .dark .drawflow .workflow-node-config-chip, .dark .drawflow .workflow-node-empty-config {
+    background: #18181b;
+    border-color: #52525b;
+  }
+  .dark .drawflow .workflow-node-card--trigger .workflow-node-icon {
+    background: #14532d;
+    color: #bbf7d0;
+  }
+  .dark .drawflow .workflow-node-card--action .workflow-node-icon {
+    background: #1e3a8a;
+    color: #bfdbfe;
+  }
+  .dark .drawflow .workflow-node-card--flow .workflow-node-icon {
+    background: #78350f;
+    color: #fde68a;
+  }
+  .dark .drawflow .drawflow-node .input, .dark .drawflow .drawflow-node .output {
+    background: #a1a1aa !important;
+    border-color: #27272a !important;
+  }
+  .dark .drawflow .connection .main-path {
+    stroke: #71717a !important;
+  }
+  .dark .drawflow .connection .main-path:hover {
+    stroke: #a1a1aa !important;
+  }
+  .dark .drawflow .connection .point {
+    stroke: #a1a1aa !important;
+    fill: #27272a !important;
+  }
+  .dark .drawflow [data-workflow-port-label] {
+    color: #d4d4d8 !important;
+  }
+  .dark .drawflow [data-workflow-edge-label] {
+    background: rgba(39, 39, 42, 0.94) !important;
+    color: #e4e4e7 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+  }
+  .dark .drawflow [data-workflow-edge-label] textarea {
+    background: rgba(39, 39, 42, 0.98) !important;
+    border-color: #71717a !important;
+    color: #f4f4f5 !important;
+  }
+}
+.workflow-builder {
+  position: relative;
+  margin: -1rem;
+}
+.workflow-builder #drawflow {
+  position: relative;
+  height: 70vh;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.workflow-builder #drawflow:focus {
+  outline: none;
+}
+.workflow-toolbar, .workflow-selection-actions {
+  position: absolute;
+  z-index: 10;
+  padding: .5rem;
+  border-radius: .75rem;
+  background: var(--color-white, white);
+  box-shadow: 0 2px 8px #0002;
+}
+.workflow-toolbar {
+  top: 1rem;
+  left: 1rem;
+}
+.workflow-selection-actions {
+  top: 5rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.workflow-selection-actions[hidden], .workflow-selection-actions [hidden] {
+  display: none;
+}
+.workflow-selection-box {
+  position: absolute;
+  z-index: 8;
+  border: 1px solid #6366f1;
+  background: #6366f122;
+  pointer-events: none;
+}
+.workflow-builder .drawflow-node.workflow-selected {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+.workflow-builder .connection.workflow-selected .main-path {
+  stroke: #6366f1 !important;
+  stroke-width: 4px;
+}
+.workflow-builder .drawflow-delete {
+  display: none;
+}
+.dark .workflow-toolbar, .dark .workflow-selection-actions {
+  background: #1f2937;
+}
+html.dark [data-workflow-node-item]:hover {
+  background-color: var(--color-zinc-700) !important;
 }
 @layer base {
   [type='text'],input:where(:not([type])),[type='email'],[type='url'],[type='password'],[type='number'],[type='date'],[type='datetime-local'],[type='month'],[type='search'],[type='tel'],[type='time'],[type='week'],[multiple],textarea,select {

@@ -83,7 +83,11 @@ def resolve_node_input_schema(
         )
 
     upstream_schemas = [
-        resolve_node_output_schema(edge.from_node, seen_node_ids.copy())
+        resolve_node_output_schema(
+            edge.from_node,
+            seen_node_ids.copy(),
+            port_id=edge.output_port,
+        )
         for edge in incoming_edges
     ]
 
@@ -96,6 +100,8 @@ def resolve_node_input_schema(
 def resolve_node_output_schema(
     node: WorkflowNode,
     seen_node_ids: set[int] | None = None,
+    *,
+    port_id: str = "default",
 ) -> WorkflowIOSchema:
     seen_node_ids = seen_node_ids or set()
     if node.id in seen_node_ids:
@@ -111,4 +117,8 @@ def resolve_node_output_schema(
         return WorkflowIOSchema(value_type="any", label="Output")
 
     input_schema = resolve_node_input_schema(node, seen_node_ids.copy())
-    return sub_type.executor_cls.get_output_schema(node.parameters or {}, input_schema)
+    return sub_type.executor_cls.get_output_schema(
+        node.parameters or {},
+        input_schema,
+        port_id=port_id,
+    )

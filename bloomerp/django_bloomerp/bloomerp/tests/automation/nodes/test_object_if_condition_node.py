@@ -2,7 +2,7 @@
 from bloomerp.automation.flows.object_if_condition import ObjectIfConditionExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,11 @@ class TestObjectIfConditionNode(BloomerpWorkflowNodeTestCase):
     node_id = 'OBJECT_IF_CONDITION'
     executor_class = ObjectIfConditionExecutor
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def test_condition_ports_allow_fanout(self):
+        ports = {port.id: port for port in self.executor_class.get_output_ports()}
+
+        self.assertIsNone(ports["true"].max_connections)
+        self.assertIsNone(ports["false"].max_connections)
+
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

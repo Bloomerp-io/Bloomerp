@@ -27,13 +27,14 @@
         <ul>
             {% for sub_type in node_type.nodes %}
             <li
-                class="border-l border-l-3 border-gray-200 py-3 hover:border-primary hover:bg-slate-50 cursor-pointer"
+                class="border-l border-l-3 border-gray-200 py-3 hover:border-primary hover:bg-slate-50 dark:border-zinc-700 dark:hover:bg-zinc-700 cursor-pointer"
                 data-node-subtype-id="{{ sub_type.id }}"
                 data-node-subtype-name="{{ sub_type.name }}"
                 data-node-subtype-description="{{ sub_type.description }}"
                 data-node-subtype-icon="{{ sub_type.icon }}"
                 data-node-type-id="{{ node_type.id }}"
                 data-node-type-name="{{ node_type.name }}"
+                data-node-output-ports="{{ sub_type.default_output_ports_json }}"
                 data-workflow-node-item
                 data-workflow-search-text="{{ node_type.name }} {{ sub_type.name }} {{ sub_type.description }}"
             >

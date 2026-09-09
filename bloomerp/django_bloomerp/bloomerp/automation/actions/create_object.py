@@ -79,7 +79,7 @@ class CreateObjectExecutor(BaseExecutor):
     
     # OK
     @classmethod
-    def get_output_schema(cls, config = None, input_schema = None):
+    def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
         params = config or {}
         
         # Get the content type ID

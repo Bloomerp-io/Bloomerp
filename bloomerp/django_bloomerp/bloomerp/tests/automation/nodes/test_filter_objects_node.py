@@ -2,7 +2,7 @@
 from bloomerp.automation.flows.filter_objects import FilterObjectsExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
     node_id = 'FILTER_OBJECTS'
     executor_class = FilterObjectsExecutor
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

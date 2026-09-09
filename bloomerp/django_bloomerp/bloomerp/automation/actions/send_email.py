@@ -56,6 +56,7 @@ class SendEmailExecutor(BaseExecutor):
         cls,
         config: dict | None = None,
         input_schema: WorkflowIOSchema | None = None,
+        port_id: str = "default",
     ) -> WorkflowIOSchema:
         upstream_fields = (
             remap_schema_field_paths(input_schema.fields, {})

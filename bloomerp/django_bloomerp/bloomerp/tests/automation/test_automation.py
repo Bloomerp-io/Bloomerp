@@ -8,7 +8,14 @@ from django.test import TransactionTestCase
 from django_celery_beat.models import PeriodicTask
 from regex import F
 
-from bloomerp.automation.flows import object_if_condition
+from bloomerp.automation.run import (
+    _execute_node,
+    format_execution_trace,
+    resume_workflow,
+    run_workflow,
+    run_workflow_sync,
+    serialize_workflow_value,
+)
 from bloomerp.automation.schema import WorkflowValueType
 from bloomerp.automation.schema_resolver import resolve_node_output_schema
 from bloomerp.automation.utils import enhanced_get_attr
@@ -22,14 +29,6 @@ from bloomerp.celery.tasks.workflow_task import (
     resume_workflow_async,
     run_scheduled_workflow,
     run_workflow_async,
-)
-from bloomerp.services.workflow_services import (
-    _execute_node,
-    _serialize_trigger_data,
-    format_execution_trace,
-    resume_workflow,
-    run_workflow,
-    run_workflow_sync,
 )
 from bloomerp.signals.automation_signals import setup_automation_signals
 from bloomerp.tests.utils.dynamic_models import create_test_models, ensure_content_types_for_models
@@ -282,7 +281,7 @@ class TestAutomation(TransactionTestCase):
             workflow.save(update_fields=["run_asynchronously"])
 
             with patch(
-                "bloomerp.services.workflow_services.resume_workflow_async.delay"
+                "bloomerp.automation.run.resume_workflow_async.delay"
             ) as delay_mock:
                 result = resume_workflow(paused_step)
 
@@ -388,11 +387,11 @@ class TestAutomation(TransactionTestCase):
         # 2. Execute through the failed savepoint boundary reported by PostgreSQL.
         with (
             patch(
-                "bloomerp.services.workflow_services.transaction.get_connection",
+                "bloomerp.automation.run.transaction.get_connection",
                 return_value=connection,
             ),
             patch(
-                "bloomerp.services.workflow_services.transaction.atomic",
+                "bloomerp.automation.run.transaction.atomic",
                 return_value=AbortedSavepoint(),
             ),
         ):
@@ -426,11 +425,11 @@ class TestAutomation(TransactionTestCase):
         # 2. Verify that only PostgreSQL's aborted-transaction error is recoverable.
         with (
             patch(
-                "bloomerp.services.workflow_services.transaction.get_connection",
+                "bloomerp.automation.run.transaction.get_connection",
                 return_value=connection,
             ),
             patch(
-                "bloomerp.services.workflow_services.transaction.atomic",
+                "bloomerp.automation.run.transaction.atomic",
                 return_value=FailedSavepoint(),
             ),
             self.assertRaises(DatabaseError) as raised,
@@ -542,7 +541,7 @@ class TestAutomation(TransactionTestCase):
         self.workflow.run_asynchronously = True
         self.workflow.save(update_fields=["run_asynchronously"])
 
-        with patch("bloomerp.services.workflow_services.run_workflow_async.delay") as delay_mock:
+        with patch("bloomerp.automation.run.run_workflow_async.delay") as delay_mock:
             result = run_workflow(self.workflow, {"first_name": "John"})
 
         self.assertIsNone(result)
@@ -555,7 +554,7 @@ class TestAutomation(TransactionTestCase):
         self.workflow.run_asynchronously = True
         self.workflow.save(update_fields=["run_asynchronously"])
 
-        with patch("bloomerp.services.workflow_services.run_workflow_async.delay") as delay_mock:
+        with patch("bloomerp.automation.run.run_workflow_async.delay") as delay_mock:
             result = run_workflow(
                 self.workflow,
                 {"first_name": "John"},
@@ -580,7 +579,7 @@ class TestAutomation(TransactionTestCase):
         Workflow.objects.filter(pk=self.workflow.pk).update(active=False)
 
         # 2. Attempt dispatch with the stale instance and verify nothing is queued.
-        with patch("bloomerp.services.workflow_services.run_workflow_async.delay") as delay_mock:
+        with patch("bloomerp.automation.run.run_workflow_async.delay") as delay_mock:
             result = run_workflow(self.workflow, {"first_name": "John"})
 
         self.assertIsNone(result)
@@ -618,7 +617,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
 
-        with patch("bloomerp.services.workflow_services.run_workflow_async.delay"):
+        with patch("bloomerp.automation.run.run_workflow_async.delay"):
             employee = self.EmployeeModel.objects.create(
                 first_name="Ava",
                 last_name="Ng",
@@ -626,7 +625,7 @@ class TestAutomation(TransactionTestCase):
                 created_by=self.user,
                 updated_by=self.user,
             )
-        serialized_trigger_data = _serialize_trigger_data(
+        serialized_trigger_data = serialize_workflow_value(
             {
                 "event": "create",
                 "sender": self.EmployeeModel,
@@ -635,7 +634,7 @@ class TestAutomation(TransactionTestCase):
             }
         )
 
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             run_workflow_async(workflow.id, serialized_trigger_data)
 
         run_workflow_sync_mock.assert_called_once()
@@ -646,7 +645,7 @@ class TestAutomation(TransactionTestCase):
         self.assertEqual(called_trigger_data["sender"], self.EmployeeModel)
 
     def test_run_workflow_async_returns_json_safe_result(self):
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             workflow_run = WorkflowRun(id=123)
             run_workflow_sync_mock.return_value = workflow_run
 
@@ -665,7 +664,7 @@ class TestAutomation(TransactionTestCase):
         self.workflow.save(update_fields=["active"])
 
         # 2. Run the queued task and verify it does not enter the workflow engine.
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             result = run_workflow_async(workflow_id, {"first_name": "John"})
 
         self.assertIsNone(result)
@@ -717,7 +716,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
 
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             workflow_run = WorkflowRun(id=456)
             run_workflow_sync_mock.return_value = workflow_run
 
@@ -898,7 +897,7 @@ class TestAutomation(TransactionTestCase):
         workflow.save(update_fields=["active"])
 
         # 2. Create the matching object and verify execution is skipped at runtime.
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             self.CustomerModel.objects.create(
                 first_name="Deactivated",
                 last_name="Create",
@@ -941,7 +940,7 @@ class TestAutomation(TransactionTestCase):
         workflow.save(update_fields=["active"])
 
         # 2. Update the matching object and verify execution is skipped at runtime.
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             instance.age = 31
             instance.updated_by = self.user
             instance.save()
@@ -980,7 +979,7 @@ class TestAutomation(TransactionTestCase):
         workflow.save(update_fields=["active"])
 
         # 2. Delete the matching object and verify execution is skipped at runtime.
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             instance.delete()
 
         run_workflow_sync_mock.assert_not_called()
@@ -1009,7 +1008,7 @@ class TestAutomation(TransactionTestCase):
         setup_automation_signals(refresh=True)
 
         # 2. Verify it is skipped while inactive, then activate it without refreshing signals.
-        with patch("bloomerp.services.workflow_services.run_workflow_sync") as run_workflow_sync_mock:
+        with patch("bloomerp.automation.run.run_workflow_sync") as run_workflow_sync_mock:
             self.CustomerModel.objects.create(
                 first_name="Before",
                 last_name="Activation",
@@ -1036,916 +1035,7 @@ class TestAutomation(TransactionTestCase):
         data = self.start_node.execute({}) # Don't need to pass any data with human triggers
         
         self.assertEqual(self.start_node.parameters.get("data"), data)
-    
-    # ---------------------------------------
-    # Action: ENRICH
-    # ---------------------------------------
-    def test_action_enrich_adds_fields_to_input_object(self):
-        workflow = Workflow.objects.create(
-            name="Enrich Test Workflow",
-        )
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        enrich_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="ENRICH_DATA",
-            parameters={
-                    "data": {
-                        "full_name": "John Doe"
-                    }
-                },
-            type="ACTION",
-        )
-        WorkflowEdge.objects.create(from_node=trigger, to_node=enrich_action)
 
-        workflow_run = run_workflow(workflow, {"first_name": "John", "last_name": "Doe"})
-
-        enrich_output = workflow_run.execution_trace[1]["output"]
-        self.assertEqual(enrich_output["full_name"], "John Doe")
-        self.assertEqual(enrich_output["first_name"], "John")
-        self.assertEqual(enrich_output["last_name"], "Doe")
-        
-    def test_action_enrich_with_overlapping_field_names(self):
-        workflow = Workflow.objects.create(
-            name="Enrich Overlapping Fields Test Workflow",
-        )
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        enrich_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="ENRICH_DATA",
-            parameters={
-                    "data": {
-                        "first_name": "Jane",
-                        "full_name": "Jane Doe"
-                    }
-                },
-            type="ACTION",
-        )
-        WorkflowEdge.objects.create(from_node=trigger, to_node=enrich_action)
-
-        workflow_run = run_workflow(workflow, {"first_name": "John", "last_name": "Doe"})
-
-        enrich_output = workflow_run.execution_trace[1]["output"]
-        print(enrich_output)
-        self.assertEqual(enrich_output["first_name"], "Jane")
-        self.assertEqual(enrich_output["full_name"], "Jane Doe")
-        self.assertEqual(enrich_output["last_name"], "Doe")
-
-    # ---------------------------------------
-    # Action: EXTRACT_FIELD
-    # ---------------------------------------
-    def test_action_extract_field_extracts_field_from_input_object(self):
-        """
-        This test checks whether a field can be extracted from the input and returned as output
-        """
-        workflow = Workflow.objects.create(
-            name="Extract Field Test Workflow",
-        )
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        extract_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="EXTRACT_FIELD",
-            parameters={
-                    "field_path": "user"
-                },
-            type="ACTION",
-        )
-        WorkflowEdge.objects.create(from_node=trigger, to_node=extract_action)
-
-        workflow_run = run_workflow(workflow, {"user": {"email": "john.doe@example.com"}})
-
-        extract_output = workflow_run.execution_trace[1]["output"]
-        self.assertEqual(extract_output, {"email": "john.doe@example.com"})
-
-    def test_action_extract_field_with_path_not_refering_to_list_or_object(self):
-        """
-        Workflow nodes pass a typed value downstream. If the extracted field is
-        primitive, the primitive itself is returned rather than being wrapped in
-        an artificial object.
-        """
-        # 1. Create the workflow
-        workflow = Workflow.objects.create(
-            name="Extract Nested Field Test Workflow",
-        )
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        extract_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="EXTRACT_FIELD",
-            parameters={
-                    "field_path": "user"
-                },
-            type="ACTION",
-        )
-        WorkflowEdge.objects.create(from_node=trigger, to_node=extract_action)
-
-        # 2. Run the workflow with a primitive value at the specified field path
-        workflow_run = run_workflow(workflow, {"user": "David"})
-
-        
-        extract_output = get_terminal_node_output(workflow_run)
-        self.assertEqual(extract_output, "David")
-    
-    def test_action_extract_field_with_nested_field_path(self):
-        """
-        This test checks whether a field can be extracted from a nested field path in the input and returned as output
-        """
-        workflow = Workflow.objects.create(
-            name="Extract Nested Field Test Workflow",
-        )
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        extract_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="EXTRACT_FIELD",
-            parameters={
-                    "field_path": "user.profile.email"
-                },
-            type="ACTION",
-        )
-        WorkflowEdge.objects.create(from_node=trigger, to_node=extract_action)
-
-        workflow_run = run_workflow(workflow, {"user": {"profile": {"email": "john.doe@example.com"}}})
-
-        extract_output = get_terminal_node_output(workflow_run)
-        self.assertEqual(extract_output, "john.doe@example.com")
-    
-    def test_action_extract_field_using_list_objects_action(self):
-        """
-        More E2E test of when to use this
-        """
-        # 1. Create the workflow
-        workflow = Workflow.objects.create(
-            name="Extract Field from list objects",
-        )
-        
-        # 2. Create objects
-        self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
-        self.CustomerModel.objects.create(first_name="Bob", last_name="Johnson", age=25)
-        
-        # 3. Create the nodes
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        list_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="LIST_OBJECTS",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
-                },
-            type="ACTION",
-        )
-        
-        extract_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="EXTRACT_FIELD",
-            parameters={
-                    "field_path": "queryset"
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, list_action)
-        workflow.connect_nodes(list_action, extract_action)
-        
-        # 5. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-        
-        # 6. Check the output of the extract action
-        output = get_terminal_node_output(workflow_run)
-        self.assertIsInstance(output, list)
-        self.assertEqual(len(output), 2)
-        self.assertEqual(enhanced_get_attr(output[0], "first_name"), "Alice")
-        self.assertEqual(enhanced_get_attr(output[1], "first_name"), "Bob")
-    
-    def test_action_extract_field_maintains_output_format_in_downstream_nodes(self):
-        # 1. Create the workflow
-        workflow = Workflow.objects.create(
-            name="Extract Field Output Format Test Workflow",
-        )
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "age": 20,
-                    "interests": ["sports", "music"] 
-                }},
-            type="TRIGGER",
-        )
-        extract_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="EXTRACT_FIELD",
-            parameters={
-                    "field_path": "interests"
-                },
-            type="ACTION",
-        )
-        workflow.connect_nodes(trigger, extract_action)
-        
-        # 2. Resolve output schema
-        output_schema = resolve_node_output_schema(extract_action)
-        self.assertEqual(output_schema.value_type, "list")
-        self.assertEqual(output_schema.fields, [])
-
-        workflow_run = run_workflow(workflow, {})
-        self.assertEqual(get_terminal_node_output(workflow_run), ["sports", "music"])
-    
-    # ---------------------------------------
-    # Action: LIST_OBJECTS
-    # ---------------------------------------
-    def test_action_list_objects_returns_objects_of_specified_content_type(self):
-        # Create some test customers
-        self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
-        self.CustomerModel.objects.create(first_name="Bob", last_name="Johnson", age=25)
-
-        workflow = Workflow.objects.create(name="List Objects Test Workflow")
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={
-                    "data" : {
-                        "run": True
-                    }    
-                },
-            type="TRIGGER",
-        )
-        list_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="LIST_OBJECTS",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id
-                },
-            type="ACTION",
-        )
-        WorkflowEdge.objects.create(from_node=trigger, to_node=list_action)
-
-        workflow_run = run_workflow(workflow, {})
-
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertIn("queryset", output)
-        self.assertIn("count", output)
-        self.assertIn("content_type_id", output)
-        self.assertEqual(output["count"], 2)
-        
-        obj_1 = output["queryset"][0]
-        obj_2 = output["queryset"][1]
-        self.assertEqual(enhanced_get_attr(obj_1, "first_name"), "Alice")
-        self.assertEqual(enhanced_get_attr(obj_2, "first_name"), "Bob")
-        self.assertEqual(output["content_type_id"], ContentType.objects.get_for_model(self.CustomerModel).id)
-        self.assertEqual(output["count"], 2)
-    
-    # ----------------------------------------
-    # Action: UPDATE_OBJECT
-    # ----------------------------------------
-    def test_action_update_object_updates_object_with_given_fields(self):
-        FIRST_NAME = "Alice"
-        LAST_NAME = "Smith"
-        AGE = 30
-        
-        NEW_LAST_NAME = "Johnson"
-        NEW_AGE = AGE + 1
-        
-        # 1. Create a test customer
-        customer = self.CustomerModel.objects.create(first_name=FIRST_NAME, last_name=LAST_NAME, age=AGE)
-
-        # 2. Create workflow
-        workflow = Workflow.objects.create(name="Update Object Test Workflow")
-        
-        # 3. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 4. Create the action node
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            type="ACTION",
-            sub_type="UPDATE_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "object_id": str(customer.id),
-                    "fields": {
-                        "age": "{{ input.age }}",
-                        "last_name": "{{ input.last_name }}",
-                    }
-                }
-        )
-        
-        # 5. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 6. Run the workflow
-        run_workflow(workflow, {"first_name" : FIRST_NAME, "last_name" : NEW_LAST_NAME, "age" : NEW_AGE})
-
-        # 7. Refresh the customer from the database and check that it was updated
-        customer.refresh_from_db()
-        self.assertEqual(customer.age, NEW_AGE)
-        self.assertEqual(customer.last_name, NEW_LAST_NAME)
-        self.assertEqual(customer.first_name, FIRST_NAME)
-    
-        # 8. Check that the workflow execution trace contains the updated fields
-        output_schema = resolve_node_output_schema(action)
-        self.assertEqual(output_schema.value_type, WorkflowValueType.OBJECT.value)
-        
-        # 6. Check that the fields are there
-        required_fields = ["instance", "status", "error_message"]
-        for field in output_schema.fields:
-            self.assertTrue(field.path in required_fields)
-        
-    def test_action_update_with_partial_fields_only(self):
-        """
-        UC: Sometimes updates only include partial fields
-        Expected results: partial fields are updated, even if other required fields are not provided.
-        """
-        # 1. Create a test customer
-        customer = self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
-
-        # 2. Create workflow
-        workflow = Workflow.objects.create(name="Update Object Partial Fields Test Workflow")
-        
-        # 3. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 4. Create the action node
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            type="ACTION",
-            sub_type="UPDATE_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "object_id": str(customer.id),
-                    "fields": {
-                        "age": "{{ input.age }}",
-                    }
-                }
-        )
-        
-        # 5. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 6. Run the workflow with only the age field provided
-        run_workflow(workflow, {"age" : 35})
-
-        # 7. Refresh the customer from the database and check that it was updated
-        customer.refresh_from_db()
-        self.assertEqual(customer.age, 35)
-        self.assertEqual(customer.first_name, "Alice")
-        self.assertEqual(customer.last_name, "Smith")
-    
-    # ----------------------------------------
-    # Action: DELETE_OBJECT
-    # ----------------------------------------
-    def test_action_delete_object_deletes_object_with_given_content_type_and_id(self):
-        #1. Create a test customer
-        customer = self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
-        
-        # 2. Create workflow
-        workflow = Workflow.objects.create(name="Delete Object Test Workflow")
-        
-        # 3. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 4. Create the action node
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="DELETE_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "object_id": str(customer.id),
-                },
-            type="ACTION",
-        )
-        
-        # 5. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 6. Run the workflow
-        run_workflow(workflow, {})
-        
-        # 7. Check that the customer was deleted
-        self.assertFalse(self.CustomerModel.objects.filter(id=customer.id).exists())
-        
-        # 8. Check that the workflow execution trace contains the status of the delete action
-        output_schema = resolve_node_output_schema(action)
-        self.assertEqual(output_schema.value_type, WorkflowValueType.OBJECT.value)
-        required_fields = ["status", "error_message", "deleted_object_id"]
-        for field in output_schema.fields:
-            self.assertTrue(field.path in required_fields)
-    
-    # ----------------------------------------
-    # Action: CREATE_OBJECT
-    # ----------------------------------------
-    def test_action_create_object_creates_object_with_given_content_type_and_fields(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Create Object Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="CREATE_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "fields": {
-                        "first_name": "Alice",
-                        "last_name": "Smith",
-                        "age": 30
-                    }
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow
-        run_workflow(workflow, {})
-        
-        # 6. Check that the customer was created
-        self.assertTrue(self.CustomerModel.objects.filter(first_name="Alice", last_name="Smith", age=30).exists())
-        
-    def test_action_create_object_with_resolved_fields_creates_object_with_given_content_type_and_fields(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Create Object with Resolved Fields Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node with resolved fields
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="CREATE_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "fields": {
-                        "first_name": "{{ input.first_name }}",
-                        "last_name": "{{ input.last_name }}",
-                        "age": "{{ input.age }}"
-                    }
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow with input data
-        run_workflow(workflow, {"first_name": "Bob", "last_name": "Johnson", "age": 25})
-        
-        # 6. Check that the customer was created with the resolved fields
-        self.assertTrue(self.CustomerModel.objects.filter(first_name="Bob", last_name="Johnson", age=25).exists())
-    
-    def test_action_create_object_with_foreign_key_passes_foreign_object_downstream(self):
-        """
-        This test checks whether creating an object with a foreign key reference actually passes down
-        the object rather than the id
-        """
-        import uuid
-        username = f"testuser_{uuid.uuid4().hex[:8]}"
-        
-        
-        # 1. Create a user object
-        user = get_user_model().objects.create_user(username=username, password="testpassword")
-        
-        # 2. Create workflow
-        workflow = Workflow.objects.create(name="Create Object with Foreign Key Test Workflow")
-        
-        # 3. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 4. Create the action node with a foreign key reference to the user
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="CREATE_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "fields": {
-                        "first_name": "Alice",
-                        "last_name": "Smith",
-                        "age": 30,
-                        "created_by": user.id
-                    }
-                },
-            type="ACTION",
-        )
-        
-        # 5. Add extract action to extract the created object
-        extract_action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="EXTRACT_FIELD",
-            parameters={
-                    "field_path": "instance.created_by.username"
-                },
-            type="ACTION",
-        )
-        
-        # 5. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        workflow.connect_nodes(action, extract_action)
-        
-        # 6. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-        
-        # 7. Check that the created object has the correct foreign key reference
-        output = get_terminal_node_output(workflow_run)
-        self.assertEqual(output, username)
-        
-    # ----------------------------------------
-    # Action: SQL_QUERY
-    # ----------------------------------------
-    def test_action_sql_query_returns_list_of_objects_matching_query(self):
-        # 1. Create some test customers
-        self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
-        self.CustomerModel.objects.create(first_name="Bob", last_name="Johnson", age=25)
-
-        # 2. Create workflow
-        workflow = Workflow.objects.create(name="SQL Query Test Workflow")
-        
-        # 3. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 4. Create the action node
-        db_table = self.CustomerModel._meta.db_table
-        query = f"SELECT * FROM {db_table} WHERE age > 26"
-        
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="SQL_QUERY",
-            parameters={
-                    "query": query,
-                },
-            type="ACTION",
-        )
-        
-        # 5. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 6. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-        
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertIn("result", output)
-        self.assertIn("count", output)
-        self.assertEqual(output["count"], 1)
-        self.assertEqual(output["result"][0]["first_name"], "Alice")
-        
-    def test_action_sql_query_with_invalid_query_returns_error(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Invalid SQL Query Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node with an invalid query
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="SQL_QUERY",
-            parameters={
-                    "query": f"SELECT non_existing_field FROM non_existing_table",
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-        
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertIn("error_message", output)
-        self.assertIsNotNone(output["error_message"])
-        
-    # ----------------------------------------
-    # Action: GET_OBJECT
-    # ----------------------------------------
-    def test_action_get_object_returns_object_with_given_content_type_and_id(self):
-        # 1. Create a test customer
-        customer = self.CustomerModel.objects.create(first_name="Alice", last_name="Smith", age=30)
-
-        # 2. Create workflow
-        workflow = Workflow.objects.create(name="Get Object Test Workflow")
-        
-        # 3. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 4. Create the action node
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="GET_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "object_id": str(customer.id),
-                },
-            type="ACTION",
-        )
-        
-        # 5. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 6. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertIn("instance", output)
-        self.assertEqual(enhanced_get_attr(output["instance"], "first_name"), "Alice")
-        self.assertEqual(enhanced_get_attr(output["instance"], "last_name"), "Smith")
-        self.assertEqual(enhanced_get_attr(output["instance"], "age"), 30)
-    
-    def test_action_get_object_returns_object_using_context(self):
-        # 1. Create a test customer
-        customer = self.CustomerModel.objects.create(first_name="Bob", last_name="Johnson", age=25)
-        
-        # 2. Create workflow
-        workflow = Workflow.objects.create(name="Get Object with Context Test Workflow")
-        
-        # 3. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 4. Create the action node with object_id referring to the trigger context
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="GET_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "object_id": "{{ input.instance_id }}",
-                },
-            type="ACTION",
-        )
-        
-        # 5. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 6. Run the workflow with the trigger context containing the customer id
-        workflow_run = run_workflow(workflow, {"instance_id": str(customer.id)})
-        
-        output = get_terminal_node_output(workflow_run)
-        self.assertIn("instance", output)
-        self.assertEqual(enhanced_get_attr(output["instance"], "first_name"), "Bob")
-        
-    def test_action_get_object_with_invalid_id_returns_error(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Get Object with Invalid ID Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node with an invalid object_id
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="GET_OBJECT",
-            parameters={
-                    "content_type_id": ContentType.objects.get_for_model(self.CustomerModel).id,
-                    "object_id": "9999",  # Assuming this ID does not exist
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-        
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertEqual(output["found"], False)
-    
-    # ----------------------------------------
-    # Action: COMPUTE
-    # ----------------------------------------
-    def test_action_compute(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Compute Action Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node with a simple computation
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="COMPUTE",
-            parameters={
-                    "expression": "{{ input.a }} + {{ input.b }}"
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow with input values for the computation
-        workflow_run = run_workflow(workflow, {"a": 5, "b": 10})
-        
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertEqual(output["result"], 15)
-    
-    def test_action_compute_get_first_item_from_list(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Compute Action List Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node with an expression that gets the first item from a list
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="COMPUTE",
-            parameters={
-                    "expression": "{{ input.numbers }}[2]"
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow with a list of numbers as input
-        workflow_run = run_workflow(workflow, {"numbers": [10, 20, 30]})
-        
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertEqual(output["result"], 30)
-    
-    # ----------------------------------------
-    # Action: CALL_API
-    # ----------------------------------------
-    def test_action_call_api(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Call API Action Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node with API call configuration
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="CALL_API",
-            parameters={
-                    "method": "GET",
-                    "endpoint": "https://jsonplaceholder.typicode.com/todos/1",
-                    "headers": {},
-                    "payload": None,
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-        
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertIn("status_code", output)
-        self.assertIn("response", output)
-        self.assertIn("status", output)
-        self.assertEqual(output["status"], "success")
-        self.assertEqual(output["status_code"], 200)
-        self.assertEqual(output["response"]["id"], 1)
-        
-    def test_action_call_api_with_invalid_url_returns_error(self):
-        # 1. Create workflow
-        workflow = Workflow.objects.create(name="Call API with Invalid URL Test Workflow")
-        
-        # 2. Add trigger
-        trigger = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="HUMAN_TRIGGER",
-            parameters={"data": {"run": True}},
-            type="TRIGGER",
-        )
-        
-        # 3. Create the action node with an invalid URL
-        action = WorkflowNode.objects.create(
-            workflow=workflow,
-            sub_type="CALL_API",
-            parameters={
-                    "method": "GET",
-                    "endpoint": "https://invalid.url",
-                    "headers": {},
-                    "payload": None,
-                },
-            type="ACTION",
-        )
-        
-        # 4. Connect the nodes
-        workflow.connect_nodes(trigger, action)
-        
-        # 5. Run the workflow
-        workflow_run = run_workflow(workflow, {})
-        
-        output = get_terminal_node_output(workflow_run)
-        
-        self.assertIn("response", output)
-        self.assertEqual(output["status"], "error")
-    
-    
     # ----------------------------------------
     # Flow: IF_CONDITION
     # ----------------------------------------
@@ -1974,7 +1064,11 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         WorkflowEdge.objects.create(from_node=self.start_node, to_node=if_node)
-        WorkflowEdge.objects.create(from_node=if_node, to_node=create_node)
+        WorkflowEdge.objects.create(
+            from_node=if_node,
+            to_node=create_node,
+            output_port="true",
+        )
 
         workflow_run = run_workflow(self.workflow, {})
 
@@ -2009,7 +1103,11 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         WorkflowEdge.objects.create(from_node=self.start_node, to_node=if_node)
-        WorkflowEdge.objects.create(from_node=if_node, to_node=create_node)
+        WorkflowEdge.objects.create(
+            from_node=if_node,
+            to_node=create_node,
+            output_port="true",
+        )
 
         workflow_run = run_workflow(self.workflow, {})
 
@@ -2019,8 +1117,8 @@ class TestAutomation(TransactionTestCase):
             ["HUMAN_TRIGGER", "IF_CONDITION"],
         )
         self.assertEqual(
-            workflow_run.execution_trace[-1]["output"]["kind"],
-            "branch_stopped",
+            workflow_run.execution_trace[-1]["route"]["port_id"],
+            "false",
         )
 
     def test_if_condition_greater_than_operator(self):
@@ -2065,7 +1163,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         workflow.connect_nodes(trigger, if_node)
-        workflow.connect_nodes(if_node, create_node)
+        workflow.connect_nodes(if_node, create_node, output_port="true")
 
         workflow_run = run_workflow(workflow, {"age": 20})
 
@@ -2117,7 +1215,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         workflow.connect_nodes(trigger, if_node)
-        workflow.connect_nodes(if_node, create_node)
+        workflow.connect_nodes(if_node, create_node, output_port="true")
 
         workflow_run = run_workflow(workflow, {"age": 25})
 
@@ -2169,7 +1267,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         workflow.connect_nodes(trigger, if_node)
-        workflow.connect_nodes(if_node, create_node)
+        workflow.connect_nodes(if_node, create_node, output_port="true")
 
         workflow_run = run_workflow(workflow, {"age": 18})
 
@@ -2221,7 +1319,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         workflow.connect_nodes(trigger, if_node)
-        workflow.connect_nodes(if_node, create_node)
+        workflow.connect_nodes(if_node, create_node, output_port="true")
 
         workflow_run = run_workflow(workflow, {"age": 30})
 
@@ -2273,7 +1371,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         workflow.connect_nodes(trigger, if_node)
-        workflow.connect_nodes(if_node, create_node)
+        workflow.connect_nodes(if_node, create_node, output_port="true")
 
         workflow_run = run_workflow(workflow, {"name": "Bob"})
 
@@ -2325,7 +1423,7 @@ class TestAutomation(TransactionTestCase):
             updated_by=self.user,
         )
         workflow.connect_nodes(trigger, if_node)
-        workflow.connect_nodes(if_node, create_node)
+        workflow.connect_nodes(if_node, create_node, output_port="true")
 
         workflow_run = run_workflow(workflow, {"age": 80})
 
@@ -2393,7 +1491,11 @@ class TestAutomation(TransactionTestCase):
             parameters={"wait_time": 0},
             type="ACTION",
         )
-        workflow.connect_nodes(if_condition_node, downstream_node)
+        workflow.connect_nodes(
+            if_condition_node,
+            downstream_node,
+            output_port="true",
+        )
 
         # 6. Run the workflow
         workflow_run = run_workflow(workflow, {})
@@ -2723,8 +1825,8 @@ class TestAutomation(TransactionTestCase):
         
         # 4. Check that the branch stopped.
         self.assertEqual(
-            workflow_run.execution_trace[-1]["output"]["kind"],
-            "branch_stopped",
+            workflow_run.execution_trace[-1]["route"]["port_id"],
+            "false",
         )
     
     # ---------------------------------------

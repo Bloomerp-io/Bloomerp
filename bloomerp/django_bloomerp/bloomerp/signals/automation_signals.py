@@ -12,7 +12,7 @@ from django.db.models.signals import post_delete, post_save
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
 from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.automation.workflow_node import WorkflowNode
-from bloomerp.services.workflow_services import run_workflow
+from bloomerp.automation.run import run_workflow
 
 _SIGNALS_INITIALIZED = False
 _WORKFLOW_NODE_SIGNALS_CONNECTED = False

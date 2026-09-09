@@ -8,7 +8,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
-from bloomerp.forms.model_form import BloomerpModelForm
+from bloomerp.forms.model_form import BloomerpModelForm, bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
 from bloomerp.models.document_templates.document_template import DocumentTemplate, FreeVariableConfig
 from bloomerp.router import router
@@ -17,23 +17,23 @@ from bloomerp.utils.models import get_detail_view_url
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 
 
-class DocumentTemplateBuilderForm(BloomerpModelForm):
+DOCUMENT_TEMPLATE_BUILDER_FIELDS = [
+    "name",
+    "content_types",
+    "page_orientation",
+    "page_size",
+    "page_margin",
+    "include_page_numbers",
+    "custom_styling",
+    "style_sets",
+    "template_header",
+    "template",
+    "free_variables",
+]
 
-    class Meta:
-        model = DocumentTemplate
-        fields = [
-            "name",
-            "content_types",
-            "page_orientation",
-            "page_size",
-            "page_margin",
-            "include_page_numbers",
-            "custom_styling",
-            "style_sets",
-            "template_header",
-            "template",
-            "free_variables",
-        ]
+
+class DocumentTemplateBuilderFormMixin:
+    """Builder-specific validation layered onto the registered model form."""
 
     def clean_free_variables_json(self) -> list[dict[str, Any]]:
         raw_value = self.cleaned_data.get("free_variables_json") or "[]"
@@ -78,6 +78,18 @@ class DocumentTemplateBuilderForm(BloomerpModelForm):
             instance.save()
             self.save_m2m()
         return instance
+
+
+def get_document_template_builder_form_class() -> type[BloomerpModelForm]:
+    base_form_class = bloomerp_modelform_factory(
+        DocumentTemplate,
+        fields=DOCUMENT_TEMPLATE_BUILDER_FIELDS,
+    )
+    return type(
+        "DocumentTemplateBuilderForm",
+        (DocumentTemplateBuilderFormMixin, base_form_class),
+        {},
+    )
 
 
 def get_template_content_types():
@@ -143,12 +155,16 @@ class DocumentTemplateBuilderContextMixin:
         template._unsaved_content_types = content_types
         return template
 
-    def get_form(self) -> DocumentTemplateBuilderForm:
+    def get_form(self) -> BloomerpModelForm:
         instance = self.get_initial_object()
+        form_class = get_document_template_builder_form_class()
         if self.request.method == "POST":
-            return DocumentTemplateBuilderForm(model=DocumentTemplate, data=self.request.POST, instance=instance)
-        return DocumentTemplateBuilderForm(
-            model=DocumentTemplate,
+            return form_class(
+                data=self.request.POST,
+                files=self.request.FILES,
+                instance=instance,
+            )
+        return form_class(
             instance=instance,
             initial={"content_types": [content_type.pk for content_type in get_selected_content_types(self.request, instance)]},
         )
@@ -156,7 +172,7 @@ class DocumentTemplateBuilderContextMixin:
     def get_success_url(self) -> str:
         return reverse(get_detail_view_url(DocumentTemplate), kwargs={"pk": self.object.pk})
 
-    def form_valid(self, form: DocumentTemplateBuilderForm):
+    def form_valid(self, form: BloomerpModelForm):
         with transaction.atomic():
             self.object = form.save(commit=False)
             self.object.save()
@@ -164,7 +180,7 @@ class DocumentTemplateBuilderContextMixin:
         messages.success(self.request, "Document template saved.")
         return redirect(self.get_success_url())
 
-    def form_invalid(self, form: DocumentTemplateBuilderForm):
+    def form_invalid(self, form: BloomerpModelForm):
         return self.render_to_response(self.get_context_data(form=form))
 
     def post(self, request, *args, **kwargs):

@@ -2,7 +2,7 @@
 from bloomerp.automation.flows.for_each import ForEachExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestForEachNode(BloomerpWorkflowNodeTestCase):
     node_id = 'FOR_EACH'
     executor_class = ForEachExecutor
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

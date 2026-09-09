@@ -201,7 +201,13 @@ class Workflow(
         """
         return self.nodes.filter(id=node.id).exists()
     
-    def connect_nodes(self, from_node:"WorkflowNode", to_node:"WorkflowNode") -> "WorkflowEdge":
+    def connect_nodes(
+        self,
+        from_node: "WorkflowNode",
+        to_node: "WorkflowNode",
+        *,
+        output_port: str = "default",
+    ) -> "WorkflowEdge":
         """Adds a connection between two nodes.
 
         Args:
@@ -217,5 +223,6 @@ class Workflow(
 
         return WorkflowEdge.objects.create(
             from_node=from_node,
-            to_node=to_node
+            to_node=to_node,
+            output_port=output_port,
         )

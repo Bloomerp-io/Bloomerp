@@ -2,7 +2,7 @@
 from bloomerp.automation.flows.collect import CollectExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestCollectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'COLLECT'
     executor_class = CollectExecutor
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

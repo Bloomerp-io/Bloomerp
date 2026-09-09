@@ -7,7 +7,7 @@ from bloomerp.tests.base import (
 
 
 class TestDataviewActionComponent(BloomerpComponentTestCase):
-    """Tests function `dataview_action` from `bloomerp/components/objects/dataviews/dataview.py`."""
+    """Tests function `dataview_action` from `bloomerp/components/objects/dataviews/dataview_renderer_operation.py`."""
 
     view_name = 'components_dataview_renderer_operation'
 

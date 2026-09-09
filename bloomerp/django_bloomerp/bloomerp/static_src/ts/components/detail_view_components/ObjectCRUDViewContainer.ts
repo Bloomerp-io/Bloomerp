@@ -253,23 +253,23 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
 
     protected override handleReadModeKeyDown(event: KeyboardEvent): void {
         const key = event.key;
-        const isMeta = event.metaKey || event.ctrlKey;
+        const isMeta = !event.altKey && (event.metaKey !== event.ctrlKey);
         const isAlt = event.altKey;
-        const fnNavigationKey = this.getFnNavigationKey(event);
+        const navigationKey = this.getItemNavigationKey(event);
 
-        if (fnNavigationKey && this.isArrowKey(fnNavigationKey)) {
+        if (navigationKey && this.isArrowKey(navigationKey)) {
             event.preventDefault();
 
             const allItems = this.getAllItems();
             if (allItems.length === 0) return;
 
             if (!this.currentItem || !allItems.includes(this.currentItem)) {
-                this.currentItem = fnNavigationKey === "ArrowLeft" || fnNavigationKey === "ArrowUp"
+                this.currentItem = navigationKey === "ArrowLeft" || navigationKey === "ArrowUp"
                     ? allItems[allItems.length - 1]
                     : allItems[0];
             }
 
-            const next = isMeta ? this.getEdgeItem(fnNavigationKey) : this.findNextItem(fnNavigationKey);
+            const next = isMeta ? this.getEdgeItem(navigationKey) : this.findNextItem(navigationKey);
             if (!next) return;
 
             this.focusReadModeItem(next);

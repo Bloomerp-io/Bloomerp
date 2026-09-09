@@ -1,4 +1,5 @@
 from bloomerp.automation.base_executor import BaseExecutor
+from bloomerp.automation.results import PauseResult
 from django import forms
 
 from django.contrib.auth import get_user_model
@@ -48,11 +49,16 @@ class HumanInTheLoopExecutor(BaseExecutor):
     """An action that pauses the workflow and waits for a human to provide input."""
     config_form = HumanInTheLoopForm
 
-    def execute(self, trigger_data: dict) -> dict:
-        return trigger_data
+    def execute(self, trigger_data: dict) -> PauseResult:
+        return PauseResult(output=trigger_data)
     
     @classmethod
-    def get_output_schema(cls, config = None, input_schema = None):
+    def get_output_schema(
+        cls,
+        config=None,
+        input_schema=None,
+        port_id="default",
+    ):
         return input_schema
     
     

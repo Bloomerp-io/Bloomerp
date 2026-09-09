@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.merge_branches import MergeBranchExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestMergeBranchesNode(BloomerpWorkflowNodeTestCase):
     node_id = 'MERGE_BRANCHES'
     executor_class = MergeBranchExecutor
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

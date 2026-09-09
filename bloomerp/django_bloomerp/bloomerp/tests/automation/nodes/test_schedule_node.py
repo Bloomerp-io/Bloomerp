@@ -2,7 +2,7 @@
 from bloomerp.automation.triggers.on_schedule_trigger import ScheduleTrigger
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestScheduleNode(BloomerpWorkflowNodeTestCase):
     node_id = 'SCHEDULE'
     executor_class = ScheduleTrigger
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

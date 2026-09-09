@@ -1318,6 +1318,7 @@ export interface Initiative {
   labels: Array<string>;
   name: string;
   owner: number | null;
+  parent: string | null;
   start_date: string;
   status: string;
   target_date: string;
@@ -1325,7 +1326,7 @@ export interface Initiative {
 }
 
 export type InitiativeId = string;
-export type InitiativeFieldName = "completed_at" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "labels" | "name" | "owner" | "start_date" | "status" | "target_date" | "updated_by";
+export type InitiativeFieldName = "completed_at" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "labels" | "name" | "owner" | "parent" | "start_date" | "status" | "target_date" | "updated_by";
 
 export interface InitiativeCreate {
   created_by?: number | null;
@@ -1333,6 +1334,7 @@ export interface InitiativeCreate {
   labels?: Array<string>;
   name: string;
   owner?: number | null;
+  parent?: string | null;
   start_date?: string;
   status?: string;
   target_date?: string;
@@ -1352,6 +1354,7 @@ export const initiativesFields: Record<InitiativeFieldName, BloomerpFieldMetadat
   "labels": {"name": "labels", "title": "Labels", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "TodoLabel", "editable": true, "requiredOnCreate": false, "tsType": "Array<string>", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "owner": {"name": "owner", "title": "Owner", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "parent": {"name": "parent", "title": "Parent", "fieldType": "ForeignKey", "dbFieldType": null, "nullable": true, "many": false, "relatedModel": "Initiative", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "start_date": {"name": "start_date", "title": "Start Date", "fieldType": "DateField", "dbFieldType": "date", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "backlog", "label": "Backlog"}, {"value": "scoped", "label": "Scoped"}, {"value": "in_progress", "label": "In Progress"}, {"value": "on_hold", "label": "On Hold"}, {"value": "completed", "label": "Completed"}, {"value": "canceled", "label": "Canceled"}]},
   "target_date": {"name": "target_date", "title": "Target Date", "fieldType": "DateField", "dbFieldType": "date", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
@@ -2176,15 +2179,17 @@ export interface WorkflowEdge {
   from_node: number;
   id: number;
   name: string | null;
+  output_port: string;
   to_node: number;
 }
 
 export type WorkflowEdgeId = number;
-export type WorkflowEdgeFieldName = "from_node" | "id" | "name" | "to_node";
+export type WorkflowEdgeFieldName = "from_node" | "id" | "name" | "output_port" | "to_node";
 
 export interface WorkflowEdgeCreate {
   from_node: number;
   name?: string | null;
+  output_port?: string;
   to_node: number;
 }
 
@@ -2195,6 +2200,7 @@ export const workflowEdgesFields: Record<WorkflowEdgeFieldName, BloomerpFieldMet
   "from_node": {"name": "from_node", "title": "From Node", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "WorkflowNode", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "BigAutoField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(1000)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "output_port": {"name": "output_port", "title": "Output Port", "fieldType": "CharField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "to_node": {"name": "to_node", "title": "To Node", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "WorkflowNode", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
@@ -2249,7 +2255,7 @@ export const workflowNodesFields: Record<WorkflowNodeFieldName, BloomerpFieldMet
   "parameters": {"name": "parameters", "title": "Parameters", "fieldType": "JSONField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "pos_x": {"name": "pos_x", "title": "Pos X", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "pos_y": {"name": "pos_y", "title": "Pos Y", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
-  "sub_type": {"name": "sub_type", "title": "Sub Type", "fieldType": "CharField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "ON_OBJECT_CREATE", "label": "On Object Create"}, {"value": "ON_OBJECT_UPDATE", "label": "On Object Update"}, {"value": "ON_OBJECT_CREATE_OR_UPDATE", "label": "On Object Create or Update"}, {"value": "ON_OBJECT_DELETE", "label": "On Object Deletion"}, {"value": "SCHEDULE", "label": "On Schedule"}, {"value": "HUMAN_TRIGGER", "label": "Human Trigger"}, {"value": "SEND_EMAIL", "label": "Send Email"}, {"value": "GET_OBJECT", "label": "Get Object"}, {"value": "CREATE_OBJECT", "label": "Create Object"}, {"value": "UPDATE_OBJECT", "label": "Update Object"}, {"value": "DELETE_OBJECT", "label": "Delete Object"}, {"value": "ENRICH_DATA", "label": "Enrich Data"}, {"value": "EXTRACT_FIELD", "label": "Extract Field"}, {"value": "CALL_API", "label": "Call API"}, {"value": "LIST_OBJECTS", "label": "List Objects"}, {"value": "SEND_USER_MESSAGE", "label": "Send User Message"}, {"value": "GENERATE_PDF", "label": "Generate PDF"}, {"value": "SQL_QUERY", "label": "SQL Query"}, {"value": "COMPUTE", "label": "Compute"}, {"value": "HUMAN_IN_THE_LOOP", "label": "Human in the Loop"}, {"value": "WAIT", "label": "Wait"}, {"value": "IF_CONDITION", "label": "If Condition"}, {"value": "FILTER_OBJECTS", "label": "Filter Objects"}, {"value": "FOR_EACH", "label": "For Each"}, {"value": "COLLECT", "label": "Collect"}, {"value": "MERGE_BRANCHES", "label": "Merge Branches"}, {"value": "OBJECT_IF_CONDITION", "label": "Object If Condition"}]},
+  "sub_type": {"name": "sub_type", "title": "Sub Type", "fieldType": "CharField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "ON_OBJECT_CREATE", "label": "On Object Create"}, {"value": "ON_OBJECT_UPDATE", "label": "On Object Update"}, {"value": "ON_OBJECT_CREATE_OR_UPDATE", "label": "On Object Create or Update"}, {"value": "ON_OBJECT_DELETE", "label": "On Object Deletion"}, {"value": "SCHEDULE", "label": "On Schedule"}, {"value": "HUMAN_TRIGGER", "label": "Human Trigger"}, {"value": "SEND_EMAIL", "label": "Send Email"}, {"value": "GET_OBJECT", "label": "Get Object"}, {"value": "CREATE_OBJECT", "label": "Create Object"}, {"value": "UPDATE_OBJECT", "label": "Update Object"}, {"value": "DELETE_OBJECT", "label": "Delete Object"}, {"value": "ENRICH_DATA", "label": "Enrich Data"}, {"value": "EXTRACT_FIELD", "label": "Extract Field"}, {"value": "CALL_API", "label": "Call API"}, {"value": "LIST_OBJECTS", "label": "List Objects"}, {"value": "SEND_USER_MESSAGE", "label": "Send User Message"}, {"value": "GENERATE_PDF", "label": "Generate PDF"}, {"value": "SQL_QUERY", "label": "SQL Query"}, {"value": "COMPUTE", "label": "Compute"}, {"value": "HUMAN_IN_THE_LOOP", "label": "Human in the Loop"}, {"value": "WAIT", "label": "Wait"}, {"value": "IF_CONDITION", "label": "If Condition"}, {"value": "FILTER_OBJECTS", "label": "Filter Objects"}, {"value": "FOR_EACH", "label": "For Each"}, {"value": "COLLECT", "label": "Collect"}, {"value": "MERGE_BRANCHES", "label": "Merge Branches"}, {"value": "OBJECT_IF_CONDITION", "label": "Object If Condition"}, {"value": "RUN_WORKFLOW", "label": "Run workflow"}]},
   "type": {"name": "type", "title": "Type", "fieldType": "CharField", "dbFieldType": "varchar(32)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "TRIGGER", "label": "Trigger"}, {"value": "ACTION", "label": "Action"}, {"value": "FLOW", "label": "Flow"}]},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "workflow": {"name": "workflow", "title": "Workflow", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "Workflow", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},

@@ -23,6 +23,10 @@ export class Drawer extends BaseComponent {
     private backdropElement: HTMLElement | null = null;
     private panelElement: HTMLElement | null = null;
     private side: DrawerSide = 'right';
+    private placeholder: Comment | null = null;
+    private animationTimer: ReturnType<typeof setTimeout> | null = null;
+    private previousBodyOverflow: string | null = null;
+
 
     private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
     private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -158,6 +162,14 @@ export class Drawer extends BaseComponent {
             return;
         }
 
+        if (this.animationTimer) clearTimeout(this.animationTimer);
+        // Escape the main content's stacking context so the backdrop covers navigation.
+        if (this.element.dataset.portalToBody === 'true' && !this.placeholder && this.element.parentElement !== document.body) {
+            this.placeholder = document.createComment('drawer');
+            this.element.before(this.placeholder);
+            document.body.appendChild(this.element);
+        }
+        this.previousBodyOverflow ??= document.body.style.overflow;
         this.backdropElement.classList.remove('hidden');
         this.backdropElement.classList.add('flex');
 
@@ -165,7 +177,7 @@ export class Drawer extends BaseComponent {
         this.panelElement.classList.remove('translate-x-0');
         this.panelElement.classList.add(closedClass);
 
-        setTimeout(() => {
+        this.animationTimer = setTimeout(() => {
             this.panelElement?.classList.remove(closedClass);
             this.panelElement?.classList.add('translate-x-0');
         }, 10);
@@ -181,18 +193,35 @@ export class Drawer extends BaseComponent {
             return;
         }
 
+        if (this.animationTimer) clearTimeout(this.animationTimer);
         const closedClass = this.getClosedTranslateClass();
         this.panelElement.classList.remove('translate-x-0');
         this.panelElement.classList.add(closedClass);
 
-        setTimeout(() => {
+        this.animationTimer = setTimeout(() => {
             this.backdropElement?.classList.remove('flex');
             this.backdropElement?.classList.add('hidden');
-            document.body.style.overflow = '';
+            this.restorePosition();
         }, 200);
     }
 
+    private restorePosition(): void {
+        if (this.placeholder) {
+            if (this.placeholder.isConnected) this.placeholder.replaceWith(this.element);
+            else this.element.remove();
+            this.placeholder = null;
+        }
+        if (this.previousBodyOverflow !== null) {
+            document.body.style.overflow = this.previousBodyOverflow;
+            this.previousBodyOverflow = null;
+        }
+    }
+
     public destroy(): void {
+        if (this.animationTimer) clearTimeout(this.animationTimer);
+        this.backdropElement?.classList.remove('flex');
+        this.backdropElement?.classList.add('hidden');
+        this.restorePosition();
         if (this.backdropElement && this.backdropClickHandler) {
             this.backdropElement.removeEventListener('click', this.backdropClickHandler);
         }

@@ -1,10 +1,12 @@
-from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django import forms
 
 from bloomerp.automation.base_executor import BaseExecutor
+from bloomerp.automation.base_executor import NodeExecutionError
+from bloomerp.automation.ports import WorkflowNodeOutputPort
+from bloomerp.automation.results import RouteResult
 from bloomerp.automation.schema import WorkflowIOFlowKind, WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField
 from bloomerp.automation.values import get_path_value
 
@@ -32,11 +34,6 @@ class IfConditionForm(forms.Form):
         required=False,
         help_text="The value to compare against. Leave empty for truthy/falsy checks.",
     )
-
-
-@dataclass
-class BranchStopped:
-    reason: str = "Condition did not match"
 
 
 def _coerce_expected(value: Any) -> Any:
@@ -104,6 +101,10 @@ def _resolve_field_value(input_data: Any, field: str) -> Any:
 
 class IfConditionExecutor(BaseExecutor):
     config_form = IfConditionForm
+    output_ports = (
+        WorkflowNodeOutputPort("true", "True", max_connections=None),
+        WorkflowNodeOutputPort("false", "False", max_connections=None),
+    )
     input_requirement = WorkflowInputRequirement(
         value_type="any",
         label="Any input",
@@ -124,6 +125,7 @@ class IfConditionExecutor(BaseExecutor):
         cls,
         config: dict | None = None,
         input_schema: WorkflowIOSchema | None = None,
+        port_id: str = "default",
     ) -> WorkflowIOSchema:
         if input_schema and input_schema.value_type != "none":
             return WorkflowIOSchema(
@@ -135,17 +137,17 @@ class IfConditionExecutor(BaseExecutor):
             )
         return cls.output_schema
 
-    def execute(self, input_data: Any) -> Any:
+    def execute(self, input_data: Any) -> RouteResult:
         params = self.resolve_config(input_data if isinstance(input_data, dict) else {"input": input_data})
         field = params.get("field")
         operator = params.get("operator", "exact")
         expected = params.get("value")
 
         if not field:
-            return BranchStopped("No condition field configured")
+            raise NodeExecutionError("No condition field configured")
         
         value = _resolve_field_value(input_data, field)
-        if _matches(value, expected, operator):
-            return input_data
-
-        return BranchStopped(f"{field} did not match {operator} {expected}")
+        return RouteResult(
+            port_id="true" if _matches(value, expected, operator) else "false",
+            output=input_data,
+        )

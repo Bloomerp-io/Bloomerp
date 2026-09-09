@@ -13,7 +13,7 @@ from django import forms
 from bloomerp.utils.requests import render_blank_form, render_message, render_page_refresh_with_message
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 
-from bloomerp.services.workflow_services import run_workflow as _run_workflow
+from bloomerp.automation.run import run_workflow as _run_workflow
 
 class RunWorkflowForm(forms.Form):
     data = forms.JSONField(

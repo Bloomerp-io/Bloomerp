@@ -198,7 +198,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             object_create_case.content,
         )
         self.assertIn("executor_class = CreateObjectExecutor", object_create_case.content)
-        self.assertIn("WorkflowSimulation", object_create_case.content)
+        self.assertIn("WorkflowNodeSimulation", object_create_case.content)
         self.assertTrue(
             any("dataview_key = 'table'" in case.content for case in dataview_cases)
         )

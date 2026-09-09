@@ -5,7 +5,8 @@ from bloomerp.automation.registry import (
     workflow_node_sub_type_choices,
     workflow_node_type_choices,
 )
-from bloomerp.automation.base_executor import NodeExecutionError
+from bloomerp.automation.base_executor import BaseExecutor, NodeExecutionError
+from bloomerp.automation.ports import WorkflowNodeOutputPort
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models.mixins import TimestampModelMixin
@@ -87,14 +88,30 @@ class WorkflowNode(
         """
         return WORKFLOW_NODE_REGISTRY.get(self.sub_type)
     
-    def get_output_nodes(self) -> models.QuerySet["WorkflowNode"]:
+    def get_executor(self) -> BaseExecutor:
+        """Instantiate the executor registered for this node."""
+        definition = self.node_sub_type
+        if definition and definition.executor_cls:
+            return definition.executor_cls(self.parameters)
+        raise NodeExecutionError("Node subtype not found for node")
+
+    def get_output_ports(self) -> tuple[WorkflowNodeOutputPort, ...]:
+        """Return the static or configuration-driven ports for this node."""
+        return self.get_executor().get_output_ports(self.parameters or {})
+
+    def get_output_nodes(
+        self,
+        *,
+        port_id: str = "default",
+    ) -> models.QuerySet["WorkflowNode"]:
         """Returns the output nodes connected to this node.
 
         Returns:
             models.QuerySet[WorkflowNode]: The output nodes.
         """
         return WorkflowNode.objects.filter(
-            incoming_edges__from_node=self
+            incoming_edges__from_node=self,
+            incoming_edges__output_port=port_id,
         )
     
     def get_input_nodes(self) -> models.QuerySet["WorkflowNode"]:
@@ -118,14 +135,7 @@ class WorkflowNode(
             dict: The output data from the node execution.
         """
         # Placeholder for node execution logic
-        sub_type = self.node_sub_type
-        
-        if sub_type and sub_type.executor_cls:
-            executor = sub_type.executor_cls(self.parameters)
-            output = executor.execute(trigger_data)
-            return output
-        
-        raise NodeExecutionError(f"Node subtype not found for node")
+        return self.get_executor().execute(trigger_data)
     
     def clean(self):
         """Ensure only one trigger node is allowed per workflow."""

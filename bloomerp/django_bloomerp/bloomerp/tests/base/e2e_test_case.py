@@ -111,7 +111,7 @@ class BloomerpE2ETestCase(BaseE2ETestCase):
         )
 
     def _run_action_validators(self, action: E2EAction) -> None:
-        validators = action.validator
+        validators = action.validators
         if callable(validators):
             validators = [validators]
 

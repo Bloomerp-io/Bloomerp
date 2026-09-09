@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.send_user_message import SendUserMessage
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowSimulation,
+    WorkflowNodeSimulation,
 )
 
 
@@ -10,5 +10,5 @@ class TestSendUserMessageNode(BloomerpWorkflowNodeTestCase):
     node_id = 'SEND_USER_MESSAGE'
     executor_class = SendUserMessage
 
-    def get_simulations(self) -> list[WorkflowSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeSimulation]:
         return []

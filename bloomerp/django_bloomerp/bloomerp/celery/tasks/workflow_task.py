@@ -4,7 +4,7 @@ from django.utils import timezone
 @shared_task
 def run_scheduled_workflow(workflow_id):
     from bloomerp.models.automation.workflow import Workflow
-    from bloomerp.services.workflow_services import run_workflow_sync, serialize_workflow_run_result
+    from bloomerp.automation.run import run_workflow_sync, serialize_workflow_run_result
 
     workflow = Workflow.objects.get(id=workflow_id, active=True)
     workflow_run = run_workflow_sync(
@@ -20,8 +20,8 @@ def run_scheduled_workflow(workflow_id):
 @shared_task
 def run_workflow_async(workflow_id, trigger_data, start_node_id=None):
     from bloomerp.models.automation.workflow import Workflow
-    from bloomerp.services.workflow_services import (
-        _deserialize_trigger_data,
+    from bloomerp.automation.run import (
+        deserialize_workflow_value,
         run_workflow_sync,
         serialize_workflow_run_result,
     )
@@ -30,7 +30,7 @@ def run_workflow_async(workflow_id, trigger_data, start_node_id=None):
     if workflow is None:
         return None
 
-    deserialized_trigger_data = _deserialize_trigger_data(trigger_data)
+    deserialized_trigger_data = deserialize_workflow_value(trigger_data)
     start_node = (
         workflow.nodes.get(id=start_node_id)
         if start_node_id is not None
@@ -51,8 +51,8 @@ def resume_workflow_async(
     has_output_data=False,
 ):
     from bloomerp.models.automation.workflow_run_step import WorkflowRunStep
-    from bloomerp.services.workflow_services import (
-        _deserialize_trigger_data,
+    from bloomerp.automation.run import (
+        deserialize_workflow_value,
         resume_workflow_sync,
         serialize_workflow_run_result,
     )
@@ -61,7 +61,7 @@ def resume_workflow_async(
     if has_output_data:
         workflow_run = resume_workflow_sync(
             paused_step,
-            output_data=_deserialize_trigger_data(output_data),
+            output_data=deserialize_workflow_value(output_data),
         )
     else:
         workflow_run = resume_workflow_sync(paused_step)

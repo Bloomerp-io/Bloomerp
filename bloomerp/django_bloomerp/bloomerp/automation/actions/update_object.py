@@ -59,7 +59,7 @@ class UpdateObjectExecutor(BaseExecutor):
     )
     
     @classmethod
-    def get_output_schema(cls, config = None, input_schema = None):
+    def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
         content_type_id = (config or {}).get("content_type_id")
         content_type = ContentType.objects.get(id=content_type_id) if content_type_id else None
         

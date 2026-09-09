@@ -35,7 +35,7 @@ class EnrichExecutor(BaseExecutor):
     )
     
     @classmethod
-    def get_output_schema(cls, config = None, input_schema = None):
+    def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
         _, fields = json_to_type_and_fields((config or {}).get("data") or {})
         input_schema.fields.extend(fields)
         return input_schema
