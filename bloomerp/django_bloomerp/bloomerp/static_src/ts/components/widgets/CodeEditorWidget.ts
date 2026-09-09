@@ -3,7 +3,7 @@ import { BaseWidget } from './BaseWidget';
 
 export default class CodeEditorWidget extends BaseWidget {
     private static readonly editorsByContainer = new WeakMap<HTMLElement, any>();
-    private static readonly editorHostClassNames = ['ace_editor', 'ace_hidpi', 'ace-chrome'];
+    private static readonly editorHostClassNames = ['ace_editor', 'ace_hidpi'];
 
     private textarea: HTMLTextAreaElement | null = null;
     private editorContainer: HTMLElement | null = null;
@@ -15,6 +15,7 @@ export default class CodeEditorWidget extends BaseWidget {
     private boundOnEditorChange: (() => void) | null = null;
     private boundOnModalClosed: ((event: Event) => void) | null = null;
     private boundOnTextareaInput: (() => void) | null = null;
+    private readonly boundOnThemeChange = (): void => this.updateEditorTheme();
 
     public initialize(): void {
         if (!this.element) return;
@@ -33,6 +34,8 @@ export default class CodeEditorWidget extends BaseWidget {
             this.configureAceModuleLoader();
             this.initializeEditor();
         }
+
+        window.addEventListener('bloomerp:theme-change', this.boundOnThemeChange);
 
         if (this.launchFromButton && this.modalId) {
             this.boundOnModalClosed = (event: Event) => {
@@ -64,7 +67,7 @@ export default class CodeEditorWidget extends BaseWidget {
         this.editor = ace.edit(this.editorContainer);
         CodeEditorWidget.editorsByContainer.set(this.editorContainer, this.editor);
 
-        this.editor.setTheme('ace/theme/chrome');
+        this.updateEditorTheme();
         this.editor.setOptions({
             showPrintMargin: false,
             fontSize: 14,
@@ -103,6 +106,7 @@ export default class CodeEditorWidget extends BaseWidget {
         if (this.boundOnModalClosed) {
             document.body.removeEventListener('bloomerp:modal-closed', this.boundOnModalClosed);
         }
+        window.removeEventListener('bloomerp:theme-change', this.boundOnThemeChange);
 
         if (this.textarea && this.boundOnTextareaInput) {
             this.textarea.removeEventListener('input', this.boundOnTextareaInput);
@@ -132,6 +136,10 @@ export default class CodeEditorWidget extends BaseWidget {
             const resolveModule = (): Promise<unknown> => {
                 if (normalized === 'ace/theme/chrome') {
                     return import('ace-builds/src-noconflict/theme-chrome');
+                }
+
+                if (normalized === 'ace/theme/tomorrow_night') {
+                    return import('ace-builds/src-noconflict/theme-tomorrow_night');
                 }
 
                 if (normalized === 'ace/mode/json') {
@@ -259,5 +267,14 @@ export default class CodeEditorWidget extends BaseWidget {
 
         this.editorContainer.classList.add(...CodeEditorWidget.editorHostClassNames);
         this.editorContainer.style.fontSize = '14px';
+    }
+
+    private updateEditorTheme(): void {
+        if (!this.editor) return;
+
+        const theme = document.documentElement.classList.contains('dark')
+            ? 'ace/theme/tomorrow_night'
+            : 'ace/theme/chrome';
+        this.editor.setTheme(theme);
     }
 }

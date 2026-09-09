@@ -12,7 +12,7 @@ from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
 
 class RunWorkflowForm(BaseWorkflowNodeForm):
-    workflow_id = forms.ChoiceField(
+    workflow_id = forms.IntegerField(
         widget=ForeignFieldWidget(
             model=Workflow,
             attrs={

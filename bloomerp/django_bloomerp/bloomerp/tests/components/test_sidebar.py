@@ -138,6 +138,7 @@ class SidebarSelectionComponentTests(TestCase):
             ).exists()
         )
         self.assertContains(response, 'hx-swap-oob="outerHTML"', html=False)
+        self.assertContains(response, "fa-ellipsis", html=False)
         self.assertEqual(response["HX-Trigger"], '{"dropdown-close": true}')
 
     def test_sidebar_create_subfolder_post_creates_child_folder(self) -> None:
@@ -300,6 +301,7 @@ class SidebarSelectionComponentTests(TestCase):
         self.assertEqual(item.name, "Ops")
         self.assertEqual(item.icon, DEFAULT_FOLDER_ICON)
         self.assertTrue(item.is_folder)
+        self.assertContains(response, "fa-ellipsis", html=False)
         self.assertEqual(response["HX-Trigger"], '{"dropdown-close": true}')
 
     def test_sidebar_edit_item_post_updates_link(self) -> None:

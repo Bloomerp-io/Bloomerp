@@ -106,8 +106,8 @@ def _resolve_lookup_allias(lookup_id:str, application_field:ApplicationField) ->
 class ObjectIfConditionExecutor(BaseExecutor):
     config_form = ObjectIfCondtionForm
     output_ports = (
-        WorkflowNodeOutputPort("true", "True"),
-        WorkflowNodeOutputPort("false", "False"),
+        WorkflowNodeOutputPort("true", "True", max_connections=None),
+        WorkflowNodeOutputPort("false", "False", max_connections=None),
     )
     input_requirement = WorkflowInputRequirement(
         value_type=WorkflowValueType.OBJECT,

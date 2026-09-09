@@ -1,3 +1,4 @@
+import { getItemNavigationKey } from "@/utils/itemNavigation";
 import htmx from "htmx.org";
 import Sortable, { type SortableEvent } from "sortablejs";
 import { t } from "../../utils/i18n";
@@ -115,31 +116,20 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         // Optional subclass hook
     }
 
-    protected isFnNavigationModifier(event: KeyboardEvent): boolean {
-        return event.getModifierState("Fn");
-    }
-
-    protected getFnNavigationKey(event: KeyboardEvent): string | null {
-        const fnModifierActive = this.isFnNavigationModifier(event);
-        const isMacPlatform = navigator.platform.toLowerCase().includes("mac");
-
-        switch (event.key) {
-            case "ArrowLeft":
-            case "ArrowRight":
-            case "ArrowUp":
-            case "ArrowDown":
-                return fnModifierActive ? event.key : null;
-            case "Home":
-                return fnModifierActive || isMacPlatform ? "ArrowLeft" : null;
-            case "End":
-                return fnModifierActive || isMacPlatform ? "ArrowRight" : null;
-            case "PageUp":
-                return fnModifierActive || isMacPlatform ? "ArrowUp" : null;
-            case "PageDown":
-                return fnModifierActive || isMacPlatform ? "ArrowDown" : null;
-            default:
-                return null;
+    private itemNavigationHandler = (event: KeyboardEvent): void => {
+        const key = this.getItemNavigationKey(event);
+        if (!key) return;
+        if (this.editMode) {
+            this.navigateLayout(key);
+            event.preventDefault();
+        } else {
+            this.handleReadModeKeyDown(event);
         }
+        if (event.defaultPrevented) event.stopImmediatePropagation();
+    };
+
+    protected getItemNavigationKey(event: KeyboardEvent): string | null {
+        return getItemNavigationKey(event);
     }
 
     protected shouldApplyFocusedItemClass(): boolean {
@@ -168,6 +158,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
 
         this.element.addEventListener("click", (event: MouseEvent) => this.onClick(event));
         this.element.addEventListener("keydown", (event: KeyboardEvent) => this.onKeyDown(event));
+        this.element.addEventListener("keydown", this.itemNavigationHandler, true);
         this.element.addEventListener("layout:item-colspan-change", () => {
             void this.requestSave();
         });
@@ -217,6 +208,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     }
 
     public override destroy(): void {
+        this.element?.removeEventListener("keydown", this.itemNavigationHandler, true);
         this.destroySortables();
         if (this.searchButtonHandler) {
             this.searchButton?.removeEventListener("click", this.searchButtonHandler);
@@ -568,22 +560,27 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
 
         if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
             event.preventDefault();
-            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-                if (!this.isRowFocused) {
-                    this.focusRowByIndex(this.getRowIndexForItem(this.items[this.focusedItemIndex]));
-                    return;
-                }
-                this.focusRowByIndex(this.focusedRowIndex + (event.key === "ArrowDown" ? 1 : -1));
-                return;
-            }
-
-            if (this.isRowFocused) {
-                this.focusFirstItemInRow(this.focusedRowIndex);
-                return;
-            }
-
-            this.focusItemByIndex(this.focusedItemIndex + (event.key === "ArrowRight" ? 1 : -1));
+            this.navigateLayout(event.key);
         }
+    }
+
+    private navigateLayout(key: string): void {
+        if (!this.items.length && !this.rowElements.length) return;
+        if (key === "ArrowUp" || key === "ArrowDown") {
+            if (!this.isRowFocused) {
+                this.focusRowByIndex(this.getRowIndexForItem(this.items[this.focusedItemIndex]));
+                return;
+            }
+            this.focusRowByIndex(this.focusedRowIndex + (key === "ArrowDown" ? 1 : -1));
+            return;
+        }
+
+        if (this.isRowFocused) {
+            this.focusFirstItemInRow(this.focusedRowIndex);
+            return;
+        }
+
+        this.focusItemByIndex(this.focusedItemIndex + (key === "ArrowRight" ? 1 : -1));
     }
 
     protected setupDnD(): void {

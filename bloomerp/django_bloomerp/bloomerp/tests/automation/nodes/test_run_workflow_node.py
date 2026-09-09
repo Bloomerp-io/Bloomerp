@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from bloomerp.automation.actions.run_workflow import RunWorkflowExecutor
+from bloomerp.automation.actions.run_workflow import RunWorkflowExecutor, RunWorkflowForm
 from bloomerp.automation.base_executor import NodeExecutionError
 from bloomerp.automation.schema import WorkflowIOSchema, WorkflowValueType
 from bloomerp.models.automation.workflow import Workflow
@@ -15,6 +15,15 @@ from bloomerp.tests.base import (
 class TestRunWorkflowNode(BloomerpWorkflowNodeTestCase):
     node_id = "RUN_WORKFLOW"
     executor_class = RunWorkflowExecutor
+
+    def test_config_form_accepts_a_workflow_id(self):
+        target = self._create_workflow_with_trigger("Selected workflow")
+        form = RunWorkflowForm(
+            data={"workflow_id": target.id, "execution": "SYNC"},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["workflow_id"], target.id)
 
     def _create_workflow_with_trigger(
         self,

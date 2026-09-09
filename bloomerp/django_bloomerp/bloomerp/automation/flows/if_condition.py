@@ -102,8 +102,8 @@ def _resolve_field_value(input_data: Any, field: str) -> Any:
 class IfConditionExecutor(BaseExecutor):
     config_form = IfConditionForm
     output_ports = (
-        WorkflowNodeOutputPort("true", "True"),
-        WorkflowNodeOutputPort("false", "False"),
+        WorkflowNodeOutputPort("true", "True", max_connections=None),
+        WorkflowNodeOutputPort("false", "False", max_connections=None),
     )
     input_requirement = WorkflowInputRequirement(
         value_type="any",

@@ -188,6 +188,9 @@
   .dark .text-dark { color: var(--color-zinc-100); }
 
   .dark .text-slate-700 { color: var(--color-zinc-300); }
+  .dark .text-slate-900 { color: var(--color-zinc-100); }
+  .dark .text-slate-800 { color: var(--color-zinc-200); }
+  .dark .text-slate-600 { color: var(--color-zinc-400); }
   .dark .layout-item__body .text-slate-800 { color: var(--color-primary-300); }
 
   /* Components using @apply need dark selectors of their own because the
@@ -262,6 +265,49 @@
     --tw-ring-offset-color: var(--color-zinc-900);
   }
 
+}
+
+/* Bulk actions are injected into a shared modal and use scoped slate classes. */
+.bulk-actions-content {
+  font-family: var(--font-sans);
+}
+
+.dark [bloomerp-component="modal"] > [id$="-container"] {
+  background-color: var(--color-zinc-800);
+  color: var(--color-zinc-100);
+}
+
+.dark [bloomerp-component="modal"] > [id$="-container"] .border-gray-200 {
+  border-color: var(--color-zinc-700);
+}
+
+.dark .bulk-actions-content .bg-base {
+  background-color: var(--color-zinc-900);
+  border-color: var(--color-zinc-700);
+}
+
+.dark .bulk-actions-content .text-slate-900,
+.dark .bulk-actions-content .text-slate-800 {
+  color: var(--color-zinc-100);
+}
+
+.dark .bulk-actions-content .text-slate-700,
+.dark .bulk-actions-content .text-slate-600 {
+  color: var(--color-zinc-300);
+}
+
+.dark .ace_editor {
+  background: var(--color-zinc-900);
+  color: var(--color-zinc-100);
+}
+
+.dark .ace_editor .ace_gutter {
+  background: var(--color-zinc-800);
+  color: var(--color-zinc-400);
+}
+
+.dark .ace_editor .ace_gutter-active-line {
+  background: var(--color-zinc-700);
 }
 
 /*
@@ -1284,6 +1330,23 @@ Dashboard
     .skeleton-line.short {
         @apply w-2/3;
     }
+
+    /* The generated loader can be mounted in a light-themed target while
+       the page itself is dark, so support both theme selectors and the
+       explicit marker added by animations.ts. */
+    .dark .skeleton-loader,
+    .skeleton-loader--dark {
+        background-color: #27272a;
+    }
+
+    .dark .skeleton-header,
+    .dark .skeleton-line,
+    .skeleton-loader--dark .skeleton-header,
+    .skeleton-loader--dark .skeleton-line {
+        background: #3f3f46;
+        background: linear-gradient(110deg, #3f3f46 8%, #52525b 18%, #3f3f46 33%);
+        background-size: 200% 100%;
+    }
 }
 
 /* 
@@ -1838,4 +1901,27 @@ Dashboard
     }
 
     /* Delete Button */
+}
+
+/* Workflow controls float over the canvas; cancel the detail tab's padding. */
+.workflow-builder { position: relative; margin: -1rem; }
+.workflow-builder #drawflow { position: relative; height: 70vh; overflow: hidden; overscroll-behavior: contain; }
+.workflow-builder #drawflow:focus { outline: none; }
+.workflow-toolbar, .workflow-selection-actions {
+    position: absolute; z-index: 10; padding: .5rem; border-radius: .75rem;
+    background: var(--color-white, white); box-shadow: 0 2px 8px #0002;
+}
+.workflow-toolbar { top: 1rem; left: 1rem; }
+.workflow-selection-actions { top: 5rem; right: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.workflow-selection-actions[hidden], .workflow-selection-actions [hidden] { display: none; }
+.workflow-selection-box { position: absolute; z-index: 8; border: 1px solid #6366f1; background: #6366f122; pointer-events: none; }
+.workflow-builder .drawflow-node.workflow-selected { outline: 2px solid #6366f1; outline-offset: 2px; }
+.workflow-builder .connection.workflow-selected .main-path { stroke: #6366f1 !important; stroke-width: 4px; }
+.workflow-builder .drawflow-delete { display: none; }
+.dark .workflow-toolbar, .dark .workflow-selection-actions { background: #1f2937; }
+
+/* The node list is HTMX-injected and its light hover utility otherwise wins
+   in browsers that do not apply the nested dark variant syntax. */
+html.dark [data-workflow-node-item]:hover {
+  background-color: var(--color-zinc-700) !important;
 }

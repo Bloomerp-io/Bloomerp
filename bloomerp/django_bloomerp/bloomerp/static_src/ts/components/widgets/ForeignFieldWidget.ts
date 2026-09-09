@@ -1,3 +1,4 @@
+import { getItemNavigationKey } from "@/utils/itemNavigation";
 import renderDataView from "@/utils/dataview";
 import { getComponent } from "../BaseComponent";
 import { Modal } from "../Modal";
@@ -242,6 +243,20 @@ export default class ForeignFieldWidget extends BaseWidget {
     }
 
     private onDropdownKeyDown(e: KeyboardEvent): void {
+        // Dropdowns can be portalled to body, outside their layout container.
+        if (getItemNavigationKey(e)) {
+            const forwarded = new KeyboardEvent('keydown', {
+                key: e.key, ctrlKey: e.ctrlKey, altKey: e.altKey,
+                shiftKey: e.shiftKey, metaKey: e.metaKey, bubbles: true, cancelable: true,
+            });
+            this.element.dispatchEvent(forwarded);
+            if (forwarded.defaultPrevented) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.hideDropdown();
+            }
+            return;
+        }
         if (e.key !== 'Tab' || !this.dropdown || this.dropdown.classList.contains('hidden')) return;
 
         const items = this.getSelectableItems();

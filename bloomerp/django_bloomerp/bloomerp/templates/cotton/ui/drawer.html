@@ -6,12 +6,13 @@ Parameters:
 - size : drawer size - "sm", "md", "lg", "xl", "full" (default: "md")
 - backdrop : whether to show the modal-style backdrop (default: True)
 - backdrop_click_close : close drawer when clicking backdrop (default: True)
+- portal_to_body : render outside ancestor stacking contexts while open (default: False)
 - slot : main content of the drawer
 {% endcomment %}
 
 <div
     id="{{ id }}"
-    class="fixed inset-0 z-50 hidden items-stretch
+    class="fixed inset-0 z-[90] hidden items-stretch
         {% with backdrop_value=backdrop|default:True %}
             {% if backdrop_value == False or backdrop_value == 'False' or backdrop_value == 'false' %}
                 bg-transparent
@@ -26,6 +27,7 @@ Parameters:
         {% endif %}
     "
     bloomerp-component="drawer"
+    data-portal-to-body="{{ portal_to_body|default:False|lower }}"
     data-side="{{ side|default:'right' }}"
     data-backdrop="{{ backdrop|default:True|lower }}"
     data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
