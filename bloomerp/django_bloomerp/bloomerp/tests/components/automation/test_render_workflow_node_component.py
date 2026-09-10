@@ -2,6 +2,7 @@
 from bloomerp.models.automation import Workflow, WorkflowNode
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
+    ExpectedResult,
     RequestSetup,
 )
 
@@ -14,46 +15,67 @@ class TestRenderWorkflowNodeComponent(BloomerpComponentTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.workflow = Workflow.objects.create(name="Node config rendering")
-
-    def get_request_setups(self) -> list[RequestSetup]:
-        # Add only the route scenarios this callable needs.
-        return []
-
-    def test_json_mode_preserves_explicit_false_boolean_parameter(self):
-        node = self._create_filter_node({"continue_on_empty": False})
-
-        response = self._render_json_config(node)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIs(
-            response.context["form"].initial["parameters"]["continue_on_empty"],
-            False,
-        )
-        self.assertEqual(node.parameters, {"continue_on_empty": False})
-
-    def test_json_mode_uses_boolean_field_initial_when_parameter_is_missing(self):
-        node = self._create_filter_node({"field": "status"})
-
-        response = self._render_json_config(node)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIs(
-            response.context["form"].initial["parameters"]["continue_on_empty"],
-            True,
-        )
-        self.assertEqual(node.parameters, {"field": "status"})
-
-    def _create_filter_node(self, parameters: dict) -> WorkflowNode:
-        return WorkflowNode.objects.create(
+        self.explicit_false_node = WorkflowNode.objects.create(
             workflow=self.workflow,
             type="FLOW",
             sub_type="FILTER_OBJECTS",
-            parameters=parameters,
+            parameters={"continue_on_empty": False},
+        )
+        self.missing_boolean_node = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            type="FLOW",
+            sub_type="FILTER_OBJECTS",
+            parameters={"field": "status"},
         )
 
-    def _render_json_config(self, node: WorkflowNode):
-        self.client.force_login(self.admin_user)
-        return self.client.get(
-            self.get_endpoint(self.view_name, None),
-            {"node_id": node.id, "edit_mode": "json"},
+    def get_request_setups(self) -> list[RequestSetup]:
+        return [
+            RequestSetup(
+                name="preserve explicit false boolean parameter in JSON mode",
+                user=self.admin_user,
+                query_params={
+                    "node_id": self.explicit_false_node.id,
+                    "edit_mode": "json",
+                },
+                expected=ExpectedResult(
+                    response_validators=[
+                        self._json_form_parameter_is("continue_on_empty", False),
+                        self._node_parameters_unchanged(
+                            self.explicit_false_node,
+                            {"continue_on_empty": False},
+                        ),
+                    ],
+                ),
+            ),
+            RequestSetup(
+                name="use BooleanField initial for missing parameter in JSON mode",
+                user=self.admin_user,
+                query_params={
+                    "node_id": self.missing_boolean_node.id,
+                    "edit_mode": "json",
+                },
+                expected=ExpectedResult(
+                    response_validators=[
+                        self._json_form_parameter_is("continue_on_empty", True),
+                        self._node_parameters_unchanged(
+                            self.missing_boolean_node,
+                            {"field": "status"},
+                        ),
+                    ],
+                ),
+            ),
+        ]
+
+    def _json_form_parameter_is(self, name: str, expected):
+        return self._named_validator(
+            f"json_form_parameter_is({name!r}, {expected!r})",
+            lambda response: response.context["form"].initial["parameters"][name]
+            is expected,
+        )
+
+    def _node_parameters_unchanged(self, node: WorkflowNode, expected: dict):
+        return self._named_validator(
+            f"node_parameters_unchanged({node.pk})",
+            lambda _response: node.parameters == expected
+            and WorkflowNode.objects.get(pk=node.pk).parameters == expected,
         )
