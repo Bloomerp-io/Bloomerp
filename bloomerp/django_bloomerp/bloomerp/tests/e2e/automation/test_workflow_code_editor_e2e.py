@@ -8,13 +8,22 @@ from bloomerp.tests.base import e2e_test_case as e2e
 class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
     def prepare_workflow(self):
         self.workflow = Workflow.objects.create(name="Code editor lifecycle")
-        WorkflowNode.objects.create(
+        self.first = WorkflowNode.objects.create(
             workflow=self.workflow,
             type="ACTION",
             sub_type="SQL_QUERY",
-            name="Query",
+            name="First query",
             parameters={"query": "SELECT 1", "page_size": 100},
             pos_x=0,
+            pos_y=0,
+        )
+        self.second = WorkflowNode.objects.create(
+            workflow=self.workflow,
+            type="ACTION",
+            sub_type="SQL_QUERY",
+            name="Second query",
+            parameters={"query": "SELECT 20", "page_size": 100},
+            pos_x=360,
             pos_y=0,
         )
 
@@ -30,15 +39,16 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
         ]
 
     def reopen_code_editor(self):
-        node = self.page.locator("#drawflow .drawflow-node").first
-        expect(node).to_be_visible()
+        nodes = self.page.locator("#drawflow .drawflow-node")
+        expect(nodes).to_have_count(2)
+        first_node = nodes.filter(has_text="First query")
+        second_node = nodes.filter(has_text="Second query")
 
-        editor = self.open_editor(node)
+        editor = self.open_editor(first_node)
         editor.evaluate(
             "element => { window.__previousWorkflowWidget = "
             "element.closest('[bloomerp-component]').__bloomerp_component; }"
         )
-        self.replace_editor_value(editor, "SELECT 2")
         self.close_editor()
 
         route_pattern = "**/components/automation/render_workflow_node/**"
@@ -47,16 +57,26 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
             "requestfailed",
             predicate=lambda request: "/components/automation/render_workflow_node/" in request.url,
         ):
-            node.dblclick()
+            second_node.dblclick()
 
         editor = self.page.locator("[data-code-editor-container]")
         expect(editor).to_be_visible()
         self.assertFalse(self.page.evaluate("window.__previousWorkflowWidget.destroyed"))
-        self.replace_editor_value(editor, "SELECT 2 FROM failed_request")
+        with self.page.expect_request(
+            lambda request: "/components/automation/save_workflow/" in request.url
+        ) as saved:
+            self.replace_editor_value(editor, "SELECT 2 FROM failed_request")
+
+        payload = saved.value.post_data_json
+        first_payload = next(node for node in payload["nodes"] if node.get("id") == self.first.pk)
+        second_payload = next(node for node in payload["nodes"] if node.get("id") == self.second.pk)
+        self.assertEqual(first_payload["parameters"]["query"], "SELECT 2 FROM failed_request")
+        self.assertEqual(second_payload["parameters"]["query"], "SELECT 20")
         self.close_editor()
 
-        editor = self.open_editor(node)
+        editor = self.open_editor(second_node)
         self.assertTrue(self.page.evaluate("window.__previousWorkflowWidget.destroyed"))
+        expect(self.page.locator("[data-code-editor-input]")).to_have_value("SELECT 20")
         self.replace_editor_value(editor, "SELECT 3")
         self.close_editor()
 
