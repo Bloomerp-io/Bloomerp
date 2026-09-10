@@ -1,10 +1,83 @@
 from django import forms
+from sqlglot import exp, parse_one
+from sqlglot.optimizer.annotate_types import annotate_types
 
 from bloomerp.automation.base_executor import BaseExecutor
 from bloomerp.automation.schema import WorkflowIOSchema, WorkflowValueField, WorkflowValueType
 from bloomerp.forms.base_workflow_node_form import BaseWorkflowNodeForm
 from bloomerp.services.sql_services import SqlExecutor
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
+
+
+def _workflow_value_type_for_sqlglot(expression: exp.Expression) -> WorkflowValueType:
+    sql_type = str(expression.type).upper()
+
+    if sql_type == "BOOLEAN":
+        return WorkflowValueType.BOOLEAN
+    if sql_type.startswith(("ARRAY", "LIST")):
+        return WorkflowValueType.LIST
+    if sql_type.startswith(("JSON", "MAP", "STRUCT")):
+        return WorkflowValueType.OBJECT
+    if sql_type.startswith(("DATE", "DATETIME", "TIME", "TIMESTAMP")):
+        return WorkflowValueType.DATETIME
+    if sql_type.startswith(
+        (
+            "BIGINT",
+            "DECIMAL",
+            "DOUBLE",
+            "FLOAT",
+            "INT",
+            "MONEY",
+            "NUMERIC",
+            "REAL",
+            "SMALLINT",
+            "TINYINT",
+            "UBIGINT",
+            "UINT",
+            "USMALLINT",
+            "UTINYINT",
+        )
+    ):
+        return WorkflowValueType.NUMBER
+    if sql_type.startswith(
+        (
+            "CHAR",
+            "INET",
+            "NCHAR",
+            "NVARCHAR",
+            "TEXT",
+            "UUID",
+            "VARCHAR",
+        )
+    ):
+        return WorkflowValueType.STRING
+
+    return WorkflowValueType.UNKNOWN
+
+
+def _infer_result_fields(query: str) -> list[WorkflowValueField]:
+    parsed_query = annotate_types(parse_one(query, read="postgres"))
+    if not isinstance(parsed_query, exp.Query):
+        return []
+
+    fields = []
+    seen_names = set()
+    for selected_expression in parsed_query.selects:
+        name = selected_expression.output_name
+        if not name or name == "*" or name in seen_names:
+            continue
+
+        seen_names.add(name)
+        fields.append(
+            WorkflowValueField(
+                path=f"result.0.{name}",
+                value_type=_workflow_value_type_for_sqlglot(selected_expression),
+                label=name.replace("_", " ").title(),
+                optional=True,
+            )
+        )
+
+    return fields
 
 
 class SqlQueryForm(BaseWorkflowNodeForm):
@@ -26,6 +99,15 @@ class SqlQueryActionExecutor(BaseExecutor):
 
     @classmethod
     def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
+        result_fields = []
+        try:
+            query = (config or {}).get("query")
+            if query:
+                result_fields = _infer_result_fields(query)
+        except Exception:
+            # Schema inference is best-effort and must never prevent node rendering.
+            result_fields = []
+
         return WorkflowIOSchema(
             value_type=WorkflowValueType.OBJECT,
             label="SQL Query Result",
@@ -44,6 +126,7 @@ class SqlQueryActionExecutor(BaseExecutor):
                             label="Row",
                             description="A single row from the SQL query result.",
                             optional=True,
+                            children=result_fields,
                         )
                     ]
                 ),

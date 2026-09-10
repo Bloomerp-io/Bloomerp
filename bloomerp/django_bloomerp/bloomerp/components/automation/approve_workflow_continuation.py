@@ -1,18 +1,31 @@
+from functools import partial
+
+from django import forms
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import HttpRequest
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from django.contrib.auth import get_user_model
+from django.utils import timezone
+
 from bloomerp.automation.run import load_step_output, resume_workflow
+from bloomerp.channels.workflows.events import send_workflow_run_event
 from bloomerp.models import WorkflowRun
-from bloomerp.models.automation.workflow_run_step import WorkflowRunStep, WorkflowRunStepStatus
+from bloomerp.models.automation.workflow_run import WorkflowRunStatus
+from bloomerp.models.automation.workflow_run_step import (
+    WorkflowRunStep,
+    WorkflowRunStepStatus,
+)
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from django import forms
-
-from bloomerp.utils.requests import ExtraButton, render_blank_form, render_message, render_page_refresh_with_message
+from bloomerp.utils.requests import (
+    ExtraButton,
+    render_blank_form,
+    render_page_refresh_with_message,
+)
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 
 class ApproveWorkflowContinuationForm(forms.Form):
@@ -80,8 +93,22 @@ def approve_workflow_continuation(request: HttpRequest, workflow_run_id: str) ->
     if request.POST and form.is_valid():
         
         if "cancel" in request.POST and request.POST.get("cancel") == "true":
-            paused_step.status = WorkflowRunStepStatus.CANCELLED
-            paused_step.save()
+            with transaction.atomic():
+                paused_step.status = WorkflowRunStepStatus.CANCELLED
+                paused_step.save(update_fields=["status", "datetime_updated"])
+
+                workflow_run.status = WorkflowRunStatus.CANCELLED
+                workflow_run.finished_at = timezone.now()
+                workflow_run.save(
+                    update_fields=["status", "finished_at", "datetime_updated"]
+                )
+                transaction.on_commit(
+                    partial(
+                        send_workflow_run_event,
+                        workflow_run,
+                        "run.cancelled",
+                    )
+                )
             
             return render_page_refresh_with_message(
                 request,

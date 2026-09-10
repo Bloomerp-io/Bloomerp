@@ -22,10 +22,11 @@ from bloomerp.automation.serialization import (
 )
 from bloomerp.automation.workflow_state import ScopeKey, WorkflowRunState
 from bloomerp.celery.tasks.workflow_task import resume_workflow_async, run_workflow_async
+from bloomerp.channels.workflows.events import send_workflow_run_event
 from bloomerp.communication.inbox_sources import publish_event
 from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.automation.workflow_node import WorkflowNode
-from bloomerp.models.automation.workflow_run import WorkflowRun
+from bloomerp.models.automation.workflow_run import WorkflowRun, WorkflowRunStatus
 from bloomerp.models.automation.workflow_run_step import (
     WorkflowRunStep,
     WorkflowRunStepStatus,
@@ -48,6 +49,65 @@ class WorkflowExecutionFrame:
     from_step: WorkflowRunStep | None = None
     scope_key: ScopeKey = ()
 
+
+def _create_workflow_run(
+    workflow: Workflow,
+    start_node: WorkflowNode | None,
+    client_request_id: str | None,
+) -> WorkflowRun:
+    workflow_run = WorkflowRun.objects.create(
+        workflow=workflow,
+        start_node=start_node,
+        status=WorkflowRunStatus.QUEUED,
+    )
+    send_workflow_run_event(
+        workflow_run,
+        "run.queued",
+        client_request_id=client_request_id,
+    )
+    return workflow_run
+
+
+def _mark_workflow_run_started(
+    workflow_run: WorkflowRun,
+    client_request_id: str | None,
+    *,
+    resumed: bool = False,
+) -> None:
+    workflow_run.status = WorkflowRunStatus.RUNNING
+    update_fields = ["status", "datetime_updated"]
+    if workflow_run.started_at is None:
+        workflow_run.started_at = timezone.now()
+        update_fields.append("started_at")
+    workflow_run.finished_at = None
+    update_fields.append("finished_at")
+    workflow_run.save(update_fields=update_fields)
+    send_workflow_run_event(
+        workflow_run,
+        "run.resumed" if resumed else "run.started",
+        client_request_id=client_request_id,
+    )
+
+
+def _mark_workflow_run_finished(
+    workflow_run: WorkflowRun,
+    status: WorkflowRunStatus,
+    event: str,
+    client_request_id: str | None,
+    *,
+    finished: bool = True,
+) -> None:
+    workflow_run.status = status
+    update_fields = ["status", "datetime_updated"]
+    if finished:
+        workflow_run.finished_at = timezone.now()
+        update_fields.append("finished_at")
+    workflow_run.save(update_fields=update_fields)
+    send_workflow_run_event(
+        workflow_run,
+        event,
+        client_request_id=client_request_id,
+    )
 
 
 def _execute_node(node: WorkflowNode, input_data: object) -> object:
@@ -184,6 +244,7 @@ def _execute_workflow_state(
     state: WorkflowRunState,
     start_frames: list[WorkflowExecutionFrame],
     related_object=None,
+    client_request_id: str | None = None,
 ) -> WorkflowRun:
     execution_trace: list[dict] = []
     transient_outputs = {}
@@ -203,8 +264,16 @@ def _execute_workflow_state(
         state.from_node_id = from_node.id if from_node is not None else None
         state.scope_key = scope_key
 
-        executor = node.get_executor()
+        send_workflow_run_event(
+            workflow_run,
+            "node.started",
+            client_request_id=client_request_id,
+            node_id=node.id,
+            sequence=current_sequence,
+            status=WorkflowRunStatus.RUNNING,
+        )
         try:
+            executor = node.get_executor()
             prepared = executor.prepare(
                 input_data,
                 WorkflowNodeExecutionContext(
@@ -236,6 +305,14 @@ def _execute_workflow_state(
                     enabled=workflow.enable_logging and prepared.persist_step,
                     output_data=prepared,
                 )
+                send_workflow_run_event(
+                    workflow_run,
+                    "node.deferred",
+                    client_request_id=client_request_id,
+                    node_id=node.id,
+                    sequence=current_sequence,
+                    status="DEFERRED",
+                )
                 for retry_scope_key in prepared.retry_scope_keys:
                     _execute_recursive(
                         node=node,
@@ -257,6 +334,14 @@ def _execute_workflow_state(
                 status=WorkflowRunStepStatus.FAILED,
                 state=state,
                 enabled=workflow.enable_logging,
+            )
+            send_workflow_run_event(
+                workflow_run,
+                "node.failed",
+                client_request_id=client_request_id,
+                node_id=node.id,
+                sequence=current_sequence,
+                status=WorkflowRunStatus.FAILED,
             )
             raise
 
@@ -288,6 +373,18 @@ def _execute_workflow_state(
             state=state,
             enabled=workflow.enable_logging or is_paused,
             output_data=persisted_output,
+        )
+        send_workflow_run_event(
+            workflow_run,
+            "node.paused" if is_paused else "node.completed",
+            client_request_id=client_request_id,
+            node_id=node.id,
+            sequence=current_sequence,
+            status=(
+                WorkflowRunStatus.PAUSED
+                if is_paused
+                else WorkflowRunStepStatus.COMPLETED
+            ),
         )
         if is_paused:
             raise _WorkflowPaused
@@ -354,8 +451,21 @@ def _execute_workflow_state(
                 scope_key=frame.scope_key,
             )
     except _WorkflowPaused:
+        _mark_workflow_run_finished(
+            workflow_run,
+            WorkflowRunStatus.PAUSED,
+            "run.paused",
+            client_request_id,
+            finished=False,
+        )
         return workflow_run
     except Exception:
+        _mark_workflow_run_finished(
+            workflow_run,
+            WorkflowRunStatus.FAILED,
+            "run.failed",
+            client_request_id,
+        )
         publish_event(
             "workflow.result",
             workflow_run_id=str(workflow_run.id),
@@ -366,6 +476,12 @@ def _execute_workflow_state(
         )
         raise
 
+    _mark_workflow_run_finished(
+        workflow_run,
+        WorkflowRunStatus.SUCCEEDED,
+        "run.completed",
+        client_request_id,
+    )
     publish_event(
         "workflow.result",
         workflow_run_id=str(workflow_run.id),
@@ -387,23 +503,49 @@ def run_workflow_sync(
     workflow: Workflow,
     trigger_data: dict,
     start_node: WorkflowNode | None = None,
+    *,
+    workflow_run: WorkflowRun | None = None,
+    client_request_id: str | None = None,
 ) -> WorkflowRun | None:
     if start_node is not None and start_node.workflow_id != workflow.id:
         raise ValueError("Start node does not belong to the workflow.")
 
     workflow = _get_active_workflow(workflow)
     if workflow is None:
+        if workflow_run is not None:
+            _mark_workflow_run_finished(
+                workflow_run,
+                WorkflowRunStatus.CANCELLED,
+                "run.cancelled",
+                client_request_id,
+            )
         return None
 
-    workflow_run = WorkflowRun.objects.create(workflow=workflow)
+    if workflow_run is None:
+        workflow_run = _create_workflow_run(
+            workflow,
+            start_node,
+            client_request_id,
+        )
+    elif workflow_run.workflow_id != workflow.id:
+        raise ValueError("Workflow run does not belong to the workflow.")
+
+    start_node = start_node or workflow_run.start_node
+    node = start_node or workflow.get_trigger()
+    if node is None:
+        _mark_workflow_run_finished(
+            workflow_run,
+            WorkflowRunStatus.FAILED,
+            "run.failed",
+            client_request_id,
+        )
+        raise ValueError("Workflow does not have a node to execute.")
+
+    _mark_workflow_run_started(workflow_run, client_request_id)
     state = WorkflowRunState(
         workflow_id=workflow.id,
         workflow_run_id=workflow_run.id,
     )
-    node = start_node or workflow.get_trigger()
-    if node is None:
-        raise ValueError("Workflow does not have a node to execute.")
-
     related_object = (
         trigger_data.get("instance")
         if isinstance(trigger_data, dict)
@@ -415,6 +557,7 @@ def run_workflow_sync(
         state=state,
         start_frames=[WorkflowExecutionFrame(node=node, input_data=trigger_data)],
         related_object=related_object,
+        client_request_id=client_request_id,
     )
 
 
@@ -446,56 +589,67 @@ def resume_workflow_sync(
     output_data=_NO_OUTPUT,
 ) -> WorkflowRun:
     """Resume an existing workflow run after a paused step."""
-    with transaction.atomic():
-        paused_step = WorkflowRunStep.objects.select_for_update().select_related(
-            "workflow_run__workflow"
-        ).get(pk=paused_step.pk)
-        if paused_step.status != WorkflowRunStepStatus.PAUSED:
-            raise ValueError("Only paused workflow steps can be resumed.")
+    failed_run_id = None
+    try:
+        with transaction.atomic():
+            paused_step = WorkflowRunStep.objects.select_for_update().select_related(
+                "workflow_run__workflow"
+            ).get(pk=paused_step.pk)
+            if paused_step.status != WorkflowRunStepStatus.PAUSED:
+                raise ValueError("Only paused workflow steps can be resumed.")
 
-        workflow_run = WorkflowRun.objects.select_for_update().get(
-            pk=paused_step.workflow_run_id
-        )
-        workflow = paused_step.workflow_run.workflow
-        state = _load_run_state(paused_step)
-        if state.workflow_id != workflow.id or state.workflow_run_id != workflow_run.id:
-            raise ValueError("Workflow state does not match the paused workflow run.")
-
-        latest_sequence = workflow_run.steps.aggregate(value=Max("sequence"))["value"]
-        next_persisted_sequence = 0 if latest_sequence is None else latest_sequence + 1
-        state.next_sequence = max(state.next_sequence, next_persisted_sequence)
-
-        paused_node = workflow.nodes.filter(pk=state.current_node_id).first()
-        if paused_node is None:
-            raise ValueError("Paused workflow node no longer exists.")
-
-        if output_data is _NO_OUTPUT:
-            output_data = load_step_output(paused_step)
-        else:
-            _replace_step_output(paused_step, output_data)
-
-        paused_step.status = WorkflowRunStepStatus.COMPLETED
-        paused_step.save(
-            update_fields=["status", "output_file", "datetime_updated"]
-        )
-
-        start_frames = [
-            WorkflowExecutionFrame(
-                node=output_node,
-                input_data=output_data,
-                from_node=paused_node,
-                from_step=paused_step,
-                scope_key=state.scope_key,
+            workflow_run = WorkflowRun.objects.select_for_update().get(
+                pk=paused_step.workflow_run_id
             )
-            for output_node in paused_node.get_output_nodes()
-        ]
-        return _execute_workflow_state(
-            workflow=workflow,
-            workflow_run=workflow_run,
-            state=state,
-            start_frames=start_frames,
-        )
+            workflow = paused_step.workflow_run.workflow
+            state = _load_run_state(paused_step)
+            if state.workflow_id != workflow.id or state.workflow_run_id != workflow_run.id:
+                raise ValueError("Workflow state does not match the paused workflow run.")
 
+            latest_sequence = workflow_run.steps.aggregate(value=Max("sequence"))["value"]
+            next_persisted_sequence = 0 if latest_sequence is None else latest_sequence + 1
+            state.next_sequence = max(state.next_sequence, next_persisted_sequence)
+
+            paused_node = workflow.nodes.filter(pk=state.current_node_id).first()
+            if paused_node is None:
+                raise ValueError("Paused workflow node no longer exists.")
+
+            if output_data is _NO_OUTPUT:
+                output_data = load_step_output(paused_step)
+            else:
+                _replace_step_output(paused_step, output_data)
+
+            paused_step.status = WorkflowRunStepStatus.COMPLETED
+            paused_step.save(
+                update_fields=["status", "output_file", "datetime_updated"]
+            )
+
+            start_frames = [
+                WorkflowExecutionFrame(
+                    node=output_node,
+                    input_data=output_data,
+                    from_node=paused_node,
+                    from_step=paused_step,
+                    scope_key=state.scope_key,
+                )
+                for output_node in paused_node.get_output_nodes()
+            ]
+            failed_run_id = workflow_run.id
+            _mark_workflow_run_started(workflow_run, None, resumed=True)
+            return _execute_workflow_state(
+                workflow=workflow,
+                workflow_run=workflow_run,
+                state=state,
+                start_frames=start_frames,
+            )
+    except Exception:
+        if failed_run_id is not None:
+            WorkflowRun.objects.filter(pk=failed_run_id).update(
+                status=WorkflowRunStatus.FAILED,
+                finished_at=timezone.now(),
+                datetime_updated=timezone.now(),
+            )
+        raise
 
 
 def resume_workflow(
@@ -528,7 +682,8 @@ def run_workflow(
     trigger_data: dict,
     *,
     start_node: WorkflowNode | None = None,
-    force:Literal["SYNC", "ASYNC"] | None = None
+    force: Literal["SYNC", "ASYNC"] | None = None,
+    client_request_id: str | None = None,
 ) -> WorkflowRun | None:
     """
     Initiates a workflow run for the given workflow.
@@ -551,19 +706,51 @@ def run_workflow(
         force == "ASYNC"
         or (force is None and workflow.run_asynchronously)
     )
+    workflow_run = _create_workflow_run(
+        workflow,
+        start_node,
+        client_request_id,
+    )
     if run_asynchronously:
-        serialized_trigger_data = serialize_workflow_value(trigger_data)
-        if start_node is None:
-            run_workflow_async.delay(workflow.id, serialized_trigger_data)
-        else:
-            run_workflow_async.delay(
-                workflow.id,
-                serialized_trigger_data,
-                start_node.id,
+        try:
+            serialized_trigger_data = serialize_workflow_value(trigger_data)
+        except Exception:
+            _mark_workflow_run_finished(
+                workflow_run,
+                WorkflowRunStatus.FAILED,
+                "run.failed",
+                client_request_id,
             )
-        return None
+            raise
 
-    return run_workflow_sync(workflow, trigger_data, start_node=start_node)
+        def dispatch_workflow() -> None:
+            try:
+                run_workflow_async.delay(
+                    workflow.id,
+                    serialized_trigger_data,
+                    start_node.id if start_node is not None else None,
+                    workflow_run.id,
+                    client_request_id,
+                )
+            except Exception:
+                _mark_workflow_run_finished(
+                    workflow_run,
+                    WorkflowRunStatus.FAILED,
+                    "run.failed",
+                    client_request_id,
+                )
+                raise
+
+        transaction.on_commit(dispatch_workflow)
+        return workflow_run
+
+    return run_workflow_sync(
+        workflow,
+        trigger_data,
+        start_node=start_node,
+        workflow_run=workflow_run,
+        client_request_id=client_request_id,
+    )
 
 
 def serialize_workflow_run_result(workflow_run: WorkflowRun | None) -> dict | None:

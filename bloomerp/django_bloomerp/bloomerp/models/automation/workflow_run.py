@@ -1,22 +1,31 @@
-from datetime import datetime
 import json
 from typing import TYPE_CHECKING, Any
 
 from django.core.files.base import ContentFile
 from django.db import connection, models
+from django.db.models import Max, Min
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _, gettext_noop
+
+from bloomerp.automation.serialization import OUTPUT_UNSET, serialize_workflow_value
 from bloomerp.models.automation import workflow
 from bloomerp.models.automation.workflow_run_step import WorkflowRunStepStatus
-from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import ActivityLogSettings, BloomerpModelConfig, DetailViewSettings, ObjectModalAction
-from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
+from bloomerp.models.definition import (
+    ActivityLogSettings,
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ObjectModalAction,
+)
 from bloomerp.models.mixins import TimestampModelMixin
-from django.utils.translation import gettext_lazy as _, gettext_noop
-from django.db.models import Max, Min
-from django.db.models import Case, IntegerField, Value, When
-
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileType, FieldConfig
-from bloomerp.automation.serialization import OUTPUT_UNSET, serialize_workflow_value
+from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
+from bloomerp.workspaces.analytics_tile.model import (
+    AnalyticsTileConfig,
+    AnalyticsTileType,
+    FieldConfig,
+)
 
 if TYPE_CHECKING:
     from bloomerp.automation.workflow_state import WorkflowRunState
@@ -31,25 +40,16 @@ def _recent_datetime_predicate(column: str, days: int) -> str:
 
 
 def _run_status_expression(run_alias: str = "run") -> str:
-    """Return SQL matching the precedence used by ``WorkflowRun.status``."""
+    """Return a display label for the persisted workflow-run status."""
     return f"""
         CASE
-            WHEN EXISTS (
-                SELECT 1 FROM bloomerp_workflow_run_step paused_step
-                WHERE paused_step.workflow_run_id = {run_alias}.id
-                  AND paused_step.status = 'PAUSED'
-            ) THEN 'Paused'
-            WHEN EXISTS (
-                SELECT 1 FROM bloomerp_workflow_run_step failed_step
-                WHERE failed_step.workflow_run_id = {run_alias}.id
-                  AND failed_step.status = 'FAILED'
-            ) THEN 'Failed'
-            WHEN EXISTS (
-                SELECT 1 FROM bloomerp_workflow_run_step cancelled_step
-                WHERE cancelled_step.workflow_run_id = {run_alias}.id
-                  AND cancelled_step.status = 'CANCELLED'
-            ) THEN 'Cancelled'
-            ELSE 'Completed'
+            WHEN {run_alias}.status = 'QUEUED' THEN 'Queued'
+            WHEN {run_alias}.status = 'RUNNING' THEN 'Running'
+            WHEN {run_alias}.status = 'PAUSED' THEN 'Paused'
+            WHEN {run_alias}.status = 'SUCCEEDED' THEN 'Completed'
+            WHEN {run_alias}.status = 'FAILED' THEN 'Failed'
+            WHEN {run_alias}.status = 'CANCELLED' THEN 'Cancelled'
+            ELSE 'Unknown'
         END
     """
 
@@ -103,6 +103,15 @@ def _average_duration_by_workflow_query() -> str:
     """
 
 
+class WorkflowRunStatus(models.TextChoices):
+    QUEUED = "QUEUED", _("Queued")
+    RUNNING = "RUNNING", _("Running")
+    PAUSED = "PAUSED", _("Paused")
+    SUCCEEDED = "SUCCEEDED", _("Succeeded")
+    FAILED = "FAILED", _("Failed")
+    CANCELLED = "CANCELLED", _("Cancelled")
+
+
 class WorkflowRun(
     TimestampModelMixin,
     AbsoluteUrlModelMixin,
@@ -122,7 +131,11 @@ class WorkflowRun(
                     columns=2,
                     items=[
                         LayoutItem(id="workflow"),
+                        LayoutItem(id="status"),
+                        LayoutItem(id="start_node"),
                         LayoutItem(id="datetime_created"),
+                        LayoutItem(id="started_at"),
+                        LayoutItem(id="finished_at"),
                         LayoutItem(id="steps", colspan=2, config={
                             "inline_fields" : [
                                 "sequence",
@@ -147,7 +160,7 @@ class WorkflowRun(
                         "workflow_run_id" : obj.id
                     }
                 ),
-                should_render_func=lambda req, obj: obj.status == WorkflowRunStepStatus.PAUSED,
+                should_render_func=lambda req, obj: obj.status == WorkflowRunStatus.PAUSED,
                 modal_title=gettext_noop("Approve workflow continuation")
             )
         ],
@@ -386,6 +399,34 @@ class WorkflowRun(
         related_name="runs",
         verbose_name=_("Workflow"),
     )
+    status = models.CharField(
+        max_length=20,
+        choices=WorkflowRunStatus.choices,
+        default=WorkflowRunStatus.QUEUED,
+        editable=False,
+        verbose_name=_("Status"),
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name=_("Started At"),
+    )
+    finished_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name=_("Finished At"),
+    )
+    start_node = models.ForeignKey(
+        "WorkflowNode",
+        null=True,
+        blank=True,
+        editable=False,
+        on_delete=models.SET_NULL,
+        related_name="started_workflow_runs",
+        verbose_name=_("Start Node"),
+    )
     
     def __str__(self):
         return f"{self.workflow.name} - {self.datetime_created}"
@@ -428,12 +469,15 @@ class WorkflowRun(
 
 
     @property
-    def execution_time(self) -> datetime:
+    def execution_time(self):
         """Returns the execution time of the workflow
 
         Returns:
-            datetime: the time it took for the workflow to run
+            timedelta | None: the time it took for the workflow to run
         """
+        if self.started_at and self.finished_at:
+            return self.finished_at - self.started_at
+
         timestamps = self.steps.aggregate(
             started_at=Min("datetime_created"),
             finished_at=Max("datetime_created"),
@@ -444,49 +488,9 @@ class WorkflowRun(
             if timestamps["started_at"] and timestamps["finished_at"]
             else None
         )
-            
+
     @property
     def number_of_steps(self):
         """Returns there were in the workflow
         """
         return self.steps.all().count()
-    
-    @property
-    def status(self) -> str:
-        """Returns the status of the workflow run step
-
-        Returns:
-            str: the status
-        """
-        status = (
-            self.steps
-            .filter(
-                status__in=[
-                    WorkflowRunStepStatus.PAUSED,
-                    WorkflowRunStepStatus.FAILED,
-                    WorkflowRunStepStatus.CANCELLED,
-                ]
-            )
-            .annotate(
-                priority=Case(
-                    When(
-                        status=WorkflowRunStepStatus.PAUSED,
-                        then=Value(1),
-                    ),
-                    When(
-                        status=WorkflowRunStepStatus.FAILED,
-                        then=Value(2),
-                    ),
-                    When(
-                        status=WorkflowRunStepStatus.CANCELLED,
-                        then=Value(3),
-                    ),
-                    output_field=IntegerField(),
-                )
-            )
-            .order_by("priority")
-            .values_list("status", flat=True)
-            .first()
-        )
-
-        return status or WorkflowRunStepStatus.COMPLETED

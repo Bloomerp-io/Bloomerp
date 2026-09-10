@@ -36,6 +36,7 @@ interface SelectionActions {
 
 /** Owns canvas input; Drawflow continues to own drawing and connecting ports. */
 export default class WorkflowSelection {
+    private enabled = true;
     private nodes = new Set<number>();
     private edges = new Map<string, EdgeSelection>();
     private anchor: number | null = null;
@@ -74,6 +75,16 @@ export default class WorkflowSelection {
         this.marquee.remove();
     }
 
+    setEnabled(enabled: boolean): void {
+        this.enabled = enabled;
+        if (!enabled) {
+            this.clear();
+            this.drag = null;
+            this.marquee.hidden = true;
+        }
+        this.render();
+    }
+
     private isEditing(target: EventTarget | null): boolean {
         return target instanceof Element && !!target.closest('input, textarea, select, [contenteditable="true"]');
     }
@@ -89,6 +100,7 @@ export default class WorkflowSelection {
     }
 
     private onMouseDown = (event: MouseEvent): void => {
+        if (!this.enabled) return;
         if (event.button !== 0 || this.isEditing(event.target)) return;
         const target = event.target as Element;
         if (target.closest('.input, .output')) return;
@@ -120,6 +132,7 @@ export default class WorkflowSelection {
     };
 
     private onMouseMove = (event: MouseEvent): void => {
+        if (!this.enabled) return;
         if (!this.drag) return;
         const dx = event.clientX - this.drag.x;
         const dy = event.clientY - this.drag.y;
@@ -185,6 +198,7 @@ export default class WorkflowSelection {
     }
 
     private onContextMenu = (event: MouseEvent): void => {
+        if (!this.enabled) return;
         if (this.isEditing(event.target)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -263,6 +277,7 @@ export default class WorkflowSelection {
     }
 
     private onKeyDown = (event: KeyboardEvent): void => {
+        if (!this.enabled) return;
         if (this.isEditing(event.target) || event.isComposing) return;
         const navigation = getItemNavigationKey(event);
         const command = (event.metaKey || event.ctrlKey) && !event.altKey;
@@ -312,7 +327,7 @@ export default class WorkflowSelection {
         });
         const count = this.nodes.size + this.edges.size;
         const toolbar = this.root.querySelector<HTMLElement>('[data-selection-actions]');
-        if (toolbar) toolbar.hidden = !count;
+        if (toolbar) toolbar.hidden = !this.enabled || !count;
         const rename = this.root.querySelector<HTMLButtonElement>('[data-selection-rename]');
         if (rename) rename.hidden = count !== 1;
         const duplicate = this.root.querySelector<HTMLButtonElement>('[data-selection-duplicate]');

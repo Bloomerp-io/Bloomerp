@@ -1,9 +1,9 @@
 import json
 import tempfile
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from django.contrib.contenttypes.models import ContentType
-from django.db import DatabaseError, IntegrityError, models
+from django.db import DatabaseError, IntegrityError, models, transaction
 from django.test import TransactionTestCase
 from django_celery_beat.models import PeriodicTask
 from regex import F
@@ -22,7 +22,7 @@ from bloomerp.automation.utils import enhanced_get_attr
 from bloomerp.automation.workflow_state import WorkflowRunState
 from bloomerp.models import ApplicationField, User
 from bloomerp.models.automation import Workflow, WorkflowEdge, WorkflowNode
-from bloomerp.models.automation.workflow_run import WorkflowRun
+from bloomerp.models.automation.workflow_run import WorkflowRun, WorkflowRunStatus
 from bloomerp.models.automation.workflow_run_step import WorkflowRunStep
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.celery.tasks.workflow_task import (
@@ -522,6 +522,51 @@ class TestAutomation(TransactionTestCase):
         )
         self.assertTrue(workflow_run.execution_trace[0]["output"]["debug_input"])
         self.assertTrue(workflow_run.execution_trace[0]["output"]["started_here"])
+
+    def test_synchronous_run_persists_lifecycle_and_node_events(self):
+        with patch("bloomerp.automation.run.send_workflow_run_event") as send_event:
+            workflow_run = run_workflow(self.workflow, {})
+
+        workflow_run.refresh_from_db()
+        self.assertEqual(workflow_run.status, WorkflowRunStatus.SUCCEEDED)
+        self.assertIsNotNone(workflow_run.started_at)
+        self.assertIsNotNone(workflow_run.finished_at)
+        event_names = [call.args[1] for call in send_event.call_args_list]
+        self.assertEqual(event_names[0], "run.queued")
+        self.assertIn("run.started", event_names)
+        self.assertIn("node.started", event_names)
+        self.assertIn("node.completed", event_names)
+        self.assertEqual(event_names[-1], "run.completed")
+
+    def test_realtime_delivery_failure_does_not_abort_workflow(self):
+        channel_layer = Mock()
+        channel_layer.group_send = AsyncMock(
+            side_effect=RuntimeError("channel backend unavailable")
+        )
+
+        with (
+            patch(
+                "bloomerp.channels.workflows.events.get_channel_layer",
+                return_value=channel_layer,
+            ),
+            self.assertLogs("bloomerp.channels.workflows.events", level="WARNING"),
+        ):
+            workflow_run = run_workflow(self.workflow, {})
+
+        workflow_run.refresh_from_db()
+        self.assertEqual(workflow_run.status, WorkflowRunStatus.SUCCEEDED)
+
+    def test_failed_run_persists_terminal_lifecycle(self):
+        with (
+            patch.object(WorkflowNode, "execute", side_effect=ValueError("boom")),
+            self.assertRaisesRegex(ValueError, "boom"),
+        ):
+            run_workflow(self.workflow, {})
+
+        workflow_run = WorkflowRun.objects.filter(workflow=self.workflow).latest("id")
+        self.assertEqual(workflow_run.status, WorkflowRunStatus.FAILED)
+        self.assertIsNotNone(workflow_run.started_at)
+        self.assertIsNotNone(workflow_run.finished_at)
     
     def test_workflow_execution_create_record_human_trigger_empty_data(self):
         # 1. Create the test data
@@ -544,11 +589,45 @@ class TestAutomation(TransactionTestCase):
         with patch("bloomerp.automation.run.run_workflow_async.delay") as delay_mock:
             result = run_workflow(self.workflow, {"first_name": "John"})
 
-        self.assertIsNone(result)
+        self.assertEqual(result.status, WorkflowRunStatus.QUEUED)
+        self.assertIsNone(result.started_at)
         delay_mock.assert_called_once_with(
             self.workflow.id,
             {"first_name": "John"},
+            None,
+            result.id,
+            None,
         )
+
+    def test_async_workflow_dispatches_after_its_run_is_committed(self):
+        self.workflow.run_asynchronously = True
+        self.workflow.save(update_fields=["run_asynchronously"])
+
+        with patch("bloomerp.automation.run.run_workflow_async.delay") as delay_mock:
+            with transaction.atomic():
+                result = run_workflow(self.workflow, {"first_name": "John"})
+                delay_mock.assert_not_called()
+
+            delay_mock.assert_called_once_with(
+                self.workflow.id,
+                {"first_name": "John"},
+                None,
+                result.id,
+                None,
+            )
+
+    def test_async_worker_does_not_replace_a_missing_precreated_run(self):
+        initial_run_count = WorkflowRun.objects.count()
+
+        with self.assertRaises(WorkflowRun.DoesNotExist):
+            run_workflow_async(
+                self.workflow.id,
+                {},
+                None,
+                999_999,
+            )
+
+        self.assertEqual(WorkflowRun.objects.count(), initial_run_count)
 
     def test_async_workflow_passes_selected_start_node_to_celery(self):
         self.workflow.run_asynchronously = True
@@ -561,12 +640,32 @@ class TestAutomation(TransactionTestCase):
                 start_node=self.end_node,
             )
 
-        self.assertIsNone(result)
+        self.assertEqual(result.status, WorkflowRunStatus.QUEUED)
+        self.assertEqual(result.start_node, self.end_node)
         delay_mock.assert_called_once_with(
             self.workflow.id,
             {"first_name": "John"},
             self.end_node.id,
+            result.id,
+            None,
         )
+
+    def test_async_dispatch_failure_marks_precreated_run_failed(self):
+        self.workflow.run_asynchronously = True
+        self.workflow.save(update_fields=["run_asynchronously"])
+
+        with (
+            patch(
+                "bloomerp.automation.run.run_workflow_async.delay",
+                side_effect=RuntimeError("broker unavailable"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "broker unavailable"),
+        ):
+            run_workflow(self.workflow, {})
+
+        workflow_run = self.workflow.runs.latest("id")
+        self.assertEqual(workflow_run.status, WorkflowRunStatus.FAILED)
+        self.assertIsNotNone(workflow_run.finished_at)
 
     def test_run_workflow_skips_a_workflow_deactivated_in_the_database(self):
         """
@@ -669,6 +768,27 @@ class TestAutomation(TransactionTestCase):
 
         self.assertIsNone(result)
         run_workflow_sync_mock.assert_not_called()
+
+    def test_deactivated_workflow_cancels_its_precreated_queued_run(self):
+        workflow_run = WorkflowRun.objects.create(
+            workflow=self.workflow,
+            status=WorkflowRunStatus.QUEUED,
+        )
+        self.workflow.active = False
+        self.workflow.save(update_fields=["active"])
+
+        result = run_workflow_async(
+            self.workflow.id,
+            {},
+            None,
+            workflow_run.id,
+            "29a47fcf-5046-4bd0-ad52-a62c676be029",
+        )
+
+        self.assertIsNone(result)
+        workflow_run.refresh_from_db()
+        self.assertEqual(workflow_run.status, WorkflowRunStatus.CANCELLED)
+        self.assertIsNotNone(workflow_run.finished_at)
 
     # ----------------------------------------
     # Trigger: SCHEDULE
