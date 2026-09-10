@@ -754,7 +754,7 @@ export default class FilterContainer extends BaseComponent {
      *  - Otherwise return the first operator select as a best-effort fallback
      */
     private findOperatorForField(field: Element): HTMLSelectElement | null {
-        const name = field.getAttribute('name') || '';
+        const name = field.getAttribute('name') || field.getAttribute('data-field-name') || '';
 
         // Prefer a select tagged with data-field equal to the input's name
         if (name) {
