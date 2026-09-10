@@ -64,6 +64,61 @@ def dataview_admin(db):
 
 
 @pytest.fixture
+def nested_relation_dataview(db):
+    Project = create_test_models(
+        app_label="bloomerp",
+        model_defs={
+            "E2EFilterProject": {
+                "name": models.CharField(max_length=100),
+                "__str__": lambda self: self.name,
+            },
+        },
+        use_bloomerp_base=True,
+    )["E2EFilterProject"]
+    Employee = create_test_models(
+        app_label="bloomerp",
+        model_defs={
+            "E2EFilterEmployee": {
+                "name": models.CharField(max_length=100),
+                "__str__": lambda self: self.name,
+            },
+        },
+        use_bloomerp_base=True,
+    )["E2EFilterEmployee"]
+    EmployeeOnProject = create_test_models(
+        app_label="bloomerp",
+        model_defs={
+            "E2EEmployeeOnProject": {
+                "employee": models.ForeignKey(
+                    Employee,
+                    on_delete=models.CASCADE,
+                    related_name="employee_on_project",
+                ),
+                "project": models.ForeignKey(Project, on_delete=models.CASCADE),
+            },
+        },
+        use_bloomerp_base=True,
+    )["E2EEmployeeOnProject"]
+    BaseBloomerpTestCaseWithModels._register_dynamic_model_routes([Employee])
+
+    selected_project = Project.objects.create(name="Selected project")
+    other_project = Project.objects.create(name="Other project")
+    selected_employee = Employee.objects.create(name="Selected employee")
+    other_employee = Employee.objects.create(name="Other employee")
+    EmployeeOnProject.objects.create(
+        employee=selected_employee,
+        project=selected_project,
+    )
+    EmployeeOnProject.objects.create(
+        employee=other_employee,
+        project=other_project,
+    )
+
+    save_application_fields.Command().handle(suppress_output=True)
+    return Employee, selected_project
+
+
+@pytest.fixture
 def authenticated_dataview_page(
     page: Page,
     live_server_url: str,
@@ -86,6 +141,26 @@ def authenticated_dataview_page(
     expect(page.locator("[bloomerp-component='dataview-container']")).to_be_visible()
     expect(page.locator("#data-view-data-section")).to_contain_text("Playwright")
     return page
+
+
+@pytest.fixture
+def authenticated_nested_relation_dataview_page(
+    page: Page,
+    live_server_url: str,
+    dataview_admin,
+    nested_relation_dataview,
+):
+    Employee, selected_project = nested_relation_dataview
+
+    page.goto(f"{live_server_url}{reverse('login')}")
+    page.locator('input[name="username"]').fill(dataview_admin.username)
+    page.locator('input[name="password"]').fill("testpass123")
+    page.get_by_role("button", name="Login").click()
+    page.wait_for_url(f"{live_server_url}/")
+
+    page.goto(f"{live_server_url}{reverse(get_list_view_url(Employee))}")
+    expect(page.locator("[bloomerp-component='dataview-container']")).to_be_visible()
+    return page, selected_project
 
 #------------------------------------
 # Utility Functions
@@ -269,6 +344,60 @@ class TestDataViewE2E:
         expect(page.locator("[data-filter-key='first_name__exact']").last).to_contain_text(
             "First Name is Playwright"
         )
+
+    def test_nested_foreign_widget_filter_uses_nested_exact_operator(
+        self,
+        authenticated_nested_relation_dataview_page,
+    ):
+        """
+        Use case: Filter a reverse relation through a nested foreign-key widget.
+        Expected result: The full nested path is serialized with the nested Equals lookup.
+        """
+        page, selected_project = authenticated_nested_relation_dataview_page
+        page.get_by_role("button", name="Filter").click()
+
+        filter_container = page.locator("[bloomerp-component='filter-container']").first
+        filter_container.locator("#field-selector-section select").select_option(
+            label="Employee On Project"
+        )
+        outer_operator = filter_container.locator("#lookup-operator-section select")
+        expect(outer_operator).to_be_visible()
+        outer_operator.select_option(label="Advanced Lookup")
+
+        related_field = filter_container.locator(
+            'select[data-advanced-related-select][data-path-prefix="employee_on_project"]'
+        )
+        expect(related_field).to_be_visible()
+        related_field.select_option(label="Project")
+
+        nested_operator = filter_container.locator(
+            'select[data-advanced-operator-select][data-field="employee_on_project__project"]'
+        )
+        expect(nested_operator).to_be_visible()
+        nested_operator.select_option(label="Equals")
+
+        project_widget = filter_container.locator(
+            '[data-filter-value-provider][data-field-name="employee_on_project__project"]'
+        )
+        expect(project_widget).to_be_visible()
+        project_widget.locator('input[type="text"]').focus()
+        project_option = page.locator(
+            ".foreign-field-results li",
+            has_text=selected_project.name,
+        )
+        expect(project_option).to_be_visible()
+        project_option.click()
+
+        with page.expect_response(
+            lambda response: "components/dataview" in response.url
+            and "employee_on_project__project__exact=" in response.url,
+            timeout=30000,
+        ):
+            page.locator("#apply-filters-button").click()
+
+        data_section = page.locator("#data-view-data-section").last
+        expect(data_section).to_contain_text("Selected employee")
+        expect(data_section).not_to_contain_text("Other employee")
 
     def test_search(self, authenticated_dataview_page: Page):
         """
