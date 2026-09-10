@@ -15,6 +15,7 @@ export default class CodeEditorWidget extends BaseWidget {
     private boundOnEditorChange: (() => void) | null = null;
     private boundOnModalClosed: ((event: Event) => void) | null = null;
     private boundOnTextareaInput: (() => void) | null = null;
+    private destroyed: boolean = false;
     private readonly boundOnThemeChange = (): void => this.updateEditorTheme();
 
     public initialize(): void {
@@ -91,6 +92,9 @@ export default class CodeEditorWidget extends BaseWidget {
     }
 
     public destroy(): void {
+        if (this.destroyed) return;
+        this.destroyed = true;
+
         if (this.editor && this.textarea) {
             this.textarea.value = this.editor.getValue();
         }

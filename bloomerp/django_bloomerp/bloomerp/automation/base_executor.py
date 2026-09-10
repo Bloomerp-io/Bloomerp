@@ -76,6 +76,7 @@ class BaseExecutor:
         """
         raise NotImplementedError("Execute method must be implemented by subclasses.")
 
+
     @classmethod
     def get_config_form(cls, *args, **kwargs) -> type[forms.Form] | forms.Form:
         if args or kwargs:
