@@ -714,13 +714,6 @@ def run_workflow(
     if run_asynchronously:
         try:
             serialized_trigger_data = serialize_workflow_value(trigger_data)
-            run_workflow_async.delay(
-                workflow.id,
-                serialized_trigger_data,
-                start_node.id if start_node is not None else None,
-                workflow_run.id,
-                client_request_id,
-            )
         except Exception:
             _mark_workflow_run_finished(
                 workflow_run,
@@ -729,6 +722,26 @@ def run_workflow(
                 client_request_id,
             )
             raise
+
+        def dispatch_workflow() -> None:
+            try:
+                run_workflow_async.delay(
+                    workflow.id,
+                    serialized_trigger_data,
+                    start_node.id if start_node is not None else None,
+                    workflow_run.id,
+                    client_request_id,
+                )
+            except Exception:
+                _mark_workflow_run_finished(
+                    workflow_run,
+                    WorkflowRunStatus.FAILED,
+                    "run.failed",
+                    client_request_id,
+                )
+                raise
+
+        transaction.on_commit(dispatch_workflow)
         return workflow_run
 
     return run_workflow_sync(

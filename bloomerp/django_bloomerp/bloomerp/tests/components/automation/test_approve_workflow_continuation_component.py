@@ -162,3 +162,46 @@ class TestApproveWorkflowContinuationComponent(BloomerpComponentTestCase):
             render_message.call_args.kwargs["message"],
             "Workflow resume queued",
         )
+
+    def test_cancelling_a_paused_step_cancels_its_workflow_run(self):
+        self._set_approvers(users=[self.user.id])
+        self.client.force_login(self.user)
+        approval_form = Mock()
+        approval_form.is_valid.return_value = True
+        approval_form.cleaned_data = {"data": {}}
+
+        with (
+            patch(
+                "bloomerp.components.automation.approve_workflow_continuation.load_step_output",
+                return_value={},
+            ),
+            patch(
+                "bloomerp.components.automation.approve_workflow_continuation.ApproveWorkflowContinuationForm",
+                return_value=approval_form,
+            ),
+            patch(
+                "bloomerp.components.automation.approve_workflow_continuation.render_page_refresh_with_message",
+                return_value=HttpResponse(),
+            ),
+            patch(
+                "bloomerp.components.automation.approve_workflow_continuation.send_workflow_run_event"
+            ) as send_event,
+        ):
+            response = self.client.post(
+                reverse(
+                    self.view_name,
+                    kwargs={"workflow_run_id": self.workflow_run.id},
+                ),
+                {"data": "{}", "cancel": "true"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        paused_step = self.workflow_run.steps.get()
+        self.workflow_run.refresh_from_db()
+        self.assertEqual(paused_step.status, WorkflowRunStepStatus.CANCELLED)
+        self.assertEqual(self.workflow_run.status, WorkflowRunStatus.CANCELLED)
+        self.assertIsNotNone(self.workflow_run.finished_at)
+        send_event.assert_called_once_with(
+            self.workflow_run,
+            "run.cancelled",
+        )

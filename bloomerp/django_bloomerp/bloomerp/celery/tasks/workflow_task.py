@@ -36,7 +36,7 @@ def run_workflow_async(
     from bloomerp.models.automation.workflow_run import WorkflowRun, WorkflowRunStatus
 
     workflow_run = (
-        WorkflowRun.objects.filter(pk=workflow_run_id).first()
+        WorkflowRun.objects.get(pk=workflow_run_id)
         if workflow_run_id is not None
         else None
     )

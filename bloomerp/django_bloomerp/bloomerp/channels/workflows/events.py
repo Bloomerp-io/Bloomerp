@@ -1,7 +1,12 @@
+import logging
+
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from bloomerp.models.automation.workflow_run import WorkflowRun
+
+
+logger = logging.getLogger(__name__)
 
 
 def workflow_run_group_name(workflow_id: int) -> str:
@@ -18,10 +23,6 @@ def send_workflow_run_event(
     status: str | None = None,
 ) -> None:
     """Publish a compact workflow-run lifecycle event to observing builders."""
-    channel_layer = get_channel_layer()
-    if not channel_layer:
-        return
-
     payload = {
         "type": "workflow_run",
         "event": event,
@@ -36,10 +37,22 @@ def send_workflow_run_event(
     if sequence is not None:
         payload["sequence"] = sequence
 
-    async_to_sync(channel_layer.group_send)(
-        workflow_run_group_name(workflow_run.workflow_id),
-        {
-            "type": "workflow_run_event",
-            "payload": payload,
-        },
-    )
+    try:
+        channel_layer = get_channel_layer()
+        if not channel_layer:
+            return
+
+        async_to_sync(channel_layer.group_send)(
+            workflow_run_group_name(workflow_run.workflow_id),
+            {
+                "type": "workflow_run_event",
+                "payload": payload,
+            },
+        )
+    except Exception:
+        logger.warning(
+            "Could not publish workflow run event %s for run %s.",
+            event,
+            workflow_run.id,
+            exc_info=True,
+        )

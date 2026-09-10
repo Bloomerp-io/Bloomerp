@@ -1,9 +1,9 @@
 import json
 import tempfile
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from django.contrib.contenttypes.models import ContentType
-from django.db import DatabaseError, IntegrityError, models
+from django.db import DatabaseError, IntegrityError, models, transaction
 from django.test import TransactionTestCase
 from django_celery_beat.models import PeriodicTask
 from regex import F
@@ -538,6 +538,24 @@ class TestAutomation(TransactionTestCase):
         self.assertIn("node.completed", event_names)
         self.assertEqual(event_names[-1], "run.completed")
 
+    def test_realtime_delivery_failure_does_not_abort_workflow(self):
+        channel_layer = Mock()
+        channel_layer.group_send = AsyncMock(
+            side_effect=RuntimeError("channel backend unavailable")
+        )
+
+        with (
+            patch(
+                "bloomerp.channels.workflows.events.get_channel_layer",
+                return_value=channel_layer,
+            ),
+            self.assertLogs("bloomerp.channels.workflows.events", level="WARNING"),
+        ):
+            workflow_run = run_workflow(self.workflow, {})
+
+        workflow_run.refresh_from_db()
+        self.assertEqual(workflow_run.status, WorkflowRunStatus.SUCCEEDED)
+
     def test_failed_run_persists_terminal_lifecycle(self):
         with (
             patch.object(WorkflowNode, "execute", side_effect=ValueError("boom")),
@@ -580,6 +598,36 @@ class TestAutomation(TransactionTestCase):
             result.id,
             None,
         )
+
+    def test_async_workflow_dispatches_after_its_run_is_committed(self):
+        self.workflow.run_asynchronously = True
+        self.workflow.save(update_fields=["run_asynchronously"])
+
+        with patch("bloomerp.automation.run.run_workflow_async.delay") as delay_mock:
+            with transaction.atomic():
+                result = run_workflow(self.workflow, {"first_name": "John"})
+                delay_mock.assert_not_called()
+
+            delay_mock.assert_called_once_with(
+                self.workflow.id,
+                {"first_name": "John"},
+                None,
+                result.id,
+                None,
+            )
+
+    def test_async_worker_does_not_replace_a_missing_precreated_run(self):
+        initial_run_count = WorkflowRun.objects.count()
+
+        with self.assertRaises(WorkflowRun.DoesNotExist):
+            run_workflow_async(
+                self.workflow.id,
+                {},
+                None,
+                999_999,
+            )
+
+        self.assertEqual(WorkflowRun.objects.count(), initial_run_count)
 
     def test_async_workflow_passes_selected_start_node_to_celery(self):
         self.workflow.run_asynchronously = True
