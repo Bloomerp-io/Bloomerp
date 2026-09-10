@@ -209,6 +209,7 @@ export default class Workflow extends BaseComponent {
     private selection: WorkflowSelection | null = null;
     private nodeDrawerElement: HTMLElement | null = null;
     private resizeObserver: ResizeObserver | null = null;
+    private connectionLayoutFrame: number | null = null;
     private lifecycle = new AbortController();
     private nodeId: number = 1;
     private workflowId: string | null = null;
@@ -314,6 +315,9 @@ export default class Workflow extends BaseComponent {
             zoom: delta => this.adjustZoom(delta),
         });
         this.setupCanvasHeight(container);
+        document.addEventListener('bloomerp:modal-closed', this.scheduleConnectionLayout, {
+            signal: this.lifecycle.signal,
+        });
 
         // Setup node drawer for adding new nodes
         this.setupNodeDrawer();
@@ -325,6 +329,7 @@ export default class Workflow extends BaseComponent {
         this.selection?.destroy();
         this.getNodeDrawer()?.destroy();
         this.resizeObserver?.disconnect();
+        if (this.connectionLayoutFrame !== null) window.cancelAnimationFrame(this.connectionLayoutFrame);
         this.lifecycle.abort();
         if (this.autosaveTimer) void this.flushAutosave();
         if (this.nodeConfigAutosaveTimer) {
@@ -336,10 +341,24 @@ export default class Workflow extends BaseComponent {
         super.destroy();
     }
 
+    /** Measure ports after card/layout changes have reached the DOM, once per frame. */
+    private scheduleConnectionLayout = (): void => {
+        if (this.lifecycle.signal.aborted || this.connectionLayoutFrame !== null) return;
+        this.connectionLayoutFrame = window.requestAnimationFrame(() => {
+            this.connectionLayoutFrame = null;
+            if (!this.element.isConnected) return;
+            this.element.querySelectorAll<HTMLElement>('#drawflow .drawflow-node').forEach(node => {
+                this.drawflow.updateConnectionNodes(node.id);
+            });
+            this.refreshWorkflowEdgeLabels();
+        });
+    };
+
     private setupCanvasHeight(container: HTMLElement): void {
         const resize = () => {
             const top = container.getBoundingClientRect().top;
             container.style.height = `${Math.max(240, window.innerHeight - Math.max(0, top) - 16)}px`;
+            this.scheduleConnectionLayout();
         };
         this.resizeObserver = new ResizeObserver(resize);
         const parent = this.element.closest('#detail-view-content')?.parentElement;
@@ -456,6 +475,7 @@ export default class Workflow extends BaseComponent {
                 label.style.pointerEvents = 'none';
                 output.appendChild(label);
             });
+            this.scheduleConnectionLayout();
         });
     }
 
@@ -1727,7 +1747,10 @@ export default class Workflow extends BaseComponent {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = html;
         const newContent = wrapper.firstElementChild;
-        if (newContent) content.replaceWith(newContent);
+        if (newContent) {
+            content.replaceWith(newContent);
+            this.scheduleConnectionLayout();
+        }
     }
 
     private formToParameters(form: HTMLFormElement): Record<string, any> | null {

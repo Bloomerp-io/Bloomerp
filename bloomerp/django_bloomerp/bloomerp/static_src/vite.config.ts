@@ -11,12 +11,19 @@ export default defineConfig({
     sourcemap: true, // Enable source maps for debugging
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'ts/main.ts'),
+        main: resolve(__dirname, 'ts/entry.ts'),
       },
       output: {
+        // Keep application startup in one hashed module. The template versions
+        // main.js with a query string; lazy chunks must not import that entry
+        // without the query and execute startup a second time.
+        manualChunks: {
+          app: [resolve(__dirname, 'ts/main.ts')],
+        },
         entryFileNames: '[name].js',
         chunkFileNames: '[name]-[hash].js',
-        assetFileNames: '[name].[ext]',
+        // The Django head template loads the application's CSS at this path.
+        assetFileNames: asset => asset.names.includes('app.css') ? 'main.css' : '[name].[ext]',
         // Preserve module structure for better debugging
         preserveModules: false,
       },

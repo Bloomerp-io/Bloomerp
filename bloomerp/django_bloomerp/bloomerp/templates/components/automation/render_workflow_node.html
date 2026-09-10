@@ -24,33 +24,33 @@
     {% csrf_token %}
 
     <section class="min-w-0 xl:h-full xl:min-h-0 xl:overflow-hidden">
-        <div class="flex flex-col bg-white xl:h-full xl:min-h-0 xl:overflow-hidden">
-            <div class="shrink-0 border-b border-slate-200 px-4 py-3">
+        <div class="flex flex-col bg-white dark:bg-zinc-900 xl:h-full xl:min-h-0 xl:overflow-hidden">
+            <div class="shrink-0 border-b border-slate-200 px-4 py-3 dark:border-zinc-700">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                             {{ node_type|title }}
                         </p>
-                        <h3 class="text-lg font-semibold text-slate-950">
+                        <h3 class="text-lg font-semibold text-slate-950 dark:text-zinc-100">
                             Configure {{ node_sub_type_definition.name }}
                         </h3>
                         {% if node_sub_type_definition.description %}
-                            <p class="mt-1 text-sm text-slate-500">
+                            <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">
                                 {{ node_sub_type_definition.description }}
                             </p>
                         {% endif %}
                     </div>
-                    <div class="flex shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-medium">
+                    <div class="flex shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-800">
                         <button
                             type="button"
-                            class="rounded-lg px-3 py-1.5 transition {% if edit_mode == 'form' %}bg-white text-slate-950 shadow-xs{% else %}text-slate-500 hover:text-slate-800{% endif %}"
+                            class="rounded-lg px-3 py-1.5 transition {% if edit_mode == 'form' %}bg-white text-slate-950 shadow-xs dark:bg-zinc-700 dark:text-zinc-100{% else %}text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100{% endif %}"
                             data-workflow-config-edit-mode="form"
                         >
                             Form
                         </button>
                         <button
                             type="button"
-                            class="rounded-lg px-3 py-1.5 transition {% if edit_mode == 'json' %}bg-white text-slate-950 shadow-xs{% else %}text-slate-500 hover:text-slate-800{% endif %}"
+                            class="rounded-lg px-3 py-1.5 transition {% if edit_mode == 'json' %}bg-white text-slate-950 shadow-xs dark:bg-zinc-700 dark:text-zinc-100{% else %}text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100{% endif %}"
                             data-workflow-config-edit-mode="json"
                         >
                             JSON
@@ -72,7 +72,7 @@
                 </div>
 
                 <div class="mt-4 flex items-center justify-between gap-2">
-                    <p class="text-xs text-slate-500" data-workflow-node-config-status>
+                    <p class="text-xs text-slate-500 dark:text-zinc-400" data-workflow-node-config-status>
                         Changes save automatically.
                     </p>
                 </div>
@@ -90,16 +90,16 @@
             <div class="relative flex w-full flex-1 flex-col overflow-hidden border-l border-gray-200 bg-base xl:h-full xl:min-h-0" data-resizable-div-panel>
                 <div class="pointer-events-none absolute left-0 top-0 z-40 h-full w-px bg-gray-200"></div>
 
-                <div class="shrink-0 border-b border-slate-200 bg-white px-5 py-4">
+                <div class="shrink-0 border-b border-slate-200 bg-white px-5 py-4 dark:border-zinc-700 dark:bg-zinc-800">
                     <div class="flex items-start gap-3">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-zinc-700 dark:text-zinc-300">
                             <i class="{{ node_sub_type_definition.icon }}"></i>
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                                 Node Context
                             </p>
-                            <h4 class="truncate text-base font-semibold text-slate-950">
+                            <h4 class="truncate text-base font-semibold text-slate-950 dark:text-zinc-100">
                                 {{ node_sub_type_definition.name }}
                             </h4>
                         </div>
