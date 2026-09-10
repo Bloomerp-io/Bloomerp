@@ -1567,7 +1567,6 @@ export default class Workflow extends BaseComponent {
             edit_mode: editMode,
         });
 
-        this.destroyNodeConfigCodeEditors(target);
         htmx.ajax(
             'get',
             `/components/automation/render_workflow_node/?${params.toString()}`,
@@ -1576,12 +1575,6 @@ export default class Workflow extends BaseComponent {
             this.prepareNodeConfigForm(target);
             initComponents(target);
             this.setupNodeConfigForm(target);
-        });
-    }
-
-    private destroyNodeConfigCodeEditors(container: HTMLElement): void {
-        container.querySelectorAll<HTMLElement>('[bloomerp-component="code-editor-widget"]').forEach((element) => {
-            getComponent(element)?.destroy();
         });
     }
 

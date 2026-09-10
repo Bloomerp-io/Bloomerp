@@ -16,10 +16,14 @@ export default class CodeEditorWidget extends BaseWidget {
     private boundOnModalClosed: ((event: Event) => void) | null = null;
     private boundOnTextareaInput: (() => void) | null = null;
     private destroyed: boolean = false;
+    private readonly boundOnBeforeCleanupElement = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
     private readonly boundOnThemeChange = (): void => this.updateEditorTheme();
 
     public initialize(): void {
         if (!this.element) return;
+        this.element.addEventListener('htmx:beforeCleanupElement', this.boundOnBeforeCleanupElement);
         this.language = this.element.dataset.language || '';
         this.launchFromButton = this.element.dataset.launchFromButton === 'true';
         this.modalId = this.element.dataset.modalId || '';
@@ -110,6 +114,7 @@ export default class CodeEditorWidget extends BaseWidget {
         if (this.boundOnModalClosed) {
             document.body.removeEventListener('bloomerp:modal-closed', this.boundOnModalClosed);
         }
+        this.element?.removeEventListener('htmx:beforeCleanupElement', this.boundOnBeforeCleanupElement);
         window.removeEventListener('bloomerp:theme-change', this.boundOnThemeChange);
 
         if (this.textarea && this.boundOnTextareaInput) {
