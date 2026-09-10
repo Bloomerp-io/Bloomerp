@@ -8,6 +8,7 @@ import { Drawer } from "../Drawer";
 import DrawFlow from 'drawflow';
 import htmx from "htmx.org";
 import WorkflowSelection, { edgeFromElement } from "./WorkflowSelection";
+import { workflowFormToParameters } from "./formParameters";
 
 interface SavedWorkflowNode {
     id: number;
@@ -2097,49 +2098,6 @@ export default class Workflow extends BaseComponent {
             }
         }
 
-        const formData = new FormData(form);
-        const parameters: Record<string, any> = {};
-        const multiValueFieldNames = new Set(
-            Array.from(form.querySelectorAll<HTMLElement>(
-                'select[multiple][name], [bloomerp-component="foreign-field-widget"][data-is-m2m="true"][data-field-name]',
-            )).map((field) => field.getAttribute('name') || field.dataset.fieldName || ''),
-        );
-
-        formData.forEach((value, key) => {
-            if (key === 'csrfmiddlewaretoken') return;
-            const parsedValue = this.parseFormValue(String(value));
-
-            if (!(key in parameters)) {
-                parameters[key] = multiValueFieldNames.has(key) ? [parsedValue] : parsedValue;
-                return;
-            }
-
-            const currentValue = parameters[key];
-            parameters[key] = Array.isArray(currentValue)
-                ? [...currentValue, parsedValue]
-                : [currentValue, parsedValue];
-        });
-
-        return parameters;
-    }
-    
-
-    // TODO: Move to utility function
-    private parseFormValue(value: string): any {
-        if (/^-?\d+$/.test(value)) return parseInt(value, 10);
-
-        const trimmed = value.trim();
-        if (
-            (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-            (trimmed.startsWith('[') && trimmed.endsWith(']'))
-        ) {
-            try {
-                return JSON.parse(trimmed);
-            } catch {
-                return value;
-            }
-        }
-
-        return value;
+        return workflowFormToParameters(form);
     }
 }

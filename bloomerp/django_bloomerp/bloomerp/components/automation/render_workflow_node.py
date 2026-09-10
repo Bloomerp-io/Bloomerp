@@ -63,11 +63,12 @@ def _workflow_node_schema_context(
         edit_mode = "form"
     
     # Regular form
-    parameters = workflow_node.parameters or {}
+    parameters = dict(workflow_node.parameters or {})
     regular_form = selected_sub_type.executor_cls.get_config_form(initial=parameters)
-    for field in regular_form.fields:
-        if field not in parameters:
-            parameters[field] = ""
+    for field_name, field in regular_form.fields.items():
+        if field_name not in parameters:
+            initial = regular_form.get_initial_for_field(field, field_name)
+            parameters[field_name] = initial if initial is not None else ""
     
     form = None
     if include_form:
