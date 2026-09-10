@@ -198,3 +198,86 @@ class TestWorkflowBuilderE2E(e2e.BloomerpE2ETestCase):
         drawer.locator('[data-node-subtype-id="SEND_USER_MESSAGE"]').click()
         expect(self.nodes()).to_have_count(3)
         expect(drawer).to_be_hidden()
+
+
+class TestWorkflowConnectionGeometryE2E(TestWorkflowBuilderE2E):
+    def get_request_setups(self):
+        return [e2e.E2ERequestSetup(
+            name="Connections stay attached after closing node configuration",
+            user=self.admin_user, prepare=self.prepare_workflow,
+            url=lambda: f"/automation/workflows/{self.workflow.pk}/builder/",
+            actions=[e2e.E2EAction(execute=self.connection_geometry)],
+        )]
+
+    def assert_connections_attached(self):
+        expect(self.page.locator("#drawflow .connection")).to_have_count(1)
+        # Read rendered SVG endpoints; interactions never call editor internals.
+        self.page.wait_for_function("""() => {
+            const canvas = document.querySelector('#drawflow');
+            return [...canvas.querySelectorAll('.connection')].every(edge => {
+                const classes = [...edge.classList];
+                const source = classes.find(c => c.startsWith('node_out_node-')).replace('node_out_', '');
+                const target = classes.find(c => c.startsWith('node_in_node-')).replace('node_in_', '');
+                const output = classes.find(c => c.startsWith('output_'));
+                const input = classes.find(c => c.startsWith('input_'));
+                const path = edge.querySelector('.main-path');
+                const start = path.getPointAtLength(0).matrixTransform(path.getScreenCTM());
+                const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM());
+                const a = canvas.querySelector(`#${source} .${output}`).getBoundingClientRect();
+                const b = canvas.querySelector(`#${target} .${input}`).getBoundingClientRect();
+                return Math.hypot(start.x - a.x - a.width / 2, start.y - a.y - a.height / 2) < 2
+                    && Math.hypot(end.x - b.x - b.width / 2, end.y - b.y - b.height / 2) < 2;
+            });
+        }""")
+
+    def connection_geometry(self):
+        self.ready()
+        width = self.nodes().first.bounding_box()["width"]
+        self.nodes().first.click(button="right")
+        name = self.page.get_by_role("textbox", name="Node name", exact=True)
+        name.fill("A renamed message node with a much wider title")
+        name.press("Enter")
+        self.assertGreater(self.nodes().first.bounding_box()["width"], width)
+        self.nodes().first.click()
+        self.page.keyboard.press("ArrowRight")
+        self.assert_connections_attached()
+        modal = self.page.locator('#bloomerp-general-use-modal')
+        for edit_message in (False, True):
+            self.nodes().first.dblclick()
+            form = modal.locator('form[data-workflow-node-config-form="true"]')
+            expect(form).to_be_visible()
+            if edit_message:
+                form.locator('[name="message"]').fill("A much longer message changes the width of the node's configuration preview")
+                form.locator('[name="message_type"]').focus()
+            modal.locator('[bloomerp-close-modal]').first.click()
+            expect(modal).to_be_hidden()
+            if edit_message:
+                expect(self.nodes().first).to_contain_text("A much longer message")
+            self.assert_connections_attached()
+
+
+class TestWorkflowModalInitializationE2E(TestWorkflowConnectionGeometryE2E):
+    browser_context_options = {
+        "viewport": {"width": 1440, "height": 1000}, "color_scheme": "dark",
+    }
+
+    def prepare_workflow(self):
+        super().prepare_workflow()
+        self.first.type = "TRIGGER"
+        self.first.sub_type = "HUMAN_TRIGGER"
+        self.first.parameters = {"data": {}}
+        self.first.save()
+
+    def connection_geometry(self):
+        # Start fresh and open a JSON editor, whose lazy imports must not boot
+        # the application a second time through an unversioned bundle URL.
+        self.page.reload()
+        expect(self.nodes()).to_have_count(2)
+        self.nodes().first.dblclick()
+        modal = self.page.locator('#bloomerp-general-use-modal')
+        expect(modal.locator('.ace_editor.ace-tomorrow-night')).to_be_visible()
+        modal.locator('[bloomerp-close-modal]').first.click()
+        expect(modal).to_be_hidden()
+        expect(self.page.locator('#drawflow > .drawflow')).to_have_count(1)
+        expect(self.nodes()).to_have_count(2)
+        self.assert_connections_attached()
