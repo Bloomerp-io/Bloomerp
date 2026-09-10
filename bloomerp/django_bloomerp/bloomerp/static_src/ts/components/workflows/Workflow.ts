@@ -1540,8 +1540,6 @@ export default class Workflow extends BaseComponent {
      * @param nodeId the ID of the double-clicked node
      */
     private async handleNodeDoubleClick(nodeId: number): Promise<void> {
-        this.editingNodeId = nodeId;
-        const nodeData = this.drawflow.getNodeFromId(nodeId);
         await this.flushAutosave();
         const persistedNodeData = this.drawflow.getNodeFromId(nodeId);
         if (!persistedNodeData?.data?.workflowNodeId) {
@@ -1557,11 +1555,16 @@ export default class Workflow extends BaseComponent {
         modal.setSize('full')
         modal.setPadding('p-0')
         modal.open()
-        this.loadNodeConfigFormForNode(persistedNodeData, modalBody);
+        this.loadNodeConfigFormForNode(nodeId, persistedNodeData, modalBody);
 
     }
 
-    private loadNodeConfigFormForNode(nodeData: any, target: HTMLElement, editMode: 'form' | 'json' = 'form'): void {
+    private loadNodeConfigFormForNode(
+        drawflowNodeId: number,
+        nodeData: any,
+        target: HTMLElement,
+        editMode: 'form' | 'json' = 'form',
+    ): void {
         const params = new URLSearchParams({
             node_id: String(nodeData.data.workflowNodeId),
             edit_mode: editMode,
@@ -1572,6 +1575,7 @@ export default class Workflow extends BaseComponent {
             `/components/automation/render_workflow_node/?${params.toString()}`,
             target,
         ).then(() => {
+            this.editingNodeId = drawflowNodeId;
             this.prepareNodeConfigForm(target);
             initComponents(target);
             this.setupNodeConfigForm(target);
@@ -1643,7 +1647,7 @@ export default class Workflow extends BaseComponent {
         if (!target) return;
 
         this.nodeFormEditMode = editMode;
-        this.loadNodeConfigFormForNode(persistedNodeData, target, editMode);
+        this.loadNodeConfigFormForNode(drawflowNodeId, persistedNodeData, target, editMode);
     }
 
     private scheduleNodeConfigSave(form: HTMLFormElement, refreshForm: boolean = false): void {
