@@ -102,7 +102,8 @@ class TestRunWorkflowNode(BloomerpWorkflowNodeTestCase):
 
         delay.assert_called_once()
         self.assertEqual(delay.call_args.args[0], child.id)
-        self.assertEqual(child.runs.count(), 0)
+        self.assertEqual(child.runs.count(), 1)
+        self.assertEqual(child.runs.get().status, "QUEUED")
 
     def test_force_sync_runs_an_asynchronous_child_inline(self):
         parent = self._create_workflow_with_trigger("Parent")
@@ -128,7 +129,8 @@ class TestRunWorkflowNode(BloomerpWorkflowNodeTestCase):
 
         delay.assert_called_once()
         self.assertEqual(delay.call_args.args[0], child.id)
-        self.assertEqual(child.runs.count(), 0)
+        self.assertEqual(child.runs.count(), 1)
+        self.assertEqual(child.runs.get().status, "QUEUED")
 
     def test_rejects_a_direct_self_call(self):
         workflow = self._create_workflow_with_trigger("Recursive workflow")

@@ -22,7 +22,7 @@ from bloomerp.modules.users import UsersModule
 from bloomerp.modules.automation import AutomationModule
 from bloomerp.modules.todos_and_initiatives import TodosAndInitiatives
 from bloomerp.models.automation.workflow import Workflow
-from bloomerp.models.automation.workflow_run import WorkflowRun
+from bloomerp.models.automation.workflow_run import WorkflowRun, WorkflowRunStatus
 from bloomerp.models.automation.workflow_run_step import (
     WorkflowRunStep,
     WorkflowRunStepStatus,
@@ -40,18 +40,21 @@ class AutomationDashboardQueryTests(TransactionTestCase):
     def test_success_and_attention_metrics_use_run_level_status(self):
         workflow = Workflow.objects.create(name="Test workflow")
         statuses = [
-            WorkflowRunStepStatus.COMPLETED,
-            WorkflowRunStepStatus.FAILED,
-            WorkflowRunStepStatus.PAUSED,
-            WorkflowRunStepStatus.CANCELLED,
+            (WorkflowRunStatus.SUCCEEDED, WorkflowRunStepStatus.COMPLETED),
+            (WorkflowRunStatus.FAILED, WorkflowRunStepStatus.FAILED),
+            (WorkflowRunStatus.PAUSED, WorkflowRunStepStatus.PAUSED),
+            (WorkflowRunStatus.CANCELLED, WorkflowRunStepStatus.CANCELLED),
         ]
-        for sequence, status in enumerate(statuses, start=1):
-            run = WorkflowRun.objects.create(workflow=workflow)
+        for sequence, (run_status, step_status) in enumerate(statuses, start=1):
+            run = WorkflowRun.objects.create(
+                workflow=workflow,
+                status=run_status,
+            )
             WorkflowRunStep.objects.create(
                 workflow_run=run,
                 sequence=sequence,
                 action_id=f"action-{sequence}",
-                status=status,
+                status=step_status,
             )
 
         tiles = {

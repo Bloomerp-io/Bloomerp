@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from django.db import models
 from django.urls import reverse
-from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
+from bloomerp.models.definition import DetailTab, DetailTabsConfiguration, FieldLayout, LayoutItem, LayoutRow, ModelViewSettings
 from bloomerp.models.definition import BloomerpModelConfig, DetailViewSettings, ObjectModalAction
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
@@ -53,6 +53,32 @@ class Workflow(
                 ]
             )],
             skip_views=["document_templates", "files"],
+            tab_configurations=[
+                DetailTabsConfiguration(
+                    tabs=[
+                        DetailTab(
+                            name="Details",
+                            url_name="workflows_detail_overview",
+                        ),
+                        DetailTab(
+                            name="Builder",
+                            url_name="workflows_detail_builder",
+                        ),
+                        DetailTab(
+                            name="Runs",
+                            url_name="workflows_detail_runs_relationship"
+                        ),
+                        DetailTab(
+                            name="Nodes",
+                            url_name="workflows_detail_nodes_relationship"
+                        ),
+                        DetailTab(
+                            name="Delete",
+                            url_name="workflows_detail_delete"
+                        )
+                    ]
+                )
+            ]
         ),
         object_actions=[
             ObjectModalAction(
@@ -66,6 +92,9 @@ class Workflow(
         create_redirect_url_func=lambda x: reverse(
             "workflows_detail_builder",
             kwargs={"pk":x.pk}
+        ),
+        model_view_settings=ModelViewSettings(
+            
         ),
         tiles=[
             AnalyticsTileConfig(

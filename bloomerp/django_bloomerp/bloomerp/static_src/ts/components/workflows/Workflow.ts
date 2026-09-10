@@ -1,6 +1,8 @@
 import getGeneralModal from "@/utils/modals";
 import { getCsrfToken } from "@/utils/cookies";
+import showMessage from "@/utils/messages";
 import BaseComponent, { getComponent, initComponents } from "../BaseComponent";
+import { MessageType } from "../UiMessage";
 import { BaseWidget } from "../widgets/BaseWidget";
 import { Drawer } from "../Drawer";
 import DrawFlow from 'drawflow';
@@ -53,6 +55,25 @@ interface WorkflowOutputPort {
 interface WorkflowEdgeMetadata {
     id?: number;
     name: string;
+}
+
+interface WorkflowRunEvent {
+    type: 'workflow_run';
+    event: string;
+    workflow_id: number;
+    run_id: number;
+    status: string;
+    client_request_id?: string;
+    node_id?: number;
+    sequence?: number;
+}
+
+interface WorkflowRunNodeState {
+    attempts: number;
+    inProgress: number;
+    completed: number;
+    failed: number;
+    paused: number;
 }
 
 const WORKFLOW_CANVAS_WIDTH = 12000;
@@ -223,9 +244,15 @@ export default class Workflow extends BaseComponent {
     private pendingNodeConfigForm: HTMLFormElement | null = null;
     private nodeConfigSaveVersion: number = 0;
     private refreshNodeConfigFormOnNextSave: boolean = false;
-    private saveInFlight: Promise<void> | null = null;
+    private saveInFlight: Promise<boolean> | null = null;
     private saveAgainAfterCurrent: boolean = false;
     private nodeDrawerLoadPromise: Promise<void> | null = null;
+    private runSocket: WebSocket | null = null;
+    private runSocketReady: Promise<void> | null = null;
+    private pendingClientRequestId: string | null = null;
+    private currentRunId: number | null = null;
+    private runMode: 'editing' | 'observing' = 'editing';
+    private runNodeStates = new Map<number, WorkflowRunNodeState>();
 
     private nodeFormEditMode: 'form' | 'json' = 'form';
 
@@ -328,6 +355,7 @@ export default class Workflow extends BaseComponent {
         if (this.lifecycle.signal.aborted) return;
         this.selection?.destroy();
         this.getNodeDrawer()?.destroy();
+        this.closeWorkflowRunSocket();
         this.resizeObserver?.disconnect();
         if (this.connectionLayoutFrame !== null) window.cancelAnimationFrame(this.connectionLayoutFrame);
         this.lifecycle.abort();
@@ -1047,6 +1075,8 @@ export default class Workflow extends BaseComponent {
         const zoomOutBtn = this.element.querySelector('#zoom-out-btn');
         const zoomResetBtn = this.element.querySelector('#zoom-reset-btn');
         const focusFirstNodeBtn = this.element.querySelector('#focus-first-node-btn');
+        const runBtn = this.element.querySelector<HTMLButtonElement>('[data-workflow-run]');
+        const backToEditorBtn = this.element.querySelector<HTMLButtonElement>('[data-workflow-back-to-editor]');
         
         if (addNodeBtn) {
             addNodeBtn.addEventListener('click', () => void this.openNodeDrawer());
@@ -1083,6 +1113,291 @@ export default class Workflow extends BaseComponent {
                 this.focusViewportOnFirstNode();
             });
         }
+
+        runBtn?.addEventListener('click', () => void this.openRunWorkflowForm(), {
+            signal: this.lifecycle.signal,
+        });
+        backToEditorBtn?.addEventListener('click', () => this.returnToEditor(), {
+            signal: this.lifecycle.signal,
+        });
+    }
+
+    private async openRunWorkflowForm(): Promise<void> {
+        if (this.runMode !== 'editing') return;
+
+        const runUrl = this.element.dataset.workflowRunUrl;
+        if (!runUrl) return;
+
+        const saved = await this.flushAutosave();
+        if (!saved) {
+            showMessage('Save the workflow successfully before running it.', MessageType.ERROR);
+            return;
+        }
+
+        const modal = getGeneralModal();
+        const modalBody = modal.getBodyElement();
+        if (!modalBody) return;
+
+        modal.setTitle('Run workflow');
+        await htmx.ajax('get', runUrl, { target: modalBody });
+        initComponents(modalBody);
+
+        const form = modalBody.querySelector<HTMLFormElement>('form');
+        if (!form) return;
+        form.removeAttribute('hx-post');
+        form.removeAttribute('hx-target');
+        form.removeAttribute('hx-swap');
+        form.querySelector('[bloomerp-close-modal]')?.removeAttribute('bloomerp-close-modal');
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            void this.startWorkflowRun(form);
+        }, true);
+        modal.open();
+    }
+
+    private async startWorkflowRun(form: HTMLFormElement): Promise<void> {
+        const runUrl = this.element.dataset.workflowRunUrl;
+        if (!runUrl || this.runMode !== 'editing') return;
+
+        const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+
+        try {
+            await this.ensureWorkflowRunSocket();
+            const clientRequestId = window.crypto.randomUUID();
+            const formData = new FormData(form);
+            formData.set('client_request_id', clientRequestId);
+            this.pendingClientRequestId = clientRequestId;
+            this.enterRunMode();
+            getGeneralModal().close();
+
+            const response = await fetch(runUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' },
+                body: formData,
+            });
+            const result = response.headers.get('content-type')?.includes('application/json')
+                ? await response.json()
+                : null;
+            if (!response.ok) {
+                throw new Error(this.workflowRunErrorMessage(result));
+            }
+            if (this.pendingClientRequestId !== clientRequestId) return;
+
+            const adoptedFromResponse = this.currentRunId === null;
+            this.currentRunId ??= Number(result.workflow_run_id);
+            if (adoptedFromResponse) {
+                this.setWorkflowRunStatus(this.formatWorkflowRunStatus(result.status));
+            }
+        } catch (error) {
+            if (this.pendingClientRequestId) {
+                this.returnToEditor();
+            }
+            showMessage(
+                error instanceof Error ? error.message : 'Unable to start workflow run.',
+                MessageType.ERROR,
+            );
+        } finally {
+            if (submitButton) submitButton.disabled = false;
+        }
+    }
+
+    private workflowRunErrorMessage(result: any): string {
+        const errors = result?.errors;
+        if (!errors || typeof errors !== 'object') return 'Unable to start workflow run.';
+        const firstError = Object.values(errors).flat(2)[0];
+        if (typeof firstError === 'string') return firstError;
+        if (firstError && typeof firstError === 'object' && 'message' in firstError) {
+            return String((firstError as { message: unknown }).message);
+        }
+        return 'Unable to start workflow run.';
+    }
+
+    private ensureWorkflowRunSocket(): Promise<void> {
+        if (this.runSocket?.readyState === WebSocket.OPEN) return Promise.resolve();
+        if (this.runSocketReady) return this.runSocketReady;
+        if (!this.workflowId) return Promise.reject(new Error('Workflow is not saved.'));
+
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socket = new WebSocket(
+            `${protocol}://${window.location.host}/ws/automation/workflow-run/${this.workflowId}/`,
+        );
+        this.runSocket = socket;
+        this.runSocketReady = new Promise<void>((resolve, reject) => {
+            socket.onopen = () => resolve();
+            socket.onerror = () => reject(new Error('Unable to connect to workflow updates.'));
+        });
+        socket.onmessage = (event: MessageEvent<string>) => {
+            try {
+                this.handleWorkflowRunEvent(JSON.parse(event.data) as WorkflowRunEvent);
+            } catch (error) {
+                console.warn('Invalid workflow run event', error);
+            }
+        };
+        socket.onclose = () => {
+            if (this.runSocket === socket) {
+                this.runSocket = null;
+                this.runSocketReady = null;
+                if (this.runMode === 'observing') {
+                    this.setWorkflowRunStatus('Connection to run updates lost');
+                }
+            }
+        };
+        return this.runSocketReady;
+    }
+
+    private closeWorkflowRunSocket(): void {
+        const socket = this.runSocket;
+        this.runSocket = null;
+        this.runSocketReady = null;
+        if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
+    }
+
+    private handleWorkflowRunEvent(event: WorkflowRunEvent): void {
+        if (event.type !== 'workflow_run') return;
+        if (this.currentRunId === null) {
+            if (
+                !this.pendingClientRequestId
+                || event.client_request_id !== this.pendingClientRequestId
+            ) return;
+            this.currentRunId = Number(event.run_id);
+        }
+        if (Number(event.run_id) !== this.currentRunId) return;
+
+        if (event.node_id !== undefined) {
+            const state = this.runNodeStates.get(event.node_id) || {
+                attempts: 0,
+                inProgress: 0,
+                completed: 0,
+                failed: 0,
+                paused: 0,
+            };
+            if (event.event === 'node.started') {
+                state.attempts += 1;
+                state.inProgress += 1;
+            } else if (event.event === 'node.completed') {
+                state.inProgress = Math.max(0, state.inProgress - 1);
+                state.completed += 1;
+            } else if (event.event === 'node.failed') {
+                state.inProgress = Math.max(0, state.inProgress - 1);
+                state.failed += 1;
+            } else if (event.event === 'node.paused') {
+                state.inProgress = Math.max(0, state.inProgress - 1);
+                state.paused += 1;
+            } else if (event.event === 'node.deferred') {
+                state.inProgress = Math.max(0, state.inProgress - 1);
+            }
+            this.runNodeStates.set(event.node_id, state);
+            this.renderWorkflowRunNodeState(event.node_id, state);
+        }
+
+        this.setWorkflowRunStatus(this.workflowRunEventLabel(event));
+    }
+
+    private workflowRunEventLabel(event: WorkflowRunEvent): string {
+        const labels: Record<string, string> = {
+            'run.queued': 'Workflow queued',
+            'run.started': 'Workflow running',
+            'run.resumed': 'Workflow running',
+            'run.paused': 'Workflow paused',
+            'run.completed': 'Workflow completed',
+            'run.failed': 'Workflow failed',
+            'run.cancelled': 'Workflow cancelled',
+        };
+        return labels[event.event] || this.formatWorkflowRunStatus(event.status);
+    }
+
+    private formatWorkflowRunStatus(status: string): string {
+        return status
+            ? `Workflow ${status.toLowerCase().replace(/_/g, ' ')}`
+            : 'Workflow running';
+    }
+
+    private renderWorkflowRunNodeState(
+        workflowNodeId: number,
+        state: WorkflowRunNodeState,
+    ): void {
+        const workflowData = this.drawflow.drawflow.drawflow.Home.data;
+        const drawflowNodeId = Object.keys(workflowData).find((id) => (
+            Number(workflowData[Number(id)]?.data?.workflowNodeId) === Number(workflowNodeId)
+        ));
+        if (!drawflowNodeId) return;
+
+        const nodeElement = this.element.querySelector<HTMLElement>(`#node-${drawflowNodeId}`);
+        if (!nodeElement) return;
+        nodeElement.classList.toggle('workflow-run-node--running', state.inProgress > 0);
+        nodeElement.classList.toggle(
+            'workflow-run-node--failed',
+            state.inProgress === 0 && state.failed > 0,
+        );
+        nodeElement.classList.toggle(
+            'workflow-run-node--paused',
+            state.inProgress === 0 && state.failed === 0 && state.paused > 0,
+        );
+        nodeElement.classList.toggle(
+            'workflow-run-node--completed',
+            state.inProgress === 0 && state.failed === 0 && state.paused === 0 && state.completed > 0,
+        );
+
+        let counter = nodeElement.querySelector<HTMLElement>('[data-workflow-run-count]');
+        if (!counter) {
+            counter = document.createElement('span');
+            counter.dataset.workflowRunCount = '';
+            counter.className = 'workflow-run-count';
+            nodeElement.append(counter);
+        }
+        counter.textContent = String(state.attempts);
+        counter.setAttribute('aria-label', `Node ran ${state.attempts} times`);
+    }
+
+    private enterRunMode(): void {
+        this.runMode = 'observing';
+        this.currentRunId = null;
+        this.runNodeStates.clear();
+        this.clearWorkflowRunNodeStates();
+        this.element.dataset.workflowMode = 'run';
+        (this.drawflow as any).editor_mode = 'fixed';
+        this.selection?.setEnabled(false);
+        const editTools = this.element.querySelector<HTMLElement>('[data-workflow-edit-tools]');
+        const runTools = this.element.querySelector<HTMLElement>('[data-workflow-run-tools]');
+        if (editTools) editTools.hidden = true;
+        if (runTools) runTools.hidden = false;
+        this.setWorkflowRunStatus('Starting workflow…');
+    }
+
+    private returnToEditor(): void {
+        this.runMode = 'editing';
+        this.pendingClientRequestId = null;
+        this.currentRunId = null;
+        this.runNodeStates.clear();
+        this.clearWorkflowRunNodeStates();
+        delete this.element.dataset.workflowMode;
+        (this.drawflow as any).editor_mode = 'edit';
+        this.selection?.setEnabled(true);
+        const editTools = this.element.querySelector<HTMLElement>('[data-workflow-edit-tools]');
+        const runTools = this.element.querySelector<HTMLElement>('[data-workflow-run-tools]');
+        if (editTools) editTools.hidden = false;
+        if (runTools) runTools.hidden = true;
+        this.closeWorkflowRunSocket();
+    }
+
+    private setWorkflowRunStatus(status: string): void {
+        const statusElement = this.element.querySelector<HTMLElement>('[data-workflow-run-status]');
+        if (statusElement) statusElement.textContent = status;
+    }
+
+    private clearWorkflowRunNodeStates(): void {
+        this.element.querySelectorAll<HTMLElement>('#drawflow .drawflow-node').forEach((node) => {
+            node.classList.remove(
+                'workflow-run-node--running',
+                'workflow-run-node--completed',
+                'workflow-run-node--failed',
+                'workflow-run-node--paused',
+            );
+            node.querySelector('[data-workflow-run-count]')?.remove();
+        });
     }
 
     private focusViewportOnFirstNode(): void {
@@ -1236,26 +1551,27 @@ export default class Workflow extends BaseComponent {
         }, 700);
     }
 
-    private async flushAutosave(): Promise<void> {
+    private async flushAutosave(): Promise<boolean> {
+        let saved = true;
         if (this.autosaveTimer) {
             window.clearTimeout(this.autosaveTimer);
             this.autosaveTimer = null;
-            await this.saveWorkflow();
+            saved = await this.saveWorkflow();
         }
 
         if (this.saveInFlight) {
-            await this.saveInFlight;
+            saved = (await this.saveInFlight) && saved;
         }
+        return saved;
     }
 
-    private async saveWorkflow(): Promise<void> {
+    private async saveWorkflow(): Promise<boolean> {
         if (this.saveInFlight) {
             this.saveAgainAfterCurrent = true;
-            await this.saveInFlight;
-            return;
+            return await this.saveInFlight;
         }
 
-        this.saveInFlight = (async () => {
+        const savePromise = (async (): Promise<boolean> => {
             try {
                 do {
                     this.saveAgainAfterCurrent = false;
@@ -1274,7 +1590,7 @@ export default class Workflow extends BaseComponent {
 
                     if (!response.ok) {
                         console.error('Failed to save workflow');
-                        return;
+                        return false;
                     }
 
                     const savedWorkflow = await response.json();
@@ -1299,17 +1615,21 @@ export default class Workflow extends BaseComponent {
 
                     this.updateWorkflowEdgeMetadataFromSavedWorkflow(savedWorkflow);
                 } while (this.saveAgainAfterCurrent);
+                return true;
             } catch (error) {
                 console.error('Failed to save workflow', error);
-            } finally {
-                this.saveInFlight = null;
-                if (this.saveAgainAfterCurrent) {
-                    await this.saveWorkflow();
-                }
+                return false;
             }
         })();
+        this.saveInFlight = savePromise;
 
-        await this.saveInFlight;
+        try {
+            return await savePromise;
+        } finally {
+            if (this.saveInFlight === savePromise) {
+                this.saveInFlight = null;
+            }
+        }
     }
 
     private updateWorkflowEdgeMetadataFromSavedWorkflow(savedWorkflow: SavedWorkflow): void {
@@ -1540,6 +1860,7 @@ export default class Workflow extends BaseComponent {
      * @param nodeId the ID of the double-clicked node
      */
     private async handleNodeDoubleClick(nodeId: number): Promise<void> {
+        if (this.runMode !== 'editing') return;
         await this.flushAutosave();
         const persistedNodeData = this.drawflow.getNodeFromId(nodeId);
         if (!persistedNodeData?.data?.workflowNodeId) {

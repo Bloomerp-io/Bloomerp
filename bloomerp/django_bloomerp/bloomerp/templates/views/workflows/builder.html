@@ -3,12 +3,17 @@
     bloomerp-component="workflow" class="workflow-builder"
     data-workflow-id="{{ workflow_id }}"
     data-workflow-json='{{ workflow_json|default:"" }}'
+    data-workflow-run-url="{% url 'components_automation_run_workflow' workflow_id=workflow_id %}"
     >
     <!-- Toolbar -->
     <div class="workflow-toolbar" role="toolbar" aria-label="Workflow tools">
-        <div class="flex gap-2">
+        <div class="flex gap-2" data-workflow-edit-tools>
             <button class="btn btn-primary btn-sm" id="add-node-btn" type="button">
                 {% blocktrans %}Add Node{% endblocktrans %}
+            </button>
+            <button class="btn btn-primary btn-sm" type="button" data-workflow-run>
+                <i class="fa-solid fa-play"></i>
+                {% blocktrans %}Run{% endblocktrans %}
             </button>
             <button id="zoom-in-btn" class="btn btn-secondary btn-sm" type="button" aria-label="Zoom in">
                 <i class="fa-solid fa-magnifying-glass-plus"></i>
@@ -19,6 +24,13 @@
             <button id="focus-first-node-btn" class="btn btn-secondary btn-sm" type="button">
                 <i class="fa-solid fa-crosshairs"></i>
                 {% blocktrans %}Recenter{% endblocktrans %}
+            </button>
+        </div>
+        <div class="flex items-center gap-2" data-workflow-run-tools hidden>
+            <span class="text-sm font-semibold" data-workflow-run-status>{% translate "Preparing run…" %}</span>
+            <button class="btn btn-secondary btn-sm" type="button" data-workflow-back-to-editor>
+                <i class="fa-solid fa-pen"></i>
+                {% translate "Back to editor" %}
             </button>
         </div>
     </div>

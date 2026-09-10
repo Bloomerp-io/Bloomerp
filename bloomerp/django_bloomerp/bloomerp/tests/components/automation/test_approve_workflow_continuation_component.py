@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from bloomerp.models import User
 from bloomerp.models.automation import Workflow, WorkflowNode
-from bloomerp.models.automation.workflow_run import WorkflowRun
+from bloomerp.models.automation.workflow_run import WorkflowRun, WorkflowRunStatus
 from bloomerp.models.automation.workflow_run_step import (
     WorkflowRunStep,
     WorkflowRunStepStatus,
@@ -36,7 +36,10 @@ class TestApproveWorkflowContinuationComponent(BloomerpComponentTestCase):
             sub_type="HUMAN_IN_THE_LOOP",
             parameters={},
         )
-        self.workflow_run = WorkflowRun.objects.create(workflow=self.workflow)
+        self.workflow_run = WorkflowRun.objects.create(
+            workflow=self.workflow,
+            status=WorkflowRunStatus.PAUSED,
+        )
         WorkflowRunStep.objects.create(
             workflow_run=self.workflow_run,
             node=self.approval_node,

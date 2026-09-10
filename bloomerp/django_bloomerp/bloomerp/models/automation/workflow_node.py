@@ -7,12 +7,16 @@ from bloomerp.automation.registry import (
 )
 from bloomerp.automation.base_executor import BaseExecutor, NodeExecutionError
 from bloomerp.automation.ports import WorkflowNodeOutputPort
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models.definition import BloomerpModelConfig, ModelViewSettings
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models.mixins import TimestampModelMixin
 from django.utils.translation import gettext_lazy as _
 from django.db.models import QuerySet
 from django.core.exceptions import ValidationError
+
+from bloomerp.modules.automation import AutomationModule
 
 class WorkflowNode(
     UserStampModelMixin,
@@ -26,7 +30,22 @@ class WorkflowNode(
         verbose_name = _("Workflow Node")
         verbose_name_plural = _("Workflow Nodes")
             
-    # TODO: Integrate name with builder
+    
+    bloomerp_config = BloomerpModelConfig(
+        module=AutomationModule,
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    display_fields=[
+                        "name",
+                        "type",
+                        "sub_type"
+                    ]
+                )
+            ]
+        )
+    )
+    
     name = models.CharField(
         max_length=255,
         help_text=_("The name of the workflow node."),

@@ -137,7 +137,7 @@ class CreateObjectExecutor(BaseExecutor):
             fields=fields
         )
     
-    # TODO: Handle M2M and O2M relationships in the input data
+    
     def execute(self, input_data: dict) -> dict:
         # Get the content type id
         content_type_id = self.config.get("content_type_id")

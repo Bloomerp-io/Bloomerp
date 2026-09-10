@@ -2,6 +2,29 @@
 from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.tests.base import BloomerpModelTestCase
 
+class ModelTestCase:
+    pass
+
 
 class TestInitiativeModel(BloomerpModelTestCase):
     model = Initiative
+
+    def get_setups(self):
+        return [
+            ModelTestCase(
+                name="Clears completed at status",
+                init_parameters={
+                    "name" : "xxx",
+                    "status" : "yyy"
+                },
+                transition_parameters={
+                    "status" : "zzz",
+                },
+                init_validators=[
+                    
+                ],
+                
+            )    
+        ]
+    
+    

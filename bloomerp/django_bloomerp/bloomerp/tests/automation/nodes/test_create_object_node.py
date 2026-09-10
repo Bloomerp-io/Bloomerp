@@ -2,6 +2,7 @@
 from bloomerp.automation.actions.create_object import CreateObjectExecutor
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.project_management.todo import Todo
+from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
     WorkflowNodeSimulation,
@@ -14,25 +15,6 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'CREATE_OBJECT'
     executor_class = CreateObjectExecutor
 
-    def setUp(self) -> None:
-        super().setUp()
-        todo_content_type = ContentType.objects.get_for_model(Todo)
-        user_content_type = ContentType.objects.get_for_model(get_user_model())
-        for field, field_type, related_model in [
-            ("title", "CharField", None),
-            ("requested_by", "UserField", user_content_type),
-        ]:
-            ApplicationField.objects.get_or_create(
-                content_type=todo_content_type,
-                field=field,
-                defaults={
-                    "field_type": field_type,
-                    "related_model": related_model,
-                    "db_table": Todo._meta.db_table,
-                    "db_column": field,
-                    "db_field_type": field_type,
-                },
-            )
 
     def get_simulations(self) -> list[WorkflowNodeSimulation]:
         todo_content_type = ContentType.objects.get_for_model(Todo)
@@ -40,6 +22,17 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
             username="creator",
             password="testpassword",
         )
+        labels = [
+            str(TodoLabel.objects.create(
+                name="label 1",
+                color="#FFFFF"
+            ).id),
+            str(TodoLabel.objects.create(
+                name="label 2",
+                color="#FFFFF"
+            ).id),
+        ]
+        
 
         return [
             WorkflowNodeSimulation(
@@ -82,4 +75,21 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
                     ).exists()
                 ),
             ),
+            WorkflowNodeSimulation(
+                name="Node allows m2m object creations",
+                parameters={
+                    "content_type_id" : todo_content_type.id,
+                    "data" : {
+                        "title" : "A title",
+                        "labels" : labels
+                    }
+                },
+                output_validators=lambda output: (
+                    output.get("status") == "success"
+                    and Todo.objects.filter(
+                        title="A title",
+                        labels__id__in=labels,
+                    ).distinct().count() == 1
+                )
+            )
         ]
