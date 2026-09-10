@@ -25,12 +25,13 @@ from bloomerp.automation.actions.sql_query import SqlQueryActionExecutor
 from bloomerp.automation.actions.update_object import UpdateObjectExecutor
 from bloomerp.automation.actions.wait import WaitExecutor
 from bloomerp.automation.base_executor import BaseExecutor
-from bloomerp.automation.ports import WorkflowNodeOutputPort
 from bloomerp.automation.flows.collect import CollectExecutor
 from bloomerp.automation.flows.filter_objects import FilterObjectsExecutor
 from bloomerp.automation.flows.for_each import ForEachExecutor
 from bloomerp.automation.flows.if_condition import IfConditionExecutor
+from bloomerp.automation.flows.list_count_condition import ListCountConditionExecutor
 from bloomerp.automation.flows.object_if_condition import ObjectIfConditionExecutor
+from bloomerp.automation.ports import WorkflowNodeOutputPort
 from bloomerp.automation.triggers.human_trigger import HumanTrigger
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.automation.triggers.on_schedule_trigger import ScheduleTrigger
@@ -163,6 +164,14 @@ WORKFLOW_NODES = [
         "Run workflow",
         "Run's another workflow with this workflow's input data",
         executor_cls=RunWorkflowExecutor,
+        icon="fa-solid fa-code-branch"
+    ),
+    WorkflowNodeDefinition(
+        "LIST_COUNT_CONDITION",
+        "FLOW",
+        "List count condition",
+        "Check whether the number of elements in a list satisfies a condition",
+        executor_cls=ListCountConditionExecutor,
         icon="fa-solid fa-code-branch"
     )
 ]
