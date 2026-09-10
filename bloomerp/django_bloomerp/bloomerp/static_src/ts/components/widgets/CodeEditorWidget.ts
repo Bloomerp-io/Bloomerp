@@ -4,6 +4,7 @@ import { BaseWidget } from './BaseWidget';
 export default class CodeEditorWidget extends BaseWidget {
     private static readonly editorsByContainer = new WeakMap<HTMLElement, any>();
     private static readonly editorHostClassNames = ['ace_editor', 'ace_hidpi'];
+    private static readonly editorThemeClassNames = ['ace-chrome', 'ace-tomorrow-night', 'ace_dark'];
 
     private textarea: HTMLTextAreaElement | null = null;
     private editorContainer: HTMLElement | null = null;
@@ -275,15 +276,30 @@ export default class CodeEditorWidget extends BaseWidget {
         if (!this.editorContainer) return;
 
         this.editorContainer.classList.add(...CodeEditorWidget.editorHostClassNames);
+        this.restoreEditorThemeState();
         this.editorContainer.style.fontSize = '14px';
     }
 
     private updateEditorTheme(): void {
         if (!this.editor) return;
 
-        const theme = document.documentElement.classList.contains('dark')
+        const theme = this.isDarkTheme()
             ? 'ace/theme/tomorrow_night'
             : 'ace/theme/chrome';
         this.editor.setTheme(theme);
+        this.restoreEditorThemeState();
+    }
+
+    private restoreEditorThemeState(): void {
+        if (!this.editorContainer) return;
+
+        const isDark = this.isDarkTheme();
+        this.editorContainer.classList.remove(...CodeEditorWidget.editorThemeClassNames);
+        this.editorContainer.classList.add(isDark ? 'ace-tomorrow-night' : 'ace-chrome');
+        if (isDark) this.editorContainer.classList.add('ace_dark');
+    }
+
+    private isDarkTheme(): boolean {
+        return document.documentElement.classList.contains('dark');
     }
 }
