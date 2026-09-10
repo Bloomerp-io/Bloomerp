@@ -45,6 +45,7 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
         second_node = nodes.filter(has_text="Second query")
 
         editor = self.open_editor(first_node)
+        self.assert_editor_theme_initialized(editor)
         editor.evaluate(
             "element => { window.__previousWorkflowWidget = "
             "element.closest('[bloomerp-component]').__bloomerp_component; }"
@@ -76,6 +77,7 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
 
         editor = self.open_editor(second_node)
         self.assertTrue(self.page.evaluate("window.__previousWorkflowWidget.destroyed"))
+        self.assert_editor_theme_initialized(editor)
         expect(self.page.locator("[data-code-editor-input]")).to_have_value("SELECT 20")
         self.replace_editor_value(editor, "SELECT 3")
         self.close_editor()
@@ -99,6 +101,14 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
         editor.evaluate("element => element.env.editor.selectAll()")
         self.page.keyboard.type(value)
         expect(self.page.locator("[data-code-editor-input]")).to_have_value(value)
+
+    def assert_editor_theme_initialized(self, editor):
+        self.assertTrue(
+            editor.evaluate(
+                "element => element.classList.contains('ace-chrome') || "
+                "element.classList.contains('ace-tomorrow-night')"
+            )
+        )
 
     def close_editor(self):
         modal = self.page.locator("#bloomerp-general-use-modal")
