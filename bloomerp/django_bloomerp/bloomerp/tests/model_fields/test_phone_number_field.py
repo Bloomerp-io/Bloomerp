@@ -3,6 +3,7 @@ from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 

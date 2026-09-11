@@ -3,6 +3,7 @@ from bloomerp.form_fields.address_field import AddressFormField
 from bloomerp.tests.base import (
     BloomerpFormFieldTestCase,
     FormFieldScenario,
+    ExpectedFormFieldException,
 )
 
 

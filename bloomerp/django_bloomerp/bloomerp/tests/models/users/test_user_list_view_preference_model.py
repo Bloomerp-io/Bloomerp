@@ -3,6 +3,7 @@ from bloomerp.models.users.user_list_view_preference import UserListViewPreferen
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

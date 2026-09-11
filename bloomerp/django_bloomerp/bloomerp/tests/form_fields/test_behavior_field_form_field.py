@@ -3,6 +3,7 @@ from bloomerp.form_fields.behavior_field import BehaviorField
 from bloomerp.tests.base import (
     BloomerpFormFieldTestCase,
     FormFieldScenario,
+    ExpectedFormFieldException,
 )
 
 

@@ -3,6 +3,7 @@ from bloomerp.models.automation.workflow import Workflow
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

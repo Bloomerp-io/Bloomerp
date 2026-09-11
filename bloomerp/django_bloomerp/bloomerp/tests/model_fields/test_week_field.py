@@ -3,6 +3,7 @@ from bloomerp.model_fields.week_field import WeekField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 
@@ -11,4 +12,8 @@ class TestWeekField(BloomerpModelFieldTestCase):
 
     def get_test_scenarios(self) -> list[ModelFieldScenario[WeekField]]:
         # Add only the scenarios this class needs.
-        return []
+        return [
+            ModelFieldScenario(
+                name="Week is stored as string",
+            )
+        ]

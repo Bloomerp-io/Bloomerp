@@ -3,6 +3,7 @@ from bloomerp.models.users.user_object_layout_preference import UserObjectLayout
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

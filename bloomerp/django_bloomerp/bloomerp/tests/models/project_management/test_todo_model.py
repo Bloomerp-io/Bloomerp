@@ -3,6 +3,7 @@ from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

@@ -3,6 +3,7 @@ from bloomerp.form_fields.week_field import WeekFormField
 from bloomerp.tests.base import (
     BloomerpFormFieldTestCase,
     FormFieldScenario,
+    ExpectedFormFieldException,
 )
 
 

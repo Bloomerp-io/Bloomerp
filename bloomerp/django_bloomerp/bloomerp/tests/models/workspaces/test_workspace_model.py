@@ -3,6 +3,7 @@ from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

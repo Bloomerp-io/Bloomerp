@@ -3,6 +3,7 @@ from bloomerp.models.communication.inbox.user_inbox_preference import UserInboxP
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

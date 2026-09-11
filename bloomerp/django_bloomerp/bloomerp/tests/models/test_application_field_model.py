@@ -3,6 +3,7 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

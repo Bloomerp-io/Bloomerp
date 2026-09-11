@@ -3,6 +3,7 @@ from bloomerp.model_fields.code_field import CodeField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 
@@ -11,4 +12,8 @@ class TestCodeField(BloomerpModelFieldTestCase):
 
     def get_test_scenarios(self) -> list[ModelFieldScenario[CodeField]]:
         # Add only the scenarios this class needs.
-        return []
+        return [
+            ModelFieldScenario(
+                name="Language is suported",
+            )
+        ]

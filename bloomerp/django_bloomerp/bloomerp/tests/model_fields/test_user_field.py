@@ -3,6 +3,7 @@ from bloomerp.model_fields.user_field import UserField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 

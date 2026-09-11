@@ -66,6 +66,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
         )
         self.assertIn("class TestTodoModel(BloomerpModelTestCase):", todo_case.content)
         self.assertIn("    ModelScenario,", todo_case.content)
+        self.assertIn("    ExpectedModelException,", todo_case.content)
         self.assertIn(
             "def get_test_scenarios(self) -> list[ModelScenario[Todo]]:",
             todo_case.content,
@@ -264,7 +265,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
                 + "from example.models import Example\n"
                 + "from bloomerp.tests.base import BloomerpModelTestCase\n\n\n"
                 + "class TestExampleModel(BloomerpModelTestCase):\n"
-                + "    model = Example\n"
+                + "    model = Example\n\n    \n"
             )
             target.write_text(legacy_generated_skeleton, encoding="utf-8")
             self.assertEqual(
@@ -331,6 +332,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
         )
         self.assertIn("BloomerpFormFieldTestCase", text_editor_case.content)
         self.assertIn("    FormFieldScenario,", text_editor_case.content)
+        self.assertIn("    ExpectedFormFieldException,", text_editor_case.content)
         self.assertIn("field_class = TextEditorFormField", text_editor_case.content)
         self.assertIn(
             "def get_test_scenarios(self) -> "
@@ -355,11 +357,14 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
         )
 
         self.assertIn("    WidgetScenario,", widget_case.content)
+        self.assertIn("    WidgetOperation,", widget_case.content)
+        self.assertIn("    ExpectedWidgetException,", widget_case.content)
         self.assertIn(
             "def get_test_scenarios(self) -> list[WidgetScenario[AddressWidget]]:",
             widget_case.content,
         )
         self.assertIn("    ModelFieldScenario,", model_field_case.content)
+        self.assertIn("    ExpectedModelFieldException,", model_field_case.content)
         self.assertIn(
             "def get_test_scenarios(self) -> "
             "list[ModelFieldScenario[AddressField]]:",

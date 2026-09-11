@@ -353,6 +353,7 @@ class Command(BaseCommand):
                 imported_name=model.__name__,
                 base_class="BloomerpModelTestCase",
                 scenario_class="ModelScenario",
+                scenario_support_classes=("ExpectedModelException",),
                 class_name="Test" + _suffixed_pascal(model.__name__, "model"),
                 attribute_name="model",
                 attribute_value=model.__name__,
@@ -368,6 +369,7 @@ class Command(BaseCommand):
             parent_class=forms.Widget,
             base_class="BloomerpWidgetTestCase",
             scenario_class="WidgetScenario",
+            scenario_support_classes=("WidgetOperation", "ExpectedWidgetException"),
             attribute_name="widget_class",
             filename_suffix="widget",
         )
@@ -382,6 +384,7 @@ class Command(BaseCommand):
             parent_class=models.Field,
             base_class="BloomerpModelFieldTestCase",
             scenario_class="ModelFieldScenario",
+            scenario_support_classes=("ExpectedModelFieldException",),
             attribute_name="field_class",
             filename_suffix="field",
         )
@@ -396,6 +399,7 @@ class Command(BaseCommand):
             parent_class=forms.Field,
             base_class="BloomerpFormFieldTestCase",
             scenario_class="FormFieldScenario",
+            scenario_support_classes=("ExpectedFormFieldException",),
             attribute_name="field_class",
             filename_suffix="form_field",
         )
@@ -409,6 +413,7 @@ class Command(BaseCommand):
         parent_class: type,
         base_class: str,
         scenario_class: str,
+        scenario_support_classes: tuple[str, ...],
         attribute_name: str,
         filename_suffix: str,
     ) -> list[GeneratedTestCase]:
@@ -437,6 +442,7 @@ class Command(BaseCommand):
                     imported_name=implementation.__name__,
                     base_class=base_class,
                     scenario_class=scenario_class,
+                    scenario_support_classes=scenario_support_classes,
                     class_name=(
                         "Test"
                         + _suffixed_pascal(
@@ -661,6 +667,7 @@ class Command(BaseCommand):
         imported_name: str,
         base_class: str,
         scenario_class: str,
+        scenario_support_classes: tuple[str, ...],
         class_name: str,
         attribute_name: str,
         attribute_value: str,
@@ -671,6 +678,7 @@ class Command(BaseCommand):
             + "from bloomerp.tests.base import (\n"
             + f"    {base_class},\n"
             + f"    {scenario_class},\n"
+            + "".join(f"    {name},\n" for name in scenario_support_classes)
             + ")\n\n\n"
             + f"class {class_name}({base_class}):\n"
             + f"    {attribute_name} = {attribute_value}\n\n"
@@ -745,7 +753,8 @@ class Command(BaseCommand):
                 + r"from [\w.]+ import \w+\n"
                 + r"from bloomerp\.tests\.base import \w+\n\n\n"
                 + r"class \w+\(\w+\):\n"
-                + r"    \w+ = \w+\n?",
+                + r"    \w+ = \w+\n?"
+                + r"(?:[ \t]*\n)*",
                 content,
             )
         )

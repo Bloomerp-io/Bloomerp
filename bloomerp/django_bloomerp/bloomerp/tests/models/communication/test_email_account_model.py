@@ -3,6 +3,7 @@ from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

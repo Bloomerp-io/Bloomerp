@@ -3,6 +3,7 @@ from bloomerp.model_fields.text_editor_field import TextEditorField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 

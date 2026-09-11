@@ -3,6 +3,7 @@ from bloomerp.model_fields.icon_field import IconField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 
@@ -11,4 +12,6 @@ class TestIconField(BloomerpModelFieldTestCase):
 
     def get_test_scenarios(self) -> list[ModelFieldScenario[IconField]]:
         # Add only the scenarios this class needs.
-        return []
+        return [
+            
+        ]

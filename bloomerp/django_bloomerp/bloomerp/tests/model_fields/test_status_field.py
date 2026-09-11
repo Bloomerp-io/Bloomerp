@@ -3,6 +3,7 @@ from bloomerp.model_fields.status_field import StatusField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 

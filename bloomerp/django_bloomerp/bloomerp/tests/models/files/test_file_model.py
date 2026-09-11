@@ -3,6 +3,7 @@ from bloomerp.models.files.file import File
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

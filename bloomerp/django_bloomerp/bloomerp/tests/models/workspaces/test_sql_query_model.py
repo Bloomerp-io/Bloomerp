@@ -3,6 +3,7 @@ from bloomerp.models.workspaces.sql_query import SqlQuery
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

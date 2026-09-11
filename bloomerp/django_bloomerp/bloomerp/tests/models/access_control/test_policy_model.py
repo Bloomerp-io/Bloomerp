@@ -3,6 +3,7 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

@@ -3,6 +3,7 @@ from bloomerp.models.workspaces.tile import Tile
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

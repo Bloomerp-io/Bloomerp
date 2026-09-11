@@ -3,6 +3,7 @@ from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

@@ -3,6 +3,7 @@ from bloomerp.models.users.user import User
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

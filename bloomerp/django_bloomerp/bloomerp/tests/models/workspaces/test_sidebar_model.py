@@ -3,6 +3,7 @@ from bloomerp.models.workspaces.sidebar import Sidebar
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

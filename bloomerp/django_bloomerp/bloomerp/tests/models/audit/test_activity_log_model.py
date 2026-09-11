@@ -3,6 +3,7 @@ from bloomerp.models.audit.activity_log import ActivityLog
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

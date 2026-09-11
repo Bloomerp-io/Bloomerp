@@ -3,6 +3,7 @@ from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

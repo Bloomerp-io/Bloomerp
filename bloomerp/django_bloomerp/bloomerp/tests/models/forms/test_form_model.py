@@ -3,6 +3,7 @@ from bloomerp.models.forms.form import Form
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

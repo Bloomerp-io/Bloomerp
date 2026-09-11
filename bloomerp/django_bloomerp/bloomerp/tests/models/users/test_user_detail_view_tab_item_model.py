@@ -3,6 +3,7 @@ from bloomerp.models.users.user_detail_view_tabs_preference import UserDetailVie
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

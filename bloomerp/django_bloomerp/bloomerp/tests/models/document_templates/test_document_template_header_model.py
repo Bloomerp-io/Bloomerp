@@ -3,6 +3,7 @@ from bloomerp.models.document_templates.document_template_header import Document
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

@@ -3,6 +3,7 @@ from bloomerp.models.llm.ai_conversation import AIConversation
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

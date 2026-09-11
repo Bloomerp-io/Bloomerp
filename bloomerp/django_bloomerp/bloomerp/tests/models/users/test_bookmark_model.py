@@ -3,6 +3,7 @@ from bloomerp.models.users.bookmark import Bookmark
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

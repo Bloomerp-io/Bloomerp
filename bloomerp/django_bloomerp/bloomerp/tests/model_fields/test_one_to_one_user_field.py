@@ -3,6 +3,7 @@ from bloomerp.model_fields.one_to_one_user_field import OneToOneUserField
 from bloomerp.tests.base import (
     BloomerpModelFieldTestCase,
     ModelFieldScenario,
+    ExpectedModelFieldException,
 )
 
 

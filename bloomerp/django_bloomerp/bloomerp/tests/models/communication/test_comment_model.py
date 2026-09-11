@@ -3,6 +3,7 @@ from bloomerp.models.communication.comment import Comment
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 

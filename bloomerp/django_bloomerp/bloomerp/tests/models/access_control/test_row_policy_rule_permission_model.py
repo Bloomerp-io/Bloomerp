@@ -3,6 +3,7 @@ from bloomerp.models.access_control.row_policy_rule import RowPolicyRulePermissi
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ModelScenario,
+    ExpectedModelException,
 )
 
 
