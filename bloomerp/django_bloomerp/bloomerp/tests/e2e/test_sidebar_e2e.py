@@ -9,7 +9,7 @@ class TestSidebarE2E(e2e.BloomerpE2ETestCase):
 
     browser_context_options = {"viewport": {"width": 1364, "height": 998}}
 
-    def get_request_setups(self) -> list[e2e.E2ERequestSetup]:
+    def get_test_scenarios(self) -> list[e2e.E2ERequestSetup]:
         return [
             e2e.E2ERequestSetup(
                 name="Folder expansion is stored independently and restored",
@@ -175,7 +175,7 @@ class TestMobileSidebarE2E(e2e.BloomerpE2ETestCase):
         "is_mobile": True,
     }
 
-    def get_request_setups(self) -> list[e2e.E2ERequestSetup]:
+    def get_test_scenarios(self) -> list[e2e.E2ERequestSetup]:
         return [
             e2e.E2ERequestSetup(
                 name="A regular phone tap does not reveal the sidebar button",

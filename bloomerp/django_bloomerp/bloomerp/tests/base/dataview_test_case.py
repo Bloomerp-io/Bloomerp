@@ -15,7 +15,7 @@ class BloomerpDataviewTestCase(SimpleTestCase):
         if definition is None:
             raise AssertionError(f"Dataview {self.dataview_key!r} is not registered")
         return definition
-
+    
     def test_dataview_is_valid(self) -> None:
         """
         Use case: An app registers a dataview implementation.

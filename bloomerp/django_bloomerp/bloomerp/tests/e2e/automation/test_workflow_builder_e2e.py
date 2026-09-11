@@ -25,7 +25,7 @@ class TestWorkflowBuilderE2E(e2e.BloomerpE2ETestCase):
         )
         WorkflowEdge.objects.create(from_node=self.first, to_node=self.second)
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return [
             e2e.E2ERequestSetup(
                 name=name, user=self.admin_user, prepare=self.prepare_workflow,
@@ -201,7 +201,7 @@ class TestWorkflowBuilderE2E(e2e.BloomerpE2ETestCase):
 
 
 class TestWorkflowConnectionGeometryE2E(TestWorkflowBuilderE2E):
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return [e2e.E2ERequestSetup(
             name="Connections stay attached after closing node configuration",
             user=self.admin_user, prepare=self.prepare_workflow,

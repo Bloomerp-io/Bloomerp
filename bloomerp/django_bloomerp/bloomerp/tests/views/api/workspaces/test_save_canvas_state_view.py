@@ -3,8 +3,8 @@ from bloomerp.models.workspaces.tile import Tile
 from bloomerp.tests.base import (
     BloomerpAPIDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestSaveCanvasStateView(BloomerpAPIDetailViewTestCase):
     view_name = 'api_tile_canvas_state'
     model = Tile
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

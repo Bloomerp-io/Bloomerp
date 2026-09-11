@@ -3,8 +3,8 @@ from bloomerp.models.document_templates.document_template import DocumentTemplat
 from bloomerp.tests.base import (
     BloomerpDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestDocumentTemplateGenerateView(BloomerpDetailViewTestCase):
     view_name = 'Generate PDF'
     model = DocumentTemplate
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

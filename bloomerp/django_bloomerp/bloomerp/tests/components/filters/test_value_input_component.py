@@ -4,7 +4,7 @@ from bloomerp.models import ApplicationField
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 from bloomerp.tests.utils.dynamic_models import create_test_models
 
@@ -30,7 +30,7 @@ class TestValueInputComponent(BloomerpComponentTestCase):
             use_bloomerp_base=True,
         )["FilterEvent"]
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         first_name = ApplicationField.get_by_field(self.CustomerModel, "first_name")
         country = ApplicationField.get_by_field(self.CustomerModel, "country")
         created_by = ApplicationField.get_by_field(self.CustomerModel, "created_by")
@@ -165,10 +165,10 @@ class TestValueInputComponent(BloomerpComponentTestCase):
         query_params=None,
         prepare=None,
         status_code=200,
-    ) -> RequestSetup:
+    ) -> RequestScenario:
         validators = [self.contains_text(value) for value in included]
         validators.extend(self.does_not_contain_text(value) for value in excluded)
-        return RequestSetup(
+        return RequestScenario(
             name=name,
             user=self.admin_user,
             view_kwargs={
@@ -188,7 +188,7 @@ class TestValueInputComponent(BloomerpComponentTestCase):
 
     @staticmethod
     def _add_stale_choice_metadata(application_field):
-        def prepare(_setup: RequestSetup) -> None:
+        def prepare(_setup: RequestScenario) -> None:
             application_field.meta = {
                 "choices": [
                     ["full_time", "Full Time"],

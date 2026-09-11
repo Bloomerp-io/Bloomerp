@@ -116,4 +116,18 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
                 ],
                 expected_output=[{"id": 1, "status": "active"}],
             ),
+            WorkflowNodeSimulation(
+                name="input.status works the same as status",
+                parameters={
+                    "field": "input.status",
+                    "operator": "exact",
+                    "value": "active",
+                    "continue_on_empty": False,
+                },
+                trigger_data=[
+                    {"id": 1, "status": "active"},
+                    {"id": 2, "status": "inactive"},
+                ],
+                expected_output=[{"id": 1, "status": "active"}],
+            )
         ]

@@ -151,6 +151,8 @@ class BloomerpModelConfigDataViewTests(SimpleTestCase):
         # 3. Verify the table remains available as an alternative setup.
         self.assertEqual(data_views[1].name, "All todos")
         self.assertFalse(data_views[1].is_default)
+        
+    
 class DetailViewSettingsTests(SimpleTestCase):
     def test_detail_view_settings_accept_multiple_layouts_and_find_default(self):
         settings = DetailViewSettings(

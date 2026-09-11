@@ -3,8 +3,8 @@ from bloomerp.models.automation.workflow import Workflow
 from bloomerp.tests.base import (
     BloomerpAPIDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestWorkflowWebhookView(BloomerpAPIDetailViewTestCase):
     view_name = 'api_workflow_webhook'
     model = Workflow
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

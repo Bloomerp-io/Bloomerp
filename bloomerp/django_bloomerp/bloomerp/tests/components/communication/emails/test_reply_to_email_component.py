@@ -16,7 +16,7 @@ from bloomerp.tests.base import (
     BaseBloomerpTestCaseWithModels,
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -83,9 +83,9 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
 
     view_name = "components_reply_to_email"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render sanitized quoted email",
                 user=self.user,
                 query_params={"item_id": self.item.pk},
@@ -107,7 +107,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="prefer Reply-To address",
                 user=self.user,
                 query_params={"item_id": self.item.pk},
@@ -119,7 +119,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="fall back from invalid Reply-To address",
                 user=self.user,
                 query_params={"item_id": self.item.pk},
@@ -130,7 +130,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                     ),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="send threaded reply",
                 method="POST",
                 user=self.user,
@@ -152,7 +152,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                     response_validators=self._reply_was_sent_and_stored,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject item without valid recipient",
                 user=self.user,
                 query_params={"item_id": self.item.pk},
@@ -163,7 +163,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                     ),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reply to original recipient of local sent email",
                 user=self.user,
                 query_params={"item_id": self.sent_item.pk},
@@ -176,7 +176,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="preserve existing reply subject prefix",
                 user=self.user,
                 query_params={"item_id": self.item.pk},
@@ -199,26 +199,26 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
         content_patch.start()
         self.addCleanup(content_patch.stop)
 
-    def _prepare_unsafe_original(self, _setup: RequestSetup) -> None:
+    def _prepare_unsafe_original(self, _setup: RequestScenario) -> None:
         self._patch_content(
             '<p style="color: red"><strong>Original body</strong>'
             '<img src="https://example.com/pixel.png" onerror="alert(1)">'
             '<script>alert(2)</script><a href="javascript:alert(3)">link</a></p>'
         )
 
-    def _prepare_reply_to(self, _setup: RequestSetup) -> None:
+    def _prepare_reply_to(self, _setup: RequestScenario) -> None:
         self._patch_content()
         self.item.refresh_from_db()
         self.item.raw_meta_data["reply_to"] = ["replies@example.com"]
         self.item.save(update_fields=["raw_meta_data"])
 
-    def _prepare_invalid_reply_to(self, _setup: RequestSetup) -> None:
+    def _prepare_invalid_reply_to(self, _setup: RequestScenario) -> None:
         self._patch_content()
         self.item.refresh_from_db()
         self.item.raw_meta_data["reply_to"] = ["not-an-email"]
         self.item.save(update_fields=["raw_meta_data"])
 
-    def _prepare_send(self, _setup: RequestSetup) -> None:
+    def _prepare_send(self, _setup: RequestScenario) -> None:
         self._patch_content("<p><strong>Original body</strong></p>")
         adapter_patch = patch(
             "bloomerp.components.communication.emails.reply_to_email."
@@ -228,12 +228,12 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
         self.adapter.send_email.return_value = "<reply@example.com>"
         self.addCleanup(adapter_patch.stop)
 
-    def _prepare_invalid_recipient(self, _setup: RequestSetup) -> None:
+    def _prepare_invalid_recipient(self, _setup: RequestScenario) -> None:
         self.item.refresh_from_db()
         self.item.actor = "Undeliverable sender"
         self.item.save(update_fields=["actor"])
 
-    def _prepare_prefixed_subject(self, _setup: RequestSetup) -> None:
+    def _prepare_prefixed_subject(self, _setup: RequestScenario) -> None:
         self._patch_content()
         self.item.refresh_from_db()
         self.item.title = "rE: Quarterly report"

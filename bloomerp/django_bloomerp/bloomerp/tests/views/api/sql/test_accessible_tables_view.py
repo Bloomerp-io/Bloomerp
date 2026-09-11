@@ -2,7 +2,7 @@
 from bloomerp.tests.base import (
     BloomerpAPIViewTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -11,6 +11,6 @@ class TestAccessibleTablesView(BloomerpAPIViewTestCase):
 
     view_name = 'api_sql_accessible_tables'
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

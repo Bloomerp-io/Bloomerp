@@ -25,6 +25,7 @@ SUPPORTED_FUNCTIONALITIES = (
     "workflow_nodes",
     "dataviews",
     "model_fields",
+    "form_fields",
 )
 
 
@@ -351,6 +352,7 @@ class Command(BaseCommand):
                 import_path=model.__module__,
                 imported_name=model.__name__,
                 base_class="BloomerpModelTestCase",
+                scenario_class="ModelScenario",
                 class_name="Test" + _suffixed_pascal(model.__name__, "model"),
                 attribute_name="model",
                 attribute_value=model.__name__,
@@ -365,6 +367,7 @@ class Command(BaseCommand):
             functionality="widgets",
             parent_class=forms.Widget,
             base_class="BloomerpWidgetTestCase",
+            scenario_class="WidgetScenario",
             attribute_name="widget_class",
             filename_suffix="widget",
         )
@@ -378,8 +381,23 @@ class Command(BaseCommand):
             functionality="model_fields",
             parent_class=models.Field,
             base_class="BloomerpModelFieldTestCase",
+            scenario_class="ModelFieldScenario",
             attribute_name="field_class",
             filename_suffix="field",
+        )
+
+    def _discover_form_fields(
+        self, app_config: AppConfig
+    ) -> list[GeneratedTestCase]:
+        return self._discover_subclasses(
+            app_config,
+            source_root="form_fields",
+            functionality="form_fields",
+            parent_class=forms.Field,
+            base_class="BloomerpFormFieldTestCase",
+            scenario_class="FormFieldScenario",
+            attribute_name="field_class",
+            filename_suffix="form_field",
         )
 
     def _discover_subclasses(
@@ -390,6 +408,7 @@ class Command(BaseCommand):
         functionality: str,
         parent_class: type,
         base_class: str,
+        scenario_class: str,
         attribute_name: str,
         filename_suffix: str,
     ) -> list[GeneratedTestCase]:
@@ -417,6 +436,7 @@ class Command(BaseCommand):
                     import_path=implementation.__module__,
                     imported_name=implementation.__name__,
                     base_class=base_class,
+                    scenario_class=scenario_class,
                     class_name=(
                         "Test"
                         + _suffixed_pascal(
@@ -582,11 +602,11 @@ class Command(BaseCommand):
         attributes: list[tuple[str, str]] | None = None,
     ) -> str:
         specialized_request_setup_class = {
-            "BloomerpDetailViewTestCase": "ModelRequestSetup",
-            "BloomerpModelViewTestCase": "ModelRequestSetup",
-            "BloomerpModuleViewTestCase": "ModuleRequestSetup",
-            "BloomerpAPIModelViewTestCase": "ModelRequestSetup",
-            "BloomerpAPIDetailViewTestCase": "ModelRequestSetup",
+            "BloomerpDetailViewTestCase": "ModelRequestScenario",
+            "BloomerpModelViewTestCase": "ModelRequestScenario",
+            "BloomerpModuleViewTestCase": "ModuleRequestScenario",
+            "BloomerpAPIModelViewTestCase": "ModelRequestScenario",
+            "BloomerpAPIDetailViewTestCase": "ModelRequestScenario",
         }.get(base_class)
         import_lines = [
             f"from {import_path} import {imported_name}"
@@ -597,7 +617,7 @@ class Command(BaseCommand):
                 "from bloomerp.tests.base import (",
                 f"    {base_class},",
                 "    ExpectedResult,",
-                "    RequestSetup,",
+                "    RequestScenario,",
                 *(
                     [f"    {specialized_request_setup_class},"]
                     if specialized_request_setup_class
@@ -627,7 +647,7 @@ class Command(BaseCommand):
                 *docstring_lines,
                 *attribute_lines,
                 "",
-                "    def get_request_setups(self) -> list[RequestSetup]:",
+                "    def get_test_scenarios(self) -> list[RequestScenario]:",
                 "        # Add only the route scenarios this callable needs.",
                 "        return []",
                 "",
@@ -640,6 +660,7 @@ class Command(BaseCommand):
         import_path: str,
         imported_name: str,
         base_class: str,
+        scenario_class: str,
         class_name: str,
         attribute_name: str,
         attribute_value: str,
@@ -647,9 +668,16 @@ class Command(BaseCommand):
         return (
             GENERATED_FILE_HEADER
             + f"from {import_path} import {imported_name}\n"
-            + f"from bloomerp.tests.base import {base_class}\n\n\n"
+            + "from bloomerp.tests.base import (\n"
+            + f"    {base_class},\n"
+            + f"    {scenario_class},\n"
+            + ")\n\n\n"
             + f"class {class_name}({base_class}):\n"
-            + f"    {attribute_name} = {attribute_value}\n"
+            + f"    {attribute_name} = {attribute_value}\n\n"
+            + "    def get_test_scenarios(self) -> "
+            + f"list[{scenario_class}[{imported_name}]]:\n"
+            + "        # Add only the scenarios this class needs.\n"
+            + "        return []\n"
         )
 
     def _deduplicate_targets(
@@ -681,10 +709,15 @@ class Command(BaseCommand):
         )
         generated_skeleton = (
             existing_content == test_case.content
+            or self._is_legacy_class_attribute_skeleton(existing_content)
             or (
                 existing_content.startswith(GENERATED_FILE_HEADER)
-                and "# Add only the route scenarios this callable needs."
-                in existing_content
+                and (
+                    "# Add only the route scenarios this callable needs."
+                    in existing_content
+                    or "# Add only the scenarios this class needs."
+                    in existing_content
+                )
                 and "        return []" in existing_content
             )
         )
@@ -702,6 +735,20 @@ class Command(BaseCommand):
         test_case.target.write_text(test_case.content, encoding="utf-8")
         self.stdout.write(f"{action.title()} {test_case.target}")
         return action
+
+    @staticmethod
+    def _is_legacy_class_attribute_skeleton(content: str) -> bool:
+        """Recognize untouched class-only skeletons from older generator versions."""
+        return bool(
+            re.fullmatch(
+                re.escape(GENERATED_FILE_HEADER)
+                + r"from [\w.]+ import \w+\n"
+                + r"from bloomerp\.tests\.base import \w+\n\n\n"
+                + r"class \w+\(\w+\):\n"
+                + r"    \w+ = \w+\n?",
+                content,
+            )
+        )
 
     def _ensure_test_packages(self, target_directory: Path) -> None:
         """Create target directories and missing Python package markers."""

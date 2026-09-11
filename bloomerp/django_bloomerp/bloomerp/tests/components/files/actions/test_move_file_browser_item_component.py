@@ -2,7 +2,7 @@
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -11,6 +11,6 @@ class TestMoveFileBrowserItemComponent(BloomerpComponentTestCase):
 
     view_name = 'components_files_move_browser_item'
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

@@ -5,3 +5,5 @@ from bloomerp.tests.base import BloomerpModelTestCase
 
 class TestApiKeyModel(BloomerpModelTestCase):
     model = ApiKey
+    
+    

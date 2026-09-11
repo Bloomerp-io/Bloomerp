@@ -40,13 +40,13 @@ class E2ERequestSetup:
 class BloomerpE2ETestCase(BaseE2ETestCase):
     """Run declarative Playwright scenarios with common deferred actions."""
 
-    def get_request_setups(self) -> list[E2ERequestSetup]:
+    def get_test_scenarios(self) -> list[E2ERequestSetup]:
         """Return the browser scenarios declared by the concrete test case."""
         return []
 
     def test_request_setups(self) -> None:
         """Execute each configured E2E scenario as an individual subtest."""
-        for index, setup in enumerate(self.get_request_setups(), start=1):
+        for index, setup in enumerate(self.get_test_scenarios(), start=1):
             scenario_name = setup.name or f"E2E request setup {index}"
             with self.subTest(name=scenario_name):
                 self._run_request_setup(setup, scenario_name)

@@ -27,7 +27,7 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
             pos_y=0,
         )
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return [
             e2e.E2ERequestSetup(
                 name="Code editor survives reopening node configuration",

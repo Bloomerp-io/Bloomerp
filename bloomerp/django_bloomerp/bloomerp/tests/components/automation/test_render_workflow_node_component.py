@@ -3,7 +3,7 @@ from bloomerp.models.automation import Workflow, WorkflowNode
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -28,9 +28,9 @@ class TestRenderWorkflowNodeComponent(BloomerpComponentTestCase):
             parameters={"field": "status"},
         )
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         return [
-            RequestSetup(
+            RequestScenario(
                 name="preserve explicit false boolean parameter in JSON mode",
                 user=self.admin_user,
                 query_params={
@@ -47,7 +47,7 @@ class TestRenderWorkflowNodeComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="use BooleanField initial for missing parameter in JSON mode",
                 user=self.admin_user,
                 query_params={

@@ -5,7 +5,7 @@ from django.urls import path
 
 from bloomerp.tests.base.request_test_case_mixin import (
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
     RequestTestCaseMixin,
 )
 
@@ -23,7 +23,7 @@ urlpatterns = [
 class RequestSetupIsolationTests(RequestTestCaseMixin, TransactionTestCase):
     view_name = "prepared_request"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         def create_marker(setup):
             get_user_model().objects.create(username="scenario-marker")
 
@@ -33,12 +33,12 @@ class RequestSetupIsolationTests(RequestTestCaseMixin, TransactionTestCase):
             )
 
         return [
-            RequestSetup(
+            RequestScenario(
                 name="creates scenario-only data",
                 prepare=create_marker,
                 expected=ExpectedResult(status_code=200),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="starts without the previous scenario's data",
                 prepare=assert_marker_was_rolled_back,
                 expected=ExpectedResult(status_code=200),

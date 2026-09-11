@@ -2,8 +2,8 @@
 from bloomerp.tests.base import (
     BloomerpModuleViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModuleRequestSetup,
+    RequestScenario,
+    ModuleRequestScenario,
 )
 
 
@@ -13,6 +13,6 @@ class TestDownloadSdkviewView(BloomerpModuleViewTestCase):
     view_name = 'download_sdk'
     module = 'misc'
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

@@ -10,7 +10,7 @@ class TestDataviewTileE2E(BloomerpE2ETestCase):
     
     
     
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         workspace = Workspace.objects.create(
             name="Test workspace",
             created_by=self.admin_user,

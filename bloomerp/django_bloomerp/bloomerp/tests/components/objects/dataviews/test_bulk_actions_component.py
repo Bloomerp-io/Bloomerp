@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -15,7 +15,7 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
     auto_create_customers = False
     view_name = "components_bulk_actions"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         selected = self.create_customer("Selected", "Customer", 30)
         unselected = self.create_customer("Unselected", "Customer", 31)
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
@@ -25,7 +25,7 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
             "object_ids": str(selected.pk),
         }
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render permitted bulk delete action",
                 user=self.admin_user,
                 view_kwargs=view_kwargs,
@@ -37,7 +37,7 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="delete selected objects",
                 method="POST",
                 user=self.admin_user,
@@ -57,7 +57,7 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject missing bulk action",
                 method="POST",
                 user=self.admin_user,
@@ -69,7 +69,7 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
                     response_validators=self._object_exists(selected.pk),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject non-bulk permission action",
                 method="POST",
                 user=self.admin_user,
@@ -84,7 +84,7 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
             ),
         ]
 
-    def _disable_celery(self, _setup: RequestSetup) -> None:
+    def _disable_celery(self, _setup: RequestScenario) -> None:
         celery_patch = patch(
             "bloomerp.utils.async_utils.is_celery_available",
             return_value=False,

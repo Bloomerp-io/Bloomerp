@@ -1,10 +1,10 @@
 from bloomerp.models.project_management.todo import Todo
-from bloomerp.tests.base import BaseBloomerpComponentTest, RequestSetup, ExpectedResult
+from bloomerp.tests.base import BaseBloomerpComponentTest, RequestScenario, ExpectedResult
 
 class BulkActionsComponentTestCase(BaseBloomerpComponentTest):
     view_name = "components_bulk_actions"
     
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         NUMBER_OF_OBJECTS = 10
         
         view_kwargs = {
@@ -28,7 +28,7 @@ class BulkActionsComponentTestCase(BaseBloomerpComponentTest):
         
         
         return [
-            RequestSetup(
+            RequestScenario(
                 name="Normal response",
                 description="Will validate a response in general",
                 method="GET",
@@ -39,7 +39,7 @@ class BulkActionsComponentTestCase(BaseBloomerpComponentTest):
                     status_code=200,
                 )
             ),
-            RequestSetup(
+            RequestScenario(
                 name="With selection",
                 description="Selection will give you the selected amount",
                 method="GET",
@@ -57,7 +57,7 @@ class BulkActionsComponentTestCase(BaseBloomerpComponentTest):
                     ]
                 )
             ),
-            RequestSetup(
+            RequestScenario(
                 name="With filter",
                 description="Check if it works with filters",
                 method="GET",

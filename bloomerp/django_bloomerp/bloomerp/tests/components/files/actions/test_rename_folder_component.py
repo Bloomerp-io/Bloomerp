@@ -3,7 +3,7 @@ from bloomerp.models import FileFolder
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -12,7 +12,7 @@ class TestRenameFolderComponent(BloomerpComponentTestCase):
 
     view_name = "components_files_rename_folder"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         folder = FileFolder.objects.create(
             name="Before",
             created_by=self.admin_user,
@@ -21,12 +21,12 @@ class TestRenameFolderComponent(BloomerpComponentTestCase):
         view_kwargs = {"folder_id": folder.pk}
 
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render rename-folder form",
                 user=self.admin_user,
                 view_kwargs=view_kwargs,
             ),
-            RequestSetup(
+            RequestScenario(
                 name="rename folder",
                 method="POST",
                 user=self.admin_user,

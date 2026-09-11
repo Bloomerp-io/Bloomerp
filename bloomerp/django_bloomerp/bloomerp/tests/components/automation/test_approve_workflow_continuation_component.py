@@ -14,7 +14,7 @@ from bloomerp.models.automation.workflow_run_step import (
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -48,29 +48,29 @@ class TestApproveWorkflowContinuationComponent(BloomerpComponentTestCase):
             status=WorkflowRunStepStatus.PAUSED,
         )
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         view_kwargs = {"workflow_run_id": self.workflow_run.id}
         return [
-            RequestSetup(
+            RequestScenario(
                 name="reject user without approval access",
                 user=self.user,
                 view_kwargs=view_kwargs,
                 prepare=self._prepare_component,
                 expected=ExpectedResult(status_code=403),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="allow explicitly configured approver",
                 user=self.user,
                 view_kwargs=view_kwargs,
                 prepare=self._prepare_explicit_approver,
             ),
-            RequestSetup(
+            RequestScenario(
                 name="allow configured approver group member",
                 user=self.user,
                 view_kwargs=view_kwargs,
                 prepare=self._prepare_group_approver,
             ),
-            RequestSetup(
+            RequestScenario(
                 name="allow user with workflow change access",
                 user=self.user,
                 view_kwargs=view_kwargs,
@@ -78,7 +78,7 @@ class TestApproveWorkflowContinuationComponent(BloomerpComponentTestCase):
             ),
         ]
 
-    def _prepare_component(self, _setup: RequestSetup) -> None:
+    def _prepare_component(self, _setup: RequestScenario) -> None:
         output_patch = patch(
             "bloomerp.components.automation.approve_workflow_continuation.load_step_output",
             return_value={},
@@ -99,17 +99,17 @@ class TestApproveWorkflowContinuationComponent(BloomerpComponentTestCase):
         }
         self.approval_node.save(update_fields=["parameters"])
 
-    def _prepare_explicit_approver(self, setup: RequestSetup) -> None:
+    def _prepare_explicit_approver(self, setup: RequestScenario) -> None:
         self._prepare_component(setup)
         self._set_approvers(users=[self.user.id])
 
-    def _prepare_group_approver(self, setup: RequestSetup) -> None:
+    def _prepare_group_approver(self, setup: RequestScenario) -> None:
         self._prepare_component(setup)
         group = Group.objects.create(name="Workflow approvers")
         self.user.groups.add(group)
         self._set_approvers(groups=[group.id])
 
-    def _prepare_superuser(self, setup: RequestSetup) -> None:
+    def _prepare_superuser(self, setup: RequestScenario) -> None:
         self._prepare_component(setup)
         self.user.is_superuser = True
         self.user.save(update_fields=["is_superuser"])

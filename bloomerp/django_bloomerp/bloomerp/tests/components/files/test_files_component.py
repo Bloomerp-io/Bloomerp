@@ -14,7 +14,7 @@ from bloomerp.tests.base import (
     BaseBloomerpTestCaseWithModels,
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -47,9 +47,9 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
 
     view_name = "components_files"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render default file dataview",
                 user=self.admin_user,
                 expected=ExpectedResult(
@@ -62,7 +62,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render folders before dataview",
                 user=self.admin_user,
                 prepare=self._prepare_root_folder,
@@ -70,7 +70,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._folders_precede_dataview,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render file model actions",
                 user=self.admin_user,
                 prepare=self._prepare_persisted_file,
@@ -78,7 +78,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._file_actions_are_rendered,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render generated model folder",
                 user=self.admin_user,
                 prepare=self._prepare_model_folder,
@@ -86,7 +86,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._contains_customer_model_name,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="search all hierarchy levels from root",
                 user=self.admin_user,
                 query_params={"q": "unique"},
@@ -99,7 +99,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render search target partial",
                 user=self.admin_user,
                 query_params={"q": "unique"},
@@ -119,14 +119,14 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render root breadcrumb",
                 user=self.admin_user,
                 expected=ExpectedResult(
                     response_validators=self._current_breadcrumb("Root"),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="search only below current folder",
                 user=self.admin_user,
                 prepare=self._prepare_nested_search,
@@ -138,7 +138,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="show folder ancestry",
                 user=self.admin_user,
                 prepare=self._prepare_folder_hierarchy,
@@ -150,7 +150,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="hide folder ancestry",
                 user=self.admin_user,
                 prepare=self._prepare_hidden_folder_hierarchy,
@@ -162,7 +162,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="omit navigation folder from active filters",
                 user=self.admin_user,
                 prepare=self._prepare_navigation_folder,
@@ -170,7 +170,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._navigation_filter_is_hidden,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="use dynamic object folder name",
                 user=self.admin_user,
                 prepare=self._prepare_dynamic_object_name,
@@ -178,7 +178,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self.contains_text("Halle Lujah"),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="keep explicit scoped-folder name",
                 user=self.admin_user,
                 prepare=self._prepare_custom_folder,
@@ -186,7 +186,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._current_breadcrumb("Payslips"),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="use object as hidden-ancestor breadcrumb root",
                 user=self.admin_user,
                 prepare=self._prepare_object_root,
@@ -194,7 +194,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._object_root_is_rendered,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="use custom folder below object breadcrumb root",
                 user=self.admin_user,
                 prepare=self._prepare_custom_object_breadcrumb,
@@ -202,7 +202,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._custom_object_root_is_rendered,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="preserve object breadcrumb root in folder link",
                 user=self.admin_user,
                 prepare=self._prepare_custom_object_root,
@@ -210,7 +210,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._object_root_link_is_preserved,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render custom object-folder partial without dataview shell",
                 user=self.admin_user,
                 headers={
@@ -227,7 +227,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render object-root partial without dataview shell",
                 user=self.admin_user,
                 headers={
@@ -245,7 +245,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="avoid duplicate current object breadcrumb",
                 user=self.admin_user,
                 prepare=self._prepare_visible_object_root,
@@ -253,7 +253,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
                     response_validators=self._current_object_breadcrumb,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render folder with stale content type",
                 user=self.admin_user,
                 prepare=self._prepare_stale_content_type,
@@ -264,17 +264,17 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
         ]
 
     @staticmethod
-    def _set_query(setup: RequestSetup, **params) -> None:
+    def _set_query(setup: RequestScenario, **params) -> None:
         setup.query_params = params
 
-    def _prepare_root_folder(self, _setup: RequestSetup) -> None:
+    def _prepare_root_folder(self, _setup: RequestScenario) -> None:
         FileFolder.objects.create(
             name="Contracts",
             created_by=self.admin_user,
             updated_by=self.admin_user,
         )
 
-    def _prepare_persisted_file(self, _setup: RequestSetup) -> None:
+    def _prepare_persisted_file(self, _setup: RequestScenario) -> None:
         self.rendered_file = self.create_file(
             user=self.admin_user,
             file_name="contract.txt",
@@ -282,12 +282,12 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
         self.rendered_file.persisted = True
         self.rendered_file.save(update_fields=["persisted"])
 
-    def _prepare_model_folder(self, setup: RequestSetup) -> None:
+    def _prepare_model_folder(self, setup: RequestScenario) -> None:
         self.create_file(obj=self.get_object(), user=self.admin_user)
         module_folder = FileFolder.objects.filter(name=MiscModule.name).first()
         self._set_query(setup, folder=module_folder.id)
 
-    def _prepare_root_search(self, _setup: RequestSetup) -> None:
+    def _prepare_root_search(self, _setup: RequestScenario) -> None:
         self.create_file(
             obj=self.get_object(),
             user=self.admin_user,
@@ -305,14 +305,14 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
             updated_by=self.admin_user,
         )
 
-    def _prepare_search_file(self, _setup: RequestSetup) -> None:
+    def _prepare_search_file(self, _setup: RequestScenario) -> None:
         self.create_file(
             obj=self.get_object(),
             user=self.admin_user,
             file_name="unique_file_name.txt",
         )
 
-    def _prepare_nested_search(self, setup: RequestSetup) -> None:
+    def _prepare_nested_search(self, setup: RequestScenario) -> None:
         parent = FileFolder.objects.create(
             name="folder_HSDLFJHASDLFDSA",
             created_by=self.admin_user,
@@ -346,11 +346,11 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
             folders.append(parent)
         return folders
 
-    def _prepare_folder_hierarchy(self, setup: RequestSetup) -> None:
+    def _prepare_folder_hierarchy(self, setup: RequestScenario) -> None:
         folders = self._create_folder_hierarchy()
         self._set_query(setup, folder=folders[-1].id)
 
-    def _prepare_hidden_folder_hierarchy(self, setup: RequestSetup) -> None:
+    def _prepare_hidden_folder_hierarchy(self, setup: RequestScenario) -> None:
         folders = self._create_folder_hierarchy()
         self._set_query(
             setup,
@@ -358,7 +358,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
             hide_ancestor_folders="true",
         )
 
-    def _prepare_navigation_folder(self, setup: RequestSetup) -> None:
+    def _prepare_navigation_folder(self, setup: RequestScenario) -> None:
         self.navigation_folder = FileFolder.objects.create(
             name="Cool folder",
             created_by=self.admin_user,
@@ -366,7 +366,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
         )
         self._set_query(setup, folder=self.navigation_folder.id)
 
-    def _prepare_dynamic_object_name(self, setup: RequestSetup) -> None:
+    def _prepare_dynamic_object_name(self, setup: RequestScenario) -> None:
         obj = self.get_object()
         file = self.create_file(obj=obj, user=self.admin_user)
         obj.first_name = "Halle"
@@ -387,11 +387,11 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
         )
         return file.folder, custom_folder
 
-    def _prepare_custom_folder(self, setup: RequestSetup) -> None:
+    def _prepare_custom_folder(self, setup: RequestScenario) -> None:
         _object_folder, custom_folder = self._create_custom_object_folder()
         self._set_query(setup, folder=custom_folder.id)
 
-    def _prepare_object_root(self, setup: RequestSetup) -> None:
+    def _prepare_object_root(self, setup: RequestScenario) -> None:
         self.current_object = self.get_object()
         file = self.create_file(obj=self.current_object, user=self.admin_user)
         self._set_query(
@@ -400,12 +400,12 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
             hide_ancestor_folders="true",
         )
 
-    def _prepare_visible_object_root(self, setup: RequestSetup) -> None:
+    def _prepare_visible_object_root(self, setup: RequestScenario) -> None:
         self.current_object = self.get_object()
         file = self.create_file(obj=self.current_object, user=self.admin_user)
         self._set_query(setup, folder=file.folder.id)
 
-    def _prepare_custom_object_root(self, setup: RequestSetup) -> None:
+    def _prepare_custom_object_root(self, setup: RequestScenario) -> None:
         self.object_folder, self.custom_folder = self._create_custom_object_folder()
         self._set_query(
             setup,
@@ -413,7 +413,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
             hide_ancestor_folders="true",
         )
 
-    def _prepare_custom_object_breadcrumb(self, setup: RequestSetup) -> None:
+    def _prepare_custom_object_breadcrumb(self, setup: RequestScenario) -> None:
         self.object_folder, self.custom_folder = self._create_custom_object_folder()
         self._set_query(
             setup,
@@ -421,7 +421,7 @@ class TestFilesComponent(FileTestFixtureMixin, BloomerpComponentTestCase):
             hide_ancestor_folders="true",
         )
 
-    def _prepare_stale_content_type(self, setup: RequestSetup) -> None:
+    def _prepare_stale_content_type(self, setup: RequestScenario) -> None:
         stale_content_type = ContentType.objects.create(
             app_label="missing_app",
             model="missingmodel",

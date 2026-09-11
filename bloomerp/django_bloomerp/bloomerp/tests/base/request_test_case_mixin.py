@@ -11,7 +11,7 @@ from bloomerp.modules.definition import ModuleConfig
 
 
 ResponseValidator = Callable[[HttpResponse], bool]
-RequestPreparation = Callable[["RequestSetup"], None]
+RequestPreparation = Callable[["RequestScenario"], None]
 
 
 @dataclass
@@ -23,7 +23,7 @@ class ExpectedResult:
 
 
 @dataclass
-class RequestSetup:
+class RequestScenario:
     """One request scenario executed by :class:`RequestTestCaseMixin`."""
 
     method: Literal[
@@ -44,14 +44,14 @@ class RequestSetup:
 
 
 @dataclass(kw_only=True)
-class ModelRequestSetup(RequestSetup):
+class ModelRequestScenario(RequestScenario):
     """A request scenario that overrides the test case's model route context."""
 
     model: type[Model]
 
 
 @dataclass(kw_only=True)
-class ModuleRequestSetup(RequestSetup):
+class ModuleRequestScenario(RequestScenario):
     """A request scenario that overrides the test case's module route context."""
 
     module: ModuleConfig | str
@@ -66,12 +66,12 @@ class RequestTestCaseMixin:
         self,
         view_name: str,
         kwargs: dict | None,
-        setup: RequestSetup | None = None,
+        setup: RequestScenario | None = None,
     ) -> str:
         """Resolve a scenario's endpoint."""
         return reverse(viewname=view_name, kwargs=kwargs)
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         """Return the request scenarios defined by the concrete test case."""
         raise NotImplementedError("Request test cases must define request setups")
 
@@ -85,12 +85,12 @@ class RequestTestCaseMixin:
             return
 
         # 2. Execute every scenario against its selected route.
-        for index, setup in enumerate(self.get_request_setups(), start=1):
+        for index, setup in enumerate(self.get_test_scenarios(), start=1):
             scenario_name = setup.name or f"request setup {index}"
             with self.subTest(name=scenario_name):
                 self._run_request_setup(setup, scenario_name)
 
-    def _run_request_setup(self, setup: RequestSetup, scenario_name: str) -> None:
+    def _run_request_setup(self, setup: RequestScenario, scenario_name: str) -> None:
         """Execute one isolated request scenario."""
         selected_view_name = setup.view_name or self.view_name
         with transaction.atomic():

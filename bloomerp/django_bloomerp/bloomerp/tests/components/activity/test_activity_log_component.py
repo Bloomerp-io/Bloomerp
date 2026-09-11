@@ -1,5 +1,5 @@
 from bloomerp.models.project_management.todo import Todo
-from bloomerp.tests.base import BloomerpComponentTestCase, ExpectedResult, RequestSetup
+from bloomerp.tests.base import BloomerpComponentTestCase, ExpectedResult, RequestScenario
 
 
 class TestActivityLogComponent(BloomerpComponentTestCase):
@@ -7,7 +7,7 @@ class TestActivityLogComponent(BloomerpComponentTestCase):
 
     view_name = "components_activity_log"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         content_type = self.get_content_type_for_model(Todo)
         title_1 = "A very cool todo"
         title_2 = "Some other cool todo"
@@ -22,7 +22,7 @@ class TestActivityLogComponent(BloomerpComponentTestCase):
         }
 
         return [
-            RequestSetup(
+            RequestScenario(
                 name="authorized user",
                 method="GET",
                 user=self.admin_user,
@@ -35,7 +35,7 @@ class TestActivityLogComponent(BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="unauthorized user",
                 method="GET",
                 user=self.normal_user,

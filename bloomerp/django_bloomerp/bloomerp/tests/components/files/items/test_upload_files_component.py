@@ -5,7 +5,7 @@ from bloomerp.models.files.file import File
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -15,11 +15,11 @@ class TestUploadFilesComponent(BloomerpComponentTestCase):
     create_foreign_models = True
     view_name = "components_files_upload"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         customer = self.CustomerModel.objects.first()
         content_type = ContentType.objects.get_for_model(customer)
         return [
-            RequestSetup(
+            RequestScenario(
                 name="upload file",
                 method="POST",
                 user=self.admin_user,
@@ -30,7 +30,7 @@ class TestUploadFilesComponent(BloomerpComponentTestCase):
                     response_validators=self._file_exists(name="test_file.txt")
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="upload file for object",
                 method="POST",
                 user=self.admin_user,

@@ -8,9 +8,9 @@ from bloomerp.modules.definition import module_registry
 from bloomerp.router import RouteType, router
 from bloomerp.tests.base.core_test_case import BaseBloomerpTestCaseWithModels
 from bloomerp.tests.base.request_test_case_mixin import (
-    ModelRequestSetup,
-    ModuleRequestSetup,
-    RequestSetup,
+    ModelRequestScenario,
+    ModuleRequestScenario,
+    RequestScenario,
     RequestTestCaseMixin,
 )
 
@@ -61,11 +61,11 @@ class BloomerpViewTestCase(RequestTestCaseMixin, BaseBloomerpTestCaseWithModels)
         self,
         view_name: str,
         kwargs: dict | None,
-        setup: RequestSetup | None = None,
+        setup: RequestScenario | None = None,
     ) -> str:
         """Reverse the concrete route selected by the test context."""
-        model = setup.model if isinstance(setup, ModelRequestSetup) else None
-        module = setup.module if isinstance(setup, ModuleRequestSetup) else None
+        model = setup.model if isinstance(setup, ModelRequestScenario) else None
+        module = setup.module if isinstance(setup, ModuleRequestScenario) else None
         route = self.get_route(view_name, model=model, module=module)
         return reverse(viewname=route.url_name, kwargs=kwargs or self.get_view_kwargs())
 

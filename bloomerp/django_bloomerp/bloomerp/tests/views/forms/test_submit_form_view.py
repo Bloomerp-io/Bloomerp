@@ -3,8 +3,8 @@ from bloomerp.models.forms.form import Form
 from bloomerp.tests.base import (
     BloomerpDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestSubmitFormView(BloomerpDetailViewTestCase):
     view_name = 'submit'
     model = Form
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

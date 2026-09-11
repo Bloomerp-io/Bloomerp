@@ -7,7 +7,7 @@ from bloomerp.tests.base import e2e_test_case as e2e_test_cases
 
 
 class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
-    def get_request_setups(self) -> list[E2ERequestSetup]:
+    def get_test_scenarios(self) -> list[E2ERequestSetup]:
         todo = Todo.objects.create(title="Hello world")
 
         return [

@@ -3,8 +3,8 @@ from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -18,9 +18,9 @@ class TestBuilderView(BloomerpDetailViewTestCase):
             content_type=self.get_content_type_for_model(Todo)
         )
     
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         return [
-            RequestSetup(
+            RequestScenario(
                 name="Accessible to admin user",
                 method="GET",
                 user=self.admin_user,
@@ -34,7 +34,7 @@ class TestBuilderView(BloomerpDetailViewTestCase):
                     ]
                 )
             ),
-            RequestSetup(
+            RequestScenario(
                 name="Inaccessible to normal user",
                 user=self.normal_user,
                 expected=ExpectedResult(
