@@ -3,7 +3,7 @@ from bloomerp.automation.schema import WorkflowValueType
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -44,12 +44,12 @@ class TestSqlQueryNode(BloomerpWorkflowNodeTestCase):
     node_id = 'SQL_QUERY'
     executor_class = SqlQueryActionExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         Todo.objects.create(title="Title")
         Todo.objects.create(title="Another todo")
 
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Normal SQL Query",
                 parameters={
                     "query": """
@@ -68,7 +68,7 @@ class TestSqlQueryNode(BloomerpWorkflowNodeTestCase):
                 ],
                 output_schema_validators=validate_inferred_output_schema,
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Invalid SQL Query returns error",
                 parameters={
                     "query" : "invalid sql query"
@@ -79,7 +79,7 @@ class TestSqlQueryNode(BloomerpWorkflowNodeTestCase):
                 ],
                 output_schema_validators=validate_generic_output_schema,
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Page parameter works",
                 parameters={
                     "query" : "SELECT * FROM bloomerp_todo",

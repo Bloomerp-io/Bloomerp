@@ -7,7 +7,7 @@ from bloomerp.tests.base import e2e_test_case as e2e
 class TestItemNavigationE2E(e2e.BloomerpE2ETestCase):
     def get_test_scenarios(self):
         todo = Todo.objects.create(title="Keyboard navigation")
-        return [e2e.E2ERequestSetup(
+        return [e2e.E2ERequestScenario(
             name="Navigate directly from text and foreign-key fields",
             user=self.admin_user, url=todo.get_absolute_url(),
             actions=[e2e.E2EAction(execute=self.navigate_fields)],

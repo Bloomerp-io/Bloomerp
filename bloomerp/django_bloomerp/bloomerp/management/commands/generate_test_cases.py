@@ -481,12 +481,12 @@ class Command(BaseCommand):
                 + f"from {implementation.__module__} import {implementation.__name__}\n"
                 + "from bloomerp.tests.base import (\n"
                 + "    BloomerpWorkflowNodeTestCase,\n"
-                + "    WorkflowNodeSimulation,\n"
+                + "    WorkflowNodeScenario,\n"
                 + ")\n\n\n"
                 + f"class {class_name}(BloomerpWorkflowNodeTestCase):\n"
                 + f"    node_id = {definition.id!r}\n"
                 + f"    executor_class = {implementation.__name__}\n\n"
-                + "    def get_simulations(self) -> list[WorkflowNodeSimulation]:\n"
+                + "    def get_simulations(self) -> list[WorkflowNodeScenario]:\n"
                 + "        return []\n"
             )
             results.append(GeneratedTestCase("workflow_nodes", target, content))

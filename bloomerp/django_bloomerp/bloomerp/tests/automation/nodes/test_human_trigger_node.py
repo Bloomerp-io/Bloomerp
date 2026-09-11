@@ -2,7 +2,7 @@
 from bloomerp.automation.triggers.human_trigger import HumanTrigger
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -10,9 +10,9 @@ class TestHumanTriggerNode(BloomerpWorkflowNodeTestCase):
     node_id = 'HUMAN_TRIGGER'
     executor_class = HumanTrigger
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name=""
             )
         ]

@@ -75,7 +75,7 @@ class RequestTestCaseMixin:
         """Return the request scenarios defined by the concrete test case."""
         raise NotImplementedError("Request test cases must define request setups")
 
-    def test_request_setups(self) -> None:
+    def test_request_scenarios(self) -> None:
         """
         Use case: A view or component declares reusable request scenarios.
         Expected result: Every response matches its status and custom validators.
@@ -88,9 +88,9 @@ class RequestTestCaseMixin:
         for index, setup in enumerate(self.get_test_scenarios(), start=1):
             scenario_name = setup.name or f"request setup {index}"
             with self.subTest(name=scenario_name):
-                self._run_request_setup(setup, scenario_name)
+                self._run_request_scenario(setup, scenario_name)
 
-    def _run_request_setup(self, setup: RequestScenario, scenario_name: str) -> None:
+    def _run_request_scenario(self, setup: RequestScenario, scenario_name: str) -> None:
         """Execute one isolated request scenario."""
         selected_view_name = setup.view_name or self.view_name
         with transaction.atomic():

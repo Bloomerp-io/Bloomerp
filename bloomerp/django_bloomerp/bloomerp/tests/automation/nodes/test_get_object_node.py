@@ -3,7 +3,7 @@ from bloomerp.automation.actions.get_object import GetObjectExecutor
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 from django.contrib.contenttypes.models import ContentType
 
@@ -11,7 +11,7 @@ class TestGetObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'GET_OBJECT'
     executor_class = GetObjectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         TITLE = "123"
 
         todo_obj = Todo.objects.create(
@@ -21,7 +21,7 @@ class TestGetObjectNode(BloomerpWorkflowNodeTestCase):
 
 
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node retrieves object",
                 parameters={
                     "content_type_id" : ct.id,
@@ -35,7 +35,7 @@ class TestGetObjectNode(BloomerpWorkflowNodeTestCase):
                     )
                 ]
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node can't find object",
                 parameters={
                     "content_type_id" : ct.id,
@@ -45,7 +45,7 @@ class TestGetObjectNode(BloomerpWorkflowNodeTestCase):
                     lambda output: (output.get("found") == False and output.get("instance") == None)
                 ]
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node retrieves an object using a resolved ID",
                 parameters={
                     "content_type_id": ct.id,

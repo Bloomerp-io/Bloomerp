@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.human_in_the_loop import HumanInTheLoopExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -10,9 +10,9 @@ class TestHumanInTheLoopNode(BloomerpWorkflowNodeTestCase):
     node_id = 'HUMAN_IN_THE_LOOP'
     executor_class = HumanInTheLoopExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="",
 
             )

@@ -6,7 +6,7 @@ from bloomerp.tests.base.core_test_case import (
 from bloomerp.tests.base.e2e_test_case import (
     BloomerpE2ETestCase,
     E2EAction,
-    E2ERequestSetup,
+    E2ERequestScenario,
 )
 from bloomerp.tests.base.dataview_test_case import BloomerpDataviewTestCase
 from bloomerp.tests.base.form_field_test_case import (
@@ -51,7 +51,7 @@ from bloomerp.tests.base.widget_test_case import (
 )
 from bloomerp.tests.base.workflow_node_test_case import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -74,7 +74,7 @@ __all__ = [
     "BloomerpE2ETestCase",
     "BloomerpFormFieldTestCase",
     "E2EAction",
-    "E2ERequestSetup",
+    "E2ERequestScenario",
     "BloomerpModelFieldTestCase",
     "BloomerpModelTestCase",
     "BloomerpModelViewTestCase",
@@ -96,7 +96,7 @@ __all__ = [
     "RequestScenario",
     "RequestTestCaseMixin",
     "ResponseValidator",
-    "WorkflowNodeSimulation",
+    "WorkflowNodeScenario",
     "WidgetOperation",
     "WidgetScenario",
 ]

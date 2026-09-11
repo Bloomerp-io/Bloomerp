@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.send_email import SendEmailExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -10,5 +10,5 @@ class TestSendEmailNode(BloomerpWorkflowNodeTestCase):
     node_id = 'SEND_EMAIL'
     executor_class = SendEmailExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return []

@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.compute import ComputeExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -10,15 +10,15 @@ class TestComputeNode(BloomerpWorkflowNodeTestCase):
     node_id = 'COMPUTE'
     executor_class = ComputeExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node computes an expression from input values",
                 parameters={"expression": "{{ input.a }} + {{ input.b }}"},
                 trigger_data={"a": 5, "b": 10},
                 expected_output={"result": 15, "status": "success"},
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node indexes a list in an expression",
                 parameters={"expression": "{{ input.numbers }}[2]"},
                 trigger_data={"numbers": [10, 20, 30]},

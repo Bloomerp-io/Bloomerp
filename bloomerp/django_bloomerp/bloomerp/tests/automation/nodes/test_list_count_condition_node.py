@@ -9,7 +9,7 @@ from bloomerp.automation.schema import (
 )
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -31,9 +31,9 @@ class TestListCountConditionNode(BloomerpWorkflowNodeTestCase):
 
         self.assertEqual(choices["not_exact"], "Does not equal")
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: equals",
                 parameters={"field": "items", "operator": "exact", "value": 3},
                 trigger_data={"items": ["a", "b", "c"], "id": 10},
@@ -57,7 +57,7 @@ class TestListCountConditionNode(BloomerpWorkflowNodeTestCase):
                     fields=[WorkflowValueField("items", "Items", "list")],
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: not equals",
                 parameters={"field": "items", "operator": "not_exact", "value": 3},
                 trigger_data={"items": ["a", "b"]},
@@ -66,13 +66,13 @@ class TestListCountConditionNode(BloomerpWorkflowNodeTestCase):
                     output={"items": ["a", "b"]},
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: greater than",
                 parameters={"field": "input", "operator": "greater_than", "value": 2},
                 trigger_data=[1, 2, 3],
                 expected_output=RouteResult(port_id="true", output=[1, 2, 3]),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: less than",
                 parameters={"field": "payload.items", "operator": "less_than", "value": 3},
                 trigger_data={"payload": {"items": [1, 2]}},
@@ -81,7 +81,7 @@ class TestListCountConditionNode(BloomerpWorkflowNodeTestCase):
                     output={"payload": {"items": [1, 2]}},
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: greater or equal than",
                 parameters={
                     "field": "items",
@@ -91,7 +91,7 @@ class TestListCountConditionNode(BloomerpWorkflowNodeTestCase):
                 trigger_data={"items": [1, 2]},
                 expected_output=RouteResult(port_id="true", output={"items": [1, 2]}),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: less or equal than",
                 parameters={
                     "field": "input.items",
@@ -101,34 +101,34 @@ class TestListCountConditionNode(BloomerpWorkflowNodeTestCase):
                 trigger_data={"items": [1, 2]},
                 expected_output=RouteResult(port_id="true", output={"items": [1, 2]}),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: unmatched condition routes false",
                 parameters={"field": "items", "operator": "exact", "value": 3},
                 trigger_data={"items": [1, 2]},
                 expected_output=RouteResult(port_id="false", output={"items": [1, 2]}),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: non-iterable raises exception",
                 parameters={"field": "items", "operator": "exact", "value": 1},
                 trigger_data={"items": "not a list"},
                 expected_exception=NodeExecutionError,
                 expected_exception_message="must resolve to a list-like value",
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: missing field raises exception",
                 parameters={"operator": "exact", "value": 1},
                 trigger_data={"items": [1]},
                 expected_exception=NodeExecutionError,
                 expected_exception_message="No condition field configured",
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: invalid value raises exception",
                 parameters={"field": "items", "operator": "exact", "value": "many"},
                 trigger_data={"items": [1]},
                 expected_exception=NodeExecutionError,
                 expected_exception_message="Comparison value must be an integer",
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="CASE: invalid operator raises exception",
                 parameters={"field": "items", "operator": "contains", "value": 1},
                 trigger_data={"items": [1]},
