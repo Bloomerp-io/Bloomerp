@@ -1,7 +1,7 @@
 from bloomerp.automation.actions.call_api import CallApiExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 from unittest.mock import Mock, patch
 
@@ -27,9 +27,9 @@ class TestCallApiNode(BloomerpWorkflowNodeTestCase):
             return response
         raise ConnectionError("Unable to connect")
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node returns a successful API response",
                 parameters={
                     "method": "GET",
@@ -43,7 +43,7 @@ class TestCallApiNode(BloomerpWorkflowNodeTestCase):
                     "response": {"id": 1},
                 },
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node returns an error when the API request fails",
                 parameters={
                     "method": "GET",

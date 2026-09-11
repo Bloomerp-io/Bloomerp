@@ -3,8 +3,8 @@ from bloomerp.models.api.api_key import ApiKey
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestCreateApiTokenView(BloomerpModelViewTestCase):
     view_name = 'add'
     model = ApiKey
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

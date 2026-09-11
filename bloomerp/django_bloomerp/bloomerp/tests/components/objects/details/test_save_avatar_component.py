@@ -4,7 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -13,7 +13,7 @@ class TestSaveAvatarComponent(BloomerpComponentTestCase):
 
     view_name = "components_save_avatar"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         customer = self.CustomerModel.objects.first()
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
         view_kwargs = {
@@ -21,7 +21,7 @@ class TestSaveAvatarComponent(BloomerpComponentTestCase):
             "object_id": str(customer.pk),
         }
         return [
-            RequestSetup(
+            RequestScenario(
                 name="save avatar",
                 method="POST",
                 user=self.admin_user,
@@ -34,7 +34,7 @@ class TestSaveAvatarComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject user without change access",
                 method="POST",
                 user=self.normal_user,

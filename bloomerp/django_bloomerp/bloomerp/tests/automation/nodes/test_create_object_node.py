@@ -5,7 +5,7 @@ from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -16,7 +16,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
     executor_class = CreateObjectExecutor
 
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         todo_content_type = ContentType.objects.get_for_model(Todo)
         user = get_user_model().objects.create_user(
             username="creator",
@@ -35,7 +35,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
         
 
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node creates an object with configured fields",
                 parameters={
                     "content_type_id": todo_content_type.id,
@@ -46,7 +46,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
                     and Todo.objects.filter(title="Prepare report").exists()
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node creates an object with resolved fields",
                 parameters={
                     "content_type_id": todo_content_type.id,
@@ -58,7 +58,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
                     and Todo.objects.filter(title="Submit report").exists()
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node creates an object with a user relationship",
                 parameters={
                     "content_type_id": todo_content_type.id,
@@ -75,7 +75,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
                     ).exists()
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node allows m2m object creations",
                 parameters={
                     "content_type_id" : todo_content_type.id,

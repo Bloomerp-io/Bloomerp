@@ -7,7 +7,7 @@ from bloomerp.automation.schema import (
 )
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -15,27 +15,27 @@ class TestExtractFieldNode(BloomerpWorkflowNodeTestCase):
     node_id = 'EXTRACT_FIELD'
     executor_class = ExtractFieldExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node extracts an object field",
                 parameters={"field_path": "user"},
                 trigger_data={"user": {"email": "john.doe@example.com"}},
                 expected_output={"email": "john.doe@example.com"},
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node extracts a primitive field",
                 parameters={"field_path": "user"},
                 trigger_data={"user": "David"},
                 expected_output="David",
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node extracts a nested field",
                 parameters={"field_path": "user.profile.email"},
                 trigger_data={"user": {"profile": {"email": "john.doe@example.com"}}},
                 expected_output="john.doe@example.com",
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node extracts a list",
                 parameters={"field_path": "interests"},
                 trigger_data={"interests": ["sports", "music"]},

@@ -3,8 +3,8 @@ from bloomerp.models.users.user import User
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestBloomerpProfileView(BloomerpModelViewTestCase):
     view_name = 'my_profile_overview'
     model = User
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

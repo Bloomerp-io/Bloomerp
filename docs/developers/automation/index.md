@@ -146,7 +146,7 @@ Use `BloomerpWorkflowNodeTestCase` for executor contract tests:
 from bloomerp.automation import WorkflowIOSchema
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -157,7 +157,7 @@ class TestAddGreetingNode(BloomerpWorkflowNodeTestCase):
     def get_simulations(self):
         input_schema = WorkflowIOSchema(value_type="object")
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 parameters={"greeting": "Hello"},
                 trigger_data={"name": "Ada"},
                 expected_output={"name": "Ada", "greeting": "Hello"},

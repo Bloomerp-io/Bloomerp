@@ -1,58 +1,75 @@
 from django.http import QueryDict
-from django.test import SimpleTestCase
 
+from bloomerp.tests.base import BloomerpWidgetTestCase, WidgetOperation, WidgetScenario
 from bloomerp.widgets.address_widget import AddressWidget
 
 
-class TestAddressWidget(SimpleTestCase):
-    def test_decompress_returns_values_in_component_order(self):
-        widget = AddressWidget()
+class TestAddressWidget(BloomerpWidgetTestCase[AddressWidget]):
+    widget_class = AddressWidget
 
-        values = widget.decompress(
-            {
-                "street_1": "Main street 1",
-                "postal_code": "1000",
-                "city": "Brussels",
-                "country": "Belgium",
-            }
-        )
-
-        self.assertEqual(
-            values,
-            ["Main street 1", "", "1000", "Brussels", "", "Belgium"],
-        )
-
-    def test_country_widget_is_select_with_iso_choice_values(self):
-        widget = AddressWidget()
-
-        country_widget = widget.widgets[-1]
-
-        self.assertEqual(country_widget.__class__.__name__, "Select")
-        self.assertIn(("BE", "Belgium"), list(country_widget.choices))
-
-    def test_value_from_datadict_collects_component_values(self):
-        widget = AddressWidget()
-        data = QueryDict("", mutable=True)
-        data.update(
-            {
-                "office_address_0": "Main street 1",
-                "office_address_1": "",
-                "office_address_2": "1000",
-                "office_address_3": "Brussels",
-                "office_address_4": "",
-                "office_address_5": "BE",
-            }
-        )
-
-        value = widget.value_from_datadict(data, {}, "office_address")
-
-        self.assertEqual(
-            value,
-            ["Main street 1", "", "1000", "Brussels", "", "BE"],
-        )
-
-    def test_render_marks_widget_as_filter_value_provider(self):
-        html = AddressWidget().render("office_address", None)
-
-        self.assertIn("data-filter-value-provider", html)
-        self.assertIn('data-field-name="office_address"', html)
+    def get_test_scenarios(self) -> list[WidgetScenario[AddressWidget]]:
+        return [
+            WidgetScenario(
+                name="decompresses address components in display order",
+                operations=[
+                    WidgetOperation(
+                        name="decompress address mapping",
+                        execute=lambda widget: widget.decompress(
+                            {
+                                "street_1": "Main street 1",
+                                "postal_code": "1000",
+                                "city": "Brussels",
+                                "country": "Belgium",
+                            }
+                        ),
+                        result_validators=lambda value: value
+                        == ["Main street 1", "", "1000", "Brussels", "", "Belgium"],
+                    )
+                ],
+            ),
+            WidgetScenario(
+                name="uses ISO country choices",
+                operations=[
+                    WidgetOperation(
+                        name="get country widget",
+                        execute=lambda widget: widget.widgets[-1],
+                        result_validators=[
+                            lambda value: value.__class__.__name__ == "Select",
+                            lambda value: ("BE", "Belgium") in list(value.choices),
+                        ],
+                    )
+                ],
+            ),
+            WidgetScenario(
+                name="collects address values from submitted data",
+                operations=[
+                    WidgetOperation(
+                        name="read multipart submission",
+                        execute=lambda widget: widget.value_from_datadict(
+                            QueryDict(
+                                "office_address_0=Main+street+1&office_address_1="
+                                "&office_address_2=1000&office_address_3=Brussels"
+                                "&office_address_4=&office_address_5=BE"
+                            ),
+                            {},
+                            "office_address",
+                        ),
+                        result_validators=lambda value: value
+                        == ["Main street 1", "", "1000", "Brussels", "", "BE"],
+                    )
+                ],
+            ),
+            WidgetScenario(
+                name="renders filter value provider attributes",
+                operations=[
+                    WidgetOperation(
+                        name="render address input",
+                        execute=lambda widget: widget.render("office_address", None),
+                        result_validators=[
+                            lambda value: "data-filter-value-provider" in value,
+                            lambda value: 'data-field-name="office_address"' in value,
+                        ],
+                    )
+                ],
+            ),
+        ]

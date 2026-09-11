@@ -2,7 +2,7 @@ from django.test import SimpleTestCase
 
 from bloomerp.models.forms.form import Form
 from bloomerp.models.workspaces.workspace import Workspace
-from bloomerp.tests.base import ModelRequestSetup, ModuleRequestSetup
+from bloomerp.tests.base import ModelRequestScenario, ModuleRequestScenario
 from bloomerp.tests.base import view_test_case as view_test_cases
 
 
@@ -11,7 +11,7 @@ class SubmitFormRouteTestCase(view_test_cases.BloomerpDetailViewTestCase):
     view_name = "submit"
     model = Form
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return []
 
 
@@ -20,7 +20,7 @@ class CreateWorkspaceRouteTestCase(view_test_cases.BloomerpModelViewTestCase):
     view_name = "add"
     model = Workspace
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return []
 
 
@@ -29,7 +29,7 @@ class ModuleHomeRouteTestCase(view_test_cases.BloomerpModuleViewTestCase):
     view_name = "{module}"
     module = "finance"
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return []
 
 
@@ -37,7 +37,7 @@ class UnconfiguredSubmitRouteTestCase(view_test_cases.BloomerpDetailViewTestCase
     __test__ = False
     view_name = "submit"
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return []
 
 
@@ -45,7 +45,7 @@ class UnconfiguredModuleRouteTestCase(view_test_cases.BloomerpModuleViewTestCase
     __test__ = False
     view_name = "{module}"
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return []
 
 
@@ -99,7 +99,7 @@ class SpecializedViewTestCaseTests(SimpleTestCase):
         Expected result: Its model overrides the test case's default route context.
         """
         # 1. Configure a scenario for a model omitted from the test class.
-        setup = ModelRequestSetup(model=Form, view_kwargs={"pk": 123})
+        setup = ModelRequestScenario(model=Form, view_kwargs={"pk": 123})
 
         # 2. Resolve the concrete Form detail route from the scenario context.
         self.assertEqual(
@@ -117,7 +117,7 @@ class SpecializedViewTestCaseTests(SimpleTestCase):
         Expected result: Its module overrides the test case's default route context.
         """
         # 1. Configure a scenario for a module omitted from the test class.
-        setup = ModuleRequestSetup(module="finance")
+        setup = ModuleRequestScenario(module="finance")
 
         # 2. Resolve the concrete Finance route from the scenario context.
         route = UnconfiguredModuleRouteTestCase().get_route(

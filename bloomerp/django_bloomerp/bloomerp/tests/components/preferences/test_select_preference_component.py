@@ -4,7 +4,7 @@ from bloomerp.models import Sidebar
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -26,13 +26,13 @@ class TestSelectPreferenceComponent(BloomerpComponentTestCase):
             selected=False,
         )
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         delete_url_template = reverse(
             "components_delete_preference",
             kwargs={"model": "Sidebar", "preference_id": "REPLACE_WITH_ID"},
         )
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render owner delete action",
                 user=self.admin_user,
                 view_kwargs={"model": "Sidebar"},

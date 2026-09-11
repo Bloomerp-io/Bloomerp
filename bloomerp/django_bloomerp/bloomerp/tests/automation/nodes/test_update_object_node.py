@@ -4,7 +4,7 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 from django.contrib.contenttypes.models import ContentType
 
@@ -13,12 +13,12 @@ class TestUpdateObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'UPDATE_OBJECT'
     executor_class = UpdateObjectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         todo = Todo.objects.create(title="Prepare report")
         content_type = ContentType.objects.get_for_model(Todo)
 
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node updates an object with resolved fields",
                 parameters={
                     "content_type_id": content_type.id,

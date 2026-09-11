@@ -4,8 +4,8 @@ from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base import (
     BloomerpDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -13,7 +13,7 @@ class TestBloomerpDeleteView(BloomerpDetailViewTestCase):
     view_name = 'delete'
     model = Todo
     
-    def _give_access_to_normal_user(self, setup:RequestSetup):
+    def _give_access_to_normal_user(self, setup:RequestScenario):
         policy = PolicyManager.create_policy(
             model_or_content_type=Todo,
             access_rule=AccessRule(
@@ -39,32 +39,32 @@ class TestBloomerpDeleteView(BloomerpDetailViewTestCase):
             title="Hello"
         )
     
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         
         self.normal_user.is_staff = True
         self.normal_user.save()
         
         return [
-            RequestSetup(
+            RequestScenario(
                 name="Accessible by admin user",
                 method="GET",
                 user=self.admin_user,
                 expected=ExpectedResult(200)
             ),
-            RequestSetup(
+            RequestScenario(
                 name="Not accessible by regular user",
                 method="GET",
                 user=self.normal_user,
                 expected=ExpectedResult(403)
             ),
-            RequestSetup(
+            RequestScenario(
                 name="Accessible by regular user with the right perm",
                 method="GET",
                 user=self.normal_user,
                 expected=ExpectedResult(200),
                 prepare=self._give_access_to_normal_user
             ),
-            RequestSetup(
+            RequestScenario(
                 name="Object get's deleted",
                 method="POST",
                 user=self.admin_user,
@@ -75,7 +75,7 @@ class TestBloomerpDeleteView(BloomerpDetailViewTestCase):
                     ]
                 )
             ),
-            RequestSetup(
+            RequestScenario(
                 name="Normal user can't delete",
                 method="POST",
                 user=self.normal_user,

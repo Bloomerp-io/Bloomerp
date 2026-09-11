@@ -16,7 +16,7 @@ EXPECTED_OUTPUT_UNSET = object()
 
 
 @dataclass
-class WorkflowNodeSimulation:
+class WorkflowNodeScenario:
     """One direct execution scenario for a registered workflow node."""
 
     name: str | None = None
@@ -115,7 +115,7 @@ class BloomerpWorkflowNodeTestCase(TestCase):
             raise AssertionError(f"Workflow node {definition.id!r} is not a trigger")
         return self.add_node(**kwargs)
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         """Return direct execution scenarios for the configured node."""
         return []
 

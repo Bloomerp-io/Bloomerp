@@ -3,8 +3,8 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.tests.base import (
     BloomerpAPIDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestPolicyDetailApiView(BloomerpAPIDetailViewTestCase):
     view_name = 'access_control_policies-detail'
     model = Policy
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

@@ -1,7 +1,11 @@
 from django.test import TestCase
 
 from bloomerp.models.project_management.todo import Todo
-from bloomerp.tests.base.model_test_case import BloomerpModelTestCase
+from bloomerp.tests.base.model_test_case import (
+    BloomerpModelTestCase,
+    ExpectedModelException,
+    ModelScenario,
+)
 from bloomerp.workspaces.analytics_tile.model import (
     AnalyticsTileConfig,
     AnalyticsTileType,
@@ -10,6 +14,69 @@ from bloomerp.workspaces.analytics_tile.model import (
 
 
 class BloomerpModelTestCaseTests(TestCase):
+    def test_model_scenario_supports_lazy_arguments_and_model_validators(self):
+        """
+        Use case: A scenario prepares data before resolving lifecycle arguments.
+        Expected result: Lazy arguments and one-or-many validators remain declarative.
+        """
+        create_args = lambda: {"title": "Created"}
+        update_args = lambda: {"title": "Updated"}
+        validator = lambda instance: instance.pk is not None
+
+        scenario = ModelScenario[Todo](
+            name="todo lifecycle",
+            preparation=lambda: None,
+            create_args=create_args,
+            create_validators=validator,
+            update_args=update_args,
+            update_validators=[validator],
+        )
+
+        self.assertIs(scenario.create_args, create_args)
+        self.assertIs(scenario.update_args, update_args)
+        self.assertIs(scenario.create_validators, validator)
+        self.assertEqual(scenario.update_validators, [validator])
+
+    def test_model_scenario_rejects_update_expectations_without_update_args(self):
+        """
+        Use case: A scenario defines expectations for an absent update operation.
+        Expected result: The contradictory schema is rejected immediately.
+        """
+        with self.assertRaisesRegex(ValueError, "update_args"):
+            ModelScenario[Todo](
+                name="invalid update",
+                expected_exceptions=[
+                    ExpectedModelException(phase="update", exception=ValueError)
+                ],
+            )
+
+    def test_model_scenario_rejects_duplicate_exception_phases(self):
+        """
+        Use case: A scenario defines two exception outcomes for one operation.
+        Expected result: The ambiguous schema is rejected immediately.
+        """
+        with self.assertRaisesRegex(ValueError, "one entry per phase"):
+            ModelScenario[Todo](
+                name="ambiguous create failure",
+                expected_exceptions=[
+                    ExpectedModelException(phase="create", exception=ValueError),
+                    ExpectedModelException(phase="create", exception=TypeError),
+                ],
+            )
+
+    def test_model_scenario_defaults_are_not_shared(self):
+        """
+        Use case: Multiple model scenarios use default mutable collections.
+        Expected result: Each scenario owns independent arguments and expectations.
+        """
+        first = ModelScenario[Todo](name="first")
+        second = ModelScenario[Todo](name="second")
+
+        self.assertIsNot(first.create_args, second.create_args)
+        self.assertIsNot(first.create_validators, second.create_validators)
+        self.assertIsNot(first.update_validators, second.update_validators)
+        self.assertIsNot(first.expected_exceptions, second.expected_exceptions)
+
     def test_real_model_configuration_and_tiles_are_valid(self):
         """
         Use case: The shared model tests run against a configured Bloomerp model.

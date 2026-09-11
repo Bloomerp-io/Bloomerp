@@ -8,7 +8,7 @@ from bloomerp.models.automation.workflow_node import WorkflowNode
 from bloomerp.automation.run import run_workflow
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -66,14 +66,14 @@ class TestRunWorkflowNode(BloomerpWorkflowNodeTestCase):
         source.connect_nodes(trigger, call)
         return call
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         target = self._create_workflow_with_trigger("Directly called workflow")
         input_schema = WorkflowIOSchema(
             value_type=WorkflowValueType.OBJECT,
             label="Parent output",
         )
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="passes input through and runs the selected workflow",
                 parameters={"workflow_id": target.id, "execution": "SYNC"},
                 trigger_data={"value": 42},

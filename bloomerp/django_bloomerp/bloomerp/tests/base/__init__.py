@@ -6,19 +6,30 @@ from bloomerp.tests.base.core_test_case import (
 from bloomerp.tests.base.e2e_test_case import (
     BloomerpE2ETestCase,
     E2EAction,
-    E2ERequestSetup,
+    E2ERequestScenario,
 )
 from bloomerp.tests.base.dataview_test_case import BloomerpDataviewTestCase
-from bloomerp.tests.base.model_field_test_case import BloomerpModelFieldTestCase
+from bloomerp.tests.base.form_field_test_case import (
+    BloomerpFormFieldTestCase,
+    ExpectedFormFieldException,
+    FormFieldScenario,
+)
+from bloomerp.tests.base.model_field_test_case import (
+    BloomerpModelFieldTestCase,
+    ExpectedModelFieldException,
+    ModelFieldScenario,
+)
 from bloomerp.tests.base.model_test_case import (
     BaseBloomerpModelTestCase,
     BloomerpModelTestCase,
+    ExpectedModelException,
+    ModelScenario,
 )
 from bloomerp.tests.base.request_test_case_mixin import (
     ExpectedResult,
-    ModelRequestSetup,
-    ModuleRequestSetup,
-    RequestSetup,
+    ModelRequestScenario,
+    ModuleRequestScenario,
+    RequestScenario,
     RequestPreparation,
     RequestTestCaseMixin,
     ResponseValidator,
@@ -32,10 +43,15 @@ from bloomerp.tests.base.view_test_case import (
     BloomerpModuleViewTestCase,
     BloomerpViewTestCase,
 )
-from bloomerp.tests.base.widget_test_case import BloomerpWidgetTestCase
+from bloomerp.tests.base.widget_test_case import (
+    BloomerpWidgetTestCase,
+    ExpectedWidgetException,
+    WidgetOperation,
+    WidgetScenario,
+)
 from bloomerp.tests.base.workflow_node_test_case import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -56,8 +72,9 @@ __all__ = [
     "BloomerpAPIViewTestCase",
     "BloomerpDetailViewTestCase",
     "BloomerpE2ETestCase",
+    "BloomerpFormFieldTestCase",
     "E2EAction",
-    "E2ERequestSetup",
+    "E2ERequestScenario",
     "BloomerpModelFieldTestCase",
     "BloomerpModelTestCase",
     "BloomerpModelViewTestCase",
@@ -66,11 +83,20 @@ __all__ = [
     "BloomerpWidgetTestCase",
     "BloomerpWorkflowNodeTestCase",
     "ExpectedResult",
-    "ModelRequestSetup",
-    "ModuleRequestSetup",
+    "ExpectedModelException",
+    "ExpectedFormFieldException",
+    "ExpectedModelFieldException",
+    "ExpectedWidgetException",
+    "FormFieldScenario",
+    "ModelFieldScenario",
+    "ModelRequestScenario",
+    "ModelScenario",
+    "ModuleRequestScenario",
     "RequestPreparation",
-    "RequestSetup",
+    "RequestScenario",
     "RequestTestCaseMixin",
     "ResponseValidator",
-    "WorkflowNodeSimulation",
+    "WorkflowNodeScenario",
+    "WidgetOperation",
+    "WidgetScenario",
 ]

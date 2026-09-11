@@ -3,8 +3,8 @@ from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpDetailViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -22,10 +22,10 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         return Todo.objects.create(title=self.START_TITLE)
         
     
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return [
-            RequestSetup(
+            RequestScenario(
                 name="Activity log test case",
                 method="POST",
                 user=self.admin_user,

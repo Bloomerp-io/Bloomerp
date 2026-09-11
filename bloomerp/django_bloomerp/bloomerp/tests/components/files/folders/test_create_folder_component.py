@@ -8,7 +8,7 @@ from bloomerp.models.files.file import _create_folder_endpoint
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -17,7 +17,7 @@ class TestCreateFolderComponent(BloomerpComponentTestCase):
 
     view_name = "components_create_folder"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         parent = FileFolder.objects.create(
             name="Parent",
             created_by=self.admin_user,
@@ -26,7 +26,7 @@ class TestCreateFolderComponent(BloomerpComponentTestCase):
         url = reverse(self.view_name)
 
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render create-folder form",
                 user=self.admin_user,
                 expected=ExpectedResult(
@@ -36,7 +36,7 @@ class TestCreateFolderComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="create root folder",
                 method="POST",
                 user=self.admin_user,
@@ -52,7 +52,7 @@ class TestCreateFolderComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="create child folder",
                 method="POST",
                 user=self.admin_user,
@@ -64,7 +64,7 @@ class TestCreateFolderComponent(BloomerpComponentTestCase):
                     ),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject user without add-folder permission",
                 method="POST",
                 user=self.normal_user,

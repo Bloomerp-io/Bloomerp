@@ -21,7 +21,7 @@ from bloomerp.tests.base import (
     BaseBloomerpTestCaseWithModels,
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -76,13 +76,13 @@ class TestDownloadAttachmentComponent(
 
     view_name = "components_emails_download_attachment"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         view_kwargs = {
             "inbox_item_id": self.item.pk,
             "attachment_id": "2",
         }
         return [
-            RequestSetup(
+            RequestScenario(
                 name="inbox owner downloads attachment",
                 user=self.user,
                 view_kwargs=view_kwargs,
@@ -91,7 +91,7 @@ class TestDownloadAttachmentComponent(
                     response_validators=self._valid_attachment_response,
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="hide attachment from user outside inbox",
                 user=self.other_user,
                 view_kwargs=view_kwargs,
@@ -113,7 +113,7 @@ class TestDownloadAttachmentComponent(
         self.addCleanup(fetch_patch.stop)
         self._fetch_attachment_mock = mocked_fetch
 
-    def _prepare_attachment(self, _setup: RequestSetup) -> None:
+    def _prepare_attachment(self, _setup: RequestScenario) -> None:
         self._start_fetch_patch(
             return_value=EmailAttachment(
                 filename="contract.pdf",
@@ -122,7 +122,7 @@ class TestDownloadAttachmentComponent(
             )
         )
 
-    def _watch_attachment_fetch(self, _setup: RequestSetup) -> None:
+    def _watch_attachment_fetch(self, _setup: RequestScenario) -> None:
         self._start_fetch_patch()
 
     def _valid_attachment_response(self, response) -> bool:

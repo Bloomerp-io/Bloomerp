@@ -2,7 +2,7 @@
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -10,5 +10,5 @@ class TestOnObjectDeleteNode(BloomerpWorkflowNodeTestCase):
     node_id = 'ON_OBJECT_DELETE'
     executor_class = ObjectCrudTrigger
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return []

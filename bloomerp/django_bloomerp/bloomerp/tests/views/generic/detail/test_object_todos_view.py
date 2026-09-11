@@ -2,8 +2,8 @@ from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpDetailViewTestCase,
     ExpectedResult,
-    ModelRequestSetup,
-    RequestSetup,
+    ModelRequestScenario,
+    RequestScenario,
 )
 
 
@@ -11,13 +11,13 @@ class TestObjectTodosView(BloomerpDetailViewTestCase):
     view_name = "todos"
     model = None
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         customer = self.CustomerModel.objects.create(
             first_name="John", last_name="Doe", age=20
         )
 
         return [
-            ModelRequestSetup(
+            ModelRequestScenario(
                 name="Admin user can view Todo's of model",
                 method="GET",
                 user=self.admin_user,
@@ -27,7 +27,7 @@ class TestObjectTodosView(BloomerpDetailViewTestCase):
                 ),
                 view_kwargs={"pk": customer.id},
             ),
-            ModelRequestSetup(
+            ModelRequestScenario(
                 name="Normal user can't",
                 method="GET",
                 user=self.normal_user,

@@ -2,8 +2,8 @@
 from bloomerp.tests.base import (
     BloomerpAPIModelViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -13,6 +13,6 @@ class TestBloomerpListApiView(BloomerpAPIModelViewTestCase):
     view_name = 'cost_centers-list'
     model = None
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

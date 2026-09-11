@@ -3,7 +3,7 @@ from bloomerp.automation.actions.delete_object import DeleteObjectExecutor
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 from django.contrib.contenttypes.models import ContentType
 
@@ -12,12 +12,12 @@ class TestDeleteObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'DELETE_OBJECT'
     executor_class = DeleteObjectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         todo = Todo.objects.create(title="Delete this task")
         content_type = ContentType.objects.get_for_model(Todo)
 
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node deletes an object",
                 parameters={
                     "content_type_id": content_type.id,
@@ -31,7 +31,7 @@ class TestDeleteObjectNode(BloomerpWorkflowNodeTestCase):
                     Todo.objects.filter(pk=todo.id).exists() == False
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Node deletes an object",
                 parameters={
                     "content_type_id": content_type.id,

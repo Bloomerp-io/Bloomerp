@@ -2,8 +2,8 @@
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -13,6 +13,6 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
     view_name = 'add'
     model = None
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

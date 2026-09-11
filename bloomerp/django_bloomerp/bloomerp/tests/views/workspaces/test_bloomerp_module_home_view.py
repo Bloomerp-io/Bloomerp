@@ -2,8 +2,8 @@
 from bloomerp.tests.base import (
     BloomerpModuleViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModuleRequestSetup,
+    RequestScenario,
+    ModuleRequestScenario,
 )
 
 
@@ -13,6 +13,6 @@ class TestBloomerpModuleHomeView(BloomerpModuleViewTestCase):
     view_name = '{module}'
     module = None
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

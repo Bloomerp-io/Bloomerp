@@ -2,7 +2,7 @@
 from bloomerp.automation.actions.generate_pdf import GeneratePdfExecutor
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -10,9 +10,9 @@ class TestGeneratePdfNode(BloomerpWorkflowNodeTestCase):
     node_id = 'GENERATE_PDF'
     executor_class = GeneratePdfExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name=""
             )
         ]

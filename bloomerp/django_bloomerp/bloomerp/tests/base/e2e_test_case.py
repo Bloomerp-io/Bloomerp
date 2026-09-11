@@ -25,7 +25,7 @@ class E2EAction:
 
 
 @dataclass
-class E2ERequestSetup:
+class E2ERequestScenario:
     """One declarative end-to-end browser scenario."""
 
     name: str
@@ -40,20 +40,20 @@ class E2ERequestSetup:
 class BloomerpE2ETestCase(BaseE2ETestCase):
     """Run declarative Playwright scenarios with common deferred actions."""
 
-    def get_request_setups(self) -> list[E2ERequestSetup]:
+    def get_test_scenarios(self) -> list[E2ERequestScenario]:
         """Return the browser scenarios declared by the concrete test case."""
         return []
 
-    def test_request_setups(self) -> None:
+    def test_request_scenarios(self) -> None:
         """Execute each configured E2E scenario as an individual subtest."""
-        for index, setup in enumerate(self.get_request_setups(), start=1):
+        for index, setup in enumerate(self.get_test_scenarios(), start=1):
             scenario_name = setup.name or f"E2E request setup {index}"
             with self.subTest(name=scenario_name):
-                self._run_request_setup(setup, scenario_name)
+                self._run_request_scenario(setup, scenario_name)
 
-    def _run_request_setup(
+    def _run_request_scenario(
         self,
-        setup: E2ERequestSetup,
+        setup: E2ERequestScenario,
         scenario_name: str,
     ) -> None:
         """Run one scenario in a fresh browser context."""

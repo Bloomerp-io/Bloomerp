@@ -9,9 +9,9 @@ class TestSidebarE2E(e2e.BloomerpE2ETestCase):
 
     browser_context_options = {"viewport": {"width": 1364, "height": 998}}
 
-    def get_request_setups(self) -> list[e2e.E2ERequestSetup]:
+    def get_test_scenarios(self) -> list[e2e.E2ERequestScenario]:
         return [
-            e2e.E2ERequestSetup(
+            e2e.E2ERequestScenario(
                 name="Folder expansion is stored independently and restored",
                 description=(
                     "Opening one folder must not open its sibling, and the choice "
@@ -27,7 +27,7 @@ class TestSidebarE2E(e2e.BloomerpE2ETestCase):
                     ),
                 ],
             ),
-            e2e.E2ERequestSetup(
+            e2e.E2ERequestScenario(
                 name="Item actions survive an HTMX save",
                 description=(
                     "The action menu must escape the sidebar scroll container, and "
@@ -175,9 +175,9 @@ class TestMobileSidebarE2E(e2e.BloomerpE2ETestCase):
         "is_mobile": True,
     }
 
-    def get_request_setups(self) -> list[e2e.E2ERequestSetup]:
+    def get_test_scenarios(self) -> list[e2e.E2ERequestScenario]:
         return [
-            e2e.E2ERequestSetup(
+            e2e.E2ERequestScenario(
                 name="A regular phone tap does not reveal the sidebar button",
                 description=(
                     "Touching a page control away from the activation corner must "

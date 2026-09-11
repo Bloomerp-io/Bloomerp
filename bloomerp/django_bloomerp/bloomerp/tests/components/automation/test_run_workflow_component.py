@@ -5,7 +5,7 @@ from bloomerp.models.automation.workflow_run import WorkflowRunStatus
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -14,7 +14,7 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
 
     view_name = "components_automation_run_workflow"
 
-    def get_request_setups(self):
+    def get_test_scenarios(self):
         return []
 
     def setUp(self) -> None:
@@ -29,11 +29,11 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
         self.workflow_without_trigger = Workflow.objects.create(name="No trigger")
         self.client_request_id = "29a47fcf-5046-4bd0-ad52-a62c676be029"
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         workflow_kwargs = {"workflow_id": self.workflow.id}
         json_headers = {"Accept": "application/json"}
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render run form",
                 user=self.admin_user,
                 view_kwargs=workflow_kwargs,
@@ -44,7 +44,7 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="run synchronous workflow from builder",
                 method="POST",
                 user=self.admin_user,
@@ -59,7 +59,7 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="queue workflow configured for asynchronous execution",
                 method="POST",
                 user=self.admin_user,
@@ -77,7 +77,7 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject invalid client request id",
                 method="POST",
                 user=self.admin_user,
@@ -89,7 +89,7 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
                     response_validators=self.key_in_json("errors"),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject workflow without trigger",
                 method="POST",
                 user=self.admin_user,
@@ -107,7 +107,7 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
                     ),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject user without workflow access",
                 method="POST",
                 user=self.normal_user,
@@ -118,7 +118,7 @@ class TestRunWorkflowComponent(BloomerpComponentTestCase):
             ),
         ]
 
-    def _prepare_async_workflow(self, _setup: RequestSetup) -> None:
+    def _prepare_async_workflow(self, _setup: RequestScenario) -> None:
         self.workflow.run_asynchronously = True
         self.workflow.save(update_fields=["run_asynchronously"])
         delay_patch = patch("bloomerp.automation.run.run_workflow_async.delay")

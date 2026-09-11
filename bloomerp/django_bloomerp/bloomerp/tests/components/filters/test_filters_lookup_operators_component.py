@@ -4,7 +4,7 @@ from bloomerp.models import ApplicationField
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 from bloomerp.tests.utils.dynamic_models import create_test_models
 
@@ -24,11 +24,11 @@ class TestFiltersLookupOperatorsComponent(BloomerpComponentTestCase):
             use_bloomerp_base=True,
         )["LookupEvent"]
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         foreign_field = ApplicationField.get_by_field(self.CustomerModel, "country")
         date_field = ApplicationField.get_by_field(self.EventModel, "starts_on")
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render foreign-key operators",
                 user=self.admin_user,
                 view_kwargs={
@@ -42,7 +42,7 @@ class TestFiltersLookupOperatorsComponent(BloomerpComponentTestCase):
                     ]
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="render date operators",
                 user=self.admin_user,
                 view_kwargs={

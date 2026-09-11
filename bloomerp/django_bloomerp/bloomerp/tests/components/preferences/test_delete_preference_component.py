@@ -4,7 +4,7 @@ from bloomerp.models import Sidebar, User
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
-    RequestSetup,
+    RequestScenario,
 )
 
 
@@ -36,14 +36,14 @@ class TestDeletePreferenceComponent(BloomerpComponentTestCase):
             source_object=source,
         )
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         headers = {"HX-Request": "true"}
         deletable_kwargs = {
             "model": "Sidebar",
             "preference_id": self.deletable.pk,
         }
         return [
-            RequestSetup(
+            RequestScenario(
                 name="render deletion confirmation",
                 user=self.owner,
                 view_kwargs=deletable_kwargs,
@@ -60,7 +60,7 @@ class TestDeletePreferenceComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject unsupported method",
                 method="PUT",
                 user=self.owner,
@@ -71,7 +71,7 @@ class TestDeletePreferenceComponent(BloomerpComponentTestCase):
                     response_validators=self._preference_exists(self.deletable.pk),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="owner deletes preference",
                 method="POST",
                 user=self.owner,
@@ -84,7 +84,7 @@ class TestDeletePreferenceComponent(BloomerpComponentTestCase):
                     ],
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject deletion by another user",
                 method="POST",
                 user=self.other_user,
@@ -95,7 +95,7 @@ class TestDeletePreferenceComponent(BloomerpComponentTestCase):
                     response_validators=self._preference_exists(self.deletable.pk),
                 ),
             ),
-            RequestSetup(
+            RequestScenario(
                 name="reject deletion of derived reference",
                 method="POST",
                 user=self.owner,

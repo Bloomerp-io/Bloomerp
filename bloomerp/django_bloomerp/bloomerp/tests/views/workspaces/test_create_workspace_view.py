@@ -3,8 +3,8 @@ from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
     ExpectedResult,
-    RequestSetup,
-    ModelRequestSetup,
+    RequestScenario,
+    ModelRequestScenario,
 )
 
 
@@ -14,6 +14,6 @@ class TestCreateWorkspaceView(BloomerpModelViewTestCase):
     view_name = 'add'
     model = Workspace
 
-    def get_request_setups(self) -> list[RequestSetup]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []

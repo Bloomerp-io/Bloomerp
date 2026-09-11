@@ -1,5 +1,9 @@
+from dataclasses import dataclass, field
+from typing import Any, Callable, Generic, Literal, TypeVar
+
 from django.core.exceptions import FieldDoesNotExist
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Model
 from django.test import TestCase
 
 from bloomerp.models.definition import BloomerpModelConfig, get_model_config
@@ -7,6 +11,68 @@ from bloomerp.services.sql_services import SqlExecutor
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileType
 from bloomerp.workspaces.base import BaseTileConfig
 from bloomerp.workspaces.registry import TILE_TYPE_REGISTRY
+
+
+ModelType = TypeVar("ModelType", bound=Model)
+
+
+@dataclass(frozen=True)
+class ExpectedModelException:
+    """An exception expected during one model lifecycle operation."""
+
+    phase: Literal["create", "update", "delete"]
+    exception: type[Exception] | tuple[type[Exception], ...]
+    message_regex: str | None = None
+
+
+@dataclass
+class ModelScenario(Generic[ModelType]):
+    """Declarative lifecycle expectations for a model.
+
+    ``create_args`` always defines the create phase. Non-``None`` ``update_args``
+    defines the update phase. Non-empty ``delete_validators`` or an expected
+    delete exception defines the delete phase. ``post_create`` receives the
+    refreshed instance before create validators run.
+    """
+
+    name: str
+    description: str | None = None
+    preparation: Callable[[], None] | None = None
+    post_create: Callable[[ModelType], None] | None = None
+    create_args: dict[str, Any] | Callable[[], dict[str, Any]] = field(
+        default_factory=dict
+    )
+    create_validators: Callable[[ModelType], bool] | list[
+        Callable[[ModelType], bool]
+    ] = field(default_factory=list)
+    update_args: dict[str, Any] | Callable[[], dict[str, Any]] | None = None
+    update_validators: Callable[[ModelType], bool] | list[
+        Callable[[ModelType], bool]
+    ] = field(default_factory=list)
+    delete_validators: Callable[[ModelType], bool] | list[
+        Callable[[ModelType], bool]
+    ] = field(default_factory=list)
+    expected_exceptions: list[ExpectedModelException] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Reject update expectations when the scenario has no update operation."""
+        update_exception = any(
+            expected.phase == "update" for expected in self.expected_exceptions
+        )
+        if self.update_args is None and (self.update_validators or update_exception):
+            raise ValueError(
+                "update_args must be provided when update expectations are configured"
+            )
+
+        phases = [expected.phase for expected in self.expected_exceptions]
+        if len(phases) != len(set(phases)):
+            raise ValueError("expected_exceptions may contain only one entry per phase")
+
+        delete_exception = "delete" in phases
+        if self.delete_validators and delete_exception:
+            raise ValueError(
+                "delete_validators cannot be configured when deletion is expected to fail"
+            )
 
 
 class BloomerpModelTestCase(TestCase):
@@ -167,6 +233,155 @@ class BloomerpModelTestCase(TestCase):
                 f"{field_path!r}",
             )
             current_model = related_model
+
+    def get_test_scenarios(self) -> list[ModelScenario]:
+        """Return model lifecycle scenarios defined by the concrete test case."""
+        return []
+
+    def test_model_scenarios(self) -> None:
+        """Run each declared model lifecycle scenario in complete isolation."""
+        if self.model is None:
+            return
+
+        for scenario in self.get_test_scenarios():
+            with self.subTest(name=scenario.name):
+                with transaction.atomic():
+                    try:
+                        self._run_model_scenario(scenario)
+                    finally:
+                        transaction.set_rollback(True)
+
+    def _run_model_scenario(self, scenario: ModelScenario) -> None:
+        """Run the lifecycle phases reached by one model scenario."""
+        if self.model is None:
+            raise AssertionError("Model test cases must define model")
+
+        if scenario.preparation:
+            scenario.preparation()
+
+        create_args = self._resolve_model_arguments(scenario.create_args)
+        expected_exception = self._expected_exception(scenario, "create")
+        if expected_exception:
+            self._assert_expected_model_exception(
+                expected_exception,
+                lambda: self.model.objects.create(**create_args),
+            )
+            return
+
+        instance = self.model.objects.create(**create_args)
+        instance.refresh_from_db()
+        if scenario.post_create:
+            scenario.post_create(instance)
+        self._run_model_validators(
+            scenario.create_validators,
+            instance,
+            phase="create",
+            scenario=scenario,
+        )
+
+        if scenario.update_args is not None:
+            update_args = self._resolve_model_arguments(scenario.update_args)
+            for field_name, value in update_args.items():
+                setattr(instance, field_name, value)
+
+            expected_exception = self._expected_exception(scenario, "update")
+            if expected_exception:
+                self._assert_expected_model_exception(
+                    expected_exception,
+                    instance.save,
+                )
+                return
+
+            instance.save()
+            instance.refresh_from_db()
+            self._run_model_validators(
+                scenario.update_validators,
+                instance,
+                phase="update",
+                scenario=scenario,
+            )
+
+        expected_exception = self._expected_exception(scenario, "delete")
+        if not scenario.delete_validators and expected_exception is None:
+            return
+
+        deleted_pk = instance.pk
+        if expected_exception:
+            self._assert_expected_model_exception(
+                expected_exception,
+                instance.delete,
+            )
+            return
+
+        instance.delete()
+        instance.pk = deleted_pk
+        self._run_model_validators(
+            scenario.delete_validators,
+            instance,
+            phase="delete",
+            scenario=scenario,
+        )
+
+    @staticmethod
+    def _resolve_model_arguments(
+        arguments: dict[str, Any] | Callable[[], dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Resolve eager model arguments or a zero-argument argument factory."""
+        return arguments() if callable(arguments) else arguments
+
+    @staticmethod
+    def _expected_exception(
+        scenario: ModelScenario,
+        phase: Literal["create", "update", "delete"],
+    ) -> ExpectedModelException | None:
+        """Return the exception expectation for one lifecycle phase, if any."""
+        return next(
+            (
+                expected
+                for expected in scenario.expected_exceptions
+                if expected.phase == phase
+            ),
+            None,
+        )
+
+    def _assert_expected_model_exception(
+        self,
+        expected: ExpectedModelException,
+        operation: Callable[[], Any],
+    ) -> None:
+        """Run an expected failing operation inside a rollback savepoint."""
+        if expected.message_regex is None:
+            assertion = self.assertRaises(expected.exception)
+        else:
+            assertion = self.assertRaisesRegex(
+                expected.exception,
+                expected.message_regex,
+            )
+
+        with assertion:
+            with transaction.atomic():
+                operation()
+
+    def _run_model_validators(
+        self,
+        validators: Callable[[Model], bool] | list[Callable[[Model], bool]],
+        instance: Model,
+        *,
+        phase: Literal["create", "update", "delete"],
+        scenario: ModelScenario,
+    ) -> None:
+        """Assert every validator configured for one successful phase."""
+        if callable(validators):
+            validators = [validators]
+
+        for validator in validators:
+            validator_name = getattr(validator, "__name__", type(validator).__name__)
+            description = f": {scenario.description}" if scenario.description else ""
+            self.assertTrue(
+                validator(instance),
+                f"{phase.capitalize()} validator {validator_name!r} failed for "
+                f"scenario {scenario.name!r}{description}",
+            )
 
 
 # Backwards-compatible name used by existing Bloomerp tests.

@@ -65,6 +65,12 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             Path("tests/models/project_management/test_todo_model.py"),
         )
         self.assertIn("class TestTodoModel(BloomerpModelTestCase):", todo_case.content)
+        self.assertIn("    ModelScenario,", todo_case.content)
+        self.assertIn("    ExpectedModelException,", todo_case.content)
+        self.assertIn(
+            "def get_test_scenarios(self) -> list[ModelScenario[Todo]]:",
+            todo_case.content,
+        )
 
     def test_route_discovery_groups_registrations_by_source_definition(self):
         """
@@ -103,10 +109,10 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             submit_case.content,
         )
         self.assertIn("    ExpectedResult,", submit_case.content)
-        self.assertIn("    RequestSetup,", submit_case.content)
-        self.assertIn("    ModelRequestSetup,", submit_case.content)
+        self.assertIn("    RequestScenario,", submit_case.content)
+        self.assertIn("    ModelRequestScenario,", submit_case.content)
         self.assertIn(
-            "def get_request_setups(self) -> list[RequestSetup]:",
+            "def get_test_scenarios(self) -> list[RequestScenario]:",
             submit_case.content,
         )
 
@@ -118,7 +124,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
         )
         self.assertIn("BloomerpAPIViewTestCase", api_case.content)
         self.assertIn("    ExpectedResult,", api_case.content)
-        self.assertIn("    RequestSetup,", api_case.content)
+        self.assertIn("    RequestScenario,", api_case.content)
 
         api_model_case = next(
             case
@@ -126,7 +132,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             if "class TestBloomerpListApiView" in case.content
         )
         self.assertIn("BloomerpAPIModelViewTestCase", api_model_case.content)
-        self.assertIn("    ModelRequestSetup,", api_model_case.content)
+        self.assertIn("    ModelRequestScenario,", api_model_case.content)
 
         api_detail_case = next(
             case
@@ -134,7 +140,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             if "class TestBloomerpDetailApiView" in case.content
         )
         self.assertIn("BloomerpAPIDetailViewTestCase", api_detail_case.content)
-        self.assertIn("    ModelRequestSetup,", api_detail_case.content)
+        self.assertIn("    ModelRequestScenario,", api_detail_case.content)
 
     def test_component_skeleton_imports_request_scenario_classes(self):
         """
@@ -154,13 +160,13 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
         # 2. Confirm all classes needed for request scenarios are ready to use.
         self.assertIn("    BloomerpComponentTestCase,", content)
         self.assertIn("    ExpectedResult,", content)
-        self.assertIn("    RequestSetup,", content)
+        self.assertIn("    RequestScenario,", content)
         self.assertIn(
             '"""Tests function `example_component` from '
             '`example/components/example.py`."""',
             content,
         )
-        self.assertIn("def get_request_setups(self) -> list[RequestSetup]:", content)
+        self.assertIn("def get_test_scenarios(self) -> list[RequestScenario]:", content)
 
     def test_component_discovery_fails_when_a_source_module_cannot_import(self):
         """
@@ -198,7 +204,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             object_create_case.content,
         )
         self.assertIn("executor_class = CreateObjectExecutor", object_create_case.content)
-        self.assertIn("WorkflowNodeSimulation", object_create_case.content)
+        self.assertIn("WorkflowNodeScenario", object_create_case.content)
         self.assertTrue(
             any("dataview_key = 'table'" in case.content for case in dataview_cases)
         )
@@ -253,11 +259,30 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
                 customized_generated_content,
             )
 
-            # 5. Empty generated request skeletons can be refreshed safely.
+            # 5. Untouched legacy class-only skeletons can be upgraded safely.
+            legacy_generated_skeleton = (
+                GENERATED_FILE_HEADER
+                + "from example.models import Example\n"
+                + "from bloomerp.tests.base import BloomerpModelTestCase\n\n\n"
+                + "class TestExampleModel(BloomerpModelTestCase):\n"
+                + "    model = Example\n\n    \n"
+            )
+            target.write_text(legacy_generated_skeleton, encoding="utf-8")
+            self.assertEqual(
+                self.command._write_test_case(
+                    test_case,
+                    force=False,
+                    dry_run=False,
+                ),
+                "overwritten",
+            )
+            self.assertEqual(target.read_text(encoding="utf-8"), test_case.content)
+
+            # 6. Empty generated request skeletons can be refreshed safely.
             generated_skeleton = (
                 GENERATED_FILE_HEADER
                 + "class TestExample:\n"
-                + "    def get_request_setups(self):\n"
+                + "    def get_test_scenarios(self):\n"
                 + "        # Add only the route scenarios this callable needs.\n"
                 + "        return []\n"
             )
@@ -268,7 +293,7 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             )
             self.assertEqual(target.read_text(encoding="utf-8"), test_case.content)
 
-            # 6. The explicit force option replaces handwritten targets.
+            # 7. The explicit force option replaces handwritten targets.
             target.write_text("developer_work = True\n", encoding="utf-8")
             self.assertEqual(
                 self.command._write_test_case(test_case, force=True, dry_run=False),
@@ -288,3 +313,60 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
         # 2. Confirm the model source module remains the source of truth.
         self.assertEqual(Todo.__module__, "bloomerp.models.project_management.todo")
         self.assertIn(f"from {Todo.__module__} import Todo", todo_case.content)
+
+    def test_form_field_discovery_uses_the_form_field_base(self):
+        """
+        Use case: An app exposes a standalone Django form field.
+        Expected result: The generated skeleton uses the form-field test base.
+        """
+        generated = self.command._discover_form_fields(self.app_config)
+        text_editor_case = next(
+            case
+            for case in generated
+            if "TextEditorFormField" in case.content
+        )
+
+        self.assertEqual(
+            text_editor_case.target.relative_to(self.app_config.path),
+            Path("tests/form_fields/test_text_editor_form_field.py"),
+        )
+        self.assertIn("BloomerpFormFieldTestCase", text_editor_case.content)
+        self.assertIn("    FormFieldScenario,", text_editor_case.content)
+        self.assertIn("    ExpectedFormFieldException,", text_editor_case.content)
+        self.assertIn("field_class = TextEditorFormField", text_editor_case.content)
+        self.assertIn(
+            "def get_test_scenarios(self) -> "
+            "list[FormFieldScenario[TextEditorFormField]]:",
+            text_editor_case.content,
+        )
+
+    def test_widget_and_model_field_skeletons_include_scenario_stubs(self):
+        """
+        Use case: A developer generates widget and model-field test skeletons.
+        Expected result: Each skeleton imports and exposes its scenario type.
+        """
+        widget_case = next(
+            case
+            for case in self.command._discover_widgets(self.app_config)
+            if "AddressWidget" in case.content
+        )
+        model_field_case = next(
+            case
+            for case in self.command._discover_model_fields(self.app_config)
+            if "AddressField" in case.content
+        )
+
+        self.assertIn("    WidgetScenario,", widget_case.content)
+        self.assertIn("    WidgetOperation,", widget_case.content)
+        self.assertIn("    ExpectedWidgetException,", widget_case.content)
+        self.assertIn(
+            "def get_test_scenarios(self) -> list[WidgetScenario[AddressWidget]]:",
+            widget_case.content,
+        )
+        self.assertIn("    ModelFieldScenario,", model_field_case.content)
+        self.assertIn("    ExpectedModelFieldException,", model_field_case.content)
+        self.assertIn(
+            "def get_test_scenarios(self) -> "
+            "list[ModelFieldScenario[AddressField]]:",
+            model_field_case.content,
+        )

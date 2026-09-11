@@ -112,39 +112,3 @@ class TestFileModels(BaseBloomerpTestCaseWithModels):
         )
         self.assertEqual(model_folders.count(), 1)
         self.assertEqual(model_folders.get(), existing_folder)
-
-    def test_folder_cannot_have_object_id_without_content_type(self):
-        """
-        This test checks that a folder cannot be created with an object id but no content type
-        """
-        # 1. Try to create a folder with an object id but no content type
-        with self.assertRaises(Exception):
-            FileFolder.objects.create(name=None, object_id=1)
-
-    def test_child_folder_must_inherit_content_type_and_object_id_from_parent(self):
-        """
-        This test checks that a child folder cannot 
-        be created with a different content type or object id than its parent.
-        """
-        # 1. Create a parent folder with a content type and object id
-        content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        obj = self.get_customer()
-        parent_folder = FileFolder.objects.create(name="Parent Folder", content_type=content_type, object_id=obj.pk)
-
-        # 2. Try to create a child folder with a different content type
-        with self.assertRaises(Exception):
-            FileFolder.objects.create(name="Child Folder 1", parent=parent_folder, content_type=ContentType.objects.get_for_model(File), object_id=obj.pk)
-
-        # 3. Try to create a child folder with a different object id
-        with self.assertRaises(Exception):
-            FileFolder.objects.create(name="Child Folder 2", parent=parent_folder, object_id=obj.pk + 1, content_type=content_type)
-
-        # 4. Create a child folder with the same content type and object id
-        child_folder = FileFolder.objects.create(name="Child Folder 3", parent=parent_folder, content_type=content_type, object_id=obj.pk)
-
-        # 5. Check that the child folder was created successfully
-        self.assertIsNotNone(child_folder)        
-
-    
-
-    

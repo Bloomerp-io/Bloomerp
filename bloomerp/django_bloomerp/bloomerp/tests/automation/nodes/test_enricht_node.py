@@ -2,14 +2,14 @@
 
 
 from bloomerp.models.automation.workflow_node import WorkflowNode
-from bloomerp.tests.base.workflow_node_test_case import BloomerpWorkflowNodeTestCase, WorkflowNodeSimulation
+from bloomerp.tests.base.workflow_node_test_case import BloomerpWorkflowNodeTestCase, WorkflowNodeScenario
 
 class TestEnrichNode(BloomerpWorkflowNodeTestCase):
     node_id = "ENRICH_DATA"
     
     def get_simulations(self):
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Normal enrichment",
                 trigger_data={
                     "start" : "start"    
@@ -27,7 +27,7 @@ class TestEnrichNode(BloomerpWorkflowNodeTestCase):
                     "additional" : 123
                 }
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="Enrichment with no dictionary",
                 
             )

@@ -8,7 +8,7 @@ from bloomerp.automation.schema import (
 )
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
-    WorkflowNodeSimulation,
+    WorkflowNodeScenario,
 )
 
 
@@ -16,9 +16,9 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
     node_id = 'FILTER_OBJECTS'
     executor_class = FilterObjectsExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeSimulation]:
+    def get_simulations(self) -> list[WorkflowNodeScenario]:
         return [
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="empty result continues by default",
                 parameters={
                     "field": "status",
@@ -46,7 +46,7 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
                     ],
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="empty result continues when enabled",
                 parameters={
                     "field": "status",
@@ -57,7 +57,7 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
                 trigger_data=[{"status": "inactive"}],
                 expected_output=[],
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="empty result stops branch when disabled",
                 parameters={
                     "field": "status",
@@ -88,7 +88,7 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
                     ],
                 ),
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="non-empty result continues when enabled",
                 parameters={
                     "field": "status",
@@ -102,7 +102,7 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
                 ],
                 expected_output=[{"id": 1, "status": "active"}],
             ),
-            WorkflowNodeSimulation(
+            WorkflowNodeScenario(
                 name="non-empty result continues when empty handling is disabled",
                 parameters={
                     "field": "status",
@@ -116,4 +116,18 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
                 ],
                 expected_output=[{"id": 1, "status": "active"}],
             ),
+            WorkflowNodeScenario(
+                name="input.status works the same as status",
+                parameters={
+                    "field": "input.status",
+                    "operator": "exact",
+                    "value": "active",
+                    "continue_on_empty": False,
+                },
+                trigger_data=[
+                    {"id": 1, "status": "active"},
+                    {"id": 2, "status": "inactive"},
+                ],
+                expected_output=[{"id": 1, "status": "active"}],
+            )
         ]
