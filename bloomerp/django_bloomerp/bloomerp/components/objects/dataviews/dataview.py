@@ -153,10 +153,9 @@ def _build_data_view_query_state(
     )
     
     # Filter
-    filters = parse_filters(request.GET, Model)
+    filters = parse_filters(filter_querydict, model=Model)
     
-    if not manager.can_execute_filters(Model, filters):
-        raise PermissionError()
+    manager.validate_filters(Model, filters)
     
     filter_manager = ModelFilterManager(Model)
     queryset = filter_manager.apply(

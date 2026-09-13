@@ -30,16 +30,13 @@ class BloomerpHomeView(BaseWorkspaceView, TemplateView):
             accessible_models = UserPolicyManager(self.request.user).get_accessible_models(
                 BloomerpPermission.VIEW
             )
-            
             all_modules = module_registry.get_root_modules()
             accessible_modules = [
                 module for module in all_modules if any(
                     model in accessible_models for model in module_registry.get_models_for_module(module.id, include_descendants=True)
                 )
             ]
-            
             context["modules"] = accessible_modules
-
         return context
 
     def get_module_id(self) -> None:

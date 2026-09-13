@@ -1,5 +1,12 @@
 name="BloomERP"
 description="The official BloomERP project"
+schema_version=4
+
+[environment]
+
+[runtime]
+bloomerp_version="1.15.27"
+python_version="3.12"
 
 [django]
-installed_apps = ["bloomerp_modules"]
+installed_apps = ["bloomerp_modules", "debug_toolbar"]

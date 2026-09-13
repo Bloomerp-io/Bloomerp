@@ -103,7 +103,8 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
                         break
                     results.append(bool(result))
                 else:
-                    if any(results) if connector == "OR" else all(results):
+                    matches = any(results) if connector == "OR" else all(results)
+                    if matches:
                         return True
             return False
 

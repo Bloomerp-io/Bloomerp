@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.tests.base import BloomerpModelViewTestCase, RequestScenario
-from bloomerp.views.access_control.manage_permissions import (
+from bloomerp.views.access_control.create_policy import (
     CONTENT_TYPE_ID_KEY,
     GLOBAL_PERMISSIONS_KEY,
 )

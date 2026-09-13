@@ -136,7 +136,16 @@ class FilterFieldResolver:
                 result.append(FilterFieldGroup(name=group.name, fields=fields))
         return result
 
+    def resolve_dependencies(self, field_path: str) -> list[FilterField]:
+        """Return each traversed field using the same resolution as compilation."""
+        dependencies = []
+        self._resolve(field_path, dependencies)
+        return dependencies
+
     def resolve(self, field_path: str) -> tuple[FilterField, FilterExecutionTarget]:
+        return self._resolve(field_path, [])
+
+    def _resolve(self, field_path: str, dependencies: list[FilterField]) -> tuple[FilterField, FilterExecutionTarget]:
         """Return field metadata and its separate execution target."""
         if not isinstance(field_path, str) or not field_path or len(field_path) > 2048:
             raise ValidationError("Invalid field path")
@@ -163,6 +172,7 @@ class FilterFieldResolver:
             field_path=field.field, tile_id=tile, sql_context=sql_context,
         )
         current = field.model_copy(update={"field": root})
+        dependencies.append(current)
         suffix = field_path[len(root):]
         parts = suffix[2:].split("__") if suffix else []
         if len(parts) > 32 or any(not part for part in parts):
@@ -198,6 +208,7 @@ class FilterFieldResolver:
                 "label": child.label if child.field else part,
                 "context": context,
             })
+            dependencies.append(current)
         return current, target
 
 

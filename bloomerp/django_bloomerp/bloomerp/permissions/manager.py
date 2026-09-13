@@ -677,15 +677,92 @@ class UserPolicyManager:
                 
         return accessible_models
         
-    def can_execute_filters(self, model_or_content_type:Model|ContentType, filters:Filters) -> bool:
-        """Validates whether the user can execute the given filters
+    def validate_filters(self, model_or_content_type, filters: Filters) -> None:
+        """Authorize filter dependencies without modifying filters or querysets.
 
-        Args:
-            model_or_content_type (Model | ContentType): The model or content type
-            filters (Filters): The filters
+        Until execution can constrain related rows, traversals require explicit
+        unconditional related-row grants. Field access must cover every row
+        that can influence the predicate; a union of field IDs is insufficient.
         """
-        pass
-    
+        from django.core.exceptions import PermissionDenied
+        from bloomerp.filters.resolver import FilterFieldResolver
+        from bloomerp.permissions.compilers.base import BasePermissionCompiler
+
+        model, _ = resolve_model_and_content_type(model_or_content_type)
+        if self.is_anonymous or not self.has_global_permission(model, BloomerpPermission.VIEW):
+            raise PermissionDenied("Model view permission is required for filtering")
+        resolver = FilterFieldResolver.for_model(model)
+        superuser = getattr(self.user, "is_superuser", False)
+        grants_by_model = {}
+        checked_fields = set()
+        checked_relations = set()
+
+        def grants(source_model):
+            if source_model not in grants_by_model:
+                if not self.has_global_permission(source_model, BloomerpPermission.VIEW):
+                    raise PermissionDenied("Filtering references an inaccessible model")
+                requested = PolicyManager._qualify_permission_codenames(source_model, BloomerpPermission.VIEW)
+                grants_by_model[source_model] = [
+                    (rule, row_rule)
+                    for rule in self.get_access_rules(source_model, BloomerpPermission.VIEW)
+                    for row_rule in rule.row_permissions
+                    if BasePermissionCompiler.matches_requested_permissions(row_rule.permissions, requested, PermissionMatch.ANY)
+                    and not (row_rule.connector == "OR" and not row_rule.conditions)
+                ]
+            return grants_by_model[source_model]
+
+        def unconditional(row_rule):
+            return row_rule.connector == "AND" and not row_rule.conditions
+
+        def require_field(application_field, related):
+            key = (application_field.pk, related)
+            if key in checked_fields:
+                return
+            source_model = application_field.get_model()
+            requested = PolicyManager._qualify_permission_codenames(source_model, BloomerpPermission.VIEW)
+            coverage = []
+            for rule, row_rule in grants(source_model):
+                allowed = any(
+                    BasePermissionCompiler.matches_requested_permissions(
+                        rule.field_permissions.get(key, []), requested, PermissionMatch.ANY,
+                    )
+                    for key in (str(application_field.pk), application_field.field, "__all__")
+                )
+                if allowed and unconditional(row_rule):
+                    checked_fields.add(key)
+                    return
+                coverage.append(allowed)
+            if related or not coverage or not all(coverage):
+                raise PermissionDenied("Filtering requires field access across all rows that can influence the result")
+            checked_fields.add(key)
+
+        for group in filters:
+            for condition in group.conditions:
+                traversed_relation = False
+                for dependency in resolver.resolve_dependencies(condition.field_path):
+                    if superuser:
+                        continue
+                    application_field = dependency.context.application_field
+                    if application_field is None:
+                        raise PermissionDenied("Filter field dependencies cannot be authorized")
+                    require_field(application_field, related=traversed_relation)
+                    related_model = getattr(application_field._get_model_field(), "related_model", None)
+                    if related_model is not None:
+                        traversed_relation = True
+                    if related_model is not None and related_model not in checked_relations:
+                        if not any(unconditional(row_rule) for _, row_rule in grants(related_model)):
+                            raise PermissionDenied("Related-row filtering requires an unconditional view grant until scoped execution is supported")
+                        checked_relations.add(related_model)
+
+    def can_execute_filters(self, model_or_content_type, filters: Filters) -> bool:
+        """Compatibility boolean wrapper; malformed filters still raise errors."""
+        from django.core.exceptions import PermissionDenied
+        try:
+            self.validate_filters(model_or_content_type, filters)
+        except PermissionDenied:
+            return False
+        return True
+
     def get_accessible_sql_query(
         self,
         sql: str,

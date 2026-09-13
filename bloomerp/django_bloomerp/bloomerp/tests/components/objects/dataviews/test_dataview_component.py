@@ -170,6 +170,22 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 view_kwargs=kwargs,
                 expected=ExpectedResult(response_validators=self.contains_entries(customers.all(), fields=["country"])),
             ),
+            RequestScenario(
+                name="FILTERS: Filters still work with GET args",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params={
+                    "country__name" : "Country 1"
+                },
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.contains_entries(
+                            customers.filter(country__name="Country 1")
+                        )
+                    ]
+                )
+            )
+            
         ]
 
     @skip("TODO: Finish dataview parsing, permission validation, and filter compilation/application")

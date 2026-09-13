@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.permissions.legacy import editor_rule
 from bloomerp.router import router
-from bloomerp.views.access_control.manage_permissions import (
+from bloomerp.views.access_control.create_policy import (
     FIELD_POLICIES_KEY,
     FIELD_POLICY_NAME_KEY,
     GLOBAL_PERMISSIONS_KEY,
@@ -19,7 +19,7 @@ from bloomerp.views.access_control.manage_permissions import (
     POLICY_NAME_KEY,
     ROW_POLICY_NAME_KEY,
     ROW_POLICY_RULES_KEY,
-    ManageAccessControlForModelView,
+    CreatePolicyView,
 )
 
 @router.register(
@@ -29,9 +29,9 @@ from bloomerp.views.access_control.manage_permissions import (
     route_type="detail",
     models=Policy,
 )
-class UpdatePolicyView(ManageAccessControlForModelView):
+class UpdatePolicyView(CreatePolicyView):
     model = Policy
-    steps = ManageAccessControlForModelView.steps[1:]
+    steps = CreatePolicyView.steps[1:]
 
     def get_object(self) -> Policy:
         return get_object_or_404(self.model, pk=self.kwargs["pk"])
