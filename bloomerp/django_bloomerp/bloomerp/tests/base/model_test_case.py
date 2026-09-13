@@ -142,15 +142,14 @@ class BloomerpModelTestCase(TestCase):
             f"{sorted(configured_fields - output_columns)}",
         )
 
-        non_variable_filters = {
+        configured_filters = {
             filter_config.field
             for filter_config in tile.filters
-            if not filter_config.is_variable
         }
         self.assertFalse(
-            non_variable_filters - output_columns,
+            configured_filters - output_columns,
             "Analytics tile filters are missing from its SQL output: "
-            f"{sorted(non_variable_filters - output_columns)}",
+            f"{sorted(configured_filters - output_columns)}",
         )
 
     def get_configured_field_references(

@@ -48,10 +48,9 @@
                 </div>
             </c-ui.shortcut_tooltip>
 
-            <!--Applied filters-->
-            <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex gap-2" data-applied-filters-section></div>
-            <!--End applied filters-->
-
+            {% for filter in filters%}
+                {{ filter }}
+            {% endfor %}
         </div>
 
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">

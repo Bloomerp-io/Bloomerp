@@ -1,5 +1,6 @@
 import json
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
 import bleach
 from django import template
@@ -55,7 +56,16 @@ ACTIVITY_LOG_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
 @register.simple_tag
 def bloomerp_asset_version() -> str:
-    """Return a release-specific cache key for compiled Bloomerp assets."""
+    """Invalidate rebuilt development bundles without changing the release version."""
+    if settings.DEBUG:
+        from django.contrib.staticfiles import finders
+
+        entry = finders.find("bloomerp/js/dist/main.js")
+        if entry:
+            try:
+                return f"dev-{Path(entry).stat().st_mtime_ns}"
+            except FileNotFoundError:
+                pass  # The build may replace the entry between lookup and stat.
     try:
         return version("Bloomerp")
     except PackageNotFoundError:

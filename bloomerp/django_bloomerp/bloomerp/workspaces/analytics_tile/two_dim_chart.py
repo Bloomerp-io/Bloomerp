@@ -121,7 +121,7 @@ class AnalyticsTwoDimChartRenderer(BaseTileRenderer):
         if x_axis_field is None or not y_axis_fields:
             return "<p>Please add chart fields.</p>"
 
-        query = get_filtered_query(config, request.GET)
+        query = get_filtered_query(config, request.GET, request=request)
         chart_query = build_two_dim_chart_query(query, x_axis_field, y_axis_fields)
         data = SqlExecutor(request.user).execute_query(chart_query, paginate=False).to_dataframe()
 

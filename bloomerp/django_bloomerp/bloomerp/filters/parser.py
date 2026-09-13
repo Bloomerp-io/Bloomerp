@@ -31,7 +31,7 @@ def _items(args):
         yield from args.items()
 
 
-def parse_filters(args: Mapping[str, Any] | QueryDict, *, model: type[Model]) -> Filters:
+def parse_filters(args: Mapping[str, Any] | QueryDict, *, model: type[Model] | None = None, resolver: FilterFieldResolver | None = None) -> Filters:
     """Combine JSON groups and shorthand with implicit AND between groups.
 
     Repeated `filter` parameters each contribute their groups. Repeated shorthand
@@ -42,7 +42,7 @@ def parse_filters(args: Mapping[str, Any] | QueryDict, *, model: type[Model]) ->
     for key, value in _items(args):
         if key == "filter":
             groups.extend(deserialize_filters(value))
-    groups.extend(parse_shorthand_filters(args, model=model))
+    groups.extend(parse_shorthand_filters(args, model=model, resolver=resolver))
     return groups
 
 
@@ -99,14 +99,17 @@ def _resolve_parameter(resolver, key):
     raise ValidationError(f"Unknown filter field or lookup: {key!r}")
 
 
-def parse_shorthand_filters(args: Mapping[str, Any] | QueryDict, *, model: type[Model]) -> Filters:
+def parse_shorthand_filters(args: Mapping[str, Any] | QueryDict, *, model: type[Model] | None = None, resolver: FilterFieldResolver | None = None) -> Filters:
     """Resolve bare fields and registered lookup suffixes into one AND group.
 
     `first_name`, `first_name_eq`, and `first_name__exact` select the default
     equality lookup. Unknown parameters fail rather than silently dropping a
     constraint. Reserved controls are ignored; JSON can address those fields.
     """
-    resolver = FilterFieldResolver.for_model(model)
+    if resolver is None:
+        if model is None:
+            raise ValueError("Supply a model or field resolver")
+        resolver = FilterFieldResolver.for_model(model)
     conditions = []
     for key, value in _items(args):
         if key == "filter" or key in NON_FILTER_PARAMETERS:

@@ -29,10 +29,15 @@ def _combine(items, connector):
 
 
 def resolve_condition(
-    condition: FilterCondition, *, model: type[Model],
+    condition: FilterCondition, *, model: type[Model] | None = None,
+    resolver: FilterFieldResolver | None = None,
 ) -> tuple[FilterField, FilterExecutionTarget, BoundLookup, Any]:
     """Resolve structure and clean the value; callers handle authorization."""
-    field, target = FilterFieldResolver.for_model(model).resolve(condition.field_path)
+    if resolver is None:
+        if model is None:
+            raise ValueError("Supply a model or field resolver")
+        resolver = FilterFieldResolver.for_model(model)
+    field, target = resolver.resolve(condition.field_path)
     lookup = resolve_lookup(field, target, condition.lookup_id)
     if lookup.nested:
         raise ValidationError("A nested lookup cannot be the terminal condition")
@@ -172,3 +177,30 @@ def compile_sql_filters(
         clause=f"{quote(model._meta.db_table)}.{quote(model._meta.pk.column)} IN ({sql})",
         parameters=tuple(params),
     )
+
+
+def compile_sql_field_filters(filters: Filters, *, resolver: FilterFieldResolver) -> CompiledSQL:
+    """Compile configured result columns using the same lookup validation as models."""
+    def combine(items, connector):
+        if connector not in {"AND", "OR"}:
+            raise ValidationError("Invalid filter connector")
+        if not items:
+            return CompiledSQL(clause="TRUE" if connector == "AND" else "FALSE")
+        return CompiledSQL(
+            clause=(f" {connector} ").join(f"({item.clause})" for item in items),
+            parameters=tuple(value for item in items for value in item.parameters),
+        )
+
+    groups = []
+    for group in filters:
+        predicates = []
+        for condition in group.conditions:
+            _, target, lookup, value = resolve_condition(condition, resolver=resolver)
+            if target.backend != "sql" or target.sql_context is None:
+                raise ValidationError("Expected a configured SQL result column")
+            factory = lookup.get_sql_factory()
+            if factory is None:
+                raise ValidationError("Lookup does not support SQL filtering")
+            predicates.append(factory(target.sql_context, lookup.expressions[0], value))
+        groups.append(combine(predicates, group.connector))
+    return combine(groups, "AND")

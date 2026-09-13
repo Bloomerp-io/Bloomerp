@@ -9,7 +9,7 @@ from bloomerp.tests.base import (
 class TestCreatePolicyViewE2E(BloomerpE2ETestCase):
     """Tests class `CreatePolicyView` from `bloomerp/views/access_control/create_policy.py`."""
 
-    view_name = 'Create Policy'
+    view_name = 'add'
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
         # Add only the browser scenarios this view needs.

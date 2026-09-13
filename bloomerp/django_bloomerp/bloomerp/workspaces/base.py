@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from django.forms import Form
 from django.http import HttpRequest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import TYPE_CHECKING, Callable, Literal, Optional, Self, Type
 from django import forms
 from django.template.loader import render_to_string
@@ -39,6 +39,13 @@ class BaseTileConfig(BaseModel):
     name: str | None = None
     description: str | None = None
     icon: str | None = None
+    filter_shared_keys: dict[str, str | None] = Field(
+        default_factory=dict,
+        description="Workspace filter aliases by field name. Omitted fields share by name; null keeps a field tile-specific.",
+    )
+
+    def get_filter_shared_key(self, name):
+        return self.filter_shared_keys.get(name, name)
 
     @classmethod
     @abstractmethod

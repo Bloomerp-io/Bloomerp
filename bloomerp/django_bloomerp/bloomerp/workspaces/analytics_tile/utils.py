@@ -208,9 +208,6 @@ def analytics_tile_filter_field_factory(config:"AnalyticsTileConfig"):
     }
     fields = []
     for configured in config.filters:
-        if configured.is_variable:
-            # SQL template arguments are not result-column predicates.
-            continue
         field_type_id = types[to_primitive_field_type(configured.type)]
         field_type = FIELD_TYPE_REGISTRY.from_id(field_type_id)
         fields.append(FilterField(

@@ -313,7 +313,7 @@ class PreviewWorkspaceTile(TemplateView):
                 extra_context["field_opts_forms"] = field_opts_forms
                 
                 # Filter variables
-                extra_context["filter_variables"] = get_filters_from_query(output_table, config.query)
+                extra_context["available_filters"] = get_filters_from_query(output_table, config.query)
                 
             case "LINKS_TILE":
                 extra_context["link_builder_items"] = _build_link_builder_items(config.links)

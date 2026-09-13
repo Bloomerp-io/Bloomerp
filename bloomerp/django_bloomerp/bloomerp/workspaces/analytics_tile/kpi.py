@@ -173,7 +173,7 @@ class AnalyticsKpiRenderer(BaseTileRenderer):
     def render(cls, config: AnalyticsTileConfig, request):
         from bloomerp.workspaces.analytics_tile.model import get_filtered_query
         
-        query = get_filtered_query(config, request.GET)
+        query = get_filtered_query(config, request.GET, request=request)
         value_fields = config.fields.get("value") or []
         sub_value_fields = config.fields.get("sub_value") or []
         kpi_query, aggregated_fields = build_kpi_aggregation_query(

@@ -6,7 +6,8 @@ import WorkspaceTile from "./WorkspaceTile";
 import getGeneralModal from "@/utils/modals";
 import BaseWizard from "../BaseWizard";
 import { Drawer } from "../Drawer";
-import FilterContainer, { FilterEntriesContainer, getFiltersFromUrl } from "../Filters";
+import FilterContainer from "../filters/FilterContainer";
+import type { Filter, FilterScope } from "../filters/definition";
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
     private workspaceApplyFiltersHandler: ((event: Event) => void) | null = null;
@@ -14,14 +15,11 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     private tileResizeObserver: ResizeObserver | null = null;
 
     public override initialize(): void {
+        if (!this.element) return;
         super.initialize();
 
         this.workspaceApplyFiltersHandler = (event: Event) => this.applyWorkspaceFilters(event);
-        this.element
-            ?.querySelector<HTMLElement>("[data-workspace-apply-filters]")
-            ?.addEventListener("click", this.workspaceApplyFiltersHandler);
-
-        this.renderWorkspaceFilters();
+        this.element.addEventListener(FilterContainer.applyEvent, this.workspaceApplyFiltersHandler);
         this.setupTileResizeObserver();
         this.items.forEach((item) => {
             if (item.element) {
@@ -109,9 +107,8 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
 
     public override destroy(): void {
         if (this.workspaceApplyFiltersHandler) {
-            this.element
-                ?.querySelector<HTMLElement>("[data-workspace-apply-filters]")
-                ?.removeEventListener("click", this.workspaceApplyFiltersHandler);
+            this.element?.removeEventListener(FilterContainer.applyEvent, this.workspaceApplyFiltersHandler);
+            this.workspaceApplyFiltersHandler = null;
         }
 
         this.tileResizeObserver?.disconnect();
@@ -119,62 +116,19 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         super.destroy();
     }
 
-    private applyWorkspaceFilters(_event: Event): void {
-        const filters = this.getWorkspaceFilterContainer()?.getFilters() || [];
-        const nextParams = new URLSearchParams(this.workspaceFilterParams);
-        
-        filters.forEach((filter) => {
-            if (!filter.value || !filter.operator) return;
+    private applyWorkspaceFilters(event: Event): void {
+        const detail = (event as CustomEvent<FilterScope & { filters: Filter[] }>).detail;
+        if (detail?.scope !== "workspace" || detail.id !== this.element?.dataset.workspaceId) return;
 
-            const key = `${filter.field}__${filter.operator}`;
-            nextParams.delete(key);
-
-            if (Array.isArray(filter.value)) {
-                filter.value.forEach((value) => {
-                    if (value !== "") {
-                        nextParams.append(key, value);
-                    }
-                });
-                return;
-            }
-
-            nextParams.append(key, filter.value.toString());
-        });
-
-        
-        nextParams.delete("page");
-        this.workspaceFilterParams = nextParams;
-        this.syncWorkspaceUrl();
-        this.renderWorkspaceFilters();
-        void this.reloadWorkspaceTiles();
-        this.resetWorkspaceFilterSection();
-    }
-
-    private renderWorkspaceFilters(): void {
-        const filterSection = this.element?.querySelector<HTMLElement>("[data-layout-header-section-2]");
-        if (!filterSection) return;
-
-        const filters = getFiltersFromUrl(this.workspaceFilterParams);
-        if (filters.length === 0) {
-            filterSection.innerHTML = "";
-            return;
+        event.stopPropagation();
+        if (detail.filters.length) {
+            this.workspaceFilterParams.set("filter", JSON.stringify(detail.filters));
+        } else {
+            this.workspaceFilterParams.delete("filter");
         }
-
-        const filterUIContainer = new FilterEntriesContainer(
-            filterSection,
-            (entry) => this.removeWorkspaceFilter(entry.getFilterKey())
-        );
-        filterUIContainer.setFilters(filters);
-        filterUIContainer.render();
-    }
-
-    private removeWorkspaceFilter(filterKey: string): void {
-        this.workspaceFilterParams.delete(filterKey);
         this.workspaceFilterParams.delete("page");
         this.syncWorkspaceUrl();
-        this.renderWorkspaceFilters();
         void this.reloadWorkspaceTiles();
-        this.resetWorkspaceFilterSection();
     }
 
     private async reloadWorkspaceTiles(): Promise<void> {
@@ -238,6 +192,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             values[key] = value;
         });
 
+        values.workspace_id = this.element?.dataset.workspaceId ?? "";
         return values;
     }
 
@@ -245,30 +200,6 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         const browserUrl = new URL(window.location.href);
         browserUrl.search = this.workspaceFilterParams.toString();
         window.history.replaceState(window.history.state, "", `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`);
-    }
-
-    private resetWorkspaceFilterSection(): void {
-        const workspaceId = this.element?.dataset.workspaceId;
-        if (!workspaceId) return;
-
-        const target = document.getElementById(`workspace-filter-section-${workspaceId}`);
-        if (!target) return;
-
-        htmx.ajax("get", `/components/workspaces/${workspaceId}/filters/init/`, {
-            target,
-            swap: "innerHTML",
-        });
-    }
-
-    private getWorkspaceFilterContainer(): FilterContainer | null {
-        const workspaceId = this.element?.dataset.workspaceId;
-        if (!workspaceId) return null;
-
-        const el = document.getElementById(`workspace-filter-container-${workspaceId}`) as HTMLElement | null;
-        
-        if (!el) return null;
-
-        return getComponent(el) as FilterContainer;
     }
 
     protected override getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; workspace_id: string | null } {

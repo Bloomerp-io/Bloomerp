@@ -14,6 +14,13 @@ import { insertSkeleton } from "@/utils/animations";
 
 export class DataViewContainer extends BaseComponent {
 
+    private unifiedFilterHandler = (event: Event): void => {
+        const detail = (event as CustomEvent).detail;
+        if (detail?.scope !== 'model' || String(detail.id) !== this.contentTypeId) return;
+        event.stopPropagation();
+        this.filter({ filter: JSON.stringify(detail.filters) }, false);
+    };
+
     private target:HTMLElement|null = null;
     private baseUrl:string|null;
     private fullPath:string|null; // Includes query parameters
@@ -44,6 +51,7 @@ export class DataViewContainer extends BaseComponent {
     ]);
 
     public initialize(): void {
+        this.element?.addEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
         this.baseUrl = this.element?.dataset.baseUrl;
         this.fullPath = this.element?.dataset.url;
         this.contentTypeId = this.element?.dataset.contentTypeId ?? null;
@@ -292,7 +300,7 @@ export class DataViewContainer extends BaseComponent {
         const filters = (url ? getFiltersFromUrl(url.searchParams) : []).filter(
             (filter) => {
                 const key = filter.getFilterKey();
-                return !defaultFilterKeys.has(key) && !hiddenFilterSet.has(key);
+                return key !== 'filter' && !defaultFilterKeys.has(key) && !hiddenFilterSet.has(key);
             }
         );
 
@@ -886,6 +894,7 @@ export class DataViewContainer extends BaseComponent {
     }
 
     public destroy(): void {
+        this.element?.removeEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
         if (this.afterSwapHandler) {
             this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
         }

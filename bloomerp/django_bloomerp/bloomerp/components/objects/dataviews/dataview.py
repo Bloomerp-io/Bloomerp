@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from django import forms
 from django.shortcuts import render
@@ -6,6 +7,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.core.exceptions import FieldDoesNotExist
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
+from bloomerp.filters.definition import Filters
 from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.filters.parser import parse_filters
 from bloomerp.models.definition import (
@@ -77,6 +79,7 @@ class DataViewQueryState:
     renderer_context: dict
     count: int = 0
     reserved_params: DataviewReservedQueryParams | None = None
+    filters: Optional[Filters] = None
 
 
 def _build_data_view_query_state(
@@ -152,7 +155,6 @@ def _build_data_view_query_state(
         _normalize_default_filters(preference.default_filters or {}),
     )
     
-    # Filter
     filters = parse_filters(filter_querydict, model=Model)
     
     manager.validate_filters(Model, filters)
@@ -187,7 +189,8 @@ def _build_data_view_query_state(
         query=query,
         renderer_context=renderer_context,
         count=queryset.count(),
-        reserved_params=DataviewReservedQueryParams(request)
+        reserved_params=DataviewReservedQueryParams(request),
+        filters=filters
     )
 
 
@@ -580,6 +583,7 @@ def dataview(
         'count' : state.count,
         'before_data_view': before_data_view,
         'is_data_section_request': is_data_section_request,
+        'filters' : state.filters
     }
     context.update(state.renderer_context)
     context["rendered_dataview_actions"] = _render_dataview_actions(

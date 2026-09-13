@@ -379,6 +379,7 @@ def pcs_policy_details(request: HttpRequest, view, orchestrator: BaseStateOrches
     name="Create Policy",
     description="Create an access control policy",
     override=True,
+    url_name="add"
 )
 class CreatePolicyView(WizardMixin, BaseBloomerpView, TemplateView):
     template_name = "views/base_wizard.html"

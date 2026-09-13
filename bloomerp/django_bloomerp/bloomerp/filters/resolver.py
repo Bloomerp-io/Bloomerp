@@ -4,9 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Literal
 
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import FieldDoesNotExist, PermissionDenied, ValidationError
 from django.db.models import Expression, F, Model
 from django.db.models.fields.json import KeyTransform
+from django.utils.translation import gettext as _
 
 from bloomerp.filters.definition import FilterField, FilterFieldGroup
 from bloomerp.lookups.definition import BoundLookup, SQLLookupContext
@@ -40,17 +41,25 @@ class FilterFieldResolver:
 
     UI callers use for_user(). Trusted policy compilation uses for_model() to
     resolve structural metadata without recursively evaluating field policies.
-    Paths use Django's __ separator. Workspace roots are tile_<id>:<field>.
+    Paths use Django's __ separator. Workspace roots are shared:<key> or
+    tile_<id>:<field>. Execution consumers expand shared paths with resolve_all().
     """
 
-    def __init__(self, *, model=None, workspace=None, policy_manager=None):
-        if (model is None) == (workspace is None):
-            raise ValueError("Supply exactly one model or workspace")
+    def __init__(self, *, model=None, workspace=None, fields=None, policy_manager=None):
+        if sum(value is not None for value in (model, workspace, fields)) != 1:
+            raise ValueError("Supply exactly one model, workspace, or field collection")
         self.model = model
         self.workspace = workspace
         self.policy_manager = policy_manager
         self._allowed_fields = {}
-        self._roots = None
+        self._roots = [("Fields", field, None) for field in fields] if fields is not None else None
+        self._shared_keys = {}
+        self._shared = None
+
+    @classmethod
+    def for_fields(cls, fields):
+        """Resolve configured result columns without a Django model."""
+        return cls(fields=fields)
 
     @classmethod
     def for_model(cls, model):
@@ -106,7 +115,12 @@ class FilterFieldResolver:
         else:
             for tile in self.workspace.get_tiles():
                 definition = tile.get_tile_type_definition()
-                for field in definition.filter_fields_factory(tile.get_config_object()):
+                config = tile.get_config_object()
+                for field in definition.filter_fields_factory(config):
+                    key = config.get_filter_shared_key(field.field)
+                    if key is not None and (not key or ":" in key):
+                        raise ValidationError("Shared filter keys must be nonempty names without :")
+                    self._shared_keys[(str(tile.pk), field.field)] = key
                     roots.append((str(tile.title) if hasattr(tile, "title") else str(tile), field, str(tile.pk)))
         self._roots = [(group, field, tile) for group, field, tile in roots if self._can_access(field)]
         return self._roots
@@ -115,13 +129,98 @@ class FilterFieldResolver:
         if bool(field_path) != bool(lookup_id):
             raise ValidationError("Nested discovery requires field_path and lookup_id")
         if field_path:
-            parent, target = self.resolve(field_path)
-            return self._children(parent, target, lookup_id)
+            resolved = self.resolve_all(field_path)
+            child_groups = [self._children(parent, target, lookup_id) for parent, target in resolved]
+            if len(child_groups) == 1:
+                return child_groups[0]
+            common = None
+            for groups in child_groups:
+                keys = {(field.field, self._sharing_signature(field)) for group in groups for field in group.fields}
+                common = keys if common is None else common & keys
+            return [FilterFieldGroup(name=group.name, fields=fields)
+                    for group in child_groups[0]
+                    if (fields := [field for field in group.fields if (field.field, self._sharing_signature(field)) in common])]
         groups = {}
+        shared = self._shared_fields()
+        shared_members = {(tile, field.field) for members in shared.values() for _, field, tile in members}
+        if shared:
+            groups[_("Shared fields")] = [
+                self._shared_editor_field(key, members)
+                for key, members in shared.items()
+            ]
         for name, field, tile in self._root_fields():
+            if (tile, field.field) in shared_members:
+                continue
             path = f"tile_{tile}:{field.field}" if tile else field.field
             groups.setdefault(name, []).append(field.model_copy(update={"field": path}))
         return [FilterFieldGroup(name=name, fields=fields) for name, fields in groups.items()]
+
+    @staticmethod
+    def _sharing_signature(field):
+        """Configuration checks belong to workspace resolution, not FieldType."""
+        application_field = field.context.application_field
+        related_model = None
+        choices = None
+        if application_field is not None:
+            related_model = application_field.related_model_id
+            try:
+                model_field = application_field._get_model_field()
+            except FieldDoesNotExist:
+                # Virtual fields have no configuration we can safely compare.
+                return field.context.field_type.id, ("virtual", application_field.pk), None
+            if getattr(model_field, "choices", None):
+                choices = tuple((str(value), str(label)) for value, label in model_field.flatchoices)
+        return field.context.field_type.id, related_model, choices
+
+    def _shared_fields(self):
+        if self._shared is not None:
+            return self._shared
+        candidates = {}
+        for member in self._root_fields():
+            _, field, tile = member
+            if tile is None:
+                continue
+            key = self._shared_keys.get((tile, field.field), field.field)
+            if key is not None:
+                candidates.setdefault(key, []).append(member)
+        self._shared = {}
+        for key, members in candidates.items():
+            # A shared identity must resolve to exactly one field per tile.
+            if len(members) < 2 or len({tile for _, _, tile in members}) != len(members):
+                continue
+            if len({self._sharing_signature(field) for _, field, _ in members}) == 1:
+                self._shared[key] = members
+        return self._shared
+
+    def _shared_editor_field(self, key, members):
+        field = members[0][1]
+        _, related_model, choices = self._sharing_signature(field)
+        context = field.context
+        if related_model is None and choices is None:
+            context = replace(context, application_field=None)
+        return field.model_copy(update={"field": f"shared:{key}", "label": key.replace("_", " ").title(), "context": context})
+
+    def resolve_all(self, field_path: str) -> list[tuple[FilterField, FilterExecutionTarget]]:
+        """Resolve a logical workspace field to every participating tile target."""
+        if not isinstance(field_path, str) or not field_path.startswith("shared:"):
+            return [self._resolve(field_path, [])]
+        path = field_path[7:]
+        matches = [key for key in self._shared_fields() if path == key or path.startswith(key + "__")]
+        if not matches:
+            raise ValidationError("Shared field is unknown or inaccessible")
+        key = max(matches, key=len)
+        suffix = path[len(key):]
+        members = self._shared_fields()[key]
+        results = [self._resolve(f"tile_{tile}:{field.field}" + suffix, [])
+                   for _, field, tile in members]
+        if len({self._sharing_signature(field) for field, _ in results}) != 1:
+            raise ValidationError("Nested shared fields have incompatible configurations")
+        return results
+
+    def resolve_for_tile(self, field_path: str, tile_id: str):
+        """Return this tile's target, or None when the field does not apply."""
+        return next((result for result in self.resolve_all(field_path)
+                     if result[1].tile_id == str(tile_id)), None)
 
     def _children(self, parent: FilterField, target: FilterExecutionTarget, lookup_id):
         bound = resolve_lookup(parent, target, lookup_id)
@@ -139,11 +238,22 @@ class FilterFieldResolver:
     def resolve_dependencies(self, field_path: str) -> list[FilterField]:
         """Return each traversed field using the same resolution as compilation."""
         dependencies = []
-        self._resolve(field_path, dependencies)
+        for field, target in self.resolve_all(field_path):
+            path = f"tile_{target.tile_id}:{target.field_path}" if target.tile_id else field_path
+            self._resolve(path, dependencies)
         return dependencies
 
     def resolve(self, field_path: str) -> tuple[FilterField, FilterExecutionTarget]:
-        return self._resolve(field_path, [])
+        results = self.resolve_all(field_path)
+        if not field_path.startswith("shared:"):
+            return results[0]
+        # Discovery/editor callers use the most restrictive backend capability.
+        field, target = next((item for item in results if item[1].backend == "sql"), results[0])
+        context = field.context
+        _, related_model, choices = self._sharing_signature(field)
+        if related_model is None and choices is None:
+            context = replace(context, application_field=None)
+        return field.model_copy(update={"field": field_path, "context": context}), target
 
     def _resolve(self, field_path: str, dependencies: list[FilterField]) -> tuple[FilterField, FilterExecutionTarget]:
         """Return field metadata and its separate execution target."""
@@ -214,3 +324,32 @@ class FilterFieldResolver:
 
 def resolve_filter_field(*, scope, identifier, field_path, user):
     return FilterFieldResolver.for_user(scope, identifier, user).resolve(field_path)
+
+
+def filters_for_tile(filters, *, tile_id, resolver=None):
+    """Translate workspace identities to local paths, preserving applicable groups."""
+    from bloomerp.filters.definition import Filter
+
+    groups = []
+    for group in filters:
+        conditions = []
+        for condition in group.conditions:
+            path = condition.field_path
+            if path.startswith("shared:") or (path.startswith("tile_") and ":" in path):
+                if not tile_id:
+                    raise ValidationError("Workspace filters require a tile id")
+                if resolver is not None:
+                    resolved = resolver.resolve_for_tile(path, str(tile_id))
+                    if resolved is None:
+                        continue
+                    path = resolved[1].field_path
+                elif path.startswith(f"tile_{tile_id}:"):
+                    path = path.split(":", 1)[1]
+                elif path.startswith("tile_"):
+                    continue
+                else:
+                    raise ValidationError("Shared filters require a workspace resolver")
+            conditions.append(condition.model_copy(update={"field_path": path}))
+        if conditions or not group.conditions:
+            groups.append(Filter(connector=group.connector, conditions=conditions))
+    return groups

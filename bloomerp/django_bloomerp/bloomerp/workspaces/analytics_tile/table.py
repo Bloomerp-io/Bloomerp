@@ -119,7 +119,7 @@ class AnalyticsTableRenderer(BaseTileRenderer):
         max_cols = max(1, _to_int(request.GET.get("max_cols", 4), 4))
         
         # Get the query
-        query = get_filtered_query(config, request.GET)
+        query = get_filtered_query(config, request.GET, request=request)
 
         # Get the data
         sql_response = SqlExecutor(request.user).execute_query(

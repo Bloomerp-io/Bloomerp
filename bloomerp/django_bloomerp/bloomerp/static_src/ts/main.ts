@@ -21,6 +21,7 @@ import { CardView } from './components/data_view_components/CardView';
 import { CardViewCard } from './components/data_view_components/CardView';
 import { PermissionsTable } from './components/PermissionsTable';
 import FilterContainer from './components/Filters';
+import UnifiedFilterContainer from './components/filters/FilterContainer';
 import WebsiteBuilder from './components/WebsiteBuilder';
 import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
@@ -119,6 +120,7 @@ registerComponent('permissions-table', PermissionsTable)
 
 // Filter container
 registerComponent('filter-container', FilterContainer)
+registerComponent('unified-filter-container', UnifiedFilterContainer)
 
 // Website builder
 registerComponent('website-builder', WebsiteBuilder)

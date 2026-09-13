@@ -64,7 +64,7 @@ class TestWorkspaceViewE2E(BaseE2ETestCase):
                     AnalyticsTileFilter(
                         field="title",
                         type="text",
-                        is_variable=False,
+
                     )
                 ]
             ).model_dump(),
