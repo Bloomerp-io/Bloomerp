@@ -195,4 +195,26 @@ def get_formatter_choices(field_type: TileFieldType | str | None = None) -> list
 
 
 def analytics_tile_filter_field_factory(config:"AnalyticsTileConfig"):
-    config.filters
+    from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+    from bloomerp.filters.definition import FilterField
+    from bloomerp.lookups.definition import FilterFieldContext
+
+    types = {
+        TileFieldType.TEXT: "CharField",
+        TileFieldType.NUMERIC: "DecimalField",
+        TileFieldType.BOOL: "BooleanField",
+        TileFieldType.DATE: "DateField",
+        TileFieldType.DATETIME: "DateTimeField",
+    }
+    fields = []
+    for configured in config.filters:
+        if configured.is_variable:
+            # SQL template arguments are not result-column predicates.
+            continue
+        field_type_id = types[to_primitive_field_type(configured.type)]
+        field_type = FIELD_TYPE_REGISTRY.from_id(field_type_id)
+        fields.append(FilterField(
+            field=configured.field, label=configured.field,
+            context=FilterFieldContext(field_type=field_type),
+        ))
+    return fields

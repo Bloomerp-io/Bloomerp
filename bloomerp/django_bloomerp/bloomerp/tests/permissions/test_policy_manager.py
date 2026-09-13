@@ -92,9 +92,8 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
         stored_rule = RowPolicyRuleContent.model_validate(row_rule.rule)
         self.assertEqual(stored_rule.connector, "AND")
         self.assertEqual(len(stored_rule.conditions), 1)
-        self.assertEqual(stored_rule.conditions[0].application_field_id, self.first_name_field.pk)
-        self.assertEqual(stored_rule.conditions[0].field, "first_name")
-        self.assertEqual(stored_rule.conditions[0].operator, lookups.EQUALS.id)
+        self.assertEqual(stored_rule.conditions[0].field_path, "first_name")
+        self.assertEqual(stored_rule.conditions[0].lookup_id, lookups.EQUALS.id)
         self.assertEqual(stored_rule.conditions[0].value, "John")
 
         # 5. Check that field names were resolved to ApplicationField IDs

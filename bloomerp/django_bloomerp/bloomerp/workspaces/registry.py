@@ -12,7 +12,8 @@ from bloomerp.workspaces.base import TileTypeDefinition
 from bloomerp.workspaces.canvas_tile.model import CanvasTileConfig
 from bloomerp.workspaces.canvas_tile.render import CanvasTileRenderer
 from bloomerp.workspaces.dataview_tile.form import DataViewTileForm
-from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
+from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig, dataview_tile_filter_fields_factory
+from bloomerp.workspaces.analytics_tile.utils import analytics_tile_filter_field_factory
 from bloomerp.workspaces.dataview_tile.render import DataViewTileRenderer
 from bloomerp.workspaces.form_tile.model import FormTileConfig, FormTileForm
 from bloomerp.workspaces.form_tile.render import FormTileRenderer
@@ -47,6 +48,7 @@ TILE_TYPE_REGISTRY.register(
         icon="fa-chart-line",
         form_cls=None, # TODO: Implement form for analytics tile configuration
         model=AnalyticsTileConfig,
+        filter_fields_factory=analytics_tile_filter_field_factory,
         render_cls=AnalyticsTileRenderer
     )
 )
@@ -93,6 +95,7 @@ TILE_TYPE_REGISTRY.register(
         form_cls=DataViewTileForm,
         model=DataViewTileConfig,
         render_cls=DataViewTileRenderer,
+        filter_fields_factory=dataview_tile_filter_fields_factory,
     )
 )
 

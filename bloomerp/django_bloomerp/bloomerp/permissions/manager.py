@@ -4,9 +4,10 @@ from django.apps import apps
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
-from django.db.models import BooleanField, Case, IntegerField, Max, Value, When
+from django.db.models import BooleanField, Case, IntegerField, Max, Model, Value, When
 from django.db.models.query import QuerySet
 
+from bloomerp.filters.definition import Filters
 from bloomerp.models.access_control import row_policy
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.access_control.policy import Policy
@@ -31,7 +32,6 @@ from bloomerp.permissions.definition import (
     BloomerpPermission,
     PermissionMatch,
     PermissionScope,
-    RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
 from bloomerp.utils.models import resolve_model_and_content_type
@@ -677,7 +677,15 @@ class UserPolicyManager:
                 
         return accessible_models
         
-        
+    def can_execute_filters(self, model_or_content_type:Model|ContentType, filters:Filters) -> bool:
+        """Validates whether the user can execute the given filters
+
+        Args:
+            model_or_content_type (Model | ContentType): The model or content type
+            filters (Filters): The filters
+        """
+        pass
+    
     def get_accessible_sql_query(
         self,
         sql: str,
@@ -735,6 +743,7 @@ class UserPolicyManager:
         )
         return evaluator.matches(candidate)
 
+    
 
 class PolicyManager:
     @staticmethod
@@ -793,52 +802,20 @@ class PolicyManager:
         if not isinstance(rule, RowPolicyRuleContent):
             rule = RowPolicyRuleContent.model_validate(rule)
 
-        conditions: list[RowPolicyRuleCondition] = []
+        if rule._legacy_content_type_ids - {content_type.pk}:
+            raise ValueError("Field belongs to a different content type")
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
+        resolver = FilterFieldResolver.for_model(content_type.model_class())
         for condition in rule.conditions:
-            application_field = None
-            application_field_id = condition.application_field_id
-
-            if application_field_id == "__all__" or condition.field == "__all__":
-                application_field_id = "__all__"
-            elif application_field_id not in (None, ""):
-                try:
-                    application_field = ApplicationField.objects.get(pk=application_field_id)
-                except (ApplicationField.DoesNotExist, ValueError, TypeError) as exc:
-                    raise ValueError(
-                        f"Unknown application field id '{application_field_id}'"
-                    ) from exc
-                if application_field.content_type_id != content_type.id:
-                    raise ValueError(
-                        f"Field '{application_field.field}' belongs to a different content type"
-                    )
-            else:
-                field_name = str(condition.field or "").split("__", 1)[0]
-                application_field = ApplicationField.resolve_for_content_type(
-                    content_type,
-                    field_name,
-                )
-                application_field_id = application_field.pk
-
-            if (
-                application_field is not None
-                and condition.field
-                and "__" not in condition.field
-                and condition.field != application_field.field
-            ):
-                raise ValueError(
-                    f"Field name '{condition.field}' does not match application field "
-                    f"'{application_field.field}'"
-                )
-
-            conditions.append(
-                condition.model_copy(update={"application_field_id": application_field_id})
-            )
-
-        return RowPolicyRuleContent(
-            connector=rule.connector,
-            conditions=conditions,
-            permissions=rule.permissions,
-        ).model_dump(exclude={"permissions"}, exclude_none=True)
+            try:
+                field, target = resolver.resolve(condition.field_path)
+            except DjangoValidationError as exc:
+                raise ValueError(f"Unknown field '{condition.field_path}'") from exc
+            lookup = resolve_lookup(field, target, condition.lookup_id)
+            if lookup.nested:
+                raise ValueError("A row condition requires a terminal lookup")
+        return rule.model_dump(exclude={"permissions"}, exclude_none=True)
 
     @classmethod
     @transaction.atomic

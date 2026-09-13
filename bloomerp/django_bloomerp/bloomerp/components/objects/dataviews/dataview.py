@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.core.exceptions import FieldDoesNotExist
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.filters.manager import ModelFilterManager
+from bloomerp.filters.parser import parse_filters
 from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
@@ -52,8 +53,6 @@ class DataviewReservedQueryParams:
         self.component_id = request.GET.get(self.component_id)
         
         
-
-
 # -----------------------------------
 # Filter helpers
 # -----------------------------------
@@ -106,10 +105,12 @@ def _build_data_view_query_state(
 
     # Use an explicitly scoped queryset when embedding a data view. Otherwise,
     # apply the user's standard row-level view permissions.
+    manager = UserPolicyManager(request.user)
+    
     queryset = (
         base_queryset
         if base_queryset is not None
-        else UserPolicyManager(request.user).get_queryset(
+        else manager.get_queryset(
             Model,
             BloomerpPermission.VIEW,
         )
@@ -151,11 +152,18 @@ def _build_data_view_query_state(
         _normalize_default_filters(preference.default_filters or {}),
     )
     
+    # Filter
+    filters = parse_filters(request.GET, Model)
+    
+    if not manager.can_execute_filters(Model, filters):
+        raise PermissionError()
+    
     filter_manager = ModelFilterManager(Model)
-    queryset = filter_manager.filter(
-        request.GET,
-        queryset,
+    queryset = filter_manager.apply(
+        filters,
+        queryset
     )
+    
     queryset = _select_related_rendered_relations(
         queryset,
         dataview_render_fields + ([avatar_field] if avatar_field else []),

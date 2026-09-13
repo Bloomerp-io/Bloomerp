@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Literal, Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
+
+from bloomerp.filters.definition import Filter, FilterCondition
 
 
 class PermissionMatch(Enum):
@@ -101,6 +103,7 @@ class BloomerpPermission(Enum):
 
 
 class RowPolicyRuleCondition(BaseModel):
+    """Legacy input adapter; new code should construct FilterCondition instead."""
     application_field_id: Optional[int | str] = None
     operator: Optional[str] = None
     value: Optional[Any] = None
@@ -121,18 +124,52 @@ class RowPolicyRuleCondition(BaseModel):
         return self
 
 
-class RowPolicyRuleContent(BaseModel):
-    connector: Literal["AND", "OR"] = "AND"
-    conditions: list[RowPolicyRuleCondition]
-    permissions: list[BloomerpPermission | str] = Field(default_factory=list)
+class RowPolicyRuleContent(Filter):
+    """A shared filter predicate with the grants that it enables.
 
-    @field_validator("conditions")
+    Empty AND/OR groups have exactly the same semantics as ordinary filters.
+    Legacy condition objects are accepted only as migration input.
+    """
+    connector: Literal["AND", "OR"] = "AND"
+    permissions: list[BloomerpPermission | str] = Field(default_factory=list)
+    _legacy_content_type_ids: set[int] = PrivateAttr(default_factory=set)
+
+    @model_validator(mode="wrap")
     @classmethod
-    def validate_conditions(cls, conditions):
-        if not conditions:
-            raise ValueError("At least one condition is required")
-        return conditions
-    
+    def normalize_legacy_conditions(cls, data, handler):
+        from bloomerp.permissions.legacy import normalize_condition
+
+        if isinstance(data, cls):
+            return handler(data)
+        normalized = dict(data)
+        connector = normalized.get("connector", "AND")
+        if connector not in {"AND", "OR"}:
+            raise ValueError("Invalid filter connector")
+        # Read rules saved during the earlier draft; never serialize this flag.
+        old_match_all = normalized.pop("match_all", False)
+        if not isinstance(old_match_all, bool):
+            raise ValueError("Invalid legacy match_all flag")
+        if old_match_all and normalized.get("conditions"):
+            raise ValueError("An unconditional grant cannot also contain conditions")
+        conditions, scopes, unconditional = [], set(), old_match_all
+        for condition in normalized.get("conditions", []):
+            condition, scope = normalize_condition(condition)
+            if scope is not None:
+                scopes.add(scope)
+            if condition is None:
+                unconditional = True
+            else:
+                conditions.append(condition)
+        if unconditional:
+            if connector == "OR" and conditions:
+                raise ValueError("Rewrite mixed legacy __all__ OR rules as an explicit empty AND group")
+            if not conditions:
+                normalized["connector"] = "AND"
+        normalized["conditions"] = conditions
+        result = handler(normalized)
+        result._legacy_content_type_ids = scopes
+        return result
+
 
 class AccessRule(BaseModel):
     row_permissions: list[RowPolicyRuleContent] = Field(default_factory=list)

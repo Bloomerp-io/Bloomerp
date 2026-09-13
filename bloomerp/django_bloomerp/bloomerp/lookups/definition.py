@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Type
 
 from django import forms
 from django.db.models import Expression, Q, Model
+
 
 
 
@@ -63,28 +63,33 @@ PythonEvaluator = Callable[[Any, Any], bool]
 class FilterFieldContext:
     """Resolved metadata for a model or analytics lookup value editor.
 
-    Model/dataview resolvers retain the application field. Analytics resolvers
-    can supply a configured form field, including its widget and validators.
+    Model/dataview fields retain their application field. Analytics fields use
+    the field type's standalone form and widget factories.
     This context is internal metadata, not the serialized filter payload.
     """
-
     field_type: FieldTypeDefinition
     application_field: ApplicationField | None = None
-    form_field: forms.Field | None = None
-    choices: tuple[tuple[Any, str], ...] = ()
-    related_model: type[Model] | None = None
 
     def get_form_field(self) -> forms.Field:
         """Build a fresh default editor; lookup-specific factories may override it."""
-        if self.form_field is not None:
-            return deepcopy(self.form_field)
         if self.application_field is not None:
             form_field = self.application_field.get_form_field()
             if form_field is not None:
                 return form_field
-        if self.choices:
-            return forms.ChoiceField(choices=self.choices)
-        return forms.CharField()
+        
+        from bloomerp.field_types.registry import FieldContext
+
+        context = FieldContext(attrs={"class": "input w-full"})
+        factory = self.field_type.form_factory
+        form_field = factory(context, None) if factory else None
+        if form_field is None:
+            form_field = forms.CharField()
+        if self.field_type.widget_factory is not None:
+            form_field.widget = self.field_type.widget_factory(context)
+        else:
+            form_field.widget.attrs.update(context.attrs)
+        return form_field
+
 
 
 LookupFormFactory = Callable[[FilterFieldContext], forms.Field]

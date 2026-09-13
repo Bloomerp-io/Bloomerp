@@ -1,5 +1,6 @@
 import json
 
+from django import forms
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
@@ -19,6 +20,9 @@ from bloomerp.views.mixins.wizard_mixin import BaseStateOrchestrator, WizardMixi
 from bloomerp.views.mixins.wizard_mixin import WizardError
 from pydantic import ValidationError as PydanticValidationError
 
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+
+CONTENT_TYPE_ID_KEY = "content_type_id"
 GLOBAL_PERMISSIONS_KEY = "global_permissions"
 ROW_POLICY_NAME_KEY = "row_policy_name"
 ROW_POLICY_RULES_KEY = "row_policy_rules"
@@ -27,6 +31,62 @@ FIELD_POLICIES_KEY = "field_policies"
 POLICY_NAME_KEY = "policy_name"
 POLICY_DESCRIPTION_KEY = "policy_description"
 
+
+class SelectContentTypeForm(forms.Form):
+    content_type = forms.ModelChoiceField(
+        queryset=ContentType.objects.all(),
+        label=_("Content type"),
+        widget=ForeignFieldWidget(
+            model=ContentType,
+            attrs={"class": "input"},
+        ),
+    )
+
+    def clean_content_type(self) -> ContentType:
+        content_type = self.cleaned_data["content_type"]
+        if content_type.model_class() is None:
+            raise forms.ValidationError(
+                _("Please select a content type with an installed model."),
+            )
+        return content_type
+
+
+def _clear_policy_configuration(orchestrator: BaseStateOrchestrator) -> None:
+    for key in (
+        GLOBAL_PERMISSIONS_KEY,
+        ROW_POLICY_NAME_KEY,
+        ROW_POLICY_RULES_KEY,
+        FIELD_POLICY_NAME_KEY,
+        FIELD_POLICIES_KEY,
+        POLICY_NAME_KEY,
+        POLICY_DESCRIPTION_KEY,
+    ):
+        orchestrator.set_session_data(key, None)
+
+
+def ctx_content_type(request: HttpRequest, view, orchestrator: BaseStateOrchestrator):
+    return {
+        "form": SelectContentTypeForm(
+            data=request.POST or None,
+            initial={"content_type": orchestrator.get_session_data(CONTENT_TYPE_ID_KEY)},
+        ),
+    }
+
+
+def pcs_content_type(request: HttpRequest, view, orchestrator: BaseStateOrchestrator):
+    form = SelectContentTypeForm(data=request.POST)
+    if not form.is_valid():
+        return WizardError(
+            message=_("Please select a valid content type before continuing."),
+            title=_("Content type required"),
+            step=0,
+        )
+
+    content_type = form.cleaned_data["content_type"]
+    previous_content_type_id = orchestrator.get_session_data(CONTENT_TYPE_ID_KEY)
+    if previous_content_type_id and int(previous_content_type_id) != content_type.pk:
+        _clear_policy_configuration(orchestrator)
+    orchestrator.set_session_data(CONTENT_TYPE_ID_KEY, content_type.pk)
 
 
 def _content_type_for_model(model: type[Model]) -> ContentType:
@@ -192,7 +252,7 @@ def pcs_global_permissions(request: HttpRequest, view, orchestrator: BaseStateOr
         return WizardError(
             message=_("Please select at least one global permission before continuing."),
             title=_("Permission required"),
-            step=0,
+            step=view.get_step_index_for_process(pcs_global_permissions),
         )
 
     orchestrator.set_session_data(GLOBAL_PERMISSIONS_KEY, global_permissions)
@@ -212,18 +272,18 @@ def pcs_object_access_control(request: HttpRequest, view, orchestrator: BaseStat
         row_policy_rules = json.loads(request.POST.get("row_policy_rules_json", "[]") or "[]")
     except json.JSONDecodeError:
         return WizardError(
-            message=_("The row policy configuration could not be read. Please review step 2 and try again."),
+            message=_("The row policy configuration could not be read. Please review this step and try again."),
             title=_("Invalid row policy"),
-            step=1,
+            step=view.get_step_index_for_process(pcs_object_access_control),
         )
 
     try:
         field_policies = json.loads(request.POST.get("field_policies_json", "{}") or "{}")
     except json.JSONDecodeError:
         return WizardError(
-            message=_("The field policy configuration could not be read. Please review step 2 and try again."),
+            message=_("The field policy configuration could not be read. Please review this step and try again."),
             title=_("Invalid field policy"),
-            step=1,
+            step=view.get_step_index_for_process(pcs_object_access_control),
         )
 
     global_permissions = set(orchestrator.get_session_data(GLOBAL_PERMISSIONS_KEY) or [])
@@ -238,9 +298,9 @@ def pcs_object_access_control(request: HttpRequest, view, orchestrator: BaseStat
     )
     if invalid_row_permissions:
         return WizardError(
-            message=_("Row policies can only use permissions selected in step 1."),
+            message=_("Row policies can only use permissions selected in the global access control step."),
             title=_("Row policy mismatch"),
-            step=1,
+            step=view.get_step_index_for_process(pcs_object_access_control),
         )
 
     policy_content_type = _policy_content_type_for_view(view)
@@ -266,7 +326,7 @@ def pcs_object_access_control(request: HttpRequest, view, orchestrator: BaseStat
         return WizardError(
             message=_("Properties and one-to-many fields cannot be used in row policies."),
             title=_("Invalid row policy field"),
-            step=1,
+            step=view.get_step_index_for_process(pcs_object_access_control),
         )
 
     invalid_field_permissions = sorted(
@@ -279,9 +339,9 @@ def pcs_object_access_control(request: HttpRequest, view, orchestrator: BaseStat
     )
     if invalid_field_permissions:
         return WizardError(
-            message=_("Field policies can only use permissions selected in step 1."),
+            message=_("Field policies can only use permissions selected in the global access control step."),
             title=_("Field policy mismatch"),
-            step=1,
+            step=view.get_step_index_for_process(pcs_object_access_control),
         )
 
     orchestrator.set_session_data(ROW_POLICY_NAME_KEY, (request.POST.get("row_policy_name") or "").strip())
@@ -305,7 +365,7 @@ def pcs_policy_details(request: HttpRequest, view, orchestrator: BaseStateOrches
         return WizardError(
             message=_("Please give the policy a name before saving."),
             title=_("Name required"),
-            step=2,
+            step=view.get_step_index_for_process(pcs_policy_details),
         )
 
     orchestrator.set_session_data(POLICY_NAME_KEY, policy_name)
@@ -313,17 +373,25 @@ def pcs_policy_details(request: HttpRequest, view, orchestrator: BaseStateOrches
 
 
 @router.register(
-    path="access-control",
+    path="create",
     route_type="model",
-    models="__all__",
-    name="Create Policy for {model}",
-    description="Create an access control policies for {model}",
+    models=Policy,
+    name="Create Policy",
+    description="Create an access control policy",
+    override=True,
 )
 class ManageAccessControlForModelView(WizardMixin, BaseBloomerpView, TemplateView):
     template_name = "views/base_wizard.html"
     model: type[Model] = None
 
     steps = [
+        WizardStep(
+            name=_("Choose content type"),
+            description=_("Choose the content type for which you want to create a policy"),
+            template_name="views/access_control/manage_permissions/wizard_content_type.html",
+            context_func=ctx_content_type,
+            process_func=pcs_content_type,
+        ),
         WizardStep(
             name=_("Global access control"),
             description=_("Choose which model-level permissions this policy grants."),
@@ -333,7 +401,7 @@ class ManageAccessControlForModelView(WizardMixin, BaseBloomerpView, TemplateVie
         ),
         WizardStep(
             name=_("Field based access control"),
-            description=_("Configure row and field rules using only the global permissions selected in step 1."),
+            description=_("Configure row and field rules using only the selected global permissions."),
             template_name="views/access_control/manage_permissions/wizard_object_access_control.html",
             context_func=ctx_object_access_control,
             process_func=pcs_object_access_control,
@@ -348,14 +416,33 @@ class ManageAccessControlForModelView(WizardMixin, BaseBloomerpView, TemplateVie
     ]
 
     def setup(self, request: HttpRequest, *args, **kwargs):
-        self.session_key = f"access_control_wizard_{self.model._meta.label_lower}"
+        self.session_key = "access_control_create_policy_wizard"
         super().setup(request, *args, **kwargs)
 
     def get_policy_content_type(self) -> ContentType:
-        return _content_type_for_model(self.model)
+        return ContentType.objects.get(
+            pk=self.orchestrator.get_session_data(CONTENT_TYPE_ID_KEY),
+        )
 
     def get_policy_model(self) -> type[Model]:
-        return self.model
+        return self.get_policy_content_type().model_class()
+
+    def get_step_index_for_process(self, process_func) -> int:
+        return next(
+            index
+            for index, step in enumerate(self.steps)
+            if step.process_func is process_func
+        )
+
+    def normalize_step_index(self, step: int) -> int:
+        if step > 0:
+            try:
+                content_type = self.get_policy_content_type()
+            except (ContentType.DoesNotExist, TypeError, ValueError):
+                return 0
+            if content_type.model_class() is None:
+                return 0
+        return super().normalize_step_index(step)
 
     def build_policy_payload(self) -> dict:
         return {
@@ -378,20 +465,20 @@ class ManageAccessControlForModelView(WizardMixin, BaseBloomerpView, TemplateVie
             return WizardError(
                 message=str(serializer_errors["global_permissions"][0]),
                 title=_("Global permissions error"),
-                step=0,
+                step=self.get_step_index_for_process(pcs_global_permissions),
             )
         if "row_policy" in serializer_errors or "field_policy" in serializer_errors:
             nested_error = serializer_errors.get("row_policy") or serializer_errors.get("field_policy")
             return WizardError(
                 message=str(nested_error),
                 title=_("Policy rules error"),
-                step=1,
+                step=self.get_step_index_for_process(pcs_object_access_control),
             )
         first_error = next(iter(serializer_errors.values()))[0]
         return WizardError(
             message=str(first_error),
             title=_("Could not save policy"),
-            step=2,
+            step=self.get_step_index_for_process(pcs_policy_details),
         )
 
     def save_policy(self, payload: dict) -> Policy | WizardError:

@@ -1,93 +1,26 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import ObjectDoesNotExist
-from django.http import Http404, HttpRequest, JsonResponse
-from django.http import HttpResponse
-from bloomerp.filters.definition import FilterField
-from bloomerp.filters.utils import application_fields_to_filter_field_groups
-from bloomerp.lookups.registry import LOOKUP_REGISTRY
-from bloomerp.workspaces.utils import has_access_to_workspace
-from bloomerp.models.workspaces.workspace import Workspace
-from bloomerp.permissions.definition import BloomerpPermission
-from bloomerp.permissions.manager import UserPolicyManager
+from django.http import HttpRequest, JsonResponse
+
+from bloomerp.components.filters.common import filter_component, resolver_for_request
 from bloomerp.router import router
-from bloomerp.utils.models import get_model_and_content_type_or_404
 
-    
-    
 
-@router.register(
-    path="components/filters/fields",
-    url_name="components_filters_fields"
-)
+def filterable_field_type_ids():
+    """Shared by existing model-field selectors outside the filter builder."""
+    from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+    return [field_type.id for field_type in FIELD_TYPE_REGISTRY.values() if field_type.lookups]
+
+
+@router.register(path="components/filters/fields", url_name="components_filters_fields")
 @login_required
-def fields(request: HttpRequest) -> HttpResponse:
-    """Returns the filterable fields for a particular workspace or content type ID
-
-    Args:
-        request (HttpRequest): 
-
-    Get Args:
-        scope
-        identifier
-    
-    Returns:
-        HttpResponse: _description_
-    """
-    scope = request.GET.get("scope")
-    identifier = request.GET.get("id")
-    
-    lookup_id = request.GET.get("lookup_id")
-    field_path = request.GET.get("field_path")
-    
-    policy_manager = UserPolicyManager(request.user)
-    
-    if scope == "model":
-        Model, content_type = get_model_and_content_type_or_404(identifier)
-        
-        if not policy_manager.has_global_permission(content_type):
-            return HttpResponse("You don't have access to this", status_code=403)
-        
-        if field_path and lookup_id:
-            fields = LOOKUP_REGISTRY.get_by_id(lookup_id).nested_fields_factory(
-                Model,
-                field_path
-            )
-            
-            return JsonResponse(
-                group.model_dump() for group in fields
-            )
-        
-        application_fields = policy_manager.get_accessible_fields(content_type, BloomerpPermission.VIEW)
-        
-        return JsonResponse(
-            application_fields_to_filter_field_groups(application_fields)    
-        )
-    
-    if scope == "workspace":
-        try:
-            workspace = Workspace.objects.get(id=identifier)
-        except ObjectDoesNotExist:
-            return Http404("Workspace not found")
-        
-        if not has_access_to_workspace(workspace, request.user):
-            return HttpResponse("You don't have access to this", status_code=403)
-        
-        fields = []
-        
-        for tile in workspace.get_tiles():
-            filter_fields :list[str] = tile.get_tile_type_definition().filter_fields_factory(
-                tile.get_config_object()
-            )
-            
-            # Reconcile by type
-            # Filters can appear to be the same if their field path and field type is the same
-
-        
-    return HttpResponse("Invalid scope", status_code=400)
-            
-        
-        
-        
-        
-        
-    
+@filter_component
+def fields(request: HttpRequest) -> JsonResponse:
+    """Discover root fields or children of field_path through lookup_id."""
+    params = request.GET
+    groups = resolver_for_request(request, params).discover(
+        params.get("field_path"), params.get("lookup_id"),
+    )
+    return JsonResponse(
+        [group.model_dump(mode="json") for group in groups],
+        safe=False,
+    )

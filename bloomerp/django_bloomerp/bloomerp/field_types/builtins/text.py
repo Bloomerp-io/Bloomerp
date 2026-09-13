@@ -1,3 +1,4 @@
+from django import forms
 from bloomerp.field_types.utils.form_field_factories import form
 from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.lookups import builtins as lookups
@@ -33,6 +34,7 @@ from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
 from bloomerp.field_types.lookups import TEXT_LOOKUPS
 
 CHAR_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.CharField),
     id="CharField",
     icon="fa-solid fa-font",
     model_field_cls=models.CharField,
@@ -64,6 +66,7 @@ CHOICE_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 TEXT_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.CharField),
     id="TextField",
     icon="fa-solid fa-align-left",
     model_field_cls=models.TextField,

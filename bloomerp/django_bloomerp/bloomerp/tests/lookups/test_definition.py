@@ -1,5 +1,6 @@
 from unittest import TestCase
 from unittest.mock import Mock
+from types import SimpleNamespace
 
 from django import forms
 
@@ -68,27 +69,32 @@ class TestFilterFieldContext(TestCase):
         application_field = Mock()
         application_field.get_form_field.return_value = editor
         context = FilterFieldContext(
-            field_type=Mock(), application_field=application_field,
+            field_type=SimpleNamespace(form_factory=None, widget_factory=None), application_field=application_field,
         )
         self.assertIs(context.get_form_field(), editor)
         application_field.get_form_field.assert_called_once_with()
 
-    def test_analytics_editor_preserves_validation_and_is_copied(self):
-        editor = forms.IntegerField(min_value=2)
-        context = FilterFieldContext(field_type=Mock(), form_field=editor)
+    def test_analytics_editor_uses_factory_and_is_fresh(self):
+        field_type = SimpleNamespace(
+            form_factory=lambda context, default: forms.IntegerField(min_value=2),
+            widget_factory=None,
+        )
+        context = FilterFieldContext(field_type=field_type)
         first = context.get_form_field()
         second = context.get_form_field()
         self.assertIsInstance(first, forms.IntegerField)
         self.assertEqual(first.clean("3"), 3)
         self.assertEqual(first.min_value, 2)
-        self.assertIsNot(first, editor)
         self.assertIsNot(first, second)
         first.widget.attrs["data-test"] = "changed"
         self.assertNotIn("data-test", second.widget.attrs)
 
     def test_choices_do_not_require_an_application_field(self):
         context = FilterFieldContext(
-            field_type=Mock(), choices=(("retail", "Retail"),),
+            field_type=SimpleNamespace(
+                form_factory=lambda context, default: forms.ChoiceField(choices=(("retail", "Retail"),)),
+                widget_factory=None,
+            ),
         )
         editor = context.get_form_field()
         self.assertIsInstance(editor, forms.ChoiceField)
@@ -99,6 +105,6 @@ class TestFilterFieldContext(TestCase):
         application_field = Mock()
         application_field.get_form_field.return_value = None
         context = FilterFieldContext(
-            field_type=Mock(), application_field=application_field,
+            field_type=SimpleNamespace(form_factory=None, widget_factory=None), application_field=application_field,
         )
         self.assertIsInstance(context.get_form_field(), forms.CharField)

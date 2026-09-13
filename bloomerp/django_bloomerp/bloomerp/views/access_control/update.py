@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.models.access_control.policy import Policy
+from bloomerp.permissions.legacy import editor_rule
 from bloomerp.router import router
 from bloomerp.views.access_control.manage_permissions import (
     FIELD_POLICIES_KEY,
@@ -30,6 +31,7 @@ from bloomerp.views.access_control.manage_permissions import (
 )
 class UpdatePolicyView(ManageAccessControlForModelView):
     model = Policy
+    steps = ManageAccessControlForModelView.steps[1:]
 
     def get_object(self) -> Policy:
         return get_object_or_404(self.model, pk=self.kwargs["pk"])
@@ -47,7 +49,7 @@ class UpdatePolicyView(ManageAccessControlForModelView):
 
         row_policy_rules = [
             {
-                "rule": dict(rule.rule or {}),
+                "rule": editor_rule(rule.rule, self.get_policy_model()),
                 "permissions": list(rule.permissions.order_by("codename").values_list("codename", flat=True)),
             }
             for rule in self.object.row_policy.rules.all().prefetch_related("permissions")

@@ -15,7 +15,12 @@ def form(cls: type[forms.Field], *, virtual: bool = False) -> FormFactory:
     def build(context: FieldContext, default: forms.Field | None) -> forms.Field | None:
         application_field = context.application_field
         if application_field is None:
-            return default
+            if default is not None:
+                return default
+            # Relations and virtual editors need source-field metadata.
+            if virtual or issubclass(cls, forms.ModelChoiceField):
+                return None
+            return cls()
         if virtual:
             from bloomerp.form_fields.one_to_many_field import OneToManyField
 

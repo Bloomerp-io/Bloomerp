@@ -8,11 +8,11 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
 from bloomerp.field_types.registry import FieldTypeDefinition
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
-from bloomerp.permissions.definition import RowPolicyRuleCondition, RowPolicyRuleContent
+from bloomerp.permissions.definition import RowPolicyRuleContent
+from bloomerp.filters.definition import FilterCondition
 from pydantic import ValidationError as PydanticValidationError
 
 ROW_POLICY_DISALLOWED_FIELD_TYPE_IDS = {
-    "OneToManyField",
     "Property",
 }
 
@@ -105,116 +105,29 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
         codename = permission
         return Permission.objects.filter(codename=codename, content_type=content_type).exists()
     
-    def _resolve_lookup(self, field_type:FieldTypeDefinition, operator: str):
-        """Resolves a lookup by id, django representation, or alias."""
-        if not operator or not field_type:
-            return None
-        
-        for lookup in field_type.lookups:
-            if operator == lookup.id:
-                return lookup
-            if str(operator).lstrip("_") in lookup.expressions:
-                return lookup
-        return None
+    def validate_rule_condition(self, condition: FilterCondition):
+        """Validates the rule condition
 
-    def _is_valid_related_path(self, model_cls, path: str) -> bool:
-        if not model_cls or not path:
-            return False
+        Args:
+            condition (FilterCondition): the rule condition
 
-        parts = [part for part in path.split("__") if part]
-        if not parts:
-            return False
-
-        current_model = model_cls
-        for idx, part in enumerate(parts):
-            try:
-                field = current_model._meta.get_field(part)
-            except Exception:
-                # Allow lookup suffix on final segment
-                return idx == len(parts) - 1
-
-            if idx == len(parts) - 1:
-                return True
-
-            if not getattr(field, "is_relation", False):
-                return False
-
-            current_model = field.related_model
-            if current_model is None:
-                return False
-
-        return True
-
-    def _is_valid_related_path_by_fields(self, content_type, path: str) -> bool:
-        if not content_type or not path:
-            return False
-
-        parts = [part for part in path.split("__") if part]
-        if not parts:
-            return False
-
-        current_content_type = content_type
-        for idx, part in enumerate(parts):
-            app_field = ApplicationField.objects.filter(
-                content_type=current_content_type,
-                field=part,
-            ).first()
-
-            if not app_field:
-                return False
-
-            if idx == len(parts) - 1:
-                return True
-
-            if not app_field.related_model_id:
-                return False
-
-            current_content_type = app_field.related_model
-            if current_content_type is None:
-                return False
-
-        return False
-
-    def validate_rule_condition(self, rule_condition: RowPolicyRuleCondition):
-        """Checks whether the rule is valid
-
-        Returns:
-            bool: whether the rule is valid or not
+        Raises:
+            ValidationError: _description_
+            ValidationError: _description_
         """
-        if rule_condition.field == "__all__" or rule_condition.application_field_id == "__all__":
-            return
+        from bloomerp.filters.compiler import resolve_condition
+        from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
 
-        try:
-            application_field = ApplicationField.objects.get(id=rule_condition.application_field_id)
-        except ApplicationField.DoesNotExist:
-            raise ValidationError("Incorrect application field")
-
-        operator = rule_condition.operator
-        if application_field.field_type in ROW_POLICY_DISALLOWED_FIELD_TYPE_IDS:
+        model = self.content_type.model_class()
+        field, target = FilterFieldResolver.for_model(model).resolve(condition.field_path)
+        lookup = resolve_lookup(field, target, condition.lookup_id)
+        if lookup.nested:
+            raise ValidationError("A row condition requires a terminal lookup")
+        if field.context.field_type.id in ROW_POLICY_DISALLOWED_FIELD_TYPE_IDS:
             raise ValidationError("Properties and one-to-many fields cannot be used in row policies")
-
-        field_path = rule_condition.field
-        if isinstance(field_path, str) and "__" in field_path:
-            if not (
-                self._is_valid_related_path_by_fields(self.content_type, field_path)
-                or self._is_valid_related_path(self.content_type.model_class(), field_path)
-            ):
-                raise ValidationError("Invalid operator")
-        elif isinstance(operator, str) and operator.startswith("__"):
-            path = operator.lstrip("_")
-            if not (
-                self._is_valid_related_path_by_fields(self.content_type, path)
-                or self._is_valid_related_path(self.content_type.model_class(), path)
-            ):
-                raise ValidationError("Invalid operator")
-        else:
-            # Check if the application field is related to the content type
-            if not application_field.content_type == self.content_type:
-                raise ValidationError("Content type of the application field does not match that of the field policy")
-
-            field_type = application_field.get_field_type()
-            if not self._resolve_lookup(field_type, str(operator)):
-                raise ValidationError("Invalid operator")
+        # Runtime values are bound by the permission compiler, not at save time.
+        if condition.value != "$user" and condition.lookup_id != "equals_user":
+            resolve_condition(condition, model=model)
 
     def validate_rule(self):
         """Checks whether the rule is valid
@@ -227,6 +140,8 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
         except PydanticValidationError as exc:
             raise ValidationError(str(exc)) from exc
 
+        if rule_content._legacy_content_type_ids - {self.content_type.pk}:
+            raise ValidationError("Field belongs to a different content type")
         for condition in rule_content.conditions:
             self.validate_rule_condition(condition)
         
@@ -262,9 +177,10 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
             condition["operator"] = condition.get("operator")
 
         try:
-            self.rule = RowPolicyRuleContent.model_validate(self.rule).model_dump(
-                exclude={"permissions"}
-            )
+            normalized = RowPolicyRuleContent.model_validate(self.rule)
+            if normalized._legacy_content_type_ids - {self.content_type.pk}:
+                raise ValidationError("Field belongs to a different content type")
+            self.rule = normalized.model_dump(exclude={"permissions"})
         except PydanticValidationError:
             return
 
@@ -283,8 +199,10 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
     def __str__(self):
         try:
             rule_content = RowPolicyRuleContent.model_validate(self.rule)
+            if not rule_content.conditions:
+                return "All rows" if rule_content.connector == "AND" else "No rows"
             labels = [
-                f"{condition.field or condition.application_field_id} {condition.operator or ''} {condition.value or ''}".strip()
+                f"{condition.field_path} {condition.lookup_id} {condition.value}"
                 for condition in rule_content.conditions
             ]
             return f" {rule_content.connector} ".join(labels)

@@ -350,4 +350,6 @@ class BaseBloomerpTestCaseWithModels(TransactionTestCase):
         """
         return ContentType.objects.get_for_model(model)
         
+        
+    
     

@@ -14,10 +14,7 @@ class TestFilterParser(TestCase):
         """
         expression = ""
         
-        
-        
-        
-        
+    
     def test_or_condition(self):
         """
         UC: (first_name=Kyle OR first_name=Brandon)

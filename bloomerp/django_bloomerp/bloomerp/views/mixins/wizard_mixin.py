@@ -8,6 +8,8 @@ from django.shortcuts import redirect
 
 from typing import Any, Callable, Type
 
+from django.views import View
+
 
 class BaseStateOrchestrator:
     session_key: str
@@ -68,8 +70,8 @@ class WizardStep:
     name: str
     template_name: str
     description: str = ""
-    context_func: Callable[[HttpRequest, Any, BaseStateOrchestrator], dict[str, Any]] | None = None
-    process_func: Callable[[HttpRequest, Any, BaseStateOrchestrator], None] | None = None
+    context_func: Callable[[HttpRequest, View, BaseStateOrchestrator], dict[str, Any]] | None = None
+    process_func: Callable[[HttpRequest, View, BaseStateOrchestrator], None] | None = None
 
 
 @dataclass

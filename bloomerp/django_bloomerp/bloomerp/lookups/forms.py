@@ -6,7 +6,6 @@ def build_lookup_form_field(lookup, application_field):
     context = FilterFieldContext(
         field_type=application_field.get_field_type(),
         application_field=application_field,
-        related_model=application_field.get_related_model(),
     )
     factory = BoundLookup.normalize(lookup).get_form_factory()
     return factory(context) if factory else context.get_form_field()

@@ -1,3 +1,4 @@
+from bloomerp.field_types.utils.form_field_factories import form
 from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.field_types.lookups import BOOLEAN_LOOKUPS
 from bloomerp.field_types.construction import (
@@ -17,6 +18,7 @@ from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
 from bloomerp.field_types.utils.widget_factories import widget
 
 BOOLEAN_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.BooleanField),
     id="BooleanField",
     icon="fa-solid fa-toggle-on",
     model_field_cls=models.BooleanField,
@@ -37,6 +39,7 @@ BOOLEAN_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 NULL_BOOLEAN_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.NullBooleanField),
     id="NullBooleanField",
     icon="fa-solid fa-toggle-on",
     model_field_cls=models.BooleanField,

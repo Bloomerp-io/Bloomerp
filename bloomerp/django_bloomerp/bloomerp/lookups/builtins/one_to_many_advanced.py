@@ -1,4 +1,5 @@
 from bloomerp.lookups.definition import LookupDefinition
+from bloomerp.lookups.builtins.foreign_advanced import _nested_fields
 
 
 ONE_TO_MANY_ADVANCED = LookupDefinition(
@@ -7,4 +8,5 @@ ONE_TO_MANY_ADVANCED = LookupDefinition(
     expressions=(),
     description="Delegates the remaining lookup path to the related model.",
     nested=True,
+    nested_fields_factory=_nested_fields,
 )

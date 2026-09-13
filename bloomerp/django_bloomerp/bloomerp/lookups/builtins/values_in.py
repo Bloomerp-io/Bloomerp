@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django import forms
 from django.db.models import Q
 
 from bloomerp.lookups.builtins.utils import list_value, normalize_list_value
@@ -48,6 +49,16 @@ def values_in(actual: Any, expected: Any) -> bool:
     return actual in list_value(expected)
 
 
+def values_in_form_factory(context):
+    item_field = context.get_form_field()
+
+    class ValuesField(forms.Field):
+        def to_python(self, value):
+            return [item_field.clean(item) for item in list_value(value)]
+
+    return ValuesField(required=False)
+
+
 VALUES_IN = LookupDefinition(
     id="values_in",
     label="In",
@@ -56,4 +67,5 @@ VALUES_IN = LookupDefinition(
     q_factory=values_in_q_factory,
     sql_factory=values_in_sql_factory,
     python_evaluator=values_in,
+    default_form_factory=values_in_form_factory,
 )

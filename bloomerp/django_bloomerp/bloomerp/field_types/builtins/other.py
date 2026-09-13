@@ -1,3 +1,5 @@
+from bloomerp.field_types.utils.form_field_factories import form
+from django import forms
 from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.lookups import builtins as lookups
 from bloomerp.field_types.construction import (
@@ -88,12 +90,16 @@ BINARY_FIELD = FieldTypeDefinition(
 )
 
 JSON_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.JSONField),
     id="JSONField",
     icon="fa-solid fa-code",
     model_field_cls=models.JSONField,
     label="JSON Field",
     lookups=(
         lookups.CONTAINS,
+        lookups.EQUALS,
+        lookups.IS_NULL,
+        lookups.JSON_KEY,
     ),
     construction=FieldConstruction(
         defaults={"default": dict},
