@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from django.db.models import Q
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.compilers.base import BasePermissionCompiler
 from bloomerp.permissions.definition import (
@@ -70,7 +70,7 @@ class DjangoQPermissionCompiler(BasePermissionCompiler[CompiledDjangoAccess]):
             return Q(**{filter_key: value})
 
         if (
-            self.resolve_lookup_globally(operator) == Lookup.EQUALS_USER
+            self.resolve_lookup_globally(operator) == lookups.EQUALS_USER
             or str(condition.value) == "$user"
         ):
             if self.user is None or getattr(self.user, "is_anonymous", False):
@@ -96,11 +96,19 @@ class DjangoQPermissionCompiler(BasePermissionCompiler[CompiledDjangoAccess]):
             if application_field is not None
             else condition.value
         )
-        if lookup == Lookup.NOT_EQUALS:
+        if lookup == lookups.NOT_EQUALS:
             return ~Q(**{field_name: value})
-        django_lookup = (lookup.value.django_representation or "").strip()
-        filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
-        return Q(**{filter_key: value})
+        if lookup.nested or lookup.q_factory is None:
+            return None
+        compiled = lookup.q_factory(application_field, field_name, lookup.expressions[0], value)
+        if compiled.annotations:
+            # Correlate annotation-based predicates without changing the outer query.
+            from django.db.models import Exists, OuterRef
+            matches = self.model.objects.filter(pk=OuterRef("pk")).annotate(
+                **compiled.annotations
+            ).filter(compiled.predicate)
+            return Q(Exists(matches))
+        return compiled.predicate
 
     def compile_row_rule(
         self,

@@ -6,10 +6,10 @@ from bloomerp.tests.base import (
 )
 
 
-class TestFiltersInitComponent(BloomerpComponentTestCase):
-    """Tests function `filters_init` from `bloomerp/components/filters/fields.py`."""
+class TestValueEditorComponent(BloomerpComponentTestCase):
+    """Tests function `value_editor` from `bloomerp/components/filters/value_editor.py`."""
 
-    view_name = 'components_filters_init'
+    view_name = 'components_filters_value_editor'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.

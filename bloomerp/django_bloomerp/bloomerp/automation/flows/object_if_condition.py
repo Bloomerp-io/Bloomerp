@@ -4,14 +4,16 @@ from bloomerp.automation.base_executor import BaseExecutor
 from bloomerp.automation.ports import WorkflowNodeOutputPort
 from bloomerp.automation.results import RouteResult
 from bloomerp.automation.schema import WorkflowInputRequirement, WorkflowValueType
-from bloomerp.components.filters.fields import filterable_field_type_ids
-from bloomerp.field_types.lookups import Lookup
+
+from bloomerp.lookups import builtins as lookups
+from bloomerp.lookups.definition import LookupDefinition
+from bloomerp.lookups.forms import build_lookup_form_field
 from bloomerp.forms.base_content_type_form import BaseContentTypeForm
 from bloomerp.forms.base_workflow_node_form import BaseWorkflowNodeForm
 from django import forms
 
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.utils.filters import filter_model
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.utils.models import get_model_and_content_type_or_404
 
 class ObjectIfCondtionForm(BaseContentTypeForm):
@@ -52,20 +54,22 @@ class ObjectIfCondtionForm(BaseContentTypeForm):
             lookup_choices = application_field.get_field_type().lookups
             self.fields["lookup"].widget = forms.Select(
                 attrs={"class": "select w-full"}, 
-                choices=[(lookup.value.id, lookup.value.display_name) for lookup in lookup_choices]
+                choices=[(lookup.id, lookup.label) for lookup in lookup_choices]
             )
             
         if content_type_set and field_set and lookup_set:
             # Get the lookup
             selected_lookup = None
             for lookup in lookup_choices:
-                if lookup.value.id == (self.initial.get("lookup") or self.data.get("lookup")):
-                    selected_lookup = lookup.value
+                if lookup.id == (self.initial.get("lookup") or self.data.get("lookup")):
+                    selected_lookup = lookup
                     break
                 
             if selected_lookup:
                 try:
-                    self.fields["value"].widget = selected_lookup.widget_func(application_field)
+                    self.fields["value"].widget = build_lookup_form_field(
+                        selected_lookup, application_field,
+                    ).widget
                 except Exception as e:
                     # If there's an error creating the widget, fall back to a simple text input
                     self.fields["value"].widget = forms.TextInput(attrs={"class": "input w-full"})
@@ -87,18 +91,19 @@ def _resolve_application_field(field_value, content_type_id):
     else:
         return ApplicationField.objects.get(id=field_value)
     
-def _resolve_lookup(lookup_id:str, application_field:ApplicationField) -> Lookup:
+def _resolve_lookup(lookup_id:str, application_field:ApplicationField) -> LookupDefinition:
     lookup_choices = application_field.get_field_type().lookups
     for lookup in lookup_choices:
-        if lookup.value.id == lookup_id:
+        if lookup.id == lookup_id:
             return lookup
-    raise ValueError(f"Lookup with id {lookup_id} not found for field {application_field.field}")
+    raise ValueError(f"LookupDefinition with id {lookup_id} not found for field {application_field.field}")
 
 def _resolve_lookup_allias(lookup_id:str, application_field:ApplicationField) -> str:
     # First try to resolve the lookup id directly
-    lookup = _resolve_lookup(lookup_id, application_field).value
-    if lookup.aliases:
-        return lookup.aliases[0]
+    lookup = _resolve_lookup(lookup_id, application_field)
+    if lookup.expressions:
+        expression = lookup.expressions[0]
+        return f"__{expression}" if expression else ""
     
     return lookup.id
     
@@ -164,7 +169,7 @@ class ObjectIfConditionExecutor(BaseExecutor):
         }    
     
         # Check if any objects match the filter
-        exists = filter_model(ModelCls, filter_kwargs, queryset=ModelCls.objects.filter(id=str(input_data.get("id")))).exists()
+        exists = ModelFilterManager(ModelCls).filter(filter_kwargs, queryset=ModelCls.objects.filter(id=str(input_data.get("id")))).exists()
         return RouteResult(
             port_id="true" if exists else "false",
             output=input_data,

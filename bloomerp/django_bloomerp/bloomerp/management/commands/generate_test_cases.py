@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import importlib
 import inspect
 import re
@@ -26,6 +27,7 @@ SUPPORTED_FUNCTIONALITIES = (
     "dataviews",
     "model_fields",
     "form_fields",
+    "lookups",
 )
 
 
@@ -404,6 +406,42 @@ class Command(BaseCommand):
             filename_suffix="form_field",
         )
 
+    def _discover_lookups(
+        self, app_config: AppConfig
+    ) -> list[GeneratedTestCase]:
+        """Generate one test skeleton per module-level lookup definition."""
+
+        from bloomerp.lookups.definition import BoundLookup, LookupDefinition
+
+        results = []
+        for module in self._import_source_modules(app_config, "lookups"):
+            source_file = getattr(module, "__file__", None)
+            if source_file is None:
+                continue
+            source = Path(source_file).resolve()
+            if source.name == "__init__.py":
+                continue
+
+            for imported_name in self._module_assignment_names(source):
+                lookup = getattr(module, imported_name, None)
+                if not isinstance(lookup, (LookupDefinition, BoundLookup)):
+                    continue
+
+                target = self._nested_target(
+                    app_config,
+                    "lookups",
+                    source,
+                    source_root="lookups",
+                    filename=f"test_{_suffixed_snake(lookup.id, 'lookup')}.py",
+                )
+                content = self._render_lookup_test(
+                    import_path=module.__name__,
+                    imported_name=imported_name,
+                    class_name="Test" + _suffixed_pascal(lookup.id, "lookup"),
+                )
+                results.append(GeneratedTestCase("lookups", target, content))
+        return results
+
     def _discover_subclasses(
         self,
         app_config: AppConfig,
@@ -687,6 +725,54 @@ class Command(BaseCommand):
             + "        # Add only the scenarios this class needs.\n"
             + "        return []\n"
         )
+
+    def _render_lookup_test(
+        self,
+        *,
+        import_path: str,
+        imported_name: str,
+        class_name: str,
+    ) -> str:
+        """Render a scenario-ready skeleton for one lookup definition."""
+
+        return (
+            GENERATED_FILE_HEADER
+            + "from django.db.models import Q\n\n"
+            + f"from {import_path} import {imported_name}\n"
+            + "from bloomerp.lookups.definition import CompiledLookup, CompiledSQL\n"
+            + "from bloomerp.models.application_field import ApplicationField\n"
+            + "from bloomerp.tests.base import (\n"
+            + "    BloomerpLookupTestCase,\n"
+            + "    LookupScenario,\n"
+            + "    PythonEvaluation,\n"
+            + ")\n\n\n"
+            + f"class {class_name}(BloomerpLookupTestCase):\n"
+            + f"    lookup = {imported_name}\n\n"
+            + "    def get_test_scenarios(self) -> list[LookupScenario]:\n"
+            + "        # Add only the scenarios this lookup needs.\n"
+            + "        return []\n"
+        )
+
+    @staticmethod
+    def _module_assignment_names(source: Path) -> tuple[str, ...]:
+        """Return names assigned directly by a source module in source order."""
+
+        try:
+            module = ast.parse(source.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError) as exc:
+            raise CommandError(f"Unable to inspect {source}: {exc}") from exc
+
+        names = []
+        for statement in module.body:
+            targets = []
+            if isinstance(statement, ast.Assign):
+                targets = statement.targets
+            elif isinstance(statement, ast.AnnAssign):
+                targets = [statement.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    names.append(target.id)
+        return tuple(dict.fromkeys(names))
 
     def _deduplicate_targets(
         self, generated: list[GeneratedTestCase]

@@ -6,10 +6,10 @@ from bloomerp.tests.base import (
 )
 
 
-class TestRelatedFieldsComponent(BloomerpComponentTestCase):
-    """Tests function `related_fields` from `bloomerp/components/filters/fields.py`."""
+class TestLookupsComponent(BloomerpComponentTestCase):
+    """Tests function `lookups` from `bloomerp/components/filters/lookups.py`."""
 
-    view_name = 'components_filters_related_fields'
+    view_name = 'components_filters_lookups'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.

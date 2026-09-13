@@ -5,7 +5,7 @@ from django.test import RequestFactory
 
 from bloomerp.dataviews.base import DataviewPagination, DataviewRenderState
 from bloomerp.dataviews.kanban.renderer import KanbanDataviewRenderer
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
     ApplicationField,
     FieldPolicy,
@@ -104,7 +104,7 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
                 conditions=[
                     RowPolicyRuleCondition(
                         application_field_id=str(name_field.pk),
-                        operator=Lookup.EQUALS.value.id,
+                        operator=lookups.EQUALS.id,
                         value="Netherlands",
                     )
                 ],

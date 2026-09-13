@@ -2,7 +2,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
     ApplicationField,
     FieldPolicy,
@@ -92,7 +92,7 @@ class TestBulkActionService(BaseBloomerpTestCaseWithModels):
                 conditions=[
                     RowPolicyRuleCondition(
                         application_field_id=str(first_name_field.pk),
-                        operator=Lookup.EQUALS.value.id,
+                        operator=lookups.EQUALS.id,
                         value=permitted.first_name,
                     ),
                 ],

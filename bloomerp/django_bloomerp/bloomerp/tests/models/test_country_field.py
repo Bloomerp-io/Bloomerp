@@ -78,7 +78,8 @@ class TestCountryField(BaseBloomerpTestCaseWithModels):
         lookup = FIELD_TYPE_REGISTRY.COUNTRY_FIELD.get_lookup_by_id("equals")
 
         # 2. Render the lookup value input.
-        html = lookup.value.render(application_field)
+        from bloomerp.lookups.forms import render_lookup
+        html = render_lookup(lookup, application_field)
 
         self.assertIn("<select", html)
         self.assertIn('value="NL"', html)

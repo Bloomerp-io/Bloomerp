@@ -1,6 +1,6 @@
 from bloomerp.field_types.utils.form_field_factories import form
 from bloomerp.field_types.display_options import LABEL_OPTION
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
     COMMON_CHOICE_FIELD_OPTIONS,
@@ -102,7 +102,7 @@ ADDRESS_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-location-dot",
     model_field_cls=AddressField,
     label="Address Field",
-    lookups=(Lookup.ADDRESS_CONTAINS,),
+    lookups=(lookups.ADDRESS_CONTAINS,),
     construction=FieldConstruction(
         options=(NULL_FIELD_OPTION, BLANK_FIELD_OPTION, HELP_TEXT_FIELD_OPTION)
     ),
@@ -174,7 +174,7 @@ COUNTRY_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-globe",
     model_field_cls=CountryField,
     label="Country Field",
-    lookups=(Lookup.EQUALS, Lookup.NOT_EQUALS, Lookup.IN, Lookup.IS_NULL),
+    lookups=(lookups.EQUALS, lookups.NOT_EQUALS, lookups.VALUES_IN, lookups.IS_NULL),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )

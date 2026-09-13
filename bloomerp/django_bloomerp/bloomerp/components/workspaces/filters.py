@@ -200,7 +200,7 @@ def workspace_filters_value_input(
     lookup_value = request.GET.get("lookup_value", "")
     field_type = FIELD_TYPE_REGISTRY.from_id(field.type)
     lookup_option = next(
-        (option for option in field_type.lookups if option.value.id == lookup_value),
+        (option for option in field_type.lookups if option.id == lookup_value),
         None,
     )
 

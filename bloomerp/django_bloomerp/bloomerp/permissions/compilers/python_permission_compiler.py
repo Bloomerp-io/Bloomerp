@@ -4,7 +4,8 @@ from typing import Any, Callable
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
+from bloomerp.lookups.definition import LookupDefinition
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.compilers.base import BasePermissionCompiler
 from bloomerp.permissions.definition import PermissionMatch, RowPolicyRuleCondition
@@ -64,48 +65,48 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
         return value
 
     @classmethod
-    def _advanced_path_and_lookup(cls, operator: str) -> tuple[str, Lookup]:
+    def _advanced_path_and_lookup(cls, operator: str) -> tuple[str, LookupDefinition]:
         path = operator.lstrip("_")
         parts = [part for part in path.split("__") if part]
         if not parts:
-            return "", Lookup.EQUALS
+            return "", lookups.EQUALS
         lookup = cls.resolve_lookup_globally(parts[-1])
-        if lookup is not None and lookup.value.python_eval is not None:
+        if lookup is not None and lookup.python_evaluator is not None:
             parts.pop()
         else:
-            lookup = Lookup.EQUALS
+            lookup = lookups.EQUALS
         return "__".join(parts), lookup
 
     @staticmethod
     def _coerce_expected_value(
         application_field: ApplicationField,
-        lookup: Lookup,
+        lookup: LookupDefinition,
         value,
     ):
         if isinstance(value, models.Model) or lookup in {
-            Lookup.IS_NULL,
-            Lookup.TODAY,
-            Lookup.YESTERDAY,
-            Lookup.THIS_WEEK,
-            Lookup.LAST_WEEK,
-            Lookup.THIS_MONTH,
-            Lookup.LAST_MONTH,
-            Lookup.THIS_QUARTER,
-            Lookup.LAST_QUARTER,
-            Lookup.THIS_YEAR,
-            Lookup.LAST_YEAR,
-            Lookup.YEAR,
-            Lookup.MONTH,
-            Lookup.DAY,
-            Lookup.WEEK,
-            Lookup.DAY_OF_WEEK,
-            Lookup.DAY_OF_WEEK_IN,
+            lookups.IS_NULL,
+            lookups.TODAY,
+            lookups.YESTERDAY,
+            lookups.THIS_WEEK,
+            lookups.LAST_WEEK,
+            lookups.THIS_MONTH,
+            lookups.LAST_MONTH,
+            lookups.THIS_QUARTER,
+            lookups.LAST_QUARTER,
+            lookups.THIS_YEAR,
+            lookups.LAST_YEAR,
+            lookups.YEAR,
+            lookups.MONTH,
+            lookups.DAY,
+            lookups.WEEK,
+            lookups.DAY_OF_WEEK,
+            lookups.DAY_OF_WEEK_IN,
         }:
             return value
         try:
             model_field = application_field._get_model_field()
             converter = getattr(model_field, "target_field", model_field).to_python
-            if lookup == Lookup.IN and isinstance(value, (list, tuple, set, frozenset)):
+            if lookup == lookups.VALUES_IN and isinstance(value, (list, tuple, set, frozenset)):
                 return [converter(item) for item in value]
             return converter(value)
         except Exception:
@@ -144,8 +145,8 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
                 else application_field.field
             )
             lookup = (
-                Lookup.EQUALS_USER
-                if self.resolve_lookup_globally(operator) == Lookup.EQUALS_USER
+                lookups.EQUALS_USER
+                if self.resolve_lookup_globally(operator) == lookups.EQUALS_USER
                 or str(condition.value) == "$user"
                 else (
                     self.resolve_lookup(application_field, operator)
@@ -153,14 +154,14 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
                     else self.resolve_lookup_globally(operator)
                 )
             )
-        if lookup is None or lookup.value.python_eval is None:
+        if lookup is None or lookup.python_evaluator is None:
             return None
 
         actual = self._resolve_value(candidate, field_path)
         if actual is MISSING:
             return None
         expected = self.user if (
-            lookup == Lookup.EQUALS_USER or str(condition.value) == "$user"
+            lookup == lookups.EQUALS_USER or str(condition.value) == "$user"
         ) else condition.value
         if expected is None and str(condition.value) == "$user":
             return None
@@ -175,7 +176,7 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
         actual = self._normalize_comparison_value(actual)
         expected = self._normalize_comparison_value(expected)
         try:
-            return bool(lookup.value.python_eval(actual, expected))
+            return bool(lookup.python_evaluator(actual, expected))
         except Exception:
             return None
 

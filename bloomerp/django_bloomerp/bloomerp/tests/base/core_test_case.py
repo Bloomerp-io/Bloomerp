@@ -73,7 +73,7 @@ class BaseBloomerpTestCaseWithModels(TransactionTestCase):
             "user_account" : UserField(blank=True, null=True, on_delete=models.SET_NULL),
             "__str__" : lambda self: f"{self.first_name} {self.last_name}",
         }
-        
+
         if cls.create_foreign_models:
             customer_def["country"] = models.ForeignKey(
                 to=cls.CountryModel, 

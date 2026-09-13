@@ -3,7 +3,7 @@ from django.test import SimpleTestCase
 import pandas as pd
 from pydantic import ValidationError
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.workspaces.analytics_tile.kpi import KpiAggregatedField, _build_section_vars, _render_section, _render_value, build_kpi_aggregation_query
 from bloomerp.workspaces.analytics_tile.model import (
     AddFilterHandler,
@@ -534,20 +534,20 @@ class TestAnalyticsTile(SimpleTestCase):
         self.assertEqual(query, expected)
 
     def test_lookup_definitions_expose_sql_operator_functions(self):
-        self.assertEqual(Lookup.EQUALS.value.sql_operator("Daniel"), "= 'Daniel'")
-        self.assertEqual(Lookup.EQUALS.value.sql_operator("40"), "= 40")
-        self.assertEqual(Lookup.EQUALS.value.sql_operator(40), "= 40")
-        self.assertEqual(Lookup.EQUALS.value.sql_operator("true"), "= TRUE")
-        self.assertEqual(Lookup.CONTAINS.value.sql_operator("Dan"), "LIKE '%Dan%'")
-        self.assertEqual(Lookup.STARTS_WITH.value.sql_operator("Dan"), "LIKE 'Dan%'")
-        self.assertEqual(Lookup.ENDS_WITH.value.sql_operator("son"), "LIKE '%son'")
-        self.assertEqual(Lookup.GREATER_THAN.value.sql_operator("40"), "> 40")
-        self.assertEqual(Lookup.GREATER_THAN_OR_EQUAL.value.sql_operator("40"), ">= 40")
-        self.assertEqual(Lookup.LESS_THAN.value.sql_operator("40"), "< 40")
-        self.assertEqual(Lookup.LESS_THAN_OR_EQUAL.value.sql_operator("40"), "<= 40")
-        self.assertEqual(Lookup.IS_NULL.value.sql_operator("true"), "IS NULL")
-        self.assertEqual(Lookup.IS_NULL.value.sql_operator("false"), "IS NOT NULL")
-        self.assertEqual(Lookup.GREATER_THAN.value.sql_operator(40), "> 40")
+        self.assertEqual(lookups.EQUALS.sql_operator("Daniel"), "= 'Daniel'")
+        self.assertEqual(lookups.EQUALS.sql_operator("40"), "= 40")
+        self.assertEqual(lookups.EQUALS.sql_operator(40), "= 40")
+        self.assertEqual(lookups.EQUALS.sql_operator("true"), "= TRUE")
+        self.assertEqual(lookups.CONTAINS.sql_operator("Dan"), "LIKE '%Dan%'")
+        self.assertEqual(lookups.STARTS_WITH.sql_operator("Dan"), "LIKE 'Dan%'")
+        self.assertEqual(lookups.ENDS_WITH.sql_operator("son"), "LIKE '%son'")
+        self.assertEqual(lookups.GREATER_THAN.sql_operator("40"), "> 40")
+        self.assertEqual(lookups.GREATER_THAN_OR_EQUAL.sql_operator("40"), ">= 40")
+        self.assertEqual(lookups.LESS_THAN.sql_operator("40"), "< 40")
+        self.assertEqual(lookups.LESS_THAN_OR_EQUAL.sql_operator("40"), "<= 40")
+        self.assertEqual(lookups.IS_NULL.sql_operator("true"), "IS NULL")
+        self.assertEqual(lookups.IS_NULL.sql_operator("false"), "IS NOT NULL")
+        self.assertEqual(lookups.GREATER_THAN.sql_operator(40), "> 40")
         
     def test_get_filtered_query_resolves_equals_lookup_from_alias(self):
         # 1. Start query

@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
 
 
 @dataclass
@@ -189,3 +192,7 @@ def get_formatter_choices(field_type: TileFieldType | str | None = None) -> list
         for formatter in Formatter
         if formatter.value.restrict_to is None or primitive_type in formatter.value.restrict_to
     ]
+
+
+def analytics_tile_filter_field_factory(config:"AnalyticsTileConfig"):
+    config.filters

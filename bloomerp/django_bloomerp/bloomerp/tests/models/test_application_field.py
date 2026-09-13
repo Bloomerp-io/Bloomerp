@@ -23,7 +23,7 @@ from bloomerp.services.sectioned_layout_services import (
 )
 from bloomerp.services.form_services import FormManager
 from bloomerp.field_types import FIELD_TYPE_REGISTRY
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.form_fields.address_field import AddressFormField, AddressValue
 from bloomerp.form_fields.files_relation_field import FilesCleanedData
 from bloomerp.form_fields.one_to_many_field import OneToManyCleanedData, OneToManyField
@@ -295,7 +295,7 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertIsNotNone(field_type.form_factory)
         self.assertIsInstance(field_type.widget_factory(FieldContext()), PhoneNumberWidget)
         self.assertEqual(field_type.construction.defaults["max_length"], 30)
-        self.assertIn(Lookup.CONTAINS, field_type.lookups)
+        self.assertIn(lookups.CONTAINS, field_type.lookups)
 
     def test_address_field_type_uses_address_field_parts(self):
         field_type = FIELD_TYPE_REGISTRY.ADDRESS_FIELD
@@ -304,7 +304,7 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertIs(field_type.model_field_cls, AddressField)
         self.assertIsNotNone(field_type.form_factory)
         self.assertIsInstance(field_type.widget_factory(FieldContext()), AddressWidget)
-        self.assertIn(Lookup.ADDRESS_CONTAINS, field_type.lookups)
+        self.assertIn(lookups.ADDRESS_CONTAINS, field_type.lookups)
 
     def test_week_field_type_uses_week_field_parts(self):
         field_type = FIELD_TYPE_REGISTRY.WEEK_FIELD
@@ -314,7 +314,7 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertIsNotNone(field_type.form_factory)
         self.assertIsInstance(field_type.widget_factory(FieldContext()), WeekWidget)
         self.assertEqual(field_type.construction.defaults["max_length"], 8)
-        self.assertIn(Lookup.EQUALS, field_type.lookups)
+        self.assertIn(lookups.EQUALS, field_type.lookups)
 
     def test_address_form_field_normalizes_structured_value(self):
         form_field = AddressFormField()
@@ -556,7 +556,7 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
                                 field="name",
                             ).pk
                         ),
-                        "operator": Lookup.EQUALS.value.id,
+                        "operator": lookups.EQUALS.id,
                         "value": "Policy",
                     }
                 ],
@@ -690,7 +690,7 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
                 "conditions": [
                     {
                         "application_field_id": str(target_field.pk),
-                        "operator": Lookup.EQUALS.value.id,
+                        "operator": lookups.EQUALS.id,
                         "value": "Policy",
                     }
                 ],

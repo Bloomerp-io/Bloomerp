@@ -8,7 +8,7 @@ from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from bloomerp.tests.utils.dynamic_models import create_test_models
-from bloomerp.utils.filters import filter_model
+from bloomerp.filters.manager import ModelFilterManager
 
 
 class TestFilterModelRegressions(BaseBloomerpTestCaseWithModels):
@@ -51,7 +51,7 @@ class TestFilterModelRegressions(BaseBloomerpTestCaseWithModels):
 
     def assert_filtered_ids(self, model, filters, expected_ids):
         self.assertCountEqual(
-            filter_model(model, filters).values_list("id", flat=True),
+            ModelFilterManager(model).filter(filters, queryset=model.objects.all()).values_list("id", flat=True),
             expected_ids,
         )
 

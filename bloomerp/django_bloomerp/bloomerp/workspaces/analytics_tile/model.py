@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Self, Optional, Type
 
 from django.forms import BooleanField, CharField, ChoiceField, Field, Form
-from django.http import HttpRequest, QueryDict
+from django.http import QueryDict
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
 from pydantic import BaseModel, Field as PydanticField, field_validator
@@ -25,7 +25,8 @@ from bloomerp.workspaces.analytics_tile.utils import (
 )
 from bloomerp.workspaces.base import BaseTileConfig, TileOperationDefinition, TileOperationHandler, TileOperationHandlerRespone
 from django import forms
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
+from bloomerp.lookups.definition import LookupDefinition, SQLLookupContext
 
 if TYPE_CHECKING:
     from bloomerp.workspaces.base import BaseTileRenderer
@@ -819,6 +820,29 @@ def get_filters_from_query(table:DatabaseTable, query:str):
     return filters
     
 
+def _lookup_sql_literal(value) -> str:
+    """Render a compiled lookup parameter for the legacy PostgreSQL text API."""
+    from datetime import date, datetime, time
+    from decimal import Decimal
+    from math import isfinite
+
+    if value is None:
+        return "NULL"
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float, Decimal)):
+        if not isfinite(value):
+            raise ValueError("Non-finite SQL filter value")
+        return str(value)
+    if isinstance(value, (date, datetime, time)):
+        value = value.isoformat()
+    text = str(value)
+    if "\x00" in text:
+        raise ValueError("SQL filter values cannot contain NUL")
+    escaped = text.replace("\\", "\\\\").replace("'", "''")
+    return "E'" + escaped + "'"
+
+
 def get_filtered_query(config:AnalyticsTileConfig, params:QueryDict) -> str:
     """Returns the filtered query for a particular config, based on the request object's query parameters. 
 
@@ -845,9 +869,21 @@ def get_filtered_query(config:AnalyticsTileConfig, params:QueryDict) -> str:
             query = _replace_query_variable(query, filter_config.field, param_value)
             continue
 
-        column_conditions.append(
-            f"{filter_config.field} {lookup.value.sql_operator(param_value)}"
+        if lookup.sql_factory is None:
+            raise ValueError(f"Lookup {lookup.id!r} does not support SQL filtering")
+        compiled = lookup.sql_factory(
+            SQLLookupContext(field_path=filter_config.field),
+            lookup.expressions[0], param_value,
         )
+        # The legacy executor accepts SQL text. Keep literal rendering here,
+        # outside lookup definitions, until it supports bound parameters.
+        fragments = compiled.clause.split("%s")
+        if len(fragments) != len(compiled.parameters) + 1:
+            raise ValueError("SQL lookup parameter count mismatch")
+        clause = fragments[0]
+        for parameter, fragment in zip(compiled.parameters, fragments[1:]):
+            clause += _lookup_sql_literal(parameter) + fragment
+        column_conditions.append(clause)
 
     if not column_conditions:
         return query
@@ -880,11 +916,11 @@ def _strip_trailing_query_semicolon(query: str) -> str:
 def _resolve_filter_lookup(
     filters: list[AnalyticsTileFilter],
     param_key: str,
-) -> tuple[AnalyticsTileFilter | None, Lookup | None]:
+) -> tuple[AnalyticsTileFilter | None, LookupDefinition | None]:
     for filter_config in filters:
         filter_key = filter_config.field
         if param_key == filter_key:
-            return filter_config, Lookup.EQUALS
+            return filter_config, lookups.EQUALS
 
         prefix = f"{filter_key}__"
         if not param_key.startswith(prefix):
@@ -898,9 +934,9 @@ def _resolve_filter_lookup(
     return None, None
 
 
-def _get_lookup_by_alias(alias: str) -> Lookup | None:
-    for lookup in Lookup:
-        if alias in lookup.value.aliases:
+def _get_lookup_by_alias(alias: str) -> LookupDefinition | None:
+    for lookup in lookups.BUILTIN_LOOKUPS:
+        if alias.lstrip("_") in lookup.expressions:
             return lookup
 
     return None

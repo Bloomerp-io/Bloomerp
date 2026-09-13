@@ -55,8 +55,10 @@ class HTMXPermissionDeniedMiddleware:
 _requests = {}
 
 def current_request() -> HttpRequest:
-    return _requests.get(current_thread().ident, None)
-
+    try:
+        return _requests.get(current_thread().ident, None)
+    except:
+        return None
 
 class RequestMiddleware(MiddlewareMixin):
     def process_request(self, request):

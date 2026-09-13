@@ -17,17 +17,7 @@
             menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
         >
             <div class="p-3">
-                <div>
-                    <div class="mb-2">
-                        <c-ui.text.subtitle class="mb-2">Filter</c-ui.text.subtitle>
-                        <div id="filter-section-{{ content_type_id }}">
-                            {{ filter_section|safe }}
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-primary btn-sm" id="apply-filters-button">
-                        Apply Filters
-                    </button>
-                </div>
+                <c-features.filters.container scope="model" id="{{ content_type_id }}"/>
             </div>
         </c-ui.dropdown.body>
     </c-ui.shortcut_tooltip>

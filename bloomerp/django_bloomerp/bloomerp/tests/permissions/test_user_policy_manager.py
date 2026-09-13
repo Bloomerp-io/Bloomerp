@@ -1,4 +1,4 @@
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import (
     AccessRule,
@@ -105,7 +105,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="first_name",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value=first_name,
                         )
                     ],
@@ -162,7 +162,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="first_name",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value=FIRST_NAMES[0],
                         )
                     ],
@@ -220,7 +220,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="first_name",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value=first_name_value
                         )
                     ]
@@ -259,7 +259,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="first_name",
-                            operator=Lookup.NOT_EQUALS.value.id,
+                            operator=lookups.NOT_EQUALS.id,
                             value=first_name_value
                         )
                     ]
@@ -291,7 +291,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="first_name",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value=FIRST_NAMES[0],
                         )
                     ],
@@ -392,7 +392,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                         RowPolicyRuleCondition(
                             application_field_id=str(country_field.pk),
                             field="country__created_by",
-                            operator=Lookup.EQUALS_USER.value.id,
+                            operator=lookups.EQUALS_USER.id,
                             value="$user",
                         )
                     ],
@@ -437,12 +437,12 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             application_field_id=str(created_by.pk),
-                            operator=Lookup.EQUALS_USER.value.id,
+                            operator=lookups.EQUALS_USER.id,
                             value="$user",
                         ),
                         RowPolicyRuleCondition(
                             application_field_id=str(age.pk),
-                            operator=Lookup.GREATER_THAN_OR_EQUAL.value.id,
+                            operator=lookups.GREATER_THAN_OR_EQUAL.id,
                             value="18",
                         ),
                     ],
@@ -486,7 +486,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                         conditions=[
                             RowPolicyRuleCondition(
                                 field="first_name",
-                                operator=Lookup.EQUALS.value.id,
+                                operator=lookups.EQUALS.id,
                                 value=value,
                             )
                         ],
@@ -604,7 +604,7 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
                         conditions=[
                             RowPolicyRuleCondition(
                                 field="first_name",
-                                operator=Lookup.EQUALS.value.id,
+                                operator=lookups.EQUALS.id,
                                 value=row_value,
                             )
                         ],

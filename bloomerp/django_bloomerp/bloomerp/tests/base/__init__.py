@@ -14,6 +14,11 @@ from bloomerp.tests.base.form_field_test_case import (
     ExpectedFormFieldException,
     FormFieldScenario,
 )
+from bloomerp.tests.base.lookup_test_case import (
+    BloomerpLookupTestCase,
+    LookupScenario,
+    PythonEvaluation,
+)
 from bloomerp.tests.base.model_field_test_case import (
     BloomerpModelFieldTestCase,
     ExpectedModelFieldException,
@@ -53,8 +58,6 @@ from bloomerp.tests.base.workflow_node_test_case import (
     BloomerpWorkflowNodeTestCase,
     WorkflowNodeScenario,
 )
-
-
 # Backwards-compatible names used by existing projects.
 BaseBloomerpComponentTest = BloomerpComponentTestCase
 BaseBloomerpWidgetTestCase = BloomerpWidgetTestCase
@@ -73,6 +76,7 @@ __all__ = [
     "BloomerpDetailViewTestCase",
     "BloomerpE2ETestCase",
     "BloomerpFormFieldTestCase",
+    "BloomerpLookupTestCase",
     "E2EAction",
     "E2ERequestScenario",
     "BloomerpModelFieldTestCase",
@@ -88,6 +92,7 @@ __all__ = [
     "ExpectedModelFieldException",
     "ExpectedWidgetException",
     "FormFieldScenario",
+    "LookupScenario",
     "ModelFieldScenario",
     "ModelRequestScenario",
     "ModelScenario",
@@ -96,6 +101,7 @@ __all__ = [
     "RequestScenario",
     "RequestTestCaseMixin",
     "ResponseValidator",
+    "PythonEvaluation",
     "WorkflowNodeScenario",
     "WidgetOperation",
     "WidgetScenario",

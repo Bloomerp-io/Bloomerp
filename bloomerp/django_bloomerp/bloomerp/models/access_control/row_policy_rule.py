@@ -111,11 +111,9 @@ class RowPolicyRule(AbsoluteUrlModelMixin, models.Model):
             return None
         
         for lookup in field_type.lookups:
-            if operator == lookup.value.id:
+            if operator == lookup.id:
                 return lookup
-            if operator == lookup.value.django_representation:
-                return lookup
-            if operator in (lookup.value.aliases or []):
+            if str(operator).lstrip("_") in lookup.expressions:
                 return lookup
         return None
 

@@ -370,3 +370,33 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             "list[ModelFieldScenario[AddressField]]:",
             model_field_case.content,
         )
+
+    def test_lookup_skeleton_imports_scenario_dependencies(self):
+        """
+        Use case: A developer fills in a generated per-lookup test.
+        Expected result: ORM, SQL, field, and Python scenario types are imported.
+        """
+        content = self.command._render_lookup_test(
+            import_path="example.lookups.equals",
+            imported_name="EQUALS",
+            class_name="TestEqualsLookup",
+        )
+
+        self.assertIn("from django.db.models import Q", content)
+        self.assertIn(
+            "from bloomerp.lookups.definition import CompiledLookup, CompiledSQL",
+            content,
+        )
+        self.assertIn(
+            "from bloomerp.models.application_field import ApplicationField",
+            content,
+        )
+        self.assertIn("    BloomerpLookupTestCase,", content)
+        self.assertIn("    LookupScenario,", content)
+        self.assertIn("    PythonEvaluation,", content)
+        self.assertIn("    lookup = EQUALS", content)
+        self.assertIn(
+            "def get_test_scenarios(self) -> list[LookupScenario]:",
+            content,
+        )
+        compile(content, "<generated lookup test>", "exec")

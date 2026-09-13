@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.urls import reverse
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
     ApplicationField,
     FieldPolicy,
@@ -315,7 +315,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -359,7 +359,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -385,7 +385,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -417,7 +417,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -447,7 +447,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -483,7 +483,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -523,7 +523,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -565,12 +565,12 @@ class TestCreateView(CrudViewTestMixin):
                     "conditions": [
                         {
                             "application_field_id": str(self.fields_by_name["last_name"].pk),
-                            "operator": Lookup.EQUALS.value.id,
+                            "operator": lookups.EQUALS.id,
                             "value": "Peeters",
                         },
                         {
                             "application_field_id": str(self.fields_by_name["country"].pk),
-                            "operator": Lookup.EQUALS.value.id,
+                            "operator": lookups.EQUALS.id,
                             "value": str(belgium.pk),
                         },
                     ],
@@ -712,7 +712,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -788,7 +788,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],
@@ -837,7 +837,7 @@ class TestCreateView(CrudViewTestMixin):
             row_rules=[
                 {
                     "application_field_id": str(self.fields_by_name["first_name"].pk),
-                    "operator": Lookup.EQUALS.value.id,
+                    "operator": lookups.EQUALS.id,
                     "value": "Allowed",
                 }
             ],

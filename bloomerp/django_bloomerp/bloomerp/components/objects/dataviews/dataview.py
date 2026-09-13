@@ -5,8 +5,8 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.core.exceptions import FieldDoesNotExist
-from bloomerp.components.filters.fields import filters_init
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
@@ -27,7 +27,6 @@ from django.http import QueryDict
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.object_services import string_search_on_queryset
-from bloomerp.utils.filters import filter_model
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.models import ApplicationField
 from django.db.models import Model, QuerySet
@@ -152,7 +151,11 @@ def _build_data_view_query_state(
         _normalize_default_filters(preference.default_filters or {}),
     )
     
-    queryset = filter_model(Model, filter_querydict, queryset)
+    filter_manager = ModelFilterManager(Model)
+    queryset = filter_manager.filter(
+        request.GET,
+        queryset,
+    )
     queryset = _select_related_rendered_relations(
         queryset,
         dataview_render_fields + ([avatar_field] if avatar_field else []),
@@ -550,7 +553,6 @@ def dataview(
         'create_querystring': create_querystring.urlencode(),
         'export_querystring': export_querystring.urlencode(),
         'sync_url': sync_url,
-        'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),
         'pagination_pages': pagination.pagination_pages or [],
         'show_global_pagination': pagination.show_global_pagination,

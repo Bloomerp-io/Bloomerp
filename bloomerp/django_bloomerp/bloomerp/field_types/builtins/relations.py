@@ -3,7 +3,8 @@ from bloomerp.field_types.utils.render_value_functions import (
     render_foreign_key_dataview_value,
 )
 from bloomerp.field_types.display_options import LABEL_OPTION, FieldDisplayOption
-from bloomerp.field_types.lookups import ONE_TO_MANY_LOOKUPS, Lookup
+from bloomerp.field_types.lookups import ONE_TO_MANY_LOOKUPS
+from bloomerp.lookups import builtins as lookups
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
     COMMON_RELATION_FIELD_OPTIONS,
@@ -45,11 +46,11 @@ FOREIGN_KEY = FieldTypeDefinition(
     model_field_cls=models.ForeignKey,
     label="Foreign Key",
     lookups=(
-        Lookup.EQUALS,
-        Lookup.NOT_EQUALS,
-        Lookup.IN,
-        Lookup.FOREIGN_ADVANCED,
-        Lookup.IS_NULL,
+        lookups.EQUALS,
+        lookups.NOT_EQUALS,
+        lookups.VALUES_IN,
+        lookups.FOREIGN_ADVANCED,
+        lookups.IS_NULL,
     ),
     construction=FieldConstruction(
         defaults={"on_delete": models.CASCADE},
@@ -66,7 +67,7 @@ ONE_TO_ONE_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-link",
     model_field_cls=models.OneToOneField,
     label="One To One Field",
-    lookups=(Lookup.IS_NULL, Lookup.EQUALS, Lookup.NOT_EQUALS, Lookup.IN),
+    lookups=(lookups.IS_NULL, lookups.EQUALS, lookups.NOT_EQUALS, lookups.VALUES_IN),
     construction=FieldConstruction(
         defaults={"on_delete": models.CASCADE},
         options=(
@@ -84,7 +85,7 @@ MANY_TO_MANY_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-share-nodes",
     model_field_cls=models.ManyToManyField,
     label="Many To Many Field",
-    lookups=(Lookup.EQUALS, Lookup.NOT_EQUALS, Lookup.IS_NULL, Lookup.IN),
+    lookups=(lookups.EQUALS, lookups.NOT_EQUALS, lookups.IS_NULL, lookups.VALUES_IN),
     construction=FieldConstruction(
         defaults={},
         options=(
@@ -145,7 +146,7 @@ USER_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-user",
     model_field_cls=UserField,
     label="User Field",
-    lookups=(Lookup.IS_NULL, Lookup.EQUALS_USER, Lookup.EQUALS),
+    lookups=(lookups.IS_NULL, lookups.EQUALS_USER, lookups.EQUALS),
     construction=FieldConstruction(
         defaults={},
         options=(
@@ -167,7 +168,7 @@ ONE_TO_ONE_USER_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-user",
     model_field_cls=OneToOneUserField,
     label="One To One User Field",
-    lookups=(Lookup.IS_NULL, Lookup.EQUALS_USER, Lookup.EQUALS),
+    lookups=(lookups.IS_NULL, lookups.EQUALS_USER, lookups.EQUALS),
     construction=FieldConstruction(
         defaults={},
         options=(

@@ -1,3 +1,4 @@
+from bloomerp.workspaces.utils import has_access_to_workspace
 from bloomerp.router import router
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.views.workspaces.base import BaseWorkspaceView
@@ -19,13 +20,9 @@ class BloomerpModuleWorkspace(BaseWorkspaceView, DetailView):
         return context
     
     def has_permission(self):
-        obj:Workspace = self.get_object()
-        if obj.user == self.request.user:
-            return True
-        
-        return (
-            obj.shared_with_users.filter(pk=self.request.user.pk).exists()
-            or obj.shared_with_groups.filter(user=self.request.user).exists()
+        return has_access_to_workspace(
+            self.get_object(),
+            self.request.user
         )
 
     def get_module_id(self) -> str | None:

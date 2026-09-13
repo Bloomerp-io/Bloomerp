@@ -1,262 +1,93 @@
-import json
-
-from django import forms
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
-from bloomerp.models.application_field import ApplicationField
-from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.decorators import login_required
+from django.db.models import ObjectDoesNotExist
+from django.http import Http404, HttpRequest, JsonResponse
+from django.http import HttpResponse
+from bloomerp.filters.definition import FilterField
+from bloomerp.filters.utils import application_fields_to_filter_field_groups
+from bloomerp.lookups.registry import LOOKUP_REGISTRY
+from bloomerp.workspaces.utils import has_access_to_workspace
+from bloomerp.models.workspaces.workspace import Workspace
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.field_types.registry import load_builtin_field_types
+from bloomerp.utils.models import get_model_and_content_type_or_404
 
-FIELD_TYPE_REGISTRY = load_builtin_field_types()
-
-def filterable_field_type_ids() -> list[str]:
-    """Include types registered by extensions after this module was imported."""
-    return [definition.id for definition in FIELD_TYPE_REGISTRY.values() if definition.lookups]
-
-
-def related_field_type_ids() -> list[str]:
-    return [
-        definition.id for definition in FIELD_TYPE_REGISTRY.values()
-        if definition.model_field_cls is None and definition.lookups
-    ]
-
-
-EXPANDABLE_FIELD_TYPE_IDS = {
-    FIELD_TYPE_REGISTRY.FOREIGN_KEY.id,
-    FIELD_TYPE_REGISTRY.MANY_TO_MANY_FIELD.id,
-    FIELD_TYPE_REGISTRY.ONE_TO_ONE_FIELD.id,
-    FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id,
-}
-
-
-def _get_related_model(application_field: ApplicationField):
-    related_model = application_field.get_related_model()
-    if related_model:
-        return related_model
-
-    try:
-        model_field = application_field._get_model_field()
-    except Exception:
-        return None
-
-    return getattr(model_field, "related_model", None)
-
-
-def _get_related_content_type_id(application_field: ApplicationField) -> int | None:
-    related_model = _get_related_model(application_field)
-    if not related_model:
-        return None
-
-    return ContentType.objects.get_for_model(related_model).id
-
-
-def _prepare_related_fields(application_fields):
-    fields = list(application_fields)
-    for field in fields:
-        field.filter_related_content_type_id = _get_related_content_type_id(field)
-    return fields
-
+    
+    
 
 @router.register(
-    path='components/filters/<int:content_type_id>/init/',
-    name='components_filters_init'
+    path="components/filters/fields",
+    url_name="components_filters_fields"
 )
-def filters_init(request:HttpRequest, content_type_id:int) -> HttpResponse:
-    """
-    Initializes the filter component for a given content type.
-    """
-    application_field_id = request.GET.get("application_field_id", None)
-    initial_filter_raw = request.GET.get("initial_filter", "")
-    selected_application_field = None
-    html_content = ""
-    initial_filter = None
+@login_required
+def fields(request: HttpRequest) -> HttpResponse:
+    """Returns the filterable fields for a particular workspace or content type ID
+
+    Args:
+        request (HttpRequest): 
+
+    Get Args:
+        scope
+        identifier
     
-    if initial_filter_raw:
+    Returns:
+        HttpResponse: _description_
+    """
+    scope = request.GET.get("scope")
+    identifier = request.GET.get("id")
+    
+    lookup_id = request.GET.get("lookup_id")
+    field_path = request.GET.get("field_path")
+    
+    policy_manager = UserPolicyManager(request.user)
+    
+    if scope == "model":
+        Model, content_type = get_model_and_content_type_or_404(identifier)
+        
+        if not policy_manager.has_global_permission(content_type):
+            return HttpResponse("You don't have access to this", status_code=403)
+        
+        if field_path and lookup_id:
+            fields = LOOKUP_REGISTRY.get_by_id(lookup_id).nested_fields_factory(
+                Model,
+                field_path
+            )
+            
+            return JsonResponse(
+                group.model_dump() for group in fields
+            )
+        
+        application_fields = policy_manager.get_accessible_fields(content_type, BloomerpPermission.VIEW)
+        
+        return JsonResponse(
+            application_fields_to_filter_field_groups(application_fields)    
+        )
+    
+    if scope == "workspace":
         try:
-            parsed_initial_filter = json.loads(initial_filter_raw)
-            if isinstance(parsed_initial_filter, dict):
-                initial_filter = parsed_initial_filter
-                if not application_field_id:
-                    application_field_id = parsed_initial_filter.get("applicationFieldId")
-        except json.JSONDecodeError:
-            initial_filter = None
-    
-    # TODO: integrate with permissions
-    model_fields = None
-    related_fields = None
-
-    if not application_field_id:
-        application_fields = ApplicationField.get_for_content_type_id(content_type_id).filter(
-            field_type__in=filterable_field_type_ids()
-        )
-        model_fields = application_fields.exclude(field_type__in=related_field_type_ids())
-        related_fields = application_fields.filter(field_type__in=related_field_type_ids())
-    else:
-        application_fields = None
-        selected_application_field = ApplicationField.objects.get(id=application_field_id)
+            workspace = Workspace.objects.get(id=identifier)
+        except ObjectDoesNotExist:
+            return Http404("Workspace not found")
         
-        # In this case, go to step 2 already
-        html_content = filters_lookup_operators(
-            request,
-            content_type_id,
-            application_field_id
-        ).content.decode("utf-8")
-
-    return render(
-        request,
-        "components/filters/init.html",
-        {
-            "content_type_id": content_type_id,
-            "application_fields": application_fields,
-            "model_fields": model_fields,
-            "related_fields": related_fields,
-            "selected_application_field": selected_application_field,
-            "html_content": html_content,
-            "initial_filter_json": json.dumps(initial_filter) if initial_filter else "",
-        }    
-    )
-
-
-@router.register(
-    path='components/filters/<int:content_type_id>/lookup-operators/<int:application_field_id>/',
-    name='components_filters_lookup_operators'
-)
-def filters_lookup_operators(
-    request:HttpRequest,
-    content_type_id:int,
-    application_field_id:int
-    ) -> HttpResponse:
-    """Returns a select field containing all of the lookup operators for a certain application field. 
-
-    Args:
-        request (HttpRequest): the request object
-        content_type_id (int): the content type id
-        application_field_id (int): the application field id    
-    Returns:
-        HttpResponse: the response object
-    """
-    try:
-        # Get the application field
-        application_field = ApplicationField.objects.get(id=application_field_id)
-        field_path = request.GET.get("field_path", None)
-        base_application_field_id = request.GET.get("base_application_field_id", None)
+        if not has_access_to_workspace(workspace, request.user):
+            return HttpResponse("You don't have access to this", status_code=403)
         
-        # Get the field type
-        field_type = application_field.get_field_type()
+        fields = []
         
-        return render(
-            request,
-            "components/filters/lookup_operators.html",
-            {
-                "application_field": application_field,
-                "lookups": field_type.lookups,
-                "field_path": field_path,
-                "base_application_field_id": base_application_field_id,
-            }
-        )
-    except ApplicationField.DoesNotExist:
-        return HttpResponse("Application field not found.", status=404)
-    
-    
-@router.register(
-    path='components/filters/<int:content_type_id>/value-input/<int:application_field_id>/',
-    name='components_filters_value_input'
-)
-def value_input(
-    request:HttpRequest, 
-    content_type_id:int, 
-    application_field_id:int) -> HttpResponse:
-    """Returns a value input field for a certain application field. 
-
-    Args:
-        request (HttpRequest): the request object
-        content_type_id (int): the content type id
-        application_field_id (int): the application field id
-    GET Parameters:
-        lookup_value (str): the selected lookup operator value
-    Returns:
-        HttpResponse: the response object
-    """
-    try:
-        # Get the selected application field and operator
-        lookup_value = request.GET.get("lookup_value", "")
-        current_value = request.GET.get("current_value", None)
-        application_field = ApplicationField.objects.get(id=application_field_id)
-        field_path = request.GET.get("field_path", None)
-        base_application_field_id = request.GET.get("base_application_field_id", None)
-        
-        field_type = application_field.get_field_type()
-        
-        # Get the lookup value
-        lookup_option = None
-        for option in field_type.lookups:
-            if option.value.id == lookup_value:
-                lookup_option = option
-                break
-        
-        if not lookup_option:
-            return HttpResponse("Invalid lookup operator.", status=400)
-        
-        # Special handling for advanced relation lookups
-        if lookup_value in {"foreign_advanced", "one_to_many_advanced"}:
-            related_model = _get_related_model(application_field)
-            if not related_model:
-                return HttpResponse("Related model not found.", status=400)
-            related_content_type_id = ContentType.objects.get_for_model(related_model).id
-            related_fields = ApplicationField.get_for_content_type_id(related_content_type_id).filter(
-                field_type__in=filterable_field_type_ids()
+        for tile in workspace.get_tiles():
+            filter_fields :list[str] = tile.get_tile_type_definition().filter_fields_factory(
+                tile.get_config_object()
             )
+            
+            # Reconcile by type
+            # Filters can appear to be the same if their field path and field type is the same
 
-            return render(
-                request,
-                "components/filters/advanced_lookup.html",
-                {
-                    "base_field": application_field,
-                    "base_field_path": field_path or application_field.field,
-                    "base_field_id": base_application_field_id or application_field.id,
-                    "related_fields": _prepare_related_fields(related_fields),
-                    "related_content_type_id": related_content_type_id,
-                }
-            )
         
-        return HttpResponse(
-            lookup_option.value.render(application_field, name_override=field_path)
-        )
+    return HttpResponse("Invalid scope", status_code=400)
+            
         
-    except ApplicationField.DoesNotExist:
-        return HttpResponse("Application field not found.", status=404)
-
-
-@router.register(
-    path='components/filters/<int:content_type_id>/related-fields/',
-    name='components_filters_related_fields'
-)
-def related_fields(
-    request: HttpRequest,
-    content_type_id: int,
-) -> HttpResponse:
-    """Returns a select list of related fields for advanced filter chaining."""
-    try:
-        level = int(request.GET.get("level", 1))
-    except (TypeError, ValueError):
-        level = 1
-
-    path_prefix = request.GET.get("path_prefix", "")
-
-    application_fields = ApplicationField.get_for_content_type_id(content_type_id).filter(
-        field_type__in=filterable_field_type_ids()
-    )
-
-    return render(
-        request,
-        "components/filters/related_fields_select.html",
-        {
-            "application_fields": _prepare_related_fields(application_fields),
-            "level": level,
-            "path_prefix": path_prefix,
-            "expandable_field_types": EXPANDABLE_FIELD_TYPE_IDS,
-        }
-    )
-    
+        
+        
+        
+        
     

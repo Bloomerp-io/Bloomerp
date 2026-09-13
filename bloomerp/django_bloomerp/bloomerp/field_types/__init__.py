@@ -2,7 +2,6 @@ from importlib import import_module
 from typing import Any
 
 __all__ = [
-    "Lookup",
     "LookupDefinition",
     "TEXT_LOOKUPS",
     "NUMERIC_LOOKUPS",
@@ -40,8 +39,7 @@ __all__ = [
 ]
 
 _ATTR_TO_MODULE = {
-    "Lookup": ".lookups",
-    "LookupDefinition": ".lookups",
+    "LookupDefinition": "bloomerp.lookups.definition",
     "TEXT_LOOKUPS": ".lookups",
     "NUMERIC_LOOKUPS": ".lookups",
     "DATE_LOOKUPS": ".lookups",

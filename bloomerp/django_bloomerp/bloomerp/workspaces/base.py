@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from django.forms import Form
 from django.http import HttpRequest
 from pydantic import BaseModel
-from typing import TYPE_CHECKING, Literal, Optional, Self, Type
+from typing import TYPE_CHECKING, Callable, Literal, Optional, Self, Type
 from django import forms
 from django.template.loader import render_to_string
+
+from bloomerp.filters.definition import FilterField
 
 if TYPE_CHECKING:
     from bloomerp.models.users.user import User
@@ -67,8 +69,6 @@ class BaseTileRenderer(ABC):
     def render_to_string(cls, context: dict) -> str:
         return render_to_string(cls.template_name, context)
     
-    
-    
 
 class TileTypeDefinition(BaseModel):
     name:str
@@ -77,3 +77,5 @@ class TileTypeDefinition(BaseModel):
     form_cls:Type[Form] | None = None
     model:Type[BaseTileConfig] | None = None
     render_cls:Type[BaseTileRenderer] | None = None
+    filter_fields_factory:Callable[[BaseTileConfig], list[FilterField]] = lambda _:[]
+

@@ -1,6 +1,6 @@
 from django.db import connection
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.permissions.definition import (
     BloomerpPermission,
     RowPolicyRuleCondition,
@@ -39,7 +39,7 @@ class TestSqlPermissionCompiler(BaseBloomerpTestCaseWithModels):
             conditions=[
                 RowPolicyRuleCondition(
                     field="first_name",
-                    operator=Lookup.EQUALS.value.id,
+                    operator=lookups.EQUALS.id,
                     value=FIRST_NAMES[0],
                 )
             ],

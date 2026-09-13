@@ -16,7 +16,7 @@ from bloomerp.field_types.registry import (
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from bloomerp.filters.lookups import LookupDefinition
+    from bloomerp.lookups.definition import LookupDefinition
 
 class ApplicationField(models.Model):
     """

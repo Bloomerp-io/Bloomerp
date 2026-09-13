@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from django.db.models import QuerySet
 
@@ -6,7 +6,9 @@ from bloomerp.model_fields.icon_field import IconField
 from bloomerp.models import BloomerpModel
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-
+if TYPE_CHECKING:
+    from bloomerp.workspaces.base import BaseTileConfig
+    from bloomerp.workspaces.base import TileTypeDefinition
 
 def get_tile_type_choices():
     from bloomerp.workspaces.registry import TILE_TYPE_REGISTRY
@@ -93,3 +95,11 @@ class Tile(BloomerpModel):
                 schema__id__in=normalized_ids,
             )
         }
+
+    def get_config_object(self) -> "BaseTileConfig":
+        return self.get_tile_type_definition().model(**self.schema)
+    
+    def get_tile_type_definition(self) -> "TileTypeDefinition":
+        from bloomerp.workspaces.registry import TILE_TYPE_REGISTRY
+        return TILE_TYPE_REGISTRY.get(self.type)
+        

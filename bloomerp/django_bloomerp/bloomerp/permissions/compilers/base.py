@@ -3,7 +3,8 @@ from typing import Any, Generic, TypeVar
 
 from django.core.exceptions import ValidationError
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
+from bloomerp.lookups.definition import LookupDefinition
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import (
     AccessRule,
@@ -94,7 +95,7 @@ class BasePermissionCompiler(ABC, Generic[CompiledPermission]):
     def resolve_lookup(
         application_field: ApplicationField,
         operator: str,
-    ) -> Lookup | None:
+    ) -> LookupDefinition | None:
         if not application_field or not operator:
             return None
         field_type = application_field.get_field_type()
@@ -102,45 +103,39 @@ class BasePermissionCompiler(ABC, Generic[CompiledPermission]):
         lookup = field_type.get_lookup_by_id(operator)
         if lookup is not None:
             return lookup
+        normalized = str(operator).lstrip("_")
         for candidate in field_type.lookups:
-            definition = candidate.value
-            if operator == definition.django_representation:
-                return candidate
-            if operator in (definition.aliases or []):
+            if normalized in candidate.expressions:
                 return candidate
         return None
 
     @staticmethod
-    def resolve_lookup_globally(operator: str) -> Lookup | None:
+    def resolve_lookup_globally(operator: str) -> LookupDefinition | None:
+        from bloomerp.lookups.registry import LOOKUP_REGISTRY
+
         normalized = str(operator or "").lstrip("_")
-        for lookup in Lookup:
-            definition = lookup.value
-            aliases = {str(alias).lstrip("_") for alias in definition.aliases or []}
-            if normalized in {
-                definition.id,
-                str(definition.django_representation or "").lstrip("_"),
-                *aliases,
-            }:
+        for lookup in LOOKUP_REGISTRY.values():
+            if normalized == lookup.id or normalized in lookup.expressions:
                 return lookup
         return None
 
     @staticmethod
     def normalize_lookup_value(
         application_field: ApplicationField,
-        lookup: Lookup | str | None,
+        lookup: LookupDefinition | str | None,
         value: Any,
     ) -> Any:
         lookup_name = (
-            lookup.value.django_representation
-            if isinstance(lookup, Lookup)
+            lookup.id
+            if isinstance(lookup, LookupDefinition)
             else str(lookup or "")
         ).lower()
-        if lookup_name == "in":
+        if lookup_name in {"in", "values_in"}:
             if isinstance(value, str):
                 return [item.strip() for item in value.split(",") if item.strip()]
             if isinstance(value, (tuple, set)):
                 return list(value)
-        if lookup_name == "isnull":
+        if lookup_name in {"isnull", "is_null"}:
             if isinstance(value, str):
                 return BOOLEAN_NORMALIZATION.get(value.strip().lower(), False)
             return bool(value)

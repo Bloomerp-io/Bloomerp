@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-import logging
 
-import django_filters
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from rest_framework import serializers
@@ -19,9 +17,9 @@ from bloomerp.permissions.compilers.python_permission_compiler import PythonPerm
 from bloomerp.permissions.definition import PermissionMatch
 from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.utils.filters import dynamic_filterset_factory
+from bloomerp.filters.backend import ModelFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend
 
-logger = logging.getLogger(__name__)
 
 
 def _normalize_api_choice_value(value):
@@ -49,23 +47,6 @@ def _normalize_api_choices(choices):
             normalized_choices.append((_normalize_api_choice_value(value), label))
 
     return normalized_choices
-
-
-def _fallback_filterset_class(model: type[Model]) -> type[django_filters.FilterSet]:
-    return type(
-        f"{model.__name__}FilterSet",
-        (django_filters.FilterSet,),
-        {
-            "Meta": type(
-                "Meta",
-                (object,),
-                {
-                    "model": model,
-                    "fields": [],
-                },
-            )
-        },
-    )
 
 
 @dataclass
@@ -626,40 +607,14 @@ def generate_model_viewset_class(
     model.
     '''
 
-    def get_filterset_class(self):
-        if getattr(self, "swagger_fake_view", False):
-            return _fallback_filterset_class(model)
-
-        filterset_class = getattr(self.__class__, "_bloomerp_filterset_class", None)
-        if filterset_class is not None:
-            return filterset_class
-
-        try:
-            if not ApplicationField.get_for_model(model).exists():
-                logger.warning(
-                    "ApplicationField records are not available for API filterset model %s.%s",
-                    model._meta.app_label,
-                    model.__name__,
-                )
-                return _fallback_filterset_class(model)
-
-            filterset_class = dynamic_filterset_factory(model)
-        except Exception:
-            logger.exception(
-                "Error generating API filterset for model %s.%s",
-                model._meta.app_label,
-                model.__name__,
-            )
-            return _fallback_filterset_class(model)
-
-        self.__class__._bloomerp_filterset_class = filterset_class
-        return filterset_class
-
     Class = type(f'{model.__name__}ViewSet', (base_viewset,), {
         'model': model,
         'serializer_class': serializer,
-        '_bloomerp_filterset_class': None,
-        'filterset_class': property(get_filterset_class)
+        'filter_backends': (ModelFilterBackend, *tuple(
+            backend for backend in getattr(base_viewset, 'filter_backends', ())
+            if backend is not ModelFilterBackend
+            and not issubclass(backend, DjangoFilterBackend)
+        )),
     })
     
     return Class

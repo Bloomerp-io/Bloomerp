@@ -29,7 +29,7 @@ from bloomerp.services.object_services import string_search_on_queryset
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.utils.async_utils import run_async_or_sync
-from bloomerp.utils.filters import filter_model
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.utils.requests import render_message
 
@@ -188,7 +188,7 @@ def _build_bulk_action_state(
         queryset = string_search_on_queryset(queryset, query)
 
     filter_querydict = _filter_querydict(request, preference)
-    queryset = filter_model(model, filter_querydict, queryset)
+    queryset = ModelFilterManager(model).filter(filter_querydict, queryset=queryset)
 
     object_ids = request.GET.getlist("object_ids")
     selection = request.GET.get("selection")

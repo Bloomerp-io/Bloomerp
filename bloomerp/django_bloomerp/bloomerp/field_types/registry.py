@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Callable, TYPE_CHECKING, Any
 from bloomerp.field_types.display_options import FieldDisplayOption
-from bloomerp.field_types.lookups import Lookup
 from bloomerp.field_types.construction import FieldConstructionOption
+from bloomerp.lookups.definition import LookupDefinition
 from bloomerp.utils.registry import BaseRegistry
 from dataclasses import dataclass, field
 from django import forms
@@ -41,6 +41,7 @@ class FieldConstruction:
         object.__setattr__(self, "options", tuple(self.options))
 
 
+
 @dataclass(frozen=True, kw_only=True)
 class FieldTypeDefinition:
     id: str
@@ -57,9 +58,10 @@ class FieldTypeDefinition:
         instance, application_field.field, None
     )
 
-    lookups: tuple[Lookup, ...] = ()
+    lookups: tuple[LookupDefinition, ...] = ()
     display_options: tuple[FieldDisplayOption, ...] = ()
-
+    
+    
     @property
     def allow_in_model(self) -> bool:
         """Whether this type supplies a Django field class for model declarations.
@@ -78,9 +80,9 @@ class FieldTypeDefinition:
         """
         return self.model_field_cls is not None
 
-    def get_lookup_by_id(self, lookup_id: str) -> Lookup | None:
+    def get_lookup_by_id(self, lookup_id: str) -> LookupDefinition | None:
         for lookup in self.lookups:
-            if lookup.value.id == lookup_id:
+            if lookup.id == lookup_id:
                 return lookup
         return None
 
