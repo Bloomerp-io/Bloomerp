@@ -43,13 +43,13 @@ class TestFilterContainerE2E(unittest.TestCase):
                 window.permissionTable = component;
                 window.filterComponent = getComponent(editor);
             };
-            window.startWorkspace = (tileIds = ['7']) => {
+            window.startWorkspace = (tileIds = ['7'], itemConfig = {}) => {
                 const workspace = document.createElement('div');
                 workspace.dataset.workspaceId = '42';
                 workspace.dataset.layoutRenderItemUrl = '/tile';
-                workspace.dataset.layout = JSON.stringify({rows: [{columns: 2, items: tileIds.map(id => ({id, colspan: 1}))}]});
+                workspace.dataset.layout = JSON.stringify({rows: [{columns: 2, items: tileIds.map(id => ({id, colspan: 1, config: itemConfig}))}]});
                 document.body.append(workspace);
-                workspace.innerHTML = `<div data-layout-root><div data-layout-row><div data-layout-grid>${tileIds.map(id => `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}"><div data-layout-item-body>Initial tile ${id}</div></div>`).join('')}</div></div></div>`;
+                workspace.innerHTML = `<div data-layout-root><div data-layout-row><div data-layout-grid>${tileIds.map(id => `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}" data-layout-item-config='${JSON.stringify(itemConfig)}'><div data-layout-item-body>Initial tile ${id}</div></div>`).join('')}</div></div></div>`;
                 const root = document.querySelector('#filters');
                 root.dataset.scope = 'workspace';
                 root.dataset.scopeId = '42';
@@ -101,7 +101,8 @@ class TestFilterContainerE2E(unittest.TestCase):
             return
         if url.path == '/tile':
             tile_id = params['tile_id'][0]
-            route.fulfill(content_type='text/html', body=f'<div bloomerp-component="workspace-tile" data-layout-item-id="{tile_id}"><div data-layout-item-body>Refreshed tile {tile_id}</div></div>')
+            config = params.get('config', ['{}'])[0]
+            route.fulfill(content_type='text/html', body=f'<div bloomerp-component="workspace-tile" data-layout-item-id="{tile_id}" data-layout-item-config=\'{config}\'><div data-layout-item-body>Refreshed tile {tile_id}</div></div>')
             return
         if url.path == '/fields':
             fields = [{'field': 'name', 'label': 'Name'}] if 'field_path' in params else [
@@ -260,12 +261,16 @@ class TestFilterContainerE2E(unittest.TestCase):
             lambda request: requested_tile_ids.append(parse_qs(urlparse(request.url).query)['tile_id'][0])
             if urlparse(request.url).path == '/tile' else None,
         )
-        self.page.evaluate("window.startWorkspace(['7', '8'])")
+        self.page.evaluate("window.startWorkspace(['7', '8'], {density: 'compact'})")
 
         # 2. Verify both skeletons were inserted synchronously and tiles loaded in layout order.
         self.assertEqual(self.page.evaluate('window.initialWorkspaceSkeletonCount'), 2)
         expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
         self.assertEqual(requested_tile_ids, ['7', '8'])
+        self.assertEqual(
+            self.page.locator('[data-layout-item-id="8"]').get_attribute('data-layout-item-config'),
+            '{"density":"compact"}',
+        )
 
         # 3. Apply a workspace filter and capture its immediate loading state.
         filter_skeleton_count = self.page.evaluate("""() => {
@@ -280,6 +285,49 @@ class TestFilterContainerE2E(unittest.TestCase):
         # 4. Verify filtering restored every skeleton before requesting refreshed content.
         self.assertEqual(filter_skeleton_count, 2)
         expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
+
+    def test_workspace_serializes_initial_and_filter_reloads(self):
+        """
+        Use case: Apply a filter while the initial sequential tile load is still starting.
+        Expected result: The initial sequence finishes before one latest-filter sequence replaces it.
+        """
+        # 1. Record every tile request and trigger a filter in the initial load's call stack.
+        requested_urls = []
+        self.page.on(
+            'request',
+            lambda request: requested_urls.append(request.url)
+            if urlparse(request.url).path == '/tile' else None,
+        )
+        self.page.evaluate("""() => {
+            window.startWorkspace(['7', '8']);
+            document.querySelector('[data-workspace-id="42"]').dispatchEvent(
+                new CustomEvent('bloomerp:filters-apply', {
+                    bubbles: true,
+                    detail: {scope: 'workspace', id: '42', filters: [{connector: 'AND', conditions: []}]},
+                }),
+            );
+        }""")
+
+        # 2. Wait for the queued filtered sequence to finish.
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
+        self.page.wait_for_function("""() => {
+            const requests = performance.getEntriesByType('resource').filter(entry => entry.name.includes('/tile?'));
+            return requests.length >= 4;
+        }""")
+
+        # 3. Verify complete, non-overlapping layout-order sequences and the latest filter snapshot.
+        request_params = [parse_qs(urlparse(url).query) for url in requested_urls]
+        self.assertEqual([params['tile_id'][0] for params in request_params], ['7', '8', '7', '8'])
+        self.assertNotIn('filter', request_params[0])
+        self.assertNotIn('filter', request_params[1])
+        self.assertEqual(
+            json.loads(request_params[2]['filter'][0]),
+            [{'connector': 'AND', 'conditions': []}],
+        )
+        self.assertEqual(
+            json.loads(request_params[3]['filter'][0]),
+            [{'connector': 'AND', 'conditions': []}],
+        )
 
     def test_workspace_ignores_other_filter_scopes(self):
         """

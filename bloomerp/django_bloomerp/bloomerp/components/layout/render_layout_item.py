@@ -37,10 +37,17 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
         colspan = max(1, int(request.GET.get("colspan", 1)))
     except (TypeError, ValueError):
         colspan = 1
+    try:
+        config = json.loads(request.GET.get("config", "{}"))
+    except json.JSONDecodeError:
+        return HttpResponse("Invalid layout item config", status=400)
+    if not isinstance(config, dict):
+        return HttpResponse("Invalid layout item config", status=400)
     item = build_workspace_layout_item(
         tile=tile,
         request=request,
         colspan=colspan,
+        config=config,
         workspace_id=request.GET.get("workspace_id"),
     )
     return render(

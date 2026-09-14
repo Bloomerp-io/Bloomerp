@@ -16,6 +16,8 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     private workspaceApplyFiltersHandler: ((event: Event) => void) | null = null;
     private workspaceFilterParams = new URLSearchParams(window.location.search);
     private tileResizeObserver: ResizeObserver | null = null;
+    private tileReloadInFlight = false;
+    private tileReloadPending = false;
 
     public override initialize(): void {
         if (!this.element) return;
@@ -32,7 +34,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             this.renderedFilters.restore(this.workspaceFilterParams.get('filter'));
         }
         this.setupTileResizeObserver();
-        void this.reloadWorkspaceTiles();
+        void this.queueWorkspaceTileReload();
         this.items.forEach((item) => {
             if (item.element) {
                 this.observeTileResize(item.element);
@@ -91,6 +93,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
                 tile_id: itemId,
                 colspan: rowItem?.colspan ?? 1,
                 max_cols: row.columns,
+                config: JSON.stringify(rowItem?.config ?? {}),
             }),
         });
 
@@ -147,10 +150,28 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         }
         this.workspaceFilterParams.delete("page");
         this.syncWorkspaceUrl();
-        void this.reloadWorkspaceTiles();
+        void this.queueWorkspaceTileReload();
     }
 
-    private async reloadWorkspaceTiles(): Promise<void> {
+    private async queueWorkspaceTileReload(): Promise<void> {
+        if (this.tileReloadInFlight) {
+            this.tileReloadPending = true;
+            return;
+        }
+
+        this.tileReloadInFlight = true;
+        try {
+            do {
+                this.tileReloadPending = false;
+                const filterParams = new URLSearchParams(this.workspaceFilterParams);
+                await this.reloadWorkspaceTiles(filterParams);
+            } while (this.tileReloadPending && this.element);
+        } finally {
+            this.tileReloadInFlight = false;
+        }
+    }
+
+    private async reloadWorkspaceTiles(filterParams: URLSearchParams): Promise<void> {
         if (!this.element) return;
 
         const renderUrl = this.element.dataset.layoutRenderItemUrl;
@@ -178,7 +199,8 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
                         tile_id: item.id,
                         colspan: item.colspan ?? 1,
                         max_cols: row.columns,
-                    }),
+                        config: JSON.stringify(item.config ?? {}),
+                    }, filterParams),
                 });
             }
 
@@ -203,9 +225,10 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
 
     private buildTileRenderValues(
         baseValues: Record<string, string | number | boolean | string[]>,
+        filterParams: URLSearchParams = this.workspaceFilterParams,
     ): Record<string, string | number | boolean | string[]> {
         const values = { ...baseValues };
-        this.workspaceFilterParams.forEach((value, key) => {
+        filterParams.forEach((value, key) => {
             const existingValue = values[key];
             if (Array.isArray(existingValue)) {
                 existingValue.push(value);

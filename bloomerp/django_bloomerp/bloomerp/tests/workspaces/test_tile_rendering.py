@@ -1,3 +1,5 @@
+import json
+
 from bs4 import BeautifulSoup
 from django import forms
 from django.contrib.contenttypes.models import ContentType
@@ -126,7 +128,10 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
             created_by=self.admin_user,
             updated_by=self.admin_user,
         )
-        request = self.factory.get("/", {"tile_id": tile.pk})
+        request = self.factory.get(
+            "/",
+            {"tile_id": tile.pk, "config": '{"display": "compact"}'},
+        )
         request.user = self.admin_user
 
         response = _tile(request, ContentType.objects.get_for_model(Tile))
@@ -135,6 +140,10 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
         rendered_tile = soup.find(attrs={"bloomerp-component": "workspace-tile"})
         self.assertIsNotNone(rendered_tile)
         self.assertEqual(rendered_tile["data-layout-item-id"], str(tile.pk))
+        self.assertEqual(
+            json.loads(rendered_tile["data-layout-item-config"]),
+            {"display": "compact"},
+        )
         self.assertIn("layout-item--bordered", rendered_tile.get("class", []))
         self.assertIn("Rendered tile body", rendered_tile.get_text())
 
