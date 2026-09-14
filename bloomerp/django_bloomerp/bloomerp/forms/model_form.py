@@ -340,13 +340,6 @@ def bloomerp_modelform_factory(
         )
         form_field = _build_registered_form_field(application_field)
 
-        # Some virtual Django fields, including GenericForeignKey, return a
-        # required form field despite being non-editable. Keep those fields
-        # available for display without making them part of form validation.
-        if model_field is not None and not model_field.editable:
-            form_field.required = False
-            form_field.disabled = True
-
         # Lifecycle-managed values remain visible, but ignore submitted changes.
         if managed_by_application or form_field.disabled:
             form_field.disabled = True

@@ -9,7 +9,12 @@ if TYPE_CHECKING:
     from bloomerp.models.application_field import ApplicationField
 
 
-def form(cls: type[forms.Field], *, virtual: bool = False) -> FormFactory:
+def form(
+    cls: type[forms.Field],
+    *,
+    virtual: bool = False,
+    disabled: bool = False,
+) -> FormFactory:
     """Adapt a form class while retaining Django's model-derived arguments."""
 
     def build(context: FieldContext, default: forms.Field | None) -> forms.Field | None:
@@ -24,7 +29,11 @@ def form(cls: type[forms.Field], *, virtual: bool = False) -> FormFactory:
         if virtual:
             from bloomerp.form_fields.one_to_many_field import OneToManyField
 
-            kwargs = {"required": False, "label": application_field.title}
+            kwargs = {
+                "required": False,
+                "disabled": disabled,
+                "label": application_field.title,
+            }
             if issubclass(cls, OneToManyField):
                 kwargs["application_field"] = application_field
             return cls(**kwargs)

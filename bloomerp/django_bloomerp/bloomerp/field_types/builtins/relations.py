@@ -230,6 +230,7 @@ GENERIC_FOREIGN_KEY = FieldTypeDefinition(
     icon="fa-solid fa-link",
     label="Generic Foreign Key",
     lookups=(),
+    form_factory=form(forms.Field, virtual=True, disabled=True),
     render_value=render_foreign_key_dataview_value,
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
