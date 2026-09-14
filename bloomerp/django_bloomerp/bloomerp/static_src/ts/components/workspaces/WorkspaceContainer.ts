@@ -9,12 +9,16 @@ import { Drawer } from "../Drawer";
 import FilterContainer from "../filters/FilterContainer";
 import type { Filter, FilterScope } from "../filters/definition";
 import { RenderedFilters, type AppliedFilterIdentity } from '../filters/RenderedFilters';
+import { insertSkeleton } from "@/utils/animations";
+import { t } from "@/utils/i18n";
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
     private renderedFilters?: RenderedFilters;
     private workspaceApplyFiltersHandler: ((event: Event) => void) | null = null;
     private workspaceFilterParams = new URLSearchParams(window.location.search);
     private tileResizeObserver: ResizeObserver | null = null;
+    private tileReloadInFlight = false;
+    private tileReloadPending = false;
 
     public override initialize(): void {
         if (!this.element) return;
@@ -31,6 +35,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             this.renderedFilters.restore(this.workspaceFilterParams.get('filter'));
         }
         this.setupTileResizeObserver();
+        void this.queueWorkspaceTileReload();
         this.items.forEach((item) => {
             if (item.element) {
                 this.observeTileResize(item.element);
@@ -89,6 +94,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
                 tile_id: itemId,
                 colspan: rowItem?.colspan ?? 1,
                 max_cols: row.columns,
+                config: JSON.stringify(rowItem?.config ?? {}),
             }),
         });
 
@@ -145,14 +151,34 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         }
         this.workspaceFilterParams.delete("page");
         this.syncWorkspaceUrl();
-        void this.reloadWorkspaceTiles();
+        void this.queueWorkspaceTileReload();
     }
 
-    private async reloadWorkspaceTiles(): Promise<void> {
+    private async queueWorkspaceTileReload(): Promise<void> {
+        if (this.tileReloadInFlight) {
+            this.tileReloadPending = true;
+            return;
+        }
+
+        this.tileReloadInFlight = true;
+        try {
+            do {
+                this.tileReloadPending = false;
+                const filterParams = new URLSearchParams(this.workspaceFilterParams);
+                await this.reloadWorkspaceTiles(filterParams);
+            } while (this.tileReloadPending && this.element);
+        } finally {
+            this.tileReloadInFlight = false;
+        }
+    }
+
+    private async reloadWorkspaceTiles(filterParams: URLSearchParams): Promise<void> {
         if (!this.element) return;
 
         const renderUrl = this.element.dataset.layoutRenderItemUrl;
         if (!renderUrl) return;
+
+        this.showTileSkeletons();
 
         for (let rowIndex = 0; rowIndex < this.layoutRows.length; rowIndex += 1) {
             const row = this.layoutRows[rowIndex];
@@ -166,16 +192,35 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
 
                 if (!tileElement) continue;
 
-                // eslint-disable-next-line no-await-in-loop
-                await htmx.ajax("get", renderUrl, {
-                    target: tileElement,
-                    swap: "outerHTML",
-                    values: this.buildTileRenderValues({
-                        tile_id: item.id,
-                        colspan: item.colspan ?? 1,
-                        max_cols: row.columns,
-                    }),
-                });
+                let responseError: Error | null = null;
+                const responseHandler = (event: Event): void => {
+                    const detail = (event as CustomEvent<{ isError?: boolean; xhr?: XMLHttpRequest }>).detail;
+                    if (!detail?.isError) return;
+                    responseError = new Error(`Tile request failed with status ${detail.xhr?.status ?? "unknown"}`);
+                };
+                tileElement.addEventListener("htmx:beforeSwap", responseHandler);
+                try {
+                    // eslint-disable-next-line no-await-in-loop
+                    await htmx.ajax("get", renderUrl, {
+                        target: tileElement,
+                        swap: "outerHTML",
+                        values: this.buildTileRenderValues({
+                            tile_id: item.id,
+                            colspan: item.colspan ?? 1,
+                            max_cols: row.columns,
+                            config: JSON.stringify(item.config ?? {}),
+                        }, filterParams),
+                    });
+                    if (responseError) {
+                        console.error(`Failed to load workspace tile ${item.id}:`, responseError);
+                        this.showTileLoadError(tileElement);
+                    }
+                } catch (error) {
+                    console.error(`Failed to load workspace tile ${item.id}:`, error);
+                    this.showTileLoadError(tileElement);
+                } finally {
+                    tileElement.removeEventListener("htmx:beforeSwap", responseHandler);
+                }
             }
 
             initComponents(targetGrid);
@@ -190,11 +235,30 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         });
     }
 
+    private showTileSkeletons(): void {
+        this.element?.querySelectorAll<HTMLElement>(this.getItemSelector()).forEach((tileElement) => {
+            const tileBody = tileElement.querySelector<HTMLElement>(":scope > [data-layout-item-body]");
+            if (tileBody) insertSkeleton(tileBody);
+        });
+    }
+
+    private showTileLoadError(tileElement: HTMLElement): void {
+        const tileBody = tileElement.querySelector<HTMLElement>(":scope > [data-layout-item-body]");
+        if (!tileBody) return;
+
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "alert alert-danger";
+        errorMessage.setAttribute("role", "alert");
+        errorMessage.textContent = t("Unable to load tile.");
+        tileBody.replaceChildren(errorMessage);
+    }
+
     private buildTileRenderValues(
         baseValues: Record<string, string | number | boolean | string[]>,
+        filterParams: URLSearchParams = this.workspaceFilterParams,
     ): Record<string, string | number | boolean | string[]> {
         const values = { ...baseValues };
-        this.workspaceFilterParams.forEach((value, key) => {
+        filterParams.forEach((value, key) => {
             const existingValue = values[key];
             if (Array.isArray(existingValue)) {
                 existingValue.push(value);

@@ -37,12 +37,27 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
         colspan = max(1, int(request.GET.get("colspan", 1)))
     except (TypeError, ValueError):
         colspan = 1
+    try:
+        max_cols = min(12, max(1, int(request.GET.get("max_cols", 4))))
+    except (TypeError, ValueError):
+        max_cols = 4
+    try:
+        config = json.loads(request.GET.get("config", "{}"))
+    except json.JSONDecodeError:
+        return HttpResponse("Invalid layout item config", status=400)
+    if not isinstance(config, dict):
+        return HttpResponse("Invalid layout item config", status=400)
     item = build_workspace_layout_item(
         tile=tile,
         request=request,
         colspan=colspan,
+        config=config,
         workspace_id=request.GET.get("workspace_id"),
     )
+    item.extra_attrs = {
+        **(item.extra_attrs or {}),
+        "data-max-cols": str(max_cols),
+    }
     return render(
         request,
         "cotton/features/layout/item.html",

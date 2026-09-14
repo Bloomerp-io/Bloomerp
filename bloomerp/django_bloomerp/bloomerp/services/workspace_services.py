@@ -227,23 +227,29 @@ def build_workspace_layout_item(
     colspan: int = 1,
     config: dict | None = None,
     workspace_id: str | None = None,
+    render_content: bool = True,
 ) -> LayoutItem:
-    """Transform a tile into the shared layout item rendered by every layout."""
-    render_request = copy(request)
-    render_request.GET = request.GET.copy()
-    for transport_param in ("colspan", "max_cols"):
-        render_request.GET.pop(transport_param, None)
-    render_request.GET["tile_id"] = str(tile.pk)
-    if workspace_id is not None:
-        from bloomerp.filters.resolver import FilterFieldResolver
-        workspace = FilterFieldResolver.for_user('workspace', workspace_id, request.user).workspace
-        render_request.GET = workspace.apply_default_filters(render_request.GET)
-        render_request.GET["workspace_id"] = str(workspace_id)
+    """Build a tile layout item, optionally deferring its expensive body render."""
+    content = ""
+    if render_content:
+        render_request = copy(request)
+        render_request.GET = request.GET.copy()
+        for transport_param in ("colspan", "max_cols"):
+            render_request.GET.pop(transport_param, None)
+        render_request.GET["tile_id"] = str(tile.pk)
+        if workspace_id is not None:
+            from bloomerp.filters.resolver import FilterFieldResolver
 
-    try:
-        content = render_tile_to_string(tile, render_request)
-    except Exception as exc:
-        content = format_html('<div class="alert alert-danger">{}</div>', exc)
+            workspace = FilterFieldResolver.for_user(
+                "workspace", workspace_id, request.user
+            ).workspace
+            render_request.GET = workspace.apply_default_filters(render_request.GET)
+            render_request.GET["workspace_id"] = str(workspace_id)
+
+        try:
+            content = render_tile_to_string(tile, render_request)
+        except Exception as exc:
+            content = format_html('<div class="alert alert-danger">{}</div>', exc)
 
     tile_name, _tile_description = _tile_display_metadata(tile)
 

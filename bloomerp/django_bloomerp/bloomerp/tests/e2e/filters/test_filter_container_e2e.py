@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import subprocess
 import unittest
+from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import sync_playwright, expect
 
@@ -42,19 +43,22 @@ class TestFilterContainerE2E(unittest.TestCase):
                 window.permissionTable = component;
                 window.filterComponent = getComponent(editor);
             };
-            window.startWorkspace = () => {
+            window.startWorkspace = (tileIds = ['7'], itemConfig = {}, rowColumns = 2, colspan = 1) => {
                 const workspace = document.createElement('div');
                 workspace.dataset.workspaceId = '42';
                 workspace.dataset.layoutRenderItemUrl = '/tile';
-                workspace.dataset.layout = JSON.stringify({rows: [{columns: 1, items: [{id: '7', colspan: 1}]}]});
+                workspace.dataset.layout = JSON.stringify({rows: [{columns: rowColumns, items: tileIds.map(id => ({id, colspan, config: itemConfig}))}]});
                 document.body.append(workspace);
-                workspace.innerHTML = '<div data-layout-root><div data-layout-row><div data-layout-grid><div bloomerp-component="workspace-tile" data-layout-item-id="7">Initial tile</div></div></div></div>';
+                workspace.innerHTML = `<div data-layout-root><div data-layout-row data-row-columns="${rowColumns}"><div data-layout-grid>${tileIds.map(id => `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}" data-colspan="${colspan}" data-max-cols="${rowColumns}" data-layout-item-config='${JSON.stringify(itemConfig)}'><div data-layout-item-body>Initial tile ${id}</div></div>`).join('')}</div></div></div>`;
                 const root = document.querySelector('#filters');
                 root.dataset.scope = 'workspace';
                 root.dataset.scopeId = '42';
                 workspace.prepend(root);
+                window.workspaceColspanChangeCount = 0;
+                workspace.addEventListener('layout:item-colspan-change', () => { window.workspaceColspanChangeCount += 1; });
                 const component = new WorkspaceContainer(workspace);
                 component.initialize();
+                window.initialWorkspaceSkeletonCount = workspace.querySelectorAll('.skeleton-loader').length;
                 window.workspaceComponent = component;
             };
 
@@ -81,6 +85,7 @@ class TestFilterContainerE2E(unittest.TestCase):
         cls.playwright.stop()
 
     def setUp(self):
+        self.failed_tile_ids = set()
         self.context = self.browser.new_context()
         self.page = self.context.new_page()
         self.page.route('http://localhost/**', self.respond)
@@ -91,7 +96,6 @@ class TestFilterContainerE2E(unittest.TestCase):
         self.context.close()
 
     def respond(self, route):
-        from urllib.parse import urlparse, parse_qs
         url = urlparse(route.request.url)
         params = parse_qs(url.query)
         if url.path == '/':
@@ -99,7 +103,14 @@ class TestFilterContainerE2E(unittest.TestCase):
                 data-fields-url="/fields" data-lookups-url="/lookups" data-value-editor-url="/editor"></div>''')
             return
         if url.path == '/tile':
-            route.fulfill(content_type='text/html', body='<div bloomerp-component="workspace-tile" data-layout-item-id="7">Refreshed tile</div>')
+            tile_id = params['tile_id'][0]
+            if tile_id in self.failed_tile_ids:
+                route.fulfill(status=500, content_type='text/plain', body='Tile failed')
+                return
+            config = params.get('config', ['{}'])[0]
+            colspan = params.get('colspan', ['1'])[0]
+            max_cols = params.get('max_cols', ['4'])[0]
+            route.fulfill(content_type='text/html', body=f'<div bloomerp-component="workspace-tile" data-layout-item-id="{tile_id}" data-colspan="{colspan}" data-max-cols="{max_cols}" data-layout-item-config=\'{config}\'><div data-layout-item-body>Refreshed tile {tile_id}</div></div>')
             return
         if url.path == '/fields':
             fields = [{'field': 'name', 'label': 'Name'}] if 'field_path' in params else [
@@ -229,7 +240,6 @@ class TestFilterContainerE2E(unittest.TestCase):
         self.add_name_condition('David')
         with self.page.expect_request('**/tile?*') as request:
             self.page.get_by_role('button', name='Apply', exact=True).click()
-        from urllib.parse import urlparse, parse_qs
         params = parse_qs(urlparse(request.value.url).query)
         filters = [{'connector': 'AND', 'conditions': [
             {'field_path': 'tile_7:name', 'lookup_id': 'compare', 'value': 'David'},
@@ -239,13 +249,117 @@ class TestFilterContainerE2E(unittest.TestCase):
         self.assertEqual(json.loads(url_params['filter'][0]), filters)
         self.assertEqual(url_params['module'], ['hrm'])
         self.assertNotIn('page', url_params)
-        expect(self.page.get_by_text('Refreshed tile', exact=True)).to_be_visible()
+        expect(self.page.get_by_text('Refreshed tile 7', exact=True)).to_be_visible()
 
         self.page.get_by_role('button', name='Clear', exact=True).click()
         with self.page.expect_request('**/tile?*') as request:
             self.page.get_by_role('button', name='Apply', exact=True).click()
-        self.assertNotIn('filter', parse_qs(urlparse(request.value.url).query))
-        self.assertNotIn('filter', parse_qs(urlparse(self.page.url).query))
+        self.assertEqual(json.loads(parse_qs(urlparse(request.value.url).query)['filter'][0]), [])
+        self.assertEqual(json.loads(parse_qs(urlparse(self.page.url).query)['filter'][0]), [])
+
+    def test_workspace_loads_tiles_in_order_with_skeletons(self):
+        """
+        Use case: Open and then filter a workspace containing multiple tiles.
+        Expected result: Every tile shows a skeleton before ordered rendering begins.
+        """
+        # 1. Record tile requests and initialize two tile shells.
+        requested_tile_ids = []
+        self.page.on(
+            'request',
+            lambda request: requested_tile_ids.append(parse_qs(urlparse(request.url).query)['tile_id'][0])
+            if urlparse(request.url).path == '/tile' else None,
+        )
+        self.page.evaluate("window.startWorkspace(['7', '8'], {density: 'compact'})")
+
+        # 2. Verify both skeletons were inserted synchronously and tiles loaded in layout order.
+        self.assertEqual(self.page.evaluate('window.initialWorkspaceSkeletonCount'), 2)
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
+        self.assertEqual(requested_tile_ids, ['7', '8'])
+        self.assertEqual(
+            self.page.locator('[data-layout-item-id="8"]').get_attribute('data-layout-item-config'),
+            '{"density":"compact"}',
+        )
+
+        # 3. Apply a workspace filter and capture its immediate loading state.
+        filter_skeleton_count = self.page.evaluate("""() => {
+            const workspace = document.querySelector('[data-workspace-id="42"]');
+            workspace.dispatchEvent(new CustomEvent('bloomerp:filters-apply', {
+                bubbles: true,
+                detail: {scope: 'workspace', id: '42', filters: []},
+            }));
+            return workspace.querySelectorAll('.skeleton-loader').length;
+        }""")
+
+        # 4. Verify filtering restored every skeleton before requesting refreshed content.
+        self.assertEqual(filter_skeleton_count, 2)
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
+
+    def test_workspace_serializes_initial_and_filter_reloads(self):
+        """
+        Use case: Apply a filter while the initial sequential tile load is still starting.
+        Expected result: The initial sequence finishes before one latest-filter sequence replaces it.
+        """
+        # 1. Record every tile request and trigger a filter in the initial load's call stack.
+        requested_urls = []
+        self.page.on(
+            'request',
+            lambda request: requested_urls.append(request.url)
+            if urlparse(request.url).path == '/tile' else None,
+        )
+        self.page.evaluate("""() => {
+            window.startWorkspace(['7', '8']);
+            document.querySelector('[data-workspace-id="42"]').dispatchEvent(
+                new CustomEvent('bloomerp:filters-apply', {
+                    bubbles: true,
+                    detail: {scope: 'workspace', id: '42', filters: [{connector: 'AND', conditions: []}]},
+                }),
+            );
+        }""")
+
+        # 2. Wait for the queued filtered sequence to finish.
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
+        self.page.wait_for_function("""() => {
+            const requests = performance.getEntriesByType('resource').filter(entry => entry.name.includes('/tile?'));
+            return requests.length >= 4;
+        }""")
+
+        # 3. Verify complete, non-overlapping layout-order sequences and the latest filter snapshot.
+        request_params = [parse_qs(urlparse(url).query) for url in requested_urls]
+        self.assertEqual([params['tile_id'][0] for params in request_params], ['7', '8', '7', '8'])
+        self.assertNotIn('filter', request_params[0])
+        self.assertNotIn('filter', request_params[1])
+        self.assertEqual(
+            json.loads(request_params[2]['filter'][0]),
+            [{'connector': 'AND', 'conditions': []}],
+        )
+        self.assertEqual(
+            json.loads(request_params[3]['filter'][0]),
+            [{'connector': 'AND', 'conditions': []}],
+        )
+
+    def test_workspace_preserves_wide_colspan_during_initial_reload(self):
+        """
+        Use case: Open a workspace with a tile spanning more than four columns.
+        Expected result: Replacement initialization preserves the saved span without emitting a change.
+        """
+        self.page.evaluate("window.startWorkspace(['7'], {}, 6, 6)")
+
+        expect(self.page.get_by_text('Refreshed tile 7', exact=True)).to_be_visible()
+        tile = self.page.locator('[data-layout-item-id="7"]')
+        expect(tile).to_have_attribute('data-colspan', '6')
+        expect(tile).to_have_attribute('data-max-cols', '6')
+        self.assertEqual(self.page.evaluate('window.workspaceColspanChangeCount'), 0)
+
+    def test_workspace_continues_after_a_tile_request_fails(self):
+        """
+        Use case: One tile endpoint fails while a workspace is loading in sequence.
+        Expected result: That tile shows an error and later tiles still render.
+        """
+        self.failed_tile_ids.add('7')
+        self.page.evaluate("window.startWorkspace(['7', '8'])")
+
+        expect(self.page.get_by_text('Unable to load tile.', exact=True)).to_be_visible()
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
 
     def test_workspace_ignores_other_filter_scopes(self):
         """

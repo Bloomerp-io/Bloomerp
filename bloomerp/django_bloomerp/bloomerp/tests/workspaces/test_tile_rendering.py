@@ -1,3 +1,5 @@
+import json
+
 from bs4 import BeautifulSoup
 from django import forms
 from django.contrib.contenttypes.models import ContentType
@@ -126,7 +128,14 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
             created_by=self.admin_user,
             updated_by=self.admin_user,
         )
-        request = self.factory.get("/", {"tile_id": tile.pk})
+        request = self.factory.get(
+            "/",
+            {
+                "tile_id": tile.pk,
+                "config": '{"display": "compact"}',
+                "max_cols": "6",
+            },
+        )
         request.user = self.admin_user
 
         response = _tile(request, ContentType.objects.get_for_model(Tile))
@@ -135,14 +144,21 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
         rendered_tile = soup.find(attrs={"bloomerp-component": "workspace-tile"})
         self.assertIsNotNone(rendered_tile)
         self.assertEqual(rendered_tile["data-layout-item-id"], str(tile.pk))
+        self.assertEqual(
+            json.loads(rendered_tile["data-layout-item-config"]),
+            {"display": "compact"},
+        )
+        self.assertEqual(rendered_tile["data-max-cols"], "6")
         self.assertIn("layout-item--bordered", rendered_tile.get("class", []))
         self.assertIn("Rendered tile body", rendered_tile.get_text())
 
-    @patch(
-        "bloomerp.services.workspace_services.render_tile_to_string",
-        return_value="<p>Initial tile body</p>",
-    )
-    def test_workspace_view_transforms_initial_tiles_without_an_extra_template(self, _render_tile):
+    @patch("bloomerp.services.workspace_services.render_tile_to_string")
+    def test_workspace_view_defers_initial_tile_content_rendering(self, render_tile):
+        """
+        Use case: A workspace with tiles is opened.
+        Expected result: The initial response contains tile shells without executing tile queries.
+        """
+        # 1. Create a tile whose renderer would normally produce the body.
         tile = Tile.objects.create(
             name="Initial tile",
             description="",
@@ -153,13 +169,16 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
         )
         request = self.factory.get("/")
         request.user = self.admin_user
+        workspace = SimpleNamespace(
+            effective_preference=SimpleNamespace(pk="workspace-1")
+        )
 
         class TestWorkspaceView(BaseWorkspaceView):
             def get_module_id(self):
                 return None
 
             def get_workspace(self):
-                return None
+                return workspace
 
             def get_layout(self):
                 return FieldLayout(
@@ -174,13 +193,15 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
         view = TestWorkspaceView()
         view.request = request
 
+        # 2. Transform the workspace layout for the initial response.
         item = view.get_transformed_layout().rows[0].items[0]
 
+        # 3. Verify the tile shell is complete while its expensive body is deferred.
         self.assertEqual(item.component_name, "workspace-tile")
-        self.assertEqual(item.content, "<p>Initial tile body</p>")
+        self.assertEqual(item.content, "")
         self.assertEqual(item.colspan, 2)
         self.assertTrue(item.border)
-        self.assertNotIn("hx-get", item.content)
+        render_tile.assert_not_called()
 
     def test_table_pagination_replaces_only_the_layout_item_body(self):
         html = render_to_string(

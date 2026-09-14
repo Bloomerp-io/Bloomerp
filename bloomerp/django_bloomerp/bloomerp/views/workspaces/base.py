@@ -46,6 +46,7 @@ class BaseWorkspaceView(LayoutMixin, BaseBloomerpView):
                 colspan=item.colspan,
                 config=item.config,
                 workspace_id=str(self.get_workspace().effective_preference.pk),
+                render_content=False,
             )
         return self.rendered_tile_items[item_id]
 
