@@ -8,7 +8,10 @@
     data-detail-url-template="{{ detail_url_template|default:'' }}"
     data-page-size="{{ page_size|default:10 }}"
 >
-    <div class="overflow-x-auto">
+    <div
+        class="overflow-x-auto"
+        @scroll="$el.querySelectorAll('.bloomerp-dropdown-menu').forEach((menu) => menu.dispatchEvent(new CustomEvent('dropdown-close', { bubbles: true })))"
+    >
         <table
             id="data-table-{{ content_type_id }}"
             class="table-auto table-hover table w-full border-collapse outline-none"

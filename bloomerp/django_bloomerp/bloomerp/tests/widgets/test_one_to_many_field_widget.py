@@ -102,6 +102,25 @@ class TestCreateView(BaseBloomerpTestCaseWithModels):
         finally:
             model_field.default = original_default
 
+    def test_widget_closes_open_dropdowns_when_horizontal_scroller_moves(self):
+        """
+        Use case: Scroll a one-to-many widget after opening a fixed-position column menu.
+        Expected result: The scroll container closes open dropdown menus.
+        """
+        widget = OneToManyFieldWidget(
+            attrs={
+                "related_model": self.CustomerModel,
+                "parent_model": self.CountryModel,
+                "layout_config": {"inline_fields": ["first_name"]},
+            }
+        )
+        widget_html = widget.render(name="customers", value=None, attrs={})
+
+        self.assertIn(
+            "@scroll=\"$el.querySelectorAll('.bloomerp-dropdown-menu').forEach((menu) => menu.dispatchEvent(new CustomEvent('dropdown-close', { bubbles: true })))\"",
+            widget_html,
+        )
+
     def test_widget_renders_text_editors_with_compact_height(self):
         """
         Use case: Render a text editor as an inline one-to-many column.
