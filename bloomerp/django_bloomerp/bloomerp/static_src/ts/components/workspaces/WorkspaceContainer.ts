@@ -9,6 +9,7 @@ import { Drawer } from "../Drawer";
 import FilterContainer from "../filters/FilterContainer";
 import type { Filter, FilterScope } from "../filters/definition";
 import { RenderedFilters, type AppliedFilterIdentity } from '../filters/RenderedFilters';
+import { insertSkeleton } from "@/utils/animations";
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
     private renderedFilters?: RenderedFilters;
@@ -31,6 +32,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             this.renderedFilters.restore(this.workspaceFilterParams.get('filter'));
         }
         this.setupTileResizeObserver();
+        void this.reloadWorkspaceTiles();
         this.items.forEach((item) => {
             if (item.element) {
                 this.observeTileResize(item.element);
@@ -154,6 +156,8 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         const renderUrl = this.element.dataset.layoutRenderItemUrl;
         if (!renderUrl) return;
 
+        this.showTileSkeletons();
+
         for (let rowIndex = 0; rowIndex < this.layoutRows.length; rowIndex += 1) {
             const row = this.layoutRows[rowIndex];
             const rowEl = this.rowElements[rowIndex];
@@ -187,6 +191,13 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
                 this.observeTileResize(item.element);
                 this.scheduleTileResize(item.element);
             }
+        });
+    }
+
+    private showTileSkeletons(): void {
+        this.element?.querySelectorAll<HTMLElement>(this.getItemSelector()).forEach((tileElement) => {
+            const tileBody = tileElement.querySelector<HTMLElement>(":scope > [data-layout-item-body]");
+            if (tileBody) insertSkeleton(tileBody);
         });
     }
 

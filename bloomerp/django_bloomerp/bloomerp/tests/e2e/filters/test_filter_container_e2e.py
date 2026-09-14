@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import subprocess
 import unittest
+from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import sync_playwright, expect
 
@@ -42,19 +43,20 @@ class TestFilterContainerE2E(unittest.TestCase):
                 window.permissionTable = component;
                 window.filterComponent = getComponent(editor);
             };
-            window.startWorkspace = () => {
+            window.startWorkspace = (tileIds = ['7']) => {
                 const workspace = document.createElement('div');
                 workspace.dataset.workspaceId = '42';
                 workspace.dataset.layoutRenderItemUrl = '/tile';
-                workspace.dataset.layout = JSON.stringify({rows: [{columns: 1, items: [{id: '7', colspan: 1}]}]});
+                workspace.dataset.layout = JSON.stringify({rows: [{columns: 2, items: tileIds.map(id => ({id, colspan: 1}))}]});
                 document.body.append(workspace);
-                workspace.innerHTML = '<div data-layout-root><div data-layout-row><div data-layout-grid><div bloomerp-component="workspace-tile" data-layout-item-id="7">Initial tile</div></div></div></div>';
+                workspace.innerHTML = `<div data-layout-root><div data-layout-row><div data-layout-grid>${tileIds.map(id => `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}"><div data-layout-item-body>Initial tile ${id}</div></div>`).join('')}</div></div></div>`;
                 const root = document.querySelector('#filters');
                 root.dataset.scope = 'workspace';
                 root.dataset.scopeId = '42';
                 workspace.prepend(root);
                 const component = new WorkspaceContainer(workspace);
                 component.initialize();
+                window.initialWorkspaceSkeletonCount = workspace.querySelectorAll('.skeleton-loader').length;
                 window.workspaceComponent = component;
             };
 
@@ -91,7 +93,6 @@ class TestFilterContainerE2E(unittest.TestCase):
         self.context.close()
 
     def respond(self, route):
-        from urllib.parse import urlparse, parse_qs
         url = urlparse(route.request.url)
         params = parse_qs(url.query)
         if url.path == '/':
@@ -99,7 +100,8 @@ class TestFilterContainerE2E(unittest.TestCase):
                 data-fields-url="/fields" data-lookups-url="/lookups" data-value-editor-url="/editor"></div>''')
             return
         if url.path == '/tile':
-            route.fulfill(content_type='text/html', body='<div bloomerp-component="workspace-tile" data-layout-item-id="7">Refreshed tile</div>')
+            tile_id = params['tile_id'][0]
+            route.fulfill(content_type='text/html', body=f'<div bloomerp-component="workspace-tile" data-layout-item-id="{tile_id}"><div data-layout-item-body>Refreshed tile {tile_id}</div></div>')
             return
         if url.path == '/fields':
             fields = [{'field': 'name', 'label': 'Name'}] if 'field_path' in params else [
@@ -229,7 +231,6 @@ class TestFilterContainerE2E(unittest.TestCase):
         self.add_name_condition('David')
         with self.page.expect_request('**/tile?*') as request:
             self.page.get_by_role('button', name='Apply', exact=True).click()
-        from urllib.parse import urlparse, parse_qs
         params = parse_qs(urlparse(request.value.url).query)
         filters = [{'connector': 'AND', 'conditions': [
             {'field_path': 'tile_7:name', 'lookup_id': 'compare', 'value': 'David'},
@@ -239,13 +240,46 @@ class TestFilterContainerE2E(unittest.TestCase):
         self.assertEqual(json.loads(url_params['filter'][0]), filters)
         self.assertEqual(url_params['module'], ['hrm'])
         self.assertNotIn('page', url_params)
-        expect(self.page.get_by_text('Refreshed tile', exact=True)).to_be_visible()
+        expect(self.page.get_by_text('Refreshed tile 7', exact=True)).to_be_visible()
 
         self.page.get_by_role('button', name='Clear', exact=True).click()
         with self.page.expect_request('**/tile?*') as request:
             self.page.get_by_role('button', name='Apply', exact=True).click()
-        self.assertNotIn('filter', parse_qs(urlparse(request.value.url).query))
-        self.assertNotIn('filter', parse_qs(urlparse(self.page.url).query))
+        self.assertEqual(json.loads(parse_qs(urlparse(request.value.url).query)['filter'][0]), [])
+        self.assertEqual(json.loads(parse_qs(urlparse(self.page.url).query)['filter'][0]), [])
+
+    def test_workspace_loads_tiles_in_order_with_skeletons(self):
+        """
+        Use case: Open and then filter a workspace containing multiple tiles.
+        Expected result: Every tile shows a skeleton before ordered rendering begins.
+        """
+        # 1. Record tile requests and initialize two tile shells.
+        requested_tile_ids = []
+        self.page.on(
+            'request',
+            lambda request: requested_tile_ids.append(parse_qs(urlparse(request.url).query)['tile_id'][0])
+            if urlparse(request.url).path == '/tile' else None,
+        )
+        self.page.evaluate("window.startWorkspace(['7', '8'])")
+
+        # 2. Verify both skeletons were inserted synchronously and tiles loaded in layout order.
+        self.assertEqual(self.page.evaluate('window.initialWorkspaceSkeletonCount'), 2)
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
+        self.assertEqual(requested_tile_ids, ['7', '8'])
+
+        # 3. Apply a workspace filter and capture its immediate loading state.
+        filter_skeleton_count = self.page.evaluate("""() => {
+            const workspace = document.querySelector('[data-workspace-id="42"]');
+            workspace.dispatchEvent(new CustomEvent('bloomerp:filters-apply', {
+                bubbles: true,
+                detail: {scope: 'workspace', id: '42', filters: []},
+            }));
+            return workspace.querySelectorAll('.skeleton-loader').length;
+        }""")
+
+        # 4. Verify filtering restored every skeleton before requesting refreshed content.
+        self.assertEqual(filter_skeleton_count, 2)
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
 
     def test_workspace_ignores_other_filter_scopes(self):
         """
