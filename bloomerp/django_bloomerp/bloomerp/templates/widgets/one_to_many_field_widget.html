@@ -8,10 +8,14 @@
     data-detail-url-template="{{ detail_url_template|default:'' }}"
     data-page-size="{{ page_size|default:10 }}"
 >
-    <table
-        id="data-table-{{ content_type_id }}"
-        class="table-auto table-hover table w-full border-collapse outline-none"
+    <div
+        class="overflow-x-auto"
+        @scroll="$el.querySelectorAll('.bloomerp-dropdown-menu').forEach((menu) => menu.dispatchEvent(new CustomEvent('dropdown-close', { bubbles: true })))"
     >
+        <table
+            id="data-table-{{ content_type_id }}"
+            class="table-auto table-hover table w-full border-collapse outline-none"
+        >
         <thead>
             <tr>
                 <th class="w-10">
@@ -73,7 +77,8 @@
                 </tr>
             </tfoot>
         {% endif %}
-    </table>
+        </table>
+    </div>
     <template data-one-to-many-row-template>
         <tr class="cursor-pointer" data-one-to-many-row>
             <td class="w-10">
