@@ -12,6 +12,7 @@ from django.urls import clear_url_caches, path, reverse
 from bloomerp.lookups import builtins as lookups
 from bloomerp.management.commands import save_application_fields
 from bloomerp.models import ApplicationField, FieldPolicy, Policy, RowPolicy, RowPolicyRule
+from bloomerp.models.project_management.todo import Todo, TodoPriority, TodoStatus
 from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
 from bloomerp.models.workspaces.sidebar import Sidebar
@@ -45,6 +46,7 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
         for route_name, model in (
             ("test_customer_create", cls.CustomerModel),
             ("test_planet_create", cls.PlanetModel),
+            ("test_todo_create", Todo),
         ):
             urlpatterns.append(
                 path(
@@ -57,7 +59,7 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        del urlpatterns[-2:]
+        del urlpatterns[-3:]
         clear_url_caches()
         super().tearDownClass()
 
@@ -117,6 +119,17 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
                 model=customer, method="POST", user=self.admin_user,
                 data={"first_name": "Another", "last_name": "Customer", "age": 30, "next": "/test/test_customer_create/"},
                 expected=test_base.ExpectedResult(status_code=302, response_validators=self.saved_customer_and_redirected),
+            ),
+            test_base.ModelRequestScenario(
+                name="Todo creation does not require a content object outside its layout",
+                description="UC: An administrator creates a Todo whose layout omits content_object.\nExpected Result: The Todo is created without requiring a related object.",
+                model=Todo, method="POST", user=self.admin_user,
+                data={
+                    "title": "Standalone todo",
+                    "priority": TodoPriority.MEDIUM,
+                    "status": TodoStatus.BACKLOG,
+                },
+                expected=test_base.ExpectedResult(status_code=302, response_validators=self.standalone_todo_created),
             ),
             test_base.ModelRequestScenario(
                 name="Create page requires global add permission",
@@ -225,7 +238,12 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
 
     def get_endpoint(self, view_name, kwargs, setup=None):
         if view_name == "add":
-            return reverse("test_planet_create" if setup.model is self.PlanetModel else "test_customer_create")
+            route_name = "test_customer_create"
+            if setup.model is self.PlanetModel:
+                route_name = "test_planet_create"
+            elif setup.model is Todo:
+                route_name = "test_todo_create"
+            return reverse(route_name)
         if view_name == "customer_component":
             return reverse("components_create_object", kwargs={"content_type_id": self.content_type.pk})
         if view_name == "todo_label_component":
@@ -297,6 +315,13 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
     def saved_customer_and_redirected(self, response):
         created = self.CustomerModel.objects.get()
         return response.headers.get("Location") == "/test/test_customer_create/" and created.first_name == "Another" and created.last_name == "Customer"
+
+    def standalone_todo_created(self, _response):
+        return Todo.objects.filter(
+            title="Standalone todo",
+            content_type__isnull=True,
+            object_id__isnull=True,
+        ).exists()
 
     def only_addable_fields_render(self, response):
         items = {str(item.id): item for row in response.context["layout"].rows for item in row.items}
