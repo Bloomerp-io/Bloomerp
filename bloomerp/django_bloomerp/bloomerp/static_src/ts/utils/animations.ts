@@ -45,6 +45,41 @@ function insertSkeleton(target: HTMLElement) {
     }
 }
 
+/**
+ * Inserts a compact loading indicator that cycles from one dot to three dots.
+ *
+ * @param target The HTMLElement where the loading indicator will be inserted
+ */
+function insertLoadingDots(target: HTMLElement) {
+    const loadingDots = document.createElement('span');
+    loadingDots.className = 'inline-flex min-h-6 items-center justify-center text-lg text-gray-500';
+    loadingDots.setAttribute('aria-label', 'Loading');
+    loadingDots.setAttribute('role', 'status');
+    loadingDots.setAttribute('hx-history', 'false');
+
+    let dotCount = 1;
+    loadingDots.textContent = '.'.repeat(dotCount);
+    const intervalId = window.setInterval(() => {
+        dotCount = dotCount === 3 ? 1 : dotCount + 1;
+        loadingDots.textContent = '.'.repeat(dotCount);
+    }, 350);
+    target.addEventListener('htmx:beforeSwap', () => window.clearInterval(intervalId), { once: true });
+
+    target.innerHTML = '';
+    target.appendChild(loadingDots);
+}
+
+function insertAnimation(target: HTMLElement, animation: string | null) {
+    switch (animation?.trim().toLowerCase()) {
+        case 'dot-dot-dot':
+        case 'dots':
+            insertLoadingDots(target);
+            break;
+        default:
+            insertSkeleton(target);
+    }
+}
+
 
 export function SetupAnimationListener() {
     document.addEventListener('htmx:beforeSend', (ev) => {
@@ -53,9 +88,13 @@ export function SetupAnimationListener() {
         if (!sourceElement.hasAttribute('hx-animation')) {return}
         if (!sourceElement.hasAttribute('hx-target')) {return}
 
-        let target = document.querySelector(sourceElement.getAttribute('hx-target')) as HTMLElement
+        const targetSelector = sourceElement.getAttribute('hx-target');
+        const target = targetSelector === 'this'
+            ? sourceElement
+            : document.querySelector(targetSelector ?? '') as HTMLElement | null;
+        if (!target) return;
 
-        insertSkeleton(target)
+        insertAnimation(target, sourceElement.getAttribute('hx-animation'))
     })
 }
 
