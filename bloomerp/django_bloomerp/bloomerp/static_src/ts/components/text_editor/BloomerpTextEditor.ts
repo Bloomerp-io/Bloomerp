@@ -114,6 +114,9 @@ export class BloomerpTextEditor extends BaseWidget {
                 list: {
                     ul: !this.overrideDefaultStyling ? 'list-disc list-inside pl-4' : '',
                     ol: !this.overrideDefaultStyling ? 'list-decimal list-inside pl-4' : '',
+                    nested: {
+                        listitem: 'bloomerp-text-editor-nested-list-item',
+                    },
                 },
                 table: !this.overrideDefaultStyling ? 'my-3 w-full table-fixed border-collapse overflow-hidden rounded-lg border border-gray-200 text-left' : '',
                 tableRow: !this.overrideDefaultStyling ? 'border-b border-gray-200 last:border-b-0' : '',
@@ -159,6 +162,7 @@ export class BloomerpTextEditor extends BaseWidget {
         this.element.addEventListener('click', this.hostClickHandler);
         this.isInitializing = true;
         this.setValue(this.hiddenInput?.value ?? '', false);
+        this.updateNestedListMarkers(editorRef);
 
         const historyState = createEmptyHistoryState();
 
@@ -169,6 +173,8 @@ export class BloomerpTextEditor extends BaseWidget {
             registerHtmlBehavior(this.editor),
             registerImageBehavior(this.editor, this.element),
             this.editor.registerUpdateListener(() => {
+                this.updateNestedListMarkers(editorRef);
+
                 if (this.isInitializing || this.suppressNextChange) {
                     this.suppressNextChange = false;
                     return;
@@ -386,6 +392,16 @@ export class BloomerpTextEditor extends BaseWidget {
         if (this.hiddenInput) {
             this.hiddenInput.value = this.getValue();
         }
+    }
+
+    private updateNestedListMarkers(editorRoot: HTMLElement): void {
+        editorRoot.querySelectorAll<HTMLElement>('.bloomerp-text-editor-nested-list-item').forEach((listItem) => {
+            const elementChildren = Array.from(listItem.children);
+            const containsOnlyNestedList = elementChildren.length === 1
+                && elementChildren[0].matches('ul, ol');
+
+            listItem.classList.toggle('list-none', containsOnlyNestedList);
+        });
     }
 
     private normalizeImportedNodesForRoot(nodes: LexicalNode[]): LexicalNode[] {
