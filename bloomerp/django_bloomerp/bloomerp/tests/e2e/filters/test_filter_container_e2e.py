@@ -43,17 +43,19 @@ class TestFilterContainerE2E(unittest.TestCase):
                 window.permissionTable = component;
                 window.filterComponent = getComponent(editor);
             };
-            window.startWorkspace = (tileIds = ['7'], itemConfig = {}) => {
+            window.startWorkspace = (tileIds = ['7'], itemConfig = {}, rowColumns = 2, colspan = 1) => {
                 const workspace = document.createElement('div');
                 workspace.dataset.workspaceId = '42';
                 workspace.dataset.layoutRenderItemUrl = '/tile';
-                workspace.dataset.layout = JSON.stringify({rows: [{columns: 2, items: tileIds.map(id => ({id, colspan: 1, config: itemConfig}))}]});
+                workspace.dataset.layout = JSON.stringify({rows: [{columns: rowColumns, items: tileIds.map(id => ({id, colspan, config: itemConfig}))}]});
                 document.body.append(workspace);
-                workspace.innerHTML = `<div data-layout-root><div data-layout-row><div data-layout-grid>${tileIds.map(id => `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}" data-layout-item-config='${JSON.stringify(itemConfig)}'><div data-layout-item-body>Initial tile ${id}</div></div>`).join('')}</div></div></div>`;
+                workspace.innerHTML = `<div data-layout-root><div data-layout-row data-row-columns="${rowColumns}"><div data-layout-grid>${tileIds.map(id => `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}" data-colspan="${colspan}" data-max-cols="${rowColumns}" data-layout-item-config='${JSON.stringify(itemConfig)}'><div data-layout-item-body>Initial tile ${id}</div></div>`).join('')}</div></div></div>`;
                 const root = document.querySelector('#filters');
                 root.dataset.scope = 'workspace';
                 root.dataset.scopeId = '42';
                 workspace.prepend(root);
+                window.workspaceColspanChangeCount = 0;
+                workspace.addEventListener('layout:item-colspan-change', () => { window.workspaceColspanChangeCount += 1; });
                 const component = new WorkspaceContainer(workspace);
                 component.initialize();
                 window.initialWorkspaceSkeletonCount = workspace.querySelectorAll('.skeleton-loader').length;
@@ -83,6 +85,7 @@ class TestFilterContainerE2E(unittest.TestCase):
         cls.playwright.stop()
 
     def setUp(self):
+        self.failed_tile_ids = set()
         self.context = self.browser.new_context()
         self.page = self.context.new_page()
         self.page.route('http://localhost/**', self.respond)
@@ -101,8 +104,13 @@ class TestFilterContainerE2E(unittest.TestCase):
             return
         if url.path == '/tile':
             tile_id = params['tile_id'][0]
+            if tile_id in self.failed_tile_ids:
+                route.fulfill(status=500, content_type='text/plain', body='Tile failed')
+                return
             config = params.get('config', ['{}'])[0]
-            route.fulfill(content_type='text/html', body=f'<div bloomerp-component="workspace-tile" data-layout-item-id="{tile_id}" data-layout-item-config=\'{config}\'><div data-layout-item-body>Refreshed tile {tile_id}</div></div>')
+            colspan = params.get('colspan', ['1'])[0]
+            max_cols = params.get('max_cols', ['4'])[0]
+            route.fulfill(content_type='text/html', body=f'<div bloomerp-component="workspace-tile" data-layout-item-id="{tile_id}" data-colspan="{colspan}" data-max-cols="{max_cols}" data-layout-item-config=\'{config}\'><div data-layout-item-body>Refreshed tile {tile_id}</div></div>')
             return
         if url.path == '/fields':
             fields = [{'field': 'name', 'label': 'Name'}] if 'field_path' in params else [
@@ -328,6 +336,30 @@ class TestFilterContainerE2E(unittest.TestCase):
             json.loads(request_params[3]['filter'][0]),
             [{'connector': 'AND', 'conditions': []}],
         )
+
+    def test_workspace_preserves_wide_colspan_during_initial_reload(self):
+        """
+        Use case: Open a workspace with a tile spanning more than four columns.
+        Expected result: Replacement initialization preserves the saved span without emitting a change.
+        """
+        self.page.evaluate("window.startWorkspace(['7'], {}, 6, 6)")
+
+        expect(self.page.get_by_text('Refreshed tile 7', exact=True)).to_be_visible()
+        tile = self.page.locator('[data-layout-item-id="7"]')
+        expect(tile).to_have_attribute('data-colspan', '6')
+        expect(tile).to_have_attribute('data-max-cols', '6')
+        self.assertEqual(self.page.evaluate('window.workspaceColspanChangeCount'), 0)
+
+    def test_workspace_continues_after_a_tile_request_fails(self):
+        """
+        Use case: One tile endpoint fails while a workspace is loading in sequence.
+        Expected result: That tile shows an error and later tiles still render.
+        """
+        self.failed_tile_ids.add('7')
+        self.page.evaluate("window.startWorkspace(['7', '8'])")
+
+        expect(self.page.get_by_text('Unable to load tile.', exact=True)).to_be_visible()
+        expect(self.page.get_by_text('Refreshed tile 8', exact=True)).to_be_visible()
 
     def test_workspace_ignores_other_filter_scopes(self):
         """

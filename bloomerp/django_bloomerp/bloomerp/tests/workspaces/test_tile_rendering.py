@@ -130,7 +130,11 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
         )
         request = self.factory.get(
             "/",
-            {"tile_id": tile.pk, "config": '{"display": "compact"}'},
+            {
+                "tile_id": tile.pk,
+                "config": '{"display": "compact"}',
+                "max_cols": "6",
+            },
         )
         request.user = self.admin_user
 
@@ -144,6 +148,7 @@ class WorkspaceTileRenderingTests(BaseBloomerpTestCaseWithModels):
             json.loads(rendered_tile["data-layout-item-config"]),
             {"display": "compact"},
         )
+        self.assertEqual(rendered_tile["data-max-cols"], "6")
         self.assertIn("layout-item--bordered", rendered_tile.get("class", []))
         self.assertIn("Rendered tile body", rendered_tile.get_text())
 

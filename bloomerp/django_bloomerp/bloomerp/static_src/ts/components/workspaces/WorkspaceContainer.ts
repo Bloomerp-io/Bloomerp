@@ -10,6 +10,7 @@ import FilterContainer from "../filters/FilterContainer";
 import type { Filter, FilterScope } from "../filters/definition";
 import { RenderedFilters, type AppliedFilterIdentity } from '../filters/RenderedFilters';
 import { insertSkeleton } from "@/utils/animations";
+import { t } from "@/utils/i18n";
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
     private renderedFilters?: RenderedFilters;
@@ -191,17 +192,35 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
 
                 if (!tileElement) continue;
 
-                // eslint-disable-next-line no-await-in-loop
-                await htmx.ajax("get", renderUrl, {
-                    target: tileElement,
-                    swap: "outerHTML",
-                    values: this.buildTileRenderValues({
-                        tile_id: item.id,
-                        colspan: item.colspan ?? 1,
-                        max_cols: row.columns,
-                        config: JSON.stringify(item.config ?? {}),
-                    }, filterParams),
-                });
+                let responseError: Error | null = null;
+                const responseHandler = (event: Event): void => {
+                    const detail = (event as CustomEvent<{ isError?: boolean; xhr?: XMLHttpRequest }>).detail;
+                    if (!detail?.isError) return;
+                    responseError = new Error(`Tile request failed with status ${detail.xhr?.status ?? "unknown"}`);
+                };
+                tileElement.addEventListener("htmx:beforeSwap", responseHandler);
+                try {
+                    // eslint-disable-next-line no-await-in-loop
+                    await htmx.ajax("get", renderUrl, {
+                        target: tileElement,
+                        swap: "outerHTML",
+                        values: this.buildTileRenderValues({
+                            tile_id: item.id,
+                            colspan: item.colspan ?? 1,
+                            max_cols: row.columns,
+                            config: JSON.stringify(item.config ?? {}),
+                        }, filterParams),
+                    });
+                    if (responseError) {
+                        console.error(`Failed to load workspace tile ${item.id}:`, responseError);
+                        this.showTileLoadError(tileElement);
+                    }
+                } catch (error) {
+                    console.error(`Failed to load workspace tile ${item.id}:`, error);
+                    this.showTileLoadError(tileElement);
+                } finally {
+                    tileElement.removeEventListener("htmx:beforeSwap", responseHandler);
+                }
             }
 
             initComponents(targetGrid);
@@ -221,6 +240,17 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             const tileBody = tileElement.querySelector<HTMLElement>(":scope > [data-layout-item-body]");
             if (tileBody) insertSkeleton(tileBody);
         });
+    }
+
+    private showTileLoadError(tileElement: HTMLElement): void {
+        const tileBody = tileElement.querySelector<HTMLElement>(":scope > [data-layout-item-body]");
+        if (!tileBody) return;
+
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "alert alert-danger";
+        errorMessage.setAttribute("role", "alert");
+        errorMessage.textContent = t("Unable to load tile.");
+        tileBody.replaceChildren(errorMessage);
     }
 
     private buildTileRenderValues(
