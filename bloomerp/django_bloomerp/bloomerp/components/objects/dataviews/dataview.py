@@ -150,10 +150,7 @@ def _build_data_view_query_state(
     for key in list(filter_querydict.keys()):
         if key.startswith("_arg_"):
             filter_querydict.pop(key, None)
-    filter_querydict = _apply_default_filters_to_querydict(
-        filter_querydict,
-        _normalize_default_filters(preference.default_filters or {}),
-    )
+    filter_querydict = preference.apply_default_filters(filter_querydict)
     
     filters = parse_filters(filter_querydict, model=Model)
     
@@ -258,50 +255,6 @@ def _get_actions(model:type[Model]) -> list[ObjectAction]:
     if config:
         return config.object_actions
     return []
-
-
-def _normalize_default_filters(raw_filters) -> dict[str, str | list[str]]:
-    if not isinstance(raw_filters, dict):
-        return {}
-
-    normalized = {}
-    for raw_key, raw_value in raw_filters.items():
-        key = str(raw_key)
-        if not key or key in SHELL_RESERVED_QUERY_KEYS or key.startswith("_arg_"):
-            continue
-
-        if isinstance(raw_value, list):
-            values = [
-                str(value)
-                for value in raw_value
-                if value is not None and str(value) != ""
-            ]
-            if values:
-                normalized[key] = values
-            continue
-
-        if raw_value is None or str(raw_value) == "":
-            continue
-
-        normalized[key] = str(raw_value)
-
-    return normalized
-
-
-def _apply_default_filters_to_querydict(
-    querydict: QueryDict,
-    default_filters: dict[str, str | list[str]],
-) -> QueryDict:
-    merged = querydict.copy()
-
-    for key, value in default_filters.items():
-        merged.pop(key, None)
-        if isinstance(value, list):
-            merged.setlist(key, value)
-        else:
-            merged[key] = value
-
-    return merged
 
 
 def _get_dataview_options_initial(preference: UserListViewPreference, view_type: str) -> dict:
@@ -577,9 +530,7 @@ def dataview(
         ),
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
-        'default_filters_json': json.dumps(
-            _normalize_default_filters(state.preference.default_filters or {})
-        ),
+        'initial_filters': request.GET.get('filter', state.preference.default_filter_groups_json),
         'count' : state.count,
         'before_data_view': before_data_view,
         'is_data_section_request': is_data_section_request,

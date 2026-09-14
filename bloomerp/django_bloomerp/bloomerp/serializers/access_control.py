@@ -151,6 +151,10 @@ class PolicySerializer(serializers.ModelSerializer):
                 )
                 try:
                     candidate.validate_rule()
+                    request = self.context.get("request")
+                    if request is not None:
+                        from bloomerp.permissions.manager import UserPolicyManager
+                        UserPolicyManager(request.user).validate_filters(candidate.content_type, [RowPolicyRuleContent.model_validate(row_rule["rule"])])
                     row_rule["rule"] = RowPolicyRuleContent.model_validate(row_rule["rule"]).model_dump(exclude={"permissions"})
                 except (DjangoValidationError, PydanticValidationError, ValueError) as exc:
                     raise serializers.ValidationError({"row_policy": str(exc)}) from exc

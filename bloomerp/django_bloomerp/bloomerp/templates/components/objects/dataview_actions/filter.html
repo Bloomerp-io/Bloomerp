@@ -1,4 +1,4 @@
-<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}" data-filter-host-editor>
     <c-ui.shortcut_tooltip
         position="bottom"
         action="click"
@@ -16,7 +16,7 @@
             fixed=True
             menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
         >
-            <c-features.filters.container scope="model" id="{{ content_type_id }}"/>
+            <c-features.filters.container scope="model" id="{{ content_type_id }}" :initial_filters="initial_filters"/>
         </c-ui.dropdown.body>
     </c-ui.shortcut_tooltip>
 </div>

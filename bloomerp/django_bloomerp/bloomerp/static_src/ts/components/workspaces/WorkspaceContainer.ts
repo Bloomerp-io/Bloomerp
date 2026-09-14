@@ -8,8 +8,10 @@ import BaseWizard from "../BaseWizard";
 import { Drawer } from "../Drawer";
 import FilterContainer from "../filters/FilterContainer";
 import type { Filter, FilterScope } from "../filters/definition";
+import { RenderedFilters, type AppliedFilterIdentity } from '../filters/RenderedFilters';
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
+    private renderedFilters?: RenderedFilters;
     private workspaceApplyFiltersHandler: ((event: Event) => void) | null = null;
     private workspaceFilterParams = new URLSearchParams(window.location.search);
     private tileResizeObserver: ResizeObserver | null = null;
@@ -20,6 +22,14 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
 
         this.workspaceApplyFiltersHandler = (event: Event) => this.applyWorkspaceFilters(event);
         this.element.addEventListener(FilterContainer.applyEvent, this.workspaceApplyFiltersHandler);
+        const renderedRoot = this.element.querySelector<HTMLElement>('[data-rendered-filters][data-scope="workspace"]');
+        if (renderedRoot) {
+            this.renderedFilters = new RenderedFilters(renderedRoot, filters => {
+                this.renderedFilters?.syncEditor(this.element!, filters);
+                this.updateWorkspaceFilters(filters);
+            });
+            this.renderedFilters.restore(this.workspaceFilterParams.get('filter'));
+        }
         this.setupTileResizeObserver();
         this.items.forEach((item) => {
             if (item.element) {
@@ -106,6 +116,8 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     }
 
     public override destroy(): void {
+        this.renderedFilters?.destroy();
+        this.renderedFilters = undefined;
         if (this.workspaceApplyFiltersHandler) {
             this.element?.removeEventListener(FilterContainer.applyEvent, this.workspaceApplyFiltersHandler);
             this.workspaceApplyFiltersHandler = null;
@@ -117,14 +129,19 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     }
 
     private applyWorkspaceFilters(event: Event): void {
-        const detail = (event as CustomEvent<FilterScope & { filters: Filter[] }>).detail;
+        const detail = (event as CustomEvent<FilterScope & AppliedFilterIdentity & { filters: Filter[] }>).detail;
         if (detail?.scope !== "workspace" || detail.id !== this.element?.dataset.workspaceId) return;
 
         event.stopPropagation();
-        if (detail.filters.length) {
-            this.workspaceFilterParams.set("filter", JSON.stringify(detail.filters));
+        this.renderedFilters?.setFilters(detail.filters, detail);
+        this.updateWorkspaceFilters(detail.filters);
+    }
+
+    private updateWorkspaceFilters(filters: Filter[]): void {
+        if (filters.length) {
+            this.workspaceFilterParams.set("filter", JSON.stringify(filters));
         } else {
-            this.workspaceFilterParams.delete("filter");
+            this.workspaceFilterParams.set("filter", "[]");
         }
         this.workspaceFilterParams.delete("page");
         this.syncWorkspaceUrl();

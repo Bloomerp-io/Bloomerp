@@ -120,7 +120,7 @@ class UserListViewPreferenceDefaultTests(BaseBloomerpTestCaseWithModels):
                 "sort_direction": "asc",
             },
         )
-        self.assertEqual(preferences[0].default_filters, {"age__gte": "18"})
+        self.assertEqual(preferences[0].default_filters.get().filters[0]["conditions"][0]["value"], "18")
         self.assertEqual(
             preferences[1].display_fields["table"],
             [last_name.pk, first_name.pk],
@@ -160,7 +160,7 @@ class UserListViewPreferenceDefaultTests(BaseBloomerpTestCaseWithModels):
         self.assertEqual(preference.display_fields["kanban"], [])
         self.assertIsNone(preference.options["kanban"]["group_by_field_id"])
         self.assertIsNone(preference.options["kanban"]["sort_field"])
-        self.assertEqual(preference.default_filters, {})
+        self.assertFalse(preference.default_filters.exists())
 
     def test_unknown_configured_dataview_field_rolls_back_all_defaults(self):
         """

@@ -15,7 +15,7 @@ export class ConditionEditor {
     private error = element('p', 'filter-condition-error text-danger-dark text-xs');
     private navigation = element('div', 'filter-condition-navigation');
 
-    constructor(private api: FilterApi, remove: () => void) {
+    constructor(private api: FilterApi, remove: () => void, private changed: () => void = () => {}) {
         this.element.dataset.filterCondition = '';
         const header = element('div', 'flex items-start');
         this.navigation.classList.add('flex-1', 'min-w-0');
@@ -45,6 +45,7 @@ export class ConditionEditor {
         catch (error) {
             if ((error as Error).name !== 'AbortError') this.error.textContent = (error as Error).message;
         }
+        finally { this.changed(); }
     }
 
     private clearValue(): void {
@@ -159,6 +160,7 @@ export class ConditionEditor {
         };
         select.addEventListener('change', () => void this.run(() => choose(lookups.find(item => item.id === select.value))));
         if (initial) {
+            if (path === initial.field_path && !initial.lookup_id) return;
             const candidates = path === initial.field_path ? lookups.filter(item => item.id === initial.lookup_id) : lookups.filter(item => item.nested);
             if (candidates.length !== 1) throw new Error(t('The saved filter lookup could not be restored.'));
             select.value = candidates[0].id;

@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.filters.definition import Filter, FilterCondition
+from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
@@ -61,7 +62,7 @@ class TestRenderLayoutItemComponent(BloomerpComponentTestCase):
             return True
         return self._named_validator(f'rendered_first_names({expected!r})', validate)
 
-    def tile_scenario(self, name, expected, *, groups=None, params=None, tile=None):
+    def tile_scenario(self, name, expected, *, groups=None, params=None, tile=None, defaults=False):
         query = {
             'tile_id': str((tile or self.tiles[0]).pk),
             'workspace_id': str(self.workspace.pk),
@@ -74,14 +75,25 @@ class TestRenderLayoutItemComponent(BloomerpComponentTestCase):
             name=name,
             description=f'UC: {name}\nExpected Result: Rendered first_name cells are {expected!r}.',
             user=self.admin_user,
+            prepare=self.prepare_default_filter if defaults else None,
             view_kwargs={'content_type_id': self.workspace_content_type.pk},
             query_params=query,
             expected=ExpectedResult(response_validators=self.rendered_names(expected)),
         )
 
+    def prepare_default_filter(self, scenario):
+        record = SavedFilter.objects.create(
+            name='Default names', scope='workspace', identifier=str(self.workspace.pk),
+            filters=[Filter(connector='AND', conditions=[self.condition('David', 'shared:first_name')]).model_dump()],
+        )
+        self.workspace.add_default_filter(record)
+
     def get_test_scenarios(self):
         shared = [Filter(connector='AND', conditions=[self.condition('David', 'shared:first_name')])]
         return [
+            self.tile_scenario('Workspace defaults filter analytics tiles', ['David'], defaults=True),
+            self.tile_scenario('Workspace defaults filter dataview tiles', ['David'], defaults=True, tile=self.dataview_tile),
+            self.tile_scenario('Explicit empty filters override workspace defaults', ['David', 'Daniel', 'Emma'], defaults=True, groups=[]),
             self.tile_scenario('No filters renders all names', ['David', 'Daniel', 'Emma']),
             self.tile_scenario('Shorthand first_name filters the rendered tile', ['David'], params={'first_name': 'David'}),
             self.tile_scenario('Canonical first_name filters the rendered tile', ['David'], groups=[

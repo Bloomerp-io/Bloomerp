@@ -1,21 +1,17 @@
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.http import HttpRequest, JsonResponse
+from django.views.decorators.http import require_GET
+
+from bloomerp.components.filters.common import filter_component
+from bloomerp.components.filters.presets import preset_json, preset_scope
 from bloomerp.router import router
 
-@router.register(
-    path="components/filters/get",
-    url_name="components_get"
-)
+
+@router.register(path="components/filters/get", url_name="components_filters_get")
 @login_required
-def get(request: HttpRequest) -> HttpResponse:
-    """Returns a set saved set of filters for a particular scope
-
-    Args:
-        request (HttpRequest): _description_
-
-    Returns:
-        HttpResponse: _description_
-    """
+@require_GET
+@filter_component
+def get(request: HttpRequest) -> JsonResponse:
+    _, records, _ = preset_scope(request, request.GET)
+    return JsonResponse([preset_json(record) for record in records], safe=False)
     

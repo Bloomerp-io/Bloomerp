@@ -6,7 +6,7 @@ from bloomerp.router import router
 
 @router.register(
     path="components/filters/delete",
-    url_name="components_delete"
+    url_name="components_filters_delete"
 )
 @login_required
 def delete(request: HttpRequest) -> HttpResponse:

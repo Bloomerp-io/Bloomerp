@@ -4,6 +4,7 @@ export type LookupDefinition = { id: string; label: string; nested: boolean };
 export type FilterField = { field: string; label: string };
 export type FieldGroup = { name: string; fields: FilterField[] };
 export type FilterScope = { scope: 'model' | 'workspace'; id: string };
+export type SavedFilter = { id: string; name: string; scope: FilterScope['scope']; identifier: string; filters: Filter[] };
 
 export function parseInitialFilters(json: string): Filter[] {
     const value: unknown = JSON.parse(json);

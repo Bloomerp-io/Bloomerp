@@ -32,9 +32,14 @@ class BaseE2ETestCase(BaseBloomerpTestCaseWithModels, StaticLiveServerTestCase):
     the desired point and run that test with ``BLOOMERP_E2E_CODEGEN=1``. The
     method is intentionally a no-op without the environment variable, so the
     same test remains safe to run in the normal headless suite.
+
+    When running through pytest, pass ``--headed`` to watch the browser and
+    optionally ``--slowmo MILLISECONDS`` to delay each Playwright operation.
     """
 
     codegen_environment_variable = "BLOOMERP_E2E_CODEGEN"
+    headed_environment_variable = "BLOOMERP_E2E_HEADED"
+    slow_mo_environment_variable = "BLOOMERP_E2E_SLOW_MO"
     test_password = "testpass123"
     browser_name = "chromium"
     browser_launch_options: Mapping[str, Any] = {}
@@ -56,10 +61,16 @@ class BaseE2ETestCase(BaseBloomerpTestCaseWithModels, StaticLiveServerTestCase):
     def get_browser_launch_options(cls) -> dict[str, Any]:
         """Return Playwright launch options, overridable by a subclass."""
         options = dict(cls.browser_launch_options)
-        if cls.codegen_enabled():
+        if cls.codegen_enabled() or os.environ.get(
+            cls.headed_environment_variable
+        ):
             options["headless"] = False
         else:
             options.setdefault("headless", True)
+
+        slow_mo = os.environ.get(cls.slow_mo_environment_variable)
+        if slow_mo:
+            options["slow_mo"] = int(slow_mo)
         return options
 
     def get_browser_context_options(self) -> dict[str, Any]:

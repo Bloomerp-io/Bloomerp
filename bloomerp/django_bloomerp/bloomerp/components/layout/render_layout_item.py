@@ -41,6 +41,7 @@ def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
         tile=tile,
         request=request,
         colspan=colspan,
+        workspace_id=request.GET.get("workspace_id"),
     )
     return render(
         request,

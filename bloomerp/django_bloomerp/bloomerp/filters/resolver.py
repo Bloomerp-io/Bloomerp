@@ -86,7 +86,7 @@ class FilterFieldResolver:
             workspace = get_object_or_404(Workspace, pk=identifier)
             if not has_access_to_workspace(workspace, user):
                 raise PermissionDenied
-            return cls(workspace=workspace, policy_manager=manager)
+            return cls(workspace=workspace.effective_preference, policy_manager=manager)
         raise ValidationError("Scope must be model or workspace")
 
     def _can_access(self, field):

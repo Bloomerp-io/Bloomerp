@@ -1,135 +1,107 @@
 from unittest import skip
+from types import ModuleType
 
-from bloomerp.tests.base import BloomerpE2ETestCase, E2ERequestScenario
+from django.contrib.contenttypes.models import ContentType
+from django.test import override_settings
+from django.urls import get_resolver, path, reverse
+from playwright.sync_api import Locator, expect
+
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.tests.base import E2ERequestScenario, e2e_test_case
 from bloomerp.tests.e2e.mixins.filters_e2e_mixin import FilterE2EMixin
+from bloomerp.utils.models import get_list_view_url
+from bloomerp.views.generic.model.list import BloomerpListView
 
 
-@skip("Skeleton: configure fixtures, FilterE2EMixin actions, and browser assertions")
-class TestBloomerpListViewE2E(FilterE2EMixin, BloomerpE2ETestCase):
-    """Browser scenarios for BloomerpListView; pending the shared filter UI."""
+class TestBloomerpListViewE2E(FilterE2EMixin, e2e_test_case.BloomerpE2ETestCase):
+    """Real list-view integration of the shared filter journeys."""
+
+    scope = 'model'
+    auto_create_customers = False
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Customer can share a route name with an installed customer module.
+        # Bind this suite's list route to its dynamic model, not that module.
+        urlconf = ModuleType('filter_list_e2e_urls')
+        urlconf.urlpatterns = [
+            *get_resolver().url_patterns,
+            path('e2e/filter-customers/', BloomerpListView.as_view(model=cls.CustomerModel),
+                 name=get_list_view_url(cls.CustomerModel)),
+        ]
+        settings_override = override_settings(ROOT_URLCONF=urlconf)
+        settings_override.enable()
+        cls.addClassCleanup(settings_override.disable)
+
+    def prepare_filter_host(self) -> None:
+        self.CustomerModel.objects.all().delete()
+        self.customers = [
+            self.create_customer('David', 'One', 21),
+            self.create_customer('David', 'Two', 35),
+            self.create_customer('Kyle', 'Three', 27),
+            self.create_customer('Alex', 'Four', 42),
+        ]
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        UserListViewPreference.objects.filter(content_type=content_type).delete()
+        fields = ApplicationField.objects.filter(content_type=content_type, field__in=['first_name', 'last_name'])
+        self.preference = UserListViewPreference.objects.create(
+            user=self.admin_user, content_type=content_type, selected=True,
+            view_type='table', display_fields={'table': list(fields.values_list('pk', flat=True))},
+        )
+
+    def filter_default_host(self):
+        return self.preference
+
+    def share_filter_host(self):
+        self.preference.user = self.normal_user
+        self.preference.save()
+        self.preference.shared_with_users.add(self.admin_user)
+        UserListViewPreference.objects.create(
+            user=self.admin_user, content_type=self.preference.content_type,
+            source_object=self.preference, selected=True,
+        )
+
+    def filter_page_url(self) -> str:
+        return reverse(get_list_view_url(self.CustomerModel))
+
+    def filter_scope_id(self) -> str:
+        return str(ContentType.objects.get_for_model(self.CustomerModel).pk)
+
+    def filter_host(self) -> Locator:
+        return self.page.locator(f'[bloomerp-component="dataview-container"][data-content-type-id="{self.filter_scope_id()}"]')
+
+    def assert_filter_results(self, first_name: str | None) -> None:
+        expected = [customer for customer in self.customers if first_name is None or customer.first_name == first_name]
+        rows = self.filter_host().locator('tbody tr').filter(has=self.page.locator('[bloomerp-component="datatable-cell"]'))
+        expect(rows).to_have_count(len(expected))
+        for customer in expected:
+            expect(rows.filter(has=self.page.locator(f'[data-object-id="{customer.pk}"]'))).to_have_count(1)
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
-        # TODO: supply each scenario's user, URL, and deterministic fixture setup.
-        # TODO: use the mixin's field/lookup/value actions and assert rendered results.
-        return [
-            E2ERequestScenario(
-                name='Apply an equality filter',
-                description="""
-                UC: An admin selects first_name, equals, and David, then applies the filter.
+        return self.get_filter_test_scenarios()
 
-                Expected Result: Only records with first_name=David are displayed.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Combine conditions with AND',
-                description="""
-                UC: A user filters first_name=David AND age>18.
+    @skip('List-specific validation journey is not wired yet.')
+    def test_invalid_value_feedback(self):
+        """UC: Enter a nonnumeric age comparison.
+        Expected Result: Show validation feedback without silently dropping the condition.
+        """
 
-                Expected Result: Only records satisfying both conditions are displayed.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Combine conditions with OR',
-                description="""
-                UC: A user filters first_name=David OR first_name=Kyle.
+    @skip('List-specific pagination journey is not wired yet.')
+    def test_paginate_filtered_records(self):
+        """UC: Apply a filter on a later page, then paginate.
+        Expected Result: Reset the page on Apply and retain filters when paginating.
+        """
 
-                Expected Result: Records matching either condition are displayed once.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Combine filter groups',
-                description="""
-                UC: A user combines an OR name group with an age comparison group.
+    @skip('List-specific split-view journey is not wired yet.')
+    def test_save_from_split_view(self):
+        """UC: Edit and save a filtered record in split view.
+        Expected Result: Refresh the list consistently with its active filters.
+        """
 
-                Expected Result: The groups combine with implicit AND.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Filter through a related field',
-                description="""
-                UC: A user selects country, foreign_advanced, name, equals, and Belgium.
-
-                Expected Result: The nested field picker opens and only records linked to Belgium are displayed.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Filter through a JSON key',
-                description="""
-                UC: A user selects a JSON field, its nested key, and a terminal equality lookup.
-
-                Expected Result: The selected JSON path is preserved and only matching records are displayed.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Edit an existing filter',
-                description="""
-                UC: A user opens an applied filter and changes its value from David to Kyle.
-
-                Expected Result: The editor restores the current selection and applying the change replaces the previous condition.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Remove and clear filters',
-                description="""
-                UC: A user removes one of two conditions, then clears all filters.
-
-                Expected Result: Removing a condition preserves the other; clearing restores the unfiltered records.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Restore filters after reload',
-                description="""
-                UC: A user reloads a list URL containing multiple filter groups.
-
-                Expected Result: The editor restores fields, lookups, typed values, and connectors; the same records remain visible.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Show invalid value feedback',
-                description="""
-                UC: A user enters a nonnumeric value for an age comparison.
-
-                Expected Result: Validation feedback identifies the value and the invalid condition is not silently dropped.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Paginate filtered records',
-                description="""
-                UC: A user applies a filter while on a later page, then navigates the filtered pages.
-
-                Expected Result: Applying resets pagination; subsequent pages retain the filter and contain only matching records.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Save an object from split view',
-                description="""
-                UC: An admin opens a filtered record in split view, edits it, and saves.
-
-                Expected Result: The change is saved and the list refreshes consistently with the active filter.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='Change display fields',
-                description="""
-                UC: An admin changes visible columns while a filter is active.
-
-                Expected Result: The chosen columns are displayed and the active filter remains applied.
-                """,
-                actions=[],
-            ),
-            E2ERequestScenario(
-                name='User can'
-            )
-        ]
+    @skip('List-specific display-fields journey is not wired yet.')
+    def test_change_display_fields(self):
+        """UC: Change visible columns while filtering.
+        Expected Result: Display the chosen columns and retain active filters.
+        """

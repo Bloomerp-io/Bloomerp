@@ -3,21 +3,22 @@ import BaseComponent, { getComponent, componentIdentifier, initComponents } from
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { getLocalStorageValue, setLocalStorageValue } from "@/utils/localStorage";
-import FilterContainer, { FilterEntriesContainer, FilterEntry, getFiltersFromUrl } from "../Filters";
-import { getCsrfToken } from "@/utils/cookies";
 import { DataViewDisplayOptions } from "./DisplayOptions";
 import ObjectCRUDViewContainer from "../detail_view_components/ObjectCRUDViewContainer";
 import { getModal } from "@/utils/modals";
 import { insertSkeleton } from "@/utils/animations";
+import { RenderedFilters } from '../filters/RenderedFilters';
 
 
 
 export class DataViewContainer extends BaseComponent {
+    private renderedFilters?: RenderedFilters;
 
     private unifiedFilterHandler = (event: Event): void => {
         const detail = (event as CustomEvent).detail;
         if (detail?.scope !== 'model' || String(detail.id) !== this.contentTypeId) return;
         event.stopPropagation();
+        this.renderedFilters?.setFilters(detail.filters, detail);
         this.filter({ filter: JSON.stringify(detail.filters) }, false);
     };
 
@@ -27,7 +28,6 @@ export class DataViewContainer extends BaseComponent {
     private searchInput:HTMLInputElement|null = null;
     private contentTypeId:string|null = null;
     private syncUrl:boolean = false;
-    private defaultFilters: FilterEntry[] = [];
     private pendingHistoryMode: "push" | "replace" | null = null;
     
     // Split view related properties
@@ -44,17 +44,19 @@ export class DataViewContainer extends BaseComponent {
     private selectedObjectIds: Set<string> = new Set();
     private createObjectModalLoaded: boolean = false;
 
-    private static readonly RESERVED_FILTER_KEYS = new Set<string>([
-        "q",
-        "page",
-        "calendar_page",
-    ]);
-
     public initialize(): void {
         this.element?.addEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
         this.baseUrl = this.element?.dataset.baseUrl;
         this.fullPath = this.element?.dataset.url;
         this.contentTypeId = this.element?.dataset.contentTypeId ?? null;
+        const renderedRoot = this.element?.querySelector<HTMLElement>('[data-rendered-filters]');
+        if (renderedRoot) {
+            this.renderedFilters = new RenderedFilters(renderedRoot, filters => {
+                if (this.element) this.renderedFilters?.syncEditor(this.element, filters);
+                this.filter({ filter: JSON.stringify(filters) }, false);
+            });
+            this.renderedFilters.restore(new URL(this.fullPath || this.baseUrl || location.href, location.origin).searchParams.get('filter'));
+        }
         this.searchInput = this.element?.querySelector(`#data-view-search-input-${this.contentTypeId}`) ?? null;
         this.splitViewEnabled = this.element?.dataset.splitViewEnabled === 'True';
         this.syncUrl = this.element?.dataset.syncUrl === 'true';
@@ -71,41 +73,6 @@ export class DataViewContainer extends BaseComponent {
         this.setupSplitViewFocusTargets();
         this.setupSplitViewResize();
 
-        // Get the default filters
-        const defaultFiltersJson = this.element?.dataset.defaultFilters ?? '{}';
-        try {
-            const parsed = JSON.parse(defaultFiltersJson);
-            this.defaultFilters = getFiltersFromUrl(new URLSearchParams(parsed));
-        } catch (error) {
-            console.error('Failed to parse default filters JSON:', error);
-            this.defaultFilters = [];
-        }
-
-        // Make sure the filtering mechanism is working
-        const filterButton = this.element?.querySelector('#apply-filters-button');
-        if (filterButton) {
-            filterButton.addEventListener('click', () => {
-                const filters = this.getFilterContainer()?.getFilters() || [];
-                
-                // construct arguments -> arg {first_name__contains: "John"}
-                const args: Record<string, string | string[]> = {};
-                filters.forEach(filter => {
-                    if (filter.value) {
-                        const key = `${filter.field}__${filter.operator}`;
-                        if (Array.isArray(filter.value)) {
-                            args[key] = filter.value;
-                        } else {
-                            args[key] = filter.value.toString();
-                        }
-                    }
-                });
-                
-                // Merge new filters with existing query params
-                this.filter(args, false);
-                this.resetFilterSection();
-            });
-        }
-
         // Setup search
         this.element.querySelector(`#data-view-search-input-${this.contentTypeId}`)?.addEventListener('input', (event) => {
             const target = event.target as HTMLInputElement;
@@ -117,10 +84,6 @@ export class DataViewContainer extends BaseComponent {
         this.element?.addEventListener('htmx:afterSwap', this.afterSwapHandler);
 
         this.installCellClickOverrides();
-
-        // Render filters based on the current URL parameters
-        this.renderAppliedFilters();
-        this.renderDefaultFilters();
 
         this.bindDisplayOptionsCallback();
 
@@ -201,50 +164,6 @@ export class DataViewContainer extends BaseComponent {
         this.applyUrl(url, false);
     }
 
-    /**
-     * Removes a filter from the current data view
-     * @param key The key of the filter to remove
-     * @param isDefaultFilter Whether the filter is a default filter
-     * @returns void
-     */
-    private removeFilter(key: string, isDefaultFilter:boolean=false): void {
-        if (isDefaultFilter) {
-            // Remove the filter from the default filters list
-            this.defaultFilters = this.defaultFilters.filter(filter => filter.getFilterKey() !== key);
-            this.saveFilterState(this.defaultFilters);
-            return;
-        }
-
-        const url = this.getCurrentUrl();
-        if (!url) return;
-
-        url.searchParams.delete(key);
-        url.searchParams.delete('page');
-        this.applyUrl(url);
-    }
-
-    /**
-     * Removes all filters from the current data view
-     * @param isDefaultFilter Whether the filters to clear are default filters. 
-     * @returns void
-     */
-    private clearAllFilters(isDefaultFilter: boolean = false): void {
-        if (isDefaultFilter) {
-            this.saveFilterState([])
-        }
-
-        const url = this.getCurrentUrl();
-        if (!url) return;
-
-        Array.from(url.searchParams.keys()).forEach((key) => {
-            if (DataViewContainer.RESERVED_FILTER_KEYS.has(key)) return;
-            url.searchParams.delete(key);
-        });
-        url.searchParams.delete('page');
-
-        this.applyUrl(url);
-    }
-
     private applyUrl(url: URL, pushHistory: boolean = true): void {
         this.fullPath = url.toString();
         if (this.syncUrl) {
@@ -278,111 +197,10 @@ export class DataViewContainer extends BaseComponent {
         this.installCellClickOverrides();
         this.setupSplitViewFocusTargets();
         this.setupSplitViewResize();
-        this.renderAppliedFilters();
         this.syncBulkCheckboxes();
     }
 
-    private renderAppliedFilters(): void {
-        if (!this.contentTypeId) return;
 
-        const target = this.element?.querySelector<HTMLElement>(`#applied-filters-${this.contentTypeId}`);
-        if (!target) return;
-
-        const url = this.getCurrentUrl();
-        const defaultFilterKeys = new Set(
-            this.defaultFilters.map((filter) => filter.getFilterKey())
-        );
-
-        // Get the hidden filters which are comma seperated in the data-hide-filters attribute
-        const hiddenFilters = this.element.dataset.hideFilters?.split(',').map((key) => key.trim()).filter((key) => key.length > 0) ?? [];
-        const hiddenFilterSet = new Set(hiddenFilters);
-        
-        const filters = (url ? getFiltersFromUrl(url.searchParams) : []).filter(
-            (filter) => {
-                const key = filter.getFilterKey();
-                return key !== 'filter' && !defaultFilterKeys.has(key) && !hiddenFilterSet.has(key);
-            }
-        );
-
-        const filterList = new FilterEntriesContainer(
-            target,
-            (entry) => this.removeFilter(entry.getFilterKey()),
-            this.clearAllFilters.bind(this)
-        );
-
-        // Set default filters to be non-removable
-        this.defaultFilters.forEach(filter => filter.setRemovable(false));
-        
-        filterList.setFilters(this.defaultFilters.concat(filters));
-        filterList.setClearable(filters.length > 0);
-        filterList.setSavable(filters.length > 0);
-        filterList.setSaveHandler(this.saveFilterState.bind(this));
-        filterList.render();
-    }
-
-    private renderDefaultFilters(): void {
-        if (!this.contentTypeId) return;
-        let target = this.element?.querySelector<HTMLElement>(`#default-filters-${this.contentTypeId}`);
-        if (!target) return;
-
-        const filterList = new FilterEntriesContainer(
-            target,
-            (entry) => {this.removeFilter(entry.getFilterKey(), true)}, 
-            (entry) => {this.clearAllFilters(true)},  
-        );
-
-        filterList.setFilters(this.defaultFilters);
-        filterList.setRemovable(true);
-        filterList.render();
-    }
-
-    private async saveFilterState(entries: FilterEntry[]): Promise<void> {
-        if (!this.contentTypeId) return;
-
-        const defaultFilters: Record<string, string | string[]> = {};
-        entries.forEach((entry) => {
-            const key = entry.getFilterKey();
-            if (!key || DataViewContainer.RESERVED_FILTER_KEYS.has(key) || key.startsWith("_arg_")) {
-                return;
-            }
-
-            if (entry.value === null || entry.value === "") {
-                return;
-            }
-
-            defaultFilters[key] = entry.value;
-        });
-
-        const csrfToken = getCsrfToken();
-        const formData = new FormData();
-        formData.set("default_filters", JSON.stringify(defaultFilters));
-        if (csrfToken) {
-            formData.set("csrfmiddlewaretoken", csrfToken);
-        }
-
-        const response = await fetch(`/components/change_data_view_preference/${this.contentTypeId}/`, {
-            method: "POST",
-            body: formData,
-            credentials: "same-origin",
-            headers: {
-                "X-Requested-With": "XMLHttpRequest",
-                ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
-            },
-        });
-
-        if (!response.ok) {
-            console.error("Failed to save default filters:", response.statusText);
-            return;
-        }
-
-        this.defaultFilters = entries;
-        this.renderAppliedFilters();
-
-        const html = await response.text();
-        this.replaceDisplayOptions(html);
-        this.refresh();
-    }
-    
     private installCellClickOverrides(): void {
         let dataView: BaseDataViewComponent;
 
@@ -473,29 +291,6 @@ export class DataViewContainer extends BaseComponent {
         return new URL(base, window.location.origin);
     }
 
-    private resetFilterSection(): void {
-        if (!this.contentTypeId) return;
-
-        const target = document.getElementById(`filter-section-${this.contentTypeId}`);
-        if (!target) return;
-
-        htmx.ajax(
-            'get',
-            `/components/filters/${this.contentTypeId}/init/`,
-            {
-                target: target,
-                swap: 'innerHTML',
-            }
-        );
-    }
-
-    private getFilterContainer(): FilterContainer | null {
-        if (!this.contentTypeId) return null;
-        const el = document.getElementById(`filter-container-${this.contentTypeId}`) as HTMLElement | null;
-        if (!el) return null;
-        return getComponent(el) as FilterContainer;
-    }
-    
     public getDataViewComponent() : BaseDataViewComponent {
         if (!this.element) throw new Error('DataViewContainer element not found');
 
@@ -856,8 +651,7 @@ export class DataViewContainer extends BaseComponent {
 
         displayOptionsComponent.setOptionChangedCallback(() => {
             this.bindDisplayOptionsCallback();
-            this.renderDefaultFilters();
-            this.refresh();
+                this.refresh();
         });
     }
 
@@ -876,14 +670,12 @@ export class DataViewContainer extends BaseComponent {
         displayOptionsElement.replaceWith(replacement);
         initComponents(parent);
         this.bindDisplayOptionsCallback();
-        this.renderDefaultFilters();
     }
 
     public onAfterSwap(): void {
         this.setDataviewTarget();
         this.setupAddButton();
         this.bindDisplayOptionsCallback();
-        this.renderDefaultFilters();
     }
 
     /**
@@ -894,6 +686,8 @@ export class DataViewContainer extends BaseComponent {
     }
 
     public destroy(): void {
+        this.renderedFilters?.destroy();
+        this.renderedFilters = undefined;
         this.element?.removeEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
         if (this.afterSwapHandler) {
             this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);

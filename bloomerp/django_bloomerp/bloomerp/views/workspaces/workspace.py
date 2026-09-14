@@ -31,3 +31,4 @@ class BloomerpModuleWorkspace(BaseWorkspaceView, DetailView):
     def get_workspace(self) -> Workspace | None:
         return self.get_object()
     
+    

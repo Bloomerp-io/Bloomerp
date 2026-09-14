@@ -214,5 +214,10 @@ class UserParameterResolver:
 
 
 def has_access_to_workspace(workspace:Workspace, user:AbstractBloomerpUser) -> bool:
-    if workspace.user == user:
-        return True
+    from bloomerp.services.preference_services import PreferenceManager
+
+    if not user.is_authenticated:
+        return False
+    return PreferenceManager(user).get_available(Workspace, workspace.get_scope()).filter(
+        models.Q(pk=workspace.pk) | models.Q(source_object_id=workspace.pk)
+    ).exists()

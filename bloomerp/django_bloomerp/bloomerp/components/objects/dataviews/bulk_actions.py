@@ -11,10 +11,6 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 
-from bloomerp.components.objects.dataviews.dataview import (
-    _apply_default_filters_to_querydict,
-    _normalize_default_filters,
-)
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.models import ApplicationField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
@@ -132,10 +128,7 @@ def _filter_querydict(request: HttpRequest, preference: UserListViewPreference):
     for key in list(querydict.keys()):
         if key.startswith("_arg_"):
             querydict.pop(key, None)
-    return _apply_default_filters_to_querydict(
-        querydict,
-        _normalize_default_filters(preference.default_filters or {}),
-    )
+    return preference.apply_default_filters(querydict)
 
 
 def _query_summary(filter_querydict) -> list[tuple[str, list[str]]]:

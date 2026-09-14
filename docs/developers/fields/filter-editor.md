@@ -35,6 +35,51 @@ chooses which tiles to refresh.
 The component is registered as `unified-filter-container`. Legacy callers of
 `filter-container` keep their existing contract during migration.
 
+### Permission rules
+
+The permission table reuses `FilterWidget` with model scope from its ContentType.
+Each table entry stores one `Filter` group in `RowPolicyRule.rule`, with its own
+AND/OR connector and any number of conditions. **Add condition** edits that
+group; adding another table entry creates a separate grant. Applicable grants
+retain the existing OR combination. **Add group** is therefore absent inside
+this entry editor. Legacy field IDs/operators are normalized at the backend boundary.
+The table uses `include_controls=False`: no name, Save, Clear, Apply, or Select
+controls are rendered. **Use rule** updates the draft table, and the existing
+permission workflow submits it.
+
+`FilterWidget(include_controls=False)` emits `data-include-controls="false"`.
+The default is true. Without outer controls, the hidden grouped JSON updates on
+edits, and an enclosing form can submit without an Apply event. Incomplete edits
+clear the hidden value and block submission; condition/group editing remains
+available within the configured group limit.
+
+### Saved presets
+
+`SavedFilter` is the Django record; `bloomerp.filters.definition.Filter`
+remains one grouped condition definition. A preset contains a name, scope,
+identifier, and grouped JSON. Names are unique within a scope/identifier pair.
+Scope access is shared; there is no private owner or default-filter relationship.
+
+- GET `components/filters/get?scope=model&identifier=<ContentType ID>`
+  lists full preset payloads for exactly that authorized scope. Workspaces use
+  `scope=workspace&identifier=<Workspace ID>`.
+- POST `components/filters/save` accepts JSON containing `scope`,
+  `identifier`, `name`, and `filters`. Omit `filter_id` to create a record
+  (201). Include it to update that exact scoped record (200). An ID from another
+  scope or identifier is rejected; updates never move records.
+
+Saving validates grouped JSON, referenced fields, lookups, values, and existing
+filter permissions. Saving does not change defaults or apply the filter.
+The blue **Select** button opens a separate overlay under `document.body`,
+positioned against the button, and fetches the scoped list. It does not resize
+the parent filter popover. Choosing an item loads it locally and closes the menu, without a second
+endpoint request. Editing keeps its ID, so subsequent saves update it.
+The flyout starts with a name search, an **Add filter** action, and a divider,
+followed by matching saved filters. Search ignores case. **Add filter** clears
+the saved identity and name, starts an empty condition group, and focuses the
+name input; Save then creates a new preset. Apply emits optional
+`filter_id` and `filter_name` alongside the grouped filters; it does not save.
+
 Focused browser verification (requires installed frontend dependencies and
 Playwright Chromium):
 

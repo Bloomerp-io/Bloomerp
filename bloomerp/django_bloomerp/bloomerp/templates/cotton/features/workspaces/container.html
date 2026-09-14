@@ -9,7 +9,7 @@
     >
     <c-slot name="buttons_left">
         <!--Filters-->
-        <div class="w-full sm:w-auto">
+        <div class="w-full sm:w-auto" data-filter-host-editor>
             <c-ui.shortcut_tooltip 
                 position="bottom" 
                 shortcut="mod+1"
@@ -27,11 +27,12 @@
                     fixed=True
                     menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
                     >
-                    <c-features.filters.container scope="workspace" id="{{ workspace.id }}"/>
+                    <c-features.filters.container scope="workspace" id="{{ workspace.id }}" :initial_filters="request.GET.filter|default:workspace.default_filter_groups_json"/>
                 </c-ui.dropdown.body>
             </c-ui.shortcut_tooltip>
         </div>
         <!--End filters-->
+        <c-features.filters.rendered scope="workspace" id="{{ workspace.id }}" :filter_host="workspace"/>
     </c-slot>
     
     <c-slot name="buttons_right">

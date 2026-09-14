@@ -62,9 +62,11 @@ Slots:
 
     data-layout="{{ layout | dump_layout_json }}"
     
+    {% if change_context %}
+    data-layout-render-item-url="{{ change_context.render_item_url }}"
+    {% endif %}
     {% if can_change and change_context %}
     data-layout-available-items-url="{{ change_context.available_items_url }}"
-    data-layout-render-item-url="{{ change_context.render_item_url }}"
     data-layout-save-url="{{ change_context.save_url }}"
     data-layout-object-id="{{ layout_object_id }}"
     {% endif %}
@@ -195,4 +197,3 @@ Slots:
     </div>
     <!--End Search panel-->
 </div>
-

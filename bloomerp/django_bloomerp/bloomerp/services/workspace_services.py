@@ -1,6 +1,5 @@
 from copy import copy
-from dataclasses import dataclass
-from typing import Any, Optional, Type
+from typing import Any
 
 from django.db import transaction
 from django.http import HttpRequest
@@ -12,7 +11,6 @@ from bloomerp.models import LayoutItem
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.modules.definition import ModuleRegistry, module_registry
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
 from bloomerp.workspaces.analytics_tile.utils import TileFieldType
 from bloomerp.workspaces.base import BaseTileConfig
 from bloomerp.workspaces.links_tile.model import Link, LinkTileConfig
@@ -237,6 +235,9 @@ def build_workspace_layout_item(
         render_request.GET.pop(transport_param, None)
     render_request.GET["tile_id"] = str(tile.pk)
     if workspace_id is not None:
+        from bloomerp.filters.resolver import FilterFieldResolver
+        workspace = FilterFieldResolver.for_user('workspace', workspace_id, request.user).workspace
+        render_request.GET = workspace.apply_default_filters(render_request.GET)
         render_request.GET["workspace_id"] = str(workspace_id)
 
     try:

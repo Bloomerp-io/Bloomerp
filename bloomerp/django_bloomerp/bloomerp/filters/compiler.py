@@ -39,11 +39,15 @@ def resolve_condition(
         resolver = FilterFieldResolver.for_model(model)
     field, target = resolver.resolve(condition.field_path)
     lookup = resolve_lookup(field, target, condition.lookup_id)
+    return field, target, lookup, clean_lookup_value(field, lookup, condition.value)
+
+
+def clean_lookup_value(field: FilterField, lookup: BoundLookup, value: Any) -> Any:
+    """Validate a lookup input identically for execution and saved presets."""
     if lookup.nested:
         raise ValidationError("A nested lookup cannot be the terminal condition")
     factory = lookup.get_form_factory()
     form_field = factory(field.context) if factory else field.context.get_form_field()
-    value = condition.value
     # JSONField.clean expects its serialized input, not a native JSON scalar.
     if isinstance(form_field, forms.JSONField):
         value = json.dumps(value)
@@ -58,7 +62,7 @@ def resolve_condition(
         cleaned = cleaned.pk
     elif isinstance(cleaned, (list, tuple)):
         cleaned = [item.pk if isinstance(item, Model) else item for item in cleaned]
-    return field, target, lookup, cleaned
+    return cleaned
 
 
 def compile_condition(condition: FilterCondition, *, model: type[Model]) -> CompiledLookup:

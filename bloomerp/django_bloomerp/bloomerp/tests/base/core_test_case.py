@@ -27,7 +27,11 @@ class BloomerpChannelTestCase(TransactionTestCase):
     def websocket_communicator(self, registry, path: str):
         return WebsocketCommunicator(self.websocket_application(registry), path)
 
-@modify_settings(INSTALLED_APPS={'remove': 'bloomerp_modules'})
+# Avoid re-running Debug Toolbar's AppConfig while pytest-django has replaced
+# MIGRATION_MODULES with its non-dict --no-migrations sentinel.
+@modify_settings(
+    INSTALLED_APPS={"remove": ["bloomerp_modules", "debug_toolbar"]}
+)
 class BaseBloomerpTestCaseWithModels(TransactionTestCase):
     auto_create_customers = True
     auto_create_users = True

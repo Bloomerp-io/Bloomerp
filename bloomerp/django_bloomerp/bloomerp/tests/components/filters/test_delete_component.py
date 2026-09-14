@@ -9,7 +9,7 @@ from bloomerp.tests.base import (
 class TestDeleteComponent(BloomerpComponentTestCase):
     """Tests function `delete` from `bloomerp/components/filters/delete.py`."""
 
-    view_name = 'components_delete'
+    view_name = 'components_filters_delete'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.

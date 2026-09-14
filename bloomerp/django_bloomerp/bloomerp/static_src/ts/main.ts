@@ -20,8 +20,8 @@ import { KanbanCard } from './components/data_view_components/KanbanBoard';
 import { CardView } from './components/data_view_components/CardView';
 import { CardViewCard } from './components/data_view_components/CardView';
 import { PermissionsTable } from './components/PermissionsTable';
-import FilterContainer from './components/Filters';
 import UnifiedFilterContainer from './components/filters/FilterContainer';
+import RenderedFilter from './components/filters/RenderedFilter';
 import WebsiteBuilder from './components/WebsiteBuilder';
 import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
@@ -119,8 +119,8 @@ registerComponent('gant-chart-sidebar-item', GantChartSidebarItem);
 registerComponent('permissions-table', PermissionsTable)
 
 // Filter container
-registerComponent('filter-container', FilterContainer)
 registerComponent('unified-filter-container', UnifiedFilterContainer)
+registerComponent('rendered-filter', RenderedFilter)
 
 // Website builder
 registerComponent('website-builder', WebsiteBuilder)

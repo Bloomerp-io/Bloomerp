@@ -1,6 +1,7 @@
 import json
 
 from django import forms
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
@@ -21,6 +22,8 @@ from bloomerp.views.mixins.wizard_mixin import WizardError
 from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+from bloomerp.widgets.filter_widget import FilterWidget
+from bloomerp.permissions.editor import editor_rules
 
 CONTENT_TYPE_ID_KEY = "content_type_id"
 GLOBAL_PERMISSIONS_KEY = "global_permissions"
@@ -185,7 +188,7 @@ def _policy_builder_context(view, orchestrator: BaseStateOrchestrator) -> dict:
         if permission.codename in set(global_permissions)
     ]
 
-    row_policy_rules = orchestrator.get_session_data(ROW_POLICY_RULES_KEY) or []
+    row_policy_rules = editor_rules(orchestrator.get_session_data(ROW_POLICY_RULES_KEY) or [], _policy_content_type_for_view(view))
     field_policies = orchestrator.get_session_data(FIELD_POLICIES_KEY) or {}
 
     row_field_ids = []
@@ -216,6 +219,7 @@ def _policy_builder_context(view, orchestrator: BaseStateOrchestrator) -> dict:
         "row_policy_name": orchestrator.get_session_data(ROW_POLICY_NAME_KEY) or "",
         "field_policy_name": orchestrator.get_session_data(FIELD_POLICY_NAME_KEY) or "",
         "row_policy_rules_json": json.dumps(row_policy_rules),
+        "row_policy_filter_widget": FilterWidget(content_type=_policy_content_type_for_view(view), include_controls=False, attrs={"data-max-groups": "1"}).render("row_policy_filter", []),
         "field_policies_json": json.dumps(field_policies),
         "row_policy_fields": [
             {"id": field_id, "title": field_titles.get(field_id, field_id)}
@@ -270,9 +274,10 @@ def ctx_object_access_control(request: HttpRequest, view, orchestrator: BaseStat
 def pcs_object_access_control(request: HttpRequest, view, orchestrator: BaseStateOrchestrator):
     try:
         row_policy_rules = json.loads(request.POST.get("row_policy_rules_json", "[]") or "[]")
-    except json.JSONDecodeError:
+        row_policy_rules = editor_rules(row_policy_rules, _policy_content_type_for_view(view), user=request.user)
+    except (json.JSONDecodeError, ValidationError, PermissionDenied, ValueError) as exc:
         return WizardError(
-            message=_("The row policy configuration could not be read. Please review this step and try again."),
+            message=str(exc),
             title=_("Invalid row policy"),
             step=view.get_step_index_for_process(pcs_object_access_control),
         )

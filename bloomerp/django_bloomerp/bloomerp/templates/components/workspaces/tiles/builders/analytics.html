@@ -250,6 +250,7 @@
                                         hx-target="#tile-preview-section"
                                         hx-trigger="change delay:200ms"
                                         onsubmit="return false"
+                                        class="space-y-2"
                                     >
                                         <label class="block text-sm">
                                             {% translate "Shared key (optional)" %}
@@ -258,6 +259,10 @@
                                                 placeholder="{{ filter.field }}">
                                         </label>
                                         <p class="text-xs text-muted mt-1">{% translate "Leave blank to share by column name." %}</p>
+                                        <label for="text-sm block">
+                                            {% translate "Model" %}
+                                            
+                                        </label>
                                     </form>
                                             
                                     <c-ui.dropdown.divider />

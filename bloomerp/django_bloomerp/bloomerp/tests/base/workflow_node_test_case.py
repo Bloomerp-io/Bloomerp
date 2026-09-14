@@ -35,7 +35,11 @@ class WorkflowNodeScenario:
     ) = None
 
 
-@modify_settings(INSTALLED_APPS={'remove': 'bloomerp_modules'})
+# Avoid re-running Debug Toolbar's AppConfig while pytest-django has replaced
+# MIGRATION_MODULES with its non-dict --no-migrations sentinel.
+@modify_settings(
+    INSTALLED_APPS={"remove": ["bloomerp_modules", "debug_toolbar"]}
+)
 class BloomerpWorkflowNodeTestCase(TestCase):
     """Base class for registration and execution tests of a workflow node."""
 
