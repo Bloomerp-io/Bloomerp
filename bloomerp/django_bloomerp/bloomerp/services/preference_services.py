@@ -168,8 +168,13 @@ class PreferenceManager:
             if entry is not None:
                 self._select_entry(entry, scope)
                 effective = entry.effective_preference
-                if "content_type_id" in scope:
-                    effective.ensure_default_state(
+                ensure_default_state = getattr(
+                    effective,
+                    "ensure_default_state",
+                    None,
+                )
+                if "content_type_id" in scope and callable(ensure_default_state):
+                    ensure_default_state(
                         user=self.user,
                         content_type=ContentType.objects.get(pk=scope["content_type_id"]),
                     )

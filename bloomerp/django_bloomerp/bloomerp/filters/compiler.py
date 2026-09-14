@@ -15,6 +15,7 @@ from django.db.models import BooleanField, Exists, Expression, F, Model, OuterRe
 
 from bloomerp.filters.definition import FilterCondition, FilterField, Filters
 from bloomerp.filters.resolver import FilterExecutionTarget, FilterFieldResolver, resolve_lookup
+from bloomerp.lookups.builtins.equals_user import EQUALS_USER
 from bloomerp.lookups.definition import BoundLookup, CompiledLookup, CompiledSQL, SQLLookupContext
 
 Connector = Literal["AND", "OR"]
@@ -29,7 +30,8 @@ def _combine(items, connector):
 
 
 def resolve_condition(
-    condition: FilterCondition, *, model: type[Model] | None = None,
+    condition: FilterCondition, *, 
+    model: type[Model] | None = None,
     resolver: FilterFieldResolver | None = None,
 ) -> tuple[FilterField, FilterExecutionTarget, BoundLookup, Any]:
     """Resolve structure and clean the value; callers handle authorization."""
