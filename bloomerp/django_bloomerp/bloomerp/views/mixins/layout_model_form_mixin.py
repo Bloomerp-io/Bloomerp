@@ -108,9 +108,14 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
                 column.field for column in get_columns()
             }
 
+        submitted_data = (
+            self.request.POST
+            if self.request.method.upper() == "POST"
+            else self.request.GET
+        )
         return [
             (field_name, value)
-            for field_name, value in self.request.GET.items()
+            for field_name, value in submitted_data.items()
             if not self._is_rendered_initial_field(
                 field_name,
                 layout_field_names,
@@ -142,6 +147,18 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         cached_fields = getattr(self, "_form_application_fields", None)
         if cached_fields is not None:
             return cached_fields
+        if self.is_create_layout():
+            fields = ApplicationField.get_for_model(self.model)
+            if self.apply_permissions:
+                accessible_fields = self.get_accessible_application_fields(
+                    self.get_change_permission_str(),
+                )
+                fields = fields.filter(pk__in=accessible_fields.values("pk"))
+            self._form_application_fields = get_model_form_application_fields(
+                self.model,
+                fields,
+            )
+            return self._form_application_fields
         if not self.is_create_layout():
             fields = self.get_application_fields()
             if self.apply_permissions:
@@ -388,6 +405,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         context["layout_preference_object"] = self.get_layout_object()
         context["content_type_id"] = self.layout_content_type.pk
         context["model_name"] = self.model._meta.verbose_name
+        context["model_key"] = self.model._meta.model_name
         if self.request.method.upper() != "POST":
             context["layout_non_field_errors"] = [
                 *context.get("layout_non_field_errors", []),

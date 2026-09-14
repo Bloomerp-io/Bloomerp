@@ -174,6 +174,13 @@ def _build_data_view_query_state(
         dataview_options,
     )
 
+    count = queryset.count()
+    queryset = manager.annotate_field_permissions(
+        queryset,
+        dataview_render_fields + ([avatar_field] if avatar_field else []),
+        BloomerpPermission.VIEW,
+    )
+
     return DataViewQueryState(
         content_type=content_type,
         model=Model,
@@ -185,7 +192,7 @@ def _build_data_view_query_state(
         queryset=queryset,
         query=query,
         renderer_context=renderer_context,
-        count=queryset.count(),
+        count=count,
         reserved_params=DataviewReservedQueryParams(request),
         filters=filters
     )
@@ -530,7 +537,7 @@ def dataview(
         ),
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
-        'initial_filters': request.GET.get('filter', state.preference.default_filter_groups_json),
+        'initial_filters': request.GET.get('filter'),
         'count' : state.count,
         'before_data_view': before_data_view,
         'is_data_section_request': is_data_section_request,

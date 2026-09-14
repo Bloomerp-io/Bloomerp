@@ -1,3 +1,5 @@
+from django.forms.models import ModelMultipleChoiceField
+
 from bloomerp.field_types.utils.form_field_factories import form
 from bloomerp.field_types.utils.render_value_functions import (
     render_foreign_key_dataview_value,
@@ -24,8 +26,10 @@ from bloomerp.form_fields.one_to_many_field import OneToManyField
 from bloomerp.form_fields.ordered_multiple_choice_field import (
     OrderedMultipleChoiceField,
 )
+from bloomerp.lookups.definition import BoundLookup
 from bloomerp.model_fields.one_to_one_user_field import OneToOneUserField
 from bloomerp.model_fields.user_field import UserField
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.widgets.object_files_widget import ObjectFilesWidget
 from django import forms
 from django.db import models
@@ -40,6 +44,20 @@ from bloomerp.field_types.builtins.display import (
 )
 from bloomerp.field_types.utils.widget_factories import relation_widget
 
+REL_VALUES_IN_LOOKUP = BoundLookup(
+    lookups.VALUES_IN,
+    form_factory=lambda context: ModelMultipleChoiceField(
+        queryset=context.application_field.related_model.model_class().objects.all(),
+        widget=ForeignFieldWidget(
+            model = context.application_field.related_model.model_class(),
+            attrs={
+                "is_m2m" : True
+            }
+        )
+    )    
+)
+
+
 FOREIGN_KEY = FieldTypeDefinition(
     id="ForeignKey",
     icon="fa-solid fa-link",
@@ -48,7 +66,7 @@ FOREIGN_KEY = FieldTypeDefinition(
     lookups=(
         lookups.EQUALS,
         lookups.NOT_EQUALS,
-        lookups.VALUES_IN,
+        REL_VALUES_IN_LOOKUP,
         lookups.FOREIGN_ADVANCED,
         lookups.IS_NULL,
     ),
@@ -67,7 +85,7 @@ ONE_TO_ONE_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-link",
     model_field_cls=models.OneToOneField,
     label="One To One Field",
-    lookups=(lookups.IS_NULL, lookups.EQUALS, lookups.NOT_EQUALS, lookups.VALUES_IN, lookups.FOREIGN_ADVANCED),
+    lookups=(lookups.IS_NULL, lookups.EQUALS, lookups.NOT_EQUALS, REL_VALUES_IN_LOOKUP, lookups.FOREIGN_ADVANCED),
     construction=FieldConstruction(
         defaults={"on_delete": models.CASCADE},
         options=(
@@ -85,7 +103,13 @@ MANY_TO_MANY_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-share-nodes",
     model_field_cls=models.ManyToManyField,
     label="Many To Many Field",
-    lookups=(lookups.EQUALS, lookups.NOT_EQUALS, lookups.IS_NULL, lookups.VALUES_IN, lookups.FOREIGN_ADVANCED),
+    lookups=(
+        lookups.EQUALS, 
+        lookups.NOT_EQUALS, 
+        lookups.IS_NULL,
+        REL_VALUES_IN_LOOKUP, 
+        lookups.FOREIGN_ADVANCED
+    ),
     construction=FieldConstruction(
         defaults={},
         options=(
@@ -146,7 +170,14 @@ USER_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-user",
     model_field_cls=UserField,
     label="User Field",
-    lookups=(lookups.IS_NULL, lookups.EQUALS_USER, lookups.EQUALS),
+    lookups=(
+        lookups.IS_NULL, 
+        BoundLookup(
+            lookup=lookups.EQUALS_USER,
+            
+        ), 
+        lookups.EQUALS
+    ),
     construction=FieldConstruction(
         defaults={},
         options=(

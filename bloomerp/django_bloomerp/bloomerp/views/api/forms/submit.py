@@ -82,10 +82,22 @@ def form_submit_view(request: HttpRequest, pk, model: type[Form]) -> HttpRespons
             }
         )
 
-    submission_response = FormManager(form).register_submission(
-        _parse_request_data(request),
-        request,
-    )
+    manager = FormManager(form)
+    form_class = manager.layout_form_cls()
+    if form_class is None:
+        return _json_response(
+            {"submitted": False, "detail": "This form has no submittable fields."},
+            status=400,
+        )
+
+    bound_form = form_class(data=_parse_request_data(request), files=request.FILES)
+    if not bound_form.is_valid():
+        return _json_response(
+            {"submitted": False, "detail": bound_form.errors.get_json_data()},
+            status=400,
+        )
+
+    submission_response = manager.register_submission(bound_form, request)
     if not submission_response.submitted:
         return _json_response(
             {

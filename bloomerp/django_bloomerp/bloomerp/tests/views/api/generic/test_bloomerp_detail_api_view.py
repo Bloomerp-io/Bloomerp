@@ -5,6 +5,14 @@ from bloomerp.tests.base import (
     RequestScenario,
     ModelRequestScenario,
 )
+from bloomerp.lookups import builtins as lookups
+from bloomerp.models.workspaces import SqlQuery
+from bloomerp.permissions.definition import (
+    BloomerpPermission,
+    RowPolicyRuleCondition,
+    RowPolicyRuleContent,
+)
+from bloomerp.permissions.manager import PolicyManager
 
 
 class TestBloomerpDetailApiView(BloomerpAPIDetailViewTestCase):
@@ -16,3 +24,66 @@ class TestBloomerpDetailApiView(BloomerpAPIDetailViewTestCase):
     def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []
+
+
+class TestSqlQueryDetailApiView(BloomerpAPIDetailViewTestCase):
+    view_name = "sql_queries-detail"
+    model = SqlQuery
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        return [
+            RequestScenario(
+                name="Generated SQL-query API updates an owned query",
+                description=(
+                    "UC: A user edits a saved SQL query they created.\n"
+                    "Expected Result: The fields are persisted and updated_by becomes the authenticated user."
+                ),
+                method="PATCH",
+                user=self.normal_user,
+                content_type="application/json",
+                data={"name": "After", "query": "SELECT 2"},
+                prepare=[self.grant_sql_query_access, self.prepare_owned_query],
+                expected=ExpectedResult(response_validators=self.query_was_updated),
+            )
+        ]
+
+    def grant_sql_query_access(self, _scenario):
+        policy = PolicyManager.create_policy(
+            model_or_content_type=SqlQuery,
+            field_permissions={
+                "id": [BloomerpPermission.VIEW],
+                "name": [BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+                "query": [BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+            },
+            row_permissions=[
+                RowPolicyRuleContent(
+                    permissions=[BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+                    conditions=[
+                        RowPolicyRuleCondition(
+                            field="created_by",
+                            operator=lookups.EQUALS.id,
+                            value="$user",
+                        )
+                    ],
+                )
+            ],
+        )
+        PolicyManager.assign(policy, self.normal_user)
+
+    def prepare_owned_query(self, scenario):
+        self.saved_query = SqlQuery.objects.create(
+            name="Before",
+            query="SELECT 1",
+            created_by=self.normal_user,
+            updated_by=self.admin_user,
+        )
+        scenario.view_kwargs = {"pk": self.saved_query.pk}
+
+    def query_was_updated(self, response):
+        self.saved_query.refresh_from_db()
+        return (
+            response.json()["name"] == "After"
+            and self.saved_query.name == "After"
+            and self.saved_query.query == "SELECT 2"
+            and self.saved_query.updated_by == self.normal_user
+        )

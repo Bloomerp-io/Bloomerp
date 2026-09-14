@@ -5,11 +5,15 @@ from bloomerp.lookups.builtins.equals import EQUALS, equals
 
 
 def equals_user_form_factory(context):
-    field = context.get_form_field()
-    field.initial = "$user"
-    field.widget = forms.HiddenInput(attrs={"value": "$user"})
-    return field
-
+    return forms.CharField(
+        initial="$user",
+        widget=forms.HiddenInput(
+            attrs={
+                "value" : "$user"
+            }
+        )
+    )
+    
 
 EQUALS_USER = LookupDefinition(
     id="equals_user",

@@ -39,10 +39,23 @@ class DefaultFiltersMixin(models.Model):
         return json.dumps([group for record in self.default_filter_records for group in record['filters']])
 
     def apply_default_filters(self, query):
-        """An explicit filter query is the user's complete active selection."""
+        """Append persisted defaults to the filters supplied by the request."""
         query = query.copy()
-        if 'filter' not in query:
-            query['filter'] = self.default_filter_groups_json
+        default_filters = self.default_filter_groups_json
+        if default_filters == '[]':
+            return query
+
+        if hasattr(query, 'appendlist'):
+            query.appendlist('filter', default_filters)
+        elif 'filter' not in query:
+            query['filter'] = default_filters
+        else:
+            request_filters = query['filter']
+            query['filter'] = (
+                [*request_filters, default_filters]
+                if isinstance(request_filters, list)
+                else [request_filters, default_filters]
+            )
         return query
 
     def copy_default_filters_to(self, preference) -> None:

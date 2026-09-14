@@ -9,6 +9,7 @@ from bloomerp.lookups.builtins.utils import list_value, normalize_list_value
 from bloomerp.lookups.definition import (
     CompiledLookup,
     CompiledSQL,
+    FilterFieldContext,
     LookupDefinition,
     SQLLookupContext,
 )
@@ -49,7 +50,7 @@ def values_in(actual: Any, expected: Any) -> bool:
     return actual in list_value(expected)
 
 
-def values_in_form_factory(context):
+def values_in_form_factory(context:FilterFieldContext):
     item_field = context.get_form_field()
 
     class ValuesField(forms.Field):

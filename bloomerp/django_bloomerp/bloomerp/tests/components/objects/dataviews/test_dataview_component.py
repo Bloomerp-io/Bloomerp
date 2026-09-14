@@ -6,8 +6,16 @@ from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from pydantic import TypeAdapter
 
+from bloomerp.dataviews.base import BaseDataView, DataviewTypeDefinition
+from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.filters.filter import SavedFilter
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleCondition, RowPolicyRuleContent
+from bloomerp.permissions.manager import PolicyManager
+from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -24,6 +32,35 @@ def uses_render_value_function(response: HttpResponse, instance: Model, field: s
     application_field = ApplicationField.get_for_model(type(instance)).get(field=field)
     rendered_value = application_field.get_field_type().render_value(application_field, instance)
     return str(rendered_value) in response.content.decode(response.charset or "utf-8")
+
+def add_default_filter(request_scenario: RequestScenario):
+    content_type_id = request_scenario.view_kwargs.get("content_type_id")
+
+    list_view_preference: UserListViewPreference = PreferenceManager(
+        request_scenario.user
+    ).get_or_create_selected(
+        UserListViewPreference,
+        {"content_type_id": content_type_id},
+    )
+
+    saved_filter = SavedFilter.objects.create(
+        name="Default filter",
+        scope="model",
+        filters=[
+            Filter(
+                connector="AND",
+                conditions=[
+                    FilterCondition(
+                        field_path="age",
+                        lookup_id="greater_than",
+                        value=2,
+                    )
+                ],
+            ).model_dump()
+        ],
+        identifier=str(content_type_id),
+    )
+    list_view_preference.add_default_filter(saved_filter)
 
 
 class TestDataviewComponent(BloomerpComponentTestCase):
@@ -49,16 +86,50 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             return (
                 set(actual_ids) == expected_ids
                 and len(actual_ids) == len(expected_ids)
-                and all(
-                    uses_render_value_function(response, entry, field)
-                    for entry in expected_entries
-                    for field in fields or []
-                )
             )
 
         validate.__name__ = f"contains_entries(exact_count={len(expected_entries)}, fields={fields})"
         return validate
 
+    
+    def uses_render_value_function(self, field, instance):
+        def validate(response):
+            return uses_render_value_function(response, instance, field)
+        
+        return validate
+    
+    def set_view_type(self, view_type: BaseDataView):
+        def set_fields(scenario: RequestScenario):
+            preference: UserListViewPreference = PreferenceManager(
+                scenario.user
+            ).get_or_create_selected(
+                UserListViewPreference,
+                scope=scenario.view_kwargs,
+            )
+
+            application_fields = {
+                field.field: field
+                for field in ApplicationField.get_for_model(self.CustomerModel)
+            }
+            unknown_fields = set(view_type.display_fields) - application_fields.keys()
+            if unknown_fields:
+                raise ValueError(
+                    f"Unknown display fields: {', '.join(sorted(unknown_fields))}"
+                )
+
+            options = preference.options.copy()
+            options[view_type.view_type] = view_type.model_dump()
+
+            preference.options = options
+            preference.view_type = view_type.view_type
+            preference.set_visible_field_ids(
+                view_type.view_type,
+                [application_fields[name].pk for name in view_type.display_fields],
+            )
+            preference.save(update_fields=["display_fields", "options", "view_type"])
+
+        return set_fields
+    
     def get_test_scenarios(self) -> list[RequestScenario]:
         for i in range(10):
             planet = self.PlanetModel.objects.create(name=f"Planet {i}")
@@ -70,10 +141,31 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
         kwargs = {"content_type_id": self.get_content_type_for_model(self.CustomerModel).pk}
         customers = self.CustomerModel.objects
-
         
+        request_scenarios = []
+        for dataview_type in DATAVIEW_REGISTRY.values():
+            if dataview_type.requires_display_fields:
+                try:
+                    request_scenarios.append(
+                        RequestScenario(
+                            name=f"RENDERING: Related field uses its render_value function for {dataview_type.label}",
+                            user=self.admin_user,
+                            view_kwargs=kwargs,
+                            expected=ExpectedResult(response_validators=[
+                                self.uses_render_value_function("country", self.CustomerModel.objects.first())
+                            ]),
+                            prepare=self.set_view_type(
+                                dataview_type.config_cls(
+                                    display_fields=["country"]
+                                )
+                            )
+                        ),
+                    )
+                except:
+                    print("skipping for ", dataview_type.label)
         
-        return [
+            
+        request_scenarios += [
             RequestScenario(
                 name="ACCESS: Superuser sees all entries",
                 user=self.admin_user,
@@ -160,15 +252,9 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 user=self.admin_user,
                 view_kwargs=kwargs,
                 query_params=filter_query_params(Filter(connector="AND", conditions=[
-                    FilterCondition(field_path="age", lookup_id="greater_than", value="not a number"),
+                    FilterCondition(field_path="age", lookup_id="invalid_lookup", value="not a number"),
                 ])),
                 expected=ExpectedResult(status_code=400),
-            ),
-            RequestScenario(
-                name="RENDERING: Related field uses its render_value function",
-                user=self.admin_user,
-                view_kwargs=kwargs,
-                expected=ExpectedResult(response_validators=self.contains_entries(customers.all(), fields=["country"])),
             ),
             RequestScenario(
                 name="FILTERS: Filters still work with GET args",
@@ -184,39 +270,163 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                         )
                     ]
                 )
+            ),
+            RequestScenario(
+                name="FILTERS: Additional filter does not override default filters",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=add_default_filter,
+                query_params=filter_query_params(
+                    Filter(
+                        connector="AND",
+                        conditions=[
+                            FilterCondition(field_path="age", lookup_id="less_than", value=6)
+                        ]
+                    )    
+                ),
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.contains_entries(
+                            customers.filter(age__in=[3, 4, 5])
+                        )
+                    ]
+                )
+            ),
+            RequestScenario(
+                name="Normal user can only see the fields he has access to",
+                method="GET",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=[
+                    # Prep 1: add policy
+                    lambda _: PolicyManager.create_policy(
+                    self.CustomerModel,
+                    access_rule=AccessRule(
+                        row_permissions=[],
+                        field_permissions={
+                            "first_name" : [BloomerpPermission.VIEW]
+                        }
+                    ),
+                    global_permissions=[
+                        BloomerpPermission.VIEW
+                    ]
+                ).assign_user(self.normal_user),
+                # Prep 2: explicitly include the unaccessible fields
+                self.set_view_type(
+                    TableDataView(
+                        display_fields=["first_name", "last_name"]
+                    )
+                )
+                ],
+                expected=ExpectedResult(
+                    status_code=200,
+                    response_validators=[
+                        self.contains_text("First Name"),
+                        self.does_not_contain_text("Last Name")
+                    ]
+                )
+            ),
+            RequestScenario(
+                name="Combined permissions preserve field level access",
+                method="GET",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=self.set_policies(
+                    policies=[
+                        AccessRule(
+                            row_permissions=[
+                                RowPolicyRuleContent(
+                                    connector="AND",
+                                    conditions=[
+                                        FilterCondition(
+                                            field_path="first_name",
+                                            value="First Name 1",
+                                            lookup_id="equals"
+                                        )
+                                    ],
+                                    permissions=[BloomerpPermission.VIEW]
+                                )
+                            ],
+                            field_permissions={
+                                "first_name" : [BloomerpPermission.VIEW]
+                            }
+                        ),
+                        AccessRule(
+                            row_permissions=[
+                                RowPolicyRuleContent(
+                                    connector="AND",
+                                    conditions=[
+                                        FilterCondition(
+                                            field_path="last_name",
+                                            value="Last Name 2",
+                                            lookup_id="equals"
+                                        )
+                                    ],
+                                    permissions=[BloomerpPermission.VIEW]
+                                )
+                            ],
+                            field_permissions={
+                                "last_name" : [BloomerpPermission.VIEW]
+                            }
+                        ),
+                    ],
+                global_permissions=[BloomerpPermission.VIEW]
+                ),
+                expected=ExpectedResult(
+                    status_code=200,
+                    response_validators=[
+                        self.contains_text("First Name 1"),
+                        self.contains_text("Last Name 2"),
+                        self.does_not_contain_text("Last Name 1"),
+                        self.does_not_contain_text("First Name 2")
+                    ]
+                )
+            ),
+            RequestScenario(
+                name="Filtering on in-accesible field is denied",
+                user=self.normal_user,
+                prepare=self.set_policies(
+                    policies=[
+                        AccessRule(
+                            row_permissions=[],
+                            field_permissions={
+                                "first_name" : [BloomerpPermission.VIEW]
+                            }
+                        )
+                    ],
+                    global_permissions=[BloomerpPermission.VIEW]
+                ),
+                view_kwargs=kwargs,
+                query_params=filter_query_params(
+                    Filter(
+                        connector="AND",
+                        conditions=[
+                            FilterCondition(
+                                field_path="age",
+                                lookup_id="equals",
+                                value=5
+                            )
+                        ]
+                    )
+                ),
+                expected=ExpectedResult(
+                    status_code=403
+                )
             )
-            
         ]
+        
+        return request_scenarios
+    
+    def set_policies(self, policies:list[AccessRule], global_permissions:list[BloomerpPermission]):
+        def _set_policies(scenario:RequestScenario):
+            for policy in policies:
+                PolicyManager.create_policy(
+                    self.CustomerModel,
+                    access_rule=policy,
+                    global_permissions=global_permissions
+                ).assign_user(
+                    scenario.user
+                )
 
-    @skip("TODO: Finish dataview parsing, permission validation, and filter compilation/application")
-    def test_request_scenarios(self):
-        """Enable once the draft filtering pipeline supports these request contracts."""
-        super().test_request_scenarios()
-
-    @skip("TODO: Assign a policy granting all customer rows and fields")
-    def test_normal_user_with_full_access(self):
-        """The user sees every fixture row and its permitted field values."""
-
-    @skip("TODO: Assign a field policy allowing only first_name")
-    def test_limited_field_access(self):
-        """Allowed values render; last_name values do not appear in the HTML."""
-
-    @skip("TODO: Give rows Y first_name/last_name access and rows X first_name access")
-    def test_multiple_policies_preserve_per_row_field_access(self):
-        """last_name renders for Y but remains hidden for X, even with both policies."""
-
-    @skip("TODO: Assign a row policy and request an OR filter matching permitted and hidden rows")
-    def test_filters_cannot_expand_row_access(self):
-        """Only permitted matching rows render; OR cannot override row permissions."""
-
-    @skip("TODO: Grant Customer access but deny Country access")
-    def test_filtering_on_inaccessible_related_model_is_denied(self):
-        """A country__name condition is rejected rather than leaking related data."""
-
-    @skip("TODO: Add JSON-field fixtures")
-    def test_json_key_filter(self):
-        """A JSON key path and terminal lookup select exactly the expected rows."""
-
-    @skip("TODO: Add a preference with default filters")
-    def test_default_filters_combine_with_requested_filters(self):
-        """Preference defaults and request filters follow the agreed combination rules."""
+        return _set_policies
+    

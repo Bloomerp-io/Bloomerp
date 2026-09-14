@@ -6,7 +6,11 @@ from bloomerp.permissions.definition import (
     RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
-from bloomerp.permissions.manager import PolicyManager, UserPolicyManager
+from bloomerp.permissions.manager import (
+    PolicyManager,
+    UserPolicyManager,
+    field_access_annotation_name,
+)
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -642,6 +646,64 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
             ApplicationField.get_for_model(self.CustomerModel).filter(
                 field="last_name"
             ),
+        )
+
+    def test_field_permissions_can_be_resolved_for_a_queryset_in_one_query(self):
+        """Per-row field grants are attached to a batch, not queried per object."""
+        first_value, second_value = FIRST_NAMES[:2]
+        fields = {
+            field.field: field
+            for field in ApplicationField.get_for_model(self.CustomerModel)
+            if field.field in {"first_name", "last_name"}
+        }
+
+        for row_value, field_name in (
+            (first_value, "first_name"),
+            (second_value, "last_name"),
+        ):
+            PolicyManager.assign(
+                PolicyManager.create_policy(
+                    model_or_content_type=self.CustomerModel,
+                    field_permissions={field_name: [BloomerpPermission.VIEW]},
+                    row_permissions=[
+                        RowPolicyRuleContent(
+                            connector="AND",
+                            permissions=[BloomerpPermission.VIEW],
+                            conditions=[
+                                RowPolicyRuleCondition(
+                                    field="first_name",
+                                    operator=lookups.EQUALS.id,
+                                    value=row_value,
+                                )
+                            ],
+                        )
+                    ],
+                ),
+                self.normal_user,
+            )
+
+        manager = UserPolicyManager(self.normal_user)
+        queryset = manager.annotate_field_permissions(
+            manager.get_queryset(self.CustomerModel, BloomerpPermission.VIEW),
+            [fields["first_name"], fields["last_name"]],
+            BloomerpPermission.VIEW,
+        ).order_by("first_name")
+
+        with self.assertNumQueries(1):
+            objects = list(queryset)
+
+        self.assertEqual([obj.first_name for obj in objects], [first_value, second_value])
+        self.assertTrue(
+            getattr(objects[0], field_access_annotation_name(fields["first_name"]))
+        )
+        self.assertFalse(
+            getattr(objects[0], field_access_annotation_name(fields["last_name"]))
+        )
+        self.assertFalse(
+            getattr(objects[1], field_access_annotation_name(fields["first_name"]))
+        )
+        self.assertTrue(
+            getattr(objects[1], field_access_annotation_name(fields["last_name"]))
         )
 
     

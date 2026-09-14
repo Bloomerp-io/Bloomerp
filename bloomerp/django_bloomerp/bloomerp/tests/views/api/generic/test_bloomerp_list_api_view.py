@@ -5,6 +5,14 @@ from bloomerp.tests.base import (
     RequestScenario,
     ModelRequestScenario,
 )
+from bloomerp.lookups import builtins as lookups
+from bloomerp.models.workspaces import SqlQuery
+from bloomerp.permissions.definition import (
+    BloomerpPermission,
+    RowPolicyRuleCondition,
+    RowPolicyRuleContent,
+)
+from bloomerp.permissions.manager import PolicyManager
 
 
 class TestBloomerpListApiView(BloomerpAPIModelViewTestCase):
@@ -16,3 +24,93 @@ class TestBloomerpListApiView(BloomerpAPIModelViewTestCase):
     def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
         return []
+
+
+class TestSqlQueryListApiView(BloomerpAPIModelViewTestCase):
+    view_name = "sql_queries-list"
+    model = SqlQuery
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        return [
+            RequestScenario(
+                name="Generated SQL-query API records authenticated creator",
+                description=(
+                    "UC: A user creates a saved SQL query through its generated endpoint.\n"
+                    "Expected Result: The API returns writable fields and records the user as creator and updater."
+                ),
+                method="POST",
+                user=self.normal_user,
+                content_type="application/json",
+                data={"name": "Revenue", "query": "SELECT 1"},
+                prepare=self.grant_sql_query_access,
+                expected=ExpectedResult(
+                    status_code=201,
+                    response_validators=self.created_query_has_owner,
+                ),
+            ),
+            RequestScenario(
+                name="Generated SQL-query API lists only authenticated creator's rows",
+                description=(
+                    "UC: Two users own saved SQL queries.\n"
+                    "Expected Result: The authenticated user sees only their own query."
+                ),
+                user=self.normal_user,
+                prepare=[self.grant_sql_query_access, self.prepare_owned_queries],
+                expected=ExpectedResult(response_validators=self.list_contains_only_owned_query),
+            ),
+        ]
+
+    def grant_sql_query_access(self, _scenario):
+        policy = PolicyManager.create_policy(
+            model_or_content_type=SqlQuery,
+            field_permissions={
+                "id": [BloomerpPermission.ADD, BloomerpPermission.VIEW],
+                "name": [BloomerpPermission.ADD, BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+                "query": [BloomerpPermission.ADD, BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+            },
+            row_permissions=[
+                RowPolicyRuleContent(
+                    permissions=[BloomerpPermission.ADD],
+                    conditions=[],
+                ),
+                RowPolicyRuleContent(
+                    permissions=[BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+                    conditions=[
+                        RowPolicyRuleCondition(
+                            field="created_by",
+                            operator=lookups.EQUALS.id,
+                            value="$user",
+                        )
+                    ],
+                ),
+            ],
+        )
+        PolicyManager.assign(policy, self.normal_user)
+
+    def prepare_owned_queries(self, _scenario):
+        self.owned_query = SqlQuery.objects.create(
+            name="Revenue",
+            query="SELECT 1",
+            created_by=self.normal_user,
+            updated_by=self.normal_user,
+        )
+        SqlQuery.objects.create(
+            name="Other user's query",
+            query="SELECT 2",
+            created_by=self.admin_user,
+            updated_by=self.admin_user,
+        )
+
+    def created_query_has_owner(self, response):
+        payload = response.json()
+        query = SqlQuery.objects.get(name="Revenue")
+        return (
+            {"id", "name", "query"}.issubset(payload)
+            and query.created_by == self.normal_user
+            and query.updated_by == self.normal_user
+        )
+
+    def list_contains_only_owned_query(self, response):
+        return response.json() == [
+            {"id": str(self.owned_query.pk), "name": "Revenue", "query": "SELECT 1"}
+        ]

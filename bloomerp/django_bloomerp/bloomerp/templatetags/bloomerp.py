@@ -25,6 +25,10 @@ import uuid
 from django.template.loader import render_to_string
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.config.settings import BLOOMERP_LANGUAGES
+from bloomerp.permissions.manager import (
+    FIELD_ACCESS_CONTROLLED_ANNOTATION,
+    field_access_annotation_name,
+)
 from bloomerp.services.sectioned_layout_services import (
     build_crud_layout_field_context,
     dump_layout_json as dump_layout_json_service,
@@ -353,11 +357,18 @@ def render_dataview_value(
     Example usage:
     {% render_dataview_value object application_field user %}
     """
-    # Get the value of the field
-    try:
-        value = application_field.get_field_type().render_value(application_field, object)
-    except Exception:
-        value = None
+    can_view = getattr(
+        object,
+        field_access_annotation_name(application_field),
+        True,
+    )
+    if can_view:
+        try:
+            value = application_field.get_field_type().render_value(application_field, object)
+        except Exception:
+            value = None
+    else:
+        value = ""
     
     return {
         "value": value,
@@ -370,6 +381,11 @@ def render_dataview_value(
         "application_field" : application_field,
         "split_view_enabled": split_view_enabled,
         "value_content_type_id": application_field.related_model_id,
+        "object_string": (
+            ""
+            if getattr(object, FIELD_ACCESS_CONTROLLED_ANNOTATION, False)
+            else str(object)
+        ),
     }
 
 

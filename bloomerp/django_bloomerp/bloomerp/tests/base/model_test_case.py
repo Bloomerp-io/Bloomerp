@@ -38,6 +38,7 @@ class ModelScenario(Generic[ModelType]):
     name: str
     description: str | None = None
     preparation: Callable[[], None] | None = None
+    create_operation: Callable[[], ModelType] | None = None
     post_create: Callable[[ModelType], None] | None = None
     create_args: dict[str, Any] | Callable[[], dict[str, Any]] = field(
         default_factory=dict
@@ -56,6 +57,11 @@ class ModelScenario(Generic[ModelType]):
 
     def __post_init__(self) -> None:
         """Reject update expectations when the scenario has no update operation."""
+        if self.create_operation is not None and self.create_args:
+            raise ValueError(
+                "create_args must be empty when create_operation is configured"
+            )
+
         update_exception = any(
             expected.phase == "update" for expected in self.expected_exceptions
         )
@@ -259,16 +265,22 @@ class BloomerpModelTestCase(TestCase):
             scenario.preparation()
 
         create_args = self._resolve_model_arguments(scenario.create_args)
+        create = (
+            scenario.create_operation
+            if scenario.create_operation is not None
+            else lambda: self.model.objects.create(**create_args)
+        )
         expected_exception = self._expected_exception(scenario, "create")
         if expected_exception:
             self._assert_expected_model_exception(
                 expected_exception,
-                lambda: self.model.objects.create(**create_args),
+                create,
             )
             return
 
-        instance = self.model.objects.create(**create_args)
-        instance.refresh_from_db()
+        instance = create()
+        if isinstance(instance, Model):
+            instance.refresh_from_db()
         if scenario.post_create:
             scenario.post_create(instance)
         self._run_model_validators(

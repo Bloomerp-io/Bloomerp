@@ -32,7 +32,6 @@
             </c-ui.shortcut_tooltip>
         </div>
         <!--End filters-->
-        <c-features.filters.rendered scope="workspace" id="{{ workspace.id }}" :filter_host="workspace"/>
     </c-slot>
     
     <c-slot name="buttons_right">
@@ -67,5 +66,9 @@
             <i class="fa fa-add"></i>
             {% blocktrans %}Create tile{% endblocktrans %}
         </button>
+    </c-slot>
+
+    <c-slot name="below_buttons">
+        <c-features.filters.rendered scope="workspace" id="{{ workspace.id }}" :filter_host="workspace"/>
     </c-slot>
 </c-features.layout.container>

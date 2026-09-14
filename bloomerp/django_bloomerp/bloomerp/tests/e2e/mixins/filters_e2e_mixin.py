@@ -1,6 +1,8 @@
 """Shared filter journeys with host-owned fixtures and result assertions."""
 
+import json
 from typing import Literal
+from urllib.parse import urlencode
 
 from playwright.sync_api import Locator, expect
 
@@ -148,6 +150,21 @@ class FilterE2EMixin:
         expect(self._labels().first).to_have_text('Named people')
         self.assert_filter_results('David')
 
+    def _open_with_normal_filter(self, value: str) -> E2EAction:
+        def execute():
+            query = urlencode({'filter': json.dumps(self._filter_definition(value))})
+            self.goto(f'{self.filter_page_url()}?{query}')
+
+        return E2EAction(execute, name=f'Open with normal filter {value}')
+
+    def _assert_default_and_normal_filter_labels(self) -> None:
+        expect(self._labels()).to_have_count(2)
+        expect(self._labels().nth(0)).to_have_attribute(
+            'data-default-filter-id', self._saved_filter_id,
+        )
+        expect(self._labels().nth(0)).to_have_text('Named people')
+        expect(self._labels().nth(1)).to_contain_text('Kyle')
+
     def _fresh_filter(self):
         return [self.click_filter_button(), self.set_filter_field('First Name'), self.set_filter_lookup('equals'),
                 self.set_filter_value('David'), self.apply_filters(lambda: self.assert_filter_results('David'))]
@@ -248,7 +265,23 @@ class FilterE2EMixin:
                     ), name='Check that Apply did not save changes'),
                 ],
                 prepare=self._prepare_saved_filter,
-            )
+            ),
+            scenario(
+                'A default filter + a normal filter both show up on screen',
+                """
+                UC: A user wants to see all the filters that are applied
+
+                Expected: Both a default filter and a regular filter are displayed
+                """,
+                [
+                    self._open_with_normal_filter('Kyle'),
+                    E2EAction(
+                        self._assert_default_and_normal_filter_labels,
+                        name='Check default and normal filter labels',
+                    ),
+                ],
+                prepare=self._prepare_defaults,
+            ),
         ]
 
     def filter_default_host(self):

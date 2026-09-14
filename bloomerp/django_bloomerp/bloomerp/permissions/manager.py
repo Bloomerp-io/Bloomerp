@@ -4,7 +4,18 @@ from django.apps import apps
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
-from django.db.models import BooleanField, Case, IntegerField, Max, Model, Value, When
+from django.db.models import (
+    BooleanField,
+    Case,
+    Exists,
+    IntegerField,
+    Max,
+    Model,
+    OuterRef,
+    Q,
+    Value,
+    When,
+)
 from django.db.models.query import QuerySet
 
 from bloomerp.filters.definition import Filters
@@ -35,6 +46,15 @@ from bloomerp.permissions.definition import (
     RowPolicyRuleContent,
 )
 from bloomerp.utils.models import resolve_model_and_content_type
+
+
+FIELD_ACCESS_ANNOTATION_PREFIX = "_bloomerp_can_view_field_"
+FIELD_ACCESS_CONTROLLED_ANNOTATION = "_bloomerp_field_access_controlled"
+
+
+def field_access_annotation_name(field_or_id: ApplicationField | int | str) -> str:
+    field_id = getattr(field_or_id, "pk", field_or_id)
+    return f"{FIELD_ACCESS_ANNOTATION_PREFIX}{field_id}"
 
 
 def resolve_permission_codenames(
@@ -621,6 +641,74 @@ class UserPolicyManager:
             for field in allowed_fields
         }
         return fields.filter(pk__in=allowed_ids)
+
+    def annotate_field_permissions(
+        self,
+        queryset: QuerySet[models.Model],
+        application_fields: list[ApplicationField],
+        permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission,
+        match: PermissionMatch = PermissionMatch.ANY,
+    ) -> QuerySet[models.Model]:
+        """Annotate per-object field access without issuing queries while rendering.
+
+        Each requested field becomes a correlated ``EXISTS`` expression in the
+        queryset that already loads the dataview page.  The number of database
+        round trips therefore does not grow with either the number of rows or
+        the number of rendered cells.
+        """
+        requested_fields = list(dict.fromkeys(application_fields))
+        if not requested_fields:
+            return queryset
+
+        if getattr(self.user, "is_superuser", False):
+            annotations = {
+                field_access_annotation_name(field): Value(
+                    True,
+                    output_field=BooleanField(),
+                )
+                for field in requested_fields
+            }
+            return queryset.annotate(**annotations)
+
+        annotations = {
+            FIELD_ACCESS_CONTROLLED_ANNOTATION: Value(
+                True,
+                output_field=BooleanField(),
+            )
+        }
+        model = queryset.model
+        requested = PolicyManager._qualify_permission_codenames(model, permissions)
+        compilation = self._compile_access_rules(
+            model,
+            self.get_access_rules(model, permissions, match),
+            requested,
+            match,
+        )
+
+        predicates_by_field_id: dict[int, Q] = {}
+        requested_field_ids = {field.pk for field in requested_fields}
+        for row_filter, allowed_fields in compilation.field_filters.items():
+            for field in allowed_fields:
+                if field.pk not in requested_field_ids:
+                    continue
+                existing = predicates_by_field_id.get(field.pk)
+                predicates_by_field_id[field.pk] = (
+                    row_filter if existing is None else existing | row_filter
+                )
+
+        for field in requested_fields:
+            predicate = predicates_by_field_id.get(field.pk)
+            if predicate is None:
+                access_expression = Value(False, output_field=BooleanField())
+            elif not predicate.children:
+                access_expression = Value(True, output_field=BooleanField())
+            else:
+                access_expression = Exists(
+                    model._base_manager.filter(pk=OuterRef("pk")).filter(predicate)
+                )
+            annotations[field_access_annotation_name(field)] = access_expression
+
+        return queryset.annotate(**annotations)
 
     def get_accessible_models_and_fields(
         self, 

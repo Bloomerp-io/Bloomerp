@@ -12,6 +12,7 @@ from bloomerp.modules.definition import ModuleConfig
 
 ResponseValidator = Callable[[HttpResponse], bool]
 RequestPreparation = Callable[["RequestScenario"], None]
+RequestCleanup = Callable[["RequestScenario"], None]
 
 
 @dataclass
@@ -40,7 +41,8 @@ class RequestScenario:
     content_type: str | None = None
     follow: bool = False
     view_name: str | None = None
-    prepare: RequestPreparation | None = None
+    prepare: RequestPreparation | list[RequestPreparation] | None = None
+    cleanup: RequestCleanup | list[RequestCleanup] | None = None
 
 
 @dataclass(kw_only=True)
@@ -95,8 +97,11 @@ class RequestTestCaseMixin:
         selected_view_name = setup.view_name or self.view_name
         with transaction.atomic():
             try:
-                if setup.prepare:
-                    setup.prepare(setup)
+                preparations = setup.prepare
+                if callable(preparations):
+                    preparations = [preparations]
+                for preparation in preparations or []:
+                    preparation(setup)
 
                 if setup.user:
                     self.client.force_login(setup.user)
@@ -139,8 +144,15 @@ class RequestTestCaseMixin:
                         f"failed for {scenario_name}: {setup.description or ''}",
                     )
             finally:
-                self.client.logout()
-                transaction.set_rollback(True)
+                try:
+                    cleanups = setup.cleanup
+                    if callable(cleanups):
+                        cleanups = [cleanups]
+                    for cleanup in reversed(cleanups or []):
+                        cleanup(setup)
+                finally:
+                    self.client.logout()
+                    transaction.set_rollback(True)
 
     @staticmethod
     def _named_validator(name: str, validator: ResponseValidator) -> ResponseValidator:

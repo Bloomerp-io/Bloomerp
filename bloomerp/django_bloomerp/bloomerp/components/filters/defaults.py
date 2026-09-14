@@ -20,6 +20,8 @@ from bloomerp.services.preference_services import PreferenceManager
 @require_POST
 @filter_component
 def defaults(request: HttpRequest) -> HttpResponse:
+    """Adds or removes default filters
+    """
     params = request_parameters(request)
     model = {'model': UserListViewPreference, 'workspace': Workspace}.get(params.get('scope'))
     if model is None:

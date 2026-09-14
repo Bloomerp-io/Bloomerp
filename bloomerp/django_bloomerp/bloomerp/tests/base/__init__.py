@@ -36,6 +36,7 @@ from bloomerp.tests.base.request_test_case_mixin import (
     ModuleRequestScenario,
     RequestScenario,
     RequestPreparation,
+    RequestCleanup,
     RequestTestCaseMixin,
     ResponseValidator,
 )
@@ -98,6 +99,7 @@ __all__ = [
     "ModelScenario",
     "ModuleRequestScenario",
     "RequestPreparation",
+    "RequestCleanup",
     "RequestScenario",
     "RequestTestCaseMixin",
     "ResponseValidator",

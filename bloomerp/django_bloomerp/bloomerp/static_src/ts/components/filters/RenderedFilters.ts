@@ -43,32 +43,46 @@ export class RenderedFilters {
 
     public restore(json: string | null): void {
         try {
-            const filters = parseInitialFilters(json ?? JSON.stringify(this.defaults.flatMap(record => record.filters)));
-            if (filterIdentity(filters) === filterIdentity(this.defaults.flatMap(record => record.filters)) && this.serialized === undefined) {
-                const scope = { scope: this.root.dataset.scope as 'model' | 'workspace', id: this.root.dataset.scopeId! };
-                this.entries = this.defaults.map(record => ({ key: crypto.randomUUID(), label: record.name,
-                    filters: record.filters, scope, savedFilterId: record.id, defaultFilterId: record.id }));
-                this.serialized = filterIdentity(filters);
-                this.render();
-            } else this.setFilters(filters);
+            this.setFilters(parseInitialFilters(json ?? '[]'));
         }
         catch { /* The host/backend reports invalid query filters; never rewrite them here. */ }
     }
 
     public setFilters(filters: Filter[], identity?: AppliedFilterIdentity): void {
-        const serialized = filterIdentity(filters);
-        if (serialized === this.serialized && !identity?.filter_id) return;
-        this.serialized = serialized;
         const scope = this.root.dataset.scope;
         if (scope !== 'model' && scope !== 'workspace') return;
         const context = { scope, id: this.root.dataset.scopeId! } as const;
-        const collections = identity?.filter_id ? [filters] : filters.map(group => [group]);
-        this.entries = collections.filter(groups => groups.length).map(groups => ({
+        const defaultEntries = this.defaults.map(record => ({
+            key: crypto.randomUUID(), label: record.name, filters: structuredClone(record.filters),
+            scope: context, savedFilterId: record.id, defaultFilterId: record.id,
+        }));
+        const regularFilters = this.withoutDefaultFilters(filters);
+        const collections = identity?.filter_id ? [regularFilters] : regularFilters.map(group => [group]);
+        const regularEntries = collections.filter(groups => groups.length).map(groups => ({
             key: crypto.randomUUID(), filters: structuredClone(groups), scope: context,
             label: identity?.filter_name || this.describe(groups), savedFilterId: identity?.filter_id,
-            defaultFilterId: this.defaults.find(record => record.id === identity?.filter_id)?.id,
         }));
+        const entries = [...defaultEntries, ...regularEntries];
+        const serialized = filterIdentity(entries.flatMap(entry => entry.filters));
+        if (serialized === this.serialized && !identity?.filter_id) return;
+        this.serialized = serialized;
+        this.entries = entries;
         this.render();
+    }
+
+    private withoutDefaultFilters(filters: Filter[]): Filter[] {
+        const remaining = structuredClone(filters);
+        this.defaults.forEach(record => {
+            const size = record.filters.length;
+            if (!size) return;
+            const identity = filterIdentity(record.filters);
+            const index = remaining.findIndex((_group, start) =>
+                start + size <= remaining.length
+                && filterIdentity(remaining.slice(start, start + size)) === identity,
+            );
+            if (index >= 0) remaining.splice(index, size);
+        });
+        return remaining;
     }
 
     private describe(groups: Filter[]): string {
