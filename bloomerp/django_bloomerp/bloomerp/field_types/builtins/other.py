@@ -1,5 +1,7 @@
+from bloomerp.field_types.utils.form_field_factories import form
+from django import forms
 from bloomerp.field_types.display_options import LABEL_OPTION
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
     COMMON_FIELD_OPTIONS,
@@ -73,7 +75,7 @@ UUID_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-fingerprint",
     model_field_cls=models.UUIDField,
     label="UUID Field",
-    lookups=(Lookup.EQUALS, Lookup.IN, Lookup.IS_NULL),
+    lookups=(lookups.EQUALS, lookups.VALUES_IN, lookups.IS_NULL),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
@@ -88,12 +90,16 @@ BINARY_FIELD = FieldTypeDefinition(
 )
 
 JSON_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.JSONField),
     id="JSONField",
     icon="fa-solid fa-code",
     model_field_cls=models.JSONField,
     label="JSON Field",
     lookups=(
-        Lookup.CONTAINS,
+        lookups.CONTAINS,
+        lookups.EQUALS,
+        lookups.IS_NULL,
+        lookups.JSON_KEY,
     ),
     construction=FieldConstruction(
         defaults={"default": dict},
@@ -112,7 +118,7 @@ ARRAY_FIELD = FieldTypeDefinition(
     id="ArrayField",
     icon="fa-solid fa-list-ol",
     label="Array Field",
-    lookups=(Lookup.CONTAINS, Lookup.IS_NULL),
+    lookups=(lookups.CONTAINS, lookups.IS_NULL),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 

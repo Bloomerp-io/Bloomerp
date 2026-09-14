@@ -9,8 +9,8 @@
         {% blocktrans %}Select operator{% endblocktrans %}
     </option>
     {% for lookup in lookups %}
-        <option value="{{ lookup.value.id }}" data-lookup-django="{{ lookup.value.django_representation }}">
-            {{ lookup.value.display_name }}
+        <option value="{{ lookup.id }}" data-lookup-django="{{ lookup.expressions.0 }}">
+            {{ lookup.label }}
         </option>
     {% endfor %}
 </select>

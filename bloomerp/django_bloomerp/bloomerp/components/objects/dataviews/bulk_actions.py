@@ -11,10 +11,6 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 
-from bloomerp.components.objects.dataviews.dataview import (
-    _apply_default_filters_to_querydict,
-    _normalize_default_filters,
-)
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.models import ApplicationField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
@@ -29,7 +25,7 @@ from bloomerp.services.object_services import string_search_on_queryset
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.utils.async_utils import run_async_or_sync
-from bloomerp.utils.filters import filter_model
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.utils.requests import render_message
 
@@ -132,10 +128,7 @@ def _filter_querydict(request: HttpRequest, preference: UserListViewPreference):
     for key in list(querydict.keys()):
         if key.startswith("_arg_"):
             querydict.pop(key, None)
-    return _apply_default_filters_to_querydict(
-        querydict,
-        _normalize_default_filters(preference.default_filters or {}),
-    )
+    return preference.apply_default_filters(querydict)
 
 
 def _query_summary(filter_querydict) -> list[tuple[str, list[str]]]:
@@ -188,7 +181,7 @@ def _build_bulk_action_state(
         queryset = string_search_on_queryset(queryset, query)
 
     filter_querydict = _filter_querydict(request, preference)
-    queryset = filter_model(model, filter_querydict, queryset)
+    queryset = ModelFilterManager(model).filter(filter_querydict, queryset=queryset)
 
     object_ids = request.GET.getlist("object_ids")
     selection = request.GET.get("selection")

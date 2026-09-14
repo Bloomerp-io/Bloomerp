@@ -12,6 +12,7 @@ from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
+from bloomerp.widgets.filter_widget import FilterWidget
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
 EXCLUDED_DATAVIEW_TILE_ACTION_IDS = {
@@ -50,8 +51,6 @@ class DataViewTileForm(forms.Form):
             'for example {"status": "active"}.'
         ),
         required=False,
-        initial=dict,
-        widget=CodeEditorWidget(language="json"),
     )
 
     def clean_initial_query_params(self) -> dict:
@@ -116,3 +115,7 @@ class DataViewTileForm(forms.Form):
             ]
             if self.initial.get("actions") is None:
                 self.initial["actions"] = [action.id for action in actions]
+
+            self.fields["initial_query_params"].widget = FilterWidget(
+                model=content_type.model_class()
+            )

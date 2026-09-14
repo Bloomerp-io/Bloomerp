@@ -7,7 +7,7 @@ from django.conf import settings
 from django.db import models, transaction
 from django.db.models.base import ModelBase
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models.definition import ApiAccessSettings, ApiSettings, BloomerpModelConfig
 from bloomerp.permissions.definition import (
     AccessRule,
@@ -75,7 +75,7 @@ class BasePreference(
                                 conditions=[
                                     RowPolicyRuleCondition(
                                         field="user",
-                                        operator=Lookup.EQUALS_USER.value.id,
+                                        operator=lookups.EQUALS_USER.id,
                                         value="$user",
                                     )
                                 ],

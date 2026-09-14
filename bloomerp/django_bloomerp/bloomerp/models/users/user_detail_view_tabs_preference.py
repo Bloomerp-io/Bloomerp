@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Q
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 
 from bloomerp.models.definition import (
     ApiAccessSettings,
@@ -59,7 +59,7 @@ class UserDetailViewTabsPreference(BasePreference):
                                 conditions=[
                                     RowPolicyRuleCondition(
                                         field="user",
-                                        operator=Lookup.EQUALS_USER.value.id,
+                                        operator=lookups.EQUALS_USER.id,
                                         value="$user",
                                     )
                                 ],

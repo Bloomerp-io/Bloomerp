@@ -23,19 +23,33 @@ urlpatterns = [
 class RequestSetupIsolationTests(RequestTestCaseMixin, TransactionTestCase):
     view_name = "prepared_request"
 
+    def setUp(self):
+        super().setUp()
+        self.cleanup_calls = []
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         def create_marker(setup):
             get_user_model().objects.create(username="scenario-marker")
+
+        def assert_marker_was_created(setup):
+            self.assertTrue(
+                get_user_model().objects.filter(username="scenario-marker").exists()
+            )
 
         def assert_marker_was_rolled_back(setup):
             self.assertFalse(
                 get_user_model().objects.filter(username="scenario-marker").exists()
             )
+            self.assertEqual(self.cleanup_calls, ["second", "first"])
 
         return [
             RequestScenario(
                 name="creates scenario-only data",
-                prepare=create_marker,
+                prepare=[create_marker, assert_marker_was_created],
+                cleanup=[
+                    lambda setup: self.cleanup_calls.append("first"),
+                    lambda setup: self.cleanup_calls.append("second"),
+                ],
                 expected=ExpectedResult(status_code=200),
             ),
             RequestScenario(

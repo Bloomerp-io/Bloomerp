@@ -12,5 +12,20 @@ class TestLogoutView(BloomerpAPIViewTestCase):
     view_name = 'api_logout'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        # Add only the route scenarios this callable needs.
-        return []
+        return [
+            RequestScenario(
+                name="Logout clears authenticated session",
+                description=(
+                    "UC: A signed-in user logs out through the API.\n"
+                    "Expected Result: The response reports unauthenticated and the session is cleared."
+                ),
+                method="POST",
+                user=self.normal_user,
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.json_exact({"authenticated": False}),
+                        lambda _response: "_auth_user_id" not in self.client.session,
+                    ]
+                ),
+            )
+        ]

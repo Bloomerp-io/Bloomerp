@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from django.core.exceptions import EmptyResultSet
 from django.db import connection
 from django.db.models import Model, Q
 from sqlglot import exp, parse, parse_one
@@ -219,7 +220,11 @@ class SqlPermissionCompiler(BasePermissionCompiler[CompiledSqlAccess]):
             .values_list(model._meta.pk.attname, flat=True)
             .distinct()
         )
-        sql, params = queryset.query.sql_with_params()
+        try:
+            sql, params = queryset.query.sql_with_params()
+        except EmptyResultSet:
+            quote = connection.ops.quote_name
+            return f"SELECT {quote(model._meta.pk.column)} FROM {quote(model._meta.db_table)} WHERE 1 = 0"
         if sql.count("%s") != len(params):
             raise ValueError("Unexpected SQL parameter format from Django")
         for value in params:

@@ -13,7 +13,7 @@ from bloomerp.model_fields.address_field import AddressField
 from bloomerp.model_fields.week_field import WeekField
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from bloomerp.tests.utils.dynamic_models import create_test_models
-from bloomerp.utils.filters import dynamic_filterset_factory, filter_model
+from bloomerp.filters.manager import ModelFilterManager
 
 
 class TestFilterUtil(BaseBloomerpTestCaseWithModels):
@@ -108,48 +108,8 @@ class TestFilterUtil(BaseBloomerpTestCaseWithModels):
         return self.PrimaryModel.objects.create(**defaults)
 
     def assert_filtered_ids(self, filters: dict, expected_ids: list[int]):
-        filtered_qs = filter_model(self.PrimaryModel, filters)
+        filtered_qs = ModelFilterManager(self.PrimaryModel).filter(filters, queryset=self.PrimaryModel.objects.all())
         self.assertCountEqual(filtered_qs.values_list("id", flat=True), expected_ids)
-
-    def expected_filter_names(self, field_name: str, field_type: FieldTypeDefinition) -> set[str]:
-        names = set()
-        for lookup in field_type.lookups:
-            if not lookup.value.filter_class_funcs:
-                continue
-            for alias in lookup.value.aliases:
-                names.add(f"{field_name}{alias}")
-        return names
-
-    def test_filterset_generates_filters_from_field_type_lookups(self):
-        FilterSet = dynamic_filterset_factory(self.PrimaryModel)
-
-        field_expectations = {
-            "char_field": FIELD_TYPE_REGISTRY.CHAR_FIELD,
-            "text_field": FIELD_TYPE_REGISTRY.TEXT_FIELD,
-            "integer_field": FIELD_TYPE_REGISTRY.INTEGER_FIELD,
-            "decimal_field": FIELD_TYPE_REGISTRY.DECIMAL_FIELD,
-            "date_field": FIELD_TYPE_REGISTRY.DATE_FIELD,
-            "datetime_field": FIELD_TYPE_REGISTRY.DATE_TIME_FIELD,
-            "time_field": FIELD_TYPE_REGISTRY.TIME_FIELD,
-            "boolean_field": FIELD_TYPE_REGISTRY.BOOLEAN_FIELD,
-            "uuid_field": FIELD_TYPE_REGISTRY.UUID_FIELD,
-            "week_field": FIELD_TYPE_REGISTRY.WEEK_FIELD,
-            "country_field": FIELD_TYPE_REGISTRY.COUNTRY_FIELD,
-            "address_field": FIELD_TYPE_REGISTRY.ADDRESS_FIELD,
-            "foreign_key_field": FIELD_TYPE_REGISTRY.FOREIGN_KEY,
-            "one_to_one_field": FIELD_TYPE_REGISTRY.ONE_TO_ONE_FIELD,
-            "many_to_many_field": FIELD_TYPE_REGISTRY.MANY_TO_MANY_FIELD,
-            "lines": FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD,
-        }
-
-        for field_name, field_type in field_expectations.items():
-            with self.subTest(field_name=field_name):
-                self.assertTrue(
-                    self.expected_filter_names(field_name, field_type).issubset(FilterSet.base_filters.keys())
-                )
-
-        self.assertNotIn("time_field__today", FilterSet.base_filters)
-        self.assertNotIn("foreign_key_field__foreign_advanced", FilterSet.base_filters)
 
     def test_text_lookup_filters_use_declared_aliases(self):
         alpha = self.create_primary(char_field="Alpha")

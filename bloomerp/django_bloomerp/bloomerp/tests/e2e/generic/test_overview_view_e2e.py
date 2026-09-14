@@ -2,7 +2,7 @@ from django.db import models
 from django.urls import reverse
 from playwright.sync_api import expect
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.project_management.todo import Todo
@@ -71,7 +71,7 @@ class TestOverviewViewE2E(TestCrudE2EMixin, BaseE2ETestCase):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="title",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="Test Todo 1"
                         )
                     ]
@@ -91,7 +91,7 @@ class TestOverviewViewE2E(TestCrudE2EMixin, BaseE2ETestCase):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="title",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="Test Todo 2"
                         )
                     ]
@@ -111,12 +111,12 @@ class TestOverviewViewE2E(TestCrudE2EMixin, BaseE2ETestCase):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="title",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="Test Todo 3"
                         ),
                         RowPolicyRuleCondition(
                             field="title",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="Test Todo 3 - Updated"
                         )
                     ]

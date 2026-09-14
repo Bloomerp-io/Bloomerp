@@ -1,7 +1,7 @@
 from django.middleware.csrf import get_token
 from pydantic import ValidationError as PydanticValidationError
 
-from bloomerp.components.objects.dataviews.dataview import _get_accessible_application_fields, _get_dataview_options_form, _normalize_default_filters
+from bloomerp.components.objects.dataviews.dataview import _get_accessible_application_fields, _get_dataview_options_form
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.models import ApplicationField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
@@ -128,19 +128,6 @@ def _get_preference_operation(post_data) -> str | None:
         return "opt"
     if "toggle_field_id" in post_data:
         return "field"
-    if "default_filters" in post_data:
-        return "default_filters"
-    return None
-
-
-def _change_default_filters(preference: UserListViewPreference, post_data) -> HttpResponse | None:
-    try:
-        payload = json.loads(post_data.get("default_filters") or "{}")
-    except json.JSONDecodeError:
-        return HttpResponse("Invalid default filters", status=400)
-
-    preference.default_filters = _normalize_default_filters(payload)
-    preference.save(update_fields=["default_filters"])
     return None
 
 
@@ -187,8 +174,6 @@ def update_dataview_preference(request: HttpRequest, content_type_id: int) -> Ht
             )
         case "field":
             error_response = _change_data_view_field_visibility(request, content_type, preference, request.POST)
-        case "default_filters":
-            error_response = _change_default_filters(preference, request.POST)
         case _:
             error_response = None
 

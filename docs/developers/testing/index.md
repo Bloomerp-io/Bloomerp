@@ -33,13 +33,14 @@ Generate selected categories with a comma-separated list:
 
 ```bash
 uv run python manage.py generate_test_cases bloomerp \
-  --functionality=models,model_fields,form_fields,widgets
+  --functionality=models,model_fields,form_fields,widgets,e2e
 ```
 
 Supported values are:
 
 - `views`
 - `components`
+- `e2e`
 - `models`
 - `widgets`
 - `workflow_nodes`
@@ -65,6 +66,10 @@ Choose the narrowest layer that owns the contract:
 4. A model owns record lifecycle rules and model-level invariants.
 5. A component or view owns one server-side HTTP interaction.
 6. An end-to-end test owns browser wiring and a complete user journey.
+
+The `e2e` category generates browser-test skeletons only for ordinary app,
+module, model, and detail views. API endpoints, components, and websocket
+channels are deliberately excluded.
 
 Avoid repeating the same assertion at every layer. For example, a widget test
 can check HTMX attributes, a component test can check the endpoint response,

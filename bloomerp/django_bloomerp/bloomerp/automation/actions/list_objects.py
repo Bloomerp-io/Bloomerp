@@ -1,7 +1,7 @@
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.automation.utils import model_fields_to_value_fields
 from bloomerp.forms.base_content_type_form import BaseContentTypeForm
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.utils.filters import filter_model
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.widgets.list_filter_widget import ListFilterWidget
@@ -48,10 +48,9 @@ class ListObjectsExecutor(BaseExecutor):
         if filter_config:
             config = self.resolve_config(input_data)
             
-            queryset = filter_model(
-                ModelCls,
+            queryset = ModelFilterManager(ModelCls).filter(
                 config.get("filters"),
-                queryset
+                queryset=queryset,
             )
         
         return {

@@ -16,7 +16,7 @@ from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
     route_type="detail",
     models=[Workflow],
 )
-class CreateWorkflowView(BaseBloomerpDetailView):
+class WorkflowBuilderView(BaseBloomerpDetailView):
     model = Workflow
     template_name = "views/workflows/builder.html"
 

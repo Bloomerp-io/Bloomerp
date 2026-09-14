@@ -1,6 +1,5 @@
 from copy import copy
-from dataclasses import dataclass
-from typing import Any, Optional, Type
+from typing import Any
 
 from django.db import transaction
 from django.http import HttpRequest
@@ -12,7 +11,6 @@ from bloomerp.models import LayoutItem
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.modules.definition import ModuleRegistry, module_registry
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
 from bloomerp.workspaces.analytics_tile.utils import TileFieldType
 from bloomerp.workspaces.base import BaseTileConfig
 from bloomerp.workspaces.links_tile.model import Link, LinkTileConfig
@@ -228,6 +226,7 @@ def build_workspace_layout_item(
     request: HttpRequest,
     colspan: int = 1,
     config: dict | None = None,
+    workspace_id: str | None = None,
 ) -> LayoutItem:
     """Transform a tile into the shared layout item rendered by every layout."""
     render_request = copy(request)
@@ -235,6 +234,11 @@ def build_workspace_layout_item(
     for transport_param in ("colspan", "max_cols"):
         render_request.GET.pop(transport_param, None)
     render_request.GET["tile_id"] = str(tile.pk)
+    if workspace_id is not None:
+        from bloomerp.filters.resolver import FilterFieldResolver
+        workspace = FilterFieldResolver.for_user('workspace', workspace_id, request.user).workspace
+        render_request.GET = workspace.apply_default_filters(render_request.GET)
+        render_request.GET["workspace_id"] = str(workspace_id)
 
     try:
         content = render_tile_to_string(tile, render_request)
@@ -259,68 +263,6 @@ def build_workspace_layout_item(
         search_keywords=tile.get_type_display(),
     )
 
-
-@dataclass
-class WorkspaceFilter:
-    field:str
-    type:str
-    label:str
-
-class WorkspaceManager:
-    def __init__(self, workspace:Workspace):
-        self.workspace = workspace
-        
-    def get_filter_form(self) -> Type[Form]:
-        """Returns the filter form for a particular workspace.
-
-        Returns:
-            Type[Form]: the form
-        """
-        attrs = {}
-        
-        for tile in self.workspace.get_tiles():
-            if tile.type == "ANALYTICS_TILE":
-                config = AnalyticsTileConfig(**tile.schema)
-            
-                if not config.filters:
-                    continue
-                    
-                for filter_config in config.filters:
-                    match filter_config.type:
-                        case "text":
-                            field_type = FIELD_TYPE_REGISTRY.CHAR_FIELD
-                                
-                            attrs
-                                
-                
-        return type("FilterForm", (Form,), attrs)
- 
-    def get_filter_fields(self, user:User) -> dict[str, WorkspaceFilter]:
-        """Returns all the filterable fields for a particular 
-
-        Args:
-            user (User): the user object. Some filters are not accessible to users
-
-        Returns:
-            dict[str, WorkspaceFilter]:
-        """
-        result = {}
-        # TODO: no collision management right now
-        
-        for tile in self.workspace.get_tiles():
-            if tile.type == "ANALYTICS_TILE":
-                config = AnalyticsTileConfig(**tile.schema)
-            
-                if not config.filters:
-                    continue
-                    
-                for filter_config in config.filters:
-                    result[filter_config.field] = WorkspaceFilter(
-                        field=filter_config.field,
-                        type=PRIMITIVE_FIELD_TYPE_MAP[filter_config.type].id,
-                        label=filter_config.field.replace("_", " ").title()
-                    )
-        return result
 
 
 class UserWorkspaceService:

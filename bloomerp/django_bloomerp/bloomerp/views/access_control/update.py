@@ -10,7 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.router import router
-from bloomerp.views.access_control.manage_permissions import (
+from bloomerp.views.access_control.create_policy import (
     FIELD_POLICIES_KEY,
     FIELD_POLICY_NAME_KEY,
     GLOBAL_PERMISSIONS_KEY,
@@ -18,7 +18,7 @@ from bloomerp.views.access_control.manage_permissions import (
     POLICY_NAME_KEY,
     ROW_POLICY_NAME_KEY,
     ROW_POLICY_RULES_KEY,
-    ManageAccessControlForModelView,
+    CreatePolicyView,
 )
 
 @router.register(
@@ -28,8 +28,9 @@ from bloomerp.views.access_control.manage_permissions import (
     route_type="detail",
     models=Policy,
 )
-class UpdatePolicyView(ManageAccessControlForModelView):
+class UpdatePolicyView(CreatePolicyView):
     model = Policy
+    steps = CreatePolicyView.steps[1:]
 
     def get_object(self) -> Policy:
         return get_object_or_404(self.model, pk=self.kwargs["pk"])
@@ -47,7 +48,7 @@ class UpdatePolicyView(ManageAccessControlForModelView):
 
         row_policy_rules = [
             {
-                "rule": dict(rule.rule or {}),
+                "rule": rule.rule,
                 "permissions": list(rule.permissions.order_by("codename").values_list("codename", flat=True)),
             }
             for rule in self.object.row_policy.rules.all().prefetch_related("permissions")

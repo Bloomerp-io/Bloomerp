@@ -65,3 +65,19 @@ class SetDataViewHandler(TileOperationHandler):
             config,
             _("Data view updated"),
         )
+
+
+def dataview_tile_filter_fields_factory(config):
+    from django.contrib.contenttypes.models import ContentType
+    from bloomerp.filters.utils import application_fields_to_filter_field_groups
+    from bloomerp.models.application_field import ApplicationField
+
+    if config.content_type_id is None:
+        return []
+    content_type = ContentType.objects.get(pk=config.content_type_id)
+    model = content_type.model_class()
+    if model is None:
+        return []
+    return [field for group in application_fields_to_filter_field_groups(
+        ApplicationField.get_for_model(model),
+    ) for field in group.fields]

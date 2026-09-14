@@ -1,0 +1,60 @@
+/* Layout only: field, lookup and value controls retain Bloomerp input styling. */
+.filter-condition {
+    position: relative;
+    padding: 16px;
+}
+.filter-condition + .filter-condition {
+    border-top: 1px solid var(--color-gray-200, #e5e7eb);
+}
+.filter-condition-navigation { width: 100%; }
+/* Reserve the final column for the remove control. The widget spans all columns. */
+.filter-path-level {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.65fr) 24px;
+    gap: 8px;
+    align-items: start;
+}
+.filter-condition .filter-field-select {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    font-weight: 500;
+}
+.filter-comparison { display: contents; }
+.filter-condition .filter-lookup-select {
+    grid-column: 2;
+    width: 100%;
+    min-width: 0;
+}
+.filter-value-editor,
+.filter-path-level > input,
+.filter-path-level > button { grid-column: 1 / -1; }
+.filter-path-level + .filter-path-level {
+    margin-top: 8px;
+}
+.filter-condition-remove {
+    position: absolute;
+    top: 16px;
+    right: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+}
+.filter-condition-remove:hover { background: var(--color-base, #f3f4f6); }
+.filter-condition-error:empty { display: none; }
+.filter-condition-error:not(:empty) { padding-top: 6px; }
+
+/* Clip only the collapsed header, leaving expanded widget menus unrestricted. */
+[data-filter-group][data-collapsed="true"] > .filter-group-toolbar {
+    border-bottom: 0;
+    border-radius: inherit;
+    overflow: hidden;
+}

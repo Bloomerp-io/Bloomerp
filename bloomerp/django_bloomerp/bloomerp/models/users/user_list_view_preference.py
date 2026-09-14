@@ -1,3 +1,4 @@
+from bloomerp.models.mixins.default_filters_mixin import DefaultFiltersMixin
 from django.utils.translation import gettext_lazy as _
 from typing import TYPE_CHECKING, Any
 
@@ -33,7 +34,7 @@ def get_default_display_fields() -> dict:
     return {view_type.key: [] for view_type in DATAVIEW_REGISTRY.values()}
 
 
-class UserListViewPreference(BaseViewPreference):
+class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
     """
     Model that stores the preferences of a user for list views for different content types.
     
@@ -78,8 +79,10 @@ class UserListViewPreference(BaseViewPreference):
     # Visible field IDs per view type (list of ApplicationField IDs in order)
     display_fields = models.JSONField(default=get_default_display_fields, verbose_name=_("Display Fields"))
     options : dict = models.JSONField(default=dict, verbose_name=_("Options"))
-    default_filters : dict = models.JSONField(default=dict, verbose_name=_("Default Filters"))
     
+    def get_filter_scope(self) -> tuple[str, str]:
+        return 'model', str(self.content_type_id)
+
     @classmethod
     def create_default_for_user(cls, user, **scope) -> "UserListViewPreference":
         """Create the user's default list-view preference for a content type.
@@ -163,8 +166,16 @@ class UserListViewPreference(BaseViewPreference):
                     split_view_enabled=data_view.split_view_enabled,
                     display_fields=display_fields,
                     options=options,
-                    default_filters=default_filters,
                 )
+                if default_filters:
+                    from bloomerp.filters.parser import parse_filters
+                    from bloomerp.models.filters.filter import SavedFilter
+                    saved = SavedFilter.objects.create(
+                        name=f"{data_view.name} defaults {preference.pk}",
+                        scope="model", identifier=str(content_type.pk),
+                        filters=[group.model_dump(mode="json") for group in parse_filters(default_filters, model=content_type.model_class())],
+                    )
+                    preference.add_default_filter(saved)
                 if data_view.is_default:
                     selected_preference = preference
 
@@ -319,6 +330,7 @@ class UserListViewPreference(BaseViewPreference):
         return resolved_filters
 
     @classmethod
+    @transaction.atomic
     def copy_preference_for_user(
         cls,
         *,
@@ -328,12 +340,14 @@ class UserListViewPreference(BaseViewPreference):
         scope: dict | None = None,
     ) -> "UserListViewPreference":
         """Copy a list-view preference and its serialized options."""
-        return cls._create_preference_copy(
+        preference = cls._create_preference_copy(
             user=user,
             source=source,
             name=name,
             scope=scope,
         )
+        source.copy_default_filters_to(preference)
+        return preference
 
     def get_visible_field_ids(self, view_type: str = None) -> list[int]:
         """Returns the list of ApplicationField IDs that are visible for the given view type.

@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from django.core.exceptions import ValidationError
 
-from bloomerp.field_types.lookups import Lookup
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import (
     AccessRule,
@@ -13,18 +12,6 @@ from bloomerp.permissions.definition import (
 
 
 CompiledPermission = TypeVar("CompiledPermission")
-
-BOOLEAN_NORMALIZATION = {
-    "true": True,
-    "1": True,
-    "yes": True,
-    "on": True,
-    "false": False,
-    "0": False,
-    "no": False,
-    "off": False,
-}
-
 
 class BasePermissionCompiler(ABC, Generic[CompiledPermission]):
     """Shared normalization and lookup behavior for permission compilers."""
@@ -90,78 +77,29 @@ class BasePermissionCompiler(ABC, Generic[CompiledPermission]):
         ]
         return all(checks) if match == PermissionMatch.ALL else any(checks)
 
-    @staticmethod
-    def resolve_lookup(
-        application_field: ApplicationField,
-        operator: str,
-    ) -> Lookup | None:
-        if not application_field or not operator:
-            return None
-        field_type = application_field.get_field_type()
-        
-        lookup = field_type.get_lookup_by_id(operator)
-        if lookup is not None:
-            return lookup
-        for candidate in field_type.lookups:
-            definition = candidate.value
-            if operator == definition.django_representation:
-                return candidate
-            if operator in (definition.aliases or []):
-                return candidate
-        return None
+    def prepare_row_filter(self, row_rule):
+        """Bind permission-owned runtime values before shared compilation."""
+        from django.contrib.contenttypes.models import ContentType
+        from bloomerp.filters.definition import Filter
 
-    @staticmethod
-    def resolve_lookup_globally(operator: str) -> Lookup | None:
-        normalized = str(operator or "").lstrip("_")
-        for lookup in Lookup:
-            definition = lookup.value
-            aliases = {str(alias).lstrip("_") for alias in definition.aliases or []}
-            if normalized in {
-                definition.id,
-                str(definition.django_representation or "").lstrip("_"),
-                *aliases,
-            }:
-                return lookup
-        return None
-
-    @staticmethod
-    def normalize_lookup_value(
-        application_field: ApplicationField,
-        lookup: Lookup | str | None,
-        value: Any,
-    ) -> Any:
-        lookup_name = (
-            lookup.value.django_representation
-            if isinstance(lookup, Lookup)
-            else str(lookup or "")
-        ).lower()
-        if lookup_name == "in":
-            if isinstance(value, str):
-                return [item.strip() for item in value.split(",") if item.strip()]
-            if isinstance(value, (tuple, set)):
-                return list(value)
-        if lookup_name == "isnull":
-            if isinstance(value, str):
-                return BOOLEAN_NORMALIZATION.get(value.strip().lower(), False)
-            return bool(value)
-        if application_field.field_type in {"BooleanField", "NullBooleanField"}:
-            if isinstance(value, str):
-                return BOOLEAN_NORMALIZATION.get(value.strip().lower(), False)
-            return bool(value)
-        return value
+        scope_id = ContentType.objects.get_for_model(self.model).pk
+        if row_rule._legacy_content_type_ids - {scope_id}:
+            raise ValidationError("Legacy rule references a different content type")
+        conditions = []
+        for condition in row_rule.conditions:
+            if condition.value == "$user" or condition.lookup_id == "equals_user":
+                if self.user is None or getattr(self.user, "is_anonymous", False):
+                    raise ValidationError("Current-user condition requires a user")
+                condition = condition.model_copy(update={"value": self.user.pk})
+            conditions.append(condition)
+        return Filter(connector=row_rule.connector, conditions=conditions)
 
     @staticmethod
     def get_application_fields(
         rules: list[AccessRule],
         model=None,
     ) -> dict[str, ApplicationField]:
-        referenced_ids = {
-            str(condition.application_field_id)
-            for rule in rules
-            for row_rule in rule.row_permissions
-            for condition in row_rule.conditions
-            if condition.application_field_id not in (None, "", "__all__")
-        }
+        referenced_ids = set()
         referenced_ids.update(
             str(field_id)
             for rule in rules
@@ -169,11 +107,11 @@ class BasePermissionCompiler(ABC, Generic[CompiledPermission]):
             if field_id != "__all__"
         )
         referenced_names = {
-            str(condition.field).replace(".", "__").split("__", 1)[0]
+            condition.field_path.split("__", 1)[0]
             for rule in rules
             for row_rule in rule.row_permissions
             for condition in row_rule.conditions
-            if condition.field not in (None, "", "__all__")
+            if condition.field_path
         }
         referenced_names.update(
             str(field_name).replace(".", "__").split("__", 1)[0]

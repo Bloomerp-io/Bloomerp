@@ -1,3 +1,5 @@
+from bloomerp.field_types.utils.form_field_factories import form
+from django import forms
 from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.field_types.lookups import NUMERIC_LOOKUPS
 from bloomerp.field_types.construction import (
@@ -14,6 +16,7 @@ from bloomerp.field_types.registry import (
 from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
 
 AUTO_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="AutoField",
     icon="fa-solid fa-hashtag",
     model_field_cls=models.AutoField,
@@ -22,6 +25,7 @@ AUTO_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 BIG_AUTO_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="BigAutoField",
     icon="fa-solid fa-hashtag",
     model_field_cls=models.BigAutoField,
@@ -30,6 +34,7 @@ BIG_AUTO_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 SMALL_AUTO_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="SmallAutoField",
     icon="fa-solid fa-hashtag",
     model_field_cls=models.SmallAutoField,
@@ -38,6 +43,7 @@ SMALL_AUTO_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 INTEGER_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="IntegerField",
     icon="fa-solid fa-hashtag",
     model_field_cls=models.IntegerField,
@@ -47,6 +53,7 @@ INTEGER_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 FLOAT_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.FloatField),
     id="FloatField",
     icon="fa-solid fa-calculator",
     model_field_cls=models.FloatField,
@@ -56,6 +63,7 @@ FLOAT_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 DECIMAL_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.DecimalField),
     id="DecimalField",
     icon="fa-solid fa-calculator",
     model_field_cls=models.DecimalField,
@@ -72,6 +80,7 @@ DECIMAL_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="PositiveIntegerField",
     icon="fa-solid fa-plus",
     model_field_cls=models.PositiveIntegerField,
@@ -81,6 +90,7 @@ POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 POSITIVE_SMALL_INTEGER_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="PositiveSmallIntegerField",
     icon="fa-solid fa-plus",
     model_field_cls=models.PositiveSmallIntegerField,
@@ -90,6 +100,7 @@ POSITIVE_SMALL_INTEGER_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 BIG_INTEGER_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="BigIntegerField",
     icon="fa-solid fa-hashtag",
     model_field_cls=models.BigIntegerField,
@@ -99,6 +110,7 @@ BIG_INTEGER_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 SMALL_INTEGER_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.IntegerField),
     id="SmallIntegerField",
     icon="fa-solid fa-hashtag",
     model_field_cls=models.SmallIntegerField,

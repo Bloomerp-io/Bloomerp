@@ -1,0 +1,23 @@
+{# initial_filters is a JSON-encoded list of Filter groups. #}
+<div
+    bloomerp-component="unified-filter-container"
+    data-fields-url="{% url 'components_filters_fields' %}"
+    data-lookups-url="{% url 'components_filters_lookups' %}"
+    data-value-editor-url="{% url 'components_filters_value_editor' %}"
+    data-presets-url="{% url 'components_filters_get' %}"
+    data-save-preset-url="{% url 'components_filters_save' %}"
+    data-scope="{{ scope }}"
+    data-scope-id="{{ id }}"
+    data-name="{{ name|default:'filter' }}"
+    data-include-controls="{% if include_controls == False %}false{% else %}true{% endif %}"
+    {% if attrs %}{% include "django/forms/widgets/attrs.html" with attrs=attrs %}{% endif %}
+    {% if initial_filters %}
+    data-initial-filters="{{ initial_filters|force_escape }}"
+    {% elif request.GET.filter %}
+    data-initial-filters="{{ request.GET.filter|force_escape }}"
+    {% else %}
+    data-initial-filters="[]"
+    {% endif %}
+    >
+
+</div>

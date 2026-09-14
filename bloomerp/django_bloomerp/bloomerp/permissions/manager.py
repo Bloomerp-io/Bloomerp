@@ -4,9 +4,21 @@ from django.apps import apps
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
-from django.db.models import BooleanField, Case, IntegerField, Max, Value, When
+from django.db.models import (
+    BooleanField,
+    Case,
+    Exists,
+    IntegerField,
+    Max,
+    Model,
+    OuterRef,
+    Q,
+    Value,
+    When,
+)
 from django.db.models.query import QuerySet
 
+from bloomerp.filters.definition import Filters
 from bloomerp.models.access_control import row_policy
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.access_control.policy import Policy
@@ -31,10 +43,18 @@ from bloomerp.permissions.definition import (
     BloomerpPermission,
     PermissionMatch,
     PermissionScope,
-    RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
 from bloomerp.utils.models import resolve_model_and_content_type
+
+
+FIELD_ACCESS_ANNOTATION_PREFIX = "_bloomerp_can_view_field_"
+FIELD_ACCESS_CONTROLLED_ANNOTATION = "_bloomerp_field_access_controlled"
+
+
+def field_access_annotation_name(field_or_id: ApplicationField | int | str) -> str:
+    field_id = getattr(field_or_id, "pk", field_or_id)
+    return f"{FIELD_ACCESS_ANNOTATION_PREFIX}{field_id}"
 
 
 def resolve_permission_codenames(
@@ -622,6 +642,74 @@ class UserPolicyManager:
         }
         return fields.filter(pk__in=allowed_ids)
 
+    def annotate_field_permissions(
+        self,
+        queryset: QuerySet[models.Model],
+        application_fields: list[ApplicationField],
+        permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission,
+        match: PermissionMatch = PermissionMatch.ANY,
+    ) -> QuerySet[models.Model]:
+        """Annotate per-object field access without issuing queries while rendering.
+
+        Each requested field becomes a correlated ``EXISTS`` expression in the
+        queryset that already loads the dataview page.  The number of database
+        round trips therefore does not grow with either the number of rows or
+        the number of rendered cells.
+        """
+        requested_fields = list(dict.fromkeys(application_fields))
+        if not requested_fields:
+            return queryset
+
+        if getattr(self.user, "is_superuser", False):
+            annotations = {
+                field_access_annotation_name(field): Value(
+                    True,
+                    output_field=BooleanField(),
+                )
+                for field in requested_fields
+            }
+            return queryset.annotate(**annotations)
+
+        annotations = {
+            FIELD_ACCESS_CONTROLLED_ANNOTATION: Value(
+                True,
+                output_field=BooleanField(),
+            )
+        }
+        model = queryset.model
+        requested = PolicyManager._qualify_permission_codenames(model, permissions)
+        compilation = self._compile_access_rules(
+            model,
+            self.get_access_rules(model, permissions, match),
+            requested,
+            match,
+        )
+
+        predicates_by_field_id: dict[int, Q] = {}
+        requested_field_ids = {field.pk for field in requested_fields}
+        for row_filter, allowed_fields in compilation.field_filters.items():
+            for field in allowed_fields:
+                if field.pk not in requested_field_ids:
+                    continue
+                existing = predicates_by_field_id.get(field.pk)
+                predicates_by_field_id[field.pk] = (
+                    row_filter if existing is None else existing | row_filter
+                )
+
+        for field in requested_fields:
+            predicate = predicates_by_field_id.get(field.pk)
+            if predicate is None:
+                access_expression = Value(False, output_field=BooleanField())
+            elif not predicate.children:
+                access_expression = Value(True, output_field=BooleanField())
+            else:
+                access_expression = Exists(
+                    model._base_manager.filter(pk=OuterRef("pk")).filter(predicate)
+                )
+            annotations[field_access_annotation_name(field)] = access_expression
+
+        return queryset.annotate(**annotations)
+
     def get_accessible_models_and_fields(
         self, 
         permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission, 
@@ -677,7 +765,92 @@ class UserPolicyManager:
                 
         return accessible_models
         
-        
+    def validate_filters(self, model_or_content_type, filters: Filters) -> None:
+        """Authorize filter dependencies without modifying filters or querysets.
+
+        Until execution can constrain related rows, traversals require explicit
+        unconditional related-row grants. Field access must cover every row
+        that can influence the predicate; a union of field IDs is insufficient.
+        """
+        from django.core.exceptions import PermissionDenied
+        from bloomerp.filters.resolver import FilterFieldResolver
+        from bloomerp.permissions.compilers.base import BasePermissionCompiler
+
+        model, _ = resolve_model_and_content_type(model_or_content_type)
+        if self.is_anonymous or not self.has_global_permission(model, BloomerpPermission.VIEW):
+            raise PermissionDenied("Model view permission is required for filtering")
+        resolver = FilterFieldResolver.for_model(model)
+        superuser = getattr(self.user, "is_superuser", False)
+        grants_by_model = {}
+        checked_fields = set()
+        checked_relations = set()
+
+        def grants(source_model):
+            if source_model not in grants_by_model:
+                if not self.has_global_permission(source_model, BloomerpPermission.VIEW):
+                    raise PermissionDenied("Filtering references an inaccessible model")
+                requested = PolicyManager._qualify_permission_codenames(source_model, BloomerpPermission.VIEW)
+                grants_by_model[source_model] = [
+                    (rule, row_rule)
+                    for rule in self.get_access_rules(source_model, BloomerpPermission.VIEW)
+                    for row_rule in rule.row_permissions
+                    if BasePermissionCompiler.matches_requested_permissions(row_rule.permissions, requested, PermissionMatch.ANY)
+                    and not (row_rule.connector == "OR" and not row_rule.conditions)
+                ]
+            return grants_by_model[source_model]
+
+        def unconditional(row_rule):
+            return row_rule.connector == "AND" and not row_rule.conditions
+
+        def require_field(application_field, related):
+            key = (application_field.pk, related)
+            if key in checked_fields:
+                return
+            source_model = application_field.get_model()
+            requested = PolicyManager._qualify_permission_codenames(source_model, BloomerpPermission.VIEW)
+            coverage = []
+            for rule, row_rule in grants(source_model):
+                allowed = any(
+                    BasePermissionCompiler.matches_requested_permissions(
+                        rule.field_permissions.get(key, []), requested, PermissionMatch.ANY,
+                    )
+                    for key in (str(application_field.pk), application_field.field, "__all__")
+                )
+                if allowed and unconditional(row_rule):
+                    checked_fields.add(key)
+                    return
+                coverage.append(allowed)
+            if related or not coverage or not all(coverage):
+                raise PermissionDenied("Filtering requires field access across all rows that can influence the result")
+            checked_fields.add(key)
+
+        for group in filters:
+            for condition in group.conditions:
+                traversed_relation = False
+                for dependency in resolver.resolve_dependencies(condition.field_path):
+                    if superuser:
+                        continue
+                    application_field = dependency.context.application_field
+                    if application_field is None:
+                        raise PermissionDenied("Filter field dependencies cannot be authorized")
+                    require_field(application_field, related=traversed_relation)
+                    related_model = getattr(application_field._get_model_field(), "related_model", None)
+                    if related_model is not None:
+                        traversed_relation = True
+                    if related_model is not None and related_model not in checked_relations:
+                        if not any(unconditional(row_rule) for _, row_rule in grants(related_model)):
+                            raise PermissionDenied("Related-row filtering requires an unconditional view grant until scoped execution is supported")
+                        checked_relations.add(related_model)
+
+    def can_execute_filters(self, model_or_content_type, filters: Filters) -> bool:
+        """Compatibility boolean wrapper; malformed filters still raise errors."""
+        from django.core.exceptions import PermissionDenied
+        try:
+            self.validate_filters(model_or_content_type, filters)
+        except PermissionDenied:
+            return False
+        return True
+
     def get_accessible_sql_query(
         self,
         sql: str,
@@ -735,6 +908,7 @@ class UserPolicyManager:
         )
         return evaluator.matches(candidate)
 
+    
 
 class PolicyManager:
     @staticmethod
@@ -793,52 +967,20 @@ class PolicyManager:
         if not isinstance(rule, RowPolicyRuleContent):
             rule = RowPolicyRuleContent.model_validate(rule)
 
-        conditions: list[RowPolicyRuleCondition] = []
+        if rule._legacy_content_type_ids - {content_type.pk}:
+            raise ValueError("Field belongs to a different content type")
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
+        resolver = FilterFieldResolver.for_model(content_type.model_class())
         for condition in rule.conditions:
-            application_field = None
-            application_field_id = condition.application_field_id
-
-            if application_field_id == "__all__" or condition.field == "__all__":
-                application_field_id = "__all__"
-            elif application_field_id not in (None, ""):
-                try:
-                    application_field = ApplicationField.objects.get(pk=application_field_id)
-                except (ApplicationField.DoesNotExist, ValueError, TypeError) as exc:
-                    raise ValueError(
-                        f"Unknown application field id '{application_field_id}'"
-                    ) from exc
-                if application_field.content_type_id != content_type.id:
-                    raise ValueError(
-                        f"Field '{application_field.field}' belongs to a different content type"
-                    )
-            else:
-                field_name = str(condition.field or "").split("__", 1)[0]
-                application_field = ApplicationField.resolve_for_content_type(
-                    content_type,
-                    field_name,
-                )
-                application_field_id = application_field.pk
-
-            if (
-                application_field is not None
-                and condition.field
-                and "__" not in condition.field
-                and condition.field != application_field.field
-            ):
-                raise ValueError(
-                    f"Field name '{condition.field}' does not match application field "
-                    f"'{application_field.field}'"
-                )
-
-            conditions.append(
-                condition.model_copy(update={"application_field_id": application_field_id})
-            )
-
-        return RowPolicyRuleContent(
-            connector=rule.connector,
-            conditions=conditions,
-            permissions=rule.permissions,
-        ).model_dump(exclude={"permissions"}, exclude_none=True)
+            try:
+                field, target = resolver.resolve(condition.field_path)
+            except DjangoValidationError as exc:
+                raise ValueError(f"Unknown field '{condition.field_path}'") from exc
+            lookup = resolve_lookup(field, target, condition.lookup_id)
+            if lookup.nested:
+                raise ValueError("A row condition requires a terminal lookup")
+        return rule.model_dump(exclude={"permissions"}, exclude_none=True)
 
     @classmethod
     @transaction.atomic

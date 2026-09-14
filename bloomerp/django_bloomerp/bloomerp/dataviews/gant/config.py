@@ -13,6 +13,7 @@ from bloomerp.dataviews.base import (
     page_size_choices,
 )
 from bloomerp.dataviews.calendar.config import date_field_choices
+from pydantic import Field
 
 if TYPE_CHECKING:
     from bloomerp.models.application_field import ApplicationField
@@ -27,6 +28,7 @@ class GanttDataView(BaseDataView):
     dependency_from_field: str | None = None
     dependency_for_field: str | None = None
     page_size: Literal[10, 25, 50, 100] = 25
+    display_fields:list = Field(default=list)
 
 
 def self_relation_field_choices(

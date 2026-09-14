@@ -19,7 +19,7 @@
         >
             <option disabled selected>Select lookup</option>
         {% for lookup in field_type.lookups %}
-            <option value="{{ lookup.value.id }}">{{ lookup.value.display_name }}</option>
+            <option value="{{ lookup.id }}">{{ lookup.label }}</option>
         {% endfor %}
     </select>
 

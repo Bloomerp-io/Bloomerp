@@ -116,7 +116,7 @@ class AnalyticsPieChartRenderer(BaseTileRenderer):
         if label_field is None or value_field is None:
             return "<p>Please add pie chart fields.</p>"
 
-        query = get_filtered_query(config, request.GET)
+        query = get_filtered_query(config, request.GET, request=request)
         pie_query = build_pie_chart_query(query, label_field, value_field)
         grouped_data = SqlExecutor(request.user).execute_query(pie_query, paginate=False).to_dataframe()
 

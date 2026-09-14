@@ -1,0 +1,25 @@
+{% load i18n bloomerp %}
+{% can_manage_preference_object request.user filter_host as can_manage_defaults %}
+{% translate "Edit filter" as edit_filter_title %}
+
+
+<div data-rendered-filters
+     data-defaults-url="{% url 'components_filters_defaults' %}"
+     data-host-id="{{ filter_host.pk }}"
+     data-can-manage-defaults="{{ can_manage_defaults|yesno:'true,false' }}"
+     data-default-filters="{{ filter_host.default_filter_records_json }}"
+     data-scope="{{ scope }}" data-scope-id="{{ id }}" class="min-w-0">
+    <div data-rendered-filter-list class="flex flex-wrap gap-2 empty:hidden mb-2"></div>
+    <template data-rendered-filter-template>
+        <span bloomerp-component="rendered-filter">
+            <button type="button" data-rendered-filter-label class="badge badge-primary max-w-full text-left" aria-haspopup="menu" aria-expanded="false"></button>
+        </span>
+    </template>
+    <template data-rendered-filter-modal>
+        <c-ui.modal id="rendered-filter-editor" title="{{ edit_filter_title }}">
+            <div class="-m-3">
+                {% include "cotton/features/filters/container.html" with include_controls=True initial_filters="[]" %}
+            </div>
+        </c-ui.modal>
+    </template>
+</div>

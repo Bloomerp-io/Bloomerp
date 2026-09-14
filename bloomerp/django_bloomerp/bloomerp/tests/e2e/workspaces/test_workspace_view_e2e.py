@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from playwright.sync_api import Locator, Response, expect
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models import LayoutItem, LayoutRow
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.users.user import AbstractBloomerpUser
@@ -64,7 +64,7 @@ class TestWorkspaceViewE2E(BaseE2ETestCase):
                     AnalyticsTileFilter(
                         field="title",
                         type="text",
-                        is_variable=False,
+
                     )
                 ]
             ).model_dump(),
@@ -335,7 +335,7 @@ class TestWorkspaceViewE2E(BaseE2ETestCase):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="title",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value=NORMAL_TODO_NAME
                         )
                     ]

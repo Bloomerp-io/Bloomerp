@@ -1,12 +1,15 @@
 import json
+from typing import Optional
 
 from django import forms
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.core.exceptions import FieldDoesNotExist
-from bloomerp.components.filters.fields import filters_init
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
+from bloomerp.filters.definition import Filters
+from bloomerp.filters.manager import ModelFilterManager
+from bloomerp.filters.parser import parse_filters
 from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
@@ -27,7 +30,6 @@ from django.http import QueryDict
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.object_services import string_search_on_queryset
-from bloomerp.utils.filters import filter_model
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.models import ApplicationField
 from django.db.models import Model, QuerySet
@@ -53,8 +55,6 @@ class DataviewReservedQueryParams:
         self.component_id = request.GET.get(self.component_id)
         
         
-
-
 # -----------------------------------
 # Filter helpers
 # -----------------------------------
@@ -79,6 +79,7 @@ class DataViewQueryState:
     renderer_context: dict
     count: int = 0
     reserved_params: DataviewReservedQueryParams | None = None
+    filters: Optional[Filters] = None
 
 
 def _build_data_view_query_state(
@@ -107,10 +108,12 @@ def _build_data_view_query_state(
 
     # Use an explicitly scoped queryset when embedding a data view. Otherwise,
     # apply the user's standard row-level view permissions.
+    manager = UserPolicyManager(request.user)
+    
     queryset = (
         base_queryset
         if base_queryset is not None
-        else UserPolicyManager(request.user).get_queryset(
+        else manager.get_queryset(
             Model,
             BloomerpPermission.VIEW,
         )
@@ -147,12 +150,18 @@ def _build_data_view_query_state(
     for key in list(filter_querydict.keys()):
         if key.startswith("_arg_"):
             filter_querydict.pop(key, None)
-    filter_querydict = _apply_default_filters_to_querydict(
-        filter_querydict,
-        _normalize_default_filters(preference.default_filters or {}),
+    filter_querydict = preference.apply_default_filters(filter_querydict)
+    
+    filters = parse_filters(filter_querydict, model=Model)
+    
+    manager.validate_filters(Model, filters)
+    
+    filter_manager = ModelFilterManager(Model)
+    queryset = filter_manager.apply(
+        filters,
+        queryset
     )
     
-    queryset = filter_model(Model, filter_querydict, queryset)
     queryset = _select_related_rendered_relations(
         queryset,
         dataview_render_fields + ([avatar_field] if avatar_field else []),
@@ -163,6 +172,13 @@ def _build_data_view_query_state(
         request,
         dataview_fields,
         dataview_options,
+    )
+
+    count = queryset.count()
+    queryset = manager.annotate_field_permissions(
+        queryset,
+        dataview_render_fields + ([avatar_field] if avatar_field else []),
+        BloomerpPermission.VIEW,
     )
 
     return DataViewQueryState(
@@ -176,8 +192,9 @@ def _build_data_view_query_state(
         queryset=queryset,
         query=query,
         renderer_context=renderer_context,
-        count=queryset.count(),
-        reserved_params=DataviewReservedQueryParams(request)
+        count=count,
+        reserved_params=DataviewReservedQueryParams(request),
+        filters=filters
     )
 
 
@@ -245,50 +262,6 @@ def _get_actions(model:type[Model]) -> list[ObjectAction]:
     if config:
         return config.object_actions
     return []
-
-
-def _normalize_default_filters(raw_filters) -> dict[str, str | list[str]]:
-    if not isinstance(raw_filters, dict):
-        return {}
-
-    normalized = {}
-    for raw_key, raw_value in raw_filters.items():
-        key = str(raw_key)
-        if not key or key in SHELL_RESERVED_QUERY_KEYS or key.startswith("_arg_"):
-            continue
-
-        if isinstance(raw_value, list):
-            values = [
-                str(value)
-                for value in raw_value
-                if value is not None and str(value) != ""
-            ]
-            if values:
-                normalized[key] = values
-            continue
-
-        if raw_value is None or str(raw_value) == "":
-            continue
-
-        normalized[key] = str(raw_value)
-
-    return normalized
-
-
-def _apply_default_filters_to_querydict(
-    querydict: QueryDict,
-    default_filters: dict[str, str | list[str]],
-) -> QueryDict:
-    merged = querydict.copy()
-
-    for key, value in default_filters.items():
-        merged.pop(key, None)
-        if isinstance(value, list):
-            merged.setlist(key, value)
-        else:
-            merged[key] = value
-
-    return merged
 
 
 def _get_dataview_options_initial(preference: UserListViewPreference, view_type: str) -> dict:
@@ -550,7 +523,6 @@ def dataview(
         'create_querystring': create_querystring.urlencode(),
         'export_querystring': export_querystring.urlencode(),
         'sync_url': sync_url,
-        'filter_section' : filters_init(request, content_type_id).content.decode("utf-8"), # TODO: optimize because of multiple queries
         'page_querystring': page_querystring.urlencode(),
         'pagination_pages': pagination.pagination_pages or [],
         'show_global_pagination': pagination.show_global_pagination,
@@ -565,12 +537,11 @@ def dataview(
         ),
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
-        'default_filters_json': json.dumps(
-            _normalize_default_filters(state.preference.default_filters or {})
-        ),
+        'initial_filters': request.GET.get('filter'),
         'count' : state.count,
         'before_data_view': before_data_view,
         'is_data_section_request': is_data_section_request,
+        'filters' : state.filters
     }
     context.update(state.renderer_context)
     context["rendered_dataview_actions"] = _render_dataview_actions(

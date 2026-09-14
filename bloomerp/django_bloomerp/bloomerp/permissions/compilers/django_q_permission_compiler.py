@@ -2,12 +2,10 @@ from dataclasses import dataclass
 
 from django.db.models import Q
 
-from bloomerp.field_types.lookups import Lookup
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.compilers.base import BasePermissionCompiler
 from bloomerp.permissions.definition import (
     PermissionMatch,
-    RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
 
@@ -21,113 +19,18 @@ class CompiledDjangoAccess:
 class DjangoQPermissionCompiler(BasePermissionCompiler[CompiledDjangoAccess]):
     """Compile normalized access rules to Django ``Q`` expressions."""
 
-    def compile_condition(
-        self,
-        condition: RowPolicyRuleCondition | dict,
-        application_fields: dict[str, ApplicationField],
-    ) -> Q | None:
-        if isinstance(condition, dict):
-            try:
-                condition = RowPolicyRuleCondition.model_validate(condition)
-            except Exception:
-                return None
-        if not isinstance(condition, RowPolicyRuleCondition):
-            return None
-        if condition.field == "__all__" or condition.application_field_id == "__all__":
-            return Q(pk__isnull=False)
-        if not condition.operator:
-            return None
+    def compile_row_rule(self, row_rule, application_fields=None) -> Q | None:
+        """Permission failures deny this grant; predicate semantics are shared."""
+        from django.core.exceptions import ValidationError
+        from bloomerp.filters.compiler import compile_filters
 
-        field_path = str(condition.field or "").replace(".", "__")
-        field_root = field_path.split("__", 1)[0]
-        application_field = application_fields.get(
-            str(condition.application_field_id)
-        ) or application_fields.get(field_root)
-        operator = str(condition.operator)
-        field_name = field_path or application_field.field
-
-        model_field = None
-        if self.model is not None and field_root:
-            try:
-                model_field = self.model._meta.get_field(field_root)
-            except Exception:
-                pass
-        if application_field is None and model_field is None:
-            return None
-
-        if operator.startswith("__"):
-            filter_key = operator.lstrip("_")
-            lookup_name = filter_key.rsplit("__", 1)[-1]
-            value = (
-                self.normalize_lookup_value(
-                    application_field,
-                    lookup_name,
-                    condition.value,
-                )
-                if application_field is not None
-                else condition.value
-            )
-            return Q(**{filter_key: value})
-
-        if (
-            self.resolve_lookup_globally(operator) == Lookup.EQUALS_USER
-            or str(condition.value) == "$user"
-        ):
-            if self.user is None or getattr(self.user, "is_anonymous", False):
-                return None
-            resolved_field = model_field or application_field._get_model_field()
-            user_value = (
-                self.user
-                if getattr(resolved_field, "is_relation", False)
-                else self.user.pk
-            )
-            return Q(**{field_name: user_value})
-
-        lookup = (
-            self.resolve_lookup(application_field, operator)
-            if application_field is not None
-            else self.resolve_lookup_globally(operator)
-        )
-        if lookup is None:
-            return None
-
-        value = (
-            self.normalize_lookup_value(application_field, lookup, condition.value)
-            if application_field is not None
-            else condition.value
-        )
-        if lookup == Lookup.NOT_EQUALS:
-            return ~Q(**{field_name: value})
-        django_lookup = (lookup.value.django_representation or "").strip()
-        filter_key = f"{field_name}__{django_lookup}" if django_lookup else field_name
-        return Q(**{filter_key: value})
-
-    def compile_row_rule(
-        self,
-        row_rule: RowPolicyRuleContent | dict,
-        application_fields: dict[str, ApplicationField],
-    ) -> Q | None:
-        if isinstance(row_rule, dict):
-            try:
+        try:
+            if not isinstance(row_rule, RowPolicyRuleContent):
                 row_rule = RowPolicyRuleContent.model_validate(row_rule)
-            except Exception:
-                return None
-        if not isinstance(row_rule, RowPolicyRuleContent) or not row_rule.conditions:
+            predicate = self.prepare_row_filter(row_rule)
+            return compile_filters([predicate], model=self.model).predicate
+        except (ValidationError, ValueError, TypeError):
             return None
-        filters = []
-        for condition in row_rule.conditions:
-            condition_filter = self.compile_condition(condition, application_fields)
-            if condition_filter is None:
-                return None
-            filters.append(condition_filter)
-        combined = filters[0]
-        for condition_filter in filters[1:]:
-            combined = (
-                combined | condition_filter
-                if row_rule.connector == "OR"
-                else combined & condition_filter
-            )
-        return combined
 
     def compile(
         self,

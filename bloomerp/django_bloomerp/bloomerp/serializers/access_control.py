@@ -6,6 +6,7 @@ from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.application_field import ApplicationField
 from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
@@ -40,10 +41,9 @@ class RowPolicyRuleSerializer(serializers.ModelSerializer):
 
     def validate_rule(self, value):
         try:
-            return RowPolicyRuleContent.model_validate(value).model_dump(
-                exclude={"permissions"},
-                exclude_none=True,
-            )
+            RowPolicyRuleContent.model_validate(value)
+            # Preserve legacy source IDs until the parent validates their scope.
+            return value
         except PydanticValidationError as exc:
             raise serializers.ValidationError(str(exc)) from exc
 
@@ -143,6 +143,21 @@ class PolicySerializer(serializers.ModelSerializer):
         if errors:
             raise serializers.ValidationError(errors)
 
+        if content_type_id:
+            for row_rule in row_policy_rules:
+                candidate = RowPolicyRule(
+                    row_policy=RowPolicy(content_type_id=content_type_id),
+                    rule=row_rule["rule"],
+                )
+                try:
+                    candidate.validate_rule()
+                    request = self.context.get("request")
+                    if request is not None:
+                        from bloomerp.permissions.manager import UserPolicyManager
+                        UserPolicyManager(request.user).validate_filters(candidate.content_type, [RowPolicyRuleContent.model_validate(row_rule["rule"])])
+                    row_rule["rule"] = RowPolicyRuleContent.model_validate(row_rule["rule"]).model_dump(exclude={"permissions"})
+                except (DjangoValidationError, PydanticValidationError, ValueError) as exc:
+                    raise serializers.ValidationError({"row_policy": str(exc)}) from exc
         return attrs
 
     def _get_invalid_row_policy_field_ids(self, content_type_id, row_policy_rules) -> set[str]:
@@ -159,6 +174,9 @@ class PolicySerializer(serializers.ModelSerializer):
         if not disallowed_field_ids:
             return set()
 
+        disallowed_names = dict(ApplicationField.objects.filter(
+            content_type_id=content_type_id, pk__in=disallowed_field_ids,
+        ).values_list("field", "pk"))
         invalid_field_ids = set()
         for rule in row_policy_rules:
             rule_content = (rule or {}).get("rule") or {}
@@ -166,6 +184,9 @@ class PolicySerializer(serializers.ModelSerializer):
             for condition in conditions:
                 if not isinstance(condition, dict):
                     continue
+                root = str(condition.get("field_path", "")).split("__", 1)[0]
+                if root in disallowed_names:
+                    invalid_field_ids.add(str(disallowed_names[root]))
                 application_field_id = str(condition.get("application_field_id", "")).strip()
                 if application_field_id and application_field_id != "__all__" and application_field_id in disallowed_field_ids:
                     invalid_field_ids.add(application_field_id)

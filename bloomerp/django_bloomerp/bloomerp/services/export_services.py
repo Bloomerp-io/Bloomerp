@@ -15,7 +15,7 @@ from django.db.models.fields.files import FieldFile
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.object_services import string_search_on_queryset
-from bloomerp.utils.filters import filter_model
+from bloomerp.filters.manager import ModelFilterManager
 
 MULTI_VALUE_SEPARATOR = ";"
 
@@ -83,7 +83,7 @@ class ExportService:
         if query:
             queryset = string_search_on_queryset(queryset, query)
 
-        return filter_model(self.model, query_params, queryset)
+        return ModelFilterManager(self.model).filter(query_params, queryset=queryset)
 
     def _export_to_csv(self, *, queryset: QuerySet, fields: list[ApplicationField]) -> bytes:
         buffer = StringIO()

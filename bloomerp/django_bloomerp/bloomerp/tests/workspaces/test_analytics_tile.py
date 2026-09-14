@@ -1,9 +1,12 @@
+from django.core.exceptions import ValidationError as FilterValidationError
+from django.db import connection
 from django.http import QueryDict
 from django.test import SimpleTestCase
 import pandas as pd
 from pydantic import ValidationError
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
+from bloomerp.lookups.definition import BoundLookup, SQLLookupContext
 from bloomerp.workspaces.analytics_tile.kpi import KpiAggregatedField, _build_section_vars, _render_section, _render_value, build_kpi_aggregation_query
 from bloomerp.workspaces.analytics_tile.model import (
     AddFilterHandler,
@@ -21,6 +24,12 @@ from bloomerp.workspaces.analytics_tile.two_dim_chart import build_two_dim_chart
 from bloomerp.workspaces.analytics_tile.utils import TileFieldType
 
 class TestAnalyticsTile(SimpleTestCase):
+    def assert_query(self, query, expected):
+        # Expectations use PostgreSQL literals; SQLite uses ordinary literals.
+        if connection.vendor != "postgresql":
+            expected = expected.replace("E'", "'")
+        self.assertEqual(query, expected)
+
     def _get_config(
         self,
         query: str,
@@ -105,7 +114,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name" : AnalyticsTileFilter(
                     field="first_name",
                     type="text",
-                    is_variable=False
+
                 )
             }
         )
@@ -207,7 +216,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name" : AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False
+
                 )
             }
         )
@@ -220,12 +229,10 @@ class TestAnalyticsTile(SimpleTestCase):
             }
         )
         
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE first_name = 'Daniel'
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("first_name" = E'Daniel'))"""
         
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
         
     def test_get_filtered_query_with_bool_column(self):
         # 1. Start query
@@ -240,17 +247,14 @@ class TestAnalyticsTile(SimpleTestCase):
                 "is_active" : AnalyticsTileFilter(
                     field="is_active",
                     type=TileFieldType.BOOL.value.key,
-                    is_variable=False
+
                 )
             }
         )
         
         # 3. Call function
-        query = get_filtered_query(config, {
-            "is_active" : "Daniel"
-        })
-        
-        ...
+        with self.assertRaises(FilterValidationError):
+            get_filtered_query(config, {"is_active": "Daniel"})
 
     def test_get_filtered_query_with_lookup_query_param(self):
         # 1. Start query
@@ -263,7 +267,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name": AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False,
+
                 )
             },
         )
@@ -273,12 +277,10 @@ class TestAnalyticsTile(SimpleTestCase):
             "first_name__exact": "Daniel",
         })
 
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE first_name = 'Daniel'
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("first_name" = E'Daniel'))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
 
     def test_get_filtered_query_strips_base_query_trailing_semicolon(self):
         # 1. Start query
@@ -291,7 +293,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name": AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False,
+
                 )
             },
         )
@@ -301,12 +303,10 @@ class TestAnalyticsTile(SimpleTestCase):
             "first_name__exact": "Daniel",
         })
 
-        expected = """SELECT * FROM (SELECT * FROM sample_table) AS filtered_query
-        WHERE first_name = 'Daniel'
-        """
+        expected = """SELECT * FROM (SELECT * FROM sample_table) AS filtered_query WHERE (("first_name" = E'Daniel'))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
         self.assertNotIn(";", query)
 
     def test_get_filtered_query_with_contains_lookup_query_param(self):
@@ -320,7 +320,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name": AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False,
+
                 )
             },
         )
@@ -330,12 +330,10 @@ class TestAnalyticsTile(SimpleTestCase):
             "first_name__icontains": "Dan",
         })
 
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE first_name LIKE '%Dan%'
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("first_name" ILIKE E'%Dan%'))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
 
     def test_get_filtered_query_with_multiple_defined_filters(self):
         # 1. Start query
@@ -348,12 +346,12 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name": AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False,
+
                 ),
                 "is_active": AnalyticsTileFilter(
                     field="is_active",
                     type=TileFieldType.BOOL.value.key,
-                    is_variable=False,
+
                 ),
             },
         )
@@ -364,12 +362,10 @@ class TestAnalyticsTile(SimpleTestCase):
             "is_active__exact": "true",
         })
 
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE first_name = 'Daniel' AND is_active = TRUE
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("first_name" = E'Daniel')) AND (("is_active" = TRUE))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
 
     def test_get_filtered_query_ignores_layout_tile_params(self):
         # 1. Start query
@@ -382,7 +378,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name": AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False,
+
                 )
             },
         )
@@ -395,38 +391,10 @@ class TestAnalyticsTile(SimpleTestCase):
             "first_name__exact": "Daniel",
         })
 
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE first_name = 'Daniel'
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("first_name" = E'Daniel'))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
-
-    def test_get_filtered_query_with_variable_filter(self):
-        # 1. Start query
-        start_query = """SELECT * FROM sample_table WHERE first_name = '{{ first_name }}'"""
-
-        # 2. Create the tile
-        config = self._get_config(
-            start_query,
-            {
-                "first_name": AnalyticsTileFilter(
-                    field="first_name",
-                    type=TileFieldType.TEXT.value.key,
-                    is_variable=True,
-                )
-            },
-        )
-
-        # 3. Call function
-        query = get_filtered_query(config, {
-            "first_name__exact": "Daniel",
-        })
-
-        expected = """SELECT * FROM sample_table WHERE first_name = 'Daniel'"""
-
-        # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
 
     def test_build_kpi_aggregation_query_applies_count_in_sql(self):
         # 1. Create query and KPI field config
@@ -516,7 +484,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name" : AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False
+
                 )
             }
         )
@@ -526,29 +494,23 @@ class TestAnalyticsTile(SimpleTestCase):
             "first_name" : "Daniel"
         })
         
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE first_name = 'Daniel'
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("first_name" = E'Daniel'))"""
         
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
 
-    def test_lookup_definitions_expose_sql_operator_functions(self):
-        self.assertEqual(Lookup.EQUALS.value.sql_operator("Daniel"), "= 'Daniel'")
-        self.assertEqual(Lookup.EQUALS.value.sql_operator("40"), "= 40")
-        self.assertEqual(Lookup.EQUALS.value.sql_operator(40), "= 40")
-        self.assertEqual(Lookup.EQUALS.value.sql_operator("true"), "= TRUE")
-        self.assertEqual(Lookup.CONTAINS.value.sql_operator("Dan"), "LIKE '%Dan%'")
-        self.assertEqual(Lookup.STARTS_WITH.value.sql_operator("Dan"), "LIKE 'Dan%'")
-        self.assertEqual(Lookup.ENDS_WITH.value.sql_operator("son"), "LIKE '%son'")
-        self.assertEqual(Lookup.GREATER_THAN.value.sql_operator("40"), "> 40")
-        self.assertEqual(Lookup.GREATER_THAN_OR_EQUAL.value.sql_operator("40"), ">= 40")
-        self.assertEqual(Lookup.LESS_THAN.value.sql_operator("40"), "< 40")
-        self.assertEqual(Lookup.LESS_THAN_OR_EQUAL.value.sql_operator("40"), "<= 40")
-        self.assertEqual(Lookup.IS_NULL.value.sql_operator("true"), "IS NULL")
-        self.assertEqual(Lookup.IS_NULL.value.sql_operator("false"), "IS NOT NULL")
-        self.assertEqual(Lookup.GREATER_THAN.value.sql_operator(40), "> 40")
-        
+    def test_lookup_definitions_expose_parameterized_sql_factories(self):
+        """
+        UC: Compile equality through the registered lookup factory.
+        Expected Result: Values remain parameters rather than being interpolated into SQL.
+        """
+        lookup = BoundLookup.normalize(lookups.EQUALS)
+        for value in ["Daniel", "40", 40, True]:
+            with self.subTest(value=value):
+                compiled = lookup.get_sql_factory()(SQLLookupContext(field_path='"name"'), lookup.expressions[0], value)
+                self.assertEqual(compiled.clause, '"name" = %s')
+                self.assertEqual(compiled.parameters, (value,))
+
     def test_get_filtered_query_resolves_equals_lookup_from_alias(self):
         # 1. Start query
         start_query = """SELECT * FROM sample_table"""
@@ -560,7 +522,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "first_name": AnalyticsTileFilter(
                     field="first_name",
                     type=TileFieldType.TEXT.value.key,
-                    is_variable=False,
+
                 )
             },
         )
@@ -570,12 +532,10 @@ class TestAnalyticsTile(SimpleTestCase):
             "first_name__equals": "Daniel",
         })
 
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE first_name = 'Daniel'
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("first_name" = E'Daniel'))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
 
     def test_get_filtered_query_resolves_numeric_lookup_from_alias(self):
         # 1. Start query
@@ -588,7 +548,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "age": AnalyticsTileFilter(
                     field="age",
                     type=TileFieldType.NUMERIC.value.key,
-                    is_variable=False,
+
                 )
             },
         )
@@ -598,12 +558,10 @@ class TestAnalyticsTile(SimpleTestCase):
             "age__gt": "40",
         })
 
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE age > 40
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("age" > 40))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
 
     def test_get_filtered_query_resolves_less_than_or_equal_lookup_from_alias(self):
         # 1. Start query
@@ -616,7 +574,7 @@ class TestAnalyticsTile(SimpleTestCase):
                 "age": AnalyticsTileFilter(
                     field="age",
                     type=TileFieldType.NUMERIC.value.key,
-                    is_variable=False,
+
                 )
             },
         )
@@ -626,13 +584,61 @@ class TestAnalyticsTile(SimpleTestCase):
             "age__lte": 40,
         })
 
-        expected = f"""SELECT * FROM ({start_query}) AS filtered_query
-        WHERE age <= 40
-        """
+        expected = f"""SELECT * FROM ({start_query}) AS filtered_query WHERE (("age" <= 40))"""
 
         # 4. Check
-        self.assertEqual(query, expected)
+        self.assert_query(query, expected)
         
     
     
         
+
+    def test_shared_key_operation_updates_and_clears(self):
+        """
+        UC: Edit an analytics filter's optional shared key in the builder.
+        Expected Result: The key persists through serialization, and clearing restores the column name.
+        """
+        config = self._get_config('SELECT first_name FROM sample_table', [AnalyticsTileFilter(field='first_name', type='text')])
+        operation = config.get_operation('set_filter_shared_key')
+        operation.handler.handle(config, operation.validation_model(field='first_name', shared_key=' name '))
+        restored = AnalyticsTileConfig.model_validate(config.model_dump())
+        self.assertEqual(restored.get_filter_shared_key('first_name'), 'name')
+        operation.handler.handle(restored, operation.validation_model(field='first_name', shared_key=''))
+        self.assertIsNone(restored.filters[0].shared_key)
+        self.assertEqual(restored.get_filter_shared_key('first_name'), 'first_name')
+
+    def test_shared_key_operation_rejects_invalid_key(self):
+        """
+        UC: Submit a shared key containing the path delimiter.
+        Expected Result: Validation rejects it without modifying the filter.
+        """
+        config = self._get_config('SELECT first_name FROM sample_table', [AnalyticsTileFilter(field='first_name', type='text')])
+        operation = config.get_operation('set_filter_shared_key')
+        with self.assertRaises(ValidationError):
+            operation.handler.handle(config, operation.validation_model(field='first_name', shared_key='bad:key'))
+        self.assertIsNone(config.filters[0].shared_key)
+
+    def test_filter_does_not_substitute_sql_placeholders(self):
+        """
+        UC: A query contains a placeholder that used to be a variable filter.
+        Expected Result: Filtering only adds an output-column predicate; the SQL text is not substituted.
+        """
+        config = self._get_config("SELECT '{{ first_name }}' AS first_name", [AnalyticsTileFilter(field='first_name', type='text')])
+        self.assertIn('{{ first_name }}', get_filtered_query(config, {'first_name': 'David'}))
+
+    def test_builder_renders_optional_shared_key(self):
+        """
+        UC: Open the analytics builder with an existing shared key.
+        Expected Result: The filter editor shows the saved key and posts the dedicated operation.
+        """
+        from bs4 import BeautifulSoup
+        from django.template.loader import render_to_string
+        config = self._get_config('SELECT first_name FROM sample_table', [AnalyticsTileFilter(field='first_name', type='text', shared_key='name')])
+        html = render_to_string('components/workspaces/tiles/builders/analytics.html', {'config': config})
+        soup = BeautifulSoup(html, 'html.parser')
+        field = soup.select_one('input[name="shared_key"]')
+        self.assertIsNotNone(field)
+        self.assertEqual(field['value'], 'name')
+        self.assertEqual(field['placeholder'], 'first_name')
+        self.assertFalse(field.has_attr('required'))
+        self.assertIn('set_filter_shared_key', field.find_parent('form')['hx-vars'])

@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from bloomerp.cli.utils import get_project_manifest
+from bloomerp.cli.project.marketplace_sources import runtime_installed_apps
 from bloomerp.config.settings import (
     BLOOMERP_APPS,
     BLOOMERP_AUTHENTICATION_BACKENDS,
@@ -10,15 +12,14 @@ from bloomerp.config.settings import (
     REST_FRAMEWORK,
 )
 
-from .project_registry import PROJECT_INSTALLED_APPS
-
-
 BASE_DIR = Path(
     os.environ.get(
         "BLOOMERP_PROJECT_ROOT",
         Path(__file__).resolve().parent.parent.parent.parent,
     )
 ).resolve()
+
+manifest = get_project_manifest(BASE_DIR)
 
 INSTALLED_APPS = [
     "daphne",
@@ -29,8 +30,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "bloomerp",
-    *PROJECT_INSTALLED_APPS,
+    *runtime_installed_apps(manifest, BASE_DIR)
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -42,7 +44,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-INSTALLED_APPS += BLOOMERP_APPS
+INSTALLED_APPS = list(dict.fromkeys([*INSTALLED_APPS, *BLOOMERP_APPS]))
 MIDDLEWARE += BLOOMERP_MIDDLEWARE
 AUTHENTICATION_BACKENDS = BLOOMERP_AUTHENTICATION_BACKENDS
 AUTH_USER_MODEL = BLOOMERP_USER_MODEL
@@ -104,3 +106,5 @@ CHANNEL_LAYERS = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
+
+BLOOMERP_CONFIG = manifest.bloomerp

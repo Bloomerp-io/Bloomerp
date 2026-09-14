@@ -1,6 +1,6 @@
 from django.urls import reverse
 from playwright.sync_api import expect
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleCondition, RowPolicyRuleContent
@@ -56,7 +56,7 @@ class TestCreateViewE2E(CrudViewTestMixin, BaseE2ETestCase):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="title",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="VALID TODO"
                         )
                     ]
@@ -109,7 +109,7 @@ class TestCreateViewE2E(CrudViewTestMixin, BaseE2ETestCase):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="title",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="VALID TODO"
                         )
                     ]

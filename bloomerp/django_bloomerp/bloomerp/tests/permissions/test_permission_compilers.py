@@ -1,5 +1,5 @@
 from django.test import SimpleTestCase
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 
 
 class TestPermissionCompilers(SimpleTestCase):
@@ -10,10 +10,10 @@ class TestPermissionCompilers(SimpleTestCase):
         """
         without_evaluator = {
             lookup
-            for lookup in Lookup
-            if lookup.value.python_eval is None
+            for lookup in lookups.BUILTIN_LOOKUPS
+            if lookup.python_evaluator is None
         }
         self.assertEqual(
             without_evaluator,
-            {Lookup.FOREIGN_ADVANCED, Lookup.ONE_TO_MANY_ADVANCED},
+            {lookup for lookup in lookups.BUILTIN_LOOKUPS if lookup.nested},
         )

@@ -15,5 +15,15 @@ class TestWorkflowWebhookView(BloomerpAPIDetailViewTestCase):
     model = Workflow
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        # Add only the route scenarios this callable needs.
-        return []
+        return [
+            RequestScenario(
+                name="Unknown workflow webhook returns not found",
+                description=(
+                    "UC: A webhook is posted for a workflow that does not exist.\n"
+                    "Expected Result: The custom workflow webhook endpoint returns 404."
+                ),
+                method="POST",
+                view_kwargs={"pk": 1},
+                expected=ExpectedResult(status_code=404),
+            )
+        ]

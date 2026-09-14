@@ -8,7 +8,7 @@ from django.db.models import QuerySet
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
-
+from bloomerp.models.workspaces.workspace import Workspace
 
 # TODO: opportunity to generalise resolvers in the future
 class UserParameterResolver:
@@ -207,3 +207,17 @@ class UserParameterResolver:
         if isinstance(value, models.Model):
             return str(value.pk)
         return str(value)
+
+
+
+
+
+
+def has_access_to_workspace(workspace:Workspace, user:AbstractBloomerpUser) -> bool:
+    from bloomerp.services.preference_services import PreferenceManager
+
+    if not user.is_authenticated:
+        return False
+    return PreferenceManager(user).get_available(Workspace, workspace.get_scope()).filter(
+        models.Q(pk=workspace.pk) | models.Q(source_object_id=workspace.pk)
+    ).exists()

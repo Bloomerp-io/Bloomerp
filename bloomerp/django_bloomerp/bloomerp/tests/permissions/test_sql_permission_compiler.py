@@ -1,6 +1,6 @@
 from django.db import connection
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.permissions.definition import (
     BloomerpPermission,
     RowPolicyRuleCondition,
@@ -39,7 +39,7 @@ class TestSqlPermissionCompiler(BaseBloomerpTestCaseWithModels):
             conditions=[
                 RowPolicyRuleCondition(
                     field="first_name",
-                    operator=Lookup.EQUALS.value.id,
+                    operator=lookups.EQUALS.id,
                     value=FIRST_NAMES[0],
                 )
             ],
@@ -153,3 +153,14 @@ class TestSqlPermissionCompiler(BaseBloomerpTestCaseWithModels):
             response.rows,
             [{"first_name": FIRST_NAMES[0], "last_name": None}],
         )
+
+    def test_empty_or_rule_returns_no_rows(self):
+        self._assign_policy(
+            fields=["first_name"],
+            row_rule=RowPolicyRuleContent(connector="OR", conditions=[], permissions=[BloomerpPermission.VIEW]),
+        )
+        table = self.CustomerModel._meta.db_table
+        compiled = UserPolicyManager(self.normal_user).get_accessible_sql_query(f"SELECT first_name FROM {table}")
+        with connection.cursor() as cursor:
+            cursor.execute(compiled.query, compiled.params)
+            self.assertEqual(cursor.fetchall(), [])

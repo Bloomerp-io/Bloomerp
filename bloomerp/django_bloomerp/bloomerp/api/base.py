@@ -7,7 +7,7 @@ from rest_framework.authentication import BasicAuthentication, SessionAuthentica
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from django_filters import rest_framework as filters
+from bloomerp.filters.backend import ModelFilterBackend
 
 from bloomerp.api.authentication_classes import BloomerpApiKeyAuthentication
 from bloomerp.models.definition import BloomerpModelConfig
@@ -28,7 +28,7 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
     queryset = None
     serializer_class = None
     authentication_classes = AUTHENTICATION_CLASSES
-    filter_backends = (filters.DjangoFilterBackend,)
+    filter_backends = (ModelFilterBackend,)
     permission_classes = (IsAuthenticated,)
     action_permission_map = ApiAccessResolver.action_permission_map
 

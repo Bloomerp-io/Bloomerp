@@ -168,6 +168,32 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
         )
         self.assertIn("def get_test_scenarios(self) -> list[RequestScenario]:", content)
 
+    def test_e2e_discovery_only_generates_browser_accessible_views(self):
+        """
+        Use case: A developer generates end-to-end test skeletons.
+        Expected result: Ordinary views are included but APIs, components, and
+        websocket channels are excluded.
+        """
+        generated = self.command._discover_e2e(self.app_config)
+        content = "\n".join(test_case.content for test_case in generated)
+
+        self.assertTrue(generated)
+        self.assertTrue(
+            all(test_case.functionality == "e2e" for test_case in generated)
+        )
+        self.assertTrue(
+            all(
+                "tests/e2e/views/" in test_case.target.as_posix()
+                for test_case in generated
+            )
+        )
+        self.assertIn("class TestBloomerpHomeViewE2E", content)
+        self.assertIn("BloomerpE2ETestCase", content)
+        self.assertIn("E2EAction", content)
+        self.assertIn("E2ERequestScenario", content)
+        self.assertNotIn("TestBloomerpApiRootView", content)
+        self.assertNotIn("components_", content)
+
     def test_component_discovery_fails_when_a_source_module_cannot_import(self):
         """
         Use case: A component module contains a broken import.
@@ -370,3 +396,33 @@ class GenerateTestCasesCommandTests(SimpleTestCase):
             "list[ModelFieldScenario[AddressField]]:",
             model_field_case.content,
         )
+
+    def test_lookup_skeleton_imports_scenario_dependencies(self):
+        """
+        Use case: A developer fills in a generated per-lookup test.
+        Expected result: ORM, SQL, field, and Python scenario types are imported.
+        """
+        content = self.command._render_lookup_test(
+            import_path="example.lookups.equals",
+            imported_name="EQUALS",
+            class_name="TestEqualsLookup",
+        )
+
+        self.assertIn("from django.db.models import Q", content)
+        self.assertIn(
+            "from bloomerp.lookups.definition import CompiledLookup, CompiledSQL",
+            content,
+        )
+        self.assertIn(
+            "from bloomerp.models.application_field import ApplicationField",
+            content,
+        )
+        self.assertIn("    BloomerpLookupTestCase,", content)
+        self.assertIn("    LookupScenario,", content)
+        self.assertIn("    PythonEvaluation,", content)
+        self.assertIn("    lookup = EQUALS", content)
+        self.assertIn(
+            "def get_test_scenarios(self) -> list[LookupScenario]:",
+            content,
+        )
+        compile(content, "<generated lookup test>", "exec")

@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
 
 
 @dataclass
@@ -189,3 +192,26 @@ def get_formatter_choices(field_type: TileFieldType | str | None = None) -> list
         for formatter in Formatter
         if formatter.value.restrict_to is None or primitive_type in formatter.value.restrict_to
     ]
+
+
+def analytics_tile_filter_field_factory(config:"AnalyticsTileConfig"):
+    from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+    from bloomerp.filters.definition import FilterField
+    from bloomerp.lookups.definition import FilterFieldContext
+
+    types = {
+        TileFieldType.TEXT: "CharField",
+        TileFieldType.NUMERIC: "DecimalField",
+        TileFieldType.BOOL: "BooleanField",
+        TileFieldType.DATE: "DateField",
+        TileFieldType.DATETIME: "DateTimeField",
+    }
+    fields = []
+    for configured in config.filters:
+        field_type_id = types[to_primitive_field_type(configured.type)]
+        field_type = FIELD_TYPE_REGISTRY.from_id(field_type_id)
+        fields.append(FilterField(
+            field=configured.field, label=configured.field,
+            context=FilterFieldContext(field_type=field_type),
+        ))
+    return fields

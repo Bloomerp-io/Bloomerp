@@ -1,3 +1,4 @@
+from bloomerp.models.mixins.default_filters_mixin import DefaultFiltersMixin
 from django.utils.translation import gettext_lazy as _, gettext_noop
 from typing import Any
 
@@ -14,7 +15,7 @@ from bloomerp.models.workspaces.tile import Tile
 from bloomerp.modules.definition import module_registry
 
 
-class Workspace(ContentLayoutModelMixin, BasePreference):
+class Workspace(DefaultFiltersMixin, ContentLayoutModelMixin, BasePreference):
     """A selectable, shareable workspace preference scoped by module."""
 
     preference_scope_fields = ("module_id",)
@@ -52,6 +53,9 @@ class Workspace(ContentLayoutModelMixin, BasePreference):
 
     def __str__(self):
         return self.name
+
+    def get_filter_scope(self) -> tuple[str, str]:
+        return 'workspace', str(self.pk)
 
     @classmethod
     def create_default_for_user(
@@ -119,6 +123,7 @@ class Workspace(ContentLayoutModelMixin, BasePreference):
         )
 
     @classmethod
+    @transaction.atomic
     def copy_preference_for_user(
         cls,
         *,
@@ -128,12 +133,14 @@ class Workspace(ContentLayoutModelMixin, BasePreference):
         scope: dict[str, Any] | None = None,
     ) -> "Workspace":
         """Copy a workspace and its serialized layout."""
-        return cls._create_preference_copy(
+        preference = cls._create_preference_copy(
             user=user,
             source=source,
             name=name,
             scope=scope,
         )
+        source.copy_default_filters_to(preference)
+        return preference
 
     def get_absolute_url(self):
         return reverse("workspace", kwargs={"pk": self.pk})

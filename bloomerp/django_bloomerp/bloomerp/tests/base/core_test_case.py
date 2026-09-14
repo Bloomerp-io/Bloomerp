@@ -27,7 +27,11 @@ class BloomerpChannelTestCase(TransactionTestCase):
     def websocket_communicator(self, registry, path: str):
         return WebsocketCommunicator(self.websocket_application(registry), path)
 
-@modify_settings(INSTALLED_APPS={'remove': 'bloomerp_modules'})
+# Avoid re-running Debug Toolbar's AppConfig while pytest-django has replaced
+# MIGRATION_MODULES with its non-dict --no-migrations sentinel.
+@modify_settings(
+    INSTALLED_APPS={"remove": ["bloomerp_modules", "debug_toolbar"]}
+)
 class BaseBloomerpTestCaseWithModels(TransactionTestCase):
     auto_create_customers = True
     auto_create_users = True
@@ -73,7 +77,7 @@ class BaseBloomerpTestCaseWithModels(TransactionTestCase):
             "user_account" : UserField(blank=True, null=True, on_delete=models.SET_NULL),
             "__str__" : lambda self: f"{self.first_name} {self.last_name}",
         }
-        
+
         if cls.create_foreign_models:
             customer_def["country"] = models.ForeignKey(
                 to=cls.CountryModel, 
@@ -350,4 +354,6 @@ class BaseBloomerpTestCaseWithModels(TransactionTestCase):
         """
         return ContentType.objects.get_for_model(model)
         
+        
+    
     

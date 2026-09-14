@@ -15,7 +15,6 @@
     class="flex flex-col"
     bloomerp-component="{{ component_id | default:'dataview-container' }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
-    data-default-filters='{{ default_filters_json }}'
 
     {% if component_args %}
     {% for arg, value in component_args.items %}
@@ -47,11 +46,6 @@
                     />
                 </div>
             </c-ui.shortcut_tooltip>
-
-            <!--Applied filters-->
-            <div id="applied-filters-{{ content_type_id }}" class="min-w-0 flex gap-2" data-applied-filters-section></div>
-            <!--End applied filters-->
-
         </div>
 
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
@@ -60,6 +54,7 @@
             {% endfor %}
         </div>
     </div>
+    <c-features.filters.rendered scope="model" id="{{ content_type_id }}" :filter_host="preference"/>
 {% endif %}
 
     <!--Table section-->

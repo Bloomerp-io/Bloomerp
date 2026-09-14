@@ -6,22 +6,30 @@ import WorkspaceTile from "./WorkspaceTile";
 import getGeneralModal from "@/utils/modals";
 import BaseWizard from "../BaseWizard";
 import { Drawer } from "../Drawer";
-import FilterContainer, { FilterEntriesContainer, getFiltersFromUrl } from "../Filters";
+import FilterContainer from "../filters/FilterContainer";
+import type { Filter, FilterScope } from "../filters/definition";
+import { RenderedFilters, type AppliedFilterIdentity } from '../filters/RenderedFilters';
 
 export default class WorkspaceContainer extends BaseSectionedLayoutContainer<WorkspaceTile> {
+    private renderedFilters?: RenderedFilters;
     private workspaceApplyFiltersHandler: ((event: Event) => void) | null = null;
     private workspaceFilterParams = new URLSearchParams(window.location.search);
     private tileResizeObserver: ResizeObserver | null = null;
 
     public override initialize(): void {
+        if (!this.element) return;
         super.initialize();
 
         this.workspaceApplyFiltersHandler = (event: Event) => this.applyWorkspaceFilters(event);
-        this.element
-            ?.querySelector<HTMLElement>("[data-workspace-apply-filters]")
-            ?.addEventListener("click", this.workspaceApplyFiltersHandler);
-
-        this.renderWorkspaceFilters();
+        this.element.addEventListener(FilterContainer.applyEvent, this.workspaceApplyFiltersHandler);
+        const renderedRoot = this.element.querySelector<HTMLElement>('[data-rendered-filters][data-scope="workspace"]');
+        if (renderedRoot) {
+            this.renderedFilters = new RenderedFilters(renderedRoot, filters => {
+                this.renderedFilters?.syncEditor(this.element!, filters);
+                this.updateWorkspaceFilters(filters);
+            });
+            this.renderedFilters.restore(this.workspaceFilterParams.get('filter'));
+        }
         this.setupTileResizeObserver();
         this.items.forEach((item) => {
             if (item.element) {
@@ -108,10 +116,11 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
     }
 
     public override destroy(): void {
+        this.renderedFilters?.destroy();
+        this.renderedFilters = undefined;
         if (this.workspaceApplyFiltersHandler) {
-            this.element
-                ?.querySelector<HTMLElement>("[data-workspace-apply-filters]")
-                ?.removeEventListener("click", this.workspaceApplyFiltersHandler);
+            this.element?.removeEventListener(FilterContainer.applyEvent, this.workspaceApplyFiltersHandler);
+            this.workspaceApplyFiltersHandler = null;
         }
 
         this.tileResizeObserver?.disconnect();
@@ -119,62 +128,24 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         super.destroy();
     }
 
-    private applyWorkspaceFilters(_event: Event): void {
-        const filters = this.getWorkspaceFilterContainer()?.getFilters() || [];
-        const nextParams = new URLSearchParams(this.workspaceFilterParams);
-        
-        filters.forEach((filter) => {
-            if (!filter.value || !filter.operator) return;
+    private applyWorkspaceFilters(event: Event): void {
+        const detail = (event as CustomEvent<FilterScope & AppliedFilterIdentity & { filters: Filter[] }>).detail;
+        if (detail?.scope !== "workspace" || detail.id !== this.element?.dataset.workspaceId) return;
 
-            const key = `${filter.field}__${filter.operator}`;
-            nextParams.delete(key);
-
-            if (Array.isArray(filter.value)) {
-                filter.value.forEach((value) => {
-                    if (value !== "") {
-                        nextParams.append(key, value);
-                    }
-                });
-                return;
-            }
-
-            nextParams.append(key, filter.value.toString());
-        });
-
-        
-        nextParams.delete("page");
-        this.workspaceFilterParams = nextParams;
-        this.syncWorkspaceUrl();
-        this.renderWorkspaceFilters();
-        void this.reloadWorkspaceTiles();
-        this.resetWorkspaceFilterSection();
+        event.stopPropagation();
+        this.renderedFilters?.setFilters(detail.filters, detail);
+        this.updateWorkspaceFilters(detail.filters);
     }
 
-    private renderWorkspaceFilters(): void {
-        const filterSection = this.element?.querySelector<HTMLElement>("[data-layout-header-section-2]");
-        if (!filterSection) return;
-
-        const filters = getFiltersFromUrl(this.workspaceFilterParams);
-        if (filters.length === 0) {
-            filterSection.innerHTML = "";
-            return;
+    private updateWorkspaceFilters(filters: Filter[]): void {
+        if (filters.length) {
+            this.workspaceFilterParams.set("filter", JSON.stringify(filters));
+        } else {
+            this.workspaceFilterParams.set("filter", "[]");
         }
-
-        const filterUIContainer = new FilterEntriesContainer(
-            filterSection,
-            (entry) => this.removeWorkspaceFilter(entry.getFilterKey())
-        );
-        filterUIContainer.setFilters(filters);
-        filterUIContainer.render();
-    }
-
-    private removeWorkspaceFilter(filterKey: string): void {
-        this.workspaceFilterParams.delete(filterKey);
         this.workspaceFilterParams.delete("page");
         this.syncWorkspaceUrl();
-        this.renderWorkspaceFilters();
         void this.reloadWorkspaceTiles();
-        this.resetWorkspaceFilterSection();
     }
 
     private async reloadWorkspaceTiles(): Promise<void> {
@@ -238,6 +209,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
             values[key] = value;
         });
 
+        values.workspace_id = this.element?.dataset.workspaceId ?? "";
         return values;
     }
 
@@ -245,30 +217,6 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         const browserUrl = new URL(window.location.href);
         browserUrl.search = this.workspaceFilterParams.toString();
         window.history.replaceState(window.history.state, "", `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`);
-    }
-
-    private resetWorkspaceFilterSection(): void {
-        const workspaceId = this.element?.dataset.workspaceId;
-        if (!workspaceId) return;
-
-        const target = document.getElementById(`workspace-filter-section-${workspaceId}`);
-        if (!target) return;
-
-        htmx.ajax("get", `/components/workspaces/${workspaceId}/filters/init/`, {
-            target,
-            swap: "innerHTML",
-        });
-    }
-
-    private getWorkspaceFilterContainer(): FilterContainer | null {
-        const workspaceId = this.element?.dataset.workspaceId;
-        if (!workspaceId) return null;
-
-        const el = document.getElementById(`workspace-filter-container-${workspaceId}`) as HTMLElement | null;
-        
-        if (!el) return null;
-
-        return getComponent(el) as FilterContainer;
     }
 
     protected override getSavePayload(): { layout: { rows: SectionedLayoutRowPayload[] }; workspace_id: string | null } {

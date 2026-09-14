@@ -25,6 +25,7 @@ from bloomerp.field_types.registry import (
 from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
 
 DATE_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.DateField),
     id="DateField",
     icon="fa-solid fa-calendar-days",
     model_field_cls=models.DateField,
@@ -57,6 +58,7 @@ WEEK_FIELD = FieldTypeDefinition(
 )
 
 DATE_TIME_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.DateTimeField),
     id="DateTimeField",
     icon="fa-solid fa-clock",
     model_field_cls=models.DateTimeField,
@@ -77,6 +79,7 @@ DATE_TIME_FIELD = FieldTypeDefinition(
 )
 
 TIME_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.TimeField),
     id="TimeField",
     icon="fa-solid fa-clock",
     model_field_cls=models.TimeField,
@@ -88,6 +91,7 @@ TIME_FIELD = FieldTypeDefinition(
 )
 
 DURATION_FIELD = FieldTypeDefinition(
+    form_factory=form(forms.DurationField),
     id="DurationField",
     icon="fa-solid fa-hourglass-half",
     model_field_cls=models.DurationField,

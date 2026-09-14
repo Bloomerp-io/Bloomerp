@@ -1,7 +1,7 @@
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 
-from bloomerp.field_types.lookups import Lookup
+from bloomerp.lookups import builtins as lookups
 from bloomerp.models import ApplicationField
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.access_control.policy import Policy
@@ -50,7 +50,7 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="first_name",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="John",
                         )
                     ],
@@ -92,9 +92,8 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
         stored_rule = RowPolicyRuleContent.model_validate(row_rule.rule)
         self.assertEqual(stored_rule.connector, "AND")
         self.assertEqual(len(stored_rule.conditions), 1)
-        self.assertEqual(stored_rule.conditions[0].application_field_id, self.first_name_field.pk)
-        self.assertEqual(stored_rule.conditions[0].field, "first_name")
-        self.assertEqual(stored_rule.conditions[0].operator, Lookup.EQUALS.value.id)
+        self.assertEqual(stored_rule.conditions[0].field_path, "first_name")
+        self.assertEqual(stored_rule.conditions[0].lookup_id, lookups.EQUALS.id)
         self.assertEqual(stored_rule.conditions[0].value, "John")
 
         # 5. Check that field names were resolved to ApplicationField IDs
@@ -181,7 +180,7 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
                         conditions=[
                             RowPolicyRuleCondition(
                                 field="does_not_exist",
-                                operator=Lookup.EQUALS.value.id,
+                                operator=lookups.EQUALS.id,
                                 value="John",
                             )
                         ],
@@ -233,7 +232,7 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="first_name",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="John",
                         )
                     ],
@@ -244,7 +243,7 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
                     conditions=[
                         RowPolicyRuleCondition(
                             field="last_name",
-                            operator=Lookup.EQUALS.value.id,
+                            operator=lookups.EQUALS.id,
                             value="Doe",
                         )
                     ],
@@ -280,7 +279,7 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
                         conditions=[
                             RowPolicyRuleCondition(
                                 field="first_name",
-                                operator=Lookup.EQUALS.value.id,
+                                operator=lookups.EQUALS.id,
                                 value="John",
                             )
                         ],
@@ -303,7 +302,7 @@ class TestPolicyManager(BaseBloomerpTestCaseWithModels):
                         conditions=[
                             RowPolicyRuleCondition(
                                 field="first_name",
-                                operator=Lookup.EQUALS.value.id,
+                                operator=lookups.EQUALS.id,
                                 value="John",
                             )
                         ],

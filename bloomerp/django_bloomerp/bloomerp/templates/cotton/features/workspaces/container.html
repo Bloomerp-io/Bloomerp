@@ -9,7 +9,7 @@
     >
     <c-slot name="buttons_left">
         <!--Filters-->
-        <div class="w-full sm:w-auto">
+        <div class="w-full sm:w-auto" data-filter-host-editor>
             <c-ui.shortcut_tooltip 
                 position="bottom" 
                 shortcut="mod+1"
@@ -24,31 +24,10 @@
                     size="sm"
                     width="w-128"
                     position="left"
+                    fixed=True
+                    menu_class="max-h-[calc(100vh-6rem)] max-w-[calc(100vw-1rem)] overflow-auto"
                     >
-                    <div class="p-3">
-                        <div>
-                            <div class="mb-2">
-                                <c-ui.text.subtitle class="mb-2">
-                                    Filter
-                                </c-ui.text.subtitle>
-                                
-                                <div
-                                    id="workspace-filter-section-{{ workspace.id }}"
-                                    hx-get="{% url 'components_workspaces_filters_init' workspace_id=workspace.id %}"
-                                    hx-trigger="load"
-                                    hx-target="this"
-                                    hx-swap="innerHTML"
-                                >
-                                    <div class="px-3 py-2 text-sm text-slate-500">
-                                        {% blocktrans %}Loading filters...{% endblocktrans %}
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-primary btn-sm" data-workspace-apply-filters>
-                                Apply Filters
-                            </button>
-                        </div>
-                    </div>
+                    <c-features.filters.container scope="workspace" id="{{ workspace.id }}" :initial_filters="request.GET.filter|default:workspace.default_filter_groups_json"/>
                 </c-ui.dropdown.body>
             </c-ui.shortcut_tooltip>
         </div>
@@ -87,5 +66,9 @@
             <i class="fa fa-add"></i>
             {% blocktrans %}Create tile{% endblocktrans %}
         </button>
+    </c-slot>
+
+    <c-slot name="below_buttons">
+        <c-features.filters.rendered scope="workspace" id="{{ workspace.id }}" :filter_host="workspace"/>
     </c-slot>
 </c-features.layout.container>

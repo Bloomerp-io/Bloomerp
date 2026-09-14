@@ -37,6 +37,30 @@ class BloomerpModelTestCaseTests(TestCase):
         self.assertIs(scenario.create_validators, validator)
         self.assertEqual(scenario.update_validators, [validator])
 
+    def test_model_scenario_supports_an_explicit_create_operation(self):
+        """
+        Use case: A model behavior is created through a manager or service.
+        Expected result: The declarative scenario validates the operation result.
+        """
+        created = Todo.objects.create(title="Created through manager")
+        scenario = ModelScenario[Todo](
+            name="manager-backed creation",
+            create_operation=lambda: created,
+            create_validators=lambda instance: instance.title == "Created through manager",
+        )
+        test_case = BloomerpModelTestCase()
+        test_case.model = Todo
+
+        test_case._run_model_scenario(scenario)
+
+    def test_model_scenario_rejects_arguments_with_an_explicit_create_operation(self):
+        with self.assertRaisesRegex(ValueError, "create_args"):
+            ModelScenario[Todo](
+                name="ambiguous creation",
+                create_args={"title": "Created normally"},
+                create_operation=lambda: Todo.objects.create(title="Created explicitly"),
+            )
+
     def test_model_scenario_rejects_update_expectations_without_update_args(self):
         """
         Use case: A scenario defines expectations for an absent update operation.

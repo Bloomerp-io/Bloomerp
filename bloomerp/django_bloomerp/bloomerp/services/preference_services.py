@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q, QuerySet
 
@@ -166,7 +167,18 @@ class PreferenceManager:
             entry = owned.first()
             if entry is not None:
                 self._select_entry(entry, scope)
-                return entry.effective_preference
+                effective = entry.effective_preference
+                ensure_default_state = getattr(
+                    effective,
+                    "ensure_default_state",
+                    None,
+                )
+                if "content_type_id" in scope and callable(ensure_default_state):
+                    ensure_default_state(
+                        user=self.user,
+                        content_type=ContentType.objects.get(pk=scope["content_type_id"]),
+                    )
+                return effective
 
             initial_default = self._find_initial_default(preference_model, scope)
             if initial_default is not None:

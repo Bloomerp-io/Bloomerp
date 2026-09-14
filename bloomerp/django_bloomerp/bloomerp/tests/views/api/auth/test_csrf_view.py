@@ -12,5 +12,17 @@ class TestCsrfView(BloomerpAPIViewTestCase):
     view_name = 'csrf'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        # Add only the route scenarios this callable needs.
-        return []
+        return [
+            RequestScenario(
+                name="CSRF endpoint returns token and cookie",
+                description=(
+                    "UC: A browser client initializes CSRF protection.\n"
+                    "Expected Result: The response includes a token and sets the CSRF cookie."
+                ),
+                expected=ExpectedResult(response_validators=self.csrf_token_and_cookie_exist),
+            )
+        ]
+
+    @staticmethod
+    def csrf_token_and_cookie_exist(response):
+        return "csrfToken" in response.json() and "csrftoken" in response.cookies
