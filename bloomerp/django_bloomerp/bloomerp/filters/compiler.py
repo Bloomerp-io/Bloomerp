@@ -48,8 +48,15 @@ def clean_lookup_value(field: FilterField, lookup: BoundLookup, value: Any) -> A
     """Validate a lookup input identically for execution and saved presets."""
     if lookup.nested:
         raise ValidationError("A nested lookup cannot be the terminal condition")
-    factory = lookup.get_form_factory()
-    form_field = factory(field.context) if factory else field.context.get_form_field()
+    # The current-user editor is intentionally a hidden CharField so it can
+    # retain the ``$user`` placeholder. Permission compilers bind that
+    # placeholder before execution, where the value must instead be cleaned by
+    # the model field to preserve native PK types (for example UUIDs).
+    if lookup.id == EQUALS_USER.id and value != "$user":
+        form_field = field.context.get_form_field()
+    else:
+        factory = lookup.get_form_factory()
+        form_field = factory(field.context) if factory else field.context.get_form_field()
     # JSONField.clean expects its serialized input, not a native JSON scalar.
     if isinstance(form_field, forms.JSONField):
         value = json.dumps(value)

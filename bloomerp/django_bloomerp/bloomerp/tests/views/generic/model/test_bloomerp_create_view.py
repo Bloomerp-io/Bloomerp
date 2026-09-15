@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import clear_url_caches, path, reverse
 
+from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
 from bloomerp.management.commands import save_application_fields
 from bloomerp.models import ApplicationField, FieldPolicy, Policy, RowPolicy, RowPolicyRule
@@ -16,9 +17,12 @@ from bloomerp.models.project_management.todo import Todo, TodoPriority, TodoStat
 from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
 from bloomerp.models.workspaces.sidebar import Sidebar
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleContent
+from bloomerp.permissions.manager import PolicyManager
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.tests import base as test_base
+from bloomerp.tests.base.request_test_case_mixin import ExpectedResult
+from bloomerp.tests.base.view_test_case import BloomerpModelViewTestCase, ModelRequestScenario, RequestScenario
 from bloomerp.views.generic.model.create import BloomerpCreateView
 from config.urls import urlpatterns as project_urlpatterns
 
@@ -31,7 +35,7 @@ def overridden_create_view(_request, *args, **kwargs):
 
 
 @override_settings(ROOT_URLCONF=__name__)
-class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
+class TestBloomerpCreateView(BloomerpModelViewTestCase):
     """Readable behavior contract for generated create views and their modal."""
 
     view_name = "add"
@@ -71,56 +75,56 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
             for field in ApplicationField.get_for_model(self.CustomerModel)
         }
 
-    def get_test_scenarios(self) -> list[test_base.RequestScenario]:
+    def get_test_scenarios(self) -> list[RequestScenario]:
         customer = self.CustomerModel
         planet = self.PlanetModel
         return [
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Query parameters prefill create fields",
                 description="UC: A user follows a create URL containing field values.\nExpected Result: Matching form inputs are prefilled.",
                 model=customer, user=self.admin_user, query_params={"first_name": "XYZ"},
-                expected=test_base.ExpectedResult(response_validators=self.input_equals("first_name", "XYZ")),
+                expected=ExpectedResult(response_validators=self.input_equals("first_name", "XYZ")),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Generated create layout omits system fields and keeps files enabled",
                 description="UC: An administrator opens a generated create form.\nExpected Result: Internal system fields are omitted while files remain editable.",
                 model=customer, user=self.admin_user,
-                expected=test_base.ExpectedResult(response_validators=self.generated_create_field_state),
+                expected=ExpectedResult(response_validators=self.generated_create_field_state),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Shared initial create layout is materialized and selected",
                 description="UC: A shared layout is marked as the user's initial default.\nExpected Result: It renders through a selected live reference without a local duplicate.",
                 model=customer, user=self.admin_user, prepare=self.prepare_shared_layout,
-                expected=test_base.ExpectedResult(response_validators=[self.contains_text("Shared create layout"), self.shared_layout_reference_selected]),
+                expected=ExpectedResult(response_validators=[self.contains_text("Shared create layout"), self.shared_layout_reference_selected]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="One-to-many values survive a validation error",
                 description="UC: Related rows are submitted while the parent required name is missing.\nExpected Result: The invalid form re-renders both submitted row values.",
                 model=planet, method="POST", user=self.admin_user,
                 data={"countries__0__name": "Testland", "countries__1__name": "Examplestan"},
-                expected=test_base.ExpectedResult(response_validators=[self.input_equals("countries__0__name", "Testland"), self.input_equals("countries__1__name", "Examplestan")]),
+                expected=ExpectedResult(response_validators=[self.input_equals("countries__0__name", "Testland"), self.input_equals("countries__1__name", "Examplestan")]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="One-to-many query values prefill every row",
                 description="UC: A create link supplies two related rows.\nExpected Result: Both nested inputs retain their values.",
                 model=planet, user=self.admin_user,
                 query_params={"countries__0__name": "Testland", "countries__1__name": "Examplestan"},
-                expected=test_base.ExpectedResult(response_validators=[self.input_equals("countries__0__name", "Testland"), self.input_equals("countries__1__name", "Examplestan")]),
+                expected=ExpectedResult(response_validators=[self.input_equals("countries__0__name", "Testland"), self.input_equals("countries__1__name", "Examplestan")]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Create form exposes save and save-and-create-next controls",
                 description="UC: A user opens a create form.\nExpected Result: Both submit controls and a safe next target are rendered.",
                 model=customer, user=self.admin_user,
-                expected=test_base.ExpectedResult(response_validators=self.save_controls_render),
+                expected=ExpectedResult(response_validators=self.save_controls_render),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Save-and-create-next persists and returns to create",
                 description="UC: A user submits valid data with the current create URL as next.\nExpected Result: The object is created and the response redirects back to create.",
                 model=customer, method="POST", user=self.admin_user,
                 data={"first_name": "Another", "last_name": "Customer", "age": 30, "next": "/test/test_customer_create/"},
-                expected=test_base.ExpectedResult(status_code=302, response_validators=self.saved_customer_and_redirected),
+                expected=ExpectedResult(status_code=302, response_validators=self.saved_customer_and_redirected),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Todo creation does not require a content object outside its layout",
                 description="UC: An administrator creates a Todo whose layout omits content_object.\nExpected Result: The Todo is created without requiring a related object.",
                 model=Todo, method="POST", user=self.admin_user,
@@ -129,111 +133,166 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
                     "priority": TodoPriority.MEDIUM,
                     "status": TodoStatus.BACKLOG,
                 },
-                expected=test_base.ExpectedResult(status_code=302, response_validators=self.standalone_todo_created),
+                expected=ExpectedResult(status_code=302, response_validators=self.standalone_todo_created),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Create page requires global add permission",
                 description="UC: A regular user has no add permission.\nExpected Result: The create page returns 403.",
                 model=customer, user=self.normal_user,
-                expected=test_base.ExpectedResult(status_code=403),
+                expected=ExpectedResult(status_code=403),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Missing required field permissions block creation",
                 description="UC: Add access omits a required field.\nExpected Result: The form explains which required access is missing.",
                 model=customer, user=self.normal_user, prepare=self.grant_missing_required_policy,
-                expected=test_base.ExpectedResult(response_validators=self.contains_text("do not have access to the required fields")),
+                expected=ExpectedResult(response_validators=self.contains_text("do not have access to the required fields")),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Missing add row policy blocks creation",
                 description="UC: Fields are addable but no add row rule applies.\nExpected Result: The form explains that no create row policy applies.",
                 model=customer, user=self.normal_user, prepare=self.grant_no_row_policy,
-                expected=test_base.ExpectedResult(response_validators=self.contains_text("no create row policy applies")),
+                expected=ExpectedResult(response_validators=self.contains_text("no create row policy applies")),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Create form renders only addable fields",
                 description="UC: A user may add name and age but not country.\nExpected Result: Permitted fields are visible and country is hidden.",
                 model=customer, user=self.normal_user, prepare=self.grant_basic_create_policy,
-                expected=test_base.ExpectedResult(response_validators=self.only_addable_fields_render),
+                expected=ExpectedResult(response_validators=self.only_addable_fields_render),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Injected non-addable field is rejected",
                 description="UC: A user injects country into a permitted create request.\nExpected Result: The field is rejected and no customer is created.",
                 model=customer, method="POST", user=self.normal_user, prepare=self.prepare_injected_country,
                 data={"first_name": "Allowed", "last_name": "Person", "age": 30},
-                expected=test_base.ExpectedResult(response_validators=[self.contains_text("Permission denied for fields: country"), self.no_customer_created]),
+                expected=ExpectedResult(response_validators=[self.contains_text("Permission denied for fields: country"), self.no_customer_created]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Values outside add row policy are rejected",
                 description="UC: Submitted values do not satisfy the add row rule.\nExpected Result: A policy error renders and no object is created.",
                 model=customer, method="POST", user=self.normal_user, prepare=self.grant_basic_create_policy,
                 data={"first_name": "Blocked", "last_name": "Person", "age": 30},
-                expected=test_base.ExpectedResult(response_validators=[self.contains_text("do not have permission to create an object with these values"), self.no_customer_created]),
+                expected=ExpectedResult(response_validators=[self.contains_text("do not have permission to create an object with these values"), self.no_customer_created]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Field validation error appears in its layout item",
                 description="UC: A user submits nonnumeric age.\nExpected Result: The age layout item shows an error style.",
                 model=customer, method="POST", user=self.normal_user, prepare=self.grant_basic_create_policy,
                 data={"first_name": "Allowed", "last_name": "Person", "age": "not-a-number"},
-                expected=test_base.ExpectedResult(response_validators=self.age_error_visible),
+                expected=ExpectedResult(response_validators=self.age_error_visible),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Hidden required field produces a visible form error",
                 description="UC: A required field is absent from the selected layout and POST.\nExpected Result: Its validation message remains visible and creation is atomic.",
                 model=customer, method="POST", user=self.normal_user, prepare=self.prepare_hidden_required_layout,
                 data={"first_name": "Allowed", "age": 30},
-                expected=test_base.ExpectedResult(response_validators=[self.hidden_required_error_visible, self.no_customer_created]),
+                expected=ExpectedResult(response_validators=[self.hidden_required_error_visible, self.no_customer_created]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Matching add permissions and row policy create an attributed object",
                 description="UC: Submitted values satisfy field and row policy.\nExpected Result: Creation succeeds and records the authenticated creator.",
                 model=customer, method="POST", user=self.normal_user, prepare=self.grant_basic_create_policy,
                 data={"first_name": "Allowed", "last_name": "Person", "age": 30},
-                expected=test_base.ExpectedResult(status_code=302, response_validators=self.allowed_customer_created),
+                expected=ExpectedResult(status_code=302, response_validators=self.allowed_customer_created),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="AND add rule matches a foreign-key value",
                 description="UC: An AND row rule contains text and foreign-key conditions.\nExpected Result: A matching object is created with that relation.",
                 model=customer, method="POST", user=self.normal_user, prepare=self.prepare_foreign_key_policy,
                 data={"first_name": "Jaimy", "last_name": "Peeters", "age": 30},
-                expected=test_base.ExpectedResult(status_code=302, response_validators=self.foreign_customer_created),
+                expected=ExpectedResult(status_code=302, response_validators=self.foreign_customer_created),
             ),
-            test_base.RequestScenario(
+            RequestScenario(
                 name="Modal redirects to an overridden full create view",
                 description="UC: A model overrides its generated create route.\nExpected Result: Opening the modal responds with HX-Redirect to that route.",
                 view_name="todo_label_component", user=self.admin_user, headers={"hx-request": "true"},
                 prepare=self.override_customer_create_route, cleanup=self.restore_customer_create_route,
-                expected=test_base.ExpectedResult(response_validators=self.component_override_redirected),
+                expected=ExpectedResult(response_validators=self.component_override_redirected),
             ),
-            test_base.RequestScenario(
+            RequestScenario(
                 name="Create available-items endpoint respects field permissions",
                 description="UC: A layout editor requests create fields.\nExpected Result: Addable names are returned and country is omitted.",
                 view_name="available_create_items", user=self.normal_user, prepare=self.grant_basic_create_policy,
-                query_params={}, expected=test_base.ExpectedResult(response_validators=self.available_items_are_permission_scoped),
+                query_params={}, expected=ExpectedResult(response_validators=self.available_items_are_permission_scoped),
             ),
-            test_base.RequestScenario(
+            RequestScenario(
                 name="Create layout can remove a permitted system field",
                 description="UC: An administrator removes an item from a create layout.\nExpected Result: The saved layout preserves that removal.",
                 view_name="save_create_layout", method="POST", user=self.admin_user, content_type="application/json", prepare=self.prepare_layout_without_id,
-                expected=test_base.ExpectedResult(response_validators=self.id_removal_persisted),
+                expected=ExpectedResult(response_validators=self.id_removal_persisted),
             ),
-            test_base.RequestScenario(
+            RequestScenario(
                 name="Create layout save persists row shape",
                 description="UC: A user saves a custom create row.\nExpected Result: Its title, columns, item and colspan persist.",
                 view_name="save_create_layout", method="POST", user=self.admin_user, content_type="application/json", prepare=self.prepare_custom_layout_save,
-                expected=test_base.ExpectedResult(response_validators=self.custom_layout_persisted),
+                expected=ExpectedResult(response_validators=self.custom_layout_persisted),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Empty selected layout is repaired before create renders",
                 description="UC: A selected create preference contains an empty layout.\nExpected Result: Opening create repairs it with default items.",
                 model=customer, user=self.normal_user, prepare=self.prepare_empty_layout,
-                expected=test_base.ExpectedResult(response_validators=self.empty_layout_was_repaired),
+                expected=ExpectedResult(response_validators=self.empty_layout_was_repaired),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Selecting a layout unselects the previous layout",
                 description="UC: A second layout is selected for the same user and model.\nExpected Result: Exactly the second preference remains selected.",
                 model=customer, user=self.admin_user, prepare=self.prepare_two_layouts,
-                expected=test_base.ExpectedResult(response_validators=self.only_second_layout_selected),
+                expected=ExpectedResult(response_validators=self.only_second_layout_selected),
             ),
+            ModelRequestScenario(
+                name="Create with user acount equals to",
+                method="POST",
+                description="""
+                UC: user_account equals to permission should work
+                
+                """,
+                model=customer,
+                user=self.normal_user,
+                data={
+                    "first_name" : "David",
+                    "last_name" : "James",
+                    "user_account" : str(self.normal_user.pk),
+                    "age" : 12
+                },
+                prepare=lambda _: PolicyManager.create_policy(
+                    model_or_content_type=customer,
+                    access_rule=AccessRule(
+                        row_permissions=[
+                            RowPolicyRuleContent(
+                                connector="AND",
+                                conditions=[
+                                    FilterCondition(
+                                        field_path="user_account",
+                                        value="$user",
+                                        lookup_id="equals_user"
+                                    )
+                                ],
+                                permissions=[BloomerpPermission.ADD, BloomerpPermission.VIEW]
+                            )
+                        ],
+                        field_permissions={
+                            "first_name" : [BloomerpPermission.ADD, BloomerpPermission.VIEW],
+                            "last_name" : [BloomerpPermission.ADD, BloomerpPermission.VIEW],
+                            "age" : [BloomerpPermission.ADD, BloomerpPermission.VIEW],
+                            "user_account" : [BloomerpPermission.ADD, BloomerpPermission.VIEW],
+                        }
+                    ),
+                    global_permissions=[BloomerpPermission.ADD, BloomerpPermission.VIEW]
+                ).assign_user(
+                    self.normal_user
+                ),
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=[
+                        lambda _: customer.objects.filter(
+                            first_name="David",
+                            last_name="James",
+                            age=12
+                        ).exists(),
+                        
+                    ]
+                )
+                
+            )
         ]
 
     def get_endpoint(self, view_name, kwargs, setup=None):
@@ -431,79 +490,3 @@ class TestBloomerpCreateView(test_base.BloomerpModelViewTestCase):
         self.second_layout.refresh_from_db()
         return not self.first_layout.selected and self.second_layout.selected
 
-
-class _TodoLabelComponentScenarioCase(
-    test_base.RequestTestCaseMixin,
-    TestCase,
-):
-    view_name = None
-
-    def setUp(self):
-        super().setUp()
-        save_application_fields.Command().handle(suppress_output=True)
-        self.admin_user = get_user_model().objects.create_superuser(
-            username="component-admin",
-            password="test-password",
-        )
-
-    def get_endpoint(self, view_name, kwargs, setup=None):
-        return reverse(
-            "components_create_object",
-            kwargs={"content_type_id": ContentType.objects.get_for_model(TodoLabel).pk},
-        )
-
-
-class TestForeignFieldModalCreate(_TodoLabelComponentScenarioCase):
-    view_name = "todo_label_component"
-
-    def get_test_scenarios(self):
-        return [test_base.RequestScenario(
-            name="Foreign-field modal creation emits a targeted event",
-            description="UC: A foreign-field widget creates an object in a modal.\nExpected Result: A 204 response emits object metadata instead of refreshing the page.",
-            method="POST", user=self.admin_user, headers={"hx-request": "true"},
-            query_params={"foreign_field_widget_id": "widget-123"},
-            data={"name": "Created From Widget", "color": "#000000", "foreign_field_widget_id": "widget-123"},
-            expected=test_base.ExpectedResult(status_code=204, response_validators=self.foreign_widget_trigger_is_correct),
-        )]
-
-    def foreign_widget_trigger_is_correct(self, response):
-        event = json.loads(response["HX-Trigger"])["bloomerp:foreign-field-object-created"]
-        label = TodoLabel.objects.get(name="Created From Widget")
-        expected = {"foreign_field_widget_id": "widget-123", "content_type_id": ContentType.objects.get_for_model(TodoLabel).pk, "object_id": str(label.pk), "object_label": "Created From Widget"}
-        return "HX-Refresh" not in response and event.items() >= expected.items()
-
-
-class TestModalSaveAndCreateNext(_TodoLabelComponentScenarioCase):
-    view_name = "todo_label_component"
-
-    def get_test_scenarios(self):
-        return [test_base.RequestScenario(
-            name="Modal save-and-create-next redirects without refresh",
-            description="UC: Modal creation includes its component URL as next.\nExpected Result: It creates once and redirects to the same component without HX refresh.",
-            method="POST", user=self.admin_user, headers={"hx-request": "true"},
-            data={"name": "Modal label", "color": "#000000"}, prepare=self.add_next,
-            expected=test_base.ExpectedResult(status_code=302, response_validators=self.redirect_is_correct),
-        )]
-
-    def add_next(self, scenario):
-        self.component_url = self.get_endpoint(self.view_name, None)
-        scenario.data["next"] = self.component_url
-
-    def redirect_is_correct(self, response):
-        return response.headers.get("Location") == self.component_url and "HX-Refresh" not in response and TodoLabel.objects.filter(name="Modal label").count() == 1
-
-
-class TestModalCreateWithoutAbsoluteUrl(_TodoLabelComponentScenarioCase):
-    view_name = "todo_label_component"
-
-    def get_test_scenarios(self):
-        return [test_base.RequestScenario(
-            name="Modal creates models without an absolute URL",
-            description="UC: A TodoLabel has no redirect URL.\nExpected Result: The label is created and the modal requests a refresh.",
-            method="POST", user=self.admin_user, headers={"hx-request": "true"},
-            data={"name": "Backend", "color": "#000000"},
-            expected=test_base.ExpectedResult(status_code=204, response_validators=self.todo_label_created),
-        )]
-
-    def todo_label_created(self, response):
-        return response.headers.get("HX-Refresh") == "true" and TodoLabel.objects.filter(name="Backend", color="#000000").exists()
