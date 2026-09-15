@@ -1,52 +1,37 @@
 ---
 name: bloomerp-components
-description: "Create and update Bloomerp frontend TypeScript components and backend Django component views with correct lifecycle, router registration, HTMX integration, naming conventions, and permission-aware patterns. Use when implementing or refactoring files under components/ (frontend or backend), adding component routes/templates, or wiring component markup with bloomerp-component attributes."
+description: "Create or update Bloomerp TypeScript components, Django component endpoints, fragment templates, and HTMX wiring with the current component lifecycle, central registration, router conventions, permission enforcement, and component tests. Use for work under frontend or backend component directories or markup using bloomerp-component."
 ---
 
 # Bloomerp Components
 
-## Overview
-Use this skill to implement Bloomerp UI components end-to-end: frontend component classes (TypeScript) plus backend Django component endpoints and templates. Follow the project's component conventions, router patterns, and HTMX interaction model.
+Implement the complete component boundary that the task needs: frontend behavior, server endpoint, fragment or Cotton markup, permissions, and tests. Reuse a nearby current component before introducing a new abstraction.
 
-## Quick workflow
-1. Determine whether the task is frontend, backend, or both.
-2. Reuse existing component patterns before introducing a new abstraction.
-3. Implement component logic using the checklists below.
-4. Validate route names, template paths, and HTMX behavior.
-5. Verify cleanup/lifecycle behavior and permission checks.
+## Workflow
 
-## Frontend component implementation checklist
-- Subclass `BaseComponent` (or `BaseDataViewComponent` for data-view behavior).
-- Register the component with `registerComponent('<component-id>', ComponentClass)`.
-- Ensure markup uses `bloomerp-component="<component-id>"`.
-- Guard all setup with `if (!this.element) return;`.
-- Store event-handler references on the instance for reliable `destroy()` cleanup.
-- Keep state instance-local; avoid module-level mutable state.
-- Use `data-*` attributes for configuration and parse safely.
-- Use `getComponent(element)` for parent-child coordination when needed.
-- Keep logic resilient to HTMX-driven reinitialization (`DOMContentLoaded`, `htmx:afterSwap`, history restore, `pageshow`).
+1. Determine whether the change affects TypeScript, a Django endpoint, templates, or multiple layers.
+2. Read `references/bloomerp_components_guide.md` for the relevant frontend, backend, HTMX, or testing section.
+3. Match component IDs, central TypeScript registration, route `url_name`, template paths, targets, and emitted events end-to-end.
+4. Enforce authorization and queryset/field filtering on the server. Use `$bloomerp-permissions` for permission-sensitive behavior.
+5. Test the endpoint contract with `BloomerpComponentTestCase`; use an end-to-end test only when browser behavior or HTMX event/swap wiring must be proved.
 
-## Backend component implementation checklist
-- Define route handlers in `components/` modules with `@router.register(...)`.
-- Use consistent paths/names:
-  - Path prefix: `components/...`
-  - Name prefix: `components_...`
-- Add type hints (`HttpRequest`, `HttpResponse`, typed URL params).
-- Use `get_object_or_404` for ID-based lookups.
-- Enforce permissions early; return `403` when unauthorized.
-- Filter querysets for the current user when applicable.
-- Validate and sanitize request inputs (`GET`/`POST`).
-- Render component HTML fragments with consistent template naming under `components/...`.
-- Return appropriate statuses (`200`, `400`, `403`, `404`) and HTMX headers/events when useful.
-- Extract complex logic into helper functions to keep views readable.
+## Essential Frontend Rules
 
-## HTMX integration rules
-- Build endpoints that return partial HTML suitable for `hx-swap` updates.
-- Support common patterns:
-  - load-on-render (`hx-trigger="load"`)
-  - delayed search input updates
-  - form GET/POST flows with success + validation re-rendering.
-- Use `HX-Trigger` response headers for cross-component refresh/close events after successful actions.
+- Extend `BaseComponent`, or `BaseDataViewComponent` for cell-oriented data views.
+- Register component classes centrally in `static_src/ts/main.ts` with `registerComponent(...)`, then use the same ID in `bloomerp-component="..."` markup.
+- Do not call `initialize()` from the constructor. The registry instantiates the class, stores it, then calls `initialize()` after class fields are initialized.
+- Make `initialize()` safe for the actual element and keep state instance-local.
+- Prefer an instance `AbortController` and listener `signal` for grouped cleanup; stored handler references plus `removeEventListener` are also valid. Abort requests, observers, timers, editors, and other owned resources in `destroy()`.
+- Override `onAfterSwap()` when an existing component must refresh after swapped child or ancestor content changes.
+- Use `getComponent(element)` for lazy instance access and component coordination. Prefer `CustomEvent` for decoupled communication.
 
-## References
-- Load `references/bloomerp_components_guide.md` for concrete examples and detailed conventions copied from project instructions.
+## Essential Backend Rules
+
+- Put routed component endpoints in `components/` and register them with `bloomerp.router.router`.
+- Use a `components/...` path and an explicit stable `url_name="components_..."`. `name` is human-facing metadata and is not the preferred substitute for a stable reverse name in new code.
+- Validate request method and input, use `get_object_or_404` for scoped lookups, and return appropriate fragments, JSON, statuses, redirects, refreshes, and HTMX trigger headers.
+- Do not treat markup visibility or router registration as authorization.
+
+## Reference
+
+Read `references/bloomerp_components_guide.md` for lifecycle events, routing choices, Cotton guidance, response helpers, and test patterns.

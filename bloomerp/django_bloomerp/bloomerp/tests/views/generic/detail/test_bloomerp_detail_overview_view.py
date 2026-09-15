@@ -1,8 +1,7 @@
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from django.test import override_settings
-from django.urls import clear_url_caches, path, reverse
+from django.urls import reverse
 
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models import ApplicationField, FieldPolicy, Policy, RowPolicy, RowPolicyRule
@@ -10,46 +9,16 @@ from bloomerp.models.audit.activity_log import ActivityLog, ActivityLogAction, A
 from bloomerp.models.project_management import Initiative, Todo
 from bloomerp.models.users.user import DetailSidebarViewPreference
 from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
-from bloomerp.tests import base as test_base
-from bloomerp.views.generic.detail.overview import BloomerpDetailOverviewView
-from config.urls import urlpatterns as project_urlpatterns
+from bloomerp.tests.base.request_test_case_mixin import ExpectedResult, ModelRequestScenario
+from bloomerp.tests.base.view_test_case import BloomerpDetailViewTestCase
 
 
-urlpatterns = list(project_urlpatterns)
-
-
-@override_settings(ROOT_URLCONF=__name__)
-class TestBloomerpDetailOverviewView(test_base.BloomerpDetailViewTestCase):
+class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
     """Readable behavior contract for the generated object overview."""
 
     view_name = "overview"
-    model = None
     create_foreign_models = True
     auto_create_customers = False
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.model = cls.CustomerModel
-        for route_name, model in (
-            ("test_customer_overview", cls.CustomerModel),
-            ("test_todo_overview", Todo),
-            ("test_initiative_overview", Initiative),
-        ):
-            urlpatterns.append(
-                path(
-                    f"test/{route_name}/<uuid:pk>/",
-                    BloomerpDetailOverviewView.as_view(model=model),
-                    name=route_name,
-                )
-            )
-        clear_url_caches()
-
-    @classmethod
-    def tearDownClass(cls):
-        del urlpatterns[-3:]
-        clear_url_caches()
-        super().tearDownClass()
 
     def extendedSetup(self):
         self.customer = self.create_customer("Allowed", "Person", 30)
@@ -63,87 +32,87 @@ class TestBloomerpDetailOverviewView(test_base.BloomerpDetailViewTestCase):
     def create_test_object(self):
         return self.customer
 
-    def get_test_scenarios(self) -> list[test_base.ModelRequestScenario]:
+    def get_test_scenarios(self) -> list[ModelRequestScenario]:
         customer_kwargs = {"pk": self.customer.pk}
         return [
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Object overview requires global view permission",
                 description="UC: A row policy matches but global view access is absent.\nExpected Result: The detail page returns 403.",
                 model=self.CustomerModel,
                 user=self.normal_user,
                 view_kwargs=customer_kwargs,
                 prepare=self.grant_without_global_view,
-                expected=test_base.ExpectedResult(status_code=403),
+                expected=ExpectedResult(status_code=403),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Object overview renders only viewable fields",
                 description="UC: A user can view first and last name only.\nExpected Result: Those fields render and age does not.",
                 model=self.CustomerModel,
                 user=self.normal_user,
                 view_kwargs=customer_kwargs,
                 prepare=self.grant_names_only,
-                expected=test_base.ExpectedResult(response_validators=self.only_name_fields_render),
+                expected=ExpectedResult(response_validators=self.only_name_fields_render),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="View-only fields are disabled",
                 description="UC: A user may view age but not change it.\nExpected Result: The age input renders disabled.",
                 model=self.CustomerModel,
                 user=self.normal_user,
                 view_kwargs=customer_kwargs,
                 prepare=self.grant_first_name_change,
-                expected=test_base.ExpectedResult(response_validators=self.age_is_disabled),
+                expected=ExpectedResult(response_validators=self.age_is_disabled),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Generated layouts omit system fields but keep files editable",
                 description="UC: An administrator opens an object using the generated default layout.\nExpected Result: Internal system fields are omitted while files stay visible and enabled.",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 view_kwargs=customer_kwargs,
-                expected=test_base.ExpectedResult(response_validators=self.system_fields_have_correct_state),
+                expected=ExpectedResult(response_validators=self.system_fields_have_correct_state),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Regular object detail offers create-todo action",
                 description="UC: An administrator opens a regular object.\nExpected Result: The create-todo side action is present.",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 view_kwargs=customer_kwargs,
-                expected=test_base.ExpectedResult(response_validators=self.contains_text("/components/todo/create-todo-for-object/")),
+                expected=ExpectedResult(response_validators=self.contains_text("/components/todo/create-todo-for-object/")),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Persisted comments sidebar is loaded first",
                 description="UC: A user selected Comments for detail sidebars.\nExpected Result: The initial sidebar request targets Comments.",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 view_kwargs=customer_kwargs,
                 prepare=self.select_comments_sidebar,
-                expected=test_base.ExpectedResult(response_validators=self.comments_sidebar_is_selected),
+                expected=ExpectedResult(response_validators=self.comments_sidebar_is_selected),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Activity sidebar is the default",
                 description="UC: A user has no detail-sidebar preference.\nExpected Result: The initial sidebar request targets Activity.",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 view_kwargs=customer_kwargs,
                 prepare=self.reset_sidebar_preference,
-                expected=test_base.ExpectedResult(response_validators=self.activity_sidebar_is_selected),
+                expected=ExpectedResult(response_validators=self.activity_sidebar_is_selected),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Todo detail hides recursive create-todo action",
                 description="UC: A user opens a Todo.\nExpected Result: The create-todo action is hidden.",
                 model=Todo,
                 user=self.admin_user,
                 prepare=self.target_todo,
-                expected=test_base.ExpectedResult(response_validators=self.does_not_contain_text("/components/todo/create-todo-for-object/")),
+                expected=ExpectedResult(response_validators=self.does_not_contain_text("/components/todo/create-todo-for-object/")),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Initiative detail hides recursive create-todo action",
                 description="UC: A user opens an Initiative.\nExpected Result: The create-todo action is hidden.",
                 model=Initiative,
                 user=self.admin_user,
                 prepare=self.target_initiative,
-                expected=test_base.ExpectedResult(response_validators=self.does_not_contain_text("/components/todo/create-todo-for-object/")),
+                expected=ExpectedResult(response_validators=self.does_not_contain_text("/components/todo/create-todo-for-object/")),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Injected non-changeable field is rejected",
                 description="UC: A user posts an age they may view but not change.\nExpected Result: A field-permission error renders and age is unchanged.",
                 model=self.CustomerModel,
@@ -152,9 +121,9 @@ class TestBloomerpDetailOverviewView(test_base.BloomerpDetailViewTestCase):
                 view_kwargs=customer_kwargs,
                 data={"first_name": "Allowed", "age": 31},
                 prepare=self.grant_first_name_change_with_stable_row,
-                expected=test_base.ExpectedResult(response_validators=[self.contains_text("Permission denied for fields: age"), self.age_is_unchanged]),
+                expected=ExpectedResult(response_validators=[self.contains_text("Permission denied for fields: age"), self.age_is_unchanged]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Field validation errors render in their layout item",
                 description="UC: A user submits invalid data for a changeable field.\nExpected Result: The field layout shows its validation state and the object is unchanged.",
                 model=self.CustomerModel,
@@ -163,9 +132,9 @@ class TestBloomerpDetailOverviewView(test_base.BloomerpDetailViewTestCase):
                 view_kwargs=customer_kwargs,
                 data={"age": "not-a-number"},
                 prepare=self.grant_age_change,
-                expected=test_base.ExpectedResult(response_validators=[self.age_error_is_visible, self.age_is_unchanged]),
+                expected=ExpectedResult(response_validators=[self.age_error_is_visible, self.age_is_unchanged]),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Permitted detail edit updates the object",
                 description="UC: A user changes a field allowed by field and row policies.\nExpected Result: The request redirects and persists the new value.",
                 model=self.CustomerModel,
@@ -174,18 +143,18 @@ class TestBloomerpDetailOverviewView(test_base.BloomerpDetailViewTestCase):
                 view_kwargs=customer_kwargs,
                 data={"first_name": "Allowed Updated"},
                 prepare=self.grant_first_name_change,
-                expected=test_base.ExpectedResult(status_code=302, response_validators=self.first_name_was_updated),
+                expected=ExpectedResult(status_code=302, response_validators=self.first_name_was_updated),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Detail available-items endpoint returns layout items",
                 description="UC: A layout editor requests detail fields.\nExpected Result: Available layout items are returned.",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 view_name="detail_layout_available_fields",
                 query_params={"content_type_id": self.content_type.pk},
-                expected=test_base.ExpectedResult(response_validators=self.contains_text("data-layout-item-id")),
+                expected=ExpectedResult(response_validators=self.contains_text("data-layout-item-id")),
             ),
-            test_base.ModelRequestScenario(
+            ModelRequestScenario(
                 name="Successful detail edit records activity provenance",
                 description="UC: An administrator edits a Todo from its detail page.\nExpected Result: A CHANGE activity from DETAIL is recorded with updater attribution.",
                 model=Todo,
@@ -193,7 +162,7 @@ class TestBloomerpDetailOverviewView(test_base.BloomerpDetailViewTestCase):
                 user=self.admin_user,
                 data={"title": "AFTER"},
                 prepare=self.target_activity_todo,
-                expected=test_base.ExpectedResult(status_code=302, response_validators=self.todo_activity_was_recorded),
+                expected=ExpectedResult(status_code=302, response_validators=self.todo_activity_was_recorded),
             ),
         ]
 
@@ -204,12 +173,8 @@ class TestBloomerpDetailOverviewView(test_base.BloomerpDetailViewTestCase):
                 "components_available_layout_items",
                 kwargs={"content_type_id": preference_type.pk},
             )
-        route_name = {
-            self.CustomerModel: "test_customer_overview",
-            Todo: "test_todo_overview",
-            Initiative: "test_initiative_overview",
-        }[setup.model]
-        return reverse(route_name, kwargs=kwargs)
+        return super().get_endpoint(view_name, kwargs, setup)
+
 
     def _ensure_permissions_for_model(self, model):
         content_type = ContentType.objects.get_for_model(model)

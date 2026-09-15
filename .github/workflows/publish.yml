@@ -4,18 +4,16 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/publish.yml"
-      - "bloomerp/django_bloomerp/pyproject.toml"
-      - "bloomerp/django_bloomerp/README.md"
-      - "bloomerp/django_bloomerp/bloomerp/**"
-      - "bloomerp/django_bloomerp/bloomerp_modules/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
 
     defaults:
@@ -27,7 +25,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -42,28 +40,72 @@ jobs:
       - name: Install build tooling
         run: python -m pip install --upgrade build twine
 
-      - name: Read package metadata
+      - name: Determine package version
         id: version
         working-directory: .
         run: |
           python - <<'PY'
+          import os
+          import re
+          import subprocess
           from pathlib import Path
 
-          try:
-              import tomllib
-          except ModuleNotFoundError:
-              import tomli as tomllib
+          import tomllib
 
           pyproject_path = Path("bloomerp/django_bloomerp/pyproject.toml")
-          current = tomllib.loads(pyproject_path.read_text())
+          source = pyproject_path.read_text(encoding="utf-8")
+          current = tomllib.loads(source)
           project = current["project"]["name"]
           version = current["project"]["version"]
+          previous_version = None
 
-          github_output = Path(__import__("os").environ["GITHUB_OUTPUT"])
+          before = os.environ.get("BEFORE_SHA", "")
+          if before and before != "0" * 40:
+              previous_source = subprocess.run(
+                  ["git", "show", f"{before}:{pyproject_path.as_posix()}"],
+                  check=False,
+                  capture_output=True,
+                  text=True,
+              )
+              if previous_source.returncode == 0:
+                  previous_version = tomllib.loads(previous_source.stdout)["project"]["version"]
+
+          needs_commit = "false"
+          if previous_version == version:
+              match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+              if not match:
+                  raise ValueError(f"Cannot increment non-semantic package version: {version}")
+              major, minor, patch = map(int, match.groups())
+              version = f"{major}.{minor}.{patch + 1}"
+
+              lines = source.splitlines(keepends=True)
+              in_project = False
+              replaced = False
+              for index, line in enumerate(lines):
+                  stripped = line.strip()
+                  if stripped == "[project]":
+                      in_project = True
+                      continue
+                  if in_project and stripped.startswith("["):
+                      break
+                  if in_project and re.match(r"^version\s*=", stripped):
+                      newline = "\n" if line.endswith("\n") else ""
+                      lines[index] = f'version = "{version}"{newline}'
+                      replaced = True
+                      break
+              if not replaced:
+                  raise ValueError("Could not find project.version in pyproject.toml")
+              pyproject_path.write_text("".join(lines), encoding="utf-8")
+              needs_commit = "true"
+
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
           with github_output.open("a", encoding="utf-8") as fh:
               fh.write(f"project={project}\n")
               fh.write(f"version={version}\n")
+              fh.write(f"needs_commit={needs_commit}\n")
           PY
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
 
       - name: Check whether this version already exists on PyPI
         id: pypi
@@ -102,6 +144,25 @@ jobs:
         if: steps.pypi.outputs.exists == 'true'
         run: |
           echo "Package version ${{ steps.version.outputs.version }} already exists on PyPI. Skipping publish."
+
+      - name: Commit and push automatic patch version
+        if: steps.pypi.outputs.exists != 'true' && steps.version.outputs.needs_commit == 'true'
+        working-directory: .
+        env:
+          PROJECT_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git fetch origin main
+
+          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+            echo "main advanced after this workflow started; a newer workflow run will publish it."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bloomerp/django_bloomerp/pyproject.toml
+          git commit -m "chore: bump package version to ${PROJECT_VERSION}"
+          git push origin HEAD:main
 
       - name: Build distribution
         if: steps.pypi.outputs.exists != 'true'

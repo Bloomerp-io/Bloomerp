@@ -144,19 +144,25 @@ class BaseBloomerpTestCaseWithModels(TransactionTestCase):
 
         # Append new URL patterns to bloomerp.urls.urlpatterns so they are
         # picked up by Django's URL resolver after clearing its cache.
-        existing_names = {
-            p.name
-            for p in bloomerp_urls.urlpatterns
-            if hasattr(p, 'name') and p.name
-        }
         for route in router.routes:
             if route.model not in test_models:
                 continue
-            if route.url_name in existing_names:
-                continue
             pattern = router.build_url_pattern(route)
-            bloomerp_urls.urlpatterns.append(pattern)
-            existing_names.add(route.url_name)
+            existing_index = next(
+                (
+                    index
+                    for index, existing in enumerate(bloomerp_urls.urlpatterns)
+                    if getattr(existing, "name", None) == route.url_name
+                ),
+                None,
+            )
+            if existing_index is None:
+                bloomerp_urls.urlpatterns.append(pattern)
+            else:
+                # Dynamic test models can be recreated with the same app/model
+                # name. Replace the stale model-bound callable so Django and
+                # the route registry both target the current model class.
+                bloomerp_urls.urlpatterns[existing_index] = pattern
 
         clear_url_caches()
         

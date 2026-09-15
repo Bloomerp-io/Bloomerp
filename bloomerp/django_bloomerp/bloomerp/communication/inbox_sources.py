@@ -17,8 +17,6 @@ from bloomerp.utils.json_serialization import make_json_safe
 from bloomerp.utils.realtime import NotificationPayload, ToastPayload, send_user_inbox_message
 
 if TYPE_CHECKING:
-    from django.dispatch import Signal
-
     from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 

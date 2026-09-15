@@ -1,17 +1,13 @@
 import json
-from unittest.mock import patch
 
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
-from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
-from django.urls import clear_url_caches, path, reverse
+from django.urls import reverse
 
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
-from bloomerp.management.commands import save_application_fields
 from bloomerp.models import ApplicationField, FieldPolicy, Policy, RowPolicy, RowPolicyRule
 from bloomerp.models.project_management.todo import Todo, TodoPriority, TodoStatus
 from bloomerp.models.project_management.todo_label import TodoLabel
@@ -23,49 +19,18 @@ from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base.request_test_case_mixin import ExpectedResult
 from bloomerp.tests.base.view_test_case import BloomerpModelViewTestCase, ModelRequestScenario, RequestScenario
-from bloomerp.views.generic.model.create import BloomerpCreateView
-from config.urls import urlpatterns as project_urlpatterns
-
-
-urlpatterns = list(project_urlpatterns)
 
 
 def overridden_create_view(_request, *args, **kwargs):
     return HttpResponse("overridden")
 
 
-@override_settings(ROOT_URLCONF=__name__)
 class TestBloomerpCreateView(BloomerpModelViewTestCase):
     """Readable behavior contract for generated create views and their modal."""
 
     view_name = "add"
-    model = None
     create_foreign_models = True
     auto_create_customers = False
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.model = cls.CustomerModel
-        for route_name, model in (
-            ("test_customer_create", cls.CustomerModel),
-            ("test_planet_create", cls.PlanetModel),
-            ("test_todo_create", Todo),
-        ):
-            urlpatterns.append(
-                path(
-                    f"test/{route_name}/",
-                    BloomerpCreateView.as_view(model=model),
-                    name=route_name,
-                )
-            )
-        clear_url_caches()
-
-    @classmethod
-    def tearDownClass(cls):
-        del urlpatterns[-3:]
-        clear_url_caches()
-        super().tearDownClass()
 
     def extendedSetup(self):
         self.content_type = ContentType.objects.get_for_model(self.CustomerModel)
@@ -121,7 +86,8 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
                 name="Save-and-create-next persists and returns to create",
                 description="UC: A user submits valid data with the current create URL as next.\nExpected Result: The object is created and the response redirects back to create.",
                 model=customer, method="POST", user=self.admin_user,
-                data={"first_name": "Another", "last_name": "Customer", "age": 30, "next": "/test/test_customer_create/"},
+                data={"first_name": "Another", "last_name": "Customer", "age": 30},
+                prepare=self.set_create_next,
                 expected=ExpectedResult(status_code=302, response_validators=self.saved_customer_and_redirected),
             ),
             ModelRequestScenario(
@@ -296,13 +262,6 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         ]
 
     def get_endpoint(self, view_name, kwargs, setup=None):
-        if view_name == "add":
-            route_name = "test_customer_create"
-            if setup.model is self.PlanetModel:
-                route_name = "test_planet_create"
-            elif setup.model is Todo:
-                route_name = "test_todo_create"
-            return reverse(route_name)
         if view_name == "customer_component":
             return reverse("components_create_object", kwargs={"content_type_id": self.content_type.pk})
         if view_name == "todo_label_component":
@@ -369,11 +328,16 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
 
     def save_controls_render(self, response):
         html = response.content.decode()
-        return all(value in html for value in ('id="object-crud-container-save-button"', 'id="object-crud-container-save-and-create-new-button"', 'name="next"', 'value="/test/test_customer_create/"'))
+        path = response.request["PATH_INFO"]
+        return all(value in html for value in ('id="object-crud-container-save-button"', 'id="object-crud-container-save-and-create-new-button"', 'name="next"', f'value="{path}"'))
+
+    def set_create_next(self, scenario):
+        self.create_url = self.get_endpoint("add", None, scenario)
+        scenario.data["next"] = self.create_url
 
     def saved_customer_and_redirected(self, response):
         created = self.CustomerModel.objects.get()
-        return response.headers.get("Location") == "/test/test_customer_create/" and created.first_name == "Another" and created.last_name == "Customer"
+        return response.headers.get("Location") == self.create_url and created.first_name == "Another" and created.last_name == "Customer"
 
     def standalone_todo_created(self, _response):
         return Todo.objects.filter(
@@ -489,4 +453,3 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         self.first_layout.refresh_from_db()
         self.second_layout.refresh_from_db()
         return not self.first_layout.selected and self.second_layout.selected
-

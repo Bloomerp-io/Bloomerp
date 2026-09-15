@@ -49,6 +49,14 @@ class UnconfiguredModuleRouteTestCase(view_test_cases.BloomerpModuleViewTestCase
         return []
 
 
+class ScenarioConfiguredSubmitRouteTestCase(view_test_cases.BloomerpDetailViewTestCase):
+    __test__ = False
+    view_name = "submit"
+
+    def get_test_scenarios(self):
+        return [ModelRequestScenario(model=Form)]
+
+
 class SpecializedViewTestCaseTests(SimpleTestCase):
     def test_detail_route_uses_model_and_preserves_view_kwargs(self):
         """
@@ -110,6 +118,13 @@ class SpecializedViewTestCaseTests(SimpleTestCase):
             ),
             "/misc/forms/123/submit/",
         )
+
+    def test_route_registration_uses_scenario_model(self):
+        """
+        Use case: A view test declares model contexts only on its scenarios.
+        Expected result: Route registration validates those models without a class default.
+        """
+        ScenarioConfiguredSubmitRouteTestCase().test_route_registration()
 
     def test_module_request_setup_overrides_the_class_module(self):
         """

@@ -1,45 +1,32 @@
 ---
 name: bloomerp-permissions
-description: "Inspect and modify BloomERP's permission system, including Django `has_perm(...)` checks, model permission codenames, `Policy.global_permissions`, `FieldPolicy.rule`, `RowPolicy` and `RowPolicyRule`, `UserPermissionManager`, API queryset filtering, field-level visibility, and permission-sensitive components or views. Use when any task touches permissions, access control, authorization, record visibility, editability, queryset scoping, access-control serializers, or UI behavior gated by permissions."
+description: "Inspect or change Bloomerp authorization across Django permissions, Policy assignments, row and field rules, unified AccessRule compilation, APIs, components, views, SQL, and object visibility. Use whenever behavior depends on who may view, create, change, delete, import, export, or bulk-operate on models, rows, or fields."
 ---
 
 # Bloomerp Permissions
 
-Use this skill before changing permission-sensitive code. BloomERP authorization is layered, and a correct change usually needs alignment across Django model permissions, policy assignment, row filtering, field filtering, and UI/API enforcement.
+Bloomerp authorization is layered. Trace the complete request path before changing behavior; an entrypoint gate, row filter, field filter, and API access rule may all participate.
 
-## Quick Workflow
-1. Identify which permission layer the task touches: model capability, row visibility, field visibility, or a combination.
-2. Trace the request path from the entrypoint to the enforcement point instead of assuming `has_perm(...)` is the whole story.
-3. Read `references/permission_system.md` before editing if the task changes behavior rather than only renaming code.
-4. Preserve superuser behavior and the current default for normal users with no assigned policy.
-5. Add or update permission tests when behavior changes.
+## Workflow
 
-## Permission Layers
-- Use `BloomerpModel.Meta.default_permissions` as the canonical source for generated model-level codenames: `add`, `change`, `delete`, `view`, `bulk_change`, `bulk_delete`, `bulk_add`, `export`.
-- Use `Policy` to attach access control to users and groups. A policy combines one `RowPolicy`, one `FieldPolicy`, and optional `global_permissions`.
-- Use `UserPermissionManager.get_queryset(...)` for row-level access and `has_field_permission(...)` / `get_accessible_fields(...)` for field-level access.
-- Use `BloomerpModelViewSet` for API enforcement. It filters rows through `get_queryset`, strips disallowed serializer fields on read, and rejects writes to denied fields.
-- Use component/layout helpers that already call `UserPermissionManager` instead of duplicating permission logic.
+1. Identify the requested capability and enforcement surfaces: global/model, row, field, object, API, component/view, SQL, or bulk operation.
+2. Read `references/permission_system.md` before changing behavior or debugging an unexpected access result.
+3. Prefer the existing `UserPolicyManager`, `PolicyManager`, `ApiAccessResolver`, and permission compilers over duplicating access logic.
+4. Preserve and test superuser, anonymous, direct-user policy, group-policy, and normal-user-with-no-policy behavior as relevant.
+5. Add focused tests under `bloomerp/django_bloomerp/bloomerp/tests/permissions/`, plus API, component, view, SQL, or end-to-end coverage at the enforcement boundary being changed.
 
-## Working Rules
-- Prefer `create_permission_str(model, action)` when building permission codenames in services or viewsets.
-- Keep permission string formats straight:
-  - Django `has_perm(...)` expects fully qualified strings like `bloomerp.view_customer`.
-  - `FieldPolicy.rule` stores bare codenames like `view_customer`.
-  - `RowPolicyRule.permissions` stores `auth.Permission` objects scoped to the content type.
-- Treat field and row policies as allow-lists. No matching policy means no access for non-superusers.
-- Remember that multiple row rules combine with OR semantics in `UserPermissionManager.get_queryset(...)`.
-- Remember that field policies union together, and `__all__` grants a permission across all fields for that content type.
-- Do not assume `Policy.global_permissions` is automatically enforced everywhere. Inspect call sites before depending on it.
-- Do not assume `AbstractBloomerpUser.get_content_types_for_user(...)` reflects row or field policies. It derives from Django auth permissions only.
+## Essential Rules
 
-## Validation Checklist
-- Check the direct permission gate at the entrypoint: view, component, serializer, command, or API endpoint.
-- Check row access with `UserPermissionManager.get_queryset(...)` if records should be filtered.
-- Check field visibility or editability with `has_field_permission(...)` / `get_accessible_fields(...)` if output or writes depend on specific fields.
-- Check superuser behavior explicitly.
-- Check the no-policy case explicitly for normal users.
-- Update or add tests under `bloomerp/django_bloomerp/bloomerp/tests/access_control/` when changing permission behavior.
+- `BloomerpModel.Meta.default_permissions` comes from `BloomerpPermission`: `add`, `change`, `delete`, `view`, `export`, `import`, `bulk_add`, `bulk_change`, and `bulk_delete`.
+- Use `UserPolicyManager` for a user's compiled global, row, field, and object access. `get_queryset(...)` remains a compatibility alias for `get_accessible_queryset(...)`.
+- `create_permission_str(model, action)` returns a bare model codename such as `view_customer`. Direct Django `user.has_perm(...)` calls require a qualified string such as `sales.view_customer`; manager APIs normalize bare, qualified, and enum inputs.
+- `Policy.global_permissions` is enforced by `UserPolicyManager.has_global_permission(...)` alongside Django user/group permissions.
+- Stored row permissions are content-type-scoped `auth.Permission` objects. Their rule JSON is a shared `Filter` tree; new code should use `FilterCondition(field_path=..., lookup_id=..., value=...)` rather than the legacy `RowPolicyRuleCondition` adapter.
+- `FieldPolicy.rule` is keyed by `ApplicationField` ID and stores bare model codenames. `__all__` grants the matching permission across all fields for that content type.
+- Treat row and field access as allow-lists. Multiple applicable access rules union access; conditions inside one row rule follow that rule's `AND` or `OR` connector.
+- `AbstractBloomerpUser.get_content_types_for_user(...)` reflects Django user/group permissions only, not policy-derived row or field access.
+- If model-configured API access is involved, also use `$bloomerp-model-config`.
 
-## References
-- Load `references/permission_system.md` for the BloomERP-specific permission map, file locations, and current sharp edges.
+## Reference
+
+Read `references/permission_system.md` for current schemas, compilers, API action mapping, source locations, and test routing.

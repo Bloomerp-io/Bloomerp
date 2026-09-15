@@ -6,9 +6,8 @@ from bloomerp.tests.base import (
     BloomerpAPIDetailViewTestCase,
     ExpectedResult,
     RequestScenario,
-    ModelRequestScenario,
 )
-from bloomerp.workspaces.tiles import TileType
+from bloomerp.workspaces.registry import TILE_TYPE_REGISTRY
 
 
 class TestSaveCanvasStateView(BloomerpAPIDetailViewTestCase):
@@ -31,7 +30,7 @@ class TestSaveCanvasStateView(BloomerpAPIDetailViewTestCase):
                 prepare=lambda scenario: self.prepare_tile(
                     scenario,
                     owner=self.normal_user,
-                    tile_type=TileType.CANVAS_TILE.name,
+                    tile_type=TILE_TYPE_REGISTRY.CANVAS_TILE.name,
                     state={"elements": [{"id": "shape-1"}]},
                 ),
                 expected=ExpectedResult(
@@ -50,7 +49,7 @@ class TestSaveCanvasStateView(BloomerpAPIDetailViewTestCase):
                 prepare=lambda scenario: self.prepare_tile(
                     scenario,
                     owner=self.admin_user,
-                    tile_type=TileType.CANVAS_TILE.name,
+                    tile_type=TILE_TYPE_REGISTRY.CANVAS_TILE.name,
                     state={"elements": [{"id": "blocked"}]},
                 ),
                 expected=ExpectedResult(response_validators=self.canvas_state_was_saved),
@@ -67,7 +66,7 @@ class TestSaveCanvasStateView(BloomerpAPIDetailViewTestCase):
                 prepare=lambda scenario: self.prepare_tile(
                     scenario,
                     owner=self.normal_user,
-                    tile_type=TileType.TEXT_TILE.name,
+                    tile_type=TILE_TYPE_REGISTRY.TEXT_TILE.name,
                     state={"elements": []},
                     schema={"markdown": "Keep me"},
                 ),
@@ -88,7 +87,7 @@ class TestSaveCanvasStateView(BloomerpAPIDetailViewTestCase):
                 prepare=lambda scenario: self.prepare_tile(
                     scenario,
                     owner=self.normal_user,
-                    tile_type=TileType.CANVAS_TILE.name,
+                    tile_type=TILE_TYPE_REGISTRY.CANVAS_TILE.name,
                     state=[],
                 ),
                 expected=ExpectedResult(

@@ -33,7 +33,7 @@ Generate selected categories with a comma-separated list:
 
 ```bash
 uv run python manage.py generate_test_cases bloomerp \
-  --functionality=models,model_fields,form_fields,widgets,e2e
+  --functionality=models,model_fields,form_fields,widgets,lookups,e2e
 ```
 
 Supported values are:
@@ -47,9 +47,27 @@ Supported values are:
 - `dataviews`
 - `model_fields`
 - `form_fields`
+- `lookups`
 
 `--functionality=all` is equivalent to selecting every category. Hyphens in
 category names are normalized to underscores.
+
+## Generated category map
+
+Every generator target has a corresponding guide:
+
+| Generator value | Generated base test case | Guide |
+| --- | --- | --- |
+| `views` | `BloomerpViewTestCase` and its model, detail, module, and API variants | [View test cases](view-test-case.md) |
+| `components` | `BloomerpComponentTestCase` | [Component test cases](component-test-case.md) |
+| `e2e` | `BloomerpE2ETestCase` | [End-to-end test cases](e2e-test-case.md) |
+| `models` | `BloomerpModelTestCase` | [Model test cases](model-test-case.md) |
+| `widgets` | `BloomerpWidgetTestCase` | [Widget test cases](widget-test-case.md) |
+| `workflow_nodes` | `BloomerpWorkflowNodeTestCase` | [Workflow node test cases](workflow-node-test-case.md) |
+| `dataviews` | `BloomerpDataviewTestCase` | [Dataview test cases](dataview-test-case.md) |
+| `model_fields` | `BloomerpModelFieldTestCase` | [Model field test cases](model-field-test-case.md) |
+| `form_fields` | `BloomerpFormFieldTestCase` | [Form field test cases](form-field-test-case.md) |
+| `lookups` | `BloomerpLookupTestCase` | [Lookup test cases](lookup-test-case.md) |
 
 The generator safely refreshes files that are still untouched skeletons. It
 skips files containing authored test behavior. `--force` overwrites existing
@@ -64,8 +82,9 @@ Choose the narrowest layer that owns the contract:
 2. A form field validates raw input and converts it to a Python value.
 3. A model field converts Python values and prepares persistence data.
 4. A model owns record lifecycle rules and model-level invariants.
-5. A component or view owns one server-side HTTP interaction.
-6. An end-to-end test owns browser wiring and a complete user journey.
+5. A lookup owns its compiled query, optional SQL, and in-memory evaluation.
+6. A component or view owns one server-side HTTP interaction.
+7. An end-to-end test owns browser wiring and a complete user journey.
 
 The `e2e` category generates browser-test skeletons only for ordinary app,
 module, model, and detail views. API endpoints, components, and websocket
@@ -94,6 +113,7 @@ phase.
 - [Model field test cases](model-field-test-case.md)
 - [Form field test cases](form-field-test-case.md)
 - [Widget test cases](widget-test-case.md)
+- [Lookup test cases](lookup-test-case.md)
 - [Request scenarios](request-test-case.md)
 - [View test cases](view-test-case.md)
 - [Component test cases](component-test-case.md)

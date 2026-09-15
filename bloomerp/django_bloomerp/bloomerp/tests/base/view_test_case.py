@@ -78,15 +78,26 @@ class BloomerpViewTestCase(RequestTestCaseMixin, BaseBloomerpTestCaseWithModels)
         if self.view_name is None:
             return
 
-        # 2. Require the context needed by specialized route families.
+        # 2. Resolve class-level or scenario-level route contexts.
         if self.route_type in {
             RouteType.MODEL,
             RouteType.DETAIL,
             RouteType.API_MODEL,
             RouteType.API_DETAIL,
         }:
-            if self.model is None:
-                self.skipTest("Set model to test this route")
+            models = [self.model] if self.model is not None else list(dict.fromkeys(
+                scenario.model
+                for scenario in self.get_test_scenarios()
+                if isinstance(scenario, ModelRequestScenario)
+                and (scenario.view_name or self.view_name) == self.view_name
+            ))
+            if not models:
+                self.skipTest("Set a model on the test case or a request scenario")
+            for model in models:
+                route = self.get_route(model=model)
+                self.assertEqual(route.route_type, self.route_type)
+                self.assertIs(route.model, model)
+            return
         if self.route_type == RouteType.MODULE and self.module is None:
             self.skipTest("Set module to test this route")
 
