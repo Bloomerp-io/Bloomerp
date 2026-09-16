@@ -1,4 +1,4 @@
-from django.forms.models import ModelMultipleChoiceField
+from django.forms.models import ModelChoiceField, ModelMultipleChoiceField
 
 from bloomerp.field_types.utils.form_field_factories import form
 from bloomerp.field_types.utils.render_value_functions import (
@@ -26,7 +26,7 @@ from bloomerp.form_fields.one_to_many_field import OneToManyField
 from bloomerp.form_fields.ordered_multiple_choice_field import (
     OrderedMultipleChoiceField,
 )
-from bloomerp.lookups.definition import BoundLookup
+from bloomerp.lookups.definition import BoundLookup, FilterFieldContext
 from bloomerp.model_fields.one_to_one_user_field import OneToOneUserField
 from bloomerp.model_fields.user_field import UserField
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
@@ -55,6 +55,28 @@ REL_VALUES_IN_LOOKUP = BoundLookup(
             }
         )
     )    
+)
+
+
+def relation_single_value_form(
+    context: FilterFieldContext,
+) -> forms.ModelChoiceField:
+    """Build a scalar relation editor for equals and not-equals lookups."""
+    related_model = context.application_field.related_model.model_class()
+    return ModelChoiceField(
+        queryset=related_model.objects.all(),
+        widget=ForeignFieldWidget(model=related_model),
+    )
+
+
+REL_EQUALS_LOOKUP = BoundLookup(
+    lookups.EQUALS,
+    form_factory=relation_single_value_form,
+)
+
+REL_NOT_EQUALS_LOOKUP = BoundLookup(
+    lookups.NOT_EQUALS,
+    form_factory=relation_single_value_form,
 )
 
 
@@ -104,8 +126,8 @@ MANY_TO_MANY_FIELD = FieldTypeDefinition(
     model_field_cls=models.ManyToManyField,
     label="Many To Many Field",
     lookups=(
-        lookups.EQUALS, 
-        lookups.NOT_EQUALS, 
+        REL_EQUALS_LOOKUP,
+        REL_NOT_EQUALS_LOOKUP,
         lookups.IS_NULL,
         REL_VALUES_IN_LOOKUP, 
         lookups.FOREIGN_ADVANCED
