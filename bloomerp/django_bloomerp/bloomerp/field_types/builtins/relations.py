@@ -1,3 +1,6 @@
+from typing import Any
+
+from django.core.exceptions import ValidationError
 from django.forms.models import ModelChoiceField, ModelMultipleChoiceField
 
 from bloomerp.field_types.utils.form_field_factories import form
@@ -58,13 +61,24 @@ REL_VALUES_IN_LOOKUP = BoundLookup(
 )
 
 
+class SingleRelationChoiceField(ModelChoiceField):
+    """Accept scalar relation values and the legacy singleton-list shape."""
+
+    def to_python(self, value: Any) -> models.Model | None:
+        if isinstance(value, (list, tuple)):
+            if len(value) != 1:
+                raise ValidationError("Enter a single value.", code="invalid_list")
+            value = value[0]
+        return super().to_python(value)
+
+
 def relation_single_value_form(
     context: FilterFieldContext,
-) -> forms.ModelChoiceField:
+) -> SingleRelationChoiceField:
     """Build a scalar relation editor for equals and not-equals lookups."""
     related_model = context.application_field.related_model.model_class()
-    return ModelChoiceField(
-        queryset=related_model.objects.all(),
+    return SingleRelationChoiceField(
+        queryset=related_model._default_manager.all(),
         widget=ForeignFieldWidget(model=related_model),
     )
 
