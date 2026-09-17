@@ -10,7 +10,7 @@ class TestHumanInTheLoopNode(BloomerpWorkflowNodeTestCase):
     node_id = 'HUMAN_IN_THE_LOOP'
     executor_class = HumanInTheLoopExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name="",

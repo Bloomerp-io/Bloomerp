@@ -13,7 +13,7 @@ class TestUpdateObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'UPDATE_OBJECT'
     executor_class = UpdateObjectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         todo = Todo.objects.create(title="Prepare report")
         content_type = ContentType.objects.get_for_model(Todo)
 

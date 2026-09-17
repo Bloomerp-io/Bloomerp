@@ -10,5 +10,5 @@ class TestCollectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'COLLECT'
     executor_class = CollectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return []

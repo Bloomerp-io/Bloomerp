@@ -17,7 +17,7 @@ class TestIfConditionNode(BloomerpWorkflowNodeTestCase):
         self.assertIsNone(ports["true"].max_connections)
         self.assertIsNone(ports["false"].max_connections)
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             self.condition("equals", "age", "exact", "20", {"age": 20}, "true"),
             self.condition("does not equal", "age", "exact", "99", {"age": 20}, "false"),

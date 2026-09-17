@@ -7,7 +7,7 @@ from bloomerp.tests.base.workflow_node_test_case import BloomerpWorkflowNodeTest
 class TestOnObjectCreateNode(BloomerpWorkflowNodeTestCase):
     node_id = "ON_OBJECT_CREATE"
     
-    def get_simulations(self):
+    def get_test_scenarios(self):
         return [
             WorkflowNodeScenario(
                 

@@ -7,7 +7,7 @@ from bloomerp.tests.base.workflow_node_test_case import BloomerpWorkflowNodeTest
 class TestEnrichNode(BloomerpWorkflowNodeTestCase):
     node_id = "ENRICH_DATA"
     
-    def get_simulations(self):
+    def get_test_scenarios(self):
         return [
             WorkflowNodeScenario(
                 name="Normal enrichment",

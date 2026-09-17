@@ -154,7 +154,7 @@ class TestAddGreetingNode(BloomerpWorkflowNodeTestCase):
     node_id = "ADD_GREETING"
     executor_class = AddGreetingExecutor
 
-    def get_simulations(self):
+    def get_test_scenarios(self):
         input_schema = WorkflowIOSchema(value_type="object")
         return [
             WorkflowNodeScenario(

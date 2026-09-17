@@ -119,7 +119,7 @@ class BloomerpWorkflowNodeTestCase(TestCase):
             raise AssertionError(f"Workflow node {definition.id!r} is not a trigger")
         return self.add_node(**kwargs)
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         """Return direct execution scenarios for the configured node."""
         return []
 
@@ -139,7 +139,7 @@ class BloomerpWorkflowNodeTestCase(TestCase):
         self.workflow = self.create_test_workflow()
 
         # 3. Execute the configured node once for every simulation.
-        for index, simulation in enumerate(self.get_simulations(), start=1):
+        for index, simulation in enumerate(self.get_test_scenarios(), start=1):
             with self.subTest(name=simulation.name or f"simulation {index}"):
                 node = self.add_node(
                     self.node_id,

@@ -10,5 +10,5 @@ class TestOnObjectDeleteNode(BloomerpWorkflowNodeTestCase):
     node_id = 'ON_OBJECT_DELETE'
     executor_class = ObjectCrudTrigger
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return []

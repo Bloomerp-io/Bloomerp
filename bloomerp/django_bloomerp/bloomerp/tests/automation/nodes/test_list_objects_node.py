@@ -12,7 +12,7 @@ class TestListObjectsNode(BloomerpWorkflowNodeTestCase):
     node_id = 'LIST_OBJECTS'
     executor_class = ListObjectsExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         Todo.objects.create(title="First task")
         Todo.objects.create(title="Second task")
         content_type = ContentType.objects.get_for_model(Todo)

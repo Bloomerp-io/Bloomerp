@@ -10,7 +10,7 @@ class TestGeneratePdfNode(BloomerpWorkflowNodeTestCase):
     node_id = 'GENERATE_PDF'
     executor_class = GeneratePdfExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name=""

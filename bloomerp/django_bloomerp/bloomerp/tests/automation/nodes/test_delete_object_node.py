@@ -12,7 +12,7 @@ class TestDeleteObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'DELETE_OBJECT'
     executor_class = DeleteObjectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         todo = Todo.objects.create(title="Delete this task")
         content_type = ContentType.objects.get_for_model(Todo)
 

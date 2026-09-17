@@ -10,5 +10,5 @@ class TestMergeBranchesNode(BloomerpWorkflowNodeTestCase):
     node_id = 'MERGE_BRANCHES'
     executor_class = MergeBranchExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return []

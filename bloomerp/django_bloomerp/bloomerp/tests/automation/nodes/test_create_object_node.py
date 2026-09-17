@@ -16,7 +16,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
     executor_class = CreateObjectExecutor
 
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         todo_content_type = ContentType.objects.get_for_model(Todo)
         user = get_user_model().objects.create_user(
             username="creator",

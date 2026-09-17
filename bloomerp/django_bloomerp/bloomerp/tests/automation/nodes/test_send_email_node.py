@@ -10,5 +10,5 @@ class TestSendEmailNode(BloomerpWorkflowNodeTestCase):
     node_id = 'SEND_EMAIL'
     executor_class = SendEmailExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return []

@@ -44,7 +44,7 @@ class TestSqlQueryNode(BloomerpWorkflowNodeTestCase):
     node_id = 'SQL_QUERY'
     executor_class = SqlQueryActionExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         Todo.objects.create(title="Title")
         Todo.objects.create(title="Another todo")
 

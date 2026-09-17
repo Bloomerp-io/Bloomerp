@@ -18,7 +18,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = "CREATE_OBJECT"
     executor_class = CreateObjectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return []
 ```
 

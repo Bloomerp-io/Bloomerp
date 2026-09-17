@@ -27,7 +27,7 @@ class TestCallApiNode(BloomerpWorkflowNodeTestCase):
             return response
         raise ConnectionError("Unable to connect")
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name="Node returns a successful API response",
