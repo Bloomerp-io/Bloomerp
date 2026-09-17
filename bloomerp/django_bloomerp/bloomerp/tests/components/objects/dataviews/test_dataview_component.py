@@ -2,6 +2,7 @@
 from collections.abc import Callable
 from unittest import skip
 
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from pydantic import TypeAdapter
@@ -11,6 +12,7 @@ from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleCondition, RowPolicyRuleContent
@@ -129,7 +131,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             preference.save(update_fields=["display_fields", "options", "view_type"])
 
         return set_fields
-    
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         for i in range(10):
             planet = self.PlanetModel.objects.create(name=f"Planet {i}")
@@ -141,6 +143,15 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
         kwargs = {"content_type_id": self.get_content_type_for_model(self.CustomerModel).pk}
         customers = self.CustomerModel.objects
+
+        customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        document_template_content_type = ContentType.objects.get_for_model(DocumentTemplate)
+        matching_template = DocumentTemplate.objects.create(name="Customer template")
+        matching_template.content_types.add(customer_content_type)
+        unrelated_template = DocumentTemplate.objects.create(name="Unrelated template")
+        document_template_kwargs = {
+            "content_type_id": document_template_content_type.pk,
+        }
         
         request_scenarios = []
         for dataview_type in DATAVIEW_REGISTRY.values():
@@ -270,6 +281,38 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                         )
                     ]
                 )
+            ),
+            RequestScenario(
+                name="FILTERS: Many-to-many equality accepts one shorthand value",
+                description=(
+                    "UC: A document-template dataview is scoped to one object type.\n"
+                    "Expected Result: The matching template renders without a validation error."
+                ),
+                user=self.admin_user,
+                view_kwargs=document_template_kwargs,
+                query_params={"content_types": str(customer_content_type.pk)},
+                expected=ExpectedResult(
+                    response_validators=self.contains_entries(
+                        DocumentTemplate.objects.filter(pk=matching_template.pk)
+                    )
+                ),
+            ),
+            RequestScenario(
+                name="FILTERS: Many-to-many not-equals accepts one shorthand value",
+                description=(
+                    "UC: A document-template dataview excludes one object type.\n"
+                    "Expected Result: Only the unrelated template renders."
+                ),
+                user=self.admin_user,
+                view_kwargs=document_template_kwargs,
+                query_params={
+                    "content_types_not_equals": str(customer_content_type.pk),
+                },
+                expected=ExpectedResult(
+                    response_validators=self.contains_entries(
+                        DocumentTemplate.objects.filter(pk=unrelated_template.pk)
+                    )
+                ),
             ),
             RequestScenario(
                 name="FILTERS: Additional filter does not override default filters",
