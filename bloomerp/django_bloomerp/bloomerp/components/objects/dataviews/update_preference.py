@@ -86,7 +86,9 @@ def _change_split_view(preference: UserListViewPreference, post_data) -> HttpRes
 
 def _change_data_view_type(preference: UserListViewPreference, post_data) -> HttpResponse | None:
     view_type = post_data["view_type"]
-    if DATAVIEW_REGISTRY.get(view_type) is None:
+    
+    registered_view_type = DATAVIEW_REGISTRY.get(view_type)
+    if registered_view_type is None or not registered_view_type.available_for_model(preference.content_type.model_class()):
         return HttpResponse("Invalid view type", status=400)
 
     preference.view_type = view_type

@@ -3,7 +3,7 @@ from typing import Literal
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.dataviews.base import (
+from bloomerp.dataviews.definition import (
     BaseDataView,
     PageSize,
     PreferenceOption,

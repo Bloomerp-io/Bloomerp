@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
-from ..base import BaseDataviewRenderer, DataviewPagination
+from ..definition import BaseDataviewRenderer, DataviewPagination
 
 
 class CardDataviewRenderer(BaseDataviewRenderer):

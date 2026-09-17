@@ -47,12 +47,13 @@ class DataViewTileRenderer(BaseTileRenderer):
             else:
                 get_params[key] = str(value)
 
-        for key in ["tile_id", "colspan", "max_cols", "workspace_id"]:
+        for key in ["tile_id", "colspan", "max_cols", "workspace_id", "config"]:
             get_params.pop(key, None)
 
         request = copy(request)
         request.GET = get_params
 
+        
         return dataview(
             request,
             content_type_id=config.content_type_id,

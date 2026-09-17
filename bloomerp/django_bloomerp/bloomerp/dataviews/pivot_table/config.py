@@ -7,7 +7,7 @@ from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from pydantic import BaseModel, Field, model_validator
 
-from bloomerp.dataviews.base import (
+from bloomerp.dataviews.definition import (
     BaseDataView,
     PageSize,
     PreferenceOption,

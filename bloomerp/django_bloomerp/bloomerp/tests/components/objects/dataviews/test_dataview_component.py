@@ -7,7 +7,7 @@ from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from pydantic import TypeAdapter
 
-from bloomerp.dataviews.base import BaseDataView, DataviewTypeDefinition
+from bloomerp.dataviews.definition import BaseDataView, DataviewTypeDefinition
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.filters.definition import Filter, FilterCondition, Filters

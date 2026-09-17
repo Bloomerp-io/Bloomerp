@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from bloomerp.models.users.user import AbstractBloomerpUser
     from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 
-from ..base import BaseDataviewRenderer
+from ..definition import BaseDataviewRenderer
 
 
 KANBAN_EMPTY_COLUMN_VALUE = "__none__"

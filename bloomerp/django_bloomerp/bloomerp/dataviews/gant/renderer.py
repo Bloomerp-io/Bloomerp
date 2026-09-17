@@ -15,7 +15,7 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 
-from ..base import BaseDataviewRenderer, DataviewPagination, DataviewRenderState
+from ..definition import BaseDataviewRenderer, DataviewPagination, DataviewRenderState
 
 
 class GanttDataviewRenderer(BaseDataviewRenderer):

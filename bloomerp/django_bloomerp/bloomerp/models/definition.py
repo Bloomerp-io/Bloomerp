@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from django.http import HttpRequest, HttpResponse
 from bloomerp.config.definition import BloomerpConfig
-from bloomerp.dataviews.base import BaseDataView
+from bloomerp.dataviews.definition import BaseDataView
 from bloomerp.permissions.definition import AccessRule
 from bloomerp.workspaces.base import BaseTileConfig
 from pydantic import (
@@ -489,6 +489,7 @@ class BloomerpModelConfig(BaseModel):
     string_search_settings : StringSearchSettings = StringSearchSettings(allow_global_search=True)
     
     activity_log_settings : ActivityLogSettings = ActivityLogSettings(enabled=True)
+    
     
     @field_validator("tiles")
     @classmethod

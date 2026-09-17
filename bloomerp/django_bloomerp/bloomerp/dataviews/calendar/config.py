@@ -7,7 +7,7 @@ from django.db import models
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.dataviews.base import (
+from bloomerp.dataviews.definition import (
     BaseDataView,
     PreferenceOption,
     application_field_choices,

@@ -323,7 +323,7 @@ class DataviewTypeDefinition:
     opts: list[PreferenceOption] = field(default_factory=list)
     requires_display_fields: bool = True
     model: type[BaseModel] | None = None
-    is_available:Callable[[Type[models.Model]], bool] = lambda model: True
+    available_for_model:Callable[[Type[models.Model]], bool] = lambda model: True
 
     def create_opts_form(
         self,

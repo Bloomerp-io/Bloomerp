@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from django.contrib.contenttypes.models import ContentType
 from django.test import RequestFactory
 
-from bloomerp.dataviews.base import DataviewPagination, DataviewRenderState
+from bloomerp.dataviews.definition import DataviewPagination, DataviewRenderState
 from bloomerp.dataviews.kanban.renderer import KanbanDataviewRenderer
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
