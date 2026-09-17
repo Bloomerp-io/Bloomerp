@@ -1,4 +1,4 @@
-from bloomerp.components.objects.dataviews.dataview import _build_data_view_query_state
+from bloomerp.components.objects.dataviews.dataview import _build_dataview_state
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.router import router
 from django.http import HttpRequest, HttpResponse
@@ -10,7 +10,7 @@ from django.http import HttpRequest, HttpResponse
 )
 def dataview_action(request: HttpRequest, content_type_id: int, action: str) -> HttpResponse:
     """Dispatches a view-specific dataview action to the active renderer."""
-    state = _build_data_view_query_state(request, content_type_id)
+    state = _build_dataview_state(request, content_type_id)
     if isinstance(state, HttpResponse):
         return state
 

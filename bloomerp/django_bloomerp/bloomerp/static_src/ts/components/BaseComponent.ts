@@ -37,6 +37,14 @@ class BaseComponent {
         // Override this method if needed
     }
 
+    /**
+     * Called after HTMX restores a page from its history cache.
+     * Override this when cached markup must be reconciled with current server state.
+     */
+    public onHistoryRestore(): void {
+        // Override this method if needed
+    }
+
     public getDataAttribute(attributeName: string): string | null {
         if (!this.element) return null;
         return this.element.dataset[attributeName] || null;
@@ -119,6 +127,19 @@ export function initComponents(container: Document | HTMLElement = document): vo
  * Initialize components on DOM ready and after HTMX swaps
  */
 export function setupComponentAutoInit(): void {
+    let historyRestoreTimer: number | null = null;
+
+    const scheduleHistoryRestoreCallbacks = (): void => {
+        if (historyRestoreTimer !== null) window.clearTimeout(historyRestoreTimer);
+        historyRestoreTimer = window.setTimeout(() => {
+            historyRestoreTimer = null;
+            initComponents(document);
+            document.querySelectorAll<HTMLElement>(`[${componentIdentifier}]`).forEach((element) => {
+                getComponent(element)?.onHistoryRestore();
+            });
+        }, 0);
+    };
+
     const runAfterSwapCallbacks = (container: Document | HTMLElement): void => {
         const scope = container instanceof Document ? document : container;
         const selector = `[${componentIdentifier}][data-component-initialized="true"]`;
@@ -193,10 +214,15 @@ export function setupComponentAutoInit(): void {
 
         // When navigating back/forward with HTMX history, the DOM can be restored
         // without an afterSwap on the right container. Re-scan the document.
-        document.body.addEventListener('htmx:historyRestore', () => {
-            initComponents(document);
+        document.body.addEventListener('htmx:historyRestore', (event: Event) => {
+            if ((event as CustomEvent).detail?.cacheMiss) return;
+            scheduleHistoryRestoreCallbacks();
         });
     }
+
+    // A popstate fallback makes the browser URL authoritative even when HTMX's
+    // cached-history event is missed. Deferring lets HTMX restore its snapshot first.
+    window.addEventListener('popstate', scheduleHistoryRestoreCallbacks);
 
     // When the browser restores a page from the back-forward cache (bfcache),
     // DOMContentLoaded won't fire again. Re-init components on pageshow.

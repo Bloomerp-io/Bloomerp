@@ -4,9 +4,10 @@ from bloomerp.lookups.definition import FilterFieldContext
 import json
 from typing import Any
 
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from bloomerp.form_fields.address_field import AddressFormField
+from bloomerp.form_fields.address_field import AddressFormField, normalize_address_value
 from bloomerp.lookups.definition import CompiledLookup, LookupDefinition
 from typing import TYPE_CHECKING
 
@@ -31,9 +32,12 @@ def address_contains_q_factory(
     value: Any,
 ) -> CompiledLookup:
     del application_field, expression
+    normalized_value = normalize_address(value)
+    if isinstance(value, str) and value.strip() and not normalized_value:
+        return CompiledLookup(predicate=Q(pk__in=[]))
     predicate = Q()
     for key, _label, _autocomplete in ADDRESS_COMPONENTS:
-        component = str(normalize_address(value).get(key, "")).strip()
+        component = str(normalized_value.get(key, "")).strip()
         if component:
             lookup = "iexact" if key == "country" else "icontains"
             predicate &= Q(**{f"{field_path}__{key}__{lookup}": component})
@@ -58,11 +62,25 @@ def address_contains(actual: Any, expected: Any) -> bool:
     return True
 
 
+class AddressContainsFormField(AddressFormField):
+    """Clean filter payloads without requiring the address widget's list form."""
+
+    def clean(self, value: Any) -> Any:
+        if isinstance(value, (dict, str)):
+            try:
+                return normalize_address_value(value)
+            except ValidationError:
+                # Invalid legacy query parameters compile to a no-match
+                # predicate instead of turning a filter request into a 500.
+                return value
+        return super().clean(value)
+
+
 def address_contains_form_factory(
     context: FilterFieldContext,
 ) -> AddressFormField:
     del context
-    return AddressFormField(required=False)
+    return AddressContainsFormField(required=False)
 
 
 ADDRESS_CONTAINS = LookupDefinition(

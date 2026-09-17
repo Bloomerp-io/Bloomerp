@@ -7,16 +7,18 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.components.files.browser import (
-    _coerce_query_value,
-    _get_file_for_mutation,
-    _get_target_folder,
-    _user_can_view_folder,
-)
 from bloomerp.models import File, FileFolder
 from bloomerp.models.files.file_folder import user_can_change_folder
 from bloomerp.router import router
-from bloomerp.services.file_permission_services import user_can_mutate_file
+from bloomerp.services.file_permission_services import (
+    user_can_mutate_file,
+    user_can_view_folder,
+)
+from bloomerp.services.file_services import (
+    coerce_file_scope_value,
+    get_file_for_mutation,
+    get_target_folder,
+)
 from bloomerp.utils.requests import render_blank_form, render_page_refresh_with_message
 
 
@@ -37,7 +39,7 @@ def _available_folders(
         content_type_id=file.content_type_id,
         object_id=file.object_id,
     )
-    visible_ids = [folder.pk for folder in folders if _user_can_view_folder(request, folder)]
+    visible_ids = [folder.pk for folder in folders if user_can_view_folder(request, folder)]
     return FileFolder.objects.filter(pk__in=visible_ids).order_by("name")
 
 
@@ -102,13 +104,13 @@ def move_file_browser_item(request: HttpRequest) -> HttpResponse:
         return HttpResponse("Method not allowed", status=405)
 
     item_type = request.POST.get("item_type")
-    target_folder = _get_target_folder(
-        _coerce_query_value(request.POST.get("target_folder_id"))
+    target_folder = get_target_folder(
+        coerce_file_scope_value(request.POST.get("target_folder_id"))
     )
 
     if item_type == "file":
         try:
-            file = _get_file_for_mutation(request)
+            file = get_file_for_mutation(request)
         except PermissionError:
             return HttpResponse(status=403)
         if not _folder_accepts_file(target_folder, file):

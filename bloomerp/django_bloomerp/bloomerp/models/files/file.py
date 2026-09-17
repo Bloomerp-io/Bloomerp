@@ -10,6 +10,7 @@ from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _, gettext_noop
 
+from bloomerp.dataviews.file_browser.config import FileBrowserDataview
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import BloomerpModel
 from bloomerp.models.definition import (
@@ -91,19 +92,17 @@ class File(
                     modal_title="Create folder",
                     icon="fa fa-folder-plus"
                 ),
-                *get_default_dataview_actions()
+                DataviewHTMLAction(
+                    id="upload",
+                    template_name="components/objects/dataview_actions/upload_files.html",
+                    shortcut="mod+2",
+                ),
+                *get_default_dataview_actions(skip=["add"])
             ],
             default_dataviews=[
-                TableDataView(
-                    display_fields=[
-                        "name",
-                        "file",
-                        "size_str"
-                        
-                    ]
-                )
-            ]   
-             
+                FileBrowserDataview()
+            ]
+
         ),
         object_actions=[
             ObjectAction(
@@ -243,6 +242,15 @@ class File(
         else:
             return f"{size / 1024 / 1024 / 1024:.2f} GB"
 
+    @property
+    def icon_class(self):
+        match self.file_extension:
+            case "pdf":
+                return "fa-file-pdf"
+
+            case _:
+                return "fa-file"
+
     def __str__(self):
         return str(self.name)
 
@@ -301,6 +309,7 @@ class File(
     def upload_files_to_object(cls, object:models.Model, files:Iterable[UploadedFile]) -> list['File']:
         """Uploads files to a certain object
         """
+        from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
         files = [uploaded for uploaded in files if uploaded]
         if not files:
             return []
@@ -317,9 +326,11 @@ class File(
                     object_id=str(object.pk),
                 )
             )
+
+        ensure_folder_hierarchy_for_object(object)
+
         return created_files
-    
-    
+
     @classmethod
     def move_files_to_object(cls, target:models.Model, files:Iterable['File']) -> list['File']:
         """Moves files from one object to another

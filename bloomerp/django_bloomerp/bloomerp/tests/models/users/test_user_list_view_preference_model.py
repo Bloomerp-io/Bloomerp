@@ -84,13 +84,12 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 content_type=self.scenario_content_type,
             ).order_by("pk")
         )
-        status = ApplicationField.get_by_field(Todo, "status")
         return (
             [preference.name for preference in preferences] == ["Board"]
             and selected == preferences[0]
             and selected.selected
             and selected.view_type == "kanban"
-            and selected.options["kanban"]["group_by_field_id"] == status.pk
+            and selected.options["kanban"]["group_by_field"] == "status"
         )
 
     @staticmethod
@@ -143,7 +142,7 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
             and not preferences[1].selected
             and preferences[0].display_fields["kanban"] == [first_name.pk, age.pk]
             and preferences[0].options["kanban"] == {
-                "group_by_field_id": age.pk,
+                "group_by_field": "age",
                 "page_size": 25,
                 "sort_field": "first_name",
                 "sort_direction": "asc",
@@ -180,7 +179,7 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
     def restricted_fields_are_omitted(preference):
         return (
             preference.display_fields["kanban"] == []
-            and preference.options["kanban"]["group_by_field_id"] is None
+            and preference.options["kanban"]["group_by_field"] is None
             and preference.options["kanban"]["sort_field"] is None
             and not preference.default_filters.exists()
         )

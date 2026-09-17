@@ -4,7 +4,7 @@
     bloomerp-component="dataview-display-options"
     data-content-type-id="{{ content_type_id }}"
     data-preference-id="{{ preference.id }}"
-    data-preference-url="{% url 'components_update_dataview_preference' content_type_id=content_type_id %}"
+    data-preference-url="{% url 'components_update_dataview_preference' content_type_id=content_type_id %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
     data-view-type="{{ preference.view_type }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
     class="max-h-[60vh] overflow-y-auto"
@@ -55,7 +55,6 @@
             {% for field in dataview_options_form.visible_fields %}
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 text-sm text-gray-600">
-                    {% get_icon name="lines_horizontal" size="16" %}
                     <span>{{ field.label }}</span>
                 </div>
                 {{ field }}
@@ -69,9 +68,9 @@
     </div>
 
 
+    {% if preference.should_display_field_options %}
     <hr class="border-gray-200 my-4">
 
-    {% if preference.should_display_field_options %}
     <!-- Field Visibility Options -->
     <div class="mb-4">
         <h3 class="text-sm font-medium text-gray-900 mb-2">Visible fields</h3>

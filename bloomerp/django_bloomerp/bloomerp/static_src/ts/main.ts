@@ -45,7 +45,6 @@ import WorkspaceContainer from './components/workspaces/WorkspaceContainer';
 import WorkspaceTile from './components/workspaces/WorkspaceTile';
 import SqlQueryEditor from './components/inputs/SqlQueryEditor';
 import Canvas from './components/workspaces/tiles/Canvas';
-import FileDataViewContainer from './components/files/FileDataViewContainer';
 import DocumentTemplateDataViewContainer from './components/data_view_components/DocumentTemplateDataViewContainer';
 import ForeignFieldDataViewContainer from './components/data_view_components/ForeignFieldDataViewContainer';
 import { SidebarItem } from './components/sidebar/SidebarItem';
@@ -76,6 +75,7 @@ import BaseSectionedLayoutContainer from './components/layouts/BaseSectionedLayo
 import ThemeProvider from './components/theme/ThemeProvider';
 import MarkdownCodeBlock from './components/MarkdownCodeBlock';
 import { loadTranslations } from './utils/i18n';
+import { FileBrowser } from './components/data_view_components/FileBrowser';
 
 Object.assign(window, { showMessage });
 
@@ -96,6 +96,8 @@ registerComponent('dataview-display-options', DataViewDisplayOptions);
 registerComponent('pivot-table', PivotTable);
 registerComponent('calendar', Calendar);
 registerComponent('calendar-cell', CalendarCell);
+registerComponent('file-browser', FileBrowser)
+
 
 // Datatable
 registerComponent('datatable', DataTable);
@@ -159,9 +161,6 @@ registerComponent('workflow', Workflow);
 // Global search
 registerComponent('global-search-modal', GlobalSearch);
 registerComponent('search-section', SearchSection);
-
-// File browser
-registerComponent('file-dataview-container', FileDataViewContainer);
 
 // Workspace components
 registerComponent('workspace-container', WorkspaceContainer);

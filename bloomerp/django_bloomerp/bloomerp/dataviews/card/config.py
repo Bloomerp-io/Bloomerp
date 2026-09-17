@@ -4,28 +4,24 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.dataviews.definition import (
-    BaseDataView,
-    PageSize,
-    PreferenceOption,
+    BaseDataview,
     page_size_choices,
 )
 
 
-class CardDataView(BaseDataView):
+class CardDataView(BaseDataview):
     """A declarative card dataview."""
 
     view_type: Literal["card"] = "card"
     page_size: Literal[10, 25, 50, 100] = 25
 
-
-CARD_OPTIONS = [
-    PreferenceOption(
-        key="page_size",
-        label=_("Page size"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=page_size_choices,
-        description=_("The number of cards shown on each page."),
-        data_type=int,
-        default_value=PageSize.SIZE_25,
-    ),
-]
+    @classmethod
+    def create_form_field(cls, name, field_info, state):
+        if name == "page_size":
+            return forms.TypedChoiceField(
+                **page_size_choices(state.accessible_fields),
+                label=_("Page size"),
+                help_text=_("The number of cards shown on each page."),
+                required=False,
+            )
+        return super().create_form_field(name, field_info, state)

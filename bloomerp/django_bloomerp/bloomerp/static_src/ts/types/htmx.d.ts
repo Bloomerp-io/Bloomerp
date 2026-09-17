@@ -65,6 +65,8 @@ declare global {
     swap?: string;
     values?: Record<string, any>;
     headers?: Record<string, string>;
+    push?: string;
+    replace?: string;
   }
 
   interface HtmxEvent extends CustomEvent {

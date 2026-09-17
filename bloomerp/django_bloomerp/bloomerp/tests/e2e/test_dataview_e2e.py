@@ -449,11 +449,11 @@ class TestDataViewE2E:
         # 1. Switch to the pivot view and locate its native row-field selector.
         change_view_type(DATAVIEW_REGISTRY.get("pivot_table"), page)
         display_menu = page.locator("div[role='menu']:visible").filter(
-            has=page.locator("select[name='row_field_ids']")
+            has=page.locator("select[name='row_fields']")
         )
 
         # 2. Select both row dimensions in one native multiple-select change.
-        row_selector = display_menu.locator("select[name='row_field_ids']")
+        row_selector = display_menu.locator("select[name='row_fields']")
         with page.expect_response(
             lambda response: "change_data_view_preference" in response.url,
             timeout=5000,
@@ -462,9 +462,9 @@ class TestDataViewE2E:
 
         # 3. Select two value fields after the display options re-render.
         display_menu = page.locator("div[role='menu']:visible").filter(
-            has=page.locator("select[name='value_field_ids']")
+            has=page.locator("select[name='value_fields']")
         )
-        value_selector = display_menu.locator("select[name='value_field_ids']")
+        value_selector = display_menu.locator("select[name='value_fields']")
         with page.expect_response(
             lambda response: "change_data_view_preference" in response.url,
             timeout=5000,
@@ -478,13 +478,13 @@ class TestDataViewE2E:
             content_type=content_type,
             selected=True,
         )
-        assert preference.options["pivot_table"]["row_field_ids"] == [
-            ApplicationField.get_by_field(dataview_model, "first_name").id,
-            ApplicationField.get_by_field(dataview_model, "last_name").id,
+        assert preference.options["pivot_table"]["row_fields"] == [
+            "first_name",
+            "last_name",
         ]
-        assert preference.options["pivot_table"]["value_field_ids"] == [
-            ApplicationField.get_by_field(dataview_model, "first_name").id,
-            ApplicationField.get_by_field(dataview_model, "age").id,
+        assert preference.options["pivot_table"]["value_fields"] == [
+            "first_name",
+            "age",
         ]
 
     def test_change_visible_fields(self, authenticated_dataview_page: Page):

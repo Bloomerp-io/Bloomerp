@@ -1,0 +1,81 @@
+{% load bloomerp i18n %}
+
+<div
+    bloomerp-component="file-browser"
+    data-content-type-id="{{ content_type_id }}"
+    data-current-folder-id="{{ current_folder.pk|default:'' }}"
+    data-scope-content-type-id="{{ scope_content_type_id|default:'' }}"
+    data-scope-object-id="{{ scope_object_id|default:'' }}"
+    data-upload-url="{{ upload_url }}"
+    data-move-url="{{ move_url }}"
+    >
+    <div class="rounded-xl border border-b-0 border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0">
+        <table class="table-auto table-hover table w-full border-collapse outline-none">
+            <thead>
+                <tr>
+                    <th>{% trans "Name" %}</th>
+                    <th>{% trans "Object" %}</th>
+                    <th>{% trans "File Size" %}</th>
+                    <th>{% trans "Uploaded At" %}</th>
+                    <th>{% trans "Actions" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for folder in folders %}
+                <tr
+                    class="cursor-pointer hover:bg-base-200"
+                    data-folder-id="{{ folder.pk }}"
+                    data-folder-dropzone="{{ folder.pk }}"
+                    data-folder-content-type-id="{{ folder.content_type_id|default:'' }}"
+                    data-folder-object-id="{{ folder.object_id|default:'' }}"
+                    data-item-type="folder"
+                    draggable="true"
+                >
+                    <td>
+                        <i class="fa fa-folder text-xl mr-2"></i>
+                        {{ folder.name }}</td>
+                    <td>{{ folder.content_object|default:"" }}</td>
+                    <td></td>
+                    <td></td>
+                    <td data-no-folder-click>
+                        {% for action in folder_actions %}
+                            {% render_object_action action=action object=folder request=request content_type_id=folder_content_type_id %}
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% for file in files %}
+                <tr
+                    data-file-id="{{ file.pk }}"
+                    data-item-type="file"
+                    draggable="true"
+                >
+                    <td>
+                        <i class="fa {{file.icon_class}} text-xl mr-2"></i>
+                        {{ file.name }}</td>
+                    <td>{{ file.content_object|default:"" }}</td>
+                    <td>{{ file.size_str }}</td>
+                    <td>{{ file.datetime_created }}</td>
+                    <td data-no-file-drag>
+                        {% for action in file_actions %}
+                            {% render_object_action action=action object=file request=request content_type_id=file_content_type_id %}
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not folders and not files %}
+                <tr
+                    class="hover:bg-base-200"
+                    data-empty-folder-dropzone
+                    data-folder-dropzone="{{ current_folder.pk|default:'' }}"
+                >
+                    <td colspan="5" class="py-8 text-center text-base-content/60">
+                        <i class="fa fa-upload mr-2"></i>
+                        {% trans "Drop files here" %}
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Type
+from types import UnionType
+from typing import TYPE_CHECKING, Any, Callable, Literal, Type, Union, get_args, get_origin
 
 from django import forms
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
@@ -12,34 +13,47 @@ from django.forms import Form
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils.translation import gettext_lazy as _
-from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.fields import FieldInfo
 
 if TYPE_CHECKING:
     from django.contrib.contenttypes.models import ContentType
     from django.db.models import Model, QuerySet
     from django.http import HttpRequest
 
+    from bloomerp.filters.definition import Filters
     from bloomerp.models.application_field import ApplicationField
     from bloomerp.models.definition import ObjectAction
     from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+    from bloomerp.services.user_services import DataViewFields
 
 
 @dataclass
-class DataviewRenderState:
-    """Shared state passed from the dataview shell to a concrete renderer."""
+class DataviewState:
+    """Canonical request, query, and rendering state for a dataview."""
 
     request: HttpRequest
-    content_type_id: int
     content_type: ContentType
     model: type[Model]
     preference: UserListViewPreference
     queryset: QuerySet
-    fields: Any
+    fields: DataViewFields
     render_fields: list[ApplicationField]
     avatar_field: ApplicationField | None
     options: Any | None = None
+    query: str | None = None
+    count: int = 0
+    filters: Filters | None = None
     object_actions: list[ObjectAction] = field(default_factory=list)
-    extra_context: dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def content_type_id(self) -> int:
+        return self.content_type.id
+
+    @property
+    def accessible_fields(self) -> list[ApplicationField]:
+        return [field for field, _is_visible in self.fields.accessible_fields]
 
 
 @dataclass
@@ -58,7 +72,7 @@ class BaseDataviewRenderer:
     template_name: str = ""
     reserved_query_params: set[str] = set()
 
-    def __init__(self, state: DataviewRenderState):
+    def __init__(self, state: DataviewState):
         self.state = state
         self.options = state.options
 
@@ -67,7 +81,7 @@ class BaseDataviewRenderer:
         return self.state.preference.view_type
 
     @classmethod
-    def get_options_form(cls, *, state: DataviewRenderState) -> type[Form] | None:
+    def get_options_form(cls, *, state: DataviewState) -> type[Form] | None:
         return None
 
     def apply_queryset(self):
@@ -99,21 +113,16 @@ class BaseDataviewRenderer:
         return HttpResponse(f"Unsupported dataview action: {action}", status=400)
 
     @staticmethod
-    def get_field_from_data_view_fields(dataview_fields, field_id):
-        if field_id in (None, ""):
-            return None
-
-        try:
-            field_id = int(field_id)
-        except (TypeError, ValueError):
+    def get_field_from_data_view_fields(dataview_fields, field_name):
+        if field_name in (None, ""):
             return None
 
         for field, _is_visible in getattr(dataview_fields, "accessible_fields", []):
-            if field.id == field_id:
+            if field.field == field_name:
                 return field
 
         for field in getattr(dataview_fields, "visible_fields", []):
-            if field.id == field_id:
+            if field.field == field_name:
                 return field
 
         return None
@@ -173,7 +182,7 @@ class BaseDataviewRenderer:
         return querystring.urlencode()
 
     def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
-        context = dict(self.state.extra_context)
+        context = dict(self.state.context)
         context.update({
             "content_type_id": self.state.content_type_id,
             "queryset": pagination.queryset,
@@ -184,21 +193,29 @@ class BaseDataviewRenderer:
         })
         return context
 
-    def render(self, pagination: DataviewPagination | None = None) -> str:
+    def render(
+        self,
+        pagination: DataviewPagination | None = None,
+        *,
+        extra_context: dict[str, Any] | None = None,
+    ) -> str:
         if not self.template_name:
             raise NotImplementedError("Dataview renderers must define template_name.")
 
         if pagination is None:
             pagination = self.paginate(self.apply_queryset())
 
+        context = self.get_context_data(pagination)
+        context.update(extra_context or {})
+
         return render_to_string(
             self.template_name,
-            self.get_context_data(pagination),
+            context,
             request=self.state.request,
         )
 
 
-class BaseDataView(BaseModel):
+class BaseDataview(BaseModel):
     """Shared declarative settings for a default model dataview."""
 
     model_config = ConfigDict(extra="forbid")
@@ -208,6 +225,108 @@ class BaseDataView(BaseModel):
     display_fields: list[str] = Field(default_factory=list)
     default_filters: dict[str, str | list[str]] = Field(default_factory=dict)
     split_view_enabled: bool = False
+
+    @classmethod
+    def option_field_names(cls) -> list[str]:
+        """Return config fields persisted in ``UserListViewPreference.options``."""
+        common_fields = set(BaseDataview.model_fields)
+        return [
+            name
+            for name in cls.model_fields
+            if name not in common_fields and name != "view_type"
+        ]
+
+    def dump_options(self) -> dict[str, Any]:
+        """Serialize only view-specific preference options."""
+        return self.model_dump(
+            include=set(self.option_field_names()),
+            mode="json",
+        )
+
+    @classmethod
+    def form_factory(
+        cls,
+        state: DataviewState,
+    ) -> type[forms.Form]:
+        """Create the options form class for this dataview configuration."""
+        form_fields = {
+            name: cls.create_form_field(
+                name,
+                cls.model_fields[name],
+                state,
+            )
+            for name in cls.option_field_names()
+        }
+        for form_field in form_fields.values():
+            if isinstance(form_field.widget, forms.Select):
+                form_field.widget.attrs.setdefault(
+                    "class",
+                    "select select-sm w-40 bg-base border-0",
+                )
+        return type(f"{cls.__name__}OptionsForm", (forms.Form,), form_fields)
+
+    @classmethod
+    def create_form_field(
+        cls,
+        name: str,
+        field_info: FieldInfo,
+        _state: DataviewState,
+    ) -> forms.Field:
+        """Create a sensible default Django field for one Pydantic option."""
+        annotation = field_info.annotation
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+        non_none_args = tuple(arg for arg in args if arg is not type(None))
+        required = field_info.is_required()
+        label = field_info.title or name.replace("_", " ").title()
+        help_text = field_info.description or ""
+
+        if origin in {Union, UnionType} and len(non_none_args) == 1:
+            annotation = non_none_args[0]
+            origin = get_origin(annotation)
+            args = get_args(annotation)
+            required = False
+
+        if origin is Literal:
+            values = list(args)
+            value_type = type(values[0]) if values else str
+            return forms.TypedChoiceField(
+                label=label,
+                help_text=help_text,
+                required=required,
+                choices=[(value, str(value).replace("_", " ").title()) for value in values],
+                coerce=value_type,
+            )
+        if annotation is bool:
+            return forms.BooleanField(
+                label=label,
+                help_text=help_text,
+                required=False,
+            )
+        if origin is list:
+            return forms.MultipleChoiceField(
+                label=label,
+                help_text=help_text,
+                required=required,
+                choices=[],
+            )
+        if origin is dict:
+            return forms.JSONField(
+                label=label,
+                help_text=help_text,
+                required=required,
+            )
+        if annotation is int:
+            return forms.IntegerField(
+                label=label,
+                help_text=help_text,
+                required=required,
+            )
+        return forms.CharField(
+            label=label,
+            help_text=help_text,
+            required=required,
+        )
 
     @field_validator("name")
     @classmethod
@@ -252,9 +371,6 @@ class PageSize(models.IntegerChoices):
     SIZE_100 = 100, _("100")
 
 
-DEFAULT_OPTION_UNSET = object()
-
-
 def application_field_choices(
     application_fields: QuerySet[ApplicationField],
     *,
@@ -267,7 +383,7 @@ def application_field_choices(
     for application_field in application_fields:
         if field_types and application_field.field_type not in field_types:
             continue
-        choices.append((str(application_field.id), application_field.title))
+        choices.append((application_field.field, application_field.title))
 
     return choices
 
@@ -299,18 +415,6 @@ def page_size_choices(
 
 
 @dataclass
-class PreferenceOption:
-    key: str
-    label: str
-    field_cls: type[forms.Field]
-    field_attrs_func: Callable[[QuerySet[ApplicationField]], dict] | None = None
-    description: str | None = None
-    data_type: type = str
-    default_value: Any = DEFAULT_OPTION_UNSET
-    required: bool = False
-
-
-@dataclass
 class DataviewTypeDefinition:
     """Metadata, configuration, and renderer wiring for one dataview type."""
 
@@ -319,53 +423,6 @@ class DataviewTypeDefinition:
     description: str
     icon: str
     renderer_cls: type[BaseDataviewRenderer]
-    config_cls: type[BaseDataView]
-    opts: list[PreferenceOption] = field(default_factory=list)
+    config_cls: type[BaseDataview]
     requires_display_fields: bool = True
-    model: type[BaseModel] | None = None
     available_for_model:Callable[[Type[models.Model]], bool] = lambda model: True
-
-    def create_opts_form(
-        self,
-        application_fields: QuerySet[ApplicationField],
-    ) -> type[forms.Form]:
-        """Creates an opts form based on the opts.
-
-        Returns:
-            forms.Form: the form
-        """
-        attrs = {}
-        for option in self.opts:
-
-            # Get the extra opts
-            extra_opts = {}
-            if option.field_attrs_func:
-                extra_opts = option.field_attrs_func(application_fields)
-
-            attrs[option.key] = option.field_cls(
-                label=option.label,
-                help_text=option.description,
-                required=option.required,
-                **extra_opts,
-            )
-            attrs[option.key].widget.attrs.setdefault(
-                "class",
-                "select select-sm w-40 bg-base border-0",
-            )
-
-        return type("OptionsForm", (forms.Form,), attrs)
-
-    def create_model_from_opts(self) -> type[BaseModel]:
-        attrs = {}
-        for opt in self.opts:
-            if opt.default_value is not DEFAULT_OPTION_UNSET:
-                model_field = (opt.data_type, opt.default_value)
-            else:
-                model_field = (opt.data_type, ...)
-
-            attrs[opt.key] = model_field
-        model_name = "".join(part.title() for part in self.key.split("_"))
-        return create_model(f"{model_name}DataviewOptions", **attrs)
-
-    def get_options_model(self) -> type[BaseModel]:
-        return self.model or self.create_model_from_opts()

@@ -1,4 +1,4 @@
-from bloomerp.components.objects.dataviews.dataview import _build_data_view_query_state, _build_dataview_action_context, _get_configured_dataview_actions
+from bloomerp.components.objects.dataviews.dataview import _build_dataview_state, _build_dataview_action_context, _get_configured_dataview_actions
 from bloomerp.models.definition import DataviewAction
 from bloomerp.router import router
 
@@ -18,7 +18,7 @@ def configured_dataview_action(
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
 
-    state = _build_data_view_query_state(request, content_type_id)
+    state = _build_dataview_state(request, content_type_id)
     if isinstance(state, HttpResponse):
         return state
 

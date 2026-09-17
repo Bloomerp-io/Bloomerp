@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from django.contrib.contenttypes.models import ContentType
 from django.test import RequestFactory
 
-from bloomerp.dataviews.definition import DataviewPagination, DataviewRenderState
+from bloomerp.dataviews.definition import DataviewPagination, DataviewState
 from bloomerp.dataviews.kanban.renderer import KanbanDataviewRenderer
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
@@ -147,9 +147,8 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
         request = RequestFactory().get("/")
         request.user = self.admin_user
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        renderer = KanbanDataviewRenderer(DataviewRenderState(
+        renderer = KanbanDataviewRenderer(DataviewState(
             request=request,
-            content_type_id=content_type.pk,
             content_type=content_type,
             model=self.CustomerModel,
             preference=SimpleNamespace(view_type="kanban", options={}),
@@ -161,7 +160,7 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
             render_fields=[],
             avatar_field=None,
             options=SimpleNamespace(
-                group_by_field_id=self.country_field.pk,
+                group_by_field="country",
                 page_size=25,
             ),
         ))

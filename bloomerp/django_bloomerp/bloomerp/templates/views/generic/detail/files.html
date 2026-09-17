@@ -1,7 +1,1 @@
-<div
-    hx-get="{{ file_browser_url }}"
-    hx-trigger="load"
-    hx-target="this"
-    hx-swap="outerHTML"
-    hx-headers='{"X-Bloomerp-Sync-Url": "true"}'
-></div>
+<c-features.dataviews.call content_type_id="{{ file_content_type_id }}" :filters="filters" :sync_url="True"/>

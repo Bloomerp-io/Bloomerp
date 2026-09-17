@@ -31,7 +31,7 @@ from bloomerp.tests.base import (
 from bloomerp.tests.models.default_filters_scenarios import default_filter_scenarios
 from bloomerp.workspaces.utils import has_access_to_workspace
 from bloomerp.workspaces.text_tile.model import TextTileConfig
-from bloomerp.workspaces.tiles import TileType
+from bloomerp.workspaces.registry import TILE_TYPE_REGISTRY
 
 
 class TestWorkspaceModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
@@ -113,7 +113,7 @@ class TestWorkspaceModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
                     "Expected Result: It resolves to the registered persisted tile type."
                 ),
                 create_operation=lambda: resolve_tile_type_from_config(TextTileConfig(id="notes")),
-                create_validators=lambda tile_type: tile_type == TileType.TEXT_TILE.name,
+                create_validators=lambda tile_type: tile_type == TILE_TYPE_REGISTRY.TEXT_TILE.name,
             ),
             ModelScenario(
                 name="Shared initial workspace creates selected live reference",
@@ -198,7 +198,7 @@ class TestWorkspaceModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
         return Tile.objects.create(
             name=name,
             description="",
-            type=TileType.TEXT_TILE.name,
+            type=TILE_TYPE_REGISTRY.TEXT_TILE.name,
             schema={},
             created_by=self.admin_user,
             updated_by=self.admin_user,
@@ -232,7 +232,7 @@ class TestWorkspaceModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
         return (
             tile.pk == self.initial_tile_pk
             and tile.auto_generated
-            and tile.type == TileType.TEXT_TILE.name
+            and tile.type == TILE_TYPE_REGISTRY.TEXT_TILE.name
             and tile.schema["id"] == "planning:notes"
             and tile.name == "Updated planning notes"
             and tile.schema["markdown"] == "Updated"

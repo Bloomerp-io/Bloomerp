@@ -1,7 +1,11 @@
 from django.middleware.csrf import get_token
 from pydantic import ValidationError as PydanticValidationError
 
-from bloomerp.components.objects.dataviews.dataview import _get_accessible_application_fields, _get_dataview_options_form
+from bloomerp.components.objects.dataviews.dataview import (
+    _build_dataview_state,
+    _get_dataview_options_form,
+)
+from bloomerp.dataviews.definition import DataviewState
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.models import ApplicationField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
@@ -9,11 +13,10 @@ from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.services.user_services import get_data_view_fields, toggle_field_visibility
+from bloomerp.services.user_services import toggle_field_visibility
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
-import json
 
 
 def _change_data_view_field_visibility(
@@ -49,10 +52,10 @@ def _change_data_view_field_visibility(
 
 
 def _change_data_view_options(
-    preference: UserListViewPreference,
-    dataview_fields,
+    state: DataviewState,
     post_data,
 ) -> HttpResponse | None:
+    preference = state.preference
     view_type = post_data["dataview_options_view_type"]
     if view_type != preference.view_type:
         return HttpResponse("Invalid options view type", status=400)
@@ -61,15 +64,22 @@ def _change_data_view_options(
     if definition is None:
         return HttpResponse("Invalid view type", status=400)
 
-    form_cls = definition.create_opts_form(dataview_fields)
+    form_cls = definition.config_cls.form_factory(state)
     form = form_cls(post_data)
     if not form.is_valid():
         return HttpResponse("Invalid options", status=400)
 
     options = dict(preference.options or {})
-    option_model = definition.get_options_model()
+    option_model = definition.config_cls
     try:
-        options[view_type] = option_model.model_validate(form.cleaned_data).model_dump()
+        cleaned_options = {
+            key: value
+            for key, value in form.cleaned_data.items()
+            if value != ""
+        }
+        options[view_type] = option_model.model_validate(
+            cleaned_options
+        ).dump_options()
     except PydanticValidationError as error:
         return HttpResponse(f"Invalid options: {error}", status=400)
 
@@ -101,7 +111,9 @@ def _render_display_options(
     content_type_id: int,
     preference: UserListViewPreference,
 ) -> HttpResponse:
-    dataview_fields = get_data_view_fields(preference)
+    state = _build_dataview_state(request, content_type_id, preference)
+    if isinstance(state, HttpResponse):
+        return state
     return render(
         request,
         "cotton/features/dataviews/display_options.html",
@@ -109,13 +121,9 @@ def _render_display_options(
             "content_type_id": content_type_id,
             "view_types": [vt for vt in DATAVIEW_REGISTRY.values()],
             "preference": preference,
-            "fields": dataview_fields,
-            "accessible_fields": _get_accessible_application_fields(dataview_fields),
-            "dataview_options_form": _get_dataview_options_form(
-                preference,
-                _get_accessible_application_fields(dataview_fields),
-                request,
-            ),
+            "fields": state.fields,
+            "accessible_fields": state.accessible_fields,
+            "dataview_options_form": _get_dataview_options_form(state),
             "csrf_token": get_token(request),
         },
     )
@@ -168,12 +176,10 @@ def update_dataview_preference(request: HttpRequest, content_type_id: int) -> Ht
         case "split_view":
             error_response = _change_split_view(preference, request.POST)
         case "opt":
-            dataview_fields = get_data_view_fields(preference)
-            error_response = _change_data_view_options(
-                preference,
-                _get_accessible_application_fields(dataview_fields),
-                request.POST,
-            )
+            state = _build_dataview_state(request, content_type_id, preference)
+            if isinstance(state, HttpResponse):
+                return state
+            error_response = _change_data_view_options(state, request.POST)
         case "field":
             error_response = _change_data_view_field_visibility(request, content_type, preference, request.POST)
         case _:

@@ -7,7 +7,7 @@ from django.utils.html import format_html
 
 from bloomerp.models.files.file import File
 from bloomerp.router import router
-from bloomerp.components.files.browser import _user_can_view_file
+from bloomerp.services.file_permission_services import user_can_view_file
 
 @router.register(
     path="components/files/preview_file/<str:file_id>/",
@@ -22,7 +22,7 @@ def preview_file(request:HttpRequest, file_id:str) -> HttpResponse:
         file_id (str): the file id
     """
     file = get_object_or_404(File, id=file_id)
-    if not _user_can_view_file(request, file):
+    if not user_can_view_file(request, file):
         return HttpResponse(status=403)
 
     extension = file.file_extension.lower()

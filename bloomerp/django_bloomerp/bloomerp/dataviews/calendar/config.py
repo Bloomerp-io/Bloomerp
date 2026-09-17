@@ -8,8 +8,7 @@ from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.dataviews.definition import (
-    BaseDataView,
-    PreferenceOption,
+    BaseDataview,
     application_field_choices,
 )
 
@@ -25,7 +24,7 @@ class CalendarViewMode(models.TextChoices):
     LIST = "list", _("List")
 
 
-class CalendarDataView(BaseDataView):
+class CalendarDataView(BaseDataview):
     """A declarative calendar dataview."""
 
     view_type: Literal["calendar"] = "calendar"
@@ -33,6 +32,49 @@ class CalendarDataView(BaseDataView):
     end_field: str | None = None
     view_mode: Literal["day", "week", "month", "year", "list"] = "week"
     color_grouping_field: str | None = None
+
+    @classmethod
+    def create_form_field(cls, name, field_info, state):
+        application_fields = state.accessible_fields
+        field_options = {
+            "start_field": (
+                forms.TypedChoiceField,
+                {
+                    **date_field_choices(application_fields),
+                    "label": _("Date field"),
+                    "help_text": _("The date field used to place records on the calendar."),
+                },
+            ),
+            "end_field": (
+                forms.TypedChoiceField,
+                {
+                    **date_field_choices(application_fields),
+                    "label": _("End date field"),
+                    "help_text": _("Optional date field used as the end of an event range."),
+                },
+            ),
+            "view_mode": (
+                forms.ChoiceField,
+                {
+                    **view_mode_choices(application_fields),
+                    "label": _("View mode"),
+                    "help_text": _("The calendar period to show."),
+                },
+            ),
+            "color_grouping_field": (
+                forms.TypedChoiceField,
+                {
+                    **calendar_color_field_choices(application_fields),
+                    "label": _("Color grouping"),
+                    "help_text": _("Optional field used to color calendar items and build the legend."),
+                },
+            ),
+        }
+        field_definition = field_options.get(name)
+        if field_definition is None:
+            return super().create_form_field(name, field_info, state)
+        field_cls, kwargs = field_definition
+        return field_cls(required=False, **kwargs)
 
 
 def date_field_choices(
@@ -45,7 +87,7 @@ def date_field_choices(
             empty_label=_("Select a date field"),
             field_types={"DateField", "DateTimeField"},
         ),
-        "coerce": int,
+        "coerce": lambda value: value or None,
         "empty_value": None,
     }
 
@@ -65,48 +107,6 @@ def calendar_color_field_choices(
             include_empty=True,
             empty_label=_("No color grouping"),
         ),
-        "coerce": int,
+        "coerce": lambda value: value or None,
         "empty_value": None,
     }
-
-
-CALENDAR_OPTIONS = [
-    PreferenceOption(
-        key="start_field_id",
-        label=_("Date field"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=date_field_choices,
-        description=_("The date field used to place records on the calendar."),
-        data_type=int | None,
-        default_value=None,
-    ),
-    PreferenceOption(
-        key="end_field_id",
-        label=_("End date field"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=date_field_choices,
-        description=_("Optional date field used as the end of an event range."),
-        data_type=int | None,
-        default_value=None,
-    ),
-    PreferenceOption(
-        key="view_mode",
-        label=_("View mode"),
-        field_cls=forms.ChoiceField,
-        field_attrs_func=view_mode_choices,
-        description=_("The calendar period to show."),
-        data_type=str,
-        default_value=CalendarViewMode.WEEK,
-    ),
-    PreferenceOption(
-        key="color_grouping_field_id",
-        label=_("Color grouping"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=calendar_color_field_choices,
-        description=_(
-            "Optional field used to color calendar items and build the legend."
-        ),
-        data_type=int | None,
-        default_value=None,
-    ),
-]

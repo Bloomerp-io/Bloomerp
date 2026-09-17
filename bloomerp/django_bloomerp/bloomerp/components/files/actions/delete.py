@@ -5,11 +5,11 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.components.files.browser import _get_folder_descendants, _user_can_mutate_file
 from bloomerp.models import File, FileFolder
 from bloomerp.models.files.file_folder import user_can_delete_folder
 from bloomerp.router import router
 from bloomerp.services.file_permission_services import user_can_mutate_file
+from bloomerp.services.file_services import get_folder_descendants
 from bloomerp.utils.requests import render_blank_form, render_page_refresh_with_message
 
 
@@ -58,9 +58,9 @@ def delete_file(request: HttpRequest, file_id: str) -> HttpResponse:
 def delete_folder(request: HttpRequest, folder_id: int) -> HttpResponse:
     """Render and process the canonical delete-folder modal."""
     folder = get_object_or_404(FileFolder, id=folder_id)
-    _descendant_folders, descendant_files = _get_folder_descendants(folder)
+    _descendant_folders, descendant_files = get_folder_descendants(folder)
     can_delete_files = all(
-        _user_can_mutate_file(request, file, ("delete",))
+        user_can_mutate_file(request, file, ("delete",))
         for file in descendant_files
     )
     if not (can_delete_files and user_can_delete_folder(request, folder)):

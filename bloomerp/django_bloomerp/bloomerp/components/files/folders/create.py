@@ -8,18 +8,17 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 
-from bloomerp.components.files.browser import (
-    _check_linked_file_permission,
-    _coerce_query_value,
-    _get_folder_linked_object,
-    _get_linked_object_files_field,
-    _get_model_scope_folder,
-    _get_object_scope,
-    _get_target_folder,
-)
 from bloomerp.models import FileFolder
 from bloomerp.router import router
-from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
+from bloomerp.services.file_permission_services import has_linked_file_permission
+from bloomerp.services.file_services import (
+    coerce_file_scope_value,
+    ensure_folder_hierarchy_for_object,
+    get_folder_linked_object,
+    get_model_scope_folder,
+    get_target_folder,
+    resolve_file_scope,
+)
 from bloomerp.utils.requests import (
     render_blank_form,
     render_page_refresh_with_message,
@@ -41,7 +40,7 @@ class CreateFolderForm(forms.Form):
 def _request_scope_value(request: HttpRequest, *keys: str) -> str | None:
     source = request.POST if request.method == "POST" else request.GET
     for key in keys:
-        value = _coerce_query_value(source.get(key))
+        value = coerce_file_scope_value(source.get(key))
         if value is not None:
             return value
     return None
@@ -52,13 +51,13 @@ def _resolve_folder_creation_scope(
     *,
     create_object_folder: bool = False,
 ) -> FolderCreationScope:
-    parent_folder = _get_target_folder(
+    parent_folder = get_target_folder(
         _request_scope_value(request, "parent_folder_id", "folder_id", "folder")
     )
     if parent_folder is not None:
         return FolderCreationScope(
             content_type=parent_folder.content_type,
-            linked_object=_get_folder_linked_object(parent_folder),
+            linked_object=get_folder_linked_object(parent_folder),
             parent_folder=parent_folder,
         )
 
@@ -69,7 +68,7 @@ def _resolve_folder_creation_scope(
     )
     object_id = _request_scope_value(request, "object_id")
     if content_type_id and object_id:
-        content_type, linked_object = _get_object_scope(content_type_id, object_id)
+        content_type, linked_object = resolve_file_scope(content_type_id, object_id)
     elif content_type_id:
         content_type = get_object_or_404(ContentType, pk=content_type_id)
         linked_object = None
@@ -91,7 +90,7 @@ def _resolve_folder_creation_scope(
             )
         parent_folder = object_folder
     elif content_type is not None:
-        parent_folder = _get_model_scope_folder(content_type)
+        parent_folder = get_model_scope_folder(content_type)
 
     return FolderCreationScope(
         content_type=content_type,
@@ -107,12 +106,7 @@ def can_create_folder(request: HttpRequest) -> bool:
 
     scope = _resolve_folder_creation_scope(request)
     if scope.linked_object is not None:
-        return _check_linked_file_permission(
-            request=request,
-            linked_object=scope.linked_object,
-            files_field=_get_linked_object_files_field(scope.linked_object),
-            operation="add",
-        )
+        return has_linked_file_permission(request, scope.linked_object, "add")
     return request.user.has_perm("bloomerp.add_filefolder")
 
 

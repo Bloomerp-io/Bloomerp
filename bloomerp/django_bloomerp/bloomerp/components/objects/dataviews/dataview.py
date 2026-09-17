@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 from django import forms
 from django.shortcuts import render
@@ -7,7 +6,6 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.core.exceptions import FieldDoesNotExist
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
-from bloomerp.filters.definition import Filters
 from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.filters.parser import parse_filters
 from bloomerp.models.definition import (
@@ -26,35 +24,19 @@ from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.router import router
 from django.http import HttpRequest
 from django.http import HttpResponse
-from django.http import QueryDict
-from django.contrib.contenttypes.models import ContentType
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.object_services import string_search_on_queryset
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.models import ApplicationField
 from django.db.models import Model, QuerySet
-from dataclasses import dataclass
 import uuid
 from pydantic import ValidationError as PydanticValidationError
-from bloomerp.dataviews.definition import DataviewPagination, DataviewTypeDefinition
-from bloomerp.dataviews.definition import DataviewRenderState
+from bloomerp.dataviews.definition import (
+    DataviewPagination,
+    DataviewState,
+    DataviewTypeDefinition,
+)
 
-# -----------------------------------
-# GET PARAMS
-# -----------------------------------
-class DataviewReservedQueryParams:
-    query = "q"
-    page = "page"
-    component_id = "_component_id"
-    
-    
-    def __init__(self, request: HttpRequest):
-        self.request = request
-        self.query = request.GET.get(self.query)
-        self.page = request.GET.get(self.page)
-        self.component_id = request.GET.get(self.component_id)
-        
-        
 # -----------------------------------
 # Filter helpers
 # -----------------------------------
@@ -65,31 +47,14 @@ SHELL_RESERVED_QUERY_KEYS = {
 }
 
 
-@dataclass
-class DataViewQueryState:
-    content_type: ContentType
-    model: type
-    preference: UserListViewPreference
-    dataview_options: object | None
-    dataview_fields: object
-    dataview_render_fields: list[ApplicationField]
-    avatar_field: ApplicationField | None
-    queryset: QuerySet
-    query: str | None
-    renderer_context: dict
-    count: int = 0
-    reserved_params: DataviewReservedQueryParams | None = None
-    filters: Optional[Filters] = None
-
-
-def _build_data_view_query_state(
+def _build_dataview_state(
     request: HttpRequest,
     content_type_id: int,
     preference: UserListViewPreference | None = None,
     *,
     base_queryset: QuerySet | None = None,
     additional_reserved_query_keys: set[str] | None = None,
-) -> DataViewQueryState | HttpResponse:
+) -> DataviewState | HttpResponse:
     """Builds the dataview query state
 
     Args:
@@ -98,7 +63,7 @@ def _build_data_view_query_state(
         preference: An explicit available preference, or the user's selected preference.
 
     Returns:
-        DataViewQueryState | HttpResponse: _description_
+        DataviewState | HttpResponse: The prepared state or an error response.
     """
     # Get the query
     query = request.GET.get('q')
@@ -181,19 +146,19 @@ def _build_data_view_query_state(
         BloomerpPermission.VIEW,
     )
 
-    return DataViewQueryState(
+    return DataviewState(
+        request=request,
         content_type=content_type,
         model=Model,
         preference=preference,
-        dataview_options=dataview_options,
-        dataview_fields=dataview_fields,
-        dataview_render_fields=dataview_render_fields,
+        options=dataview_options,
+        fields=dataview_fields,
+        render_fields=dataview_render_fields,
         avatar_field=avatar_field,
         queryset=queryset,
         query=query,
-        renderer_context=renderer_context,
+        context=renderer_context,
         count=count,
-        reserved_params=DataviewReservedQueryParams(request),
         filters=filters
     )
 
@@ -272,7 +237,7 @@ def _get_dataview_options_initial(preference: UserListViewPreference, view_type:
     dataview_options = _get_dataview_options(preference, view_type)
     if dataview_options is None:
         return {}
-    return dataview_options.model_dump()
+    return dataview_options.dump_options()
 
 
 def _get_dataview_options(preference: UserListViewPreference, view_type: str | None = None):
@@ -284,7 +249,7 @@ def _get_dataview_options(preference: UserListViewPreference, view_type: str | N
         return None
 
     raw_options = (preference.options or {}).get(view_type, {})
-    options_model = definition.get_options_model()
+    options_model = definition.config_cls
     try:
         return options_model.model_validate(raw_options or {})
     except PydanticValidationError:
@@ -292,21 +257,20 @@ def _get_dataview_options(preference: UserListViewPreference, view_type: str | N
 
 
 def _get_dataview_options_form(
-    preference: UserListViewPreference,
-    accessible_fields: list[ApplicationField],
-    request: HttpRequest,
+    state: DataviewState,
 ) -> forms.Form | None:
-    definition = DATAVIEW_REGISTRY.get(preference.view_type)
-    if definition is None or not definition.opts:
+    definition = DATAVIEW_REGISTRY.get(state.preference.view_type)
+    if definition is None or not definition.config_cls.option_field_names():
         return None
 
-    form_cls = definition.create_opts_form(accessible_fields)
-    return form_cls(initial=_get_dataview_options_initial(preference, definition.key))
+    form_cls = definition.config_cls.form_factory(state)
+    return form_cls(
+        initial=_get_dataview_options_initial(state.preference, definition.key)
+    )
 
 
 def _render_dataview_body(
-    request: HttpRequest,
-    state: DataViewQueryState,
+    state: DataviewState,
     pagination: DataviewPagination,
     context: dict,
 ) -> str:
@@ -314,21 +278,9 @@ def _render_dataview_body(
     if definition is None:
         return ""
 
-    render_state = DataviewRenderState(
-        request=request,
-        content_type_id=state.content_type.id,
-        content_type=state.content_type,
-        model=state.model,
-        preference=state.preference,
-        queryset=state.queryset,
-        fields=state.dataview_fields,
-        render_fields=state.dataview_render_fields,
-        avatar_field=state.avatar_field,
-        options=state.dataview_options,
-        object_actions=context.get("object_actions", []),
-        extra_context=context,
-    )
-    return definition.renderer_cls(render_state).render(pagination)
+    state.object_actions = context.get("object_actions", [])
+    state.context = context
+    return definition.renderer_cls(state).render(pagination)
 
 
 def _get_configured_dataview_actions(
@@ -342,7 +294,7 @@ def _get_configured_dataview_actions(
 
 def _build_dataview_action_context(
     request: HttpRequest,
-    state: DataViewQueryState,
+    state: DataviewState,
 ) -> DataviewActionContext:
     return DataviewActionContext(
         request=request,
@@ -356,7 +308,7 @@ def _build_dataview_action_context(
 
 def _render_dataview_actions(
     request: HttpRequest,
-    state: DataViewQueryState,
+    state: DataviewState,
     context: dict,
     action_ids: list[str] | None = None,
 ) -> list[str]:
@@ -455,7 +407,7 @@ def dataview(
         HttpResponse: The response
     """
     
-    state = _build_data_view_query_state(
+    state = _build_dataview_state(
         request,
         content_type_id,
         preference,
@@ -475,7 +427,7 @@ def dataview(
         state.queryset,
         state.preference,
         request,
-        state.dataview_options,
+        state.options,
     )
     
     page_querystring = request.GET.copy()
@@ -493,7 +445,10 @@ def dataview(
         search_querystring.pop(key, None)
         create_querystring.pop(key, None)
         export_querystring.pop(key, None)
-    sync_url = request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
+    sync_url = (
+        request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
+        or definition.key == "file_browser"
+    )
     component_id = component_id or request.GET.get('_component_id')
 
     dataview_base_url = dataview_base_url or reverse(
@@ -516,8 +471,8 @@ def dataview(
         'content_type_id': content_type_id,
         'queryset': pagination.queryset,
         'page_obj': pagination.page_obj,
-        'fields': state.dataview_fields,
-        'dataview_render_fields': state.dataview_render_fields,
+        'fields': state.fields,
+        'dataview_render_fields': state.render_fields,
         'avatar_field': state.avatar_field,
         'preference': state.preference,
         'render_id': str(uuid.uuid4()),
@@ -534,9 +489,7 @@ def dataview(
         'object_actions' : _get_actions(state.queryset.model),
         'view_types' : [vt for vt in DATAVIEW_REGISTRY.values() if vt.available_for_model(state.model)],
         'dataview_options_form': _get_dataview_options_form(
-            state.preference,
-            _get_accessible_application_fields(state.dataview_fields),
-            request,
+            state,
         ),
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
@@ -546,13 +499,13 @@ def dataview(
         'is_data_section_request': is_data_section_request,
         'filters' : state.filters
     }
-    context.update(state.renderer_context)
+    context.update(state.context)
     context["rendered_dataview_actions"] = _render_dataview_actions(
         request,
         state,
         context,
         actions,
     )
-    context["rendered_dataview"] = _render_dataview_body(request, state, pagination, context)
+    context["rendered_dataview"] = _render_dataview_body(state, pagination, context)
 
     return render(request, 'components/objects/dataview.html', context)

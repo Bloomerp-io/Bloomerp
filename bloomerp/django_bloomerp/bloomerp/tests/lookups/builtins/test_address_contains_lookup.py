@@ -15,6 +15,15 @@ class TestAddressContainsLookup(BloomerpLookupTestCase):
             field_path="address",
             expression="address_contains",
             value={"city": "Ghent", "country": "BE"},
+            form_value={"city": " Ghent ", "country": "be"},
+            expected_cleaned_form_value={
+                "street_1": "",
+                "street_2": "",
+                "postal_code": "",
+                "city": "Ghent",
+                "state": "",
+                "country": "BE",
+            },
             expected_lookup=CompiledLookup(
                 predicate=(
                     Q(address__city__icontains="Ghent")

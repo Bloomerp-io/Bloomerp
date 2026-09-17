@@ -84,3 +84,8 @@ Reserve this layer for browser integration: JavaScript events, HTMX requests
 and swaps, navigation, focus, uploads, and complete user journeys. Server-side
 status codes, fragments, JSON, and permissions are faster and clearer in
 [view](view-test-case.md) or [component](component-test-case.md) scenarios.
+
+
+## Tracing e2e test
+
+pytest path/to/test_e2e.py --no-migrations --headed --slowmo 500

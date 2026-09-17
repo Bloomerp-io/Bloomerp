@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest
 
-from bloomerp.models import ApplicationField, File
+from bloomerp.models import ApplicationField, File, FileFolder
 from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
 
 
@@ -85,3 +85,21 @@ def user_can_mutate_file(
         permission_manager.has_global_permission(File, create_permission_str(File, operation))
         for operation in operations
     )
+
+
+def user_can_view_folder(request: HttpRequest, folder: FileFolder) -> bool:
+    """Return whether the user can view a folder or anything nested within it."""
+    if request.user.is_superuser or request.user.has_perm("bloomerp.view_file"):
+        return True
+
+    from bloomerp.services.file_services import get_folder_linked_object
+
+    linked_object = get_folder_linked_object(folder)
+    if linked_object is not None:
+        return has_linked_file_permission(request, linked_object, "view")
+
+    if any(user_can_view_file(request, file) for file in folder.files.all()):
+        return True
+
+    children = FileFolder.objects.filter(parent=folder).prefetch_related("files")
+    return any(user_can_view_folder(request, child) for child in children)
