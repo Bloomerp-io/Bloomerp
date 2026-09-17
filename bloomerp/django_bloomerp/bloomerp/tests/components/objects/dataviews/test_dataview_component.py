@@ -65,60 +65,6 @@ def add_default_filter(request_scenario: RequestScenario):
     list_view_preference.add_default_filter(saved_filter)
 
 
-class TestDocumentTemplateDataviewComponent(BloomerpComponentTestCase):
-    """Cover object-scoped document-template filtering through the component."""
-
-    view_name = "components_dataview"
-    auto_create_customers = False
-
-    @staticmethod
-    def contains_template_ids(*expected_ids) -> Callable[[HttpResponse], bool]:
-        def validate(response: HttpResponse) -> bool:
-            actual_ids = [template.pk for template in response.context["queryset"]]
-            return actual_ids == list(expected_ids)
-
-        return validate
-
-    def get_test_scenarios(self) -> list[RequestScenario]:
-        customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        document_template_content_type = ContentType.objects.get_for_model(DocumentTemplate)
-        matching_template = DocumentTemplate.objects.create(name="Customer template")
-        matching_template.content_types.add(customer_content_type)
-        unrelated_template = DocumentTemplate.objects.create(name="Unrelated template")
-        view_kwargs = {"content_type_id": document_template_content_type.pk}
-
-        return [
-            RequestScenario(
-                name="Many-to-many equality accepts one shorthand value",
-                description=(
-                    "UC: A document-template dataview is scoped to one object type.\n"
-                    "Expected Result: The matching template renders without a validation error."
-                ),
-                user=self.admin_user,
-                view_kwargs=view_kwargs,
-                query_params={"content_types": str(customer_content_type.pk)},
-                expected=ExpectedResult(
-                    response_validators=self.contains_template_ids(matching_template.pk)
-                ),
-            ),
-            RequestScenario(
-                name="Many-to-many not-equals accepts one shorthand value",
-                description=(
-                    "UC: A document-template dataview excludes one object type.\n"
-                    "Expected Result: Only the unrelated template renders."
-                ),
-                user=self.admin_user,
-                view_kwargs=view_kwargs,
-                query_params={
-                    "content_types_not_equals": str(customer_content_type.pk),
-                },
-                expected=ExpectedResult(
-                    response_validators=self.contains_template_ids(unrelated_template.pk)
-                ),
-            ),
-        ]
-
-
 class TestDataviewComponent(BloomerpComponentTestCase):
     """Specify visible rows separately from the filters being exercised."""
 
@@ -197,6 +143,15 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
         kwargs = {"content_type_id": self.get_content_type_for_model(self.CustomerModel).pk}
         customers = self.CustomerModel.objects
+
+        customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        document_template_content_type = ContentType.objects.get_for_model(DocumentTemplate)
+        matching_template = DocumentTemplate.objects.create(name="Customer template")
+        matching_template.content_types.add(customer_content_type)
+        unrelated_template = DocumentTemplate.objects.create(name="Unrelated template")
+        document_template_kwargs = {
+            "content_type_id": document_template_content_type.pk,
+        }
         
         request_scenarios = []
         for dataview_type in DATAVIEW_REGISTRY.values():
@@ -326,6 +281,38 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                         )
                     ]
                 )
+            ),
+            RequestScenario(
+                name="FILTERS: Many-to-many equality accepts one shorthand value",
+                description=(
+                    "UC: A document-template dataview is scoped to one object type.\n"
+                    "Expected Result: The matching template renders without a validation error."
+                ),
+                user=self.admin_user,
+                view_kwargs=document_template_kwargs,
+                query_params={"content_types": str(customer_content_type.pk)},
+                expected=ExpectedResult(
+                    response_validators=self.contains_entries(
+                        DocumentTemplate.objects.filter(pk=matching_template.pk)
+                    )
+                ),
+            ),
+            RequestScenario(
+                name="FILTERS: Many-to-many not-equals accepts one shorthand value",
+                description=(
+                    "UC: A document-template dataview excludes one object type.\n"
+                    "Expected Result: Only the unrelated template renders."
+                ),
+                user=self.admin_user,
+                view_kwargs=document_template_kwargs,
+                query_params={
+                    "content_types_not_equals": str(customer_content_type.pk),
+                },
+                expected=ExpectedResult(
+                    response_validators=self.contains_entries(
+                        DocumentTemplate.objects.filter(pk=unrelated_template.pk)
+                    )
+                ),
             ),
             RequestScenario(
                 name="FILTERS: Additional filter does not override default filters",
