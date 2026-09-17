@@ -40,6 +40,7 @@ class TestGlobalSearchComponent(BloomerpComponentTestCase):
                 user=self.admin_user,
                 query_params={"q": ">clientes"},
                 prepare=self._prepare_localized_route_search,
+                cleanup=self._stop_patches,
                 expected=ExpectedResult(
                     response_validators=[
                         self.contains_text("Clientes"),
@@ -52,6 +53,7 @@ class TestGlobalSearchComponent(BloomerpComponentTestCase):
                 user=self.admin_user,
                 query_params={"q": "/utilizadores//Grenit"},
                 prepare=self._prepare_localized_module_search,
+                cleanup=self._stop_patches,
                 expected=ExpectedResult(response_validators=self.contains_text("Utilizadores")),
             ),
             RequestScenario(
@@ -309,7 +311,12 @@ class TestGlobalSearchComponent(BloomerpComponentTestCase):
     def _start_patch(self, target: str, **kwargs) -> None:
         patcher = patch(target, **kwargs)
         patcher.start()
-        self.addCleanup(patcher.stop)
+        self._patchers = getattr(self, "_patchers", []) + [patcher]
+
+    def _stop_patches(self, _scenario: RequestScenario) -> None:
+        for patcher in reversed(getattr(self, "_patchers", [])):
+            patcher.stop()
+        self._patchers = []
 
     def _matching_customer_only(self, response) -> bool:
         return self._matching_customer_is_present(response) and self._non_matching_customer_is_absent(response)
