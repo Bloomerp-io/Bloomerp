@@ -253,7 +253,13 @@ def _get_dataview_options(preference: UserListViewPreference, view_type: str | N
     try:
         return options_model.model_validate(raw_options or {})
     except PydanticValidationError:
-        return options_model.model_validate({})
+        try:
+            return options_model.model_validate({})
+        except PydanticValidationError:
+            # Some views require configuration before they can produce an
+            # options model. Keep the state unconfigured so its form can be
+            # rendered and collect those required values.
+            return None
 
 
 def _get_dataview_options_form(

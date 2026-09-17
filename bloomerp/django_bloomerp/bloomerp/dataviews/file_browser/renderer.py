@@ -22,6 +22,33 @@ class FileBrowserRenderer(BaseDataviewRenderer):
     template_name = "dataviews/files.html"
     reserved_query_params = {"folder_id"}
 
+    def _visible_files(self, files):
+        """Apply linked-object row and files-field permissions before rendering."""
+        from bloomerp.services.file_permission_services import user_can_view_file
+
+        return [
+            file
+            for file in files.select_related("content_type")
+            if user_can_view_file(self.state.request, file)
+        ]
+
+    def _visible_folders(self, folders):
+        """Do not disclose folders whose linked file scope is inaccessible."""
+        from bloomerp.services.file_permission_services import user_can_view_folder
+
+        return [
+            folder
+            for folder in folders.select_related("content_type", "parent")
+            if user_can_view_folder(self.state.request, folder)
+        ]
+
+    def _related_file_queryset(self):
+        """Return files with the current search applied for non-File hosts."""
+        return string_search_on_qs(
+            File.objects.all(),
+            resolve_string_query(self.state.request),
+        )
+
     def _get_related_object_scopes(self, host_objects, host_content_type):
         configured = getattr(self.state.options, "related_fields", {}) or {}
         selected_fields = configured.get(
@@ -103,6 +130,11 @@ class FileBrowserRenderer(BaseDataviewRenderer):
     def render(self, pagination=None, *, extra_context: dict[str, Any] | None = None):
         context = dict(extra_context or {})
         current_folder = _resolve_folder(self.state)
+        if current_folder is not None:
+            from bloomerp.services.file_permission_services import user_can_view_folder
+
+            if not user_can_view_folder(self.state.request, current_folder):
+                current_folder = None
 
         if self.state.model != File:
             folders, files = self._get_related_model_items(current_folder)
@@ -178,7 +210,7 @@ class FileBrowserRenderer(BaseDataviewRenderer):
             files = (
                 self.state.queryset.filter(folder=current_folder)
                 if is_host_folder
-                else File.objects.filter(folder=current_folder)
+                else self._related_file_queryset().filter(folder=current_folder)
             )
             if (
                 is_host_folder
@@ -191,7 +223,7 @@ class FileBrowserRenderer(BaseDataviewRenderer):
                     | (related_query & Q(protected=True))
                 )
                 files = (
-                    files | File.objects.filter(related_query)
+                    files | self._related_file_queryset().filter(related_query)
                 ).distinct()
         else:
             folder_query = {"parent__isnull": True}
@@ -204,7 +236,11 @@ class FileBrowserRenderer(BaseDataviewRenderer):
             base_folders,
             resolve_string_query(self.state.request),
         )
-        return current_folder, folders, files
+        return (
+            current_folder,
+            self._visible_folders(folders),
+            self._visible_files(files),
+        )
 
     def _get_related_model_items(self, current_folder):
         object_ids = list(
@@ -232,16 +268,16 @@ class FileBrowserRenderer(BaseDataviewRenderer):
 
         if current_folder is not None:
             base_folders = FileFolder.objects.filter(parent=current_folder)
-            files = File.objects.filter(folder=current_folder)
+            files = self._related_file_queryset().filter(folder=current_folder)
         else:
             related_query = self._scope_query(related_scopes)
             base_folders = FileFolder.objects.filter(
                 Q(content_type=self.state.content_type) | related_query
             )
-            files = File.objects.filter(self._scope_query(scopes))
+            files = self._related_file_queryset().filter(self._scope_query(scopes))
 
         folders = string_search_on_qs(
             base_folders,
             resolve_string_query(self.state.request),
         )
-        return folders, files
+        return self._visible_folders(folders), self._visible_files(files)

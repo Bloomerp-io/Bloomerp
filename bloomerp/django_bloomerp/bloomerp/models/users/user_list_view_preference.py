@@ -10,6 +10,7 @@ from django.db.models import Q
 from bloomerp.dataviews.definition import BaseDataview
 from bloomerp.dataviews.calendar.config import CalendarDataView
 from bloomerp.dataviews.card.config import CardDataView
+from bloomerp.dataviews.file_browser.config import FileBrowserDataview
 from bloomerp.dataviews.gant.config import GanttDataView
 from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.pivot_table.config import PivotTableDataView
@@ -275,6 +276,8 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
             }
         if isinstance(data_view, CardDataView):
             return {"page_size": data_view.page_size}
+        if isinstance(data_view, FileBrowserDataview):
+            return {"related_fields": data_view.related_fields}
         if isinstance(data_view, CalendarDataView):
             return {
                 "start_field": field_name(data_view.start_field),

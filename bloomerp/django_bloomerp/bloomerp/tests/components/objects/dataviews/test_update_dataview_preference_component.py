@@ -101,6 +101,22 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
                 ),
             ),
             RequestScenario(
+                name="Change to unconfigured Gantt view",
+                method="POST",
+                user=self.admin_user,
+                view_kwargs=self.view_kwargs,
+                data={"view_type": "gantt"},
+                expected=ExpectedResult(
+                    response_validators=[
+                        self._preference_matches(
+                            lambda preference: preference.view_type == "gantt"
+                        ),
+                        self.contains_text('name="start_field"'),
+                        self.contains_text('name="end_field"'),
+                    ]
+                ),
+            ),
+            RequestScenario(
                 name="Change split view",
                 method="POST",
                 user=self.admin_user,

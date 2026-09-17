@@ -6,6 +6,7 @@ from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig, ModelViewSettings
+from bloomerp.models.files.file import File
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels, BloomerpModelTestCase, ExpectedModelException, ModelScenario
@@ -34,6 +35,15 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 ),
                 create_operation=self.create_todo_defaults,
                 create_validators=self.todo_defaults_are_materialized,
+            ),
+            ModelScenario(
+                name="File defaults materialize the configured browser",
+                description=(
+                    "UC: A user opens Files for the first time.\n"
+                    "Expected Result: The File Browser preference is created without unsupported-view errors."
+                ),
+                create_operation=self.create_file_defaults,
+                create_validators=self.file_defaults_are_materialized,
             ),
             ModelScenario(
                 name="All configured data views are materialized",
@@ -90,6 +100,21 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
             and selected.selected
             and selected.view_type == "kanban"
             and selected.options["kanban"]["group_by_field"] == "status"
+        )
+
+    def create_file_defaults(self):
+        self.scenario_content_type = ContentType.objects.get_for_model(File)
+        return UserListViewPreference.create_default_for_user(
+            self.admin_user,
+            content_type_id=self.scenario_content_type.pk,
+        )
+
+    @staticmethod
+    def file_defaults_are_materialized(selected):
+        return (
+            selected.selected
+            and selected.view_type == "file_browser"
+            and selected.options["file_browser"] == {"related_fields": {}}
         )
 
     @staticmethod
