@@ -1,6 +1,6 @@
 from django.test import RequestFactory, SimpleTestCase
 
-from bloomerp.dataviews.base import DataviewTypeDefinition
+from bloomerp.dataviews.definition import DataviewTypeDefinition
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.dataviews.table.renderer import TableDataviewRenderer
