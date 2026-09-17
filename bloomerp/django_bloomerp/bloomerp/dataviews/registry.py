@@ -2,7 +2,7 @@ from enum import Enum
 
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.dataviews.base import DataviewTypeDefinition
+from bloomerp.dataviews.definition import DataviewTypeDefinition
 from bloomerp.dataviews.calendar.config import CALENDAR_OPTIONS, CalendarDataView
 from bloomerp.dataviews.calendar.renderer import CalendarDataviewRenderer
 from bloomerp.dataviews.card.config import CARD_OPTIONS, CardDataView

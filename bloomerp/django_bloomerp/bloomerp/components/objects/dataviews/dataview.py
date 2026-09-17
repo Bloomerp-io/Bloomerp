@@ -36,8 +36,8 @@ from django.db.models import Model, QuerySet
 from dataclasses import dataclass
 import uuid
 from pydantic import ValidationError as PydanticValidationError
-from bloomerp.dataviews.base import DataviewPagination, DataviewTypeDefinition
-from bloomerp.dataviews.base import DataviewRenderState
+from bloomerp.dataviews.definition import DataviewPagination, DataviewTypeDefinition
+from bloomerp.dataviews.definition import DataviewRenderState
 
 # -----------------------------------
 # GET PARAMS
@@ -454,6 +454,7 @@ def dataview(
     Returns:
         HttpResponse: The response
     """
+    
     state = _build_data_view_query_state(
         request,
         content_type_id,
@@ -463,6 +464,8 @@ def dataview(
     )
     if isinstance(state, HttpResponse):
         return state
+    
+    
     
     definition = DATAVIEW_REGISTRY.get(state.preference.view_type)
     if definition is None:

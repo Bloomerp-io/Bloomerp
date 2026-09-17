@@ -4,7 +4,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
-from ..base import BaseDataviewRenderer, DataviewPagination
+from ..definition import BaseDataviewRenderer, DataviewPagination
 
 
 SORT_DIRECTIONS = {"asc", "desc"}

@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.db.models import Q
 
-from bloomerp.dataviews.base import BaseDataView
+from bloomerp.dataviews.definition import BaseDataView
 from bloomerp.dataviews.calendar.config import CalendarDataView
 from bloomerp.dataviews.card.config import CardDataView
 from bloomerp.dataviews.gant.config import GanttDataView
