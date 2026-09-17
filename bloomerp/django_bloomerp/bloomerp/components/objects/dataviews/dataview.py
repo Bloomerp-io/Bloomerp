@@ -532,7 +532,7 @@ def dataview(
         'component_id': component_id,
         'component_args' : {**_get_component_args(request), **(component_args or {})},
         'object_actions' : _get_actions(state.queryset.model),
-        'view_types' : [vt for vt in DATAVIEW_REGISTRY.values() if vt.available_for_model(Model)],
+        'view_types' : [vt for vt in DATAVIEW_REGISTRY.values() if vt.available_for_model(state.model)],
         'dataview_options_form': _get_dataview_options_form(
             state.preference,
             _get_accessible_application_fields(state.dataview_fields),
