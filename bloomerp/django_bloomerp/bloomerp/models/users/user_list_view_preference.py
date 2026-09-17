@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from typing import TYPE_CHECKING, Any
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Q
 
@@ -405,4 +406,15 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
         view_type_def = DATAVIEW_REGISTRY.get(self.view_type)
         return view_type_def.requires_display_fields
     
-    
+    def clean(self):
+        super().clean()
+
+        view_type_def = DATAVIEW_REGISTRY.get(self.view_type)
+        if view_type_def is not None and not view_type_def.available_for_model(
+            self.content_type.model_class()
+        ):
+            raise ValidationError({
+                "view_type": _(
+                    "This view type is not available for the selected model."
+                )
+            })
