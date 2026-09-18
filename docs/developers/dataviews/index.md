@@ -296,6 +296,10 @@ permission checks.
 
 ## Renderer operations
 
+See [Renderer operations and actions](actions.md) for the complete request
+lifecycle, the distinction from standalone component endpoints and configured
+toolbar actions, and an end-to-end Kanban example.
+
 Interactive dataviews may override:
 
 ```python
