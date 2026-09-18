@@ -124,11 +124,133 @@ Fields added by a `BaseDataview` subclass are persisted in
 `display_fields`, `default_filters`, and `split_view_enabled` are model-default
 settings and are not persisted as view-specific options.
 
-Bloomerp creates a Django options form from the Pydantic fields. Override
-`create_form_field(name, field_info, state)` when an option needs model-aware
-choices, or override `form_factory(state)` when the complete form is custom.
-Only use `state.accessible_fields` for field choices so the form does not
-expose fields the current user cannot view.
+### Form factory contract
+
+Bloomerp calls the configuration class's `form_factory(state)` when it renders
+the display-options panel and when it validates a submitted options form. The
+method must return a Django **form class**, not a form instance:
+
+```python
+@classmethod
+def form_factory(cls, state: DataviewState) -> type[forms.Form]:
+    ...
+```
+
+Bloomerp owns form instantiation:
+
+- for display, it instantiates the class with the current persisted options as
+  `initial`;
+- for submission, it instantiates the same class with `request.POST`;
+- after Django form validation, it validates `cleaned_data` with the dataview's
+  Pydantic config class;
+- it persists `config.dump_options()` under the dataview key in
+  `UserListViewPreference.options`.
+
+The base `form_factory()` creates one Django field for every name returned by
+`option_field_names()`. It deliberately excludes the common `BaseDataview`
+fields and `view_type`, because those describe model defaults rather than the
+active user's view-specific options.
+
+For ordinary Pydantic annotations, the base implementation creates sensible
+Django fields automatically:
+
+| Pydantic annotation | Django form field |
+| --- | --- |
+| `Literal[...]` | `TypedChoiceField` |
+| `bool` | `BooleanField` |
+| `list[...]` | `MultipleChoiceField` |
+| `dict[...]` | `JSONField` |
+| `int` | `IntegerField` |
+| other scalar values | `CharField` |
+
+Automatically created list fields have no choices. Dataviews should customize
+them before they are exposed to users.
+
+### Customize one option
+
+Override `create_form_field(name, field_info, state)` when most options can use
+the generated form and only particular fields need model-aware choices:
+
+```python
+from typing import Literal
+
+from django import forms
+from django.utils.translation import gettext_lazy as _
+
+from bloomerp.dataviews import BaseDataview, application_field_choices
+
+
+class TimelineDataview(BaseDataview):
+    view_type: Literal["timeline"] = "timeline"
+    date_field: str | None = None
+    density: Literal["compact", "comfortable"] = "comfortable"
+
+    application_field_options = {"date_field": "single"}
+
+    @classmethod
+    def create_form_field(cls, name, field_info, state):
+        if name == "date_field":
+            return forms.TypedChoiceField(
+                choices=application_field_choices(
+                    state.accessible_fields,
+                    include_empty=True,
+                    empty_label=_("Select a date field"),
+                    field_types={"DateField", "DateTimeField"},
+                ),
+                coerce=lambda value: value or None,
+                empty_value=None,
+                label=_("Date field"),
+                help_text=_("The field used to place records on the timeline."),
+                required=False,
+            )
+        return super().create_form_field(name, field_info, state)
+```
+
+Always delegate unknown names to the superclass. This allows newly added
+options to receive the default behavior instead of silently disappearing from
+the form.
+
+Only build field choices from `state.accessible_fields`. The options panel is
+not an authorization boundary by itself, and presenting all model fields would
+disclose fields the current user cannot view.
+
+### Replace the complete form
+
+Override `form_factory(state)` when fields depend on each other, the persisted
+shape differs from individual form inputs, or the complete form needs custom
+validation:
+
+```python
+@classmethod
+def form_factory(cls, state: DataviewState) -> type[forms.Form]:
+    class TimelineOptionsForm(forms.Form):
+        start_field = forms.ChoiceField(
+            choices=application_field_choices(state.accessible_fields)
+        )
+        end_field = forms.ChoiceField(
+            choices=application_field_choices(state.accessible_fields)
+        )
+
+        def clean(self):
+            cleaned_data = super().clean()
+            if cleaned_data.get("start_field") == cleaned_data.get("end_field"):
+                raise forms.ValidationError(
+                    _("Start and end fields must be different.")
+                )
+            return cleaned_data
+
+    return TimelineOptionsForm
+```
+
+The returned field names must correspond to the configuration's option fields,
+because Bloomerp passes `cleaned_data` into `config_cls.model_validate()` before
+persisting it. Keep transformation logic in Django field `clean()` methods or
+the form's `clean()` method, and keep the final persisted contract in the
+Pydantic configuration model.
+
+The renderer does not define an options-form hook. Option forms belong to the
+configuration class so the same contract drives initial model defaults,
+display-options editing, validation, and persistence.
 
 Options that contain developer-facing `ApplicationField` names must be listed
 in `application_field_options`:
