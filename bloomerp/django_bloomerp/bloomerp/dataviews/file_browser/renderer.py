@@ -15,6 +15,7 @@ from bloomerp.dataviews.file_browser.config import (
     _resolve_object,
 )
 from bloomerp.models.files.file_folder import FileFolder
+from bloomerp.services.file_services import get_object_folder_scope_key
 from bloomerp.utils.models import string_search_on_qs
 
 
@@ -194,10 +195,9 @@ class FileBrowserRenderer(BaseDataviewRenderer):
 
             if current_folder is None:
                 current_folder = FileFolder.objects.filter(
-                    content_type=content_type,
-                    object_id=object_id,
-                    protected=True,
-                ).order_by("pk").first()
+                    kind=FileFolder.Kind.OBJECT,
+                    scope_key=get_object_folder_scope_key(content_type, object_id),
+                ).first()
 
         if current_folder is not None:
             base_folders = FileFolder.objects.filter(parent=current_folder)

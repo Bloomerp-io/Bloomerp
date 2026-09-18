@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -239,10 +240,18 @@ class BloomerpE2ETestCase(BaseE2ETestCase):
         self,
         validators: E2EValidator | list[E2EValidator] | None = None,
     ) -> E2EAction:
-        """Return an action equivalent to pressing the browser Back button."""
+        """Go back and wait for the resulting HTMX data refresh request."""
 
         def execute() -> None:
-            self.page.go_back()
+            def matches_browser_query(request) -> bool:
+                return (
+                    request.resource_type in {"xhr", "fetch"}
+                    and parse_qs(urlsplit(request.url).query)
+                    == parse_qs(urlsplit(self.page.url).query)
+                )
+
+            with self.page.expect_request(matches_browser_query):
+                self.page.go_back()
 
         return E2EAction(
             execute=execute,

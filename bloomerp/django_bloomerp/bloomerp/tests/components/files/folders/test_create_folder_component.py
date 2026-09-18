@@ -37,6 +37,22 @@ class TestCreateFolderComponent(BloomerpComponentTestCase):
                 ),
             ),
             RequestScenario(
+                name="render form in the current HTMX browser folder",
+                user=self.admin_user,
+                headers={
+                    "HX-Current-URL": (
+                        f"http://testserver/files/?folder_id={parent.pk}"
+                    )
+                },
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.contains_text(
+                            f'name="folder_id" value="{parent.pk}"'
+                        ),
+                    ],
+                ),
+            ),
+            RequestScenario(
                 name="create root folder",
                 method="POST",
                 user=self.admin_user,
@@ -93,7 +109,12 @@ class TestCreateFolderComponent(BloomerpComponentTestCase):
         parent: FileFolder | None,
         created_by=None,
     ):
-        filters = {"name": name, "parent": parent}
+        filters = {
+            "name": name,
+            "parent": parent,
+            "kind": FileFolder.Kind.MANUAL,
+            "scope_key__isnull": True,
+        }
         if created_by is not None:
             filters["created_by"] = created_by
         return self._named_validator(

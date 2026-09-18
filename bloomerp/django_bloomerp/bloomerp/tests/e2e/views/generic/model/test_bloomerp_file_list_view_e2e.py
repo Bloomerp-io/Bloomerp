@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from playwright.sync_api import Locator, Request, expect
 
 from bloomerp.models.files.file import File
+from bloomerp.models.files.file_folder import FileFolder
 from bloomerp.models.users.user_list_view_preference import (
     UserListViewPreference,
 )
@@ -62,6 +63,41 @@ class TestBloomerpFileListViewE2E(BloomerpE2ETestCase):
             name=f"Open folder {name!r}",
         )
 
+    def create_folder(
+        self,
+        name: str,
+        validators: E2EValidator | list[E2EValidator] | None = None,
+    ) -> E2EAction:
+        """Create a folder through the file-browser toolbar modal."""
+
+        def execute() -> None:
+            toolbar_action = self.page.locator(
+                '[data-data-view-button="create_folder"]'
+            )
+            toolbar_action.get_by_role(
+                "button",
+                name="Create Folder",
+                exact=True,
+            ).click()
+
+            modal = self.page.locator("#bloomerp-general-use-modal")
+            form = modal.locator('form:has(input[name="name"])')
+            expect(form).to_be_visible()
+            form.locator('input[name="name"]').fill(name)
+
+            with self.page.expect_navigation(wait_until="domcontentloaded"):
+                form.get_by_role(
+                    "button",
+                    name="Create",
+                    exact=True,
+                ).click()
+
+        return E2EAction(
+            execute=execute,
+            validators=validators,
+            name=f"Create folder {name!r}",
+        )
+
     def upload_file_to_current_folder(self) -> E2EAction:
         """Upload through the toolbar and keep the active folder as target."""
 
@@ -91,13 +127,11 @@ class TestBloomerpFileListViewE2E(BloomerpE2ETestCase):
 
     def create_sample_files(self) -> None:
         """Create an object with two files and its automatic folder hierarchy."""
-        planet = self.PlanetModel.objects.create(
-            name="Earth"
-        )
+        self.planet = self.PlanetModel.objects.create(name="Earth")
 
-        country = self.CountryModel.objects.create(
+        self.country = self.CountryModel.objects.create(
             name="Belgium",
-            planet=planet
+            planet=self.planet,
         )
 
         self.sample_customer = self.CustomerModel.objects.create(
@@ -122,18 +156,19 @@ class TestBloomerpFileListViewE2E(BloomerpE2ETestCase):
             ],
         )
 
-        File.upload_files_to_object(
-            country,
+        self.country_files = File.upload_files_to_object(
+            self.country,
             [
                 SimpleUploadedFile(
                     "sample.txt",
                     b"Sample text",
                     content_type="text/plain",
-                )
-            ]
+                ),
+            ],
         )
 
         self.customer_folder = self.sample_files[0].folder
+        self.country_folder = self.country_files[0].folder
         self.customers_folder = self.customer_folder.parent
         self.folder_request_ids: list[str] = []
         self.page.on("request", self.record_folder_request)
@@ -147,7 +182,11 @@ class TestBloomerpFileListViewE2E(BloomerpE2ETestCase):
     def cleanup_sample_files(self) -> None:
         """Remove uploaded test files from storage after the scenario."""
         self.page.remove_listener("request", self.record_folder_request)
-        for file in getattr(self, "sample_files", []):
+        files = [
+            *getattr(self, "sample_files", []),
+            *getattr(self, "country_files", []),
+        ]
+        for file in files:
             file.delete()
         for file in File.objects.filter(name="toolbar-upload.txt"):
             file.delete()
@@ -157,6 +196,20 @@ class TestBloomerpFileListViewE2E(BloomerpE2ETestCase):
         customer = getattr(self, "sample_customer", None)
         if customer is not None:
             customer.delete()
+        country = getattr(self, "country", None)
+        if country is not None:
+            country.delete()
+        planet = getattr(self, "planet", None)
+        if planet is not None:
+            planet.delete()
+        for folder_name in ("customer_folder", "country_folder"):
+            folder = getattr(self, folder_name, None)
+            if folder is not None:
+                folder.delete()
+        FileFolder.objects.filter(
+            name="New folder",
+            kind=FileFolder.Kind.MANUAL,
+        ).delete()
 
     def contains_folder(self, names: list[str]) -> E2EValidator:
         """Return an assertion that every named folder is currently visible."""
@@ -227,6 +280,21 @@ class TestBloomerpFileListViewE2E(BloomerpE2ETestCase):
                     self.click_folder("customers"),
                     self.click_folder("John Doe"),
                     self.upload_file_to_current_folder(),
+                ],
+                prepare=self.create_sample_files,
+                cleanup=self.cleanup_sample_files,
+            ),
+            E2ERequestScenario(
+                name="Creating a folder uses the current folder",
+                user=self.admin_user,
+                url="/files",
+                actions=[
+                    self.click_folder("Miscellaneous"),
+                    self.click_folder("customers"),
+                    self.create_folder(
+                        "New folder",
+                        validators=self.contains_folder(["New folder"]),
+                    ),
                 ],
                 prepare=self.create_sample_files,
                 cleanup=self.cleanup_sample_files,

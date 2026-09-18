@@ -5,7 +5,12 @@ from django.core.files.base import ContentFile
 from bloomerp.models.files.file import File
 from bloomerp.models.files.file_folder import FileFolder
 from bloomerp.modules.misc import MiscModule
-from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
+from bloomerp.services.file_services import (
+    ensure_folder_hierarchy_for_object,
+    get_model_folder_scope_key,
+    get_module_folder_scope_key,
+    get_object_folder_scope_key,
+)
 from bloomerp.tests.base import (
     BaseBloomerpTestCaseWithModels,
     BloomerpModelTestCase,
@@ -46,6 +51,15 @@ class TestFileModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
                 create_operation=self.synchronize_existing_model_folder,
                 create_validators=self.existing_model_folder_was_reused,
             ),
+            ModelScenario(
+                name="Renamed object keeps its generated folder",
+                description=(
+                    "UC: An object's display name changes after its folder exists.\n"
+                    "Expected Result: The same folder is renamed instead of duplicated."
+                ),
+                create_operation=self.synchronize_renamed_object_folder,
+                create_validators=self.renamed_object_folder_was_reused,
+            ),
         ]
 
     def create_file(self, *, obj=None):
@@ -65,24 +79,26 @@ class TestFileModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
     def protected_hierarchy_exists(self, _file):
         content_type = ContentType.objects.get_for_model(self.customer)
         object_folder = FileFolder.objects.filter(
-            content_type=content_type,
-            object_id=str(self.customer.pk),
+            kind=FileFolder.Kind.OBJECT,
+            scope_key=get_object_folder_scope_key(content_type, self.customer.pk),
         ).first()
         model_folder = FileFolder.objects.filter(
-            content_type=content_type,
-            object_id__isnull=True,
+            kind=FileFolder.Kind.MODEL,
+            scope_key=get_model_folder_scope_key(content_type),
         ).first()
         module_folder = FileFolder.objects.filter(
-            name=MiscModule().name,
-            content_type__isnull=True,
-            object_id__isnull=True,
+            kind=FileFolder.Kind.MODULE,
+            scope_key=get_module_folder_scope_key(MiscModule(), content_type),
         ).first()
         return (
             object_folder is not None
             and object_folder.object_id == str(self.customer.pk)
             and model_folder is not None
             and module_folder is not None
-            and all(folder.protected for folder in [object_folder, model_folder, module_folder])
+            and all(
+                folder.protected
+                for folder in [object_folder, model_folder, module_folder]
+            )
         )
 
     def synchronize_existing_model_folder(self):
@@ -90,6 +106,8 @@ class TestFileModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
         self.customer_content_type = ContentType.objects.get_for_model(self.customer)
         self.existing_folder = FileFolder.objects.create(
             name="Previously translated customers",
+            kind=FileFolder.Kind.MODEL,
+            scope_key=get_model_folder_scope_key(self.customer_content_type),
             content_type=self.customer_content_type,
             protected=True,
         )
@@ -98,7 +116,34 @@ class TestFileModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
 
     def existing_model_folder_was_reused(self, existing_folder):
         model_folders = FileFolder.objects.filter(
-            content_type=self.customer_content_type,
-            object_id__isnull=True,
+            kind=FileFolder.Kind.MODEL,
+            scope_key=get_model_folder_scope_key(self.customer_content_type),
         )
-        return model_folders.count() == 1 and model_folders.get() == existing_folder
+        model_folder = model_folders.get()
+        return (
+            model_folders.count() == 1
+            and model_folder == existing_folder
+            and model_folder.name == self.CustomerModel._meta.verbose_name_plural
+            and model_folder.parent.kind == FileFolder.Kind.MODULE
+        )
+
+    def synchronize_renamed_object_folder(self):
+        self.customer = self.CustomerModel.objects.first()
+        self.customer_content_type = ContentType.objects.get_for_model(self.customer)
+        object_folder = ensure_folder_hierarchy_for_object(self.customer)
+        self.original_object_folder_id = object_folder.pk
+        self.customer.first_name = "Renamed"
+        self.customer.last_name = "Customer"
+        self.customer.save()
+        return ensure_folder_hierarchy_for_object(self.customer)
+
+    def renamed_object_folder_was_reused(self, object_folder):
+        scope_key = get_object_folder_scope_key(
+            self.customer_content_type,
+            self.customer.pk,
+        )
+        return (
+            object_folder.pk == self.original_object_folder_id
+            and object_folder.name == "Renamed Customer"
+            and FileFolder.objects.filter(scope_key=scope_key).count() == 1
+        )
