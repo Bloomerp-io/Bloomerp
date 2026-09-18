@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from urllib.parse import parse_qs, urlsplit
 
 from django import forms
 from django.contrib.auth.decorators import login_required
@@ -16,6 +17,7 @@ from bloomerp.services.file_services import (
     ensure_folder_hierarchy_for_object,
     get_folder_linked_object,
     get_model_scope_folder,
+    get_object_folder_scope_key,
     get_target_folder,
     resolve_file_scope,
 )
@@ -43,6 +45,16 @@ def _request_scope_value(request: HttpRequest, *keys: str) -> str | None:
         value = coerce_file_scope_value(source.get(key))
         if value is not None:
             return value
+
+    if request.method == "GET":
+        current_url = request.headers.get("HX-Current-URL")
+        current_query = parse_qs(urlsplit(current_url).query) if current_url else {}
+        for key in keys:
+            values = current_query.get(key, [])
+            value = coerce_file_scope_value(values[-1] if values else None)
+            if value is not None:
+                return value
+
     return None
 
 
@@ -78,10 +90,9 @@ def _resolve_folder_creation_scope(
 
     if linked_object is not None:
         object_folder = FileFolder.objects.filter(
-            content_type=content_type,
-            object_id=str(linked_object.pk),
-            protected=True,
-        ).order_by("id").first()
+            kind=FileFolder.Kind.OBJECT,
+            scope_key=get_object_folder_scope_key(content_type, linked_object.pk),
+        ).first()
         if object_folder is None and create_object_folder:
             object_folder = ensure_folder_hierarchy_for_object(
                 linked_object,

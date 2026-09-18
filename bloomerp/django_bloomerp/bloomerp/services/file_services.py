@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 
@@ -13,6 +13,47 @@ if TYPE_CHECKING:
     from bloomerp.models.files.file import File
 
 # TODO: refactor the file manager logic
+
+
+def get_module_folder_scope_key(root_module, content_type: ContentType) -> str:
+    module_id = (
+        getattr(root_module, "full_id", None) or root_module.id
+        if root_module
+        else f"app:{content_type.app_label}"
+    )
+    return f"module:{module_id}"
+
+
+def get_model_folder_scope_key(content_type: ContentType) -> str:
+    return f"model:{content_type.app_label}.{content_type.model}"
+
+
+def get_object_folder_scope_key(
+    content_type: ContentType, object_id: object
+) -> str:
+    return f"object:{content_type.app_label}.{content_type.model}:{object_id}"
+
+
+def _ensure_system_folder(
+    *, kind: str, scope_key: str, values: dict
+) -> FileFolder:
+    folder, _ = FileFolder.objects.get_or_create(
+        scope_key=scope_key,
+        defaults={"kind": kind, **values},
+    )
+
+    changed_fields = []
+    for field_name, value in values.items():
+        if field_name in {"created_by", "updated_by"}:
+            continue
+        if getattr(folder, field_name) != value:
+            setattr(folder, field_name, value)
+            changed_fields.append(field_name)
+
+    if changed_fields:
+        folder.save(update_fields=changed_fields)
+
+    return folder
 
 
 class FileManager:
@@ -61,14 +102,10 @@ def get_target_folder(folder_id: str | None) -> FileFolder | None:
 def get_model_scope_folder(content_type: ContentType | None) -> FileFolder | None:
     if content_type is None:
         return None
-    return (
-        FileFolder.objects.filter(
-            content_type=content_type,
-            object_id__isnull=True,
-        )
-        .order_by("id")
-        .first()
-    )
+    return FileFolder.objects.filter(
+        kind=FileFolder.Kind.MODEL,
+        scope_key=get_model_folder_scope_key(content_type),
+    ).first()
 
 
 def get_file_for_mutation(request: HttpRequest) -> File:
@@ -100,6 +137,7 @@ def get_folder_descendants(folder: FileFolder) -> tuple[list[FileFolder], list[F
     return folders, list(files.values())
 
 
+@transaction.atomic
 def ensure_folder_hierarchy_for_object(
     linked_object: models.Model | None,
     *,
@@ -123,77 +161,44 @@ def ensure_folder_hierarchy_for_object(
     model_name = model._meta.verbose_name_plural
     object_name = str(linked_object)
 
-    defaults = {
-        "created_by": created_by,
-        "updated_by": updated_by,
-        "protected": True,
-    }
-
-    model_folder = FileFolder.objects.filter(
-        content_type=content_type,
-        object_id__isnull=True,
-    ).order_by("id").first()
-    if model_folder is None:
-        model_folder = FileFolder.objects.create(
-            name=model_name,
-            parent=None,
-            content_type=content_type,
-            created_by=created_by,
-            updated_by=updated_by,
-            protected=True,
-        )
-
-    module_folder, _ = FileFolder.objects.get_or_create(
-        name=module_name,
-        parent=None,
-        defaults=defaults,
-    )
-    if not module_folder.protected:
-        module_folder.protected = True
-        module_folder.save(update_fields=["protected"])
-
-    model_updates: list[str] = []
-    if model_folder.parent_id != module_folder.id:
-        model_folder.parent = module_folder
-        model_updates.append("parent")
-    if model_folder.content_type_id != content_type.id:
-        model_folder.content_type = content_type
-        model_updates.append("content_type")
-    if model_folder.object_id is not None:
-        model_folder.object_id = None
-        model_updates.append("object_id")
-    if not model_folder.protected:
-        model_folder.protected = True
-        model_updates.append("protected")
-    if model_updates:
-        model_folder.save(update_fields=model_updates)
-
-    object_folder, _ = FileFolder.objects.get_or_create(
-        name=object_name,
-        parent=model_folder,
-        defaults={
-            **defaults,
-            "content_type": content_type,
-            "object_id": object_id,
+    module_folder = _ensure_system_folder(
+        kind=FileFolder.Kind.MODULE,
+        scope_key=get_module_folder_scope_key(root_module, content_type),
+        values={
+            "name": module_name,
+            "parent": None,
+            "content_type": None,
+            "object_id": None,
+            "protected": True,
+            "created_by": created_by,
+            "updated_by": updated_by,
         },
     )
-    object_updates: list[str] = []
-    if object_folder.name != object_name:
-        object_folder.name = object_name
-        object_updates.append("name")
-    if object_folder.content_type_id != content_type.id:
-        object_folder.content_type = content_type
-        object_updates.append("content_type")
-    if (object_folder.object_id or None) != object_id:
-        object_folder.object_id = object_id
-        object_updates.append("object_id")
-    if object_folder.parent_id != model_folder.id:
-        object_folder.parent = model_folder
-        object_updates.append("parent")
-    if not object_folder.protected:
-        object_folder.protected = True
-        object_updates.append("protected")
-    if object_updates:
-        object_folder.save(update_fields=object_updates)
+    model_folder = _ensure_system_folder(
+        kind=FileFolder.Kind.MODEL,
+        scope_key=get_model_folder_scope_key(content_type),
+        values={
+            "name": model_name,
+            "parent": module_folder,
+            "content_type": content_type,
+            "object_id": None,
+            "protected": True,
+            "created_by": created_by,
+            "updated_by": updated_by,
+        },
+    )
+    object_folder = _ensure_system_folder(
+        kind=FileFolder.Kind.OBJECT,
+        scope_key=get_object_folder_scope_key(content_type, object_id),
+        values={
+            "name": object_name,
+            "parent": model_folder,
+            "content_type": content_type,
+            "object_id": object_id,
+            "protected": True,
+            "created_by": created_by,
+            "updated_by": updated_by,
+        },
+    )
 
     return object_folder

@@ -17,6 +17,79 @@ class TestFileFolderModel(BloomerpModelTestCase):
     def get_test_scenarios(self) -> list[ModelScenario[FileFolder]]:
         return [
             ModelScenario(
+                name="Manual folder has no system identity",
+                create_args={"name": "Contracts"},
+                create_validators=lambda folder: (
+                    folder.kind == FileFolder.Kind.MANUAL
+                    and folder.scope_key is None
+                ),
+            ),
+            ModelScenario(
+                name="System folder requires a scope key",
+                create_args={
+                    "name": "Customers",
+                    "kind": FileFolder.Kind.MODEL,
+                },
+                expected_exceptions=[
+                    ExpectedModelException(
+                        phase="create",
+                        exception=ValidationError,
+                    )
+                ],
+            ),
+            ModelScenario(
+                name="Manual folder rejects a scope key",
+                create_args={
+                    "name": "Contracts",
+                    "scope_key": "manual:contracts",
+                },
+                expected_exceptions=[
+                    ExpectedModelException(
+                        phase="create",
+                        exception=ValidationError,
+                    )
+                ],
+            ),
+            ModelScenario(
+                name="System folder scope key is unique",
+                preparation=lambda: FileFolder.objects.create(
+                    name="Customers",
+                    kind=FileFolder.Kind.MODEL,
+                    scope_key="model:tests.customer",
+                ),
+                create_args={
+                    "name": "Other customers",
+                    "kind": FileFolder.Kind.MODEL,
+                    "scope_key": "model:tests.customer",
+                },
+                expected_exceptions=[
+                    ExpectedModelException(
+                        phase="create",
+                        exception=ValidationError,
+                    )
+                ],
+            ),
+            ModelScenario(
+                name="System folder identity is immutable",
+                create_args={
+                    "name": "Customers",
+                    "kind": FileFolder.Kind.MODEL,
+                    "scope_key": "model:tests.customer",
+                },
+                post_create=lambda folder: setattr(
+                    folder,
+                    "scope_key",
+                    "model:tests.renamed_customer",
+                ),
+                update_args={},
+                expected_exceptions=[
+                    ExpectedModelException(
+                        phase="update",
+                        exception=ValidationError,
+                    )
+                ],
+            ),
+            ModelScenario(
                 name="File folder requires a content type when it has an object ID",
                 create_args={"name": "Object folder", "object_id": "1"},
                 expected_exceptions=[

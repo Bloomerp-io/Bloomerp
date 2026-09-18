@@ -37,6 +37,12 @@ class FileFolder(
     AbsoluteUrlModelMixin,
     models.Model,
 ):
+    class Kind(models.TextChoices):
+        MODULE = "module", _("Module")
+        MODEL = "model", _("Model")
+        OBJECT = "object", _("Object")
+        MANUAL = "manual", _("Manual")
+
     bloomerp_config = BloomerpModelConfig(
         string_search_settings=StringSearchSettings(
             string_search_fields=["name"],
@@ -72,8 +78,39 @@ class FileFolder(
         verbose_name_plural = _("File Folders")
         managed = True
         db_table = "bloomerp_file_folder"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(kind="manual", scope_key__isnull=True)
+                    | (
+                        ~models.Q(kind="manual")
+                        & models.Q(scope_key__isnull=False)
+                    )
+                ),
+                name="file_folder_kind_scope_consistent",
+            ),
+            models.UniqueConstraint(
+                fields=["scope_key"],
+                condition=models.Q(scope_key__isnull=False),
+                name="unique_file_folder_scope_key",
+            ),
+        ]
 
     name = models.CharField(max_length=255, verbose_name=_("Name"))
+    kind = models.CharField(
+        max_length=16,
+        choices=Kind.choices,
+        default=Kind.MANUAL,
+        editable=False,
+        verbose_name=_("Kind"),
+    )
+    scope_key = models.CharField(
+        max_length=512,
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name=_("Scope key"),
+    )
     parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, verbose_name=_("Parent"))
     content_type = models.ForeignKey(
         to=ContentType, 
@@ -105,6 +142,35 @@ class FileFolder(
 
     def clean(self):
         super().clean()
+
+        if self.kind == self.Kind.MANUAL and self.scope_key is not None:
+            raise ValidationError(
+                {"scope_key": _("Manual folders cannot have a scope key.")}
+            )
+
+        if self.kind != self.Kind.MANUAL and not self.scope_key:
+            raise ValidationError(
+                {"scope_key": _("System folders require a scope key.")}
+            )
+
+        if self.pk:
+            persisted_identity = (
+                type(self)
+                ._base_manager.filter(pk=self.pk)
+                .values("kind", "scope_key")
+                .first()
+            )
+            if persisted_identity and (
+                persisted_identity["kind"] != self.kind
+                or persisted_identity["scope_key"] != self.scope_key
+            ):
+                raise ValidationError(
+                    {
+                        "scope_key": _(
+                            "A folder's system identity cannot be changed after creation."
+                        )
+                    }
+                )
 
         if self.object_id and not self.content_type_id:
             raise ValidationError({"content_type": "content_type is required when object_id is set."})
