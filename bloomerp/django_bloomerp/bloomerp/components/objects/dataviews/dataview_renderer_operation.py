@@ -1,10 +1,14 @@
-from bloomerp.components.objects.dataviews.dataview import _build_dataview_state
+from bloomerp.components.objects.dataviews.dataview import (
+    DATAVIEW_OPERATION_CONTEXT_PARAM,
+    _build_dataview_state,
+    _valid_dataview_operation_context,
+)
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from django.db.models import Q
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 
 
@@ -22,14 +26,28 @@ def dataview_action(
     action: str,
 ) -> HttpResponse:
     """Dispatch an operation to the renderer of an available preference."""
-    available_preference = get_object_or_404(
+    available_preference = (
         PreferenceManager(request.user).get_available(
             UserListViewPreference,
             {"content_type_id": content_type_id},
-        ),
-        Q(pk=preference_id) | Q(source_object_id=preference_id),
+        )
+        .filter(Q(pk=preference_id) | Q(source_object_id=preference_id))
+        .first()
     )
-    preference = available_preference.effective_preference
+    if available_preference is not None:
+        preference = available_preference.effective_preference
+    elif _valid_dataview_operation_context(
+        request,
+        content_type_id=content_type_id,
+        preference_id=preference_id,
+    ):
+        preference = get_object_or_404(
+            UserListViewPreference,
+            pk=preference_id,
+            content_type_id=content_type_id,
+        )
+    else:
+        raise Http404
 
     state = _build_dataview_state(
         request,
@@ -38,6 +56,9 @@ def dataview_action(
     )
     if isinstance(state, HttpResponse):
         return state
+    state.operation_context_token = request.GET.get(
+        DATAVIEW_OPERATION_CONTEXT_PARAM
+    )
 
     definition = DATAVIEW_REGISTRY.get(state.preference.view_type)
     if definition is None:

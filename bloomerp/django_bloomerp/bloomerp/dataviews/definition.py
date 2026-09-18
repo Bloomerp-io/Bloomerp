@@ -53,6 +53,7 @@ class DataviewState:
     query: str | None = None
     count: int = 0
     filters: Filters | None = None
+    operation_context_token: str | None = None
     object_actions: list[ObjectAction] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
 

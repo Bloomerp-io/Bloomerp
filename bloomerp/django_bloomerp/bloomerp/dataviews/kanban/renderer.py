@@ -36,7 +36,10 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "action": "move",
             },
         )
-        operation_querystring = self.build_page_querystring(self.state.request)
+        operation_querystring = self.build_page_querystring(
+            self.state.request,
+            self.state.operation_context_token,
+        )
         if operation_querystring:
             move_url = f"{move_url}?{operation_querystring}"
         group_by_field = self.get_group_by_field(
@@ -110,8 +113,17 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         return related_queryset.order_by().count() > KANBAN_MAX_RELATED_COLUMNS
 
     @classmethod
-    def build_page_querystring(cls, request) -> str:
-        return cls.build_querystring(request, ("page", "kanban_page", "kanban_column"))
+    def build_page_querystring(
+        cls,
+        request,
+        operation_context_token: str | None = None,
+    ) -> str:
+        querydict = request.GET.copy()
+        for key in ("page", "kanban_page", "kanban_column"):
+            querydict.pop(key, None)
+        if operation_context_token:
+            querydict["_dataview_operation_context"] = operation_context_token
+        return querydict.urlencode()
 
     @classmethod
     def get_group_by_field(cls, dataview_fields, options):
@@ -158,7 +170,10 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "avatar_field": state.avatar_field,
                 "group": group,
                 "preference": state.preference,
-                "kanban_page_querystring": cls.build_page_querystring(request),
+                "kanban_page_querystring": cls.build_page_querystring(
+                    request,
+                    state.operation_context_token,
+                ),
             },
         )
 

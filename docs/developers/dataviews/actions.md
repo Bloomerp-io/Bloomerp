@@ -51,6 +51,18 @@ operations even when the viewer's globally selected preference is a table.
 Generated operation URLs also preserve the rendered request's search and filter
 query string, so the rebuilt state represents the same filtered dataview.
 
+An embedding such as a shared workspace tile may be authorized to render a
+preference that was not shared independently with its viewer. When `dataview()`
+receives an explicit `preference`, it adds a signed
+`_dataview_operation_context` value to operation URLs. The token is bound to
+the viewer, content type, and preference and expires after 24 hours. The
+dispatcher considers it only when normal `PreferenceManager.get_available()`
+resolution fails. Refreshing the embedding issues a new token.
+
+The token grants access to the renderer configuration only. It never grants
+model, row, field, or related-object access; mutation handlers must still
+perform their normal write authorization.
+
 The dispatcher does not maintain a global operation catalog. The resolved
 preference's renderer interprets the string. Therefore
 `/renderer-operation/column/` works only for a preference whose renderer

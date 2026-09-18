@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import date, datetime, timedelta
+from html import unescape
 
 from django.db import models
 from django.http import HttpResponse
@@ -26,6 +27,7 @@ from bloomerp.permissions.manager import PolicyManager
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.components.objects.dataviews.dataview import (
+    DATAVIEW_OPERATION_CONTEXT_PARAM,
     _select_related_rendered_relations,
     dataview,
 )
@@ -835,6 +837,58 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         self.assertEqual(response.status_code, 200)
         customer.refresh_from_db()
         self.assertEqual(customer.age, 42)
+
+    def test_explicit_embedded_preference_signs_renderer_operations(self):
+        """A shared container can authorize its unshared embedded preference."""
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        embedded_preference = UserListViewPreference.objects.create(
+            user=self.normal_user,
+            content_type=content_type,
+            name="Workspace board",
+            view_type="kanban",
+            options={"kanban": {"group_by_field": "age"}},
+        )
+        customer = self.create_customer("Embedded", "Card", 10)
+        request = RequestFactory().get(
+            reverse(
+                "components_dataview",
+                kwargs={"content_type_id": content_type.id},
+            )
+        )
+        request.user = self.admin_user
+
+        render_response = dataview(
+            request,
+            content_type.id,
+            preference=embedded_preference,
+        )
+        match = re.search(
+            r'data-kanban-move-url="([^"]+)"',
+            render_response.content.decode("utf-8"),
+        )
+        self.assertIsNotNone(match)
+        operation_url = unescape(match.group(1))
+        self.assertIn(DATAVIEW_OPERATION_CONTEXT_PARAM, operation_url)
+
+        self.client.force_login(self.admin_user)
+        move_response = self.client.post(
+            operation_url,
+            {"object_id": customer.pk, "group_value": "42"},
+        )
+
+        self.assertEqual(move_response.status_code, 200)
+        customer.refresh_from_db()
+        self.assertEqual(customer.age, 42)
+
+        other_user = self.normal_user.__class__.objects.create(
+            username="operation-token-other-user",
+        )
+        self.client.force_login(other_user)
+        other_user_response = self.client.post(
+            operation_url,
+            {"object_id": customer.pk, "group_value": "43"},
+        )
+        self.assertEqual(other_user_response.status_code, 404)
 
     def test_kanban_split_view_constrains_overflow_to_list_pane(self):
         """
