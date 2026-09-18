@@ -11,7 +11,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
     data-page-offset="{{ calendar_page_offset|default:0 }}"
     data-calendar-start-field-type="{{ start_field.field_type }}"
     data-calendar-end-field-type="{{ end_field.field_type|default:'' }}"
-    data-calendar-update-url="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id action='dates' %}"
+    data-calendar-update-url="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='dates' %}{% if renderer_operation_querystring %}?{{ renderer_operation_querystring }}{% endif %}"
     bloomerp-component="calendar"
     tabindex="0"
 >

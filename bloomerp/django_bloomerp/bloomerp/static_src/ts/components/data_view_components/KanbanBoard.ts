@@ -207,21 +207,19 @@ export class KanbanBoard extends BaseDataViewComponent {
     private async persistMove(card: HTMLElement, destinationValue: string): Promise<boolean> {
         if (!this.element) return false;
 
-        const contentTypeId = this.element.dataset.contentTypeId;
-        const groupByFieldId = this.element.dataset.groupByFieldId;
+        const moveUrl = this.element.dataset.kanbanMoveUrl;
         const objectId = card.dataset.objectId;
 
-        if (!contentTypeId || !groupByFieldId || !objectId) return false;
+        if (!moveUrl || !objectId) return false;
 
         const csrfToken = getCsrfToken();
         const body = new URLSearchParams({
             object_id: objectId,
-            group_by_field_id: groupByFieldId,
             group_value: destinationValue,
         });
 
         try {
-            const response = await fetch(`/components/kanban_move_card/${contentTypeId}/`, {
+            const response = await fetch(moveUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

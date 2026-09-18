@@ -499,6 +499,7 @@ def dataview(
         ),
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
+        'renderer_operation_querystring': data_view_querystring,
         'initial_filters': request.GET.get('filter'),
         'count' : state.count,
         'before_data_view': before_data_view,

@@ -308,11 +308,14 @@ def handle_action(cls, action, request, state):
     ...
 ```
 
-Requests are dispatched through the active dataview's renderer-operation
-endpoint. Return the superclass response for unknown actions. Mutation actions
-must validate the HTTP method and check change permission for every affected
-object; receiving a permission-filtered view queryset does not itself grant
-write access.
+Requests are dispatched through the rendered preference's renderer-operation
+endpoint. Its URL includes `preference_id`, so embedded and shared dataviews do
+not accidentally dispatch through the viewer's globally selected preference.
+Shared preferences are resolved through the viewer's available preferences and
+do not grant permission to manage the source preference. Return the superclass
+response for unknown actions. Mutation actions must validate the HTTP method
+and check change permission for every affected object; receiving a
+permission-filtered view queryset does not itself grant write access.
 
 ## Availability and display fields
 

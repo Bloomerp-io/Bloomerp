@@ -730,7 +730,11 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
 
         column_url = reverse(
             viewname="components_dataview_renderer_operation",
-            kwargs={"content_type_id": content_type.id, "action": "column"},
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": preference.id,
+                "action": "column",
+            },
         )
         page_response = self.client.get(
             f"{column_url}?kanban_column=123&kanban_page=2",
@@ -743,6 +747,94 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
             10,
         )
         self.assertContains(page_response, "kanban_column=123&kanban_page=3", html=False)
+
+    def test_renderer_operation_uses_available_shared_preference_not_selection(self):
+        """A shared board keeps its renderer identity without becoming selected."""
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        manager = PreferenceManager(self.admin_user)
+        selected = manager.get_or_create_selected(
+            UserListViewPreference,
+            {"content_type_id": content_type.id},
+        )
+        selected.view_type = "table"
+        selected.save(update_fields=["view_type"])
+
+        shared_board = UserListViewPreference.objects.create(
+            user=self.normal_user,
+            content_type=content_type,
+            name="Shared board",
+            view_type="kanban",
+            options={"kanban": {"group_by_field": "age", "page_size": 10}},
+        )
+        shared_board.shared_with_users.add(self.admin_user)
+        UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            source_object=shared_board,
+        )
+        customer = self.create_customer("Shared", "Card", 123)
+
+        operation_url = reverse(
+            "components_dataview_renderer_operation",
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": shared_board.id,
+                "action": "column",
+            },
+        )
+        response = self.client.get(
+            f"{operation_url}?kanban_column=123",
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, str(customer), html=False)
+        selected.refresh_from_db()
+        self.assertTrue(selected.selected)
+
+    def test_kanban_move_uses_the_resolved_preference_configuration(self):
+        """The move operation derives its writable field from the Kanban options."""
+        self.client.force_login(self.admin_user)
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference,
+            {"content_type_id": content_type.id},
+        )
+        preference.view_type = "kanban"
+        preference.options = {"kanban": {"group_by_field": "age"}}
+        preference.save(update_fields=["view_type", "options"])
+        customer = self.create_customer("Move", "Card", 10)
+        operation_url = reverse(
+            "components_dataview_renderer_operation",
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": preference.id,
+                "action": "move",
+            },
+        )
+
+        render_url = reverse(
+            "components_dataview",
+            kwargs={"content_type_id": content_type.id},
+        )
+        render_response = self.client.get(
+            f"{render_url}?first_name=Move",
+            HTTP_HX_REQUEST="true",
+        )
+        response = self.client.post(
+            operation_url,
+            {"object_id": customer.pk, "group_value": "42"},
+        )
+
+        self.assertContains(
+            render_response,
+            f'data-kanban-move-url="{operation_url}?first_name=Move"',
+            html=False,
+        )
+        self.assertEqual(response.status_code, 200)
+        customer.refresh_from_db()
+        self.assertEqual(customer.age, 42)
 
     def test_kanban_split_view_constrains_overflow_to_list_pane(self):
         """
@@ -1347,7 +1439,16 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         unscheduled = self.CalendarEventModel.objects.create(name="Unscheduled")
         action_url = reverse(
             "components_dataview_renderer_operation",
-            kwargs={"content_type_id": content_type.id, "action": "dates"},
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": PreferenceManager(self.admin_user)
+                .get_or_create_selected(
+                    UserListViewPreference,
+                    {"content_type_id": content_type.id},
+                )
+                .id,
+                "action": "dates",
+            },
         )
         local_timezone = timezone.get_current_timezone()
 
@@ -1409,7 +1510,16 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         # 3. Request the next page through the permission-filtered renderer action.
         page_url = reverse(
             "components_dataview_renderer_operation",
-            kwargs={"content_type_id": content_type.id, "action": "unit"},
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": PreferenceManager(self.admin_user)
+                .get_or_create_selected(
+                    UserListViewPreference,
+                    {"content_type_id": content_type.id},
+                )
+                .id,
+                "action": "unit",
+            },
         )
         page_response = self.client.get(
             f"{page_url}?calendar_view_mode=day&calendar_unit={today.isoformat()}T10&calendar_unit_offset=5",
@@ -1471,7 +1581,7 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
         )
         name_field = ApplicationField.get_by_field(self.GantTaskModel, "name")
         dependency_field = ApplicationField.get_by_field(self.GantTaskModel, "dependency")
-        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+        preference = PreferenceManager(user or self.admin_user).get_or_create_selected(
             UserListViewPreference,
             scope={
                 "content_type_id":content_type.id
@@ -1606,7 +1716,16 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
         # 4. Request page two through the renderer action.
         page_url = reverse(
             "components_dataview_renderer_operation",
-            kwargs={"content_type_id": content_type.id, "action": "page"},
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": PreferenceManager(self.admin_user)
+                .get_or_create_selected(
+                    UserListViewPreference,
+                    {"content_type_id": content_type.id},
+                )
+                .id,
+                "action": "page",
+            },
         )
         page_response = self.client.get(
             f"{page_url}?gant_page=2",
@@ -1647,7 +1766,16 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
 
         page_url = reverse(
             "components_dataview_renderer_operation",
-            kwargs={"content_type_id": content_type.id, "action": "unscheduled"},
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": PreferenceManager(self.admin_user)
+                .get_or_create_selected(
+                    UserListViewPreference,
+                    {"content_type_id": content_type.id},
+                )
+                .id,
+                "action": "unscheduled",
+            },
         )
         page_response = self.client.get(
             f"{page_url}?gant_unscheduled_page=2",
@@ -1676,7 +1804,16 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
         )
         action_url = reverse(
             "components_dataview_renderer_operation",
-            kwargs={"content_type_id": content_type.id, "action": "dates"},
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": PreferenceManager(self.admin_user)
+                .get_or_create_selected(
+                    UserListViewPreference,
+                    {"content_type_id": content_type.id},
+                )
+                .id,
+                "action": "dates",
+            },
         )
         local_tz = timezone.get_current_timezone()
         first_start = timezone.make_aware(datetime(2026, 9, 2), local_tz)
@@ -1738,7 +1875,16 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
         self.client.force_login(self.normal_user)
         action_url = reverse(
             "components_dataview_renderer_operation",
-            kwargs={"content_type_id": content_type.id, "action": "dates"},
+            kwargs={
+                "content_type_id": content_type.id,
+                "preference_id": PreferenceManager(self.normal_user)
+                .get_or_create_selected(
+                    UserListViewPreference,
+                    {"content_type_id": content_type.id},
+                )
+                .id,
+                "action": "dates",
+            },
         )
         target = timezone.make_aware(datetime(2026, 10, 4)).timestamp() * 1000
         response = self.client.post(

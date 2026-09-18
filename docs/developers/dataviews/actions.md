@@ -8,7 +8,7 @@ dataview.
 
 | Mechanism | Entry point | Use it for |
 | --- | --- | --- |
-| Renderer operation | `BaseDataviewRenderer.handle_action()` | Behavior owned by the currently selected dataview renderer and dependent on its configuration or filtered state. |
+| Renderer operation | `BaseDataviewRenderer.handle_action()` | Behavior owned by the rendered preference's dataview renderer and dependent on its configuration or filtered state. |
 | Standalone component endpoint | A routed function under `bloomerp.components` | A reusable server capability with its own URL and input contract that does not need dispatch through the selected renderer. |
 | Configured dataview action | `DataviewAction`, `DataviewHTMLAction`, or `DataviewModalAction` | Model-configured buttons, HTML, and modals in the dataview toolbar. |
 
@@ -22,7 +22,7 @@ a `handle_action()` request a **renderer operation**.
 The shared renderer-operation endpoint has this URL shape:
 
 ```text
-/components/dataview/<content_type_id>/renderer-operation/<action>/
+/components/dataview/<content_type_id>/preference/<preference_id>/renderer-operation/<action>/
 ```
 
 Its Django URL name is `components_dataview_renderer_operation`. The `action`
@@ -32,19 +32,29 @@ path value is an operation identifier chosen by the renderer, such as:
 - Calendar: `unit` and `dates`
 - Gantt: `page`, `unscheduled`, and `dates`
 
-For every request, the endpoint:
+The preference ID is the effective preference that rendered the dataview. For
+every request, the endpoint:
 
-1. Loads the user's selected `UserListViewPreference` for the content type.
+1. Resolves that preference through `PreferenceManager.get_available()` for the
+   current user and content type. An owned live reference to a shared source is
+   accepted when the URL contains the source preference ID.
 2. Builds the same `DataviewState` used for the main dataview request.
 3. Applies row permissions, search, filters, field permissions, renderer-owned
    query parameters, and sorting.
-4. Looks up the selected preference's definition in `DATAVIEW_REGISTRY`.
+4. Looks up the resolved preference's definition in `DATAVIEW_REGISTRY`.
 5. Calls `definition.renderer_cls.handle_action(action, request, state)`.
 6. Returns the renderer's `HttpResponse` unchanged.
 
-The dispatcher does not maintain a global operation catalog. The selected
-renderer interprets the string. Therefore `/renderer-operation/column/` works
-only while the active preference selects a renderer that implements `column`.
+Resolving an operation does not select, copy, or grant management access to the
+preference. This allows a shared or embedded Kanban board to keep using Kanban
+operations even when the viewer's globally selected preference is a table.
+Generated operation URLs also preserve the rendered request's search and filter
+query string, so the rebuilt state represents the same filtered dataview.
+
+The dispatcher does not maintain a global operation catalog. The resolved
+preference's renderer interprets the string. Therefore
+`/renderer-operation/column/` works only for a preference whose renderer
+implements `column`.
 The base implementation returns HTTP 400 for unsupported operations.
 
 Use `super().handle_action(action, request, state)` for unknown operation names:
@@ -64,7 +74,7 @@ behavior to evolve without every renderer reimplementing it.
 
 Use `handle_action()` when the operation needs one or more of the following:
 
-- the currently selected dataview type;
+- the rendered preference's dataview type;
 - the active dataview options in `state.options`;
 - the preference's visible or accessible fields;
 - the current search and filter query;
@@ -99,7 +109,7 @@ Kanban currently demonstrates both paths.
 ### Loading another column page
 
 This is a renderer operation because it depends on the active Kanban options,
-the selected preference, and the currently filtered queryset:
+the rendered preference, and the currently filtered queryset:
 
 1. `dataview_kanban_cards.html` renders an `hx-get` loader targeting
    `components_dataview_renderer_operation` with `action="column"`.
@@ -120,28 +130,27 @@ them as model filters before `handle_action()` received the request.
 
 ### Moving a card
 
-Card movement currently uses a separate endpoint:
+Card movement is a renderer operation because its writable field is defined by
+the resolved Kanban preference:
 
-1. `KanbanBoard.ts` optimistically moves the card in the DOM.
-2. It posts `object_id`, `group_by_field_id`, and `group_value` directly to
-   `/components/kanban_move_card/<content_type_id>/`.
-3. `components/objects/dataviews/kanban.py` validates the request and checks
-   object-level and field-level `change` permission.
-4. It updates the object and returns JSON.
-5. The frontend keeps the optimistic move on success or restores the original
-   column and shows an error on failure.
+1. The rendered board exposes its preference-scoped `move` operation URL in
+   `data-kanban-move-url`.
+2. `KanbanBoard.ts` optimistically moves the card and posts only `object_id` and
+   `group_value` to that URL.
+3. `KanbanDataviewRenderer.handle_action("move", request, state)` resolves the
+   grouping field from `state.options`; the browser cannot choose another
+   field by posting an application-field ID.
+4. The renderer requires row-level `change` access to the object and
+   field-level `change` access to the configured grouping field. Related lane
+   values are also limited to values the viewer may access.
+5. It updates the object and returns JSON. The frontend keeps the optimistic
+   move on success or restores the original column and shows an error on
+   failure.
 
-`kanban.py` is not a renderer operation because this path calls its dedicated
-URL directly and never enters the renderer-operation dispatcher. It receives
-the grouping field ID in the POST payload rather than resolving it from the
-active Kanban configuration.
-
-This is a legacy split that predates the renderer-operation mechanism. Moving a
-card is logically Kanban-specific and could be migrated to something like
-`KanbanDataviewRenderer.handle_action("move", request, state)`. The current
-endpoint should not be read as a rule that mutations belong outside
-`handle_action()`: Calendar and Gantt already perform permission-checked date
-mutations through renderer operations.
+Sharing a Kanban preference grants access to its board configuration, not write
+access to its records. A recipient can move a card only when their independent
+model, row, and field policies permit that update. They do not need permission
+to manage the owner's shared preference.
 
 For new dataviews, prefer a renderer operation when a mutation is meaningful
 only in that renderer and must agree with its active configuration. Prefer a
@@ -191,7 +200,7 @@ The corresponding template can call the shared dispatcher without defining a
 new Django route:
 
 ```django
-{% url 'components_dataview_renderer_operation' content_type_id=content_type_id action='page' as next_page_url %}
+{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='page' as next_page_url %}
 
 <button
     hx-get="{{ next_page_url }}?timeline_page={{ page_obj.next_page_number }}"
@@ -249,15 +258,11 @@ Test each layer at the boundary it owns:
   and context construction;
 - component tests for `components_dataview_renderer_operation`: method, input,
   status, response fragment, and permission behavior;
-- component tests for standalone endpoints: their complete independent input
-  and authorization contract;
 - end-to-end tests: only behavior that requires the browser, such as an HTMX
   intersection request, drag-and-drop, optimistic movement, DOM rollback, or
   component reinitialization after a swap.
 
-For Kanban, existing component tests exercise column pagination through the
-renderer-operation URL. The `components_kanban_move_card` suite currently has a
-generated test skeleton but no authored request scenarios. Those endpoint
-scenarios should be added before changing its contract. A browser test is
-warranted when verifying that dragging calls the right endpoint and keeps or
-rolls back the optimistic DOM update.
+For Kanban, component tests exercise column pagination, shared-preference
+resolution, and card movement through the preference-scoped renderer-operation
+URL. A browser test is warranted when verifying that dragging calls the right
+endpoint and keeps or rolls back the optimistic DOM update.
