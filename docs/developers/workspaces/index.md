@@ -3,6 +3,7 @@
 Workspaces in BloomERP allow users to create customized views which contain tiles
 
 
-## Models
-
-The workspaces framework consists of 
+Should include:
+    - Overview of what workspaces are
+    - How to extend tiles
+    - 
