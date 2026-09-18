@@ -1,6 +1,7 @@
 import json
 
 from django import forms
+from django.core import signing
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -44,7 +45,58 @@ SHELL_RESERVED_QUERY_KEYS = {
     "q",
     "page",
     "_component_id",
+    "_dataview_operation_context",
 }
+
+DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
+DATAVIEW_OPERATION_CONTEXT_SALT = "bloomerp.dataview.renderer-operation"
+DATAVIEW_OPERATION_CONTEXT_MAX_AGE = 60 * 60 * 24
+
+
+def _sign_dataview_operation_context(
+    request: HttpRequest,
+    preference: UserListViewPreference,
+) -> str | None:
+    """Authorize this user to reuse an explicitly embedded preference."""
+    if not request.user.is_authenticated or request.user.pk is None:
+        return None
+
+    return signing.dumps(
+        {
+            "user_id": str(request.user.pk),
+            "content_type_id": preference.content_type_id,
+            "preference_id": preference.pk,
+        },
+        salt=DATAVIEW_OPERATION_CONTEXT_SALT,
+        compress=True,
+    )
+
+
+def _valid_dataview_operation_context(
+    request: HttpRequest,
+    *,
+    content_type_id: int,
+    preference_id: int,
+) -> bool:
+    """Validate the signed fallback for a server-authorized embedding."""
+    token = request.GET.get(DATAVIEW_OPERATION_CONTEXT_PARAM)
+    if not token or not request.user.is_authenticated or request.user.pk is None:
+        return False
+
+    try:
+        payload = signing.loads(
+            token,
+            salt=DATAVIEW_OPERATION_CONTEXT_SALT,
+            max_age=DATAVIEW_OPERATION_CONTEXT_MAX_AGE,
+        )
+    except (signing.BadSignature, signing.SignatureExpired):
+        return False
+
+    return payload == {
+        "user_id": str(request.user.pk),
+        "content_type_id": content_type_id,
+        "preference_id": preference_id,
+    }
 
 
 def _build_dataview_state(
@@ -413,6 +465,7 @@ def dataview(
         HttpResponse: The response
     """
     
+    preference_was_explicit = preference is not None
     state = _build_dataview_state(
         request,
         content_type_id,
@@ -422,6 +475,12 @@ def dataview(
     )
     if isinstance(state, HttpResponse):
         return state
+
+    if preference_was_explicit:
+        state.operation_context_token = _sign_dataview_operation_context(
+            request,
+            state.preference,
+        )
     
     
     
@@ -462,6 +521,12 @@ def dataview(
         kwargs={"content_type_id": content_type_id},
     )
     data_view_querystring = request.GET.urlencode()
+    renderer_operation_querydict = request.GET.copy()
+    if state.operation_context_token:
+        renderer_operation_querydict[DATAVIEW_OPERATION_CONTEXT_PARAM] = (
+            state.operation_context_token
+        )
+    renderer_operation_querystring = renderer_operation_querydict.urlencode()
     data_view_url = (
         f"{dataview_base_url}?{data_view_querystring}"
         if data_view_querystring
@@ -499,6 +564,7 @@ def dataview(
         ),
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
+        'renderer_operation_querystring': renderer_operation_querystring,
         'initial_filters': request.GET.get('filter'),
         'count' : state.count,
         'before_data_view': before_data_view,

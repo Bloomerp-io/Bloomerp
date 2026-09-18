@@ -29,6 +29,10 @@ class KanbanDataView(BaseDataview):
     page_size: Literal[10, 25, 50, 100] = 25
     sort_field: str | None = None
     sort_direction: Literal["asc", "desc"] = "asc"
+    application_field_options = {
+        "group_by_field": "single",
+        "sort_field": "single",
+    }
 
     @classmethod
     def create_form_field(cls, name, field_info, state):

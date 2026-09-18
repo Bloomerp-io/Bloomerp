@@ -46,7 +46,7 @@
     data-calendar-unit="{{ calendar_unit }}"
     data-calendar-load-more
     bloomerp-component="calendar-cell"
-    hx-get="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id action='unit' %}{% if calendar_page_querystring %}?{{ calendar_page_querystring }}&{% else %}?{% endif %}calendar_view_mode={{ calendar_view_mode }}&calendar_unit={{ calendar_unit|urlencode }}&calendar_unit_offset={{ calendar_next_unit_offset }}"
+    hx-get="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='unit' %}{% if calendar_page_querystring %}?{{ calendar_page_querystring }}&{% else %}?{% endif %}calendar_view_mode={{ calendar_view_mode }}&calendar_unit={{ calendar_unit|urlencode }}&calendar_unit_offset={{ calendar_next_unit_offset }}"
     hx-target="this"
     hx-swap="outerHTML"
 >

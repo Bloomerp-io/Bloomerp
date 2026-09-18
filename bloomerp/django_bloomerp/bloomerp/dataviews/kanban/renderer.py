@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Count, ForeignKey, OneToOneField, Q, QuerySet
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from typing import TYPE_CHECKING
 
 from bloomerp.permissions.definition import BloomerpPermission
@@ -26,6 +28,20 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
 
     def get_context_data(self, pagination) -> dict:
         context = super().get_context_data(pagination)
+        move_url = reverse(
+            "components_dataview_renderer_operation",
+            kwargs={
+                "content_type_id": self.state.content_type_id,
+                "preference_id": self.state.preference.pk,
+                "action": "move",
+            },
+        )
+        operation_querystring = self.build_page_querystring(
+            self.state.request,
+            self.state.operation_context_token,
+        )
+        if operation_querystring:
+            move_url = f"{move_url}?{operation_querystring}"
         group_by_field = self.get_group_by_field(
             self.state.fields,
             self.options,
@@ -66,6 +82,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             "component_args" : {
                 "data-group-by-field-id": group_by_field.id if group_by_field else "",
                 "data-group-by-field" : group_by_field.field if group_by_field else "",
+                "data-kanban-move-url": move_url,
             }
         })
         return context
@@ -96,8 +113,17 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         return related_queryset.order_by().count() > KANBAN_MAX_RELATED_COLUMNS
 
     @classmethod
-    def build_page_querystring(cls, request) -> str:
-        return cls.build_querystring(request, ("page", "kanban_page", "kanban_column"))
+    def build_page_querystring(
+        cls,
+        request,
+        operation_context_token: str | None = None,
+    ) -> str:
+        querydict = request.GET.copy()
+        for key in ("page", "kanban_page", "kanban_column"):
+            querydict.pop(key, None)
+        if operation_context_token:
+            querydict["_dataview_operation_context"] = operation_context_token
+        return querydict.urlencode()
 
     @classmethod
     def get_group_by_field(cls, dataview_fields, options):
@@ -108,6 +134,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
 
     @classmethod
     def handle_action(cls, action: str, request, state) -> HttpResponse:
+        if action == "move":
+            return cls._move_card(request, state)
         if action != "column":
             return super().handle_action(action, request, state)
 
@@ -141,9 +169,67 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "fields": state.render_fields,
                 "avatar_field": state.avatar_field,
                 "group": group,
-                "kanban_page_querystring": cls.build_page_querystring(request),
+                "preference": state.preference,
+                "kanban_page_querystring": cls.build_page_querystring(
+                    request,
+                    state.operation_context_token,
+                ),
             },
         )
+
+    @classmethod
+    def _move_card(cls, request, state) -> HttpResponse:
+        if request.method != "POST":
+            return HttpResponse("Method not allowed", status=405)
+
+        object_id = request.POST.get("object_id")
+        group_value = request.POST.get("group_value")
+        if not object_id:
+            return HttpResponse("Missing required fields", status=400)
+
+        group_by_field = cls.get_group_by_field(state.fields, state.options)
+        if not group_by_field:
+            return HttpResponse("Kanban grouping is not configured.", status=400)
+
+        permission_manager = UserPolicyManager(request.user)
+        if not permission_manager.has_field_permission(
+            group_by_field,
+            BloomerpPermission.CHANGE,
+        ):
+            return HttpResponse("Permission denied", status=403)
+
+        obj = get_object_or_404(state.queryset, pk=object_id)
+        if not permission_manager.has_access_to_object(
+            obj,
+            BloomerpPermission.CHANGE,
+        ):
+            return HttpResponse("Permission denied", status=403)
+
+        model_field = state.model._meta.get_field(group_by_field.field)
+        normalized_value = (
+            None
+            if group_value in (None, "", KANBAN_EMPTY_COLUMN_VALUE)
+            else group_value
+        )
+        if normalized_value is None:
+            if not model_field.null and not model_field.blank:
+                return HttpResponse("Field does not allow empty values", status=400)
+            value = None
+        else:
+            try:
+                if isinstance(model_field, (ForeignKey, OneToOneField)):
+                    value = cls.get_allowed_related_queryset(
+                        group_by_field,
+                        request.user,
+                    ).get(pk=normalized_value)
+                else:
+                    value = model_field.clean(normalized_value, obj)
+            except (ObjectDoesNotExist, TypeError, ValidationError, ValueError) as exc:
+                return HttpResponse(f"Invalid value: {exc}", status=400)
+
+        setattr(obj, group_by_field.field, value)
+        obj.save(update_fields=[group_by_field.field])
+        return JsonResponse({"status": "ok"})
 
     @classmethod
     def build_column_group(

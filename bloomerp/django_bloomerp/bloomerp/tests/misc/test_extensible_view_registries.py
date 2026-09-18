@@ -1,9 +1,15 @@
+from typing import Literal
+
 from django.test import RequestFactory, SimpleTestCase
 
-from bloomerp.dataviews.definition import DataviewTypeDefinition
-from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
-from bloomerp.dataviews.table.config import TableDataView
-from bloomerp.dataviews.table.renderer import TableDataviewRenderer
+from bloomerp.dataviews import (
+    BaseDataview,
+    BaseDataviewRenderer,
+    DATAVIEW_REGISTRY,
+    DataviewRegistry,
+    DataviewTypeDefinition,
+    register_dataview,
+)
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.services.workspace_services import (
@@ -31,6 +37,17 @@ class ExternalTileRenderer(BaseTileRenderer):
     @classmethod
     def render(cls, config, request, *args, **kwargs):
         return f"<div>{config.content}</div>"
+
+
+class ExternalDataview(BaseDataview):
+    view_type: Literal["external_view"] = "external_view"
+    category_field: str | None = None
+    accent: str = "blue"
+    application_field_options = {"category_field": "single"}
+
+
+class ExternalDataviewRenderer(BaseDataviewRenderer):
+    template_name = "external/dataview.html"
 
 
 class SessionDataStub:
@@ -101,13 +118,13 @@ class ExtensibleViewRegistryTests(SimpleTestCase):
             label="External view",
             description="A dataview supplied by an extension.",
             icon="fa-puzzle-piece",
-            renderer_cls=TableDataviewRenderer,
-            config_cls=TableDataView,
+            renderer_cls=ExternalDataviewRenderer,
+            config_cls=ExternalDataview,
         )
 
         try:
             # 1. Register the external definition after the model is imported.
-            DATAVIEW_REGISTRY.register(key, definition)
+            register_dataview(definition)
 
             # 2. Ask Django for choices and verify it invokes the callable now.
             choices = UserListViewPreference._meta.get_field("view_type").flatchoices
@@ -115,3 +132,42 @@ class ExtensibleViewRegistryTests(SimpleTestCase):
         finally:
             # 3. Restore the process-wide registry for following tests.
             DATAVIEW_REGISTRY.unregister(key)
+
+    def test_dataview_registry_rejects_inconsistent_definitions(self):
+        """
+        Use case: An extension registers an incomplete or inconsistently keyed dataview.
+        Expected result: Registration fails immediately with a useful contract error.
+        """
+        # 1. Create an isolated registry so the process-wide catalog is unchanged.
+        registry = DataviewRegistry(registry_item_class=DataviewTypeDefinition)
+        definition = DataviewTypeDefinition(
+            key="external_view",
+            label="External view",
+            description="A dataview supplied by an extension.",
+            icon="fa-puzzle-piece",
+            renderer_cls=ExternalDataviewRenderer,
+            config_cls=ExternalDataview,
+        )
+
+        # 2. Verify the registration key must match the definition and config.
+        with self.assertRaisesRegex(ValueError, "match the dataview definition key"):
+            registry.register("other_key", definition)
+
+    def test_external_dataview_resolves_declared_field_options(self):
+        """
+        Use case: A third-party dataview declares a field-backed default option.
+        Expected result: Its field option is resolved while ordinary options are preserved.
+        """
+        # 1. Configure both a field-backed option and an ordinary option.
+        config = ExternalDataview(category_field="category", accent="green")
+
+        # 2. Resolve the field through the same callback used by model defaults.
+        options = config.resolve_options(
+            lambda value: f"resolved_{value}" if value else None
+        )
+
+        # 3. Verify only the declared field-backed option is transformed.
+        self.assertEqual(
+            options,
+            {"category_field": "resolved_category", "accent": "green"},
+        )

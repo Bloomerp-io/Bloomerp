@@ -3,6 +3,7 @@ import sys
 
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
+from django.utils.module_loading import autodiscover_modules
 from colorama import Fore, Style
 
 from bloomerp.config.definition import BloomerpAppI18nSettings
@@ -25,6 +26,10 @@ class BloomerpApp(AppConfig):
         from bloomerp.field_types.registry import load_builtin_field_types
 
         load_builtin_field_types()
+
+        from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
+
+        autodiscover_modules("dataviews", register_to=DATAVIEW_REGISTRY)
 
         from django.core.exceptions import ImproperlyConfigured
         from django.db.utils import OperationalError, ProgrammingError

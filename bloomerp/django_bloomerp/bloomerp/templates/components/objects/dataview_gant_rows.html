@@ -77,7 +77,7 @@
 <div
     class="py-3 text-center text-xs text-gray-500"
     data-gant-page-loader
-    hx-get="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id action='page' %}{% if gant_page_querystring %}?{{ gant_page_querystring }}&amp;{% else %}?{% endif %}gant_page={{ page_obj.next_page_number }}"
+    hx-get="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='page' %}{% if gant_page_querystring %}?{{ gant_page_querystring }}&amp;{% else %}?{% endif %}gant_page={{ page_obj.next_page_number }}"
     hx-trigger="intersect once"
     hx-target="this"
     hx-swap="outerHTML"
