@@ -8,14 +8,7 @@ from django.db import models, transaction
 from django.db.models import Q
 
 from bloomerp.dataviews.definition import BaseDataview
-from bloomerp.dataviews.calendar.config import CalendarDataView
-from bloomerp.dataviews.card.config import CardDataView
-from bloomerp.dataviews.file_browser.config import FileBrowserDataview
-from bloomerp.dataviews.gant.config import GanttDataView
-from bloomerp.dataviews.kanban.config import KanbanDataView
-from bloomerp.dataviews.pivot_table.config import PivotTableDataView
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY, get_dataview_type_choices
-from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import get_model_config
 from bloomerp.models.users.base_view_preference import BaseViewPreference
@@ -225,26 +218,6 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
         return resolved_ids
 
     @classmethod
-    def _resolve_field_names(
-        cls,
-        field_names: list[str],
-        *,
-        fields_by_name: dict[str, ApplicationField],
-        accessible_field_ids: set[int],
-    ) -> list[str]:
-        """Keep declared field names that are valid and accessible."""
-        resolved_names: list[str] = []
-        for field_name in field_names:
-            application_field = cls._resolve_field(
-                field_name,
-                fields_by_name=fields_by_name,
-                accessible_field_ids=accessible_field_ids,
-            )
-            if application_field is not None:
-                resolved_names.append(application_field.field)
-        return resolved_names
-
-    @classmethod
     def _resolve_data_view_options(
         cls,
         data_view: BaseDataview,
@@ -261,68 +234,7 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
             )
             return application_field.field if application_field is not None else None
 
-        if isinstance(data_view, TableDataView):
-            return {
-                "page_size": data_view.page_size,
-                "sort_field": field_name(data_view.sort_field),
-                "sort_direction": data_view.sort_direction,
-            }
-        if isinstance(data_view, KanbanDataView):
-            return {
-                "group_by_field": field_name(data_view.group_by_field),
-                "page_size": data_view.page_size,
-                "sort_field": field_name(data_view.sort_field),
-                "sort_direction": data_view.sort_direction,
-            }
-        if isinstance(data_view, CardDataView):
-            return {"page_size": data_view.page_size}
-        if isinstance(data_view, FileBrowserDataview):
-            return {"related_fields": data_view.related_fields}
-        if isinstance(data_view, CalendarDataView):
-            return {
-                "start_field": field_name(data_view.start_field),
-                "end_field": field_name(data_view.end_field),
-                "view_mode": data_view.view_mode,
-                "color_grouping_field": field_name(
-                    data_view.color_grouping_field
-                ),
-            }
-        if isinstance(data_view, GanttDataView):
-            return {
-                "start_field": field_name(data_view.start_field),
-                "end_field": field_name(data_view.end_field),
-                "dependency_from_field": field_name(
-                    data_view.dependency_from_field
-                ),
-                "dependency_for_field": field_name(
-                    data_view.dependency_for_field
-                ),
-                "page_size": data_view.page_size,
-            }
-        if isinstance(data_view, PivotTableDataView):
-            return {
-                "row_fields": cls._resolve_field_names(
-                    data_view.row_fields,
-                    fields_by_name=fields_by_name,
-                    accessible_field_ids=accessible_field_ids,
-                ),
-                "column_fields": cls._resolve_field_names(
-                    data_view.column_fields,
-                    fields_by_name=fields_by_name,
-                    accessible_field_ids=accessible_field_ids,
-                ),
-                "value_fields": cls._resolve_field_names(
-                    data_view.value_fields,
-                    fields_by_name=fields_by_name,
-                    accessible_field_ids=accessible_field_ids,
-                ),
-                "aggregation": data_view.aggregation,
-                "show_row_totals": data_view.show_row_totals,
-                "show_column_totals": data_view.show_column_totals,
-                "totals_scope": data_view.totals_scope,
-                "page_size": data_view.page_size,
-            }
-        raise ValueError(f"Unsupported default data view '{data_view.view_type}'.")
+        return data_view.resolve_options(field_name)
 
     @classmethod
     def _resolve_default_filters(

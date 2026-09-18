@@ -32,6 +32,11 @@ class CalendarDataView(BaseDataview):
     end_field: str | None = None
     view_mode: Literal["day", "week", "month", "year", "list"] = "week"
     color_grouping_field: str | None = None
+    application_field_options = {
+        "start_field": "single",
+        "end_field": "single",
+        "color_grouping_field": "single",
+    }
 
     @classmethod
     def create_form_field(cls, name, field_info, state):

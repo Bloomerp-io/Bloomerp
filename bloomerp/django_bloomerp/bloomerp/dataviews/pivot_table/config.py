@@ -29,6 +29,11 @@ class PivotTableDataView(BaseDataview):
     show_column_totals: bool = True
     totals_scope: Literal["page", "dataset"] = "page"
     page_size: Literal[10, 25, 50, 100] = 25
+    application_field_options = {
+        "row_fields": "multiple",
+        "column_fields": "multiple",
+        "value_fields": "multiple",
+    }
 
     @classmethod
     def create_form_field(cls, name, field_info, state):

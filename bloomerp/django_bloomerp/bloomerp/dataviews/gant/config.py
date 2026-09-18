@@ -27,6 +27,12 @@ class GanttDataView(BaseDataview):
     dependency_for_field: str | None = None
     page_size: Literal[10, 25, 50, 100] = 25
     display_fields: list = Field(default_factory=list)
+    application_field_options = {
+        "start_field": "single",
+        "end_field": "single",
+        "dependency_from_field": "single",
+        "dependency_for_field": "single",
+    }
 
     @classmethod
     def create_form_field(cls, name, field_info, state):

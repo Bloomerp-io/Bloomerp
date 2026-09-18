@@ -3,13 +3,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from types import UnionType
-from typing import TYPE_CHECKING, Any, Callable, Literal, Type, Union, get_args, get_origin
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Literal,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+)
 
 from django import forms
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import models
 from django.db.models import QuerySet
-from django.forms import Form
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils.translation import gettext_lazy as _
@@ -81,22 +90,12 @@ class BaseDataviewRenderer:
         return self.state.preference.view_type
 
     @classmethod
-    def get_options_form(cls, *, state: DataviewState) -> type[Form] | None:
-        return None
-
-    def apply_queryset(self):
-        return self.state.queryset
-
-    @classmethod
     def get_reserved_query_params(cls) -> set[str]:
         return set(cls.reserved_query_params)
 
     @classmethod
     def apply_sorting(cls, queryset, _request, _data_view_fields, _options: object | None = None):
         return queryset, {}
-
-    def paginate(self, queryset) -> DataviewPagination:
-        return DataviewPagination(queryset=queryset)
 
     @classmethod
     def paginate_queryset(
@@ -195,15 +194,12 @@ class BaseDataviewRenderer:
 
     def render(
         self,
-        pagination: DataviewPagination | None = None,
+        pagination: DataviewPagination,
         *,
         extra_context: dict[str, Any] | None = None,
     ) -> str:
         if not self.template_name:
             raise NotImplementedError("Dataview renderers must define template_name.")
-
-        if pagination is None:
-            pagination = self.paginate(self.apply_queryset())
 
         context = self.get_context_data(pagination)
         context.update(extra_context or {})
@@ -219,6 +215,10 @@ class BaseDataview(BaseModel):
     """Shared declarative settings for a default model dataview."""
 
     model_config = ConfigDict(extra="forbid")
+
+    application_field_options: ClassVar[
+        dict[str, Literal["single", "multiple"]]
+    ] = {}
 
     name: str = Field(default="Default", min_length=1, max_length=255)
     is_default: bool = True
@@ -242,6 +242,35 @@ class BaseDataview(BaseModel):
             include=set(self.option_field_names()),
             mode="json",
         )
+
+    def resolve_options(
+        self,
+        resolve_field_name: Callable[[str | None], str | None],
+    ) -> dict[str, Any]:
+        """Resolve declarative field names into persisted dataview options.
+
+        Dataviews with options that reference ``ApplicationField`` names declare
+        those options in ``application_field_options``. Other options are
+        serialized unchanged. Subclasses may override this method when their
+        persisted option format needs custom resolution.
+        """
+        options = self.dump_options()
+        for option_name, cardinality in self.application_field_options.items():
+            value = options.get(option_name)
+            if cardinality == "single":
+                options[option_name] = resolve_field_name(value)
+                continue
+            if cardinality == "multiple":
+                options[option_name] = [
+                    resolved
+                    for field_name in value or []
+                    if (resolved := resolve_field_name(field_name)) is not None
+                ]
+                continue
+            raise ValueError(
+                f"Unsupported application field option cardinality {cardinality!r}."
+            )
+        return options
 
     @classmethod
     def form_factory(
@@ -425,4 +454,4 @@ class DataviewTypeDefinition:
     renderer_cls: type[BaseDataviewRenderer]
     config_cls: type[BaseDataview]
     requires_display_fields: bool = True
-    available_for_model:Callable[[Type[models.Model]], bool] = lambda model: True
+    available_for_model: Callable[[Type[models.Model]], bool] = lambda model: True
