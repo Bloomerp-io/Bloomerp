@@ -66,7 +66,7 @@ class TestRunWorkflowNode(BloomerpWorkflowNodeTestCase):
         source.connect_nodes(trigger, call)
         return call
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         target = self._create_workflow_with_trigger("Directly called workflow")
         input_schema = WorkflowIOSchema(
             value_type=WorkflowValueType.OBJECT,

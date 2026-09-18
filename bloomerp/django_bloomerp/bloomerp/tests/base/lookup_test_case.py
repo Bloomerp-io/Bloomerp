@@ -8,6 +8,7 @@ from bloomerp.lookups.definition import (
     BoundLookup,
     CompiledLookup,
     CompiledSQL,
+    FilterFieldContext,
     Lookup,
     LookupDefinition,
     SQLLookupContext,
@@ -43,6 +44,8 @@ class LookupScenario:
     sql_context: SQLLookupContext | None = None
     sql_value: Any = _UNSET
     python_evaluations: list[PythonEvaluation] = field(default_factory=list)
+    form_value: Any = _UNSET
+    expected_cleaned_form_value: Any = _UNSET
 
 
 class BloomerpLookupTestCase(BaseBloomerpTestCaseWithModels):
@@ -115,6 +118,22 @@ class BloomerpLookupTestCase(BaseBloomerpTestCaseWithModels):
             else scenario.application_field
         )
         self.assertIsInstance(application_field, ApplicationField)
+
+        if scenario.form_value is not _UNSET:
+            if scenario.expected_cleaned_form_value is _UNSET:
+                self.fail(
+                    f"Scenario {scenario.name!r} has a form value but no cleaned "
+                    "form-value expectation"
+                )
+            form_factory = lookup.get_form_factory()
+            form_field = form_factory(FilterFieldContext(
+                field_type=application_field.get_field_type(),
+                application_field=application_field,
+            ))
+            self.assertEqual(
+                form_field.clean(scenario.form_value),
+                scenario.expected_cleaned_form_value,
+            )
 
         compiled_lookup = lookup.get_q_factory()(
             application_field,

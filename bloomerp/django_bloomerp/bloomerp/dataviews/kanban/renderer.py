@@ -64,7 +64,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             "group_by_field": group_by_field,
             "kanban_page_querystring": self.build_page_querystring(self.state.request),
             "component_args" : {
-                "data-group-by-field-id": getattr(self.options, "group_by_field_id", ""),
+                "data-group-by-field-id": group_by_field.id if group_by_field else "",
                 "data-group-by-field" : group_by_field.field if group_by_field else "",
             }
         })
@@ -103,7 +103,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     def get_group_by_field(cls, dataview_fields, options):
         return cls.get_field_from_data_view_fields(
             dataview_fields,
-            getattr(options, "group_by_field_id", None),
+            getattr(options, "group_by_field", None),
         )
 
     @classmethod
@@ -112,8 +112,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             return super().handle_action(action, request, state)
 
         group_by_field = cls.get_group_by_field(
-            state.dataview_fields,
-            state.dataview_options,
+            state.fields,
+            state.options,
         )
         if not group_by_field:
             return HttpResponse("Kanban grouping is not configured.", status=400)
@@ -127,7 +127,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             group_by_field,
             column_value,
             preference=state.preference,
-            page_size=getattr(state.dataview_options, "page_size", 25),
+            page_size=getattr(state.options, "page_size", 25),
             page_number=request.GET.get("kanban_page", 1),
         )
         if group is None:
@@ -138,7 +138,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             "components/objects/dataview_kanban_cards.html",
             {
                 "content_type_id": state.content_type.id,
-                "fields": state.dataview_render_fields,
+                "fields": state.render_fields,
                 "avatar_field": state.avatar_field,
                 "group": group,
                 "kanban_page_querystring": cls.build_page_querystring(request),

@@ -61,11 +61,9 @@ class TestPivotDataView(BaseBloomerpTestCaseWithModels):
         preference.view_type = "pivot_table"
         preference.options = {
             "pivot_table": {
-                "row_field_ids": [self._field(name).id for name in row_fields],
-                "column_field_ids": [self._field(name).id for name in (column_fields or [])],
-                "value_field_ids": [
-                    self._field(name).id for name in (value_fields or ["amount"])
-                ],
+                "row_fields": row_fields,
+                "column_fields": column_fields or [],
+                "value_fields": value_fields or ["amount"],
                 "aggregation": aggregation,
                 "show_row_totals": True,
                 "show_column_totals": True,
@@ -254,9 +252,9 @@ class TestPivotDataView(BaseBloomerpTestCaseWithModels):
 
         # 3. Verify all three field selectors render as native multiple selects.
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'name="row_field_ids"', html=False)
-        self.assertContains(response, 'name="column_field_ids"', html=False)
-        self.assertContains(response, 'name="value_field_ids"', html=False)
+        self.assertContains(response, 'name="row_fields"', html=False)
+        self.assertContains(response, 'name="column_fields"', html=False)
+        self.assertContains(response, 'name="value_fields"', html=False)
         self.assertContains(response, "multiple", count=3, html=False)
         self.assertContains(response, "Aggregation", html=False)
 
@@ -269,12 +267,9 @@ class TestPivotDataView(BaseBloomerpTestCaseWithModels):
             preference_url,
             data={
                 "dataview_options_view_type": "pivot_table",
-                "row_field_ids": [str(self._field("region").id), str(self._field("team").id)],
-                "column_field_ids": [str(self._field("quarter").id)],
-                "value_field_ids": [
-                    str(self._field("amount").id),
-                    str(self._field("active").id),
-                ],
+                "row_fields": ["region", "team"],
+                "column_fields": ["quarter"],
+                "value_fields": ["amount", "active"],
                 "aggregation": "sum",
                 "show_row_totals": "on",
                 "show_column_totals": "on",
@@ -284,7 +279,7 @@ class TestPivotDataView(BaseBloomerpTestCaseWithModels):
             HTTP_HX_REQUEST="true",
         )
 
-        # 5. Verify all ordered multi-select values are persisted as field IDs.
+        # 5. Verify all ordered multi-select values are persisted as field names.
         self.assertEqual(post_response.status_code, 200)
         preference = PreferenceManager(self.admin_user).get_or_create_selected(
             UserListViewPreference,
@@ -294,34 +289,10 @@ class TestPivotDataView(BaseBloomerpTestCaseWithModels):
         )
         
         self.assertEqual(
-            preference.options["pivot_table"]["row_field_ids"],
-            [self._field("region").id, self._field("team").id],
+            preference.options["pivot_table"]["row_fields"],
+            ["region", "team"],
         )
         self.assertEqual(
-            preference.options["pivot_table"]["value_field_ids"],
-            [self._field("amount").id, self._field("active").id],
-        )
-
-    def test_pivot_options_migrate_a_saved_single_value_field(self):
-        """
-        Use case: A pivot preference was saved before Values became a multi-select.
-        Expected result: The former value field is retained as the first selected value.
-        """
-        # 1. Save the legacy single-value option shape.
-        preference = self._configure_pivot(row_fields=["region"])
-        preference.options["pivot_table"].pop("value_field_ids")
-        preference.options["pivot_table"]["value_field_id"] = self._field("amount").id
-        preference.save(update_fields=["options"])
-        self.client.force_login(self.admin_user)
-
-        # 2. Render the pivot through the normal options-validation path.
-        response = self.client.get(self._component_url(), HTTP_HX_REQUEST="true")
-
-        # 3. Verify the pivot remains configured and the saved value is selected.
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'bloomerp-component="pivot-table"', html=False)
-        self.assertContains(
-            response,
-            f'<option value="{self._field("amount").id}" selected>',
-            html=False,
+            preference.options["pivot_table"]["value_fields"],
+            ["amount", "active"],
         )

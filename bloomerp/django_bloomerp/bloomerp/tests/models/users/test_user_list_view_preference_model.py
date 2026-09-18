@@ -6,6 +6,7 @@ from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig, ModelViewSettings
+from bloomerp.models.files.file import File
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels, BloomerpModelTestCase, ExpectedModelException, ModelScenario
@@ -34,6 +35,15 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 ),
                 create_operation=self.create_todo_defaults,
                 create_validators=self.todo_defaults_are_materialized,
+            ),
+            ModelScenario(
+                name="File defaults materialize the configured browser",
+                description=(
+                    "UC: A user opens Files for the first time.\n"
+                    "Expected Result: The File Browser preference is created without unsupported-view errors."
+                ),
+                create_operation=self.create_file_defaults,
+                create_validators=self.file_defaults_are_materialized,
             ),
             ModelScenario(
                 name="All configured data views are materialized",
@@ -84,13 +94,27 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 content_type=self.scenario_content_type,
             ).order_by("pk")
         )
-        status = ApplicationField.get_by_field(Todo, "status")
         return (
             [preference.name for preference in preferences] == ["Board"]
             and selected == preferences[0]
             and selected.selected
             and selected.view_type == "kanban"
-            and selected.options["kanban"]["group_by_field_id"] == status.pk
+            and selected.options["kanban"]["group_by_field"] == "status"
+        )
+
+    def create_file_defaults(self):
+        self.scenario_content_type = ContentType.objects.get_for_model(File)
+        return UserListViewPreference.create_default_for_user(
+            self.admin_user,
+            content_type_id=self.scenario_content_type.pk,
+        )
+
+    @staticmethod
+    def file_defaults_are_materialized(selected):
+        return (
+            selected.selected
+            and selected.view_type == "file_browser"
+            and selected.options["file_browser"] == {"related_fields": {}}
         )
 
     @staticmethod
@@ -143,7 +167,7 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
             and not preferences[1].selected
             and preferences[0].display_fields["kanban"] == [first_name.pk, age.pk]
             and preferences[0].options["kanban"] == {
-                "group_by_field_id": age.pk,
+                "group_by_field": "age",
                 "page_size": 25,
                 "sort_field": "first_name",
                 "sort_direction": "asc",
@@ -180,7 +204,7 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
     def restricted_fields_are_omitted(preference):
         return (
             preference.display_fields["kanban"] == []
-            and preference.options["kanban"]["group_by_field_id"] is None
+            and preference.options["kanban"]["group_by_field"] is None
             and preference.options["kanban"]["sort_field"] is None
             and not preference.default_filters.exists()
         )

@@ -692,7 +692,6 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         self.CustomerModel.objects.all().delete()
 
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        age_field = ApplicationField.get_by_field(self.CustomerModel, "age")
         last_name_field = ApplicationField.get_by_field(self.CustomerModel, "last_name")
         preference = PreferenceManager(self.admin_user).get_or_create_selected(
             UserListViewPreference,
@@ -704,7 +703,7 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         preference.options = {
             "kanban": {
                 "page_size": 10,
-                "group_by_field_id": age_field.id,
+                "group_by_field": "age",
             }
         }
         preference.display_fields = {
@@ -753,7 +752,6 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         # 1. Enable Kanban and split view for a grouped customer data view.
         self.client.force_login(self.admin_user)
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        age_field = ApplicationField.get_by_field(self.CustomerModel, "age")
         last_name_field = ApplicationField.get_by_field(self.CustomerModel, "last_name")
         preference = PreferenceManager(self.admin_user).get_or_create_selected(
             UserListViewPreference,
@@ -765,7 +763,7 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         preference.split_view_enabled = True
         preference.options = {
             "kanban": {
-                "group_by_field_id": age_field.id,
+                "group_by_field": "age",
             }
         }
         preference.display_fields = {
@@ -1203,10 +1201,10 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         preference.view_type = "calendar"
         preference.options = {
             "calendar": {
-                "start_field_id": start_field.id,
-                "end_field_id": end_field.id,
+                "start_field": start_field.field,
+                "end_field": end_field.field,
                 "view_mode": view_mode,
-                "color_grouping_field_id": category_field.id,
+                "color_grouping_field": category_field.field,
             },
         }
         preference.display_fields = {**preference.display_fields, "calendar": []}
@@ -1482,10 +1480,10 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
         preference.view_type = "gantt"
         preference.options = {
             "gantt": {
-                "start_field_id": start_field.id,
-                "end_field_id": end_field.id,
-                "dependency_from_field_id": dependency_field.id if with_dependency else None,
-                "dependency_for_field_id": None,
+                "start_field": start_field.field,
+                "end_field": end_field.field,
+                "dependency_from_field": dependency_field.field if with_dependency else None,
+                "dependency_for_field": None,
                 "page_size": page_size,
             },
         }
@@ -1771,5 +1769,5 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
 
         # 2. Verify the self-reference is offered while scalar fields are not dependency choices.
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, f'value="{dependency_field.id}"', html=False)
+        self.assertContains(response, f'value="{dependency_field.field}"', html=False)
         self.assertContains(response, "Dependency from", html=False)

@@ -15,7 +15,7 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 
-from ..definition import BaseDataviewRenderer, DataviewPagination, DataviewRenderState
+from ..definition import BaseDataviewRenderer, DataviewPagination
 
 
 class GanttDataviewRenderer(BaseDataviewRenderer):
@@ -36,12 +36,12 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
         start_field = cls._configured_field(
             preference,
             request,
-            getattr(options, "start_field_id", None),
+            getattr(options, "start_field", None),
         )
         end_field = cls._configured_field(
             preference,
             request,
-            getattr(options, "end_field_id", None),
+            getattr(options, "end_field", None),
         )
         if start_field is not None and end_field is not None:
             queryset = queryset.filter(
@@ -67,17 +67,17 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
     def _build_gant_context(self, objects: Iterable) -> dict[str, Any]:
         start_field = self.get_field_from_data_view_fields(
             self.state.fields,
-            getattr(self.options, "start_field_id", None),
+            getattr(self.options, "start_field", None),
         )
         end_field = self.get_field_from_data_view_fields(
             self.state.fields,
-            getattr(self.options, "end_field_id", None),
+            getattr(self.options, "end_field", None),
         )
         dependency_from_field = self._get_self_relation_field(
-            getattr(self.options, "dependency_from_field_id", None),
+            getattr(self.options, "dependency_from_field", None),
         )
         dependency_for_field = self._get_self_relation_field(
-            getattr(self.options, "dependency_for_field_id", None),
+            getattr(self.options, "dependency_for_field", None),
         )
 
         context: dict[str, Any] = {
@@ -169,20 +169,9 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
             state.queryset,
             state.preference,
             request,
-            state.dataview_options,
+            state.options,
         )
-        renderer = cls(DataviewRenderState(
-            request=request,
-            content_type_id=state.content_type.id,
-            content_type=state.content_type,
-            model=state.model,
-            preference=state.preference,
-            queryset=state.queryset,
-            fields=state.dataview_fields,
-            render_fields=state.dataview_render_fields,
-            avatar_field=state.avatar_field,
-            options=state.dataview_options,
-        ))
+        renderer = cls(state)
         context = renderer.get_context_data(pagination)
         context["page_obj"] = pagination.page_obj
         if action == "unscheduled":
@@ -205,11 +194,11 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
 
         start_field = cls._configured_field_for_content_type(
             state.content_type,
-            getattr(state.dataview_options, "start_field_id", None),
+            getattr(state.options, "start_field", None),
         )
         end_field = cls._configured_field_for_content_type(
             state.content_type,
-            getattr(state.dataview_options, "end_field_id", None),
+            getattr(state.options, "end_field", None),
         )
         if start_field is None or end_field is None:
             return HttpResponse("Gantt date fields are not configured", status=400)
@@ -300,15 +289,15 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
         return JsonResponse({"status": "ok", "updates": response_updates})
 
     @staticmethod
-    def _configured_field_for_content_type(content_type, field_id):
-        if field_id in (None, ""):
+    def _configured_field_for_content_type(content_type, field_name):
+        if field_name in (None, ""):
             return None
         try:
             application_field = ApplicationField.objects.get(
-                pk=int(field_id),
+                field=field_name,
                 content_type=content_type,
             )
-        except (TypeError, ValueError, ApplicationField.DoesNotExist):
+        except ApplicationField.DoesNotExist:
             return None
         if application_field.field_type not in {"DateField", "DateTimeField"}:
             return None
@@ -342,8 +331,8 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
             value -= timedelta(milliseconds=1)
         return value.date()
 
-    def _get_self_relation_field(self, field_id):
-        application_field = self.get_field_from_data_view_fields(self.state.fields, field_id)
+    def _get_self_relation_field(self, field_name):
+        application_field = self.get_field_from_data_view_fields(self.state.fields, field_name)
         if application_field is None:
             return None
         if application_field.field_type not in {"ForeignKey", "OneToOneField"}:
@@ -353,12 +342,12 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
         return application_field
 
     @staticmethod
-    def _configured_field(preference, request: HttpRequest, field_id):
-        if field_id in (None, ""):
+    def _configured_field(preference, request: HttpRequest, field_name):
+        if field_name in (None, ""):
             return None
         try:
-            application_field = preference.content_type.applicationfield_set.get(pk=int(field_id))
-        except (TypeError, ValueError, ApplicationField.DoesNotExist):
+            application_field = preference.content_type.applicationfield_set.get(field=field_name)
+        except ApplicationField.DoesNotExist:
             return None
 
         if application_field.field_type not in {"DateField", "DateTimeField"}:

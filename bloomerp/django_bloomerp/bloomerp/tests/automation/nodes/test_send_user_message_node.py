@@ -10,5 +10,5 @@ class TestSendUserMessageNode(BloomerpWorkflowNodeTestCase):
     node_id = 'SEND_USER_MESSAGE'
     executor_class = SendUserMessage
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return []

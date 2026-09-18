@@ -181,6 +181,10 @@ class TestFilterUtil(BaseBloomerpTestCaseWithModels):
             },
             [brussels.id],
         )
+        self.assert_filtered_ids(
+            {"address_field__contains": {"city": "bruss", "country": "be"}},
+            [brussels.id],
+        )
 
     def test_address_contains_rejects_invalid_json(self):
         self.create_primary(

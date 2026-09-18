@@ -16,7 +16,7 @@ class TestFilterObjectsNode(BloomerpWorkflowNodeTestCase):
     node_id = 'FILTER_OBJECTS'
     executor_class = FilterObjectsExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name="empty result continues by default",

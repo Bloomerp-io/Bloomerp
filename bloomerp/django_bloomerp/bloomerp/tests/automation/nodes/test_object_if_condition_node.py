@@ -21,7 +21,7 @@ class TestObjectIfConditionNode(BloomerpWorkflowNodeTestCase):
         self.assertIsNone(ports["true"].max_connections)
         self.assertIsNone(ports["false"].max_connections)
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         todo = Todo.objects.create(title="Condition subject")
         content_type = ContentType.objects.get_for_model(Todo)
         title_field = ApplicationField.objects.get(

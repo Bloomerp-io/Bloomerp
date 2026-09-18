@@ -31,7 +31,7 @@ class TestListCountConditionNode(BloomerpWorkflowNodeTestCase):
 
         self.assertEqual(choices["not_exact"], "Does not equal")
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name="CASE: equals",

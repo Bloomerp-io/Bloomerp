@@ -10,7 +10,7 @@ class TestEnrichDataNode(BloomerpWorkflowNodeTestCase):
     node_id = 'ENRICH_DATA'
     executor_class = EnrichExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name="Node adds configured fields to input",

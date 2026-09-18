@@ -1,0 +1,20 @@
+{% load i18n %}
+
+<div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
+    <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
+        <label
+            for="file-browser-upload-input-{{ render_id }}"
+            class="btn btn-sm btn-secondary w-full cursor-pointer justify-center sm:w-auto"
+        >
+            <i class="fa fa-upload"></i>
+            <span>{% trans "Upload" %}</span>
+        </label>
+    </c-ui.shortcut_tooltip>
+    <input
+        id="file-browser-upload-input-{{ render_id }}"
+        class="hidden"
+        type="file"
+        multiple
+        data-file-browser-upload-input
+    >
+</div>

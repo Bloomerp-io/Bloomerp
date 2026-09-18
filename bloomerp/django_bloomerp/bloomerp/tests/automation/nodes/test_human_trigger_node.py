@@ -10,7 +10,7 @@ class TestHumanTriggerNode(BloomerpWorkflowNodeTestCase):
     node_id = 'HUMAN_TRIGGER'
     executor_class = HumanTrigger
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name=""

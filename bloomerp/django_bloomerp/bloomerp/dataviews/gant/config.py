@@ -7,9 +7,7 @@ from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.dataviews.definition import (
-    BaseDataView,
-    PageSize,
-    PreferenceOption,
+    BaseDataview,
     page_size_choices,
 )
 from bloomerp.dataviews.calendar.config import date_field_choices
@@ -19,7 +17,7 @@ if TYPE_CHECKING:
     from bloomerp.models.application_field import ApplicationField
 
 
-class GanttDataView(BaseDataView):
+class GanttDataView(BaseDataview):
     """A declarative Gantt dataview."""
 
     view_type: Literal["gantt"] = "gantt"
@@ -28,7 +26,63 @@ class GanttDataView(BaseDataView):
     dependency_from_field: str | None = None
     dependency_for_field: str | None = None
     page_size: Literal[10, 25, 50, 100] = 25
-    display_fields:list = Field(default=list)
+    display_fields: list = Field(default_factory=list)
+
+    @classmethod
+    def create_form_field(cls, name, field_info, state):
+        application_fields = state.accessible_fields
+        field_options = {
+            "start_field": (
+                forms.TypedChoiceField,
+                {
+                    **date_field_choices(application_fields),
+                    "label": _("Start field"),
+                    "help_text": _("The date field used as the start of the timeline item."),
+                    "required": True,
+                },
+            ),
+            "end_field": (
+                forms.TypedChoiceField,
+                {
+                    **date_field_choices(application_fields),
+                    "label": _("End field"),
+                    "help_text": _("The date field used as the end of the timeline item."),
+                    "required": True,
+                },
+            ),
+            "dependency_from_field": (
+                forms.TypedChoiceField,
+                {
+                    **self_relation_field_choices(application_fields),
+                    "label": _("Dependency from"),
+                    "help_text": _("Optional self-referencing field whose related record precedes this record."),
+                    "required": False,
+                },
+            ),
+            "dependency_for_field": (
+                forms.TypedChoiceField,
+                {
+                    **self_relation_field_choices(application_fields),
+                    "label": _("Dependency for"),
+                    "help_text": _("Optional self-referencing field whose related record follows this record."),
+                    "required": False,
+                },
+            ),
+            "page_size": (
+                forms.TypedChoiceField,
+                {
+                    **page_size_choices(application_fields),
+                    "label": _("Rows per page"),
+                    "help_text": _("The number of timeline rows loaded at a time."),
+                    "required": False,
+                },
+            ),
+        }
+        field_definition = field_options.get(name)
+        if field_definition is None:
+            return super().create_form_field(name, field_info, state)
+        field_cls, kwargs = field_definition
+        return field_cls(**kwargs)
 
 
 def self_relation_field_choices(
@@ -40,65 +94,10 @@ def self_relation_field_choices(
             continue
         if application_field.related_model_id != application_field.content_type_id:
             continue
-        choices.append((str(application_field.id), application_field.title))
+        choices.append((application_field.field, application_field.title))
 
     return {
         "choices": choices,
-        "coerce": int,
+        "coerce": lambda value: value or None,
         "empty_value": None,
     }
-
-
-GANTT_OPTIONS = [
-    PreferenceOption(
-        key="start_field_id",
-        label=_("Start field"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=date_field_choices,
-        description=_("The date field used as the start of the timeline item."),
-        data_type=int | None,
-        default_value=None,
-        required=True,
-    ),
-    PreferenceOption(
-        key="end_field_id",
-        label=_("End field"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=date_field_choices,
-        description=_("The date field used as the end of the timeline item."),
-        data_type=int | None,
-        default_value=None,
-        required=True,
-    ),
-    PreferenceOption(
-        key="dependency_from_field_id",
-        label=_("Dependency from"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=self_relation_field_choices,
-        description=_(
-            "Optional self-referencing field whose related record precedes this record."
-        ),
-        data_type=int | None,
-        default_value=None,
-    ),
-    PreferenceOption(
-        key="dependency_for_field_id",
-        label=_("Dependency for"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=self_relation_field_choices,
-        description=_(
-            "Optional self-referencing field whose related record follows this record."
-        ),
-        data_type=int | None,
-        default_value=None,
-    ),
-    PreferenceOption(
-        key="page_size",
-        label=_("Rows per page"),
-        field_cls=forms.TypedChoiceField,
-        field_attrs_func=page_size_choices,
-        description=_("The number of timeline rows loaded at a time."),
-        data_type=int,
-        default_value=PageSize.SIZE_25,
-    ),
-]

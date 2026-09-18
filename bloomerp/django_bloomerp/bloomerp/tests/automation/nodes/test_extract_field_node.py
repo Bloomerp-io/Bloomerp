@@ -15,7 +15,7 @@ class TestExtractFieldNode(BloomerpWorkflowNodeTestCase):
     node_id = 'EXTRACT_FIELD'
     executor_class = ExtractFieldExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name="Node extracts an object field",

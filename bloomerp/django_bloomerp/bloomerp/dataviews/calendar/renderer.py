@@ -15,7 +15,7 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 
-from ..definition import BaseDataviewRenderer, DataviewRenderState
+from ..definition import BaseDataviewRenderer
 from ..gant.renderer import GanttDataviewRenderer
 
 
@@ -170,12 +170,12 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         if request.method != "GET":
             return HttpResponse("Method not allowed", status=405)
 
-        start_field = cls.get_start_field(state.dataview_fields, state.dataview_options)
-        end_field = cls.get_end_field(state.dataview_fields, state.dataview_options)
-        color_field = cls.get_color_field(state.dataview_fields, state.dataview_options)
+        start_field = cls.get_start_field(state.fields, state.options)
+        end_field = cls.get_end_field(state.fields, state.options)
+        color_field = cls.get_color_field(state.fields, state.options)
         unit = request.GET.get("calendar_unit", "")
         view_mode = request.GET.get("calendar_view_mode") or str(
-            getattr(state.dataview_options, "view_mode", "week")
+            getattr(state.options, "view_mode", "week")
         )
         try:
             offset = max(0, int(request.GET.get("calendar_unit_offset", CALENDAR_PAGE_SIZE)))
@@ -184,18 +184,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         if not start_field or view_mode not in CALENDAR_VIEW_MODES:
             return HttpResponse("Calendar is not configured", status=400)
 
-        renderer = cls(DataviewRenderState(
-            request=request,
-            content_type_id=state.content_type.id,
-            content_type=state.content_type,
-            model=state.model,
-            preference=state.preference,
-            queryset=state.queryset,
-            fields=state.dataview_fields,
-            render_fields=state.dataview_render_fields,
-            avatar_field=state.avatar_field,
-            options=state.dataview_options,
-        ))
+        renderer = cls(state)
         unit_queryset = renderer._filter_unit_queryset(state.queryset, start_field, unit, view_mode)
         if unit_queryset is None:
             return HttpResponse("Invalid calendar unit", status=400)
@@ -204,7 +193,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         return render(request, "components/objects/dataview_calendar_events.html", {
             "content_type_id": state.content_type.id,
             "events": page,
-            "fields": state.dataview_render_fields,
+            "fields": state.render_fields,
             "preference": state.preference,
             "calendar_unit": unit,
             "calendar_unit_offset": offset,
@@ -231,8 +220,8 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         if not isinstance(updates, list) or not 1 <= len(updates) <= 100:
             return HttpResponse("Expected between 1 and 100 updates", status=400)
 
-        start_field = cls.get_start_field(state.dataview_fields, state.dataview_options)
-        end_field = cls.get_end_field(state.dataview_fields, state.dataview_options)
+        start_field = cls.get_start_field(state.fields, state.options)
+        end_field = cls.get_end_field(state.fields, state.options)
         if start_field is None:
             return HttpResponse("Calendar date field is not configured", status=400)
 
@@ -335,19 +324,19 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
     @classmethod
     def get_start_field(cls, dataview_fields, options):
         return cls.get_field_from_data_view_fields(
-            dataview_fields, getattr(options, "start_field_id", None)
+            dataview_fields, getattr(options, "start_field", None)
         )
 
     @classmethod
     def get_end_field(cls, dataview_fields, options):
         return cls.get_field_from_data_view_fields(
-            dataview_fields, getattr(options, "end_field_id", None)
+            dataview_fields, getattr(options, "end_field", None)
         )
 
     @classmethod
     def get_color_field(cls, dataview_fields, options):
         return cls.get_field_from_data_view_fields(
-            dataview_fields, getattr(options, "color_grouping_field_id", None)
+            dataview_fields, getattr(options, "color_grouping_field", None)
         )
 
     @staticmethod

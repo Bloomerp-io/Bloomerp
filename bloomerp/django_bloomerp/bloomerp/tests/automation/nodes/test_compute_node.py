@@ -10,7 +10,7 @@ class TestComputeNode(BloomerpWorkflowNodeTestCase):
     node_id = 'COMPUTE'
     executor_class = ComputeExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         return [
             WorkflowNodeScenario(
                 name="Node computes an expression from input values",

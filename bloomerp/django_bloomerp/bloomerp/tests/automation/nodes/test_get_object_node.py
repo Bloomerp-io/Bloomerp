@@ -11,7 +11,7 @@ class TestGetObjectNode(BloomerpWorkflowNodeTestCase):
     node_id = 'GET_OBJECT'
     executor_class = GetObjectExecutor
 
-    def get_simulations(self) -> list[WorkflowNodeScenario]:
+    def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
         TITLE = "123"
 
         todo_obj = Todo.objects.create(

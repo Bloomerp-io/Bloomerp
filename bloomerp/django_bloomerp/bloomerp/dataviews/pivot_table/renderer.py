@@ -425,11 +425,11 @@ class PivotTableDataviewRenderer(BaseDataviewRenderer):
         request: HttpRequest,
         options: object | None = None,
     ) -> DataviewPagination:
-        row_field_ids = getattr(options, "row_field_ids", []) or []
+        row_fields = getattr(options, "row_fields", []) or []
         first_row_field = cls._configured_field(
             preference,
             request,
-            row_field_ids[0] if row_field_ids else None,
+            row_fields[0] if row_fields else None,
         )
         if first_row_field is None:
             return DataviewPagination(queryset=queryset)
@@ -450,10 +450,10 @@ class PivotTableDataviewRenderer(BaseDataviewRenderer):
 
     def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
         context = super().get_context_data(pagination)
-        row_fields = self._resolve_fields(getattr(self.options, "row_field_ids", []))
-        column_fields = self._resolve_fields(getattr(self.options, "column_field_ids", []))
+        row_fields = self._resolve_fields(getattr(self.options, "row_fields", []))
+        column_fields = self._resolve_fields(getattr(self.options, "column_fields", []))
         resolved_value_fields = self._resolve_fields(
-            getattr(self.options, "value_field_ids", [])
+            getattr(self.options, "value_fields", [])
         )
         aggregation = getattr(self.options, "aggregation", "count")
         value_fields = [
@@ -491,11 +491,11 @@ class PivotTableDataviewRenderer(BaseDataviewRenderer):
             context["pivot_too_wide"] = True
         return context
 
-    def _resolve_fields(self, field_ids: Iterable[Any]) -> list[PivotField]:
+    def _resolve_fields(self, field_names: Iterable[Any]) -> list[PivotField]:
         fields: list[PivotField] = []
         seen: set[int] = set()
-        for field_id in field_ids or []:
-            application_field = self.get_field_from_data_view_fields(self.state.fields, field_id)
+        for field_name in field_names or []:
+            application_field = self.get_field_from_data_view_fields(self.state.fields, field_name)
             if application_field is None or application_field.id in seen:
                 continue
             try:
@@ -511,13 +511,13 @@ class PivotTableDataviewRenderer(BaseDataviewRenderer):
         return fields
 
     @staticmethod
-    def _configured_field(preference, request: HttpRequest, field_id: Any) -> ApplicationField | None:
-        if field_id in (None, ""):
+    def _configured_field(preference, request: HttpRequest, field_name: Any) -> ApplicationField | None:
+        if field_name in (None, ""):
             return None
         try:
-            application_field = preference.content_type.applicationfield_set.get(pk=int(field_id))
+            application_field = preference.content_type.applicationfield_set.get(field=field_name)
             preference.content_type.model_class()._meta.get_field(application_field.field)
-        except (TypeError, ValueError, ApplicationField.DoesNotExist, FieldDoesNotExist):
+        except (ApplicationField.DoesNotExist, FieldDoesNotExist):
             return None
 
         if not UserPolicyManager(request.user).has_field_permission(application_field, BloomerpPermission.VIEW):

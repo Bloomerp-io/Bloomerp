@@ -7,7 +7,7 @@ from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from pydantic import TypeAdapter
 
-from bloomerp.dataviews.definition import BaseDataView, DataviewTypeDefinition
+from bloomerp.dataviews.definition import BaseDataview, DataviewTypeDefinition
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
@@ -100,7 +100,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         
         return validate
     
-    def set_view_type(self, view_type: BaseDataView):
+    def set_view_type(self, view_type: BaseDataview):
         def set_fields(scenario: RequestScenario):
             preference: UserListViewPreference = PreferenceManager(
                 scenario.user
@@ -120,7 +120,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 )
 
             options = preference.options.copy()
-            options[view_type.view_type] = view_type.model_dump()
+            options[view_type.view_type] = view_type.dump_options()
 
             preference.options = options
             preference.view_type = view_type.view_type

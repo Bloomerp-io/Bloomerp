@@ -3,21 +3,19 @@ from enum import Enum
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.dataviews.definition import DataviewTypeDefinition
-from bloomerp.dataviews.calendar.config import CALENDAR_OPTIONS, CalendarDataView
+from bloomerp.dataviews.calendar.config import CalendarDataView
 from bloomerp.dataviews.calendar.renderer import CalendarDataviewRenderer
-from bloomerp.dataviews.card.config import CARD_OPTIONS, CardDataView
+from bloomerp.dataviews.card.config import CardDataView
 from bloomerp.dataviews.card.renderer import CardDataviewRenderer
-from bloomerp.dataviews.gant.config import GANTT_OPTIONS, GanttDataView
+from bloomerp.dataviews.file_browser.config import FileBrowserDataview
+from bloomerp.dataviews.file_browser.renderer import FileBrowserRenderer
+from bloomerp.dataviews.gant.config import GanttDataView
 from bloomerp.dataviews.gant.renderer import GanttDataviewRenderer
-from bloomerp.dataviews.kanban.config import KANBAN_OPTIONS, KanbanDataView
+from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.kanban.renderer import KanbanDataviewRenderer
-from bloomerp.dataviews.pivot_table.config import (
-    PIVOT_TABLE_OPTIONS,
-    PivotTableDataView,
-    PivotTableDataviewOptions,
-)
+from bloomerp.dataviews.pivot_table.config import PivotTableDataView
 from bloomerp.dataviews.pivot_table.renderer import PivotTableDataviewRenderer
-from bloomerp.dataviews.table.config import TABLE_OPTIONS, TableDataView
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.dataviews.table.renderer import TableDataviewRenderer
 from bloomerp.utils.registry import BaseRegistry
 
@@ -59,7 +57,6 @@ DATAVIEW_REGISTRY.register(
         icon="fa fa-table",
         renderer_cls=TableDataviewRenderer,
         config_cls=TableDataView,
-        opts=TABLE_OPTIONS,
     )
 )
 
@@ -72,7 +69,6 @@ DATAVIEW_REGISTRY.register(
         icon="fa fa-columns",
         renderer_cls=KanbanDataviewRenderer,
         config_cls=KanbanDataView,
-        opts=KANBAN_OPTIONS,
     )
 )
 
@@ -85,7 +81,6 @@ DATAVIEW_REGISTRY.register(
         icon="fa fa-id-card",
         renderer_cls=CardDataviewRenderer,
         config_cls=CardDataView,
-        opts=CARD_OPTIONS,
     )
 )
 
@@ -98,7 +93,6 @@ DATAVIEW_REGISTRY.register(
         icon="fa fa-calendar",
         renderer_cls=CalendarDataviewRenderer,
         config_cls=CalendarDataView,
-        opts=CALENDAR_OPTIONS,
     )
 )
 
@@ -111,7 +105,6 @@ DATAVIEW_REGISTRY.register(
         icon="fa fa-chart-gantt",
         renderer_cls=GanttDataviewRenderer,
         config_cls=GanttDataView,
-        opts=GANTT_OPTIONS,
     )
 )
 
@@ -124,8 +117,18 @@ DATAVIEW_REGISTRY.register(
         icon="fa fa-table",
         renderer_cls=PivotTableDataviewRenderer,
         config_cls=PivotTableDataView,
-        opts=PIVOT_TABLE_OPTIONS,
     )
 )
 
-
+DATAVIEW_REGISTRY.register(
+    "file_browser",
+    DataviewTypeDefinition(
+        key="file_browser",
+        label=_("File Browser"),
+        description=_("File browser"),
+        icon="fa fa-file",
+        renderer_cls=FileBrowserRenderer,
+        config_cls=FileBrowserDataview,
+        requires_display_fields=False
+    )
+)

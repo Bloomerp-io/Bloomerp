@@ -6,5 +6,7 @@
 	hx-target="this"
 	hx-swap="outerHTML"
 	hx-push-url="false"
+	{% if sync_url %}hx-headers='{"X-Bloomerp-Sync-Url": "true"}'{% endif %}
+	
 >
 </div>

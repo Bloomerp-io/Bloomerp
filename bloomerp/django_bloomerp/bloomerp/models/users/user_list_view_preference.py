@@ -7,9 +7,10 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Q
 
-from bloomerp.dataviews.definition import BaseDataView
+from bloomerp.dataviews.definition import BaseDataview
 from bloomerp.dataviews.calendar.config import CalendarDataView
 from bloomerp.dataviews.card.config import CardDataView
+from bloomerp.dataviews.file_browser.config import FileBrowserDataview
 from bloomerp.dataviews.gant.config import GanttDataView
 from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.pivot_table.config import PivotTableDataView
@@ -117,7 +118,7 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
         *,
         user: "AbstractBloomerpUser",
         content_type: ContentType,
-        default_dataviews: list[BaseDataView],
+        default_dataviews: list[BaseDataview],
     ) -> "UserListViewPreference":
         """Materialize all configured data views and return the selected one."""
 
@@ -224,22 +225,34 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
         return resolved_ids
 
     @classmethod
-    def _resolve_data_view_options(
+    def _resolve_field_names(
         cls,
-        data_view: BaseDataView,
+        field_names: list[str],
         *,
         fields_by_name: dict[str, ApplicationField],
         accessible_field_ids: set[int],
-    ) -> dict[str, Any]:
-        """Translate developer-facing field names to persisted view options."""
-        def field_id(field_name: str | None) -> int | None:
+    ) -> list[str]:
+        """Keep declared field names that are valid and accessible."""
+        resolved_names: list[str] = []
+        for field_name in field_names:
             application_field = cls._resolve_field(
                 field_name,
                 fields_by_name=fields_by_name,
                 accessible_field_ids=accessible_field_ids,
             )
-            return application_field.id if application_field is not None else None
+            if application_field is not None:
+                resolved_names.append(application_field.field)
+        return resolved_names
 
+    @classmethod
+    def _resolve_data_view_options(
+        cls,
+        data_view: BaseDataview,
+        *,
+        fields_by_name: dict[str, ApplicationField],
+        accessible_field_ids: set[int],
+    ) -> dict[str, Any]:
+        """Translate developer-facing field names to persisted view options."""
         def field_name(field: str | None) -> str | None:
             application_field = cls._resolve_field(
                 field,
@@ -256,47 +269,49 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
             }
         if isinstance(data_view, KanbanDataView):
             return {
-                "group_by_field_id": field_id(data_view.group_by_field),
+                "group_by_field": field_name(data_view.group_by_field),
                 "page_size": data_view.page_size,
                 "sort_field": field_name(data_view.sort_field),
                 "sort_direction": data_view.sort_direction,
             }
         if isinstance(data_view, CardDataView):
             return {"page_size": data_view.page_size}
+        if isinstance(data_view, FileBrowserDataview):
+            return {"related_fields": data_view.related_fields}
         if isinstance(data_view, CalendarDataView):
             return {
-                "start_field_id": field_id(data_view.start_field),
-                "end_field_id": field_id(data_view.end_field),
+                "start_field": field_name(data_view.start_field),
+                "end_field": field_name(data_view.end_field),
                 "view_mode": data_view.view_mode,
-                "color_grouping_field_id": field_id(
+                "color_grouping_field": field_name(
                     data_view.color_grouping_field
                 ),
             }
         if isinstance(data_view, GanttDataView):
             return {
-                "start_field_id": field_id(data_view.start_field),
-                "end_field_id": field_id(data_view.end_field),
-                "dependency_from_field_id": field_id(
+                "start_field": field_name(data_view.start_field),
+                "end_field": field_name(data_view.end_field),
+                "dependency_from_field": field_name(
                     data_view.dependency_from_field
                 ),
-                "dependency_for_field_id": field_id(
+                "dependency_for_field": field_name(
                     data_view.dependency_for_field
                 ),
                 "page_size": data_view.page_size,
             }
         if isinstance(data_view, PivotTableDataView):
             return {
-                "row_field_ids": cls._resolve_field_ids(
+                "row_fields": cls._resolve_field_names(
                     data_view.row_fields,
                     fields_by_name=fields_by_name,
                     accessible_field_ids=accessible_field_ids,
                 ),
-                "column_field_ids": cls._resolve_field_ids(
+                "column_fields": cls._resolve_field_names(
                     data_view.column_fields,
                     fields_by_name=fields_by_name,
                     accessible_field_ids=accessible_field_ids,
                 ),
-                "value_field_ids": cls._resolve_field_ids(
+                "value_fields": cls._resolve_field_names(
                     data_view.value_fields,
                     fields_by_name=fields_by_name,
                     accessible_field_ids=accessible_field_ids,

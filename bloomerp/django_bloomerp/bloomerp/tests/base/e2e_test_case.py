@@ -235,6 +235,32 @@ class BloomerpE2ETestCase(BaseE2ETestCase):
 
         return validator
 
+    def back_refresh(
+        self,
+        validators: E2EValidator | list[E2EValidator] | None = None,
+    ) -> E2EAction:
+        """Return an action equivalent to pressing the browser Back button."""
+
+        def execute() -> None:
+            self.page.go_back()
+
+        return E2EAction(
+            execute=execute,
+            validators=validators,
+            name="Go back",
+        )
+
+    def page_refresh(
+        self,
+        validators: E2EValidator | list[E2EValidator] | None = None,
+    ) -> E2EAction:
+        """Return an action that reloads the current browser page."""
+        return E2EAction(
+            execute=lambda: self.page.reload(wait_until="domcontentloaded"),
+            validators=validators,
+            name="Refresh page",
+        )
+
     @staticmethod
     def custom_action(callback: E2ECallback) -> E2ECallback:
         """Use arbitrary deferred Playwright or application code as an action."""

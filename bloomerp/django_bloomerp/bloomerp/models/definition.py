@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from django.http import HttpRequest, HttpResponse
 from bloomerp.config.definition import BloomerpConfig
-from bloomerp.dataviews.definition import BaseDataView
+from bloomerp.dataviews.definition import BaseDataview
 from bloomerp.permissions.definition import AccessRule
 from bloomerp.workspaces.base import BaseTileConfig
 from pydantic import (
@@ -328,10 +328,12 @@ class DataviewModalAction(BaseModel):
     modal_size: Literal["sm", "md", "lg", "xl", "full"] = "md"
 
 
-def get_default_dataview_actions() -> list[DataviewHTMLAction]:
+def get_default_dataview_actions(skip:Optional[list[str]]=None) -> list[DataviewHTMLAction]:
     """Return a new copy of the standard Dataview toolbar configuration."""
     template_root = "components/objects/dataview_actions"
-    return [
+    resolved = []
+    
+    actions = [
         DataviewHTMLAction(
             id="filter",
             template_name=f"{template_root}/filter.html",
@@ -363,6 +365,15 @@ def get_default_dataview_actions() -> list[DataviewHTMLAction]:
             shortcut="mod+6",
         ),
     ]
+    if skip:
+        for action in actions:
+            if action.id not in skip:
+                resolved.append(action)
+                
+        return resolved
+    
+    return actions
+    
 
 class DetailViewSettings(BaseModel):
     """Settings regarding detail views for a model.
@@ -408,7 +419,7 @@ class ModelViewSettings(BaseModel):
 
     skip_views: Optional[list[str]] = None
 
-    default_dataviews: list[SerializeAsAny[BaseDataView]] = Field(
+    default_dataviews: list[SerializeAsAny[BaseDataview]] = Field(
         default_factory=list
     )
 

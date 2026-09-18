@@ -64,6 +64,26 @@ Use the representation returned by the current lookup's Q factory for
 `expected_lookup`; do not duplicate endpoint parsing or model-field conversion
 rules in this test.
 
+## Form value cleaning
+
+When a lookup's form field normalizes a filter value, set `form_value` and
+`expected_cleaned_form_value`. The base creates the form field with the
+scenario's application field and compares its cleaned value exactly. Both
+properties must be supplied together.
+
+```python
+LookupScenario(
+    name="Normalizes an address filter",
+    application_field=lambda: self.get_application_field("description"),
+    field_path="address",
+    expression="address_contains",
+    value={"city": "Ghent"},
+    form_value={"city": " Ghent "},
+    expected_cleaned_form_value={"city": "Ghent"},
+    expected_lookup=CompiledLookup(...),
+)
+```
+
 ## SQL and Python evaluation
 
 Set `expected_sql` when the lookup supplies an SQL factory. The base invokes it

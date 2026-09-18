@@ -28,7 +28,6 @@ export class DataViewContainer extends BaseComponent {
     private searchInput:HTMLInputElement|null = null;
     private contentTypeId:string|null = null;
     private syncUrl:boolean = false;
-    private pendingHistoryMode: "push" | "replace" | null = null;
     
     // Split view related properties
     private splitViewEnabled:boolean = false;
@@ -140,18 +139,8 @@ export class DataViewContainer extends BaseComponent {
 
         baseUrl.searchParams.delete('page');
 
-        this.fullPath = baseUrl.toString();
-
-        if (this.syncUrl) {
-            this.pendingHistoryMode = pushHistory ? "push" : "replace";
-        }
-
         insertSkeleton(this.target);
-
-        htmx.ajax('get', this.fullPath, {
-            target: this.target,
-            swap: 'innerHTML',
-        })
+        this.applyUrl(baseUrl, pushHistory);
     }
 
     /**
@@ -164,15 +153,48 @@ export class DataViewContainer extends BaseComponent {
         this.applyUrl(url, false);
     }
 
+    public override onHistoryRestore(): void {
+        if (!this.syncUrl) {
+            this.refresh();
+            return;
+        }
+
+        this.reloadCurrentBrowserQuery();
+    }
+
+    private reloadCurrentBrowserQuery(): void {
+        const requestUrl = new URL(
+            this.baseUrl ?? this.fullPath ?? window.location.href,
+            window.location.origin,
+        );
+        requestUrl.search = window.location.search;
+        this.applyUrl(requestUrl, false);
+    }
+
     private applyUrl(url: URL, pushHistory: boolean = true): void {
         this.fullPath = url.toString();
-        if (this.syncUrl) {
-            this.pendingHistoryMode = pushHistory ? "push" : "replace";
-        }
+        if (this.element) this.element.dataset.url = this.fullPath;
+        const historyUpdate = this.getHistoryUpdate(url, pushHistory);
         htmx.ajax('get', this.fullPath, {
             target: this.target,
             swap: 'innerHTML',
+            ...historyUpdate,
         });
+    }
+
+    private getHistoryUpdate(url: URL, pushHistory: boolean): Pick<HtmxAjaxOptions, "push" | "replace"> {
+        if (!this.syncUrl) return {};
+
+        const browserUrl = new URL(window.location.href);
+        browserUrl.search = url.search;
+        const nextUrl = `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`;
+        const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+        if (pushHistory && nextUrl !== currentUrl) {
+            return { push: nextUrl };
+        }
+
+        return { replace: nextUrl };
     }
 
     private handleAfterSwap(event: Event): void {
@@ -185,14 +207,7 @@ export class DataViewContainer extends BaseComponent {
         if (!responseUrl) return;
 
         this.fullPath = new URL(responseUrl, window.location.origin).toString();
-
-        if (this.syncUrl) {
-            this.syncBrowserUrl(
-                new URL(this.fullPath, window.location.origin),
-                this.pendingHistoryMode ?? "replace",
-            );
-            this.pendingHistoryMode = null;
-        }
+        if (this.element) this.element.dataset.url = this.fullPath;
 
         this.installCellClickOverrides();
         this.setupSplitViewFocusTargets();
@@ -271,18 +286,6 @@ export class DataViewContainer extends BaseComponent {
             swap: 'innerHTML',
             push: pushUrl ? 'true' : 'false',
         });
-    }
-
-    private syncBrowserUrl(dataViewUrl: URL, historyMode: "push" | "replace" = "replace"): void {
-        const browserUrl = new URL(window.location.href);
-        browserUrl.search = dataViewUrl.search;
-        const nextUrl = `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`;
-        if (historyMode === "push" && nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
-            window.history.pushState(window.history.state, '', nextUrl);
-            return;
-        }
-
-        window.history.replaceState(window.history.state, '', nextUrl);
     }
 
     private getCurrentUrl(): URL | null {

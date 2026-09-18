@@ -5,7 +5,7 @@ from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.router import router
-
+from django.contrib.contenttypes.models import ContentType
 
 @router.register(
     path="files",
@@ -21,10 +21,8 @@ class BloomerpFileListView(BaseBloomerpView, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        query_string = self.request.GET.urlencode()
-        context["file_browser_url"] = reverse("components_files")
-        if query_string:
-            context["file_browser_url"] = f"{context['file_browser_url']}?{query_string}"
+        context["file_content_type_id"] = ContentType.objects.get_for_model(File).pk
+        
         return context
     
     def has_permission(self):
