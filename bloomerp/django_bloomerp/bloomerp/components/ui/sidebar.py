@@ -13,10 +13,9 @@ from bloomerp.forms.sidebar import CreateLinkSidebarItemForm, CreateSidebarFolde
 from bloomerp.models import Sidebar, SidebarItem
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.utils.requests import render_blank_form, render_page_refresh, render_template_and_message
+from bloomerp.utils.requests import render_blank_form, render_template_and_message
 
 SIDEBAR_CONTENT_TEMPLATE = "components/ui/sidebar/content.html"
-SIDEBAR_SELECT_ITEMS_TEMPLATE = "components/ui/sidebar/select_items.html"
 
 
 def _sidebar_content_context(request: HttpRequest, sidebar: Sidebar) -> dict[str, object]:
@@ -142,78 +141,6 @@ def sidebar_set_selected(request: HttpRequest, sidebar_id: int) -> HttpResponse:
         SIDEBAR_CONTENT_TEMPLATE,
         _sidebar_content_context(request, sidebar),
     )
-
-
-@router.register(
-    path="components/workspaces/sidebar/select/",
-    name="components_workspaces_sidebar_select_menu",
-)
-def sidebar_select_menu(request: HttpRequest) -> HttpResponse:
-    sidebar = request.user.selected_sidebar
-    sidebars = request.user.sidebars.order_by("name", "id")
-
-    return render(
-        request,
-        SIDEBAR_SELECT_ITEMS_TEMPLATE,
-        {
-            "sidebar": sidebar,
-            "sidebars": sidebars,
-        },
-    )
-
-
-@router.register(
-    path="components/workspaces/sidebar/create/",
-    name="components_workspaces_sidebar_create",
-)
-def sidebar_create(request: HttpRequest) -> HttpResponse:
-    """
-    Component to create a new sidebar. Only accepts POST as it's only a single action with a simple field (i.e. name).
-    """
-    if request.method != "POST":
-        return HttpResponse("Method not allowed", status=405)
-
-    name = (request.POST.get("name") or "").strip()
-    if not name:
-        return HttpResponse("Sidebar name is required", status=400)
-
-    sidebar = Sidebar.objects.create(
-        user=request.user,
-        name=name,
-        selected=False,
-    )
-    sidebar.select()
-
-    response = render_template_and_message(
-        request,
-        "Sidebar created",
-        "success",
-        SIDEBAR_CONTENT_TEMPLATE,
-        _sidebar_content_context(request, sidebar),
-    )
-    response["HX-Trigger"] = json.dumps({"dropdown-close": True})
-    return response
-
-
-@router.register(
-    path="components/workspaces/sidebar/delete/<int:sidebar_id>/",
-    name="components_workspaces_sidebar_delete",
-)
-def sidebar_delete(request: HttpRequest, sidebar_id: int) -> HttpResponse:
-    if request.method != "POST":
-        return HttpResponse("Method not allowed", status=405)
-
-    sidebar = get_object_or_404(Sidebar, pk=sidebar_id, user=request.user)
-    remaining_sidebars = request.user.sidebars.exclude(pk=sidebar.pk).order_by("id")
-
-    if not remaining_sidebars.exists():
-        return HttpResponse("At least one sidebar is required", status=400)
-
-    sidebar.delete()
-    next_sidebar = remaining_sidebars.first()
-    next_sidebar.select()
-
-    return render_page_refresh()
 
 
 @router.register(

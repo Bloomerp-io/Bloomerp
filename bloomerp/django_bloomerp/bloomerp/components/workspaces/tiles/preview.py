@@ -258,6 +258,7 @@ class PreviewWorkspaceTile(TemplateView):
         orchestrator = self.get_orchestrator()
 
         match self.get_tile_type_key():
+            # TODO: This needs to move out of this component and into the tile definition
             case "ANALYTICS_TILE":
                 tile_type_definition = AnalyticsTileType.from_key(config.type)
 

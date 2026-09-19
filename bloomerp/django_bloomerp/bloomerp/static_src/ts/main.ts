@@ -64,14 +64,10 @@ import { DataViewDisplayOptions } from './components/data_view_components/Displa
 import { GantChart, GantChartItem, GantChartSidebarItem } from './components/data_view_components/GantChart';
 import { PivotTable } from './components/data_view_components/PivotTable';
 import { Calendar, CalendarCell } from './components/data_view_components/Calendar';
-
-import { openModal } from './utils/modals';
-import { closeModal } from './utils/modals';
 import { Inbox } from './components/inbox/Inbox';
 import { InboxItem } from './components/inbox/InboxItem';
 import { EmailEditor } from './components/inbox/EmailEditor';
 import { SelectPreference } from './components/SelectPreference';
-import BaseSectionedLayoutContainer from './components/layouts/BaseSectionedLayoutContainer';
 import ThemeProvider from './components/theme/ThemeProvider';
 import MarkdownCodeBlock from './components/MarkdownCodeBlock';
 import { loadTranslations } from './utils/i18n';
