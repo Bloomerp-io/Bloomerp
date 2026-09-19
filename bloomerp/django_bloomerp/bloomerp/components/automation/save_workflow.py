@@ -6,6 +6,8 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 
 from bloomerp.models.automation.workflow import Workflow
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.serializers.workflow import WorkflowSerializer
 
@@ -27,6 +29,16 @@ def _node_reference_to_id(reference: str) -> int | None:
 @require_POST
 @login_required
 def save_workflow(request: HttpRequest) -> HttpResponse:
+    """Endpoint to save a particular workflow
+    
+    Permissions based on whether the user has access to the workflow.
+
+    Args:
+        request (HttpRequest): the request object
+
+    Returns:
+        HttpResponse: the response
+    """
     try:
         payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
@@ -34,7 +46,11 @@ def save_workflow(request: HttpRequest) -> HttpResponse:
 
     workflow_id = payload.get("workflow_id")
     workflow = get_object_or_404(Workflow, id=workflow_id) if workflow_id else None
-
+    
+    policy_manager = UserPolicyManager(request.user)
+    if not policy_manager.has_access_to_object(workflow, BloomerpPermission.CHANGE):
+        return HttpResponse(status=403)
+    
     serializer = WorkflowSerializer(instance=workflow, data=payload)
     if not serializer.is_valid():
         return JsonResponse(serializer.errors, status=400)
