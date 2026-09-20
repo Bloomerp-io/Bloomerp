@@ -6,6 +6,7 @@ import re
 from typing import Literal, cast
 
 from django import forms
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import QuerySet
 from django.utils.text import slugify
@@ -55,7 +56,7 @@ def _is_editable_text_field(field: ApplicationField) -> bool:
     try:
         model_field = field._get_model_field()
         form_field = field.get_form_field()
-    except (AttributeError, LookupError, TypeError, ValueError):
+    except (AttributeError, FieldDoesNotExist, LookupError, TypeError, ValueError):
         return False
     return (
         isinstance(model_field, (models.CharField, models.TextField))

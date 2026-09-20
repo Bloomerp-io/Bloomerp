@@ -6,6 +6,7 @@ from typing import Any
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 
+from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.transform_text import TRANSFORM_TEXT
 from bloomerp.form_behaviors.definition import (
     BehaviorAction,
@@ -211,6 +212,12 @@ class TestTransformTextAction(BloomerpBehaviorActionTestCase):
         self,
     ) -> None:
         """Eligibility follows real model/form types rather than a single model name."""
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        property_field = ApplicationField.objects.create(
+            content_type=content_type,
+            field="total_amount",
+            field_type=FIELD_TYPE_REGISTRY.PROPERTY.id,
+        )
         fields = ApplicationField.get_for_model(self.CustomerModel)
         listener_names = set(
             TRANSFORM_TEXT.get_listener_fields(fields).values_list("field", flat=True)
@@ -226,6 +233,7 @@ class TestTransformTextAction(BloomerpBehaviorActionTestCase):
             self.assertIn("description", names)
             self.assertNotIn("age", names)
             self.assertNotIn("date_joined", names)
+            self.assertNotIn(property_field.field, names)
 
     def test_executor_validates_length_without_mutating_input_or_persistence(
         self,
