@@ -8,6 +8,7 @@ from colorama import Fore, Style
 
 from bloomerp.config.definition import BloomerpAppI18nSettings
 
+
 class BloomerpApp(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "bloomerp"
@@ -21,6 +22,9 @@ class BloomerpApp(AppConfig):
         return True
 
     def ready(self) -> None:
+        """Initialize registries, model configuration, and signals after models load."""
+        from bloomerp.models.definition import BloomerpModelConfig
+
         # Models are available now; populate built-ins before importing consumers
         # that build catalogs from the registry at module scope.
         from bloomerp.field_types.registry import load_builtin_field_types
@@ -45,9 +49,35 @@ class BloomerpApp(AppConfig):
         from bloomerp.signals.activity_log_signals import before_delete_of_object  # noqa: F401
         from bloomerp.signals.activity_log_signals import after_delete_of_object  # noqa: F401
         from bloomerp.lookups.registry import LOOKUP_REGISTRY  # noqa: F401
+        from bloomerp.config.utils import set_model_config
+        from django.contrib.auth.models import Group
+        from bloomerp.models.definition import DetailViewSettings, FieldLayout, LayoutItem, LayoutRow
         
+        # Set model config of group's model
+        set_model_config(
+            Group,
+            BloomerpModelConfig(
+                module="users",
+                detail_view_settings=DetailViewSettings(
+                    layouts=[
+                        FieldLayout(
+                            rows=[
+                                LayoutRow(
+                                    columns=1,
+                                    title="Details",
+                                    items=[
+                                        LayoutItem(id="name")
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                )
+            )
+        )
+
         configure_bloomerp_allauth_settings()
-        
+
         post_migrate.connect(
             ensure_bloomerp_model_permissions,
             sender=self,
@@ -68,7 +98,7 @@ class BloomerpApp(AppConfig):
         except (OperationalError, ProgrammingError):
             # Database may not be ready during migrations.
             pass
-        
+
         # Refresh the module registry
         module_registry.refresh()
 

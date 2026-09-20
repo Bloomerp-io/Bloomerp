@@ -1,491 +1,385 @@
-import BaseComponent from "../BaseComponent";
-import {
-    BehaviorAction,
-    BehaviorConnector,
-    BehaviorEvent,
-    BehaviorOperator,
-    createBehaviorId,
-    resolveBehaviorDefinitionId,
-    type BehaviorActionConfig,
-    type BehaviorActionEditorField,
-    type BehaviorConfig,
-    type BehaviorCondition,
-    type BehaviorConditionValueEditor,
-    type BehaviorDefinition,
-    type BehaviorRule,
-    type CatalogField,
-} from "../behaviors/BehaviorDefinitions";
+import BaseComponent from '../BaseComponent';
+import { t as _ } from '@/utils/i18n';
+import { FilterApi } from '../filters/api';
+import FilterContainer from '../filters/FilterContainer';
+import { button, element } from '../filters/dom';
+import { destroyWidgets, initializeWidget, readWidget } from '../filters/widget';
+import { addTooltip } from '@/utils/tooltip';
+import type { FieldGroup, Filter, LookupDefinition } from '../filters/definition';
 
-export type {
-    BehaviorActionConfig,
-    BehaviorConfig,
-    BehaviorCondition,
-    BehaviorRule,
-} from "../behaviors/BehaviorDefinitions";
+type Action = { action: string; target_field: string | null; config: Record<string, unknown> };
+type Behavior = { id: string; name: string; enabled: boolean; events: string[]; conditions: Filter[]; actions: Action[] };
+type Config = { version: 1; behaviors: Behavior[] };
+type ActionDefinition = { id: string; label: string; requires_target_field: boolean; targets: { name: string; label: string }[] };
+type ConditionField = { field: string; label: string; lookups: LookupDefinition[] };
 
-function parseJson<T>(value: string | undefined, fallback: T): T {
-    if (!value) return fallback;
-    try {
-        return JSON.parse(value) as T;
-    } catch {
-        return fallback;
+/** Reorder editors without destroying their unsaved controls or pending requests. */
+function moveEditor<T extends { root: HTMLElement }>(editors: T[], editor: T, offset: number): void {
+    const index = editors.indexOf(editor);
+    const next = index + offset;
+    if (index < 0 || next < 0 || next >= editors.length) return;
+    [editors[index], editors[next]] = [editors[next], editors[index]];
+    editor.root.parentElement?.append(...editors.map(item => item.root));
+}
+
+/** Create a compact icon-only control with an accessible label. */
+function iconButton(
+    label: string, icon: string, action: () => void,
+    classes: string = 'inline-flex h-10 w-10 shrink-0 items-center justify-center border-0 border-l border-gray-200 bg-transparent text-sm hover:bg-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2',
+): HTMLButtonElement {
+    const control = button('', action, classes);
+    control.setAttribute('aria-label', label);
+    control.title = label;
+    addTooltip(control, { text: label, position: 'bottom' });
+    const glyph = element('i', `fa-solid ${icon}`);
+    glyph.setAttribute('aria-hidden', 'true');
+    control.append(glyph);
+    return control;
+}
+
+/** Restrict the reusable filter editor to backend-approved draft capabilities. */
+class BehaviorFilterApi extends FilterApi {
+    /** Keep condition discovery local while reusing the existing value-editor endpoint. */
+    constructor(root: HTMLElement, private catalog: ConditionField[]) {
+        super(root, { scope: 'model', id: root.dataset.contentTypeId ?? '' });
+    }
+    /** Return only top-level fields supported by the behavior evaluator. */
+    override async fields(): Promise<FieldGroup[]> {
+        return [{ name: 'Form fields', fields: this.catalog }];
+    }
+    /** Return the selected field's Python-evaluable operators. */
+    override async lookups(path: string): Promise<LookupDefinition[]> {
+        return this.catalog.find(field => field.field === path)?.lookups ?? [];
     }
 }
 
-function escapeHtml(value: unknown): string {
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
+/** A single action owns its selection, async fragment, and configuration widgets. */
+class ActionEditor {
+    readonly root = element('div', 'px-3 py-3');
+    private toolbar = element('div', 'flex flex-wrap items-center gap-2');
+    private action = element('select', 'select min-w-0 flex-1');
+    private target = element('select', 'select min-w-0 flex-1');
+    private body = element('div', 'mt-3');
+    private revision = 0;
+    private ready = false;
+    private controller = new AbortController();
+    private prefix = `behavior-${crypto.randomUUID()}`;
 
-export default class BehaviorBuilder extends BaseComponent {
-    private input: HTMLInputElement | null = null;
-    private rulesContainer: HTMLElement | null = null;
-    private fields: CatalogField[] = [];
-    private sourceFieldId = "";
-    private sourceFieldLabel = "This field";
-    private sourceFieldType = "";
-    private config: BehaviorConfig = { rules: [] };
-    private expandedRuleIds = new Set<string>();
-    private clickHandler: ((event: Event) => void) | null = null;
-    private changeHandler: ((event: Event) => void) | null = null;
-    private inputHandler: ((event: Event) => void) | null = null;
-
-    public initialize(): void {
-        if (!this.element) return;
-
-        this.input = this.element.querySelector<HTMLInputElement>("[data-behavior-input]");
-        this.rulesContainer = this.element.querySelector<HTMLElement>("[data-behavior-rules]");
-        this.sourceFieldId = this.element.dataset.behaviorSourceFieldId ?? "";
-        this.sourceFieldLabel = this.element.dataset.behaviorSourceFieldLabel ?? "This field";
-        this.sourceFieldType = this.element.dataset.behaviorSourceFieldType ?? "";
-        this.fields = this.parseFields(this.element.dataset.behaviorFieldCatalog);
-        this.config = this.parseConfig(this.input?.value);
-        this.expandedRuleIds.clear();
-
-        this.clickHandler = (event) => this.handleClick(event);
-        this.changeHandler = (event) => this.handleChange(event);
-        this.inputHandler = () => this.syncConfigFromDom();
-        this.element.addEventListener("click", this.clickHandler);
-        this.element.addEventListener("change", this.changeHandler);
-        this.element.addEventListener("input", this.inputHandler);
-
-        this.render();
-    }
-
-    public destroy(): void {
-        if (this.element && this.clickHandler) this.element.removeEventListener("click", this.clickHandler);
-        if (this.element && this.changeHandler) this.element.removeEventListener("change", this.changeHandler);
-        if (this.element && this.inputHandler) this.element.removeEventListener("input", this.inputHandler);
-        this.clickHandler = null;
-        this.changeHandler = null;
-        this.inputHandler = null;
-        this.input = null;
-        this.rulesContainer = null;
-        this.expandedRuleIds.clear();
-    }
-
-    private parseFields(value: string | undefined): CatalogField[] {
-        const parsed = parseJson<unknown>(value, []);
-        return Array.isArray(parsed) ? parsed as CatalogField[] : [];
-    }
-
-    private parseConfig(value: string | undefined): BehaviorConfig {
-        const parsed = parseJson<unknown>(value, {});
-        const rules = Array.isArray(parsed)
-            ? parsed
-            : (parsed as { rules?: unknown })?.rules;
-        return {
-            rules: Array.isArray(rules)
-                ? rules.map((rule) => this.normalizeRule(rule as Partial<BehaviorRule>))
-                : [],
-        };
-    }
-
-    private normalizeRule(value: Partial<BehaviorRule>): BehaviorRule {
-        const events = Array.isArray(value.events)
-            ? value.events.filter((event) => event === BehaviorEvent.Change || event === BehaviorEvent.Initial)
-            : [];
-        return {
-            id: value.id || createBehaviorId("rule"),
-            name: value.name || "",
-            enabled: value.enabled !== false,
-            events: events.length ? events : [BehaviorEvent.Change],
-            connector: value.connector === BehaviorConnector.Any ? BehaviorConnector.Any : BehaviorConnector.All,
-            conditions: Array.isArray(value.conditions)
-                ? value.conditions.map((condition) => this.normalizeCondition(condition))
-                : [],
-            actions: Array.isArray(value.actions) && value.actions.length
-                ? value.actions.map((action) => this.normalizeAction(action))
-                : [this.normalizeAction({})],
-        };
-    }
-
-    private normalizeCondition(value: Partial<BehaviorCondition>): BehaviorCondition {
-        const field = this.fields.find(({ id }) => id === value.field)
-            ?? this.getDefinitionContext().sourceField;
-        const operators = BehaviorOperator.forField(field);
-        const fallbackOperator = operators[0] ?? BehaviorOperator.EQUALS;
-        return {
-            id: value.id || createBehaviorId("condition"),
-            field: field.id,
-            operator: resolveBehaviorDefinitionId(
-                value.operator,
-                operators,
-                fallbackOperator.id,
-            ),
-            value: value.value || "",
-        };
-    }
-
-    private normalizeAction(value: Partial<BehaviorActionConfig>): BehaviorActionConfig {
-        const type = resolveBehaviorDefinitionId(
-            value.type,
-            BehaviorAction.values(),
-            BehaviorAction.SHOW_FIELD.id,
-        );
-        const definition = BehaviorAction.get(type) ?? BehaviorAction.SHOW_FIELD;
-        return definition.normalize(
-            { ...value, id: value.id || createBehaviorId("action"), type },
-            this.getDefinitionContext(),
-        );
-    }
-
-    private getDefinitionContext() {
-        const sourceField = this.fields.find(({ id }) => id === this.sourceFieldId) ?? {
-            id: this.sourceFieldId,
-            label: this.sourceFieldLabel,
-            name: this.sourceFieldLabel,
-            fieldType: this.sourceFieldType,
-        };
-        return { sourceField, fields: this.fields };
-    }
-
-    private handleClick(event: Event): void {
-        const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("button");
-        if (!button || !this.element?.contains(button)) return;
-
-        this.syncConfigFromDom();
-        if (button.matches("[data-behavior-add-rule]")) {
-            const rule = this.normalizeRule({ name: `Behavior ${this.config.rules.length + 1}` });
-            this.config.rules.push(rule);
-            this.expandedRuleIds.add(rule.id);
-        } else {
-            const ruleElement = button.closest<HTMLElement>("[data-behavior-rule]");
-            const rule = this.config.rules.find((item) => item.id === ruleElement?.dataset.behaviorRule);
-            if (!rule) return;
-
-            if (button.matches("[data-behavior-delete-rule]")) {
-                this.config.rules = this.config.rules.filter((item) => item.id !== rule.id);
-                this.expandedRuleIds.delete(rule.id);
-            } else if (button.matches("[data-behavior-toggle-rule]")) {
-                if (this.expandedRuleIds.has(rule.id)) {
-                    this.expandedRuleIds.delete(rule.id);
-                } else {
-                    this.expandedRuleIds.add(rule.id);
-                }
-            } else if (button.matches("[data-behavior-move-rule]")) {
-                this.moveRule(rule.id, button.dataset.behaviorMoveRule === "up" ? -1 : 1);
-            } else if (button.matches("[data-behavior-add-condition]")) {
-                rule.conditions.push(this.normalizeCondition({}));
-            } else if (button.matches("[data-behavior-remove-condition]")) {
-                const id = button.closest<HTMLElement>("[data-behavior-condition]")?.dataset.behaviorCondition;
-                rule.conditions = rule.conditions.filter((item) => item.id !== id);
-            } else if (button.matches("[data-behavior-add-action]")) {
-                rule.actions.push(this.normalizeAction({}));
-            } else if (button.matches("[data-behavior-remove-action]")) {
-                const id = button.closest<HTMLElement>("[data-behavior-action]")?.dataset.behaviorAction;
-                rule.actions = rule.actions.filter((item) => item.id !== id);
-                if (!rule.actions.length) rule.actions.push(this.normalizeAction({}));
-            } else {
-                return;
-            }
+    /** Render action and target choices without assuming any action-specific fields. */
+    constructor(
+        private host: HTMLElement, private definitions: ActionDefinition[], initial: Action,
+        remove: () => void, moveUp: () => void, moveDown: () => void,
+    ) {
+        this.action.setAttribute('aria-label', 'Action');
+        this.target.setAttribute('aria-label', 'Target field');
+        this.action.append(new Option('Select action', ''));
+        definitions.forEach(definition => this.action.append(new Option(definition.label, definition.id)));
+        if (initial.action && !definitions.some(definition => definition.id === initial.action)) {
+            this.action.append(new Option(`Unavailable action: ${initial.action}`, initial.action));
         }
-
-        this.writeConfig();
-        this.render();
+        this.action.value = initial.action;
+        this.toolbar.append(
+            this.action, this.target,
+            iconButton(_('Move action up'), 'fa-arrow-up', moveUp, 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm hover:bg-base'),
+            iconButton(_('Move action down'), 'fa-arrow-down', moveDown, 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm hover:bg-base'),
+            iconButton(_('Remove action'), 'fa-trash', remove, 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm hover:bg-base'),
+        );
+        this.root.append(this.toolbar, this.body);
+        this.action.addEventListener('change', (): void => this.selectAction(null, {}));
+        this.target.addEventListener('change', (): void => { void this.load({}); });
+        this.selectAction(initial.target_field, initial.config);
     }
 
-    private handleChange(event: Event): void {
-        this.syncConfigFromDom();
-        const target = event.target as HTMLElement | null;
-        if (target?.hasAttribute("data-behavior-rerender")) this.render();
+    /** Rebuild eligible targets and discard configuration only after a selection change. */
+    private selectAction(target: string | null, config: Record<string, unknown>): void {
+        const definition = this.definitions.find(item => item.id === this.action.value);
+        this.target.replaceChildren(new Option('Select target field', ''));
+        definition?.targets.forEach(field => this.target.append(new Option(field.label, field.name)));
+        this.target.hidden = !definition?.requires_target_field;
+        if (target && !definition?.targets.some(field => field.name === target)) {
+            this.target.append(new Option(`Unavailable field: ${target}`, target));
+        }
+        this.target.value = target ?? '';
+        void this.load(config);
     }
 
-    private moveRule(id: string, offset: number): void {
-        const index = this.config.rules.findIndex((rule) => rule.id === id);
-        const nextIndex = index + offset;
-        if (index < 0 || nextIndex < 0 || nextIndex >= this.config.rules.length) return;
-        const [rule] = this.config.rules.splice(index, 1);
-        this.config.rules.splice(nextIndex, 0, rule);
-    }
-
-    private syncConfigFromDom(): void {
-        if (!this.rulesContainer) return;
-        const previousRules = new Map(this.config.rules.map((rule) => [rule.id, rule]));
-        this.config.rules = Array.from(this.rulesContainer.querySelectorAll<HTMLElement>("[data-behavior-rule]")).map((element) => {
-            const id = element.dataset.behaviorRule ?? createBehaviorId("rule");
-            const previous = previousRules.get(id) ?? this.normalizeRule({ id });
-            const previousActions = new Map(previous.actions.map((action) => [action.id, action]));
-            return {
-                ...previous,
-                name: this.valueOf(element, "[data-behavior-name]"),
-                enabled: this.checkedOf(element, "[data-behavior-enabled]"),
-                events: [
-                    BehaviorEvent.Change,
-                    ...(this.checkedOf(element, "[data-behavior-initial]") ? [BehaviorEvent.Initial] : []),
-                ],
-                connector: this.valueOf(element, "[data-behavior-connector]") === BehaviorConnector.Any
-                    ? BehaviorConnector.Any
-                    : BehaviorConnector.All,
-                conditions: Array.from(element.querySelectorAll<HTMLElement>("[data-behavior-condition]"))
-                    .map((row) => this.normalizeCondition({
-                        id: row.dataset.behaviorCondition ?? createBehaviorId("condition"),
-                        field: this.valueOf(row, "[data-behavior-condition-field]"),
-                        operator: this.valueOf(row, "[data-behavior-condition-operator]"),
-                        value: this.valueOf(row, "[data-behavior-condition-value]"),
-                    })),
-                actions: Array.from(element.querySelectorAll<HTMLElement>("[data-behavior-action]")).map((row) => {
-                    const actionId = row.dataset.behaviorAction ?? createBehaviorId("action");
-                    const previousAction = previousActions.get(actionId) ?? this.normalizeAction({ id: actionId });
-                    const action = {
-                        ...previousAction,
-                        id: actionId,
-                        type: resolveBehaviorDefinitionId(
-                            this.optionalValueOf(row, "[data-behavior-action-type]"),
-                            BehaviorAction.values(),
-                            previousAction.type,
-                        ),
-                    } as BehaviorActionConfig;
-                    row.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-                        "[data-behavior-action-config]",
-                    ).forEach((control) => {
-                        const key = control.dataset.behaviorActionConfig as keyof BehaviorActionConfig | undefined;
-                        if (!key) return;
-                        (action as unknown as Record<string, unknown>)[key] = control.value;
-                    });
-                    return this.normalizeAction(action);
-                }),
-            };
-        });
-        this.writeConfig();
-        this.syncSummaries();
-    }
-
-    private valueOf(root: ParentNode, selector: string): string {
-        return root.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(selector)?.value ?? "";
-    }
-
-    private optionalValueOf(root: ParentNode, selector: string): string | undefined {
-        return root.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(selector)?.value;
-    }
-
-    private checkedOf(root: ParentNode, selector: string): boolean {
-        return root.querySelector<HTMLInputElement>(selector)?.checked ?? false;
-    }
-
-    private writeConfig(): void {
-        if (this.input) this.input.value = JSON.stringify(this.config);
-    }
-
-    private render(): void {
-        if (!this.rulesContainer) return;
-        if (!this.config.rules.length) {
-            this.rulesContainer.innerHTML = this.renderEmptyState();
-            this.writeConfig();
+    /** Fetch one Django fragment, ignoring stale responses after selections change. */
+    private async load(config: Record<string, unknown>): Promise<void> {
+        const revision = ++this.revision;
+        this.ready = false;
+        destroyWidgets(this.body);
+        this.body.replaceChildren();
+        const definition = this.definitions.find(item => item.id === this.action.value);
+        this.body.classList.remove('text-muted');
+        if (!definition || (definition.requires_target_field && !this.target.value)) {
+            this.body.classList.add('text-muted');
+            this.body.textContent = 'Select an action and its required target to configure it.';
             return;
         }
-        this.rulesContainer.innerHTML = this.config.rules.map((rule, index) => this.renderRule(rule, index)).join("");
-        this.writeConfig();
-        this.syncSummaries();
-    }
-
-    private renderEmptyState(): string {
-        return `
-            <div class="bg-white px-5 py-8 text-center">
-                <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <i class="fa-solid fa-bolt"></i>
-                </span>
-                <p class="mt-3 text-sm font-medium text-dark">No behaviors yet</p>
-                <p class="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">Add a behavior to show fields, set values, filter choices, or populate related rows when ${escapeHtml(this.sourceFieldLabel)} changes.</p>
-            </div>`;
-    }
-
-    private renderRule(rule: BehaviorRule, index: number): string {
-        const isExpanded = this.expandedRuleIds.has(rule.id);
-        const conditionRows = rule.conditions.length
-            ? rule.conditions.map((condition) => this.renderCondition(condition)).join("")
-            : `<div class="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">No conditions — this behavior always runs.</div>`;
-        return `
-            <section class="overflow-hidden border-b border-gray-200 bg-white shadow-xs" data-behavior-rule="${escapeHtml(rule.id)}">
-                <div class="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-gray-50 px-3 py-2.5">
-                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">${index + 1}</span>
-                    <input class="input input-sm min-w-0 flex-1 border-transparent bg-transparent font-medium" value="${escapeHtml(rule.name || `Behavior ${index + 1}`)}" aria-label="Behavior name" data-behavior-name>
-                    <label class="flex items-center gap-1.5 text-xs text-gray-600">
-                        <input type="checkbox" class="toggle toggle-sm" ${rule.enabled ? "checked" : ""} data-behavior-enabled>
-                        Enabled
-                    </label>
-                    <div class="flex items-center">
-                        <button type="button" class="btn btn-ghost btn-xs" title="${isExpanded ? "Collapse" : "Expand"} behavior" aria-expanded="${isExpanded}" data-behavior-toggle-rule><i class="fa-solid fa-chevron-${isExpanded ? "up" : "down"}"></i></button>
-                        <button type="button" class="btn btn-ghost btn-xs" title="Move up" ${index === 0 ? "disabled" : ""} data-behavior-move-rule="up"><i class="fa-solid fa-arrow-up"></i></button>
-                        <button type="button" class="btn btn-ghost btn-xs" title="Move down" ${index === this.config.rules.length - 1 ? "disabled" : ""} data-behavior-move-rule="down"><i class="fa-solid fa-arrow-down"></i></button>
-                        <button type="button" class="btn btn-ghost btn-xs text-danger-dark" title="Delete behavior" data-behavior-delete-rule><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-
-                <div class="space-y-4 p-4 ${isExpanded ? "" : "hidden"}" data-behavior-rule-body>
-                    <div class="grid gap-3 md:grid-cols-[64px_minmax(0,1fr)]">
-                        <div class="pt-2 text-xs font-semibold uppercase tracking-wide text-primary">When</div>
-                        <div class="space-y-2">
-                            <div class="flex flex-wrap items-center gap-2 rounded-xl bg-primary/5 px-3 py-2 text-sm text-dark">
-                                <span class="font-medium">${escapeHtml(this.sourceFieldLabel)}</span>
-                                <span>changes</span>
-                            </div>
-                            <label class="flex items-center gap-2 text-xs text-gray-600">
-                                <input type="checkbox" ${rule.events.includes(BehaviorEvent.Initial) ? "checked" : ""} data-behavior-initial>
-                                Also run when the form opens
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="grid gap-3 border-t border-gray-200 pt-4 md:grid-cols-[64px_minmax(0,1fr)]">
-                        <div class="pt-2 text-xs font-semibold uppercase tracking-wide text-warning-dark">If</div>
-                        <div class="space-y-2">
-                            ${rule.conditions.length > 1 ? `
-                                <label class="flex items-center gap-2 text-xs text-gray-600">Match
-                                    <select class="select select-sm w-auto" data-behavior-connector>
-                                        <option value="${BehaviorConnector.All}" ${rule.connector === BehaviorConnector.All ? "selected" : ""}>all conditions</option>
-                                        <option value="${BehaviorConnector.Any}" ${rule.connector === BehaviorConnector.Any ? "selected" : ""}>any condition</option>
-                                    </select>
-                                </label>` : `<input type="hidden" value="${rule.connector}" data-behavior-connector>`}
-                            <div class="space-y-2">${conditionRows}</div>
-                            <button type="button" class="btn btn-secondary btn-xs" data-behavior-add-condition><i class="fa-solid fa-plus"></i> Add condition</button>
-                        </div>
-                    </div>
-
-                    <div class="grid gap-3 border-t border-gray-200 pt-4 md:grid-cols-[64px_minmax(0,1fr)]">
-                        <div class="pt-2 text-xs font-semibold uppercase tracking-wide text-success-dark">Then</div>
-                        <div class="space-y-2">
-                            ${rule.actions.map((action) => this.renderAction(action)).join("")}
-                            <button type="button" class="btn btn-secondary btn-xs" data-behavior-add-action><i class="fa-solid fa-plus"></i> Add action</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs text-gray-500" data-behavior-summary></div>
-            </section>`;
-    }
-
-    private renderCondition(condition: BehaviorCondition): string {
-        const field = this.fields.find(({ id }) => id === condition.field)
-            ?? this.getDefinitionContext().sourceField;
-        const operators = BehaviorOperator.forField(field);
-        const operator = BehaviorOperator.get(condition.operator) ?? operators[0] ?? BehaviorOperator.EQUALS;
-        return `
-            <div class="grid gap-2 rounded-xl border border-gray-200 p-2 sm:grid-cols-[minmax(120px,1fr)_minmax(130px,1fr)_minmax(120px,1fr)_auto]" data-behavior-condition="${escapeHtml(condition.id)}">
-                ${this.renderFieldSelect(condition.field, "data-behavior-condition-field data-behavior-rerender")}
-                ${this.renderSelect(operators, operator.id, "data-behavior-condition-operator data-behavior-rerender")}
-                ${this.renderConditionValue(condition, operator.valueEditor(field, condition))}
-                <button type="button" class="btn btn-ghost btn-xs self-center text-gray-400 hover:text-danger-dark" title="Remove condition" data-behavior-remove-condition><i class="fa-solid fa-xmark"></i></button>
-            </div>`;
-    }
-
-    private renderConditionValue(
-        condition: BehaviorCondition,
-        editor: BehaviorConditionValueEditor,
-    ): string {
-        if (editor.kind === "none") {
-            return `<input type="hidden" value="" data-behavior-condition-value>`;
+        this.body.textContent = 'Loading configuration…';
+        try {
+            const url = new URL(this.host.dataset.actionUrl!, location.href);
+            const scope: Record<string, string> = JSON.parse(this.host.dataset.layoutContext ?? '{}');
+            Object.entries(scope).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+            url.searchParams.set('listener_field_id', this.host.dataset.listenerId ?? '');
+            url.searchParams.set('action_id', definition.id);
+            url.searchParams.set('target_field', this.target.value);
+            url.searchParams.set('prefix', this.prefix);
+            url.searchParams.set('config', JSON.stringify(config));
+            const response = await fetch(url, { signal: this.controller.signal, credentials: 'same-origin' });
+            if (!response.ok) {
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.error ?? 'Could not load action configuration.');
+            }
+            const html = await response.text();
+            if (revision !== this.revision) return;
+            this.body.innerHTML = html;
+            initializeWidget(this.body);
+            this.ready = true;
+        } catch (error) {
+            if (revision === this.revision && (error as Error).name !== 'AbortError') {
+                this.body.replaceChildren(element('p', 'text-danger-dark', (error as Error).message),
+                    button('Retry', (): void => { void this.load(config); }));
+            }
         }
-        if (editor.kind === "boolean") {
-            return this.renderSelect(
-                [
-                    { id: "true", label: "Yes" },
-                    { id: "false", label: "No" },
-                ],
-                condition.value === "false" ? "false" : "true",
-                "data-behavior-condition-value",
-            );
-        }
-        const inputType = editor.kind === "number" ? "number" : editor.kind === "date" ? "date" : "text";
-        const placeholder = editor.kind === "text" ? editor.placeholder ?? "Comparison value" : "";
-        return `<input type="${inputType}" class="input input-sm" value="${escapeHtml(condition.value)}" placeholder="${escapeHtml(placeholder)}" data-behavior-condition-value>`;
     }
 
-    private renderAction(action: BehaviorActionConfig): string {
-        const definition = BehaviorAction.get(action.type) ?? BehaviorAction.SHOW_FIELD;
-        const editor = definition.editor(action, this.getDefinitionContext());
-        return `
-            <div class="space-y-2 rounded-xl border border-gray-200 p-2" data-behavior-action="${escapeHtml(action.id)}">
-                <div class="grid gap-2 sm:grid-cols-[minmax(160px,1fr)_auto]">
-                    <label class="text-xs text-gray-500">Action${this.renderSelect(BehaviorAction.values(), action.type, "data-behavior-action-type data-behavior-rerender")}</label>
-                    <button type="button" class="btn btn-ghost btn-xs self-center text-gray-400 hover:text-danger-dark" title="Remove action" data-behavior-remove-action><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <div class="grid gap-2 sm:grid-cols-2">
-                    ${editor.map((field) => this.renderActionEditorField(action, field)).join("")}
-                </div>
-            </div>`;
-    }
-
-    private renderActionEditorField(
-        action: BehaviorActionConfig,
-        field: BehaviorActionEditorField,
-    ): string {
-        if (field.kind === "warning") {
-            return `<p class="text-xs text-warning-dark sm:col-span-2"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(field.message)}</p>`;
-        }
-        const value = String(action[field.key] ?? "");
-        const attributes = `data-behavior-action-config="${field.key}"${field.rerender ? " data-behavior-rerender" : ""}`;
-        let control = "";
-        if (field.kind === "field") {
-            control = this.renderFieldSelect(value, attributes, field.fields);
-        } else if (field.kind === "select") {
-            control = this.renderSelect(field.options, value, attributes);
-        } else if (field.kind === "number") {
-            control = `<input type="number" class="input input-sm w-full" value="${escapeHtml(value)}" ${field.min === undefined ? "" : `min="${field.min}"`} ${field.max === undefined ? "" : `max="${field.max}"`} ${attributes}>`;
-        } else {
-            control = `<input type="text" class="input input-sm w-full" value="${escapeHtml(value)}" placeholder="${escapeHtml(field.placeholder ?? "")}" ${attributes}>`;
-        }
-        return `<label class="text-xs text-gray-500">${escapeHtml(field.label)}${control}</label>`;
-    }
-
-    private renderFieldSelect(
-        selected: string,
-        attribute: string,
-        fields: readonly CatalogField[] = this.fields,
-    ): string {
-        const options = fields.map((field) => `<option value="${escapeHtml(field.id)}" ${field.id === selected ? "selected" : ""}>${escapeHtml(field.label)}</option>`).join("");
-        const placeholder = fields.length ? "Select field…" : "No compatible fields";
-        return `<select class="select select-sm w-full" ${attribute} ${fields.length ? "" : "disabled"}><option value="">${placeholder}</option>${options}</select>`;
-    }
-
-    private renderSelect<TId extends string>(
-        options: readonly BehaviorDefinition<TId>[],
-        selected: TId,
-        attributes: string,
-    ): string {
-        return `<select class="select select-sm w-full" ${attributes}>${options.map(({ id, label }) => `<option value="${id}" ${id === selected ? "selected" : ""}>${label}</option>`).join("")}</select>`;
-    }
-
-    private syncSummaries(): void {
-        if (!this.rulesContainer) return;
-        this.config.rules.forEach((rule) => {
-            const element = this.rulesContainer?.querySelector<HTMLElement>(`[data-behavior-rule="${CSS.escape(rule.id)}"] [data-behavior-summary]`);
-            if (!element) return;
-            const actionLabels = rule.actions.map((action) => this.getActionSummary(action));
-            const timing = rule.events.includes(BehaviorEvent.Initial)
-                ? "when the form opens and when the field changes"
-                : "when the field changes";
-            element.textContent = `${rule.conditions.length ? `${rule.connector === BehaviorConnector.All ? "All" : "Any"} of ${rule.conditions.length} condition${rule.conditions.length === 1 ? "" : "s"}` : "Always"}: ${actionLabels.join(", ")} ${timing}.`;
+    /** Read the public widget values and decode fields declared as JSON by Django. */
+    value(): Action {
+        if (!this.ready) throw new Error('Complete every action and wait for its configuration to load.');
+        const config: Record<string, unknown> = {};
+        this.body.querySelectorAll<HTMLElement>('[data-config-key]').forEach(wrapper => {
+            const value = readWidget(wrapper);
+            config[wrapper.dataset.configKey!] = wrapper.dataset.configKind === 'json' && typeof value === 'string'
+                ? (value.trim() ? JSON.parse(value) : null) : value;
         });
+        return { action: this.action.value, target_field: this.target.hidden ? null : this.target.value, config };
     }
 
-    private getActionSummary(action: BehaviorActionConfig): string {
-        return BehaviorAction.get(action.type)?.summarize(
-            action,
-            this.getDefinitionContext(),
-        ) ?? "run action";
+    /** Cancel requests and dispose embedded widgets before removing this action. */
+    destroy(): void {
+        ++this.revision;
+        this.controller.abort();
+        destroyWidgets(this.body);
+        this.root.remove();
+    }
+}
+
+/** Edit metadata, full filter groups, and an ordered action list for a behavior. */
+class BehaviorEditor {
+    readonly root = element('div');
+    private card = element('div');
+    private header = element('div', 'flex items-stretch border-b border-gray-200');
+    private content = element('section');
+    private divider = element('hr', 'm-0 border-gray-200');
+    private name = element('input', 'h-10 min-w-0 flex-1 rounded-none rounded-tl-xl border-0 bg-transparent px-3 focus:ring-1 focus:ring-inset focus:ring-primary');
+    private enabled = element('input');
+    private event = element('select', 'h-10 w-44 shrink-0 rounded-none border-0 border-l border-gray-200 bg-transparent py-0 pl-3 pr-7 focus:ring-1 focus:ring-inset focus:ring-primary');
+    private filterEditor: FilterContainer;
+    private actions: ActionEditor[] = [];
+    private conditionRoot = element('div', 'p-3');
+    private actionRoot = element('div', 'divide-y divide-gray-200');
+    private toggle: HTMLButtonElement | null = null;
+    private collapsed = true;
+
+    /** Restore an existing declaration and give new entries stable IDs. */
+    constructor(private host: HTMLElement, private api: BehaviorFilterApi, private definitions: ActionDefinition[], private initial: Behavior, remove: () => void) {
+        this.name.value = initial.name;
+        this.name.placeholder = _('Behavior name');
+        this.name.setAttribute('aria-label', _('Behavior name'));
+        this.enabled.type = 'checkbox';
+        this.enabled.checked = initial.enabled;
+        const enabledLabel = element('label', 'flex h-10 shrink-0 items-center gap-2 border-l border-gray-200 px-3', 'Enabled');
+        enabledLabel.prepend(this.enabled);
+        this.event.setAttribute('aria-label', 'Run behavior');
+        this.event.append(new Option('On change', 'change'), new Option('On initial load', 'initial'), new Option('Initial load and change', 'both'));
+        this.event.value = initial.events.length === 2 ? 'both' : initial.events[0];
+        Object.assign(this.conditionRoot.dataset, {
+            scope: 'model', scopeId: host.dataset.contentTypeId ?? '',
+            includeControls: 'false', allowEmpty: 'true',
+            name: `conditions-${initial.id}`, initialFilters: JSON.stringify(initial.conditions),
+        });
+        this.filterEditor = new FilterContainer(this.conditionRoot, this.api);
+        this.filterEditor.initialize();
+        const removeControl = iconButton('Remove behavior', 'fa-trash', remove);
+        removeControl.dataset.removeBehavior = '';
+        this.toggle = iconButton('Show behavior', 'fa-chevron-down', (): void => this.setCollapsed(!this.collapsed));
+        this.header.append(this.name, enabledLabel, this.event, removeControl, this.toggle);
+        const conditionsPanel = element('section', 'min-w-0');
+        const conditionsHeader = element('div', 'flex h-12 items-center border-b border-gray-200 px-3');
+        conditionsHeader.append(element('h4', 'text-sm font-semibold', _('Conditions')));
+        conditionsPanel.append(conditionsHeader, this.conditionRoot);
+        const actionsPanel = element('section', 'min-w-0');
+        const actionsHeader = element('div', 'flex h-12 items-center gap-2 border-b border-gray-200 px-3');
+        actionsHeader.append(
+            element('h4', 'text-sm font-semibold', _('Actions')),
+            iconButton(_('Add action'), 'fa-plus', (): void => this.addAction(), 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm hover:bg-base ml-auto'),
+        );
+        actionsPanel.append(actionsHeader, this.actionRoot);
+        const panels = element('div', 'divide-x divide-gray-200');
+        panels.style.display = 'grid';
+        panels.style.gridTemplateColumns = 'minmax(0, 1fr) minmax(0, 1fr)';
+        panels.append(conditionsPanel, actionsPanel);
+        this.content.append(panels);
+        this.card.append(this.header, this.content);
+        this.root.append(this.card, this.divider);
+        this.setCollapsed(true);
+        initial.actions.forEach(action => this.addAction(action));
+    }
+
+    /** Append an independently prefixed action form. */
+    private addAction(initial: Action = { action: '', target_field: null, config: {} }): void {
+        const editor = new ActionEditor(
+            this.host, this.definitions, initial,
+            (): void => {
+                this.actions = this.actions.filter(item => item !== editor);
+                editor.destroy();
+            },
+            (): void => moveEditor(this.actions, editor, -1),
+            (): void => moveEditor(this.actions, editor, 1),
+        );
+        this.actions.push(editor);
+        this.actionRoot.append(editor.root);
+    }
+
+    /** Add controls to the behavior-card toolbar. */
+    addControls(...controls: HTMLElement[]): void {
+        this.header.querySelector('[data-remove-behavior]')?.before(...controls);
+    }
+
+    /** Toggle whether the behavior's editable body is displayed. */
+    private setCollapsed(collapsed: boolean): void {
+        this.collapsed = collapsed;
+        this.content.hidden = collapsed;
+        this.root.dataset.collapsed = String(collapsed);
+        const label = collapsed ? 'Show behavior' : 'Hide behavior';
+        this.toggle?.setAttribute('aria-label', label);
+        if (this.toggle) this.toggle.title = label;
+        const glyph = this.toggle?.querySelector('i');
+        if (glyph) glyph.className = `fa-solid ${collapsed ? 'fa-chevron-down' : 'fa-chevron-up'}`;
+    }
+
+    /** Hide the trailing divider for the final behavior in the list. */
+    setDividerVisible(visible: boolean): void {
+        this.divider.hidden = !visible;
+    }
+
+    /** Serialize complete controls into the Pydantic-compatible behavior shape. */
+    value(): Behavior {
+        if (!this.actions.length) throw new Error('Each behavior needs at least one action.');
+        return {
+            id: this.initial.id, name: this.name.value, enabled: this.enabled.checked,
+            events: this.event.value === 'both' ? ['initial', 'change'] : [this.event.value],
+            conditions: this.filterEditor.getFilters(),
+            actions: this.actions.map(editor => editor.value()),
+        };
+    }
+
+    /** Dispose condition and action widgets when the parent builder is removed. */
+    destroy(): void {
+        this.filterEditor.destroy();
+        this.actions.forEach(editor => editor.destroy());
+        this.root.remove();
+    }
+}
+
+/** Own the complete versioned declaration while Django renders action fields. */
+export default class BehaviorBuilder extends BaseComponent {
+    private lifecycle = new AbortController();
+    private api: BehaviorFilterApi | null = null;
+    private editors: BehaviorEditor[] = [];
+    private input: HTMLInputElement | null = null;
+    private error: HTMLElement | null = null;
+    private valid = false;
+
+    /** Restore declarations and synchronize the hidden JSON before form submission. */
+    initialize(): void {
+        if (!this.element) return;
+        this.input = this.element.querySelector('[data-behavior-input]');
+        this.error = this.element.querySelector('[data-builder-error]');
+        try {
+            const parsed: unknown = JSON.parse(this.input?.value.trim() || 'null');
+            const candidate = parsed ?? { version: 1, behaviors: [] };
+            if (typeof candidate !== 'object' || Array.isArray(candidate)
+                || !('version' in candidate) || candidate.version !== 1
+                || !('behaviors' in candidate) || !Array.isArray(candidate.behaviors)) {
+                throw new Error('Invalid behavior configuration: expected version 1 with a behaviors list.');
+            }
+            const config = candidate as Config;
+            const definitions: ActionDefinition[] = JSON.parse(this.element.dataset.actions ?? '[]');
+            this.api = new BehaviorFilterApi(this.element, JSON.parse(this.element.dataset.conditionFields ?? '[]'));
+            config.behaviors.forEach(behavior => this.addBehavior(definitions, behavior));
+            this.element.querySelector('[data-add-behavior]')?.addEventListener('click', (): void => {
+                this.addBehavior(definitions, {
+                    id: crypto.randomUUID(), name: '', enabled: true, events: ['change'], conditions: [],
+                    actions: [{ action: '', target_field: null, config: {} }],
+                });
+            }, { signal: this.lifecycle.signal });
+            this.element.querySelector('[data-clear-behaviors]')?.addEventListener('click', (): void => {
+                this.clearBehaviors();
+            }, { signal: this.lifecycle.signal });
+            this.valid = true;
+        } catch (error) { this.showError((error as Error).message); }
+        this.element.closest('form')?.addEventListener('submit', (event: SubmitEvent): void => {
+            try {
+                if (!this.valid) throw new Error('The saved behavior configuration cannot be edited in this format.');
+                const config: Config = { version: 1, behaviors: this.editors.map(editor => editor.value()) };
+                if (this.input) this.input.value = JSON.stringify(config);
+                this.showError('');
+            } catch (error) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                this.showError((error as Error).message);
+            }
+        }, { capture: true, signal: this.lifecycle.signal });
+    }
+
+    /** Add a behavior without rebuilding existing unsaved action forms. */
+    private addBehavior(definitions: ActionDefinition[], value: Behavior): void {
+        if (!this.element || !this.api) return;
+        const editor = new BehaviorEditor(this.element, this.api, definitions, value, (): void => {
+            this.editors = this.editors.filter(item => item !== editor);
+            editor.destroy();
+            this.refreshBehaviorDividers();
+        });
+        editor.addControls(
+            iconButton('Move behavior up', 'fa-arrow-up', (): void => this.moveBehavior(editor, -1)),
+            iconButton('Move behavior down', 'fa-arrow-down', (): void => this.moveBehavior(editor, 1)),
+        );
+        this.editors.push(editor);
+        this.element.querySelector('[data-behavior-list]')?.append(editor.root);
+        this.refreshBehaviorDividers();
+    }
+
+    /** Remove every behavior editor while retaining a valid empty configuration. */
+    private clearBehaviors(): void {
+        this.editors.forEach(editor => editor.destroy());
+        this.editors = [];
+        this.element?.querySelector('[data-behavior-list]')?.replaceChildren();
+    }
+
+    /** Move a behavior and retain one visible divider between adjacent entries. */
+    private moveBehavior(editor: BehaviorEditor, offset: number): void {
+        moveEditor(this.editors, editor, offset);
+        this.refreshBehaviorDividers();
+    }
+
+    /** Show a divider after every behavior except the last one. */
+    private refreshBehaviorDividers(): void {
+        this.editors.forEach((editor, index) => editor.setDividerVisible(index < this.editors.length - 1));
+    }
+
+    /** Display restoration or validation errors without changing the stored value. */
+    private showError(message: string): void {
+        if (this.error) this.error.textContent = message;
+    }
+
+    /** Abort asynchronous work and clean up all embedded form controls. */
+    override destroy(): void {
+        this.lifecycle.abort();
+        this.editors.forEach(editor => editor.destroy());
+        this.editors = [];
+        this.api?.destroy();
+        super.destroy();
     }
 }

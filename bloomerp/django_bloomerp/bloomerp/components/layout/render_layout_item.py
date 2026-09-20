@@ -2,6 +2,7 @@
 
 import json
 
+from django import forms
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -102,6 +103,7 @@ def _get_layout_item(request: HttpRequest, content_type: ContentType, field_id: 
 
 
 def _render_application_field(request: HttpRequest, content_type: ContentType) -> HttpResponse:
+    """Render a refreshed field with the same behavior metadata as the full form."""
     model_content_type_id = request.GET.get(
         "target_content_type_id"
     ) or request.GET.get("content_type_id")
@@ -148,6 +150,17 @@ def _render_application_field(request: HttpRequest, content_type: ContentType) -
         label=context["display_label"],
         content=render_to_string("inclusion_tags/layout_field_content.html", context, request=request),
         component_name="detail-view-value",
+        extra_attrs={
+            "data-application-field-id": application_field.pk,
+            "data-field-name": application_field.field,
+            "data-required": str(context["is_required"]),
+            "data-behavior-value-kind": (
+                "json"
+                if isinstance(application_field.get_form_field(), forms.JSONField)
+                or application_field.get_field_type().id == "OneToManyField"
+                else "value"
+            ),
+        },
         edit_url=(
             reverse(
                 "components_field_display_options",

@@ -1,279 +1,251 @@
+import { getCsrfToken } from "@/utils/cookies";
 import showMessage from "@/utils/messages";
-
-import { MessageType } from "../UiMessage";
 import { getComponent } from "../BaseComponent";
+import { MessageType } from "../UiMessage";
 import { DetailViewCell, type DetailViewCellChangeDetail, type DetailViewCellValue } from "../detail_view_components/DetailViewCell";
-import OneToManyFieldWidget from "../widgets/OneToManyFieldWidget";
-import {
-    BehaviorAction,
-    BehaviorConnector,
-    BehaviorEvent,
-    BehaviorMessageTone,
-    BehaviorOperator,
-    type BehaviorActionConfig,
-    type BehaviorCondition,
-    type BehaviorConfig,
-    type BehaviorRelatedRow,
-    type BehaviorRule,
-    type BehaviorRuntime,
-} from "./BehaviorDefinitions";
 
-const MAX_BEHAVIOR_DEPTH = 20;
+type BehaviorEvent = "initial" | "change";
+type Evaluation = { field: string; event: BehaviorEvent };
+type BehaviorResponse = {
+    revision: number;
+    values: Array<{ field: string; value: unknown }>;
+    states: Array<{ field: string; visible: boolean }>;
+    messages: Array<{ type: "info" | "success" | "warning" | "danger"; message: string }>;
+};
+type Field = { element: HTMLElement; cell: DetailViewCell; name: string };
 
-function parseJson<T>(value: string | undefined, fallback: T): T {
-    if (!value) return fallback;
-    try {
-        return JSON.parse(value) as T;
-    } catch {
-        return fallback;
-    }
-}
-
-function normalizeBehaviorConfig(value: unknown): BehaviorConfig {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-        return { rules: [] };
-    }
-    const rules = (value as { rules?: unknown }).rules;
-    return {
-        rules: Array.isArray(rules) ? rules as BehaviorRule[] : [],
-    };
-}
-
-function getComparableValue(value: DetailViewCellValue): string {
-    return Array.isArray(value) ? value.join(",") : String(value ?? "");
-}
-
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
+/** Transport saved behavior events and apply backend results to the current form. */
 export default class FormBehaviorRuntime {
-    private root: HTMLElement;
-    private activeFields = new Set<string>();
-    private initialRuleSignatures = new Map<string, string>();
-    private changeHandler: ((event: Event) => void) | null = null;
-    private initialRunToken = 0;
+    private revision = 0;
+    private generation = 0;
+    private pending = new Map<string, Evaluation>();
+    private failed = new Map<string, Evaluation>();
+    private initialSignatures = new WeakMap<HTMLElement, string>();
+    private visibility = new Map<HTMLElement, { hidden: boolean; aria: string | null }>();
+    private controller: AbortController | null = null;
+    private running: Promise<void> | null = null;
+    private form: HTMLFormElement | null;
+    private destroyed = false;
+    private submitting = false;
+    private resubmitting = false;
 
-    public constructor(root: HTMLElement) {
-        this.root = root;
+    /** Bind evaluation to one layout container and its enclosing submission form. */
+    public constructor(private root: HTMLElement) {
+        this.form = root.closest("form");
     }
 
+    /** Subscribe only when the server supplied an executable layout owner. */
     public initialize(): void {
-        this.changeHandler = (event: Event) => {
-            const detail = (event as CustomEvent<DetailViewCellChangeDetail>).detail;
-            if (detail?.source === "behavior") return;
-            const fieldId = detail?.cell?.applicationFieldId ?? detail?.cell?.getLayoutItemId();
-            if (!fieldId) return;
-            this.runFieldBehaviors(fieldId, BehaviorEvent.Change, 0, true);
-        };
-        this.root.addEventListener(DetailViewCell.changeEventName, this.changeHandler);
-        this.scheduleInitialRun();
+        if (!this.root.dataset.behaviorUrl || !this.root.dataset.behaviorOwnerId) return;
+        this.root.addEventListener(DetailViewCell.changeEventName, this.onChange);
+        this.form?.addEventListener("submit", this.onSubmit, true);
+        this.refresh();
     }
 
+    /** Discard requests whose draft has been undone, reset, or replaced. */
+    public invalidate(): void {
+        this.revision += 1;
+        this.generation += 1;
+        this.controller?.abort();
+        this.pending.clear();
+        this.failed.clear();
+    }
+
+    /** Restore presentation alongside the container's value reset. */
+    public reset(): void {
+        this.invalidate();
+        for (const [element, state] of this.visibility) {
+            element.classList.toggle("hidden", state.hidden);
+            element.removeAttribute("data-behavior-hidden");
+            if (state.aria === null) element.removeAttribute("aria-hidden");
+            else element.setAttribute("aria-hidden", state.aria);
+        }
+        this.visibility.clear();
+    }
+
+    /** Remove listeners and prevent detached forms from receiving late responses. */
     public destroy(): void {
-        if (this.changeHandler) {
-            this.root.removeEventListener(DetailViewCell.changeEventName, this.changeHandler);
-        }
-        this.changeHandler = null;
-        this.initialRunToken += 1;
-        this.activeFields.clear();
-        this.initialRuleSignatures.clear();
+        this.destroyed = true;
+        this.invalidate();
+        this.root.removeEventListener(DetailViewCell.changeEventName, this.onChange);
+        this.form?.removeEventListener("submit", this.onSubmit, true);
     }
 
+    /** Initialize newly rendered or reconfigured listeners after component setup. */
     public refresh(): void {
-        this.scheduleInitialRun();
-    }
-
-    private scheduleInitialRun(): void {
-        const token = ++this.initialRunToken;
-        queueMicrotask(() => {
-            if (token !== this.initialRunToken || !this.root.isConnected) return;
-            this.getBehaviorSources().forEach(({ fieldId, config }) => {
-                const signature = JSON.stringify(config.rules);
-                if (this.initialRuleSignatures.get(fieldId) === signature) return;
-                this.initialRuleSignatures.set(fieldId, signature);
-                this.runFieldBehaviors(fieldId, BehaviorEvent.Initial, 0, false);
-            });
+        this.invalidate();
+        queueMicrotask((): void => {
+            if (this.destroyed || !this.root.isConnected || !this.root.dataset.behaviorUrl) return;
+            for (const field of this.fields()) {
+                const signature = field.element.dataset.layoutItemConfig ?? "{}";
+                if (this.initialSignatures.get(field.element) === signature) continue;
+                this.initialSignatures.set(field.element, signature);
+                if (this.listens(field, "initial")) this.enqueue({ field: field.name, event: "initial" });
+            }
+            void this.flush();
         });
     }
 
-    private getBehaviorSources(): Array<{ fieldId: string; config: BehaviorConfig }> {
-        return Array.from(this.root.querySelectorAll<HTMLElement>("[data-layout-item-id][data-layout-item-config]"))
-            .map((element) => {
-                const fieldId = element.dataset.applicationFieldId ?? element.dataset.layoutItemId ?? "";
-                const itemConfig = parseJson<Record<string, unknown>>(element.dataset.layoutItemConfig, {});
-                const behaviorConfig = normalizeBehaviorConfig(itemConfig.behaviors);
-                return { fieldId, config: behaviorConfig };
-            })
-            .filter(({ fieldId, config }) => Boolean(fieldId) && config.rules.length > 0);
+    /** Read only top-level, rendered form cells, excluding nested row editors. */
+    private fields(): Field[] {
+        const result: Field[] = [];
+        for (const element of this.root.querySelectorAll<HTMLElement>('[bloomerp-component="detail-view-value"][data-field-name]')) {
+            if (element.closest('[bloomerp-component="object-crud-view-container"]') !== this.root) continue;
+            if (!element.querySelector('[data-layout-item-body] input, [data-layout-item-body] select, [data-layout-item-body] textarea')) continue;
+            const cell = getComponent(element);
+            if (cell instanceof DetailViewCell) result.push({ element, cell, name: element.dataset.fieldName! });
+        }
+        return result;
     }
 
-    private runFieldBehaviors(fieldId: string, event: BehaviorEvent, depth: number, trackChanges: boolean): void {
-        if (depth > MAX_BEHAVIOR_DEPTH || this.activeFields.has(fieldId)) return;
-        const source = this.getBehaviorSources().find((item) => item.fieldId === fieldId);
-        if (!source) return;
+    /** Inspect event subscriptions only; conditions and actions belong to the backend. */
+    private listens(field: Field, event: BehaviorEvent): boolean {
+        const config = JSON.parse(field.element.dataset.layoutItemConfig ?? "{}").behaviors;
+        return config?.version === 1 && Array.isArray(config.behaviors)
+            && config.behaviors.some((behavior: { enabled: boolean; events: BehaviorEvent[] }): boolean =>
+                behavior.enabled !== false && (behavior.events ?? ["change"]).includes(event));
+    }
 
-        this.activeFields.add(fieldId);
+    /** Coalesce repeated edits to a listener while preserving listener order. */
+    private enqueue(evaluation: Evaluation): void {
+        this.pending.set(`${evaluation.event}:${evaluation.field}`, evaluation);
+    }
+
+    /** Invalidate old snapshots on every user edit, including non-listener fields. */
+    private onChange = (event: Event): void => {
+        const detail = (event as CustomEvent<DetailViewCellChangeDetail>).detail;
+        if (!detail || detail.source === "behavior") return;
+        const field = this.fields().find((candidate: Field): boolean => candidate.cell === detail.cell);
+        if (!field) return;
+        this.revision += 1;
+        for (const evaluation of this.failed.values()) this.enqueue(evaluation);
+        this.failed.clear();
+        if (this.listens(field, "change")) this.enqueue({ field: field.name, event: "change" });
+        void this.flush();
+    };
+
+    /** Wait for backend changes before native or HTMX submission serializes widgets. */
+    private onSubmit = (event: SubmitEvent): void => {
+        if (this.resubmitting || (!this.running && !this.pending.size && !this.failed.size)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!this.submitting) void this.submitWhenReady(event.submitter);
+    };
+
+    /** Retry failed evaluations once and submit only a successfully evaluated draft. */
+    private async submitWhenReady(submitter: HTMLElement | null): Promise<void> {
+        this.submitting = true;
         try {
-            source.config.rules
-                .filter((rule) => rule.enabled !== false && rule.events?.includes(event))
-                .filter((rule) => this.matchesConditions(rule))
-                .forEach((rule) => {
-                    rule.actions?.forEach((action) => this.executeAction(fieldId, action, depth + 1, trackChanges));
-                });
+            for (const evaluation of this.failed.values()) this.enqueue(evaluation);
+            this.failed.clear();
+            await this.flush();
+            if (this.destroyed || !this.root.isConnected || this.failed.size) return;
+            this.resubmitting = true;
+            this.form?.requestSubmit(submitter);
         } finally {
-            this.activeFields.delete(fieldId);
+            this.resubmitting = false;
+            this.submitting = false;
         }
     }
 
-    private matchesConditions(rule: BehaviorRule): boolean {
-        const conditions = Array.isArray(rule.conditions) ? rule.conditions : [];
-        if (!conditions.length) return true;
-        const results = conditions.map((condition) => this.matchesCondition(condition));
-        return rule.connector === BehaviorConnector.Any ? results.some(Boolean) : results.every(Boolean);
-    }
-
-    private matchesCondition(condition: BehaviorCondition): boolean {
-        const definition = BehaviorOperator.get(condition.operator);
-        return definition?.matches(condition, this.createRuntime(0, false)) ?? false;
-    }
-
-    private isFieldValueEmpty(fieldId: string, value: DetailViewCellValue): boolean {
-        const relatedRows = this.getRelatedRows(fieldId);
-        if (relatedRows !== null) return relatedRows.length === 0;
-        if (Array.isArray(value)) return value.length === 0;
-        return String(value ?? "").trim() === "";
-    }
-
-    private executeAction(
-        sourceFieldId: string,
-        action: BehaviorActionConfig,
-        depth: number,
-        trackChanges: boolean,
-    ): void {
-        const definition = BehaviorAction.get(action.type);
-        if (!definition) {
-            console.warn(`Unknown behavior action '${action.type}' was skipped.`);
-            return;
-        }
-        definition.execute(
-            action,
-            this.createRuntime(depth, trackChanges),
-            sourceFieldId,
-        );
-    }
-
-    private createRuntime(depth: number, trackChanges: boolean): BehaviorRuntime {
-        return {
-            getFieldValue: (fieldId) => this.getFieldValue(fieldId),
-            setFieldValue: (fieldId, value) => this.setFieldValue(fieldId, value, depth, trackChanges),
-            setFieldVisibility: (fieldId, visible) => this.setFieldVisibility(fieldId, visible),
-            setFieldEnabled: (fieldId, enabled) => this.setFieldEnabled(fieldId, enabled),
-            setFieldRequired: (fieldId, required) => this.setFieldRequired(fieldId, required),
-            getOneToManyField: (fieldId) => this.getOneToManyWidget(fieldId),
-            isFieldEmpty: (fieldId) => this.isFieldValueEmpty(fieldId, this.getFieldValue(fieldId)),
-            showMessage: (message, tone) => this.showBehaviorMessage(message, tone),
-            warn: (message) => console.warn(message),
-        };
-    }
-
-    private getFieldElement(fieldId: string): HTMLElement | null {
-        if (!fieldId) return null;
-        const escapedId = CSS.escape(fieldId);
-        return this.root.querySelector<HTMLElement>(
-            `[data-application-field-id="${escapedId}"], [data-layout-item-id="${escapedId}"]`,
-        );
-    }
-
-    private getFieldCell(fieldId: string): DetailViewCell | null {
-        const element = this.getFieldElement(fieldId);
-        if (!element) return null;
-        const component = getComponent(element);
-        return component instanceof DetailViewCell ? component : null;
-    }
-
-    private getFieldValue(fieldId: string): DetailViewCellValue {
-        return this.getFieldCell(fieldId)?.value ?? "";
-    }
-
-    private setFieldValue(
-        fieldId: string,
-        value: DetailViewCellValue,
-        depth: number,
-        trackChanges: boolean,
-    ): void {
-        const cell = this.getFieldCell(fieldId);
-        if (!cell) return;
-        const previousValue = getComparableValue(cell.value);
-        cell.setValue(value, trackChanges, "behavior");
-        if (previousValue !== getComparableValue(cell.value)) {
-            this.runFieldBehaviors(fieldId, BehaviorEvent.Change, depth, trackChanges);
+    /** Maintain one request at a time so later listeners see earlier results. */
+    private async flush(): Promise<void> {
+        if (!this.running) this.running = this.drain();
+        try {
+            await this.running;
+        } finally {
+            this.running = null;
         }
     }
 
-    private setFieldVisibility(fieldId: string, visible: boolean): void {
-        const element = this.getFieldElement(fieldId);
-        if (!element) return;
-        element.classList.toggle("hidden", !visible);
-        element.toggleAttribute("data-behavior-hidden", !visible);
-        element.setAttribute("aria-hidden", visible ? "false" : "true");
+    /** Evaluate queued snapshots, retrying stale results against the latest draft. */
+    private async drain(): Promise<void> {
+        while (this.pending.size && !this.destroyed) {
+            const [key, evaluation] = this.pending.entries().next().value!;
+            this.pending.delete(key);
+            const revision = this.revision;
+            const generation = this.generation;
+            this.controller = new AbortController();
+            try {
+                const values: Record<string, unknown> = {};
+                for (const field of this.fields()) {
+                    const value = field.cell.value;
+                    values[field.name] = field.element.dataset.behaviorValueKind === "json" && typeof value === "string"
+                        ? (value.trim() ? JSON.parse(value) : null) : value;
+                }
+                const response = await fetch(this.root.dataset.behaviorUrl!, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    signal: this.controller.signal,
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() ?? "" },
+                    body: JSON.stringify({
+                        [this.root.dataset.behaviorOwnerKey!]: this.root.dataset.behaviorOwnerId,
+                        ...(this.root.dataset.behaviorObjectId ? { object_id: this.root.dataset.behaviorObjectId } : {}),
+                        listener_field: evaluation.field, event: evaluation.event, revision, values,
+                    }),
+                });
+                if (generation !== this.generation || this.destroyed) continue;
+                if (revision !== this.revision) {
+                    if (!this.pending.has(key)) this.enqueue(evaluation);
+                    continue;
+                }
+                if (!response.ok || response.redirected) {
+                    const error = await response.json().catch((): null => null);
+                    throw new Error(error?.detail ?? error?.error ?? `Behavior evaluation failed (${response.status}).`);
+                }
+                const result: BehaviorResponse = await response.json();
+                if (generation !== this.generation || this.destroyed) continue;
+                if (revision !== this.revision) {
+                    if (!this.pending.has(key)) this.enqueue(evaluation);
+                    continue;
+                }
+                if (result.revision !== revision) throw new Error("Behavior response revision does not match the draft.");
+                this.apply(result, evaluation.event === "change");
+                this.failed.delete(key);
+            } catch (error: unknown) {
+                if (generation !== this.generation || this.destroyed) continue;
+                this.failed.set(key, evaluation);
+                this.message(error instanceof Error ? error.message : "Behavior evaluation failed.", MessageType.ERROR);
+            }
+        }
+        this.controller = null;
     }
 
-    private setFieldEnabled(fieldId: string, enabled: boolean): void {
-        const body = this.getFieldElement(fieldId)?.querySelector<HTMLElement>("[data-layout-item-body]");
-        body?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement>(
-            "input:not([type=hidden]), textarea, select, button",
-        ).forEach((control) => {
-            control.disabled = !enabled;
-        });
-    }
-
-    private setFieldRequired(fieldId: string, required: boolean): void {
-        const element = this.getFieldElement(fieldId);
-        if (!element) return;
-        const controls = element.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-            "[data-layout-item-body] input:not([type=hidden]), [data-layout-item-body] textarea, [data-layout-item-body] select",
-        );
-        controls.forEach((control) => {
-            control.required = required;
-            control.setAttribute("aria-required", required ? "true" : "false");
-        });
-        element.dataset.required = String(required);
-        const label = element.querySelector<HTMLElement>("[data-detail-label]");
-        const marker = label?.querySelector<HTMLElement>("[data-behavior-required-marker]");
-        if (required && label && !marker) {
-            label.insertAdjacentHTML(
-                "beforeend",
-                ' <span class="text-danger-dark" aria-hidden="true" data-behavior-required-marker>*</span>',
-            );
-        } else if (!required) {
-            marker?.remove();
+    /** Apply server values through existing widget adapters without firing more behaviors. */
+    private apply(result: BehaviorResponse, trackChanges: boolean): void {
+        const fields = new Map(this.fields().map((field: Field): [string, Field] => [field.name, field]));
+        for (const update of [...result.values, ...result.states]) {
+            if (!fields.has(update.field)) throw new Error(`Behavior target '${update.field}' is not rendered.`);
+        }
+        for (const update of result.values) {
+            const field = fields.get(update.field);
+            if (!field) throw new Error(`Behavior target '${update.field}' is not rendered.`);
+            const value: DetailViewCellValue = field.element.dataset.behaviorValueKind === "json"
+                ? JSON.stringify(update.value)
+                : Array.isArray(update.value) ? update.value.map(String) : String(update.value ?? "");
+            field.cell.setValue(value, trackChanges, "behavior");
+        }
+        for (const update of result.states) {
+            const field = fields.get(update.field);
+            if (!field) throw new Error(`Behavior target '${update.field}' is not rendered.`);
+            const element = field.element;
+            if (trackChanges && !this.visibility.has(element)) this.visibility.set(element, {
+                hidden: element.classList.contains("hidden"), aria: element.getAttribute("aria-hidden"),
+            });
+            element.classList.toggle("hidden", !update.visible);
+            element.toggleAttribute("data-behavior-hidden", !update.visible);
+            element.setAttribute("aria-hidden", String(!update.visible));
+        }
+        for (const message of result.messages) {
+            const types = { info: MessageType.INFO, success: MessageType.SUCCESS, warning: MessageType.WARNING, danger: MessageType.ERROR };
+            this.message(message.message, types[message.type]);
         }
     }
 
-    private getRelatedRows(fieldId: string): BehaviorRelatedRow[] | null {
-        return this.getOneToManyWidget(fieldId)?.getRows() ?? null;
-    }
-
-    private getOneToManyWidget(fieldId: string): OneToManyFieldWidget | null {
-        const field = this.getFieldElement(fieldId);
-        const element = field?.querySelector<HTMLElement>('[bloomerp-component="one-to-many-field-widget"]');
-        if (!element) return null;
-        const component = getComponent(element);
-        return component instanceof OneToManyFieldWidget ? component : null;
-    }
-
-    private showBehaviorMessage(message: string, tone: BehaviorMessageTone): void {
-        const messageTypes: Record<BehaviorMessageTone, MessageType> = {
-            [BehaviorMessageTone.Error]: MessageType.ERROR,
-            [BehaviorMessageTone.Warning]: MessageType.WARNING,
-            [BehaviorMessageTone.Info]: MessageType.INFO,
-        };
-        showMessage(escapeHtml(message), messageTypes[tone] ?? MessageType.INFO);
+    /** Escape backend text before passing it to the shared HTML message component. */
+    private message(text: string, type: MessageType): void {
+        const element = document.createElement("span");
+        element.textContent = text;
+        showMessage(element.innerHTML, type);
     }
 }

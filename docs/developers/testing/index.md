@@ -48,6 +48,7 @@ Supported values are:
 - `model_fields`
 - `form_fields`
 - `lookups`
+- `behavior_actions`
 
 `--functionality=all` is equivalent to selecting every category. Hyphens in
 category names are normalized to underscores.
@@ -68,6 +69,7 @@ Every generator target has a corresponding guide:
 | `model_fields` | `BloomerpModelFieldTestCase` | [Model field test cases](model-field-test-case.md) |
 | `form_fields` | `BloomerpFormFieldTestCase` | [Form field test cases](form-field-test-case.md) |
 | `lookups` | `BloomerpLookupTestCase` | [Lookup test cases](lookup-test-case.md) |
+| `behavior_actions` | `BloomerpBehaviorActionTestCase` | [Behavior action test cases](behavior-action-test-case.md) |
 
 The generator safely refreshes files that are still untouched skeletons. It
 skips files containing authored test behavior. `--force` overwrites existing
@@ -114,6 +116,7 @@ phase.
 - [Form field test cases](form-field-test-case.md)
 - [Widget test cases](widget-test-case.md)
 - [Lookup test cases](lookup-test-case.md)
+- [Behavior action test cases](behavior-action-test-case.md)
 - [Request scenarios](request-test-case.md)
 - [View test cases](view-test-case.md)
 - [Component test cases](component-test-case.md)

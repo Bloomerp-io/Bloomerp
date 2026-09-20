@@ -1,24 +1,27 @@
 <div
     bloomerp-component="behavior-builder"
-    class="overflow-hidden rounded-xl border border-gray-200 bg-base shadow-xs"
-    data-behavior-field-catalog="{{ widget.field_catalog_json }}"
-    data-behavior-source-field-id="{{ widget.source_field_id }}"
-    data-behavior-source-field-label="{{ widget.source_field_label }}"
-    data-behavior-source-field-type="{{ widget.source_field_type }}"
->
-    <input
-        type="hidden"
-        name="{{ widget.name }}"
-        value="{{ widget.value }}"
-        {% include "django/forms/widgets/attrs.html" %}
-        data-behavior-input
-    >
-    <div data-behavior-rules></div>
-
-    <div class="border-t border-gray-200 bg-white px-4 py-3">
-        <button type="button" class="btn btn-primary btn-sm" data-behavior-add-rule>
-            <i class="fa-solid fa-plus"></i>
-            Add behavior
-        </button>
+    class="rounded-xl border border-gray-200"
+    data-actions="{{ widget.actions_json }}"
+    data-condition-fields="{{ widget.conditions_json }}"
+    data-listener-id="{{ widget.listener_id }}"
+    data-content-type-id="{{ widget.content_type_id }}"
+    data-layout-context="{{ widget.layout_context_json }}"
+    data-action-url="{{ widget.action_url }}"
+    data-value-editor-url="{{ widget.value_editor_url }}">
+    <input type="hidden" name="{{ widget.name }}" value="{{ widget.value }}"
+        {% include "django/forms/widgets/attrs.html" %} data-behavior-input>
+    <p data-builder-error role="alert" class="text-danger-dark text-sm"></p>
+    <div class="flex h-10 items-stretch border-b border-gray-200">
+        <div class="ml-auto flex items-stretch">
+            <button type="button" class="inline-flex items-center gap-2 border-l border-gray-200 px-3 text-sm font-medium text-primary hover:bg-primary-50" data-add-behavior>
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                Add behavior
+            </button>
+            <button type="button" class="inline-flex items-center gap-2 rounded-tr-xl border-l border-gray-200 px-3 text-sm font-medium text-danger-dark hover:bg-danger-light" data-clear-behaviors>
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                Clear all
+            </button>
+        </div>
     </div>
+    <div data-behavior-list></div>
 </div>

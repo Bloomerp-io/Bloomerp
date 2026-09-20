@@ -319,7 +319,9 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.btnContainer?.classList.toggle("hidden", this.pendingChanges.length === 0);
     }
 
+    /** Cancel outstanding evaluations before restoring the previous widget snapshot. */
     private undoLastChange(): void {
+        this.behaviorRuntime?.invalidate();
         const lastChange = this.pendingChanges.pop();
         if (!lastChange) return;
 
@@ -334,7 +336,9 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.syncChangeButtonsVisibility();
     }
 
+    /** Restore pending widget changes and the initial behavior presentation. */
     private resetChanges(): void {
+        this.behaviorRuntime?.reset();
         if (this.pendingChanges.length === 0) return;
 
         const changesToReset = [...this.pendingChanges].reverse();

@@ -1,3 +1,8 @@
+from bloomerp.tests.base.behavior_action_test_case import (
+    BehaviorActionScenario,
+    BloomerpBehaviorActionTestCase,
+    ExpectedBehaviorActionException,
+)
 from bloomerp.tests.base.component_test_case import BloomerpComponentTestCase
 from bloomerp.tests.base.core_test_case import (
     BaseBloomerpTestCaseWithModels,
@@ -64,6 +69,9 @@ BaseBloomerpComponentTest = BloomerpComponentTestCase
 BaseBloomerpWidgetTestCase = BloomerpWidgetTestCase
 
 __all__ = [
+    "BehaviorActionScenario",
+    "BloomerpBehaviorActionTestCase",
+    "ExpectedBehaviorActionException",
     "BaseBloomerpComponentTest",
     "BaseBloomerpModelTestCase",
     "BaseBloomerpTestCaseWithModels",

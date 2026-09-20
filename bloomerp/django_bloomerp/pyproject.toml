@@ -157,6 +157,7 @@ dependencies = [
     "sqlglot>=30.12.0",
     "django-countries==9.0.0",
     "pytest-cov>=7.1.0",
+    "ruff>=0.16.8",
 ]
 
 [project.optional-dependencies]

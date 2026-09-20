@@ -1,0 +1,8 @@
+{% for entry in entries %}
+<div class="mb-3" data-config-key="{{ entry.name }}" data-config-kind="{{ entry.kind }}">
+    {{ entry.field.label_tag }}
+    {{ entry.field }}
+    {% if entry.field.help_text %}<p class="text-xs text-slate-500">{{ entry.field.help_text }}</p>{% endif %}
+    {{ entry.field.errors }}
+</div>
+{% empty %}<p class="text-sm text-slate-500">No additional configuration.</p>{% endfor %}

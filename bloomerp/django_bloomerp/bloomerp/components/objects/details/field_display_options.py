@@ -67,6 +67,7 @@ def create_form(
     application_field: ApplicationField,
     target: LayoutConfigTarget | None = None,
 ) -> type[DjangoForm]:
+    """Build display-option fields with the owning layout context for behavior editors."""
     attrs = {
         option.id: option.build_form_field(application_field)
         for option in field_type.display_options
@@ -76,6 +77,10 @@ def create_form(
         for form_field in attrs.values():
             if isinstance(form_field.widget, BehaviorBuilderWidget):
                 form_field.widget.field_catalog = field_catalog
+                form_field.widget.layout_context = {
+                    "layout_object_content_type_id": ContentType.objects.get_for_model(target.layout_object).pk,
+                    "layout_object_id": str(target.layout_object.pk),
+                }
     return type("FieldDisplayForm", (DjangoForm,), attrs)
 
 

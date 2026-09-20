@@ -146,6 +146,7 @@ registerComponent('icon-picker-widget', IconPickerWidget);
 registerComponent('address-field-widget', AddressFieldWidget);
 registerComponent('bloomerp-text-editor', BloomerpTextEditor);
 
+
 // Messages
 registerComponent('ui-message', UiMessage);
 
