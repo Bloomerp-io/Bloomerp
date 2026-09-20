@@ -29,6 +29,7 @@ SUPPORTED_FUNCTIONALITIES = (
     "model_fields",
     "form_fields",
     "lookups",
+    "behavior_actions",
 )
 
 
@@ -480,6 +481,59 @@ class Command(BaseCommand):
                 results.append(GeneratedTestCase("lookups", target, content))
         return results
 
+    def _discover_behavior_actions(
+        self, app_config: AppConfig
+    ) -> list[GeneratedTestCase]:
+        """Generate empty scenarios for action definitions declared in form_behaviors."""
+        from bloomerp.form_behaviors.definition import BehaviorActionDefinition
+
+        results: list[GeneratedTestCase] = []
+        seen: set[int] = set()
+        for module in self._import_source_modules(app_config, "form_behaviors"):
+            source_file = getattr(module, "__file__", None)
+            if source_file is None:
+                continue
+            source = Path(source_file).resolve()
+            for imported_name in self._module_assignment_names(source):
+                action = getattr(module, imported_name, None)
+                if not isinstance(action, BehaviorActionDefinition) or id(action) in seen:
+                    continue
+                seen.add(id(action))
+                target = self._nested_target(
+                    app_config,
+                    "form_behaviors",
+                    source,
+                    source_root="form_behaviors",
+                    filename=f"test_{_suffixed_snake(action.id, 'action')}.py",
+                )
+                content = self._render_behavior_action_test(
+                    import_path=module.__name__,
+                    imported_name=imported_name,
+                    class_name="Test" + _suffixed_pascal(action.id, "action"),
+                )
+                results.append(GeneratedTestCase("behavior_actions", target, content))
+        return results
+
+    def _render_behavior_action_test(
+        self, *, import_path: str, imported_name: str, class_name: str,
+    ) -> str:
+        """Render a documented action scaffold with no implemented scenarios."""
+        return (
+            GENERATED_FILE_HEADER
+            + f"from {import_path} import {imported_name}\n"
+            + "from bloomerp.tests.base import (\n"
+            + "    BehaviorActionScenario,\n"
+            + "    BloomerpBehaviorActionTestCase,\n"
+            + ")\n\n\n"
+            + f"class {class_name}(BloomerpBehaviorActionTestCase):\n"
+            + f'    """Scenarios for the {imported_name} behavior action."""\n\n'
+            + f"    action = {imported_name}\n\n"
+            + "    def get_test_scenarios(self) -> list[BehaviorActionScenario]:\n"
+            + '        """Return the execution scenarios for this action."""\n'
+            + "        # Add only the scenarios this action needs.\n"
+            + "        return []\n"
+        )
+
     def _discover_subclasses(
         self,
         app_config: AppConfig,
@@ -882,6 +936,8 @@ class Command(BaseCommand):
                     or "# Add only the browser scenarios this view needs."
                     in existing_content
                     or "# Add only the scenarios this class needs."
+                    in existing_content
+                    or "# Add only the scenarios this action needs."
                     in existing_content
                 )
                 and "        return []" in existing_content

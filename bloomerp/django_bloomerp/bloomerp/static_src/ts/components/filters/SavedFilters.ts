@@ -1,4 +1,5 @@
 import { t } from '@/utils/i18n';
+import { addTooltip } from '@/utils/tooltip';
 import { FilterApi } from './api';
 import type { Filter, SavedFilter } from './definition';
 import { button, element } from './dom';
@@ -9,7 +10,7 @@ export class SavedFilters {
     readonly dropdown = element('div', 'relative inline-block text-left');
     private trigger = button(t('Select'), () => { void this.toggle(); }, 'btn btn-primary btn-sm');
     private menu = element('div', 'bloomerp-dropdown-menu fixed z-[150] w-56 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg');
-    private name = element('input', 'h-9 min-w-0 flex-1 border-0 bg-transparent px-3 py-0 text-sm focus:ring-1 focus:ring-inset focus:ring-primary');
+    private name = element('input', 'h-9 min-w-0 flex-1 border-0 bg-transparent px-3 py-0 text-sm focus:ring-2 focus:ring-inset focus:ring-primary');
     private saveButton: HTMLButtonElement;
     private search = element('input', 'input w-full');
     private results = element('div');
@@ -87,6 +88,7 @@ export class SavedFilters {
         this.saveButton = button('', () => { void this.save(); }, 'inline-flex h-9 w-9 shrink-0 items-center justify-center border-0 border-l border-gray-200 bg-transparent text-xs hover:bg-base disabled:opacity-50');
         this.saveButton.title = t('Save filter');
         this.saveButton.setAttribute('aria-label', t('Save filter'));
+        addTooltip(this.saveButton, { text: t('Save filter'), position: 'bottom' });
         const icon = element('i', 'fa-solid fa-floppy-disk');
         icon.setAttribute('aria-hidden', 'true');
         this.saveButton.append(icon);

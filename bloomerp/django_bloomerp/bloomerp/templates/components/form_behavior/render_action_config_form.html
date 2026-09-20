@@ -1,0 +1,9 @@
+{% load crispy_forms_tags %}
+
+
+{% for entry in entries %}
+<div class="mb-3" data-config-key="{{ entry.name }}" data-config-kind="{{ entry.kind }}" data-config-refresh="{{ entry.refresh|yesno:'true,false' }}">
+    {{ entry.field | as_crispy_field }}
+    {{ entry.field.errors }}
+</div>
+{% empty %}<p class="text-sm">No additional configuration.</p>{% endfor %}

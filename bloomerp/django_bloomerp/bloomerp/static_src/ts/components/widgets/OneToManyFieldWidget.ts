@@ -175,23 +175,38 @@ export default class OneToManyFieldWidget extends BaseWidget {
         }
     }
 
+    /** Patch existing rows in place when identities match, preserving unrelated widget state. */
     public setValue(value: unknown, emitChange: boolean = false): void {
         if (!this.tbody || !this.rowTemplate) return;
 
         const rows = this.normalizeRows(value);
+        const existing = Array.from(this.tbody.querySelectorAll<HTMLElement>("[data-one-to-many-row]"));
+        const previous = existing.map((row: HTMLElement): OneToManyRowState => this.serializeRow(row));
+        if (rows.length === existing.length && rows.every((row: OneToManyRowState, index: number): boolean =>
+            (row.id ?? "") === (previous[index].id ?? ""))) {
+            rows.forEach((row: OneToManyRowState, index: number): void => {
+                const changes = Object.fromEntries(Object.entries(row).filter(
+                    ([key, next]: [string, string | string[]]): boolean => JSON.stringify(next) !== JSON.stringify(previous[index][key]),
+                ));
+                this.applyRowData(existing[index], changes);
+            });
+            this.refreshView();
+            if (emitChange) this.onChange();
+            return;
+        }
         this.tbody.innerHTML = "";
 
         rows.forEach((rowData, rowIndex) => {
             const fragment = this.rowTemplate.content.cloneNode(true) as DocumentFragment;
             this.replacePrefix(fragment, rowIndex);
             const rowElement = fragment.querySelector<HTMLElement>("[data-one-to-many-row]");
+            this.tbody?.appendChild(fragment);
             if (rowElement) {
                 this.applyRowData(rowElement, {
                     ...this.getDefaultRowData(),
                     ...rowData,
                 });
             }
-            this.tbody?.appendChild(fragment);
         });
 
         if (rows.length === 0) {
@@ -419,13 +434,27 @@ export default class OneToManyFieldWidget extends BaseWidget {
         return defaults;
     }
 
+    /** Apply supplied columns through their widget contracts, leaving other columns untouched. */
     private applyRowData(rowElement: HTMLElement, rowData: OneToManyRowState): void {
+        const handled = new Set<string>();
+        for (const cell of rowElement.querySelectorAll<HTMLElement>("[data-one-to-many-cell]")) {
+            const name = cell.dataset.oneToManyCell!;
+            if (!(name in rowData)) continue;
+            for (const root of cell.querySelectorAll<HTMLElement>(`[${componentIdentifier}]`)) {
+                const widget = getComponent(root);
+                if (widget instanceof BaseWidget) {
+                    widget.setValue(rowData[name], false);
+                    handled.add(name);
+                    break;
+                }
+            }
+        }
         const fields = rowElement.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
             "input[name], textarea[name], select[name]",
         );
         fields.forEach((field) => {
             const fieldName = this.getFieldKey(field.name);
-            if (!fieldName || !(fieldName in rowData)) return;
+            if (!fieldName || handled.has(fieldName) || !(fieldName in rowData)) return;
             const value = rowData[fieldName];
 
             if (field instanceof HTMLSelectElement && field.multiple && Array.isArray(value)) {

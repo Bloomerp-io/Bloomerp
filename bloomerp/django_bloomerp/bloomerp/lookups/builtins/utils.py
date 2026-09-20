@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from bloomerp.lookups.definition import FilterFieldContext
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
@@ -304,6 +304,11 @@ def integer_form_factory(
             required=False,
             min_value=min_value,
             max_value=max_value,
+            widget=forms.NumberInput(
+                attrs={
+                    "class" : "input w-full"
+                }
+            )
         )
 
     return factory
@@ -363,8 +368,12 @@ def date_part_lookup(
 
 
 def collection_count(value: Any) -> int | None:
+    """Count active collection members, excluding draft rows marked for deletion."""
     if isinstance(value, (list, tuple, set, frozenset)):
-        return len(value)
+        return sum(
+            1 for item in value
+            if not (isinstance(item, Mapping) and is_truthy(item.get("DELETE", False)))
+        )
     try:
         return len(value)
     except (TypeError, AttributeError):

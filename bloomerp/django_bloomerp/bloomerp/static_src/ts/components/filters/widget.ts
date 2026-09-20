@@ -18,7 +18,8 @@ export function initializeWidget(root: HTMLElement, value?: unknown): void {
     }
 }
 
-export function readWidget(root: HTMLElement): unknown {
+/** Read widget values, optionally allowing incomplete inputs during dependent-form refreshes. */
+export function readWidget(root: HTMLElement, validate: boolean = true): unknown {
     // A component owns its descendants; never flatten its internal form controls.
     for (const node of root.querySelectorAll<HTMLElement>('[bloomerp-component]')) {
         const component = getComponent(node);
@@ -26,7 +27,7 @@ export function readWidget(root: HTMLElement): unknown {
     }
     const controls = Array.from(root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input[name], select[name], textarea[name]'))
         .filter(control => !control.disabled);
-    for (const control of controls) if (!control.reportValidity()) throw new Error(t('Please check the filter value.'));
+    for (const control of controls) if (validate && !control.reportValidity()) throw new Error(t('Please check the filter value.'));
     const read = (control: typeof controls[number]): unknown => {
         if (control instanceof HTMLSelectElement && control.multiple) return Array.from(control.selectedOptions, option => option.value);
         if (control instanceof HTMLInputElement && control.type === 'checkbox') return control.checked;

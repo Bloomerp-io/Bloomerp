@@ -1,13 +1,18 @@
-
-
-
-from bloomerp.form_behaviors.definition import BehaviorActionDefinition
+from bloomerp.form_behaviors.definition import (
+    BehaviorActionDefinition,
+    BehaviorResult,
+    FieldStateUpdate,
+)
 
 
 HIDE_FIELD = BehaviorActionDefinition(
     id="hide_field",
     label="Hide field",
-    description="Hides a particular field",
+    description="Hide the target field without clearing its value.",
     requires_target_field=True,
-    transform=lambda widget: (setattr(widget, 'is_hidden', True), widget)[1],
+    execute=lambda ctx, _: BehaviorResult(
+        states=(
+            FieldStateUpdate(field=ctx.target_field, visible=False),
+        )
+    )
 )

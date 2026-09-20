@@ -12,16 +12,21 @@ fields:
   - id: line_number
     name: Line Number
     type: IntegerField
-  - id: product_code
-    name: Product Code
-    type: CharField
+  - id: product
+    name: Product
+    type: ForeignKey
     options:
-      max_length: 50
+      to: manufacturing.master_data.product
       null: true
       blank: true
+
   - id: description
     name: Description
-    type: TextField
+    type: CharField
+    options:
+      null: true
+      blank: true
+    
   - id: quantity
     name: Quantity
     type: DecimalField

@@ -5,6 +5,7 @@ import { ConditionEditor } from './ConditionEditor';
 import { SavedFilters } from './SavedFilters';
 import { parseInitialFilters, type Filter, type FilterCondition } from './definition';
 import { button, element } from './dom';
+import { addTooltip } from '@/utils/tooltip';
 import './editor.css';
 
 type GroupEditor = { root: HTMLDivElement; content: HTMLElement; toggle: HTMLButtonElement; connector: HTMLSelectElement; rows: ConditionEditor[] };
@@ -19,6 +20,11 @@ export default class FilterContainer extends BaseComponent {
     private initialized = false;
     private invalidInitialState = false;
     private presets?: SavedFilters;
+    /** Allow embedded editors to supply scoped discovery while retaining the full group UI. */
+    constructor(root?: HTMLElement, private suppliedApi?: FilterApi) {
+        super(root);
+    }
+
     private get singleGroup(): boolean { return this.element?.dataset.maxGroups === '1'; }
     private get includeControls(): boolean { return this.element?.dataset.includeControls !== 'false'; }
     private onEdit = (): void => { queueMicrotask(() => this.syncLiveValue()); };
@@ -34,6 +40,7 @@ export default class FilterContainer extends BaseComponent {
         catch { this.output.value = ''; }
     }
 
+    /** Restore groups and connect controls, optionally using an injected API. */
     initialize(): void {
         if (!this.element || this.initialized) return;
         this.initialized = true;
@@ -47,7 +54,7 @@ export default class FilterContainer extends BaseComponent {
         this.error.setAttribute('role', 'alert');
         this.output.type = 'hidden';
         this.output.name = this.getDataAttribute('name') ?? 'filter';
-        this.api = new FilterApi(this.element, { scope: scope as 'model' | 'workspace', id });
+        this.api = this.suppliedApi ?? new FilterApi(this.element, { scope: scope as 'model' | 'workspace', id });
         if (this.includeControls && this.element.dataset.presetsUrl) {
             this.presets = new SavedFilters(this.api, () => this.getFilters(), (filters, isNew) => {
                 this.setFilters(filters);
@@ -77,7 +84,7 @@ export default class FilterContainer extends BaseComponent {
             if (!id || !['model', 'workspace'].includes(scope)) throw new Error(t('Filter scope is missing.'));
             const initialFilters = parseInitialFilters(this.getDataAttribute('initialFilters') ?? '[]');
             this.setFilters(initialFilters);
-            if (this.groups.length === 0) this.addGroup();
+            if (this.groups.length === 0 && this.element.dataset.allowEmpty !== 'true') this.addGroup();
         } catch {
             this.invalidInitialState = true;
             this.error.textContent = t('Could not restore the initial filters.');
@@ -133,6 +140,7 @@ export default class FilterContainer extends BaseComponent {
         const control = button('', action, 'inline-flex h-8 w-8 shrink-0 items-center justify-center border-0 border-l border-gray-200 bg-transparent text-xs hover:bg-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2');
         control.setAttribute('aria-label', label);
         control.title = label;
+        addTooltip(control, { text: label, position: 'bottom' });
         const glyph = element('i', `fa-solid ${icon}`);
         glyph.setAttribute('aria-hidden', 'true');
         control.append(glyph);
@@ -146,6 +154,7 @@ export default class FilterContainer extends BaseComponent {
         const label = expanded ? t('Collapse group') : t('Expand group');
         group.toggle.setAttribute('aria-label', label);
         group.toggle.title = label;
+        addTooltip(group.toggle, { text: label, position: 'bottom' });
         group.toggle.querySelector('i')!.className = `fa-solid ${expanded ? 'fa-chevron-up' : 'fa-chevron-down'}`;
     }
 
@@ -197,12 +206,13 @@ export default class FilterContainer extends BaseComponent {
         this.presets?.setIdentity(id, name);
     }
 
+    /** Release editor resources without disposing an API owned by the parent. */
     destroy(): void {
         this.initialized = false;
         this.element?.removeEventListener('input', this.onEdit);
         this.element?.removeEventListener('change', this.onEdit);
         document.removeEventListener('submit', this.onSubmit, true);
-        this.api?.destroy();
+        if (!this.suppliedApi) this.api?.destroy();
         this.presets?.destroy();
         this.presets = undefined;
         this.groups.forEach(group => group.rows.forEach(row => row.destroy()));

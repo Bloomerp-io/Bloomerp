@@ -199,7 +199,7 @@ class ApplicationField(models.Model):
             .select_related("content_type", "related_model")
         )
 
-    def get_model(self) -> models.Model:
+    def get_model(self) -> Type[models.Model]:
         """Returns the model class for this application field."""
         return self.content_type.model_class()
     

@@ -1,4 +1,5 @@
 import { t } from '@/utils/i18n';
+import { addTooltip } from '@/utils/tooltip';
 import { FilterApi } from './api';
 import type { FilterCondition, FieldGroup, LookupDefinition } from './definition';
 import { button, element } from './dom';
@@ -19,9 +20,11 @@ export class ConditionEditor {
         this.element.dataset.filterCondition = '';
         const header = element('div', 'flex items-start');
         this.navigation.classList.add('flex-1', 'min-w-0');
+        const removeLabel = t('Remove condition');
         const removeButton = button('×', remove, 'filter-condition-remove');
-        removeButton.setAttribute('aria-label', t('Remove condition'));
-        removeButton.title = t('Remove condition');
+        removeButton.setAttribute('aria-label', removeLabel);
+        removeButton.title = removeLabel;
+        addTooltip(removeButton, { text: removeLabel, position: 'top' });
         header.append(this.navigation, removeButton);
         this.error.setAttribute('role', 'alert');
         this.element.append(header, this.error);
