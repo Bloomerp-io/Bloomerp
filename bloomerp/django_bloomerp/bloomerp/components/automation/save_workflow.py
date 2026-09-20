@@ -48,7 +48,15 @@ def save_workflow(request: HttpRequest) -> HttpResponse:
     workflow = get_object_or_404(Workflow, id=workflow_id) if workflow_id else None
     
     policy_manager = UserPolicyManager(request.user)
-    if not policy_manager.has_access_to_object(workflow, BloomerpPermission.CHANGE):
+    if workflow is None:
+        has_permission = policy_manager.has_global_permission(
+            Workflow, BloomerpPermission.ADD
+        )
+    else:
+        has_permission = policy_manager.has_access_to_object(
+            workflow, BloomerpPermission.CHANGE
+        )
+    if not has_permission:
         return HttpResponse(status=403)
     
     serializer = WorkflowSerializer(instance=workflow, data=payload)
