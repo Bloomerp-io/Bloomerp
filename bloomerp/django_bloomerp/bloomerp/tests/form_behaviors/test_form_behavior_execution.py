@@ -1,31 +1,68 @@
 """Direct service tests for typed, ordered, side-effect-free behavior evaluation."""
-from copy import deepcopy
 import json
-from typing import Any
+from copy import deepcopy
+from typing import Any, cast
+from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 
 from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.form_behaviors.definition import (
-    BehaviorAction, BehaviorActionDefinition, BehaviorConfig, BehaviorContext,
-    BehaviorResult, FieldValueUpdate, FormBehavior, CleanedConfigData,
+    BehaviorAction,
+    BehaviorActionDefinition,
+    BehaviorConfig,
+    BehaviorContext,
+    BehaviorResult,
+    CleanedConfigData,
+    FieldStateUpdate,
+    FieldValueUpdate,
+    FormBehavior,
 )
 from bloomerp.form_behaviors.execution import BehaviorExecutor
 from bloomerp.form_behaviors.registry import ACTION_REGISTRY
-from bloomerp.form_fields.behavior_field import BehaviorField
-from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
 from bloomerp.form_behaviors.utils import action_config_form, clean_action_config
+from bloomerp.form_fields.behavior_field import BehaviorField
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.forms.form import Form
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
 from bloomerp.tests.base.core_test_case import BaseBloomerpTestCaseWithModels
+from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
 
 
 def undeclared_update(context: BehaviorContext, config: CleanedConfigData) -> BehaviorResult:
     """Simulate an extension attempting to update a field it did not declare."""
     return BehaviorResult(values=(FieldValueUpdate(field="age", value=20),))
+
+
+def listener_update(context: BehaviorContext, config: CleanedConfigData) -> BehaviorResult:
+    """Simulate a targetless action that safely replaces its triggering value."""
+    return BehaviorResult(
+        values=(FieldValueUpdate(field=context.listener_field, value="Updated"),)
+    )
+
+
+def disabled_state_update(
+    context: BehaviorContext, config: CleanedConfigData,
+) -> BehaviorResult:
+    """Return an explicitly disabled state for executor contract coverage."""
+    return BehaviorResult(states=(FieldStateUpdate(
+        field=context.target_field, visible=True, disabled=True,
+    ),))
+
+
+def invalid_disabled_state_update(
+    context: BehaviorContext, config: CleanedConfigData,
+) -> BehaviorResult:
+    """Return a non-boolean disabled value from an extension fixture."""
+    return BehaviorResult(states=(FieldStateUpdate(
+        field=context.target_field,
+        visible=True,
+        disabled=cast(Any, "yes"),
+    ),))
 
 
 class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
@@ -137,6 +174,93 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         self.addCleanup(ACTION_REGISTRY.unregister, definition.id)
         with self.assertRaisesMessage(ValidationError, "undeclared"):
             self._evaluate([BehaviorAction(action=definition, target_field="last_name")])
+
+    def test_targetless_actions_may_update_their_writable_listener(self) -> None:
+        """Targetless actions retain a safe, useful self-update capability."""
+        definition = BehaviorActionDefinition(
+            id="unit-listener-update",
+            label="Listener update",
+            description="Fixture",
+            requires_target_field=False,
+            execute=listener_update,
+        )
+        ACTION_REGISTRY.register(definition.id, definition)
+        self.addCleanup(ACTION_REGISTRY.unregister, definition.id)
+        result = self._evaluate([BehaviorAction(action=definition)])
+        self.assertEqual(result.values, (FieldValueUpdate(
+            field="first_name", value="Updated",
+        ),))
+
+    def test_state_updates_default_disabled_and_validate_explicit_values(self) -> None:
+        """Existing visibility states default false and explicit disabled must be boolean."""
+        hidden = self._evaluate([
+            BehaviorAction(action="hide_field", target_field="last_name")
+        ])
+        self.assertEqual(hidden.states, (FieldStateUpdate(
+            field="last_name", visible=False, disabled=False,
+        ),))
+        for definition, expected in (
+            (BehaviorActionDefinition(
+                id="unit-disabled-state",
+                label="Disabled state",
+                description="Fixture",
+                requires_target_field=True,
+                execute=disabled_state_update,
+            ), True),
+            (BehaviorActionDefinition(
+                id="unit-invalid-disabled-state",
+                label="Invalid disabled state",
+                description="Fixture",
+                requires_target_field=True,
+                execute=invalid_disabled_state_update,
+            ), False),
+        ):
+            with self.subTest(action=definition.id):
+                ACTION_REGISTRY.register(definition.id, definition)
+                self.addCleanup(ACTION_REGISTRY.unregister, definition.id)
+                action = BehaviorAction(action=definition, target_field="last_name")
+                if expected:
+                    result = self._evaluate([action])
+                    self.assertTrue(result.states[0].disabled)
+                else:
+                    with self.assertRaisesMessage(ValidationError, "invalid state"):
+                        self._evaluate([action])
+
+    def test_disable_and_enable_states_preserve_values_and_storage(self) -> None:
+        """Interaction-only actions target one authorized field without value writes."""
+        for action_id, disabled in (
+            ("disable_field", True),
+            ("enable_field", False),
+        ):
+            with self.subTest(action=action_id):
+                before = deepcopy(self.values)
+                result = self._evaluate([BehaviorAction(
+                    action=action_id,
+                    target_field="last_name",
+                )])
+                self.assertEqual(result.values, ())
+                self.assertEqual(result.states, (FieldStateUpdate(
+                    field="last_name",
+                    visible=None,
+                    disabled=disabled,
+                ),))
+                self.assertEqual(self.values, before)
+                self.customer.refresh_from_db()
+                self.assertEqual(self.customer.last_name, "Stored")
+
+    def test_disable_field_requires_an_authorized_declared_target(self) -> None:
+        """Interaction state cannot escape the executor's writable target boundary."""
+        owner = self._owner([FormBehavior(
+            id="disable-last-name",
+            actions=[BehaviorAction(
+                action="disable_field",
+                target_field="last_name",
+            )],
+        )])
+        executor = BehaviorExecutor(owner, self.admin_user, instance=self.customer)
+        executor.write_fields.pop("last_name")
+        with self.assertRaises(PermissionDenied):
+            executor.evaluate("first_name", self.values)
 
     def test_form_owned_layout_uses_the_same_executor(self) -> None:
         """An authenticated authorized Form layout evaluates the same declarations as a preference."""
@@ -292,3 +416,63 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
             BehaviorField(widget=widget).clean(config.to_storage())
         with self.assertRaises(ValidationError):
             BehaviorExecutor(self._owner(config.behaviors), self.admin_user).evaluate("first_name", self.values)
+
+    def test_o2m_config_form_rebuilds_compatible_accessor_choices(self) -> None:
+        """Partial initial selections expose compatible related fields and reject stale accessors."""
+        fields = ApplicationField.get_for_model(self.CountryModel)
+        target = fields.get(field="customers")
+        listener = fields.get(field="name")
+        action = ACTION_REGISTRY.get("set_o2m_value")
+        config = {"from_column": "customer_type", "to_column": "first_name", "accessor": "name"}
+        form = action_config_form(action, listener, target, config)
+        self.assertEqual(form.refresh_fields, ("from_column", "to_column"))
+        self.assertTrue(form.fields["accessor"].queryset.filter(field="name").exists())
+        cleaned = clean_action_config(action, listener, target, config)
+        self.assertEqual(cleaned["accessor"].field, "name")
+        changed = {**config, "from_column": "last_name"}
+        form = action_config_form(action, listener, target, changed)
+        self.assertTrue(form.fields["accessor"].widget.is_hidden)
+        self.assertIsNone(form.initial["accessor"])
+        self.assertEqual(changed["accessor"], "name")
+        with self.assertRaises(ValidationError):
+            clean_action_config(action, listener, target, changed)
+        with self.assertRaises(ValidationError):
+            clean_action_config(action, listener, target, {**config, "to_column": "age"})
+
+    def test_o2m_accessor_copies_authorized_values_without_writing_records(self) -> None:
+        """Each active row receives the related field; empty/deleted rows and stored records stay unchanged."""
+        country = self.CountryModel.objects.first()
+        source_record = self.CustomerTypeModel.objects.first()
+        owner = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user, name="Copy related value",
+            content_type=ContentType.objects.get_for_model(self.CountryModel),
+            layout=FieldLayout(rows=[LayoutRow(columns=2, items=[
+                LayoutItem(id="name", config={"behaviors": BehaviorConfig(behaviors=[FormBehavior(
+                    id="copy-related", actions=[BehaviorAction(
+                        action="set_o2m_value", target_field="customers",
+                        config={"from_column": "customer_type", "accessor": "name", "to_column": "first_name"},
+                    )],
+                )]).to_storage()}),
+                LayoutItem(id="customers", config={"inline_fields": ["first_name", "customer_type"]}),
+            ])]).model_dump(mode="json"),
+        )
+        values = {"name": country.name, "customers": [
+            {"customer_type": str(source_record.pk), "first_name": "Before"},
+            {"customer_type": None, "first_name": "Keep empty source"},
+            {"customer_type": str(source_record.pk), "first_name": "Keep deleted", "DELETE": True},
+        ]}
+        original = deepcopy(values)
+        count = self.CustomerModel.objects.count()
+        executor = BehaviorExecutor(owner, self.admin_user, instance=country)
+        result = executor.evaluate("name", values)
+        self.assertEqual([row["first_name"] for row in result.values[0].value], [
+            source_record.name, "Keep empty source", "Keep deleted",
+        ])
+        self.assertEqual(values, original)
+        self.assertEqual(self.CustomerModel.objects.count(), count)
+        with patch.object(
+            executor.manager,
+            "get_accessible_fields_for_object",
+            return_value=ApplicationField.objects.none(),
+        ), self.assertRaises(PermissionDenied):
+            executor.evaluate("name", values)

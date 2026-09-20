@@ -3,13 +3,19 @@ import showMessage from "@/utils/messages";
 import { getComponent } from "../BaseComponent";
 import { MessageType } from "../UiMessage";
 import { DetailViewCell, type DetailViewCellChangeDetail, type DetailViewCellValue } from "../detail_view_components/DetailViewCell";
+import {
+    applyBehaviorFieldState,
+    captureBehaviorFieldState,
+    restoreBehaviorFieldState,
+    type BehaviorFieldStateSnapshot,
+} from "./behaviorFieldState";
 
 type BehaviorEvent = "initial" | "change";
 type Evaluation = { field: string; event: BehaviorEvent };
 type BehaviorResponse = {
     revision: number;
     values: Array<{ field: string; value: unknown }>;
-    states: Array<{ field: string; visible: boolean }>;
+    states: Array<{ field: string; visible: boolean | null; disabled: boolean }>;
     messages: Array<{ type: "info" | "success" | "warning" | "danger"; message: string }>;
 };
 type Field = { element: HTMLElement; cell: DetailViewCell; name: string };
@@ -24,7 +30,7 @@ export default class FormBehaviorRuntime {
     private initialSignatures = new WeakMap<HTMLElement, string>();
     private renderedFields = new Map<string, RenderedField>();
     private active: Evaluation | null = null;
-    private visibility = new Map<HTMLElement, { hidden: boolean; aria: string | null }>();
+    private fieldStates = new Map<HTMLElement, BehaviorFieldStateSnapshot>();
     private controller: AbortController | null = null;
     private running: Promise<void> | null = null;
     private form: HTMLFormElement | null;
@@ -58,13 +64,10 @@ export default class FormBehaviorRuntime {
     /** Restore presentation alongside the container's value reset. */
     public reset(): void {
         this.invalidate();
-        for (const [element, state] of this.visibility) {
-            element.classList.toggle("hidden", state.hidden);
-            element.removeAttribute("data-behavior-hidden");
-            if (state.aria === null) element.removeAttribute("aria-hidden");
-            else element.setAttribute("aria-hidden", state.aria);
+        for (const [element, state] of this.fieldStates) {
+            restoreBehaviorFieldState(element, state);
         }
-        this.visibility.clear();
+        this.fieldStates.clear();
     }
 
     /** Remove listeners and prevent detached forms from receiving late responses. */
@@ -266,12 +269,10 @@ export default class FormBehaviorRuntime {
             const field = fields.get(update.field);
             if (!field) throw new Error(`Behavior target '${update.field}' is not rendered.`);
             const element = field.element;
-            if (trackChanges && !this.visibility.has(element)) this.visibility.set(element, {
-                hidden: element.classList.contains("hidden"), aria: element.getAttribute("aria-hidden"),
-            });
-            element.classList.toggle("hidden", !update.visible);
-            element.toggleAttribute("data-behavior-hidden", !update.visible);
-            element.setAttribute("aria-hidden", String(!update.visible));
+            if (trackChanges && !this.fieldStates.has(element)) {
+                this.fieldStates.set(element, captureBehaviorFieldState(element));
+            }
+            applyBehaviorFieldState(element, update);
         }
         for (const message of result.messages) {
             const types = { info: MessageType.INFO, success: MessageType.SUCCESS, warning: MessageType.WARNING, danger: MessageType.ERROR };

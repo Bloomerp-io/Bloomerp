@@ -6,8 +6,9 @@ Authorization, rule matching and cascading belong to the future engine.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Literal, Mapping, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
 from django import forms
 from django.db.models import QuerySet
@@ -29,6 +30,14 @@ if TYPE_CHECKING:
     ListenerField = ApplicationField | None
 
 CleanedConfigData = Mapping[str, Any]
+
+
+@dataclass(frozen=True, kw_only=True)
+class BehaviorFieldReference:
+    """Declare an action configuration field and its required access level."""
+
+    field: ApplicationField
+    permission: Literal["view", "change"] = "view"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -65,8 +74,11 @@ class FieldValueUpdate:
 
 @dataclass(frozen=True, kw_only=True)
 class FieldStateUpdate:
+    """Set target visibility and interaction state without changing its value."""
+
     field: str
-    visible: bool
+    visible: bool | None = None
+    disabled: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -121,8 +121,10 @@ each later action sees earlier value updates. Failure returns no partial batch.
   for an empty active collection. Operators without Python evaluators and
   nested traversal are not offered and are rejected on save/execution.
 - Model/global permissions, existing-object row access, field access, and action
-  eligibility are checked. Collection actions currently require a superuser;
-  parent-field permission must not substitute for child-row/column checks.
+  eligibility are checked. Collection actions currently require a superuser outside
+  public Form submission previews; parent-field permission must not substitute for
+  child-row/column checks. Action configuration can declare nested field references
+  with distinct view/change requirements, which the executor authorizes centrally.
 - Draft inputs and action outputs use the registered field validators. Partial
   rows are allowed; supplied columns are validated. Collection rows are capped
   at 1000 and persisted row IDs must belong to the current parent.
@@ -137,6 +139,49 @@ each later action sees earlier value updates. Failure returns no partial batch.
   batches record reads and enforces row and field visibility. Deleted rows
   and blank related sources are skipped. This does not identify the one row
   that changed; existing destination values on active rows are overwritten.
+- `CALCULATE_O2M_ROW` is a targetless collection action that writes its listener
+  value after calculating one numeric destination column per active row. Its
+  restricted expression language accepts numeric child-column names, numeric
+  literals, parentheses, unary signs, and `+`, `-`, `*`, `/`. It uses Decimal
+  arithmetic, treats blank operands as zero, rejects destination self-reference,
+  and requires view permission for sources plus change permission for the
+  destination child column. Its write policy can recalculate always, only when
+  the destination is empty, or when it is empty or numerically zero.
+- `CALCULATE_FIELD` applies the same restricted Decimal expression engine to
+  eligible top-level numeric source fields and writes one declared numeric,
+  compatible text, or property target. Its listener can be any rendered field;
+  the configured source references remain permission-aware, and the executor
+  owns target authorization, coercion, validation, and serialization.
+- Reusable expression parsing/evaluation, numeric eligibility, destination
+  normalization, and scalar write decisions live under `shared/calculate.py`
+  and `shared/write_policy.py`. Built-ins retain only their action-specific
+  iteration, configuration relationships, and result construction.
+- `CLEAR_VALUE` targets a normal top-level field and derives its empty public
+  value from the registered form-field contract. This yields the appropriate
+  scalar, boolean, relation, multi-value, or collection representation while
+  retaining the executor's normal declared-target and write-access checks.
+- `AGGREGATE_O2M_COLUMN` writes a top-level numeric target from one numeric
+  child column using sum, nonblank count, first, or last. Deleted rows and blank
+  operands are excluded; empty first/last results use the target's public empty
+  value. Its backward-compatible write policy can always replace the target,
+  write only when empty, or write when empty or numerically zero. Source view
+  access and target change access are enforced by the executor.
+- `DISABLE_FIELD` applies only `disabled=true` to its declared top-level target.
+  Visibility and the draft value remain unchanged; the browser uses an inert
+  container lock rather than disabling native controls, so submission retains
+  the field value.
+- `ENABLE_FIELD` symmetrically applies only `disabled=false`, restoring
+  interaction without changing visibility or the draft value.
+- `TRANSFORM_TEXT` reads a text listener and writes its declared text target.
+  Uppercase, lowercase, and title case use Python's Unicode-aware string
+  operations. Sentence case uppercases the first code point and lowercases the
+  remainder without trimming. Trim removes only boundary whitespace; collapse
+  whitespace replaces each Unicode whitespace run with one ordinary space and
+  trims the boundaries. Slug uses Django's default ASCII `slugify`; snake case
+  uses the same base, replaces separators with underscores, collapses repeated
+  underscores, trims boundary underscores, and applies the selected case.
+  Empty or `None` listeners propose an empty string, which the executor then
+  normalizes through the declared target's registered form-field contract.
 - Week population uses an explicit date column and either `if_empty` or explicit
   whole-collection `replace`. Persisted-row deletion and manual-override
   semantics must be settled before enabling replacement in a live editor.

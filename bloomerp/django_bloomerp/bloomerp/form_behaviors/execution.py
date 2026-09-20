@@ -6,30 +6,33 @@ one listener event in declaration order; dependency cascading remains separate.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Set as AbstractSet
 from copy import deepcopy
 from dataclasses import replace
-from typing import Any, Literal, Mapping
-import json
+from typing import Any, Literal
 
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Model
 
+from bloomerp.field_types.utils.form_field_factories import build_form_field
 from bloomerp.filters.compiler import resolve_condition
 from bloomerp.filters.definition import Filter
 from bloomerp.form_behaviors.definition import (
     BehaviorConfig,
     BehaviorContext,
-    BehaviorResult,
-    FieldValueUpdate,
-    FieldStateUpdate,
+    BehaviorFieldReference,
     BehaviorMessage,
+    BehaviorResult,
+    FieldStateUpdate,
+    FieldValueUpdate,
 )
 from bloomerp.form_behaviors.registry import ACTION_REGISTRY
 from bloomerp.form_behaviors.utils import clean_action_config
 from bloomerp.form_fields.structured_value import serialize_form_value
-from bloomerp.field_types.utils.form_field_factories import build_form_field
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_object_layout_preference import (
@@ -38,6 +41,31 @@ from bloomerp.models.users.user_object_layout_preference import (
 from bloomerp.permissions.manager import UserPolicyManager
 
 LayoutOwner = Form | UserObjectLayoutPreference
+
+
+def iter_config_field_references(
+    value: Any,
+) -> Iterator[BehaviorFieldReference]:
+    """Yield permission-aware field references from nested cleaned configuration."""
+    if isinstance(value, BehaviorFieldReference):
+        yield value
+        return
+    if isinstance(value, ApplicationField):
+        yield BehaviorFieldReference(field=value)
+        return
+    if isinstance(value, Mapping):
+        for nested_value in value.values():
+            yield from iter_config_field_references(nested_value)
+        return
+    if isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    ):
+        for nested_value in value:
+            yield from iter_config_field_references(nested_value)
+        return
+    if isinstance(value, AbstractSet):
+        for nested_value in value:
+            yield from iter_config_field_references(nested_value)
 
 
 class BehaviorExecutor:
@@ -49,27 +77,45 @@ class BehaviorExecutor:
         user: AbstractBaseUser,
         *,
         instance: Model | None = None,
+        form_submission_access: bool = False,
     ) -> None:
-        """Bind an authorized owner, model, object, and layout-scoped field access."""
+        """Bind an authorized owner, model, object, and layout-scoped field access.
+
+        ``form_submission_access`` mirrors the fields deliberately exposed by a
+        Form submission page. It is limited to unsaved create drafts and never
+        grants access to user preferences or persisted target objects.
+        """
         self.owner, self.user, self.instance = owner, user, instance
         self.manager = UserPolicyManager(user)
-        if not user.is_authenticated:
-            raise PermissionDenied
-        if isinstance(owner, UserObjectLayoutPreference):
-            if owner.user_id != user.pk:
-                raise PermissionDenied
-        elif isinstance(owner, Form):
-            if not self.manager.has_access_to_object(owner, "view"):
+        self.form_submission_access = form_submission_access
+        if form_submission_access:
+            if not isinstance(owner, Form) or instance is not None:
+                raise ValidationError(
+                    "Form submission access requires an unsaved Form draft."
+                )
+            if owner.requires_authentication and not user.is_authenticated:
                 raise PermissionDenied
         else:
-            raise ValidationError("Unsupported layout owner.")
+            if not user.is_authenticated:
+                raise PermissionDenied
+            if isinstance(owner, UserObjectLayoutPreference):
+                if owner.user_id != user.pk:
+                    raise PermissionDenied
+            elif isinstance(owner, Form):
+                if not self.manager.has_access_to_object(owner, "view"):
+                    raise PermissionDenied
+            else:
+                raise ValidationError("Unsupported layout owner.")
         self.model = owner.content_type.model_class()
         if self.model is None:
             raise ValidationError("Layout model is unavailable.")
         permission = "add" if instance is None else "change"
-        if not self.manager.has_global_permission(self.model, permission):
-            raise PermissionDenied
-        if instance is not None:
+        if form_submission_access:
+            readable = ApplicationField.objects.filter(content_type=owner.content_type)
+            writable = readable
+        elif instance is not None:
+            if not self.manager.has_global_permission(self.model, permission):
+                raise PermissionDenied
             if not isinstance(
                 instance, self.model
             ) or not self.manager.has_access_to_object(instance, permission):
@@ -79,6 +125,8 @@ class BehaviorExecutor:
                 instance, permission
             )
         else:
+            if not self.manager.has_global_permission(self.model, permission):
+                raise PermissionDenied
             readable = self.manager.get_accessible_fields(self.model, "view")
             writable = self.manager.get_accessible_fields(self.model, permission)
         fields = list(ApplicationField.objects.filter(content_type=owner.content_type))
@@ -135,7 +183,10 @@ class BehaviorExecutor:
             "False",
         ):
             raise ValidationError(f"Field '{field.field}' requires a boolean value.")
-        if isinstance(form_field, forms.ModelChoiceField):
+        if (
+            isinstance(form_field, forms.ModelChoiceField)
+            and not self.form_submission_access
+        ):
             form_field.queryset = self.manager.get_accessible_queryset(
                 form_field.queryset.model, "view"
             )
@@ -151,10 +202,11 @@ class BehaviorExecutor:
     def _clean_rows(self, field: ApplicationField, value: Any) -> list[dict[str, Any]]:
         """Validate partial collection rows without invoking persistence or full child forms.
 
-        Collection execution remains restricted until candidate child-row policies
-        can be enforced; even superusers may only reference rows of this parent.
+        Public Form submissions may evaluate new rows from their exposed create
+        contract. Persisted row identities remain restricted to authorized object
+        edits until candidate child-row policies can be enforced.
         """
-        if not self.user.is_superuser:
+        if not self.user.is_superuser and not self.form_submission_access:
             raise PermissionDenied(
                 "Collection execution awaits child-row permission checks."
             )
@@ -175,7 +227,11 @@ class BehaviorExecutor:
             cleaned = {}
             object_id = row.get("id")
             if object_id not in (None, ""):
-                if self.instance is None or str(object_id) in seen:
+                if (
+                    self.form_submission_access
+                    or self.instance is None
+                    or str(object_id) in seen
+                ):
                     raise ValidationError("Invalid or duplicate related row identity.")
                 if not related_model._default_manager.filter(
                     pk=object_id, **{parent_field: self.instance}
@@ -204,9 +260,16 @@ class BehaviorExecutor:
         model = source.get_related_model()
         if model is None or accessor.get_model() is not model:
             raise ValidationError("Accessor must belong to the source relation's model.")
-        if not self.manager.has_global_permission(model, "view"):
-            raise PermissionDenied
-        records = list(self.manager.get_accessible_queryset(model, "view").filter(pk__in=identities))
+        if self.form_submission_access:
+            records = list(model._default_manager.filter(pk__in=identities))
+        else:
+            if not self.manager.has_global_permission(model, "view"):
+                raise PermissionDenied
+            records = list(
+                self.manager.get_accessible_queryset(model, "view").filter(
+                    pk__in=identities
+                )
+            )
         if {str(record.pk) for record in records} != {str(identity) for identity in identities}:
             raise PermissionDenied("A related source record is unavailable.")
         values: dict[str, Any] = {}
@@ -214,7 +277,12 @@ class BehaviorExecutor:
         if not model_field.concrete or model_field.many_to_many:
             raise ValidationError("Accessor must expose a single stored value.")
         for record in records:
-            if not self.manager.get_accessible_fields_for_object(record, "view").filter(pk=accessor.pk).exists():
+            if (
+                not self.form_submission_access
+                and not self.manager.get_accessible_fields_for_object(
+                    record, "view"
+                ).filter(pk=accessor.pk).exists()
+            ):
                 raise PermissionDenied("The related source field is unavailable.")
             values[str(record.pk)] = getattr(record, model_field.attname)
         return values
@@ -303,18 +371,23 @@ class BehaviorExecutor:
                 cleaned = clean_action_config(
                     action, listener, target, configured.config
                 )
-                for value in cleaned.values():
-                    if isinstance(value, ApplicationField):
-                        if (
-                            value.content_type_id == listener.content_type_id
-                            and value.field not in self.read_fields
-                        ):
+                for reference in iter_config_field_references(cleaned):
+                    field = reference.field
+                    if field.content_type_id == listener.content_type_id:
+                        available_fields = (
+                            self.read_fields
+                            if reference.permission == "view"
+                            else self.write_fields
+                        )
+                        if field.field not in available_fields:
                             raise PermissionDenied
-                        if (
-                            value.content_type_id != listener.content_type_id
-                            and not self.manager.has_field_permission(value, "view")
-                        ):
-                            raise PermissionDenied
+                    elif (
+                        not self.form_submission_access
+                        and not self.manager.has_field_permission(
+                            field, reference.permission
+                        )
+                    ):
+                        raise PermissionDenied
                 result = action.execute(
                     BehaviorContext(
                         values=deepcopy(draft),
@@ -352,7 +425,11 @@ class BehaviorExecutor:
                         not isinstance(state, FieldStateUpdate)
                         or declared_update_field is None
                         or state.field != declared_update_field.field
-                        or not isinstance(state.visible, bool)
+                        or (
+                            state.visible is not None
+                            and not isinstance(state.visible, bool)
+                        )
+                        or not isinstance(state.disabled, bool)
                     ):
                         raise ValidationError(
                             "Action returned an invalid state target."

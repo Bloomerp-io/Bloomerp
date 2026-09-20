@@ -1,11 +1,10 @@
-"""HTTP adapter for authenticated, side-effect-free behavior evaluation."""
+"""HTTP adapter for authorized, side-effect-free behavior evaluation."""
 
 from __future__ import annotations
 
 from dataclasses import asdict
 from typing import Literal
 
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -52,7 +51,6 @@ class ExecuteRequest(BaseModel):
     path="components/form_behavior/execute/",
     url_name="components_form_behavior_execute",
 )
-@login_required
 @require_POST
 def execute(request: HttpRequest) -> JsonResponse:
     """Load an authorized layout and translate execution results into JSON responses."""
@@ -64,16 +62,32 @@ def execute(request: HttpRequest) -> JsonResponse:
         )
     try:
         manager = UserPolicyManager(request.user)
+        form_submission_access = False
         if payload.preference_id is not None:
+            if not request.user.is_authenticated:
+                raise PermissionDenied
             owner = get_object_or_404(
                 UserObjectLayoutPreference.objects.select_related("content_type"),
                 pk=payload.preference_id,
                 user=request.user,
             )
         else:
-            owner = get_object_or_404(
-                manager.get_accessible_queryset(Form, "view"), pk=payload.form_id
-            )
+            if payload.object_id is None:
+                # Create drafts inherit the Form submission page's authentication
+                # contract; evaluation is side-effect-free and layout-scoped.
+                owner = get_object_or_404(
+                    Form.objects.select_related("content_type"), pk=payload.form_id
+                )
+                if owner.requires_authentication and not request.user.is_authenticated:
+                    raise PermissionDenied
+                form_submission_access = True
+            else:
+                if not request.user.is_authenticated:
+                    raise PermissionDenied
+                owner = get_object_or_404(
+                    manager.get_accessible_queryset(Form, "view"),
+                    pk=payload.form_id,
+                )
         model = owner.content_type.model_class()
         if model is None:
             raise ValidationError("Layout model is unavailable.")
@@ -85,7 +99,12 @@ def execute(request: HttpRequest) -> JsonResponse:
             instance = get_object_or_404(
                 manager.get_accessible_queryset(model, "change"), pk=payload.object_id
             )
-        result = BehaviorExecutor(owner, request.user, instance=instance).evaluate(
+        result = BehaviorExecutor(
+            owner,
+            request.user,
+            instance=instance,
+            form_submission_access=form_submission_access,
+        ).evaluate(
             payload.listener_field,
             payload.values,
             event=payload.event,

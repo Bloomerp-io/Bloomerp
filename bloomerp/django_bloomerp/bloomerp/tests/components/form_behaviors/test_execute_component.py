@@ -6,14 +6,19 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
 
 from bloomerp.filters.definition import Filter, FilterCondition
-from bloomerp.form_behaviors.builtins import HIDE_FIELD, SET_VALUE
+from bloomerp.form_behaviors.builtins import (
+    DISABLE_FIELD,
+    ENABLE_FIELD,
+    HIDE_FIELD,
+    SET_VALUE,
+)
 from bloomerp.form_behaviors.definition import (
     BehaviorAction,
     BehaviorConfig,
     FormBehavior,
 )
-from bloomerp.models.forms.form import Form
 from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
+from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
@@ -119,6 +124,26 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                 )
             ],
         )
+        disabled_state = self._preference(
+            "Explicit disabled state",
+            [FormBehavior(
+                id="disable-last-name",
+                actions=[BehaviorAction(
+                    action=DISABLE_FIELD,
+                    target_field="last_name",
+                )],
+            )],
+        )
+        enabled_state = self._preference(
+            "Explicit enabled state",
+            [FormBehavior(
+                id="enable-last-name",
+                actions=[BehaviorAction(
+                    action=ENABLE_FIELD,
+                    target_field="last_name",
+                )],
+            )],
+        )
         skipped = self._preference(
             "Inactive and unmatched behaviors",
             [
@@ -187,6 +212,18 @@ class TestExecuteComponent(BloomerpComponentTestCase):
         form_payload = self._payload(success)
         form_payload.pop("preference_id")
         form_payload["form_id"] = str(form_owner.pk)
+        public_form_payload = {**form_payload}
+        public_form_payload.pop("object_id")
+        authenticated_form_owner = Form.objects.create(
+            name="Authenticated behavior form",
+            content_type=success.content_type,
+            layout=success.layout,
+            requires_authentication=True,
+        )
+        authenticated_form_payload = {
+            **public_form_payload,
+            "form_id": str(authenticated_form_owner.pk),
+        }
         invalid_payload = self._payload(success)
         invalid_payload["revision"] = -1
 
@@ -204,6 +241,43 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                             [{"field": "last_name", "value": "Suggested surname"}],
                         ),
                         self._customer_is_unchanged,
+                    ]
+                ),
+            ),
+            RequestScenario(
+                name="An anonymous public Form submission can evaluate its saved behaviors",
+                method="POST",
+                content_type="application/json",
+                data=public_form_payload,
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.json_key_equals(
+                            "values",
+                            [{"field": "last_name", "value": "Suggested surname"}],
+                        ),
+                        self._customer_is_unchanged,
+                    ]
+                ),
+            ),
+            RequestScenario(
+                name="An anonymous respondent cannot evaluate an authentication-required Form",
+                method="POST",
+                content_type="application/json",
+                data=authenticated_form_payload,
+                expected=ExpectedResult(status_code=403),
+            ),
+            RequestScenario(
+                name="An authenticated respondent can evaluate an authentication-required Form",
+                method="POST",
+                user=self.normal_user,
+                content_type="application/json",
+                data=authenticated_form_payload,
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.json_key_equals(
+                            "values",
+                            [{"field": "last_name", "value": "Suggested surname"}],
+                        ),
                     ]
                 ),
             ),
@@ -229,13 +303,47 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                                 "values": [
                                     {"field": "last_name", "value": "Suggested surname"}
                                 ],
-                                "states": [{"field": "last_name", "visible": False}],
+                                "states": [{
+                                    "field": "last_name",
+                                    "visible": False,
+                                    "disabled": False,
+                                }],
                                 "messages": [],
                             }
                         ),
                         self._customer_is_unchanged,
                     ]
                 ),
+            ),
+            RequestScenario(
+                name="Explicit disabled state is serialized with independent visibility",
+                method="POST",
+                user=self.admin_user,
+                content_type="application/json",
+                data=self._payload(disabled_state),
+                expected=ExpectedResult(response_validators=[
+                    self.json_key_equals("states", [{
+                        "field": "last_name",
+                        "visible": None,
+                        "disabled": True,
+                    }]),
+                    self._customer_is_unchanged,
+                ]),
+            ),
+            RequestScenario(
+                name="Explicit enabled state is serialized with independent visibility",
+                method="POST",
+                user=self.admin_user,
+                content_type="application/json",
+                data=self._payload(enabled_state),
+                expected=ExpectedResult(response_validators=[
+                    self.json_key_equals("states", [{
+                        "field": "last_name",
+                        "visible": None,
+                        "disabled": False,
+                    }]),
+                    self._customer_is_unchanged,
+                ]),
             ),
             RequestScenario(
                 name="Disabled behaviors, initial-only events, and false conditions produce no changes",
@@ -317,11 +425,11 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(status_code=403),
             ),
             RequestScenario(
-                name="Anonymous callers are redirected to login before evaluating any action",
+                name="Anonymous callers cannot evaluate a saved user preference",
                 method="POST",
                 content_type="application/json",
                 data=self._payload(success),
-                expected=ExpectedResult(status_code=302),
+                expected=ExpectedResult(status_code=403),
             ),
             RequestScenario(
                 name="Authenticated GET requests cannot evaluate behaviors",

@@ -1,7 +1,6 @@
 """Copy row values or a related record's field into a collection column."""
 
 from copy import deepcopy
-from email.policy import default
 from typing import Any
 
 from django import forms
@@ -10,8 +9,15 @@ from django.db.models import Model, QuerySet
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.definition import (
-    BehaviorActionDefinition, BehaviorContext, BehaviorResult,
-    CleanedConfigData, FieldValueUpdate,
+    BehaviorActionDefinition,
+    BehaviorContext,
+    BehaviorResult,
+    CleanedConfigData,
+    FieldValueUpdate,
+)
+from bloomerp.form_behaviors.shared.write_policy import (
+    WritePolicyField,
+    should_write_value,
 )
 from bloomerp.models.application_field import ApplicationField
 
@@ -71,12 +77,9 @@ def config_form_factory(
             queryset=ApplicationField.objects.none(), required=False,
             help_text="Optional field on the selected related record, for example sales_price.",
         )
-        write_policy = forms.ChoiceField(
-            choices=[
-                ("always", "Always"),
-                ("if_empty_or_zero", "If empty or zero"),
-            ],
-            initial="always"
+        write_policy = WritePolicyField(
+            allowed=("always", "if_empty_or_zero"),
+            default="always",
         )
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             """Rebuild dependent choices from partial configuration before validation."""
@@ -128,7 +131,7 @@ def set_o2m_value(context: BehaviorContext, config: CleanedConfigData) -> Behavi
     source: ApplicationField = config["from_column"]
     destination: ApplicationField = config["to_column"]
     accessor: ApplicationField | None = config.get("accessor")
-    write_policy = config.get("write_policy")
+    write_policy: str = config["write_policy"]
     rows = collection_rows(context.target_value)
     
     active = [row for row in rows if row.get("DELETE") not in (True, "true", "True", "1", "on", "yes")]
@@ -151,9 +154,9 @@ def set_o2m_value(context: BehaviorContext, config: CleanedConfigData) -> Behavi
                 raise forms.ValidationError("A related source value is unavailable.")
             value = related_values[str(value)]
         
-        should_write = True
-        if write_policy == "if_empty_or_zero" and row[destination.field] not in [None, "", 0]:
-            should_write = False
+        should_write = should_write_value(
+            row.get(destination.field), write_policy, field=destination
+        )
         
         if row.get(destination.field) != value and should_write:
             row[destination.field] = deepcopy(value)

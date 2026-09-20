@@ -1,18 +1,22 @@
+from collections.abc import Mapping
 from datetime import date
-from typing import Any, Mapping
-from django.db.models import QuerySet
+from typing import Any
 
 from django import forms
+from django.db.models import QuerySet
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
-from bloomerp.form_fields.week_field import normalize_week_value
+from bloomerp.form_behaviors.builtins.clear_value import public_empty_value
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
     FieldValueUpdate,
 )
+from bloomerp.form_behaviors.shared.write_policy import WritePolicyField
+from bloomerp.form_fields.week_field import normalize_week_value
 from bloomerp.models.application_field import ApplicationField
+
 from .set_o2m_value import collection_rows
 
 
@@ -25,9 +29,9 @@ def populate_week_dates_config_form_factory(
 
     fields = {}
 
-    fields["write_policy"] = forms.ChoiceField(
-        choices=(("if_empty", "Only when empty"), ("replace", "Replace all rows")),
-        initial="if_empty",
+    fields["write_policy"] = WritePolicyField(
+        allowed=("if_empty", "replace"),
+        default="if_empty",
     )
 
     fields["source"] = forms.ModelChoiceField(
@@ -69,11 +73,32 @@ def populate_week_dates(
     if current and config["write_policy"] == "if_empty":
         return BehaviorResult()
     
-    rows = [
-        {date_column: date.fromisocalendar(week.year, week.week, day).isoformat()}
+    generated_dates = [
+        date.fromisocalendar(week.year, week.week, day).isoformat()
         for day in range(1, config["days"] + 1)
     ]
-    
+    rows = current
+    active_index = 0
+    changed = False
+    empty_date = public_empty_value(config["column"])
+    for row in rows:
+        if row.get("DELETE") in (True, "true", "True", "1", "on", "yes"):
+            continue
+        replacement = (
+            generated_dates[active_index]
+            if active_index < len(generated_dates)
+            else empty_date
+        )
+        if row.get(date_column) != replacement:
+            row[date_column] = replacement
+            changed = True
+        active_index += 1
+    for replacement in generated_dates[active_index:]:
+        rows.append({date_column: replacement})
+        changed = True
+
+    if not changed:
+        return BehaviorResult()
     return BehaviorResult(
         values=(FieldValueUpdate(field=context.target_field, value=rows),)
     )

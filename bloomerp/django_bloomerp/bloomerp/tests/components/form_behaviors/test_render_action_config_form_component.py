@@ -1,7 +1,9 @@
 """Exercise action configuration fragments through the component scenario framework."""
 
 from typing import Any
+
 from django.contrib.contenttypes.models import ContentType
+
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.users.user_object_layout_preference import (
@@ -73,7 +75,8 @@ class TestRenderActionConfigFormComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(
                     response_validators=[
                         self.contains_text('name="behavior-one-action-one-value"'),
-                        self.contains_text('data-config-kind="json"'),
+                        self.contains_text('data-config-kind="value"'),
+                        self.contains_text('type="text"'),
                         self.contains_text("Restored text"),
                         self.does_not_contain_text("<form"),
                     ]
