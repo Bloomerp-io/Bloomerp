@@ -229,6 +229,17 @@ class TestExecuteComponent(BloomerpComponentTestCase):
 
         return [
             RequestScenario(
+                name="A UUID-backed create form does not evaluate an unsaved object",
+                view_name="todos_add",
+                user=self.admin_user,
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.contains_text('data-behavior-url="'),
+                        self.does_not_contain_text('data-behavior-object-id="'),
+                    ]
+                ),
+            ),
+            RequestScenario(
                 name="A Form-owned layout uses the same execution and response contract as a preference",
                 method="POST",
                 user=self.admin_user,

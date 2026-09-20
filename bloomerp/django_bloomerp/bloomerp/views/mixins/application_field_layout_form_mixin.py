@@ -107,7 +107,11 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
             )
             attrs["data-behavior-owner-id"] = owner.pk
             instance = self.get_form_instance()
-            if instance is not None and instance.pk is not None:
+            if (
+                instance is not None
+                and not instance._state.adding
+                and instance.pk is not None
+            ):
                 attrs["data-behavior-object-id"] = instance.pk
         return attrs
 
