@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 from django.utils.html import format_html
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django import forms
 from django.db import models
 from django.urls import reverse
 
@@ -14,6 +15,8 @@ from bloomerp.forms.model_form import (
 )
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models import LayoutItem
+from bloomerp.models.forms.form import Form
+from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.views.mixins.layout_form_mixin import LayoutFormMixin
@@ -92,15 +95,32 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
         return self.layout_binding.change_context
 
     def get_layout_container_extra_attrs(self) -> dict[str, object]:
-        return {
+        """Expose the saved behavior owner independently of layout editing controls."""
+        attrs: dict[str, object] = {
             "data-target-content-type-id": self.layout_content_type.pk,
         }
+        owner = self.get_layout_object()
+        if isinstance(owner, (Form, UserObjectLayoutPreference)):
+            attrs["data-behavior-url"] = reverse("components_form_behavior_execute")
+            attrs["data-behavior-owner-key"] = (
+                "form_id" if isinstance(owner, Form) else "preference_id"
+            )
+            attrs["data-behavior-owner-id"] = owner.pk
+            instance = self.get_form_instance()
+            if instance is not None and instance.pk is not None:
+                attrs["data-behavior-object-id"] = instance.pk
+        return attrs
 
     def render_extra_attrs(self, item: LayoutItem) -> dict[str, object]:
         """Expose stable field metadata to layout-aware frontend components."""
         application_field = self.get_application_field(item)
+        form_field = self.get_form().fields.get(application_field.field)
+        is_json = isinstance(form_field, forms.JSONField) or (
+            application_field.get_field_type().id == "OneToManyField"
+        )
         return {
             **super().render_extra_attrs(item),
+            "data-behavior-value-kind": "json" if is_json else "value",
             "data-application-field-id": application_field.pk,
             "data-field-name": application_field.field,
         }
