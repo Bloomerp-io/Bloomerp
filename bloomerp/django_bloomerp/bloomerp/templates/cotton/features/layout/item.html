@@ -76,6 +76,9 @@
 
     <div class="layout-item__body min-w-0" data-layout-item-body>
         {{ item.content | safe }}
+        {% if item.help_text %}
+            <c-ui.text.help_text>{{ item.help_text|safe }}</c-ui.text.help_text>
+        {% endif %}
     </div>
 
     <button

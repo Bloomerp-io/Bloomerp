@@ -56,8 +56,10 @@ class LayoutFormMixin(LayoutMixin, FormMixin):
                 form_field.widget = self.get_layout_widget(item, form_field)
         return form
 
-    def render_field(self, item: LayoutItem):
+    def render_field(self, item: LayoutItem) -> str:
+        """Render a bound field and expose its help text on the layout item."""
         bound_field = self.get_form()[self.resolve_form_key(item)]
+        item.help_text = str(bound_field.help_text) if bound_field.help_text else None
         
         attrs = get_layout_widget_attrs(widget=bound_field.field.widget)
         if bound_field.field.disabled:

@@ -28,6 +28,7 @@ class LayoutItem(BaseModel):
 
     icon: str | None = None
     label: Optional[str] = None
+    help_text: str | None = None
     is_visible: bool = True
     content: Optional[str] = None
     component_name: Optional[str] = None

@@ -41,9 +41,16 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         }
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Return create-view scenarios, including form help-text rendering."""
         customer = self.CustomerModel
         planet = self.PlanetModel
         return [
+            ModelRequestScenario(
+                name="Create form shows field help text",
+                description="UC: A field has help text.\nExpected Result: The create form displays it below the field.",
+                model=Todo, user=self.admin_user,
+                expected=ExpectedResult(response_validators=self.contains_text("The priority of the todo")),
+            ),
             ModelRequestScenario(
                 name="Query parameters prefill create fields",
                 description="UC: A user follows a create URL containing field values.\nExpected Result: Matching form inputs are prefilled.",
