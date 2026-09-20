@@ -138,7 +138,9 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
             if not field_name.startswith(prefix):
                 continue
             nested_parts = field_name[len(prefix):].split("__", 1)
-            return len(nested_parts) == 2 and nested_parts[1] in column_names
+            return len(nested_parts) == 2 and (
+                nested_parts[1] == "id" or nested_parts[1] in column_names
+            )
 
         return False
 
@@ -342,7 +344,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
                     None,
                     "You do not have permission to create an object with these values.",
                 )
-        
+
         # Check object level access
         elif not manager.has_access_to_object(instance, change_permission):
             form.add_error(None, "You do not have permission to edit this object.")
@@ -371,7 +373,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
                             None,
                             f"You do not have permission to {BloomerpPermission.DELETE.value.name.lower()} '{instance.object}'.",
                         )
-        
+
         return not form.errors
 
     def form_valid(self, form: BloomerpModelForm):
