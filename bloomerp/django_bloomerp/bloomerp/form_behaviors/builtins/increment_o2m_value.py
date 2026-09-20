@@ -29,7 +29,18 @@ def increment_o2m_value_config_form_factory(
             "field": forms.ModelChoiceField(
                 queryset=ApplicationField.get_for_model(
                     listener.get_related_model()
-                ).filter(field_type=FIELD_TYPE_REGISTRY.INTEGER_FIELD.id)
+                ).filter(field_type__in=[
+                    FIELD_TYPE_REGISTRY.INTEGER_FIELD.id,
+                    FIELD_TYPE_REGISTRY.SMALL_INTEGER_FIELD.id,
+                    FIELD_TYPE_REGISTRY.POSITIVE_INTEGER_FIELD.id,
+                    FIELD_TYPE_REGISTRY.AUTO_FIELD.id,
+                    FIELD_TYPE_REGISTRY.BIG_AUTO_FIELD.id,
+                    FIELD_TYPE_REGISTRY.SMALL_AUTO_FIELD.id,
+                    FIELD_TYPE_REGISTRY.POSITIVE_SMALL_INTEGER_FIELD.id,
+                    FIELD_TYPE_REGISTRY.BIG_INTEGER_FIELD.id,
+                    
+                ]
+                )
             )
         },
     )
