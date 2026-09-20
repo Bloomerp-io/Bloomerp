@@ -1,6 +1,7 @@
 """Copy row values or a related record's field into a collection column."""
 
 from copy import deepcopy
+from email.policy import default
 from typing import Any
 
 from django import forms
@@ -70,7 +71,13 @@ def config_form_factory(
             queryset=ApplicationField.objects.none(), required=False,
             help_text="Optional field on the selected related record, for example sales_price.",
         )
-
+        write_policy = forms.ChoiceField(
+            choices=[
+                ("always", "Always"),
+                ("if_empty_or_zero", "If empty or zero"),
+            ],
+            initial="always"
+        )
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             """Rebuild dependent choices from partial configuration before validation."""
             super().__init__(*args, **kwargs)
@@ -121,6 +128,7 @@ def set_o2m_value(context: BehaviorContext, config: CleanedConfigData) -> Behavi
     source: ApplicationField = config["from_column"]
     destination: ApplicationField = config["to_column"]
     accessor: ApplicationField | None = config.get("accessor")
+    write_policy = config.get("write_policy")
     rows = collection_rows(context.target_value)
     
     active = [row for row in rows if row.get("DELETE") not in (True, "true", "True", "1", "on", "yes")]
@@ -142,7 +150,12 @@ def set_o2m_value(context: BehaviorContext, config: CleanedConfigData) -> Behavi
             if str(value) not in related_values:
                 raise forms.ValidationError("A related source value is unavailable.")
             value = related_values[str(value)]
-        if row.get(destination.field) != value:
+        
+        should_write = True
+        if write_policy == "if_empty_or_zero" and row[destination.field] not in [None, "", 0]:
+            should_write = False
+        
+        if row.get(destination.field) != value and should_write:
             row[destination.field] = deepcopy(value)
             changed = True
     return BehaviorResult(values=(FieldValueUpdate(field=context.target_field, value=rows),)) if changed else BehaviorResult()
