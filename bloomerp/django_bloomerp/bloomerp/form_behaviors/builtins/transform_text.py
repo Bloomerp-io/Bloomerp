@@ -9,12 +9,14 @@ from django import forms
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import QuerySet
+from django.http import HttpRequest
 from django.utils.text import slugify
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldValueUpdate,
 )
@@ -112,6 +114,7 @@ def _transform(value: str, transformation: Transformation) -> str:
 def transform_text(
     context: BehaviorContext,
     config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Transform the listener string and suggest it for the declared target field."""
     value = context.listener_value
@@ -126,12 +129,21 @@ def transform_text(
     )
 
 
+def transform_text_config_form_factory(
+    target: ApplicationField | None,
+    listener: ApplicationField | None,
+    request: HttpRequest | None = None,
+) -> type[forms.Form]:
+    """Return the deterministic text-transformation configuration form."""
+    return TransformTextForm
+
+
 TRANSFORM_TEXT = BehaviorActionDefinition(
     id="transform_text",
     label="Transform text",
     description="Apply a deterministic text normalization to the listener value.",
     requires_target_field=True,
-    config_form_factory=lambda target, listener: TransformTextForm,
+    config_form_factory=transform_text_config_form_factory,
     get_listener_fields=text_fields,
     get_target_fields=text_targets,
     execute=transform_text,

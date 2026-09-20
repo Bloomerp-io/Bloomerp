@@ -1,15 +1,19 @@
 """Return a validated message without requiring a target field."""
 
-from typing import cast, Literal
+from typing import Literal, cast
+
 from django import forms
-from bloomerp.models.application_field import ApplicationField
+from django.http import HttpRequest
+
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorMessage,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
 )
+from bloomerp.models.application_field import ApplicationField
 
 
 class MessageConfigForm(forms.Form):
@@ -35,13 +39,19 @@ class MessageConfigForm(forms.Form):
 
 
 def message_config_form(
-    target: ApplicationField | None, listener: ApplicationField | None
+    target: ApplicationField | None,
+    listener: ApplicationField | None,
+    request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Return the message editor independently of the selected layout fields."""
     return MessageConfigForm
 
 
-def show_message(context: BehaviorContext, config: CleanedConfigData) -> BehaviorResult:
+def show_message(
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
+) -> BehaviorResult:
     """Return one message in the common action-result collection contract."""
     return BehaviorResult(
         messages=(

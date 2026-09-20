@@ -1,6 +1,7 @@
 from typing import Any
 
 from django import forms
+from django.http import HttpRequest
 from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.form_behaviors.definition import BehaviorConfig
@@ -11,6 +12,7 @@ class BehaviorField(forms.JSONField):
     """Stores UI-authored behaviors without executing them."""
 
     widget = BehaviorBuilderWidget
+    request: HttpRequest | None = None
 
     def clean(self, value: Any) -> dict[str, Any] | None:
         """Validate the new declaration schema and each registered action configuration."""
@@ -30,10 +32,10 @@ class BehaviorField(forms.JSONField):
         if not config.behaviors:
             return None
 
+        from bloomerp.filters.compiler import resolve_condition
         from bloomerp.form_behaviors.registry import ACTION_REGISTRY
         from bloomerp.form_behaviors.utils import clean_action_config
         from bloomerp.models.application_field import ApplicationField
-        from bloomerp.filters.compiler import resolve_condition
 
         listener = ApplicationField.objects.filter(pk=self.widget.source_field.get("id")).first()
         if listener is None:
@@ -59,5 +61,11 @@ class BehaviorField(forms.JSONField):
                     target = action.get_target_fields(available, listener).filter(field=configured.target_field).first()
                     if target is None:
                         raise forms.ValidationError("Select an eligible target field.")
-                clean_action_config(action, listener, target, configured.config)
+                clean_action_config(
+                    action,
+                    listener,
+                    target,
+                    configured.config,
+                    request=self.request,
+                )
         return config.to_storage()

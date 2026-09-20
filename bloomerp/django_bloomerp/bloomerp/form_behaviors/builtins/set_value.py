@@ -2,11 +2,13 @@ from copy import deepcopy
 from typing import Any
 
 from django import forms
+from django.http import HttpRequest
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldValueUpdate,
 )
@@ -53,6 +55,7 @@ def _clean_set_value_form(form: forms.Form) -> dict[str, Any]:
 def set_value(
     context: BehaviorContext,
     config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Replace the target draft value with a detached configured value."""
     return BehaviorResult(
@@ -65,15 +68,24 @@ def set_value(
     )
 
 
+def set_value_config_form_factory(
+    target: ApplicationField | None,
+    listener: ApplicationField | None,
+    request: HttpRequest | None = None,
+) -> type[forms.Form]:
+    """Build a configuration form using the selected target's value field."""
+    return type(
+        "SetValueForm",
+        (forms.Form,),
+        {"value": _set_value_form_field(target), "clean": _clean_set_value_form},
+    )
+
+
 SET_VALUE = BehaviorActionDefinition(
     id="set_value",
     label="Set value",
     description="Replace the target field value, including with an empty value.",
     requires_target_field=True,
     execute=set_value,
-    config_form_factory=lambda target, listener: type(
-        "SetValueForm",
-        (forms.Form,),
-        {"value": _set_value_form_field(target), "clean": _clean_set_value_form},
-    ),
+    config_form_factory=set_value_config_form_factory,
 )

@@ -6,12 +6,14 @@ from typing import Any
 from django import forms
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Model, QuerySet
+from django.http import HttpRequest
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldValueUpdate,
 )
@@ -58,6 +60,7 @@ def compatible_columns(
 
 def config_form_factory(
     target: ApplicationField | None, listener: ApplicationField | None,
+    request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Return a form class whose choices depend on its current initial configuration."""
     if target is None or target.get_related_model() is None:
@@ -126,7 +129,11 @@ def collection_targets(
     return fields.filter(field_type=FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id)
 
 
-def set_o2m_value(context: BehaviorContext, config: CleanedConfigData) -> BehaviorResult:
+def set_o2m_value(
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
+) -> BehaviorResult:
     """Copy each active row's source, optionally resolving related values in one batch."""
     source: ApplicationField = config["from_column"]
     destination: ApplicationField = config["to_column"]

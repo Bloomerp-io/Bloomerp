@@ -4,13 +4,16 @@ from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldStateUpdate,
 )
 
 
 def enable_field(
-    context: BehaviorContext, config: CleanedConfigData,
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Return only the target's enabled state, leaving visibility unchanged."""
     return BehaviorResult(states=(FieldStateUpdate(

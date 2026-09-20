@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from django import forms
+from django.http import HttpRequest
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.set_o2m_value import collection_rows
@@ -10,6 +11,7 @@ from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldValueUpdate,
 )
@@ -28,7 +30,9 @@ aggregatable = [
 
 
 def aggregate_o2m_column(
-    ctx: BehaviorContext, cleaned_dat: CleanedConfigData,
+    ctx: BehaviorContext,
+    cleaned_dat: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Aggregate nonblank values from active rows without mutating the draft."""
     write_policy: str = cleaned_dat["write_policy"]
@@ -59,6 +63,39 @@ def aggregate_o2m_column(
     )
 
 
+def aggregate_o2m_column_config_form_factory(
+    target: ApplicationField | None,
+    listener: ApplicationField | None,
+    request: HttpRequest | None = None,
+) -> type[forms.Form]:
+    """Build the collection-column aggregation configuration form."""
+    if listener is None or listener.get_related_model() is None:
+        raise forms.ValidationError("Select a collection listener first.")
+    return type(
+        "AggregateO2MColumn",
+        (forms.Form,),
+        {
+            "aggregation_type": forms.ChoiceField(
+                choices=[
+                    ("sum", "Sum"),
+                    ("count", "Count"),
+                    ("first", "First"),
+                    ("last", "Last"),
+                ]
+            ),
+            "column": forms.ModelChoiceField(
+                queryset=ApplicationField.get_for_model(
+                    listener.get_related_model()
+                ).filter(field_type__in=aggregatable)
+            ),
+            "write_policy": WritePolicyField(
+                allowed=("always", "if_empty", "if_empty_or_zero"),
+                default="always",
+            ),
+        },
+    )
+
+
 AGGREGATE_O2M_COLUMN = BehaviorActionDefinition(
     id="aggregate_o2m_column",
     label="Aggregate o2m columns",
@@ -73,31 +110,7 @@ AGGREGATE_O2M_COLUMN = BehaviorActionDefinition(
             FIELD_TYPE_REGISTRY.CHAR_FIELD.id,
         ]
     ),
-    config_form_factory=lambda target, listener: type(
-        "AggregateO2MColumn",
-        (forms.Form, ),
-        {
-            "aggregation_type" : forms.ChoiceField(
-                choices=[
-                    ("sum", "Sum"),
-                    ("count", "Count"),
-                    ("first", "First"),
-                    ("last", "Last"),
-                ]
-            ),
-            "column" : forms.ModelChoiceField(
-                queryset=ApplicationField.get_for_model(
-                    listener.related_model.model_class()
-                ).filter(
-                    field_type__in=aggregatable
-                )
-            ),
-            "write_policy": WritePolicyField(
-                allowed=("always", "if_empty", "if_empty_or_zero"),
-                default="always",
-            ),
-        }
-    ),
+    config_form_factory=aggregate_o2m_column_config_form_factory,
     execute=aggregate_o2m_column,
     requires_target_field=True,
 )

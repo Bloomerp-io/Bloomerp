@@ -4,9 +4,13 @@ from copy import deepcopy
 from typing import Any, cast
 from unittest.mock import patch
 
+from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import HttpRequest
+from django.test import RequestFactory
 
+from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.form_behaviors.definition import (
     BehaviorAction,
@@ -14,6 +18,7 @@ from bloomerp.form_behaviors.definition import (
     BehaviorConfig,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldStateUpdate,
     FieldValueUpdate,
@@ -33,12 +38,20 @@ from bloomerp.tests.base.core_test_case import BaseBloomerpTestCaseWithModels
 from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
 
 
-def undeclared_update(context: BehaviorContext, config: CleanedConfigData) -> BehaviorResult:
+def undeclared_update(
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
+) -> BehaviorResult:
     """Simulate an extension attempting to update a field it did not declare."""
     return BehaviorResult(values=(FieldValueUpdate(field="age", value=20),))
 
 
-def listener_update(context: BehaviorContext, config: CleanedConfigData) -> BehaviorResult:
+def listener_update(
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
+) -> BehaviorResult:
     """Simulate a targetless action that safely replaces its triggering value."""
     return BehaviorResult(
         values=(FieldValueUpdate(field=context.listener_field, value="Updated"),)
@@ -46,7 +59,9 @@ def listener_update(context: BehaviorContext, config: CleanedConfigData) -> Beha
 
 
 def disabled_state_update(
-    context: BehaviorContext, config: CleanedConfigData,
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Return an explicitly disabled state for executor contract coverage."""
     return BehaviorResult(states=(FieldStateUpdate(
@@ -55,7 +70,9 @@ def disabled_state_update(
 
 
 def invalid_disabled_state_update(
-    context: BehaviorContext, config: CleanedConfigData,
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Return a non-boolean disabled value from an extension fixture."""
     return BehaviorResult(states=(FieldStateUpdate(
@@ -135,13 +152,13 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
                 self.assertEqual(len(self._evaluate([action], conditions=groups).values), expected)
 
     def test_invalid_input_and_invalid_output_are_rejected(self) -> None:
-        """Field validators reject malformed draft integers and malformed action suggestions."""
+        """Field validators reject malformed required drafts and action suggestions."""
         action = BehaviorAction(action="set_value", target_field="age", config={"value": "not-an-integer"})
         with self.assertRaises(ValidationError):
             self._evaluate([action])
         self.values["age"] = "invalid-draft"
         with self.assertRaises(ValidationError):
-            self._evaluate([BehaviorAction(action="hide_field", target_field="last_name")])
+            self._evaluate([BehaviorAction(action="hide_field", target_field="age")])
 
     def test_incomplete_optional_draft_fields_are_allowed(self) -> None:
         """A blank date does not require the entire model form to be submission-ready."""
@@ -166,6 +183,94 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         self.assertEqual(result.messages[0].message, "Ready")
         with self.assertRaises(ValidationError):
             self._evaluate([BehaviorAction(action="show_message", config={"type": "arbitrary", "message": "Ready"})])
+
+    def test_unrelated_read_only_property_is_not_cleaned(self) -> None:
+        """Rendered properties outside the selected behavior do not block execution."""
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        property_field = ApplicationField.objects.create(
+            content_type=content_type,
+            field="display_total",
+            field_type=FIELD_TYPE_REGISTRY.PROPERTY.id,
+        )
+        owner = self._owner(
+            [
+                FormBehavior(
+                    id="message",
+                    actions=[
+                        BehaviorAction(
+                            action="show_message",
+                            config={"type": "info", "message": "Ready"},
+                        )
+                    ],
+                )
+            ]
+        )
+        layout = owner.layout_obj.model_copy(deep=True)
+        layout.rows[0].items.append(LayoutItem(id=property_field.field))
+        owner.layout = layout.model_dump(mode="json")
+        owner.save(update_fields=["layout"])
+
+        result = BehaviorExecutor(
+            owner, self.admin_user, instance=self.customer
+        ).evaluate(
+            "first_name",
+            {**self.values, property_field.field: "Read-only total"},
+        )
+
+        self.assertEqual(result.messages[0].message, "Ready")
+
+    def test_executor_passes_request_and_user_to_action_callbacks(self) -> None:
+        """Action factories and executors receive their scoped HTTP/auth context."""
+        observed: dict[str, object] = {}
+
+        def config_form_factory(
+            target: ApplicationField | None,
+            listener: ApplicationField | None,
+            request: HttpRequest | None = None,
+        ) -> type[forms.Form]:
+            """Record the request supplied while validating action configuration."""
+            observed["request"] = request
+            return forms.Form
+
+        def execute_with_user(
+            context: BehaviorContext,
+            config: CleanedConfigData,
+            user: BehaviorUser,
+        ) -> BehaviorResult:
+            """Record the user supplied while executing the configured action."""
+            observed["user"] = user
+            return BehaviorResult()
+
+        definition = BehaviorActionDefinition(
+            id="unit-context-aware",
+            label="Context-aware action",
+            description="Fixture",
+            requires_target_field=False,
+            execute=execute_with_user,
+            config_form_factory=config_form_factory,
+        )
+        ACTION_REGISTRY.register(definition.id, definition)
+        self.addCleanup(ACTION_REGISTRY.unregister, definition.id)
+        owner = self._owner(
+            [
+                FormBehavior(
+                    id="context-aware",
+                    actions=[BehaviorAction(action=definition)],
+                )
+            ]
+        )
+        request = RequestFactory().post("/components/form_behavior/execute/")
+        request.user = self.admin_user
+
+        BehaviorExecutor(
+            owner,
+            self.admin_user,
+            instance=self.customer,
+            request=request,
+        ).evaluate("first_name", self.values)
+
+        self.assertIs(observed["request"], request)
+        self.assertIs(observed["user"], self.admin_user)
 
     def test_extensions_cannot_update_an_undeclared_target(self) -> None:
         """Even a trusted registered executor must honor its configured target boundary."""

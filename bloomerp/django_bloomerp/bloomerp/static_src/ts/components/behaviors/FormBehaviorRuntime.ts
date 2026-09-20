@@ -142,16 +142,16 @@ export default class FormBehaviorRuntime {
         this.pending.set(`${evaluation.event}:${evaluation.field}`, evaluation);
     }
 
-    /** Invalidate old snapshots on every user edit, including non-listener fields. */
+    /** Queue evaluation only when the user changed a configured listener field. */
     private onChange = (event: Event): void => {
         const detail = (event as CustomEvent<DetailViewCellChangeDetail>).detail;
         if (!detail || detail.source === "behavior") return;
         const field = this.fields().find((candidate: Field): boolean => candidate.cell === detail.cell);
-        if (!field) return;
+        if (!field || !this.listens(field, "change")) return;
         this.revision += 1;
         for (const evaluation of this.failed.values()) this.enqueue(evaluation);
         this.failed.clear();
-        if (this.listens(field, "change")) this.enqueue({ field: field.name, event: "change" });
+        this.enqueue({ field: field.name, event: "change" });
         void this.flush();
     };
 

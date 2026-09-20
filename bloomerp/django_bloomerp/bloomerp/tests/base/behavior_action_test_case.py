@@ -104,9 +104,21 @@ class BloomerpBehaviorActionTestCase(BaseBloomerpTestCaseWithModels):
                     else self.assertRaisesRegex(expected.exception, expected.message_regex)
                 )
                 with assertion:
-                    self.action.run(context, config, listener=listener, target=target)
+                    self.action.run(
+                        context,
+                        config,
+                        listener=listener,
+                        target=target,
+                        user=self.admin_user,
+                    )
             else:
-                result = self.action.run(context, config, listener=listener, target=target)
+                result = self.action.run(
+                    context,
+                    config,
+                    listener=listener,
+                    target=target,
+                    user=self.admin_user,
+                )
                 self.assertIsInstance(result, BehaviorResult)
                 self.assertEqual(result, scenario.expected_result)
         finally:

@@ -4,6 +4,7 @@ from typing import Any
 
 from django import forms
 from django.db.models import QuerySet
+from django.http import HttpRequest
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.clear_value import public_empty_value
@@ -11,6 +12,7 @@ from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     FieldValueUpdate,
 )
 from bloomerp.form_behaviors.shared.write_policy import WritePolicyField
@@ -21,10 +23,13 @@ from .set_o2m_value import collection_rows
 
 
 def populate_week_dates_config_form_factory(
-    target: ApplicationField,
+    target: ApplicationField | None,
     listener: ApplicationField | None,
+    request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Build source-week and related-date choices for the selected collection."""
+    if target is None:
+        raise forms.ValidationError("Select a collection target first.")
     Model = target.get_model()
 
     fields = {}
@@ -56,7 +61,9 @@ def populate_week_dates_config_form_factory(
 
 
 def populate_week_dates(
-    context: BehaviorContext, config: Mapping[str, Any]
+    context: BehaviorContext,
+    config: Mapping[str, Any],
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Generate dated collection values from the configured source week."""
     if config["source"].field not in context.values:

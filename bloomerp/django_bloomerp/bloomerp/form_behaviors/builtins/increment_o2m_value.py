@@ -2,6 +2,7 @@
 
 from django import forms
 from django.db.models import QuerySet
+from django.http import HttpRequest
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.set_o2m_value import collection_rows
@@ -9,6 +10,7 @@ from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldValueUpdate,
 )
@@ -17,6 +19,7 @@ from bloomerp.models.application_field import ApplicationField
 
 def increment_o2m_value_config_form_factory(
     target: ApplicationField | None, listener: ApplicationField | None,
+    request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Build the integer-column selector for the chosen collection listener."""
     if listener is None or listener.get_related_model() is None:
@@ -47,7 +50,9 @@ def increment_o2m_value_config_form_factory(
 
 
 def increment_o2m_value(
-    context: BehaviorContext, config: CleanedConfigData,
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Fill blank active rows after the highest existing integer without mutating drafts."""
     rows = collection_rows(context.listener_value)

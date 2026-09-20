@@ -7,12 +7,14 @@ from typing import Any
 
 from django import forms
 from django.db.models import QuerySet
+from django.http import HttpRequest
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorFieldReference,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldValueUpdate,
 )
@@ -32,6 +34,7 @@ from bloomerp.models.application_field import ApplicationField
 def calculate_field_config_form_factory(
     target: ApplicationField | None,
     listener: ApplicationField | None,
+    request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Build a restricted formula form against the listener/target model fields."""
     owner_field = listener or target
@@ -98,6 +101,7 @@ def calculate_field_targets(
 def calculate_field(
     context: BehaviorContext,
     config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Evaluate top-level arithmetic and suggest the declared target update."""
     write_policy: str = config["write_policy"]

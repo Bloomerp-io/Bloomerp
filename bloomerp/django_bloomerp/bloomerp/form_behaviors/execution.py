@@ -14,9 +14,9 @@ from dataclasses import replace
 from typing import Any, Literal
 
 from django import forms
-from django.contrib.auth.base_user import AbstractBaseUser
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Model
+from django.http import HttpRequest
 
 from bloomerp.field_types.utils.form_field_factories import build_form_field
 from bloomerp.filters.compiler import resolve_condition
@@ -27,6 +27,7 @@ from bloomerp.form_behaviors.definition import (
     BehaviorFieldReference,
     BehaviorMessage,
     BehaviorResult,
+    BehaviorUser,
     FieldStateUpdate,
     FieldValueUpdate,
 )
@@ -74,18 +75,20 @@ class BehaviorExecutor:
     def __init__(
         self,
         owner: LayoutOwner,
-        user: AbstractBaseUser,
+        user: BehaviorUser,
         *,
         instance: Model | None = None,
         form_submission_access: bool = False,
+        request: HttpRequest | None = None,
     ) -> None:
-        """Bind an authorized owner, model, object, and layout-scoped field access.
+        """Bind request/user context, an owner, and layout-scoped field access.
 
         ``form_submission_access`` mirrors the fields deliberately exposed by a
         Form submission page. It is limited to unsaved create drafts and never
         grants access to user preferences or persisted target objects.
         """
         self.owner, self.user, self.instance = owner, user, instance
+        self.request = request
         self.manager = UserPolicyManager(user)
         self.form_submission_access = form_submission_access
         if form_submission_access:
@@ -301,6 +304,23 @@ class BehaviorExecutor:
             matches.append(evaluator(values[name], expected))
         return all(matches) if group.connector == "AND" else any(matches)
 
+    def _add_draft_value(
+        self,
+        draft: dict[str, Any],
+        values: Mapping[str, Any],
+        field_name: str,
+    ) -> None:
+        """Clean one declared draft dependency exactly once."""
+        if field_name in draft:
+            return
+        if field_name not in self.read_fields or field_name not in values:
+            raise ValidationError(
+                f"Field '{field_name}' is unavailable in this draft."
+            )
+        draft[field_name] = self._clean_value(
+            self.read_fields[field_name], deepcopy(values[field_name])
+        )
+
     def evaluate(
         self,
         listener_field: str,
@@ -319,10 +339,8 @@ class BehaviorExecutor:
         if listener_field not in values:
             raise ValidationError("Listener field value is missing from the draft.")
         listener = self.read_fields[listener_field]
-        draft = {
-            name: self._clean_value(self.read_fields[name], deepcopy(value))
-            for name, value in values.items()
-        }
+        draft: dict[str, Any] = {}
+        self._add_draft_value(draft, values, listener_field)
         config = BehaviorConfig.model_validate(
             self.items[listener_field].config.get("behaviors") or {}
         )
@@ -330,6 +348,11 @@ class BehaviorExecutor:
         for behavior in config.behaviors:
             if not behavior.enabled or event not in behavior.events:
                 continue
+            for group in behavior.conditions:
+                for condition in group.conditions:
+                    self._add_draft_value(
+                        draft, values, condition.field_path
+                    )
             # Evaluate every group, including groups after one that does not match.
             group_matches = [
                 self._matches(group, draft) for group in behavior.conditions
@@ -356,10 +379,7 @@ class BehaviorExecutor:
                 if action.requires_target_field and target is None:
                     raise ValidationError("Action requires a target field.")
                 if target is not None:
-                    if target.field not in draft:
-                        raise ValidationError(
-                            "Target field value is missing from the draft."
-                        )
+                    self._add_draft_value(draft, values, target.field)
                     if (
                         not action.get_target_fields(self.writable, listener)
                         .filter(pk=target.pk)
@@ -369,7 +389,11 @@ class BehaviorExecutor:
                             "Action is not applicable to this target."
                         )
                 cleaned = clean_action_config(
-                    action, listener, target, configured.config
+                    action,
+                    listener,
+                    target,
+                    configured.config,
+                    request=self.request,
                 )
                 for reference in iter_config_field_references(cleaned):
                     field = reference.field
@@ -381,6 +405,7 @@ class BehaviorExecutor:
                         )
                         if field.field not in available_fields:
                             raise PermissionDenied
+                        self._add_draft_value(draft, values, field.field)
                     elif (
                         not self.form_submission_access
                         and not self.manager.has_field_permission(
@@ -396,6 +421,7 @@ class BehaviorExecutor:
                         resolve_related_values=self._resolve_related_values,
                     ),
                     cleaned,
+                    self.user,
                 )
                 if not isinstance(result, BehaviorResult):
                     raise ValidationError("Action must return a BehaviorResult.")

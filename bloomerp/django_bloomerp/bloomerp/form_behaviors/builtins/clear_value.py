@@ -4,11 +4,13 @@ from copy import deepcopy
 from typing import Any
 
 from django import forms
+from django.http import HttpRequest
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
     BehaviorContext,
     BehaviorResult,
+    BehaviorUser,
     CleanedConfigData,
     FieldValueUpdate,
 )
@@ -29,6 +31,7 @@ def public_empty_value(target: ApplicationField) -> Any:
 
 def clear_value_config_form_factory(
     target: ApplicationField | None, listener: ApplicationField | None,
+    request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Build an empty form that derives the selected target's public empty value."""
     if target is None:
@@ -48,7 +51,9 @@ def clear_value_config_form_factory(
 
 
 def clear_value(
-    context: BehaviorContext, config: CleanedConfigData,
+    context: BehaviorContext,
+    config: CleanedConfigData,
+    user: BehaviorUser,
 ) -> BehaviorResult:
     """Replace only the declared target with its validated public empty value."""
     return BehaviorResult(

@@ -2524,9 +2524,6 @@
   .text-dark {
     color: var(--color-dark);
   }
-  .text-emerald-600 {
-    color: var(--color-emerald-600);
-  }
   .text-emerald-700 {
     color: var(--color-emerald-700);
   }

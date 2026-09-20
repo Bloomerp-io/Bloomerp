@@ -66,6 +66,7 @@ def create_form(
     field_type: FieldTypeDefinition,
     application_field: ApplicationField,
     target: LayoutConfigTarget | None = None,
+    request: HttpRequest | None = None,
 ) -> type[DjangoForm]:
     """Build display-option fields with the owning layout context for behavior editors."""
     attrs = {
@@ -81,6 +82,9 @@ def create_form(
                     "layout_object_content_type_id": ContentType.objects.get_for_model(target.layout_object).pk,
                     "layout_object_id": str(target.layout_object.pk),
                 }
+    for form_field in attrs.values():
+        if hasattr(form_field, "request"):
+            form_field.request = request
     return type("FieldDisplayForm", (DjangoForm,), attrs)
 
 
@@ -202,7 +206,9 @@ def field_display_options(request: HttpRequest, application_field_id: int):
     if not field_type.display_options:
         return HttpResponse("This field does not have display options.")
 
-    form_class = create_form(field_type, application_field, target=target)
+    form_class = create_form(
+        field_type, application_field, target=target, request=request
+    )
     current_config = _get_item_config(target.layout_object, application_field)
     hidden_args = {
         "layout_object_content_type_id": ContentType.objects.get_for_model(target.layout_object.__class__).pk,

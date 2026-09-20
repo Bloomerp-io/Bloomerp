@@ -1,13 +1,32 @@
+from typing import cast
+from urllib.parse import urlsplit
+
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.urls import reverse
-from playwright.sync_api import expect
+from playwright.sync_api import Request, expect
 
+from bloomerp.form_behaviors.definition import (
+    BehaviorAction,
+    BehaviorConfig,
+    FormBehavior,
+)
 from bloomerp.lookups import builtins as lookups
-from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
+from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.project_management.todo import Todo
-from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleCondition, RowPolicyRuleContent
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
+from bloomerp.permissions.definition import (
+    BloomerpPermission,
+    RowPolicyRuleCondition,
+    RowPolicyRuleContent,
+)
 from bloomerp.permissions.manager import PolicyManager
+from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.e2e.base import BaseE2ETestCase
 from bloomerp.tests.e2e.generic.test_crud_mixin import TestCrudE2EMixin
 from bloomerp.utils.models import get_detail_view_url
@@ -27,6 +46,91 @@ class TestOverviewViewE2E(TestCrudE2EMixin, BaseE2ETestCase):
     def goto_detail(self, instance: models.Model) -> None:
         self.goto(
             self.get_detail_view_url(instance)
+        )
+
+    def configure_todo_behavior(
+        self,
+        *,
+        events: list[str],
+        include_property: bool = False,
+    ) -> Todo:
+        """Create a Todo and install one title-listener behavior in its layout."""
+        todo = Todo.objects.create(
+            title="Behavior test todo",
+            requested_by=self.admin_user,
+        )
+        content_type = ContentType.objects.get_for_model(Todo)
+        fields = ApplicationField.get_for_model(Todo)
+        listener = fields.get(field="title")
+        items = [
+            LayoutItem(
+                id=listener.pk,
+                config={
+                    "behaviors": BehaviorConfig(
+                        behaviors=[
+                            FormBehavior(
+                                id="title-message",
+                                events=events,
+                                actions=[
+                                    BehaviorAction(
+                                        action="show_message",
+                                        config={
+                                            "type": "info",
+                                            "message": "Title behavior ran.",
+                                        },
+                                    )
+                                ],
+                            )
+                        ]
+                    ).to_storage()
+                },
+            ),
+            LayoutItem(id=fields.get(field="status").pk),
+        ]
+        if include_property:
+            items.append(LayoutItem(id=fields.get(field="is_completed").pk))
+        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserObjectLayoutPreference,
+            scope={"content_type_id": content_type.pk},
+        )
+        self.assertIsInstance(preference, UserObjectLayoutPreference)
+        preference = cast(UserObjectLayoutPreference, preference)
+        preference.layout = FieldLayout(
+            rows=[LayoutRow(columns=len(items), items=items)]
+        ).model_dump(mode="json")
+        preference.save(update_fields=["layout"])
+        return todo
+
+    def capture_behavior_requests(self) -> list[dict[str, object]]:
+        """Collect behavior execution payloads emitted by the current page."""
+        payloads: list[dict[str, object]] = []
+        expected_path = urlsplit(
+            self.url(reverse("components_form_behavior_execute"))
+        ).path
+
+        def capture(request: Request) -> None:
+            """Record one JSON behavior request while ignoring unrelated traffic."""
+            if request.method != "POST" or urlsplit(request.url).path != expected_path:
+                return
+            payload = request.post_data_json
+            if isinstance(payload, dict):
+                payloads.append(payload)
+
+        self.page.on("request", capture)
+        return payloads
+
+    def authenticate_admin_browser(self) -> None:
+        """Authenticate the browser with Django's test session cookie."""
+        self.client.force_login(self.admin_user)
+        session_cookie = self.client.cookies[settings.SESSION_COOKIE_NAME]
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": session_cookie.value,
+                    "url": self.live_server_url,
+                }
+            ]
         )
     
     
@@ -311,7 +415,61 @@ class TestOverviewViewE2E(TestCrudE2EMixin, BaseE2ETestCase):
     # ------------------------------
     # Form behavior
     # ------------------------------
-    
+
+    def test_non_listener_change_does_not_execute_form_behaviors(self) -> None:
+        """Changing a field without behaviors must not execute another listener."""
+        todo = self.configure_todo_behavior(events=["change"])
+        requests = self.capture_behavior_requests()
+        self.authenticate_admin_browser()
+        self.goto_detail(todo)
+
+        self.locate_field("status").select_option("scoped")
+        self.page.wait_for_timeout(300)
+
+        self.assertEqual(requests, [])
+
+    def test_initial_and_change_behavior_emits_one_request_per_event(self) -> None:
+        """A dual-event listener emits one initial request and one changed request."""
+        todo = self.configure_todo_behavior(events=["initial", "change"])
+        requests = self.capture_behavior_requests()
+        self.authenticate_admin_browser()
+        execute_path = reverse("components_form_behavior_execute")
+
+        with self.expect_response_for(execute_path, method="POST"):
+            self.goto_detail(todo)
+        self.page.wait_for_timeout(300)
+        self.assertEqual(
+            [request["event"] for request in requests],
+            ["initial"],
+        )
+
+        with self.expect_response_for(execute_path, method="POST"):
+            self.locate_field("title").fill("Changed once")
+        self.page.wait_for_timeout(300)
+
+        self.assertEqual(
+            [request["event"] for request in requests],
+            ["initial", "change"],
+        )
+
+    def test_unrelated_property_does_not_break_behavior_execution(self) -> None:
+        """A rendered read-only property is ignored when another field listens."""
+        todo = self.configure_todo_behavior(
+            events=["change"],
+            include_property=True,
+        )
+        self.authenticate_admin_browser()
+        self.goto_detail(todo)
+
+        with self.expect_response_for(
+            reverse("components_form_behavior_execute"),
+            method="POST",
+        ) as response_info:
+            self.locate_field("title").fill("Property-safe change")
+
+        response = response_info.value
+        self.assertEqual(response.status, 200)
+        self.assertNotIn("error", response.json())
         
         
         

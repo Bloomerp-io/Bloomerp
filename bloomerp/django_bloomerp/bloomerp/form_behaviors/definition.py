@@ -11,7 +11,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from django import forms
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import AnonymousUser
 from django.db.models import QuerySet
+from django.http import HttpRequest
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -30,6 +33,7 @@ if TYPE_CHECKING:
     ListenerField = ApplicationField | None
 
 CleanedConfigData = Mapping[str, Any]
+BehaviorUser = AbstractBaseUser | AnonymousUser
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -105,7 +109,9 @@ class EmptyConfigForm(forms.Form):
 
 
 def empty_config_form_factory(
-    target: ApplicationField | None, listener: ApplicationField | None
+    target: ApplicationField | None,
+    listener: ApplicationField | None,
+    request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Return a configuration form for actions without additional options."""
     return EmptyConfigForm
@@ -127,13 +133,15 @@ def all_target_fields(
 
 @dataclass(frozen=True, kw_only=True)
 class BehaviorActionDefinition:
+    """Describe one request-aware form behavior action implementation."""
+
     id: str
     label: str
     description: str
     requires_target_field: bool
-    execute: Callable[[BehaviorContext, CleanedConfigData], BehaviorResult]
+    execute: Callable[[BehaviorContext, CleanedConfigData, BehaviorUser], BehaviorResult]
     config_form_factory: Callable[
-        [TargetField, ListenerField], type[forms.Form]
+        [TargetField, ListenerField, HttpRequest | None], type[forms.Form]
     ] = empty_config_form_factory
     get_listener_fields: Callable[
         [QuerySet[ApplicationField]], QuerySet[ApplicationField]
@@ -150,6 +158,8 @@ class BehaviorActionDefinition:
         *,
         target: ApplicationField | None = None,
         listener: ApplicationField | None = None,
+        user: BehaviorUser,
+        request: HttpRequest | None = None,
     ) -> BehaviorResult:
         """Validate configuration with the same form used by the editor.
 
@@ -162,7 +172,11 @@ class BehaviorActionDefinition:
         from bloomerp.form_behaviors.utils import clean_action_config
 
         return self.execute(
-            context, clean_action_config(self, listener, target, config or {})
+            context,
+            clean_action_config(
+                self, listener, target, config or {}, request=request
+            ),
+            user,
         )
 
 

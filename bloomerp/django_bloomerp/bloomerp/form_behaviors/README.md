@@ -50,7 +50,11 @@ No backward compatibility is provided.
 
 `get_listener_fields(fields)` supplies eligible listeners.
 `get_target_fields(fields, listener)` supplies eligible targets.
-`config_form_factory(target, listener)` returns a Django form class.
+`config_form_factory(target, listener, request)` returns a Django form class.
+`request` is the current `HttpRequest` on HTTP editor/execution paths and `None`
+for explicitly headless validation. Execute callbacks receive
+`(context, cleaned_data, user)`, where `user` is the current Django authenticated
+user or `AnonymousUser` for public form execution.
 `requires_target_field` controls whether a target selection is necessary.
 
 The endpoint binds portable ApplicationField names through each configuration

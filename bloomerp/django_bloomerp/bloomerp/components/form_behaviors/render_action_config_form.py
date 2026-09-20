@@ -66,7 +66,9 @@ def render_action_config_form(request: HttpRequest) -> HttpResponse:
         prefix = request.GET.get("prefix", "")
         if not re.fullmatch(r"[a-zA-Z0-9_-]{1,150}", prefix):
             raise ValidationError("A valid editor prefix is required.")
-        form = action_config_form(action, listener, target, config, prefix=prefix)
+        form = action_config_form(
+            action, listener, target, config, prefix=prefix, request=request
+        )
         entries = []
         for name, field in form.fields.items():
             kind = "json" if isinstance(field, forms.JSONField) else "value"
