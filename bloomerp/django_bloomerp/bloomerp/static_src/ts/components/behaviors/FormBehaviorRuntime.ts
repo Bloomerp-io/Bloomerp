@@ -13,6 +13,7 @@ type BehaviorResponse = {
     messages: Array<{ type: "info" | "success" | "warning" | "danger"; message: string }>;
 };
 type Field = { element: HTMLElement; cell: DetailViewCell; name: string };
+type RenderedField = { element: HTMLElement; cell: DetailViewCell; signature: string };
 
 /** Transport saved behavior events and apply backend results to the current form. */
 export default class FormBehaviorRuntime {
@@ -21,6 +22,8 @@ export default class FormBehaviorRuntime {
     private pending = new Map<string, Evaluation>();
     private failed = new Map<string, Evaluation>();
     private initialSignatures = new WeakMap<HTMLElement, string>();
+    private renderedFields = new Map<string, RenderedField>();
+    private active: Evaluation | null = null;
     private visibility = new Map<HTMLElement, { hidden: boolean; aria: string | null }>();
     private controller: AbortController | null = null;
     private running: Promise<void> | null = null;
@@ -47,6 +50,7 @@ export default class FormBehaviorRuntime {
         this.revision += 1;
         this.generation += 1;
         this.controller?.abort();
+        this.active = null;
         this.pending.clear();
         this.failed.clear();
     }
@@ -71,15 +75,39 @@ export default class FormBehaviorRuntime {
         this.form?.removeEventListener("submit", this.onSubmit, true);
     }
 
-    /** Initialize newly rendered or reconfigured listeners after component setup. */
+    /** Reconcile actual field changes without cancelling requests on unrelated swaps. */
     public refresh(): void {
-        this.invalidate();
         queueMicrotask((): void => {
             if (this.destroyed || !this.root.isConnected || !this.root.dataset.behaviorUrl) return;
-            for (const field of this.fields()) {
-                const signature = field.element.dataset.layoutItemConfig ?? "{}";
+            const fields = this.fields();
+            const rendered = new Map<string, RenderedField>();
+            for (const field of fields) {
+                rendered.set(field.name, {
+                    element: field.element,
+                    cell: field.cell,
+                    signature: field.element.dataset.layoutItemConfig ?? "{}",
+                });
+            }
+            const changed = rendered.size !== this.renderedFields.size || fields.some((field: Field): boolean => {
+                const previous = this.renderedFields.get(field.name);
+                const current = rendered.get(field.name)!;
+                return previous?.element !== current.element || previous?.cell !== current.cell
+                    || previous?.signature !== current.signature;
+            });
+            if (!changed) return;
+
+            // Retain unfinished work, but discard the request's obsolete field snapshot.
+            const unfinished = [...this.pending.values(), ...this.failed.values()];
+            if (this.active) unfinished.unshift(this.active);
+            this.invalidate();
+            this.renderedFields = rendered;
+            for (const evaluation of unfinished) {
+                const field = fields.find((candidate: Field): boolean => candidate.name === evaluation.field);
+                if (field && this.listens(field, evaluation.event)) this.enqueue(evaluation);
+            }
+            for (const field of fields) {
+                const signature = rendered.get(field.name)!.signature;
                 if (this.initialSignatures.get(field.element) === signature) continue;
-                this.initialSignatures.set(field.element, signature);
                 if (this.listens(field, "initial")) this.enqueue({ field: field.name, event: "initial" });
             }
             void this.flush();
@@ -165,10 +193,14 @@ export default class FormBehaviorRuntime {
             this.pending.delete(key);
             const revision = this.revision;
             const generation = this.generation;
+            this.active = evaluation;
             this.controller = new AbortController();
             try {
+                const fields = this.fields();
+                const source = fields.find((field: Field): boolean => field.name === evaluation.field);
+                const signature = source?.element.dataset.layoutItemConfig ?? "{}";
                 const values: Record<string, unknown> = {};
-                for (const field of this.fields()) {
+                for (const field of fields) {
                     const value = field.cell.value;
                     values[field.name] = field.element.dataset.behaviorValueKind === "json" && typeof value === "string"
                         ? (value.trim() ? JSON.parse(value) : null) : value;
@@ -201,11 +233,16 @@ export default class FormBehaviorRuntime {
                 }
                 if (result.revision !== revision) throw new Error("Behavior response revision does not match the draft.");
                 this.apply(result, evaluation.event === "change");
+                if (evaluation.event === "initial" && source) {
+                    this.initialSignatures.set(source.element, signature);
+                }
                 this.failed.delete(key);
             } catch (error: unknown) {
                 if (generation !== this.generation || this.destroyed) continue;
                 this.failed.set(key, evaluation);
                 this.message(error instanceof Error ? error.message : "Behavior evaluation failed.", MessageType.ERROR);
+            } finally {
+                if (this.active === evaluation) this.active = null;
             }
         }
         this.controller = null;

@@ -127,12 +127,16 @@ each later action sees earlier value updates. Failure returns no partial batch.
   rows are allowed; supplied columns are validated. Collection rows are capped
   at 1000 and persisted row IDs must belong to the current parent.
 - Create-candidate row policies, nested permissions, dependency cascading, and
-  relation resolvers remain separate work. This preview endpoint does not
+  multi-hop relation traversal remain separate work. This preview endpoint does not
   authorize a later save.
 - ApplicationField configuration choices resolve within the action's queryset;
   other ModelChoiceField types are not supported by the draft binder.
-- O2M updates match all active rows with the selected column value. The action
-  does not fetch prices or infer which unsaved row changed.
+- O2M updates copy `from_column` into `to_column` on all active draft rows.
+  An optional one-hop `accessor` reads a compatible field from the selected
+  related record (for example product.sales_price). The execution service
+  batches record reads and enforces row and field visibility. Deleted rows
+  and blank related sources are skipped. This does not identify the one row
+  that changed; existing destination values on active rows are overwritten.
 - Week population uses an explicit date column and either `if_empty` or explicit
   whole-collection `replace`. Persisted-row deletion and manual-override
   semantics must be settled before enabling replacement in a live editor.
@@ -162,3 +166,23 @@ checks layout ownership/access, model and field permissions, validates values,
 evaluates filter groups, and executes actions in order on a private draft.
 The endpoint only parses the request, resolves authorized owner/object IDs,
 and serializes the result with the request revision.
+
+## Dynamic action configuration
+
+The factory continues to return a Django form **class**. Declare
+`refresh_fields = ("from_column", "to_column")` on that class. The editor sends
+current partial values as `initial` when re-rendering; the form's `__init__`
+owns dependent fields, querysets, choices, and resetting stale initial values.
+No refresh metadata is stored in the saved behavior configuration.
+
+Selects and checkboxes refresh after selection. Text edits refresh after leaving
+the field and only when the value changed. Widget events emitted during typing
+are deferred. Incomplete required values do not block a configuration refresh.
+Other fields are preserved, obsolete requests are cancelled, and saving is blocked
+until the latest fragment has loaded. Forms without `refresh_fields` do not refresh.
+
+The same initialization runs when binding saved configuration for validation.
+Raw submitted values remain separate from `initial`: resetting an editor's
+initial accessor does not silently accept an invalid accessor on save.
+`SET_O2M_VALUE` restricts compatible choices using field type and related-model
+identity, and requires an accessor when a direct copy is incompatible.

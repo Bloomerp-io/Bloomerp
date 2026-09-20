@@ -2,10 +2,11 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
-from bloomerp.models.definition import FieldLayout
+from bloomerp.models.definition import BloomerpModelConfig, FieldLayout, ModelViewSettings, StringSearchSettings
 from bloomerp.models.definition import get_model_config
 from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
 from bloomerp.models.users.base_view_preference import BaseViewPreference
+from bloomerp.modules.users import UsersModule
 
 
 class UserObjectLayoutPreference(ContentLayoutModelMixin, BaseViewPreference):
@@ -15,6 +16,18 @@ class UserObjectLayoutPreference(ContentLayoutModelMixin, BaseViewPreference):
         verbose_name = _("User Object Layout Preference")
         verbose_name_plural = _("User Object Layout Preferences")
 
+    bloomerp_config = BloomerpModelConfig(
+        module=UsersModule,
+        string_search_settings=StringSearchSettings(
+            allow_global_search=False,
+            string_search_fields=[
+                "content_type__model",
+                "user__username",
+                "user__email"
+            ]
+        )
+    )
+    
     @classmethod
     def create_default_for_user(cls, user, **scope) -> "UserObjectLayoutPreference":
         """Materialize configured layouts or create one generated fallback."""

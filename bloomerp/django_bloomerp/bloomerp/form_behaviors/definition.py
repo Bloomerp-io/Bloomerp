@@ -42,6 +42,9 @@ class BehaviorContext:
     values: Mapping[str, Any]
     listener_field: str  # Trigger field; action sources are configured separately.
     target_field: str = ""  # Empty for actions without an explicit target.
+    resolve_related_values: Callable[
+        [ApplicationField, ApplicationField, tuple[Any, ...]], Mapping[str, Any]
+    ] | None = None
 
     @property
     def listener_value(self) -> Any:

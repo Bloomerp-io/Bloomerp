@@ -196,6 +196,29 @@ class BehaviorExecutor:
             rows.append(cleaned)
         return rows
 
+    def _resolve_related_values(
+        self, source: ApplicationField, accessor: ApplicationField,
+        identities: tuple[Any, ...],
+    ) -> Mapping[str, Any]:
+        """Read one related column in bulk, enforcing record and per-record field access."""
+        model = source.get_related_model()
+        if model is None or accessor.get_model() is not model:
+            raise ValidationError("Accessor must belong to the source relation's model.")
+        if not self.manager.has_global_permission(model, "view"):
+            raise PermissionDenied
+        records = list(self.manager.get_accessible_queryset(model, "view").filter(pk__in=identities))
+        if {str(record.pk) for record in records} != {str(identity) for identity in identities}:
+            raise PermissionDenied("A related source record is unavailable.")
+        values: dict[str, Any] = {}
+        model_field = model._meta.get_field(accessor.field)
+        if not model_field.concrete or model_field.many_to_many:
+            raise ValidationError("Accessor must expose a single stored value.")
+        for record in records:
+            if not self.manager.get_accessible_fields_for_object(record, "view").filter(pk=accessor.pk).exists():
+                raise PermissionDenied("The related source field is unavailable.")
+            values[str(record.pk)] = getattr(record, model_field.attname)
+        return values
+
     def _matches(self, group: Filter, values: Mapping[str, Any]) -> bool:
         """Evaluate all group predicates with their registered Python lookup implementations."""
         matches = []
@@ -297,6 +320,7 @@ class BehaviorExecutor:
                         values=deepcopy(draft),
                         listener_field=listener.field,
                         target_field=target.field if target else "",
+                        resolve_related_values=self._resolve_related_values,
                     ),
                     cleaned,
                 )

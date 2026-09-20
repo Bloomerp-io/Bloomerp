@@ -5,6 +5,7 @@ import { ConditionEditor } from './ConditionEditor';
 import { SavedFilters } from './SavedFilters';
 import { parseInitialFilters, type Filter, type FilterCondition } from './definition';
 import { button, element } from './dom';
+import { addTooltip } from '@/utils/tooltip';
 import './editor.css';
 
 type GroupEditor = { root: HTMLDivElement; content: HTMLElement; toggle: HTMLButtonElement; connector: HTMLSelectElement; rows: ConditionEditor[] };
@@ -139,6 +140,7 @@ export default class FilterContainer extends BaseComponent {
         const control = button('', action, 'inline-flex h-8 w-8 shrink-0 items-center justify-center border-0 border-l border-gray-200 bg-transparent text-xs hover:bg-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2');
         control.setAttribute('aria-label', label);
         control.title = label;
+        addTooltip(control, { text: label, position: 'bottom' });
         const glyph = element('i', `fa-solid ${icon}`);
         glyph.setAttribute('aria-hidden', 'true');
         control.append(glyph);
@@ -152,6 +154,7 @@ export default class FilterContainer extends BaseComponent {
         const label = expanded ? t('Collapse group') : t('Expand group');
         group.toggle.setAttribute('aria-label', label);
         group.toggle.title = label;
+        addTooltip(group.toggle, { text: label, position: 'bottom' });
         group.toggle.querySelector('i')!.className = `fa-solid ${expanded ? 'fa-chevron-up' : 'fa-chevron-down'}`;
     }
 

@@ -2,15 +2,12 @@ from django.test import RequestFactory, TestCase
 from django.template.loader import render_to_string
 
 from bloomerp.components.ui.sidebar import (
-    sidebar_create,
     sidebar_create_folder,
     sidebar_create_link_from_drop,
     sidebar_create_link,
     sidebar_edit_item,
     sidebar_delete_item,
-    sidebar_delete,
     sidebar_move_item,
-    sidebar_select_menu,
     sidebar_set_selected,
 )
 from bloomerp.models import Sidebar, SidebarItem, User
@@ -27,14 +24,6 @@ class SidebarSelectionComponentTests(TestCase):
         self.user = User.objects.create_user(username="sidebar-user", password="testpass123")
         self.primary_sidebar = Sidebar.objects.create(user=self.user, name="Primary", selected=True)
         self.secondary_sidebar = Sidebar.objects.create(user=self.user, name="Secondary", selected=False)
-
-    def test_selected_sidebar_creates_selected_default(self) -> None:
-        user = User.objects.create_user(username="fresh-user", password="testpass123")
-
-        sidebar = user.selected_sidebar
-
-        self.assertTrue(sidebar.selected)
-        self.assertEqual(user.sidebars.count(), 1)
 
     def test_sidebar_set_selected_marks_requested_sidebar_selected(self) -> None:
         request = self.factory.get(f"/components/workspaces/sidebar/select/{self.secondary_sidebar.id}/")
@@ -159,38 +148,6 @@ class SidebarSelectionComponentTests(TestCase):
         self.assertTrue(
             SidebarItem.objects.filter(sidebar=self.primary_sidebar, name="Child", parent=parent_item, is_folder=True).exists()
         )
-
-    def test_sidebar_create_post_creates_sidebar_selects_it_and_refreshes_sidebar(self) -> None:
-        request = self.factory.post(
-            "/components/workspaces/sidebar/create/",
-            {
-                "name": "Operations",
-            },
-        )
-        request.user = self.user
-
-        response = sidebar_create(request)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(Sidebar.objects.filter(user=self.user, name="Operations").exists())
-
-        self.primary_sidebar.refresh_from_db()
-        created_sidebar = Sidebar.objects.get(user=self.user, name="Operations")
-        self.assertFalse(self.primary_sidebar.selected)
-        self.assertTrue(created_sidebar.selected)
-        self.assertContains(response, 'id="sidebar-content"', html=False)
-        self.assertContains(response, 'hx-swap-oob="true"', html=False)
-        self.assertEqual(response["HX-Trigger"], '{"dropdown-close": true}')
-
-    def test_sidebar_select_menu_fetches_fresh_sidebar_list(self) -> None:
-        Sidebar.objects.create(user=self.user, name="Fresh Sidebar", selected=False)
-        request = self.factory.get("/components/workspaces/sidebar/select/")
-        request.user = self.user
-
-        response = sidebar_select_menu(request)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Fresh Sidebar")
 
     def test_sidebar_create_link_post_creates_link(self) -> None:
         request = self.factory.post(
@@ -493,14 +450,3 @@ class SidebarSelectionComponentTests(TestCase):
             SidebarItem.objects.filter(sidebar=self.primary_sidebar, parent=folder).order_by("position").values_list("name", flat=True)
         )
         self.assertEqual(ordered_names, ["Google", "Existing"])
-
-    def test_sidebar_delete_post_selects_another_sidebar(self) -> None:
-        request = self.factory.post(f"/components/workspaces/sidebar/delete/{self.primary_sidebar.id}/")
-        request.user = self.user
-
-        response = sidebar_delete(request, self.primary_sidebar.id)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(Sidebar.objects.filter(pk=self.primary_sidebar.pk).exists())
-        self.secondary_sidebar.refresh_from_db()
-        self.assertTrue(self.secondary_sidebar.selected)

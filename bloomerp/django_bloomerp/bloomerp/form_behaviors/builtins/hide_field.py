@@ -5,16 +5,14 @@ from bloomerp.form_behaviors.definition import (
 )
 
 
-def hide_field(context, config):
-    return BehaviorResult(
-        states=(FieldStateUpdate(field=context.target_field, visible=False),)
-    )
-
-
 HIDE_FIELD = BehaviorActionDefinition(
     id="hide_field",
     label="Hide field",
     description="Hide the target field without clearing its value.",
     requires_target_field=True,
-    execute=hide_field,
+    execute=lambda ctx, _: BehaviorResult(
+        states=(
+            FieldStateUpdate(field=ctx.target_field, visible=False),
+        )
+    )
 )

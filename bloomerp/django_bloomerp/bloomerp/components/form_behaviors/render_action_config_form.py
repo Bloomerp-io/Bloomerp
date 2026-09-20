@@ -70,7 +70,10 @@ def render_action_config_form(request: HttpRequest) -> HttpResponse:
         entries = []
         for name, field in form.fields.items():
             kind = "json" if isinstance(field, forms.JSONField) else "value"
-            entries.append({"name": name, "kind": kind, "field": form[name]})
+            entries.append({
+                "name": name, "kind": kind, "field": form[name],
+                "refresh": name in getattr(form, "refresh_fields", ()),
+            })
     except (ValueError, ValidationError) as error:
         return JsonResponse({"error": str(error)}, status=400)
     return render(

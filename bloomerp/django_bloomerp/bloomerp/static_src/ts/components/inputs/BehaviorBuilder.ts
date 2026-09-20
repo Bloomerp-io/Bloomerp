@@ -1,4 +1,5 @@
 import BaseComponent from '../BaseComponent';
+import { BaseWidget } from '../widgets/BaseWidget';
 import { t as _ } from '@/utils/i18n';
 import { FilterApi } from '../filters/api';
 import FilterContainer from '../filters/FilterContainer';
@@ -64,6 +65,8 @@ class ActionEditor {
     private ready = false;
     private controller = new AbortController();
     private prefix = `behavior-${crypto.randomUUID()}`;
+    private refreshScheduled = false;
+    private renderedConfig: Record<string, unknown> = {};
 
     /** Render action and target choices without assuming any action-specific fields. */
     constructor(
@@ -85,6 +88,9 @@ class ActionEditor {
             iconButton(_('Remove action'), 'fa-trash', remove, 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm hover:bg-base'),
         );
         this.root.append(this.toolbar, this.body);
+        this.body.addEventListener('change', this.onConfigChange);
+        this.body.addEventListener('focusout', this.onConfigChange);
+        this.body.addEventListener(BaseWidget.changeEventName, this.onConfigChange);
         this.action.addEventListener('change', (): void => this.selectAction(null, {}));
         this.target.addEventListener('change', (): void => { void this.load({}); });
         this.selectAction(initial.target_field, initial.config);
@@ -106,13 +112,15 @@ class ActionEditor {
     /** Fetch one Django fragment, ignoring stale responses after selections change. */
     private async load(config: Record<string, unknown>): Promise<void> {
         const revision = ++this.revision;
+        this.controller.abort();
+        this.controller = new AbortController();
         this.ready = false;
         destroyWidgets(this.body);
         this.body.replaceChildren();
         const definition = this.definitions.find(item => item.id === this.action.value);
-        this.body.classList.remove('text-muted');
+        this.body.classList.remove('text-sm');
         if (!definition || (definition.requires_target_field && !this.target.value)) {
-            this.body.classList.add('text-muted');
+            this.body.classList.add('text-sm');
             this.body.textContent = 'Select an action and its required target to configure it.';
             return;
         }
@@ -135,6 +143,7 @@ class ActionEditor {
             if (revision !== this.revision) return;
             this.body.innerHTML = html;
             initializeWidget(this.body);
+            this.renderedConfig = this.readConfig(false);
             this.ready = true;
         } catch (error) {
             if (revision === this.revision && (error as Error).name !== 'AbortError') {
@@ -144,20 +153,53 @@ class ActionEditor {
         }
     }
 
-    /** Read the public widget values and decode fields declared as JSON by Django. */
-    value(): Action {
-        if (!this.ready) throw new Error('Complete every action and wait for its configuration to load.');
+    /** Refresh declared dependencies after selection or committed text edits, never while typing. */
+    private onConfigChange = (event: Event): void => {
+        const target = event.target;
+        if (!this.ready || !(target instanceof HTMLElement) || this.refreshScheduled) return;
+        const wrapper = target.closest<HTMLElement>('[data-config-key]');
+        if (wrapper?.dataset.configRefresh !== 'true') return;
+        if (event instanceof FocusEvent && event.relatedTarget instanceof Node && wrapper.contains(event.relatedTarget)) return;
+        const focused = document.activeElement;
+        if (event.type !== 'focusout' && focused instanceof HTMLElement && wrapper.contains(focused)
+            && focused.matches('textarea, [contenteditable="true"], input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="button"]):not([type="submit"])')) return;
+        this.refreshScheduled = true;
+        queueMicrotask((): void => {
+            this.refreshScheduled = false;
+            if (!this.ready) return;
+            try {
+                const config = this.readConfig(false);
+                const key = wrapper.dataset.configKey!;
+                if (JSON.stringify(config[key]) !== JSON.stringify(this.renderedConfig[key])) {
+                    void this.load(config);
+                }
+            } catch (error: unknown) {
+                this.body.append(element('p', 'text-danger-dark',
+                    error instanceof Error ? error.message : 'Could not read configuration.'));
+            }
+        });
+    };
+
+    /** Collect partial or validated configuration without knowing action-specific fields. */
+    private readConfig(validate: boolean): Record<string, unknown> {
         const config: Record<string, unknown> = {};
-        this.body.querySelectorAll<HTMLElement>('[data-config-key]').forEach(wrapper => {
-            const value = readWidget(wrapper);
+        this.body.querySelectorAll<HTMLElement>('[data-config-key]').forEach((wrapper: HTMLElement): void => {
+            const value = readWidget(wrapper, validate);
             config[wrapper.dataset.configKey!] = wrapper.dataset.configKind === 'json' && typeof value === 'string'
                 ? (value.trim() ? JSON.parse(value) : null) : value;
         });
-        return { action: this.action.value, target_field: this.target.hidden ? null : this.target.value, config };
+        return config;
+    }
+
+    /** Return the completed action only after its latest configuration has loaded. */
+    value(): Action {
+        if (!this.ready) throw new Error('Complete every action and wait for its configuration to load.');
+        return { action: this.action.value, target_field: this.target.hidden ? null : this.target.value, config: this.readConfig(true) };
     }
 
     /** Cancel requests and dispose embedded widgets before removing this action. */
     destroy(): void {
+        this.ready = false;
         ++this.revision;
         this.controller.abort();
         destroyWidgets(this.body);
@@ -172,7 +214,7 @@ class BehaviorEditor {
     private header = element('div', 'flex items-stretch border-b border-gray-200');
     private content = element('section');
     private divider = element('hr', 'm-0 border-gray-200');
-    private name = element('input', 'h-10 min-w-0 flex-1 rounded-none rounded-tl-xl border-0 bg-transparent px-3 focus:ring-1 focus:ring-inset focus:ring-primary');
+    private name = element('input', 'h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 focus:ring-1 focus:ring-inset focus:ring-primary');
     private enabled = element('input');
     private event = element('select', 'h-10 w-44 shrink-0 rounded-none border-0 border-l border-gray-200 bg-transparent py-0 pl-3 pr-7 focus:ring-1 focus:ring-inset focus:ring-primary');
     private filterEditor: FilterContainer;
