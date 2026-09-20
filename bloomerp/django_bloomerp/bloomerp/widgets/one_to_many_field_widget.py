@@ -1,5 +1,6 @@
 import json
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from django.contrib.contenttypes.models import ContentType
@@ -377,11 +378,19 @@ class OneToManyFieldWidget(widgets.Widget):
         ]
 
     @staticmethod
-    def _submitted_value(source, key):
+    def _submitted_value(source: Mapping[str, Any], key: str) -> object:
+        """Return one nested value while discarding a stale empty-value sentinel."""
         if hasattr(source, "getlist"):
             values = source.getlist(key)
             if len(values) > 1:
-                return values
+                non_empty_values = [
+                    value for value in values if value not in (None, "")
+                ]
+                if len(non_empty_values) == 1:
+                    return non_empty_values[0]
+                if non_empty_values:
+                    return non_empty_values
+                return ""
         return source.get(key)
 
     @staticmethod
