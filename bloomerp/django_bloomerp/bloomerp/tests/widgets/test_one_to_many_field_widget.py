@@ -5,6 +5,7 @@ from bloomerp.models.workspaces.sidebar_item import SidebarItem
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 
+
 class TestCreateView(BaseBloomerpTestCaseWithModels):
     create_foreign_models = True
     
@@ -207,6 +208,20 @@ class TestCreateView(BaseBloomerpTestCaseWithModels):
                 {"id": "10", "status": "active", "DELETE": "1"},
                 {"id": "20", "status": "draft"},
             ],
+        )
+
+    def test_widget_discards_empty_sentinel_beside_foreign_key(self) -> None:
+        """An inline foreign key selection must replace its stale empty sentinel."""
+        widget = OneToManyFieldWidget()
+        data = QueryDict(mutable=True)
+        data.setlist(
+            "contracts__0__account",
+            ["", "9011f77c-d73e-4d65-8457-168c426af65f"],
+        )
+
+        self.assertEqual(
+            widget.value_from_datadict(data, {}, "contracts"),
+            [{"account": "9011f77c-d73e-4d65-8457-168c426af65f"}],
         )
 
     def test_row_preview_action_is_only_available_for_persisted_rows(self):

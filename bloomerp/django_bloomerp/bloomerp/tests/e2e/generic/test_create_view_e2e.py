@@ -59,6 +59,13 @@ class TestCreateViewE2E(CrudViewTestMixin, BloomerpE2ETestCase):
                         validators=self._expect_invalid_form_preserves_o2m_row,
                     ),
                     E2EAction(
+                        name="Replace the related customer type",
+                        execute=self.custom_action(
+                            self._replace_customer_type_after_validation
+                        ),
+                        validators=self._expect_single_customer_type_input,
+                    ),
+                    E2EAction(
                         name="Correct the country name",
                         execute=self.input_field(
                             "name",
@@ -174,12 +181,35 @@ class TestCreateViewE2E(CrudViewTestMixin, BloomerpE2ETestCase):
             "Hopper"
         )
         expect(row.locator('[data-one-to-many-cell="age"] input')).to_have_value("36")
-        expect(
-            row.locator(
-                '[data-one-to-many-cell="customer_type"] '
-                'input[type="hidden"][data-generated="true"]'
-            )
-        ).to_have_value(str(self.CustomerTypeModel.objects.get(name="Retail").pk))
+        customer_type_inputs = row.locator(
+            'input[name="customers__0__customer_type"]'
+        )
+        expect(customer_type_inputs).to_have_count(1)
+        expect(customer_type_inputs).to_have_value(
+            str(self.CustomerTypeModel.objects.get(name="Retail").pk)
+        )
+
+    def _replace_customer_type_after_validation(self) -> None:
+        """Clear and reselect the inline foreign key after the invalid response."""
+        customer_type_widget = self.page.locator(
+            '[data-one-to-many-cell="customer_type"] '
+            '[bloomerp-component="foreign-field-widget"]'
+        ).first
+        customer_type_widget.locator(".foreign-field-selected button").click()
+        customer_type_widget.evaluate(
+            "(element, value) => element.__bloomerp_component.setValue(value, true)",
+            str(self.CustomerTypeModel.objects.get(name="Retail").pk),
+        )
+
+    def _expect_single_customer_type_input(self) -> None:
+        """Assert reselection replaces the empty relation control instead of duplicating it."""
+        customer_type_inputs = self.page.locator(
+            'input[name="customers__0__customer_type"]'
+        )
+        expect(customer_type_inputs).to_have_count(1)
+        expect(customer_type_inputs).to_have_value(
+            str(self.CustomerTypeModel.objects.get(name="Retail").pk)
+        )
 
     def _expect_country_and_customer_created(self) -> None:
         """Assert the corrected parent and its retained child row were persisted."""

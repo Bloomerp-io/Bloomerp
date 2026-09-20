@@ -395,10 +395,12 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
     }
 
-    private selectObject(id: string, label: string, url: string = '', emitChange: boolean = true) {
+    /** Select an object and replace any control representing an explicitly cleared value. */
+    private selectObject(id: string, label: string, url: string = '', emitChange: boolean = true): void {
         if (!this.fieldName || !this.selectedContainer) return;
 
         const previousValue = this.getValue();
+        this.removeEmptyValueInputs();
 
         if (this.isM2M) {
             // prevent duplicates
@@ -518,6 +520,16 @@ export default class ForeignFieldWidget extends BaseWidget {
         emptyValueInput.value = '';
         emptyValueInput.dataset.emptyValue = 'true';
         this.element.appendChild(emptyValueInput);
+    }
+
+    /** Remove empty-value controls before submitting a new relation selection. */
+    private removeEmptyValueInputs(): void {
+        if (!this.fieldName) return;
+        this.element
+            .querySelectorAll(
+                `input[type=hidden][name="${this.fieldName}"][data-empty-value="true"]`,
+            )
+            .forEach((input) => input.remove());
     }
 
     private getSelectionInputs(): HTMLInputElement[] {
@@ -738,6 +750,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         return this.isM2M ? values : (values[0] || '');
     }
 
+    /** Replace the widget selection with the supplied relation identifiers. */
     public setValue(value: unknown, emitChange: boolean = false): void {
         const previousValue = this.getValue();
         const nextValues = Array.isArray(value)
@@ -749,6 +762,10 @@ export default class ForeignFieldWidget extends BaseWidget {
 
         if (!this.fieldName) {
             return;
+        }
+
+        if (nextValues.length) {
+            this.removeEmptyValueInputs();
         }
 
         nextValues.forEach((id) => {
@@ -784,6 +801,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         };
     }
 
+    /** Restore selections from serialized widget state without retaining an empty sentinel. */
     public override setSerializableState(state: BaseWidgetSerializableState, emitChange: boolean = false): void {
         const previousValue = this.getValue();
         const nextState = state as ForeignFieldWidgetSerializableState;
@@ -793,6 +811,10 @@ export default class ForeignFieldWidget extends BaseWidget {
 
         if (!this.fieldName) {
             return;
+        }
+
+        if (nextSelections.length) {
+            this.removeEmptyValueInputs();
         }
 
         nextSelections.forEach((selection) => {
