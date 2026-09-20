@@ -1,6 +1,7 @@
 """Sample catalog; registration/discovery is intentionally not wired yet."""
 
 
+from bloomerp.form_behaviors.builtins.increment_o2m_value import INCREMENT_O2M_VALUE
 from bloomerp.form_behaviors.builtins.show_message import SHOW_MESSAGE
 
 from .copy_value import COPY_VALUE
@@ -17,5 +18,6 @@ BUILTIN_ACTIONS = (
     POPULATE_WEEK_DATES,
     COPY_VALUE,
     SHOW_MESSAGE,
-    SHOW_FIELD
+    SHOW_FIELD,
+    INCREMENT_O2M_VALUE
 )

@@ -331,24 +331,27 @@ class BehaviorExecutor:
                     for items in (result.values, result.states, result.messages)
                 ):
                     raise ValidationError("Action result collections must be tuples.")
+                declared_update_field = target or self.write_fields.get(listener.field)
                 for update in result.values:
                     if (
                         not isinstance(update, FieldValueUpdate)
-                        or target is None
-                        or update.field != target.field
+                        or declared_update_field is None
+                        or update.field != declared_update_field.field
                     ):
                         raise ValidationError(
                             "Action returned an undeclared value target."
                         )
-                    draft[update.field] = self._clean_value(target, update.value)
+                    draft[update.field] = self._clean_value(
+                        declared_update_field, update.value,
+                    )
                     updates.append(
                         replace(update, value=serialize_form_value(draft[update.field]))
                     )
                 for state in result.states:
                     if (
                         not isinstance(state, FieldStateUpdate)
-                        or target is None
-                        or state.field != target.field
+                        or declared_update_field is None
+                        or state.field != declared_update_field.field
                         or not isinstance(state.visible, bool)
                     ):
                         raise ValidationError(

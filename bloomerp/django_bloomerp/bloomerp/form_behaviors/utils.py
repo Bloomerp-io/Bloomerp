@@ -32,9 +32,10 @@ def action_config_form(
 ) -> forms.Form:
     """Create a prefixed editor or validator, resolving portable field-name choices."""
     form_class = build_action_config_form(action, listener, target)
-    form = form_class(prefix=prefix)
     values = dict(config)
-    if set(values) - form.fields.keys():
+    form = form_class(prefix=prefix, initial=values.copy())
+    known_fields = set(form.fields) if bound else set(form.fields) | set(form_class.base_fields)
+    if set(values) - known_fields:
         raise ValidationError("Unknown action configuration fields.")
     for name, field in form.fields.items():
         if (
@@ -47,8 +48,6 @@ def action_config_form(
     if bound:
         form.data = {form.add_prefix(name): value for name, value in values.items()}
         form.is_bound = True
-    else:
-        form.initial.update(values)
     return form
 
 

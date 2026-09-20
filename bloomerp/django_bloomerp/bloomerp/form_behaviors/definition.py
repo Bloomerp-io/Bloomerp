@@ -121,7 +121,7 @@ class BehaviorActionDefinition:
     requires_target_field: bool
     execute: Callable[[BehaviorContext, CleanedConfigData], BehaviorResult]
     config_form_factory: Callable[
-        [ApplicationField | None, ApplicationField | None], type[forms.Form]
+        [TargetField, ListenerField], type[forms.Form]
     ] = empty_config_form_factory
     get_listener_fields: Callable[
         [QuerySet[ApplicationField]], QuerySet[ApplicationField]
