@@ -22,6 +22,7 @@ from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
+from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -201,6 +202,14 @@ class TestExecuteComponent(BloomerpComponentTestCase):
         other_owner = self._preference(
             "Another user's layout", [], owned_by_admin=False
         )
+        shared_owner = self._preference(
+            "Shared behavior layout",
+            [FormBehavior(id="shared-suggestion", actions=[self._set_last_name()])],
+        )
+        shared_owner.shared_with_users.add(self.normal_user)
+        PreferenceManager(self.normal_user).select(shared_owner)
+        shared_payload = self._payload(shared_owner)
+        shared_payload.pop("object_id")
         normal_owner = self._preference(
             "No model permissions", [], owned_by_admin=False
         )
@@ -417,6 +426,21 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                             {"error": "Invalid behavior execution request."}
                         ),
                     ],
+                ),
+            ),
+            RequestScenario(
+                name="A selected shared preference can execute its owner's live behaviors",
+                method="POST",
+                user=self.normal_user,
+                content_type="application/json",
+                data=shared_payload,
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.json_key_equals(
+                            "values",
+                            [{"field": "last_name", "value": "Suggested surname"}],
+                        ),
+                    ]
                 ),
             ),
             RequestScenario(

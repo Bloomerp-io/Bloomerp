@@ -6,6 +6,7 @@ from dataclasses import asdict
 from typing import Literal
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
@@ -14,9 +15,9 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
-    ValidationError as SchemaError,
     model_validator,
 )
+from pydantic import ValidationError as SchemaError
 
 from bloomerp.form_behaviors.execution import BehaviorExecutor
 from bloomerp.models.forms.form import Form
@@ -25,6 +26,7 @@ from bloomerp.models.users.user_object_layout_preference import (
 )
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
+from bloomerp.services.preference_services import PreferenceManager
 
 
 class ExecuteRequest(BaseModel):
@@ -67,10 +69,14 @@ def execute(request: HttpRequest) -> JsonResponse:
             if not request.user.is_authenticated:
                 raise PermissionDenied
             owner = get_object_or_404(
-                UserObjectLayoutPreference.objects.select_related("content_type"),
-                pk=payload.preference_id,
-                user=request.user,
-            )
+                PreferenceManager(request.user)
+                .get_available(UserObjectLayoutPreference)
+                .filter(
+                    Q(pk=payload.preference_id)
+                    | Q(source_object_id=payload.preference_id)
+                )
+                .select_related("content_type", "source_object__content_type")
+            ).effective_preference
         else:
             if payload.object_id is None:
                 # Create drafts inherit the Form submission page's authentication
