@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 
 UID_PATTERN = re.compile(rb"\bUID\s+(\d+)\b")
 FLAGS_PATTERN = re.compile(rb"\bFLAGS\s+\(([^)]*)\)")
+SMTP_TIMEOUT_SECONDS = 10
+
 
 class ImapSmtpAdapter(BaseEmailAdapter):
     def __init__(self, email_account: "EmailAccount"):
@@ -175,6 +177,11 @@ class ImapSmtpAdapter(BaseEmailAdapter):
             raise ValidationError(
                 f"Unable to resolve SMTP host '{self.email_account.smtp_host}'. "
                 "Use a hostname like 'smtp.example.com' without a URL scheme."
+            ) from exc
+        except TimeoutError as exc:
+            raise ValidationError(
+                f"SMTP server '{self.email_account.smtp_host}' timed out. "
+                "Check its host, port, and security settings."
             ) from exc
         except OSError as exc:
             raise ValidationError(
@@ -546,23 +553,30 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         return f'"{escaped}"'
 
     def _connect_smtp(self) -> smtplib.SMTP:
+        """Open an SMTP connection with a bounded wait for each network operation."""
         if self.email_account.smtp_security == "ssl_tls":
             smtp: smtplib.SMTP = smtplib.SMTP_SSL(
                 self.email_account.smtp_host,
                 self.email_account.smtp_port,
+                timeout=SMTP_TIMEOUT_SECONDS,
             )
         else:
             smtp = smtplib.SMTP(
                 self.email_account.smtp_host,
                 self.email_account.smtp_port,
+                timeout=SMTP_TIMEOUT_SECONDS,
             )
+        try:
             if self.email_account.smtp_security == "starttls":
                 smtp.starttls()
 
-        password = self.email_account.get_password_secret()
-        username = self.email_account.username or self.email_account.email_address
-        if username and password:
-            smtp.login(username, password)
+            password = self.email_account.get_password_secret()
+            username = self.email_account.username or self.email_account.email_address
+            if username and password:
+                smtp.login(username, password)
+        except Exception:
+            smtp.close()
+            raise
         return smtp
 
     def _html_to_plain_text(self, html: str) -> str:
