@@ -117,9 +117,11 @@ class AddressFormField(forms.MultiValueField):
 
         Django's ``MultiValueField`` expects a positional list from its widget,
         while programmatic callers use the structured mapping returned by this
-        field. Convert only that public mapping into the widget's component
-        order, then retain Django's usual child-field validation and compression.
+        field. Convert that mapping or its JSON transport form into the widget's
+        component order, then retain child-field validation and compression.
         """
+        if isinstance(value, str) and value.strip():
+            value = normalize_address_value(value)
         if isinstance(value, dict):
             value = [
                 value.get(key, "")

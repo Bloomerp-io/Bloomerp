@@ -261,6 +261,7 @@ export default class FormBehaviorRuntime {
             const field = fields.get(update.field);
             if (!field) throw new Error(`Behavior target '${update.field}' is not rendered.`);
             const value: DetailViewCellValue = field.element.dataset.behaviorValueKind === "json"
+                || (update.value !== null && typeof update.value === "object" && !Array.isArray(update.value))
                 ? JSON.stringify(update.value)
                 : Array.isArray(update.value) ? update.value.map(String) : String(update.value ?? "");
             field.cell.setValue(value, trackChanges, "behavior");

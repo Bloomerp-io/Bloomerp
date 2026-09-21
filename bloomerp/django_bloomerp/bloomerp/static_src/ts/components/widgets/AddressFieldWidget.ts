@@ -102,7 +102,15 @@ export default class AddressFieldWidget extends BaseWidget {
         return this.fields.get(key)?.value?.trim() ?? "";
     }
 
+    /** Decode structured values supplied by form behavior transport. */
     private normalizeValue(value: unknown): AddressValue {
+        if (typeof value === "string") {
+            try {
+                value = JSON.parse(value);
+            } catch {
+                return null;
+            }
+        }
         if (!value || typeof value !== "object") {
             return null;
         }
