@@ -48,7 +48,7 @@ def copy_related_values(
     ):
         return permission_denied_result(f"You don't have permission to view {related_field.title}")
 
-    if context.target_value is not None and config.get("write_policy") != "always":
+    if context.target_value not in [None, ""] and config.get("write_policy") != "always":
         return BehaviorResult()
     
     return BehaviorResult(

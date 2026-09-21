@@ -1,3 +1,4 @@
+from operator import contains
 from typing import Optional, Type
 
 from django.apps import apps
@@ -539,9 +540,20 @@ class UserPolicyManager:
         ).filter(pk=obj.pk).exists()
 
         if fields:
-
             accessible_fields = self.get_accessible_fields_for_object(obj, permissions, match)
+            _, content_type = resolve_model_and_content_type(type(obj))
+            try:
+                requested_field_ids = {
+                    ApplicationField.resolve_for_content_type(content_type, field).pk
+                    for field in fields
+                }
+            except (TypeError, ValueError):
+                return False
 
+            if not requested_field_ids.issubset(
+                set(accessible_fields.values_list("pk", flat=True))
+            ):
+                return False
 
         return has_row_permission
 

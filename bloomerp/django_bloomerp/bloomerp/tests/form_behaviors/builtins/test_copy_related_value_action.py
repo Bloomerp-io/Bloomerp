@@ -109,7 +109,11 @@ class TestCopyRelatedValueAction(BloomerpBehaviorActionTestCase):
                     target_field="first_name",
                     model=self.CustomerModel,
                 ),
-                config={"related_field": self.get_application_field("planet", self.CountryModel).pk},
+                config={
+                    "related_field": self.get_application_field(
+                        "planet", self.CountryModel
+                    ).pk
+                },
                 listener=listener,
                 target=target,
                 expected_exception=ExpectedBehaviorActionException(ValidationError),
