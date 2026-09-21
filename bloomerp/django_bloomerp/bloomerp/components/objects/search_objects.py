@@ -1,22 +1,27 @@
 import json
-from django.http import HttpResponse, HttpRequest
+
 from django.contrib.contenttypes.models import ContentType
-from django.urls import reverse
+from django.core.exceptions import ValidationError
+from django.db.models import Model
+from django.http import HttpRequest, HttpResponse
+from django.urls import NoReverseMatch, reverse
+
 from bloomerp.models import BloomerpModel
 from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.services.object_services import string_search_on_queryset
-from bloomerp.permissions.manager import UserPolicyManager
 
-def _get_detail_url(obj) -> str:
-    """Helper function to get the detail url"""
+
+def _get_detail_url(obj: Model) -> str:
+    """Return the object's detail URL when its model exposes one."""
     try:
         return obj.get_absolute_url()
-    except Exception:
+    except (AttributeError, NoReverseMatch):
         try:
             from bloomerp.utils.models import get_detail_view_url
             return reverse(get_detail_view_url(obj.__class__), kwargs={"pk": obj.pk})
-        except Exception:
+        except (AttributeError, NoReverseMatch):
             return ""
 
 
@@ -25,17 +30,10 @@ def _get_detail_url(obj) -> str:
     name="components_search_objects",
 )
 def search_objects(request:HttpRequest, content_type_id:int) -> HttpResponse:
-    """Component that returns search results for a given query
-
-    Args:
-        request (HttpRequest): request object
-        content_type_id (int): content type id
-
-    Returns:
-        HttpResponse: the response
-    """
+    """Return searchable or exact-ID objects visible to the current user."""
     Model : BloomerpModel = ContentType.objects.get_for_id(content_type_id).model_class()
     query = request.GET.get('fk_search_results_query')
+    selected_ids = request.GET.getlist('fk_selected_id')[:100]
     permission_manager = UserPolicyManager(request.user)
     
     # Get the base queryset
@@ -44,7 +42,16 @@ def search_objects(request:HttpRequest, content_type_id:int) -> HttpResponse:
         BloomerpPermission.VIEW
     )
     
-    if query:
+    if selected_ids:
+        primary_key_field = Model._meta.pk
+        valid_ids = []
+        for selected_id in selected_ids:
+            try:
+                valid_ids.append(primary_key_field.to_python(selected_id))
+            except (TypeError, ValueError, ValidationError, OverflowError):
+                continue
+        results = base_queryset.filter(pk__in=valid_ids)
+    elif query:
         results = string_search_on_queryset(
             queryset=base_queryset, 
             query=query
