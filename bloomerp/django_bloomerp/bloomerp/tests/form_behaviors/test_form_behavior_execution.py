@@ -380,6 +380,32 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         with self.assertRaises(PermissionDenied):
             BehaviorExecutor(owner, self.normal_user)
 
+    def test_shared_preference_can_execute_directly(self) -> None:
+        """The service accepts an effective preference currently shared to the user."""
+        owner = self._owner(
+            [
+                FormBehavior(
+                    id="shared-copy",
+                    actions=[
+                        BehaviorAction(
+                            action="copy_value",
+                            target_field="last_name",
+                        )
+                    ],
+                )
+            ]
+        )
+        owner.user = self.normal_user
+        owner.save(update_fields=["user"])
+        owner.shared_with_users.add(self.admin_user)
+
+        result = BehaviorExecutor(owner, self.admin_user).evaluate(
+            "first_name",
+            self.values,
+        )
+
+        self.assertEqual(result.values[0].value, "Draft")
+
     def test_unavailable_or_missing_draft_fields_are_rejected(self) -> None:
         """Unknown fields and omitted listeners cannot bypass the layout boundary."""
         executor = BehaviorExecutor(self._owner([]), self.admin_user)
