@@ -54,11 +54,6 @@
         <form
             method="post"
             action="{{ delete_submit_url }}"
-            {% if request.htmx and request.htmx.target == 'delete-object-modal-body' %}
-            hx-post="{{ delete_submit_url }}"
-            hx-target="#delete-object-modal-body"
-            hx-swap="innerHTML"
-            {% endif %}
         >
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">

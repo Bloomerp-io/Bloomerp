@@ -19,7 +19,7 @@ The generator discovers module-level action definitions under an app's
 re-exports do not create duplicate scaffolds. Empty files without action
 definitions are ignored. Output mirrors the source directories under
 `tests/form_behaviors`, with filenames such as
-`builtins/test_hide_field_action.py`.
+`builtins/test_set_field_visibility_action.py`.
 
 Generated classes set `action` and return an empty list from
 `get_test_scenarios()`. The inherited definition check validates basic metadata
@@ -62,7 +62,7 @@ the context and the matching `ApplicationField` to `target`.
 This is an example to add when implementing an action's generated scaffold:
 
 ```python
-from bloomerp.form_behaviors.builtins.hide_field import HIDE_FIELD
+from bloomerp.form_behaviors.builtins.set_field_visibility import SET_FIELD_VISIBILITY
 from bloomerp.form_behaviors.definition import (
     BehaviorContext,
     BehaviorResult,
@@ -71,10 +71,10 @@ from bloomerp.form_behaviors.definition import (
 from bloomerp.tests.base import BehaviorActionScenario, BloomerpBehaviorActionTestCase
 
 
-class TestHideFieldAction(BloomerpBehaviorActionTestCase):
+class TestSetFieldVisibilityAction(BloomerpBehaviorActionTestCase):
     """Verify hiding changes presentation while preserving the field value."""
 
-    action = HIDE_FIELD
+    action = SET_FIELD_VISIBILITY
 
     def get_test_scenarios(self) -> list[BehaviorActionScenario]:
         """Describe the visibility update expected for a populated target."""
@@ -88,6 +88,7 @@ class TestHideFieldAction(BloomerpBehaviorActionTestCase):
                 ),
                 listener=self.get_application_field("first_name"),
                 target=self.get_application_field("last_name"),
+                config={"visibility": "hidden"},
                 expected_result=BehaviorResult(
                     states=(FieldStateUpdate(field="last_name", visible=False),),
                 ),

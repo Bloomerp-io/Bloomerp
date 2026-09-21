@@ -125,7 +125,11 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
             FormBehavior(id="set-age", actions=[BehaviorAction(action="set_value", target_field="age", config={"value": "24"})]),
             FormBehavior(id="match-age", conditions=[Filter(connector="AND", conditions=[
                 FilterCondition(field_path="age", lookup_id="equals", value=24),
-            ])], actions=[BehaviorAction(action="copy_value", target_field="last_name")]),
+            ])], actions=[BehaviorAction(
+                action="copy_field_value",
+                target_field="last_name",
+                config={"source": "listener"},
+            )]),
         ])
         result = BehaviorExecutor(owner, self.admin_user, instance=self.customer).evaluate("first_name", self.values)
         self.assertEqual([update.value for update in result.values], [24, "Draft"])
@@ -139,14 +143,22 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
             ]),
             Filter(connector="AND", conditions=[FilterCondition(field_path="first_name", lookup_id="equals", value="Draft")]),
         ]
-        action = BehaviorAction(action="copy_value", target_field="last_name")
+        action = BehaviorAction(
+            action="copy_field_value",
+            target_field="last_name",
+            config={"source": "listener"},
+        )
         self.assertEqual(len(self._evaluate([action], conditions=groups).values), 1)
         groups[1].conditions[0].value = "Different"
         self.assertEqual(self._evaluate([action], conditions=groups).values, ())
 
     def test_empty_groups_follow_filter_boolean_semantics(self) -> None:
         """No groups and empty AND groups match; an empty OR group does not."""
-        action = BehaviorAction(action="copy_value", target_field="last_name")
+        action = BehaviorAction(
+            action="copy_field_value",
+            target_field="last_name",
+            config={"source": "listener"},
+        )
         for groups, expected in [([], 1), ([Filter(connector="AND")], 1), ([Filter(connector="OR")], 0)]:
             with self.subTest(groups=groups):
                 self.assertEqual(len(self._evaluate([action], conditions=groups).values), expected)
@@ -158,7 +170,11 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
             self._evaluate([action])
         self.values["age"] = "invalid-draft"
         with self.assertRaises(ValidationError):
-            self._evaluate([BehaviorAction(action="hide_field", target_field="age")])
+            self._evaluate([BehaviorAction(
+                action="set_field_visibility",
+                target_field="age",
+                config={"visibility": "hidden"},
+            )])
 
     def test_incomplete_optional_draft_fields_are_allowed(self) -> None:
         """A blank date does not require the entire model form to be submission-ready."""
@@ -170,7 +186,11 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         before = deepcopy(self.values)
         with self.assertRaisesMessage(ValidationError, "Unknown action"):
             self._evaluate([
-                BehaviorAction(action="copy_value", target_field="last_name"),
+                BehaviorAction(
+                    action="copy_field_value",
+                    target_field="last_name",
+                    config={"source": "listener"},
+                ),
                 BehaviorAction(action="does-not-exist"),
             ])
         self.assertEqual(self.values, before)
@@ -296,13 +316,17 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
             field="first_name", value="Updated",
         ),))
 
-    def test_state_updates_default_disabled_and_validate_explicit_values(self) -> None:
-        """Existing visibility states default false and explicit disabled must be boolean."""
+    def test_state_updates_keep_unspecified_state_and_validate_explicit_values(self) -> None:
+        """Visibility leaves interaction unchanged and explicit disabled must be boolean."""
         hidden = self._evaluate([
-            BehaviorAction(action="hide_field", target_field="last_name")
+            BehaviorAction(
+                action="set_field_visibility",
+                target_field="last_name",
+                config={"visibility": "hidden"},
+            )
         ])
         self.assertEqual(hidden.states, (FieldStateUpdate(
-            field="last_name", visible=False, disabled=False,
+            field="last_name", visible=False, disabled=None,
         ),))
         for definition, expected in (
             (BehaviorActionDefinition(
@@ -331,17 +355,18 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
                     with self.assertRaisesMessage(ValidationError, "invalid state"):
                         self._evaluate([action])
 
-    def test_disable_and_enable_states_preserve_values_and_storage(self) -> None:
+    def test_interaction_states_preserve_values_and_storage(self) -> None:
         """Interaction-only actions target one authorized field without value writes."""
-        for action_id, disabled in (
-            ("disable_field", True),
-            ("enable_field", False),
+        for interaction, disabled in (
+            ("disabled", True),
+            ("enabled", False),
         ):
-            with self.subTest(action=action_id):
+            with self.subTest(interaction=interaction):
                 before = deepcopy(self.values)
                 result = self._evaluate([BehaviorAction(
-                    action=action_id,
+                    action="set_field_interaction",
                     target_field="last_name",
+                    config={"interaction": interaction},
                 )])
                 self.assertEqual(result.values, ())
                 self.assertEqual(result.states, (FieldStateUpdate(
@@ -353,13 +378,14 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
                 self.customer.refresh_from_db()
                 self.assertEqual(self.customer.last_name, "Stored")
 
-    def test_disable_field_requires_a_declared_layout_target(self) -> None:
+    def test_field_interaction_requires_a_declared_layout_target(self) -> None:
         """Interaction state cannot escape the executor's layout target boundary."""
         owner = self._owner([FormBehavior(
             id="disable-last-name",
             actions=[BehaviorAction(
-                action="disable_field",
+                action="set_field_interaction",
                 target_field="last_name",
+                config={"interaction": "disabled"},
             )],
         )])
         executor = BehaviorExecutor(owner, self.admin_user, instance=self.customer)
@@ -369,7 +395,11 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
 
     def test_form_owned_layout_uses_the_same_executor(self) -> None:
         """An authenticated authorized Form layout evaluates the same declarations as a preference."""
-        preference = self._owner([FormBehavior(id="copy", actions=[BehaviorAction(action="copy_value", target_field="last_name")])])
+        preference = self._owner([FormBehavior(id="copy", actions=[BehaviorAction(
+            action="copy_field_value",
+            target_field="last_name",
+            config={"source": "listener"},
+        )])])
         owner = Form.objects.create(name="Configured form", content_type=preference.content_type, layout=preference.layout)
         result = BehaviorExecutor(owner, self.admin_user).evaluate("first_name", self.values)
         self.assertEqual(result.values[0].value, "Draft")
@@ -388,8 +418,9 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
                     id="shared-copy",
                     actions=[
                         BehaviorAction(
-                            action="copy_value",
+                            action="copy_field_value",
                             target_field="last_name",
+                            config={"source": "listener"},
                         )
                     ],
                 )
@@ -421,6 +452,23 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         form = action_config_form(definition, field, field, {"value": "Hello"}, bound=True)
         self.assertTrue(form.is_valid())
         self.assertEqual(clean_action_config(definition, field, field, {"value": "Hello"}), form.cleaned_data)
+
+    def test_editor_catalog_contains_only_consolidated_actions(self) -> None:
+        """Offer the three merged actions without exposing removed action IDs."""
+        listener = ApplicationField.get_for_model(self.CustomerModel).get(field="first_name")
+        target = ApplicationField.get_for_model(self.CustomerModel).get(field="last_name")
+        widget = BehaviorBuilderWidget(
+            source_field={"id": str(listener.pk)},
+            field_catalog=[{"id": listener.pk}, {"id": target.pk}],
+        )
+        actions = json.loads(widget.get_context("behaviors", None, None)["widget"]["actions_json"])
+        offered = {action["id"]: action for action in actions}
+
+        self.assertIn("set_field_visibility", offered)
+        self.assertIn("set_field_interaction", offered)
+        self.assertIn("copy_field_value", offered)
+        self.assertEqual(offered["set_field_visibility"]["group"], "Field state")
+        self.assertTrue({"show_field", "hide_field", "enable_field", "disable_field", "copy_value", "copy_related_value"}.isdisjoint(offered))
 
     def test_collection_values_validate_partial_rows_without_saving_children(self) -> None:
         """A collection may contain incomplete rows, but its supplied columns are typed."""
@@ -541,7 +589,11 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         config = BehaviorConfig(behaviors=[FormBehavior(
             id="unsupported", conditions=[Filter(connector="AND", conditions=[
                 FilterCondition(field_path="first_name", lookup_id="foreign_advanced", value=True),
-            ])], actions=[BehaviorAction(action="hide_field", target_field="first_name")],
+            ])], actions=[BehaviorAction(
+                action="set_field_visibility",
+                target_field="first_name",
+                config={"visibility": "hidden"},
+            )],
         )])
         with self.assertRaises(ValidationError):
             BehaviorField(widget=widget).clean(config.to_storage())

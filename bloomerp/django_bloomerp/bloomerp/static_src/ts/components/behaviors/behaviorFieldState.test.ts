@@ -98,3 +98,18 @@ test("enable reverses interaction lock without changing current visibility", () 
     assert.equal(element.classList.contains("hidden"), true);
     assert.equal(element.value, "submitted value");
 });
+
+/** Verify that changing visibility preserves an existing interaction lock. */
+function visibilityPreservesInteraction(): void {
+    const element = createElement();
+    element.inert = true;
+    element.setAttribute("aria-disabled", "true");
+
+    applyBehaviorFieldState(element, { visible: false, disabled: null });
+
+    assert.equal(element.classList.contains("hidden"), true);
+    assert.equal(element.inert, true);
+    assert.equal(element.getAttribute("aria-disabled"), "true");
+}
+
+test("visibility updates do not re-enable the field", visibilityPreservesInteraction);

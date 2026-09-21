@@ -236,7 +236,7 @@ class Todo(BloomerpModel):
                     ]
                 },
                 opts={
-                    "advanced_formatting_value" : """<a href='{% url 'todos_model' %}?status'>{{ var_open_count }}</a>"""
+                    "advanced_formatting_value" : """<a href='{% url 'todos_model' %}?status__values_in=backlog,scoped,in_progress,in_review'>{{ var_open_count }}</a>"""
                 }
             ),
             AnalyticsTileConfig(

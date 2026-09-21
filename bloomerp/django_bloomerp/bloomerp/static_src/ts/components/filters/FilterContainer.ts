@@ -54,6 +54,7 @@ export default class FilterContainer extends BaseComponent {
         this.error.setAttribute('role', 'alert');
         this.output.type = 'hidden';
         this.output.name = this.getDataAttribute('name') ?? 'filter';
+        this.output.dataset.widgetOutput = '';
         this.api = this.suppliedApi ?? new FilterApi(this.element, { scope: scope as 'model' | 'workspace', id });
         if (this.includeControls && this.element.dataset.presetsUrl) {
             this.presets = new SavedFilters(this.api, () => this.getFilters(), (filters, isNew) => {

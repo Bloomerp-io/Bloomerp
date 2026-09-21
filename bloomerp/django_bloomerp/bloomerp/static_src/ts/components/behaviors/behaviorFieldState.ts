@@ -1,6 +1,6 @@
 export type BehaviorFieldStateUpdate = {
     visible: boolean | null;
-    disabled: boolean;
+    disabled: boolean | null;
 };
 
 export type BehaviorFieldStateSnapshot = {
@@ -32,9 +32,11 @@ export function applyBehaviorFieldState(
         element.toggleAttribute("data-behavior-hidden", !update.visible);
         element.setAttribute("aria-hidden", String(!update.visible));
     }
-    element.inert = update.disabled;
-    element.toggleAttribute("data-behavior-disabled", update.disabled);
-    element.setAttribute("aria-disabled", String(update.disabled));
+    if (update.disabled !== null) {
+        element.inert = update.disabled;
+        element.toggleAttribute("data-behavior-disabled", update.disabled);
+        element.setAttribute("aria-disabled", String(update.disabled));
+    }
 }
 
 /** Restore the original interaction and accessibility state after form reset. */

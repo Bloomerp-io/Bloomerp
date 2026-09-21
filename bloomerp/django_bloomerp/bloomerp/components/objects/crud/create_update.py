@@ -47,7 +47,8 @@ class CreateObjectComponentView(BloomerpCreateView):
         )
 
     def get_form_hx_target(self) -> str:
-        return "#create-object-modal-body"
+        """Keep form submissions and validation errors inside their own dialog."""
+        return "closest [data-modal-body]"
 
     def get_form_hx_push_url(self) -> bool:
         return False

@@ -61,6 +61,14 @@ class BehaviorField(forms.JSONField):
                     target = action.get_target_fields(available, listener).filter(field=configured.target_field).first()
                     if target is None:
                         raise forms.ValidationError("Select an eligible target field.")
+                target_layout_config = None
+                if target is not None:
+                    for item in self.widget.field_catalog:
+                        if item["name"] == target.field and item.get("fieldType") == "OneToManyField":
+                            target_layout_config = {
+                                "inline_fields": [column["name"] for column in item.get("columns", [])]
+                            }
+                            break
                 clean_action_config(
                     action,
                     listener,
@@ -68,5 +76,6 @@ class BehaviorField(forms.JSONField):
                     configured.config,
                     request=self.request,
                     listener_layout_config=self.widget.listener_layout_config,
+                    target_layout_config=target_layout_config,
                 )
         return config.to_storage()

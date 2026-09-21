@@ -42,8 +42,18 @@ class UsersModule(BloomerpModule):
                     is_internal=True,
                 ),
                 Link(
+                    name="Create a group",
+                    url_name="groups_add",
+                    is_internal=True,
+                ),
+                Link(
                     name="View access-control policies",
                     url_name="access_control_policies_model",
+                    is_internal=True,
+                ),
+                Link(
+                    name="Create a policy",
+                    url_name="access_control_policies_add",
                     is_internal=True,
                 ),
             ],
