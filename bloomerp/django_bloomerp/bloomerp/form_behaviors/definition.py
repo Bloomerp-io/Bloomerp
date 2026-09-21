@@ -150,6 +150,7 @@ class BehaviorActionDefinition:
         [QuerySet[ApplicationField], ApplicationField | None],
         QuerySet[ApplicationField],
     ] = all_target_fields
+    group: str = "Default"
 
     def run(
         self,

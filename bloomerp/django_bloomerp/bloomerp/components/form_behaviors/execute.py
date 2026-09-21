@@ -99,11 +99,9 @@ def execute(request: HttpRequest) -> JsonResponse:
             raise ValidationError("Layout model is unavailable.")
         instance = None
         if payload.object_id is not None:
-            # Check model capability before object lookup to preserve 403 semantics.
-            if not manager.has_global_permission(model, "change"):
-                raise PermissionDenied
             instance = get_object_or_404(
-                manager.get_accessible_queryset(model, "change"), pk=payload.object_id
+                manager.get_accessible_queryset(model, "view"),
+                pk=payload.object_id,
             )
         result = BehaviorExecutor(
             owner,

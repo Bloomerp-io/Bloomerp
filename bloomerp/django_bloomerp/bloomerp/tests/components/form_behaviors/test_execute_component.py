@@ -212,8 +212,15 @@ class TestExecuteComponent(BloomerpComponentTestCase):
         shared_payload = self._payload(shared_owner)
         shared_payload.pop("object_id")
         normal_owner = self._preference(
-            "No model permissions", [], owned_by_admin=False
+            "No model permissions",
+            [FormBehavior(
+                id="draft-only-suggestion",
+                actions=[self._set_last_name()],
+            )],
+            owned_by_admin=False,
         )
+        normal_payload = self._payload(normal_owner)
+        normal_payload.pop("object_id")
         form_owner = Form.objects.create(
             name="Behavior form",
             content_type=success.content_type,
@@ -453,12 +460,22 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(status_code=404),
             ),
             RequestScenario(
-                name="Owning a preference does not grant permission to change its model",
+                name="A preference create draft does not require model write permission",
                 method="POST",
                 user=self.normal_user,
                 content_type="application/json",
-                data=self._payload(normal_owner),
-                expected=ExpectedResult(status_code=403),
+                data=normal_payload,
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.json_key_equals(
+                            "values",
+                            [{
+                                "field": "last_name",
+                                "value": "Suggested surname",
+                            }],
+                        ),
+                    ]
+                ),
             ),
             RequestScenario(
                 name="Anonymous callers cannot evaluate a saved user preference",

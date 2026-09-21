@@ -258,13 +258,13 @@ class TestTransformTextAction(BloomerpBehaviorActionTestCase):
         with self.assertRaises(ValidationError):
             executor.evaluate("first_name", values)
 
-    def test_executor_enforces_target_write_authorization(self) -> None:
-        """The transform cannot bypass the declared target's write boundary."""
+    def test_executor_enforces_target_layout_membership(self) -> None:
+        """The transform cannot update a target outside the declared layout."""
         customer = self.CustomerModel.objects.create(
             first_name="Stored", last_name="Persisted", age=18
         )
         executor = BehaviorExecutor(self._owner(), self.admin_user, instance=customer)
-        executor.write_fields.pop("last_name")
+        executor.fields.pop("last_name")
         with self.assertRaises(PermissionDenied):
             executor.evaluate(
                 "first_name",

@@ -11,7 +11,7 @@ import type { FieldGroup, Filter, LookupDefinition } from '../filters/definition
 type Action = { action: string; target_field: string | null; config: Record<string, unknown> };
 type Behavior = { id: string; name: string; enabled: boolean; events: string[]; conditions: Filter[]; actions: Action[] };
 type Config = { version: 1; behaviors: Behavior[] };
-type ActionDefinition = { id: string; label: string; requires_target_field: boolean; targets: { name: string; label: string }[] };
+type ActionDefinition = { id: string; label: string; group: string; requires_target_field: boolean; targets: { name: string; label: string }[] };
 type ConditionField = { field: string; label: string; lookups: LookupDefinition[] };
 
 /** Reorder editors without destroying their unsaved controls or pending requests. */
@@ -76,7 +76,18 @@ class ActionEditor {
         this.action.setAttribute('aria-label', 'Action');
         this.target.setAttribute('aria-label', 'Target field');
         this.action.append(new Option('Select action', ''));
-        definitions.forEach(definition => this.action.append(new Option(definition.label, definition.id)));
+        const groups = new Map<string, HTMLOptGroupElement>();
+        definitions.forEach((definition: ActionDefinition): void => {
+            const groupName = definition.group || 'Default';
+            let group = groups.get(groupName);
+            if (!group) {
+                group = document.createElement('optgroup');
+                group.label = groupName;
+                groups.set(groupName, group);
+                this.action.append(group);
+            }
+            group.append(new Option(definition.label, definition.id));
+        });
         if (initial.action && !definitions.some(definition => definition.id === initial.action)) {
             this.action.append(new Option(`Unavailable action: ${initial.action}`, initial.action));
         }

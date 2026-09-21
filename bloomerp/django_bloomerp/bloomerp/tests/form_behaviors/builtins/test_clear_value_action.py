@@ -156,9 +156,9 @@ class TestClearValueAction(BloomerpBehaviorActionTestCase):
         document.refresh_from_db()
         self.assertTrue(document.active)
 
-    def test_execution_rejects_an_unauthorized_target(self) -> None:
-        """Clear value cannot bypass the executor's target write boundary."""
+    def test_execution_rejects_a_target_outside_the_layout(self) -> None:
+        """Clear value cannot bypass the executor's layout target boundary."""
         executor, _document = self._executor()
-        executor.write_fields.pop("active")
+        executor.fields.pop("active")
         with self.assertRaises(PermissionDenied):
             executor.evaluate("name", {"name": "Draft", "active": True})

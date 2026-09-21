@@ -69,6 +69,7 @@ class BloomerpBehaviorActionTestCase(BaseBloomerpTestCaseWithModels):
         self.assertIsInstance(self.action, BehaviorActionDefinition)
         self.assertTrue(self.action.id)
         self.assertTrue(self.action.label)
+        self.assertTrue(self.action.group)
         self.assertIsInstance(self.action.requires_target_field, bool)
         for callback in (
             self.action.execute, self.action.config_form_factory,
