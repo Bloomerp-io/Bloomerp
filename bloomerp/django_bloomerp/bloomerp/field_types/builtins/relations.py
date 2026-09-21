@@ -1,15 +1,17 @@
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
+from django import forms
 from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import QuerySet
+from django.db.models.fields.reverse_related import ManyToManyRel
 from django.forms.models import ModelChoiceField, ModelMultipleChoiceField
 
-from bloomerp.field_types.utils.form_field_factories import form
-from bloomerp.field_types.utils.render_value_functions import (
-    render_foreign_key_dataview_value,
+from bloomerp.field_types.builtins.display import (
+    BEHAVIORS_DISPLAY_OPTION,
+    get_related_model_field_choices,
 )
-from bloomerp.field_types.display_options import LABEL_OPTION, FieldDisplayOption
-from bloomerp.field_types.lookups import ONE_TO_MANY_LOOKUPS
-from bloomerp.lookups import builtins as lookups
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
     COMMON_RELATION_FIELD_OPTIONS,
@@ -22,30 +24,39 @@ from bloomerp.field_types.construction import (
     UNIQUE_FIELD_OPTION,
     VERBOSE_NAME_FIELD_OPTION,
 )
-from bloomerp.field_types.utils.render_value_functions import render_m2m_dataview_value
-from bloomerp.field_types.utils.widget_factories import inline_widget, widget
+from bloomerp.field_types.display_options import LABEL_OPTION, FieldDisplayOption
+from bloomerp.field_types.lookups import ONE_TO_MANY_LOOKUPS
+from bloomerp.field_types.registry import (
+    FieldConstruction,
+    FieldContext,
+    FieldTypeDefinition,
+    FieldTypeRegistry,
+)
+from bloomerp.field_types.utils.form_field_factories import form
+from bloomerp.field_types.utils.render_value_functions import (
+    render_foreign_key_dataview_value,
+    render_m2m_dataview_value,
+)
+from bloomerp.field_types.utils.widget_factories import (
+    inline_widget,
+    relation_widget,
+    widget,
+)
 from bloomerp.form_fields.files_relation_field import FilesRelationField
 from bloomerp.form_fields.one_to_many_field import OneToManyField
 from bloomerp.form_fields.ordered_multiple_choice_field import (
     OrderedMultipleChoiceField,
 )
+from bloomerp.form_fields.structured_value import StructuredFormValue
+from bloomerp.lookups import builtins as lookups
 from bloomerp.lookups.definition import BoundLookup, FilterFieldContext
 from bloomerp.model_fields.one_to_one_user_field import OneToOneUserField
 from bloomerp.model_fields.user_field import UserField
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.widgets.object_files_widget import ObjectFilesWidget
-from django import forms
-from django.db import models
-from bloomerp.field_types.registry import (
-    FieldConstruction,
-    FieldTypeDefinition,
-    FieldTypeRegistry,
-)
-from bloomerp.field_types.builtins.display import (
-    BEHAVIORS_DISPLAY_OPTION,
-    get_related_model_field_choices,
-)
-from bloomerp.field_types.utils.widget_factories import relation_widget
+
+if TYPE_CHECKING:
+    from bloomerp.models import ApplicationField
 
 REL_VALUES_IN_LOOKUP = BoundLookup(
     lookups.VALUES_IN,
@@ -70,6 +81,57 @@ class SingleRelationChoiceField(ModelChoiceField):
                 raise ValidationError("Enter a single value.", code="invalid_list")
             value = value[0]
         return super().to_python(value)
+
+
+@dataclass
+class ReverseManyToManyValue(StructuredFormValue):
+    """Persist selected objects through a reverse many-to-many manager."""
+
+    application_field: "ApplicationField"
+    objects: QuerySet
+
+    def save(self, parent: models.Model, *, user: Any = None) -> None:
+        """Replace the objects linked to the parent through the reverse relation."""
+        relation = self.application_field._get_model_field()
+        getattr(parent, relation.get_accessor_name()).set(self.objects)
+
+    def serialize(self) -> list[str]:
+        """Return the selected primary keys in a JSON-compatible form."""
+        return [str(pk) for pk in self.objects.values_list("pk", flat=True)]
+
+
+class ReverseManyToManyField(ModelMultipleChoiceField):
+    """Clean a reverse many-to-many selection into a persistable value."""
+
+    def __init__(self, *, application_field: "ApplicationField", **kwargs: Any) -> None:
+        """Store the application field used to resolve the reverse accessor."""
+        self.application_field = application_field
+        super().__init__(**kwargs)
+
+    def clean(self, value: Any) -> ReverseManyToManyValue:
+        """Validate selected objects and wrap them for deferred persistence."""
+        return ReverseManyToManyValue(
+            application_field=self.application_field,
+            objects=super().clean(value),
+        )
+
+
+def many_to_many_form(
+    context: FieldContext,
+    default: forms.Field | None,
+) -> forms.Field | None:
+    """Supply a form field only when Django cannot build a reverse M2M field."""
+    application_field = context.application_field
+    if application_field is None:
+        return default
+    relation = application_field._get_model_field()
+    if default is not None or not isinstance(relation, ManyToManyRel):
+        return default
+    return ReverseManyToManyField(
+        application_field=application_field,
+        queryset=application_field.get_related_model()._default_manager.all(),
+        required=False,
+    )
 
 
 def relation_single_value_form(
@@ -157,6 +219,7 @@ MANY_TO_MANY_FIELD = FieldTypeDefinition(
         ),
     ),
     widget_factory=relation_widget(multiple=True),
+    form_factory=many_to_many_form,
     render_value=render_m2m_dataview_value,
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )

@@ -354,6 +354,7 @@ class BehaviorExecutor:
                         values=deepcopy(draft),
                         listener_field=listener.field,
                         target_field=target.field if target else "",
+                        model=self.model
                     ),
                     cleaned,
                     self.user,

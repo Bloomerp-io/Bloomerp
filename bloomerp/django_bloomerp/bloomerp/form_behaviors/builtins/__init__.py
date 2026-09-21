@@ -4,6 +4,7 @@ from bloomerp.form_behaviors.builtins.aggregate_o2m_column import AGGREGATE_O2M_
 from bloomerp.form_behaviors.builtins.calculate_field import CALCULATE_FIELD
 from bloomerp.form_behaviors.builtins.calculate_o2m_row import CALCULATE_O2M_ROW
 from bloomerp.form_behaviors.builtins.clear_value import CLEAR_VALUE
+from bloomerp.form_behaviors.builtins.copy_related_value import COPY_RELATED_VALUE
 from bloomerp.form_behaviors.builtins.disable_field import DISABLE_FIELD
 from bloomerp.form_behaviors.builtins.enable_field import ENABLE_FIELD
 from bloomerp.form_behaviors.builtins.fetch_o2m_value import FETCH_O2M_VALUE
@@ -41,4 +42,5 @@ BUILTIN_ACTIONS = (
     FETCH_O2M_VALUE,
     FETCH_VALUE,
     SET_USER_FIELD_TO_CURRENT_USER,
+    COPY_RELATED_VALUE
 )

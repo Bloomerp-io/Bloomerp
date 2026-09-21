@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Type
 
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from pydantic import (
     BaseModel,
@@ -54,11 +54,13 @@ class BehaviorContext:
 
     values: Mapping[str, Any]
     listener_field: str  # Trigger field; action sources are configured separately.
+    model:Type[Model]
     target_field: str = ""  # Empty for actions without an explicit target.
     resolve_related_values: Callable[
         [ApplicationField, ApplicationField, tuple[Any, ...]], Mapping[str, Any]
     ] | None = None
-
+    
+    
     @property
     def listener_value(self) -> Any:
         """Return the triggering field's current draft value."""
