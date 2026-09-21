@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, Type
+from typing import TYPE_CHECKING, Any, Literal, Optional, Type
 
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -54,7 +54,7 @@ class BehaviorContext:
 
     values: Mapping[str, Any]
     listener_field: str  # Trigger field; action sources are configured separately.
-    model:Type[Model]
+    model:Optional[Type[Model]] = None
     target_field: str = ""  # Empty for actions without an explicit target.
     resolve_related_values: Callable[
         [ApplicationField, ApplicationField, tuple[Any, ...]], Mapping[str, Any]
