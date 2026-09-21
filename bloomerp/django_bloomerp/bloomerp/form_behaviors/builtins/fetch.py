@@ -61,13 +61,29 @@ def single_value_fields(
 
 
 def _content_type_from_initial(value: Any) -> ContentType | None:
-    """Resolve a partially configured source model without raising."""
+    """Resolve a source content type by instance, ID, or portable model label."""
     if isinstance(value, ContentType):
         return value
+    if isinstance(value, str) and "." in value:
+        app_label, model = value.split(".", 1)
+        return ContentType.objects.filter(app_label=app_label, model=model.lower()).first()
     try:
         return ContentType.objects.filter(pk=value).first()
     except (TypeError, ValueError):
         return None
+
+
+class ContentTypeChoiceField(forms.ModelChoiceField):
+    """Accept a stable app-label and model name in declarative fetch actions."""
+
+    def clean(self, value: Any) -> ContentType | None:
+        """Convert a portable model label before normal choice validation."""
+        if isinstance(value, str) and "." in value:
+            content_type = _content_type_from_initial(value)
+            if content_type is None:
+                raise forms.ValidationError("Select a valid source model.")
+            value = content_type.pk
+        return super().clean(value)
 
 
 def parse_filters(value: Any) -> Filters:
@@ -255,7 +271,7 @@ def fetch_config_form_factory(
             ),
             required=False,
         )
-        model = forms.ModelChoiceField(
+        model = ContentTypeChoiceField(
             queryset=ContentType.objects.all(),
             label="Source model",
             widget=ForeignFieldWidget(

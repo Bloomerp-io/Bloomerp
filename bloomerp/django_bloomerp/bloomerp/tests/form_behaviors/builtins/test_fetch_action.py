@@ -169,6 +169,25 @@ class TestFetchAction(BloomerpBehaviorActionTestCase):
             "write_policy": policy,
         }
 
+    def test_declarative_source_model_label_is_accepted(self) -> None:
+        """Resolve a portable model label without persisting a database-specific ID."""
+        config = {
+            **self._bulk_config(),
+            "model": self.work_order_line_model._meta.label_lower,
+        }
+
+        cleaned = clean_action_config(
+            FETCH,
+            self._field("work_order"),
+            self._field("lines"),
+            config,
+        )
+
+        self.assertEqual(
+            cleaned["model"],
+            ContentType.objects.get_for_model(self.work_order_line_model),
+        )
+
     def _scalar_config(self) -> dict[str, Any]:
         """Configure a latest-effective-date rate lookup."""
         return {
