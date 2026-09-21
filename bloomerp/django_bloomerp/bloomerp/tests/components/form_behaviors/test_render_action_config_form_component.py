@@ -1,5 +1,6 @@
 """Exercise action configuration fragments through the component scenario framework."""
 
+import json
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
@@ -94,6 +95,25 @@ class TestRenderActionConfigFormComponent(BloomerpComponentTestCase):
                         ),
                     ],
                 ),
+            ),
+            RequestScenario(
+                name="Unified fetch renders source, filter, selection, and ordering controls",
+                user=self.admin_user,
+                query_params=self._params(
+                    action_id="fetch",
+                    config=json.dumps({
+                        "model": self.listener.content_type_id,
+                        "fetch": "first",
+                        "column": "first_name",
+                    }),
+                ),
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('name="behavior-one-action-one-model"'),
+                    self.contains_text('name="behavior-one-action-one-filters"'),
+                    self.contains_text('name="behavior-one-action-one-fetch"'),
+                    self.contains_text('name="behavior-one-action-one-order_by"'),
+                    self.contains_text('name="behavior-one-action-one-column"'),
+                ]),
             ),
             RequestScenario(
                 name="A targetless message action renders its validated message fields",

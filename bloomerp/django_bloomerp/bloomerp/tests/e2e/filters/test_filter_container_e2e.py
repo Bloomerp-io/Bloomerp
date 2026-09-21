@@ -10,7 +10,8 @@ from playwright.sync_api import sync_playwright, expect
 
 class TestFilterContainerE2E(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
+        """Bundle filter components and start an isolated Chromium browser."""
         static_src = Path(__file__).resolve().parents[3] / 'static_src'
         entry = '''
             import FilterContainer from './ts/components/filters/FilterContainer';
@@ -19,12 +20,14 @@ class TestFilterContainerE2E(unittest.TestCase):
             import WorkspaceContainer from './ts/components/workspaces/WorkspaceContainer';
             import { registerComponent, getComponent } from './ts/components/BaseComponent';
             import { BaseWidget } from './ts/components/widgets/BaseWidget';
+            import { readWidget } from './ts/components/filters/widget';
             class StructuredWidget extends BaseWidget {
                 getValue() { return JSON.parse(this.element.querySelector('textarea').value); }
                 setValue(value) { this.element.querySelector('textarea').value = JSON.stringify(value); }
             }
             registerComponent('test-structured-widget', StructuredWidget);
             registerComponent('unified-filter-container', FilterContainer);
+            window.readWidget = readWidget;
             registerComponent('test-permission-checkboxes', PermissionCheckboxes);
             window.startPermissionTable = (entries) => {
                 const editor = document.querySelector('#filters');
@@ -176,6 +179,32 @@ class TestFilterContainerE2E(unittest.TestCase):
         # 2. Apply the restored condition unchanged.
         self.page.get_by_role('button', name='Apply').click()
         self.assertEqual(self.page.evaluate('window.applied'), groups)
+
+    def test_embedded_filter_reads_one_json_value(self) -> None:
+        """Ignore the condition input when reading a behavior action's filter field."""
+        groups = [{
+            'connector': 'AND',
+            'conditions': [{
+                'field_path': 'name',
+                'lookup_id': 'compare',
+                'value': '{{ object.vendor }}',
+            }],
+        }]
+        self.page.locator('#filters').evaluate(
+            "element => { element.dataset.includeControls = 'false'; }"
+        )
+        self.start(groups)
+        expect(self.page.get_by_label('Value', exact=True)).to_have_value(
+            '{{ object.vendor }}'
+        )
+        actual = self.page.evaluate('''() => {
+            const filter = document.querySelector('#filters');
+            const wrapper = document.createElement('div');
+            filter.before(wrapper);
+            wrapper.append(filter);
+            return window.readWidget(wrapper);
+        }''')
+        self.assertEqual(json.loads(actual), groups)
 
     def test_component_widget_round_trip(self):
         """

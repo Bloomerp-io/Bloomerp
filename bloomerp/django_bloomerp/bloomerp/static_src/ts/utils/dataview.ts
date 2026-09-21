@@ -2,6 +2,7 @@ import htmx from "htmx.org";
 import { DataViewContainer } from "@/components/data_view_components/DataViewContainer";
 import { getComponent } from "@/components/BaseComponent";
 
+/** Render and initialize a dataview with its request owned by the target element. */
 export default function renderDataView(
     element: HTMLElement,
     contentTypeId: number|string,
@@ -14,7 +15,8 @@ export default function renderDataView(
     const requestUrl = `${url.pathname}${url.search}`;
 
     return htmx.ajax('get', requestUrl, {
-        target: `#${element.id}`,
+        source: element,
+        target: element,
         swap: 'innerHTML',
     }).then(() => {
         // After the HTMX swap, find the dataview container inside the provided element

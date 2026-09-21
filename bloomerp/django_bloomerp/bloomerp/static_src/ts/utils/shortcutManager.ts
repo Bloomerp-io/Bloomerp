@@ -1,4 +1,5 @@
 import { matchesShortcut, normalizeKeyboardEventKey, type ShortcutDefinition } from "./shortcuts";
+import { getTopModal } from "./modals";
 
 type ShortcutRegistration = {
     rootElement: HTMLElement;
@@ -121,8 +122,13 @@ class ShortcutManager {
         return this.isRegistrationActive(registration) && matchesShortcut(registration.shortcut, event);
     }
 
+    /** Restrict shortcuts to the active dialog so hidden parent forms cannot submit. */
     private isRegistrationActive(registration: ShortcutRegistration): boolean {
-        return isVisible(registration.rootElement) && !isDisabled(registration.rootElement);
+        const modal = getTopModal();
+        return (!modal || modal.element.contains(registration.rootElement))
+            && !registration.rootElement.closest('[inert]')
+            && isVisible(registration.rootElement)
+            && !isDisabled(registration.rootElement);
     }
 
     private pruneDisconnected(): void {

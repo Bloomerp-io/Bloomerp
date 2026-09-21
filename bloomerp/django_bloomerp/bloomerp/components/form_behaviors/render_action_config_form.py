@@ -79,6 +79,9 @@ def render_action_config_form(request: HttpRequest) -> HttpResponse:
                 scope.layout_object,
                 listener,
             ),
+            target_layout_config=(
+                _get_item_config(scope.layout_object, target) if target else None
+            ),
         )
         entries = []
         for name, field in form.fields.items():

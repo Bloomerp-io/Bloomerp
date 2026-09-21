@@ -1,649 +1,295 @@
-import BaseComponent, { registerComponent, getComponent } from './BaseComponent';
+import htmx from 'htmx.org';
+import BaseComponent from './BaseComponent';
+import { activateModal, buildModalShell, deactivateModal, getTopModal, MODAL_SIZE_CLASSES } from '../utils/modals';
 
-// Define those attributes
-const OPEN_MODAL_ATTRIBUTE = 'bloomerp-open-modal'
-const CLOSE_MODAL_ATTRIBUTE = 'bloomerp-close-modal'
-const TOGGLE_FULL_SCREEN_ATTRIBUTE = 'bloomerp-full-screen-modal'
-const MODAL_PADDING_ATTRIBUTE = 'data-modal-padding'
-const DEFAULT_MODAL_PADDING_ATTRIBUTE = 'data-default-modal-padding'
-const SET_MODAL_TITLE_FOR_ATTRIBUTE = 'bloomerp-set-modal-title-for'
-const SET_MODAL_TITLE_VALUE_ATTRIBUTE = 'bloomerp-set-modal-title-to'
-const SET_MODAL_SIZE_VALUE_ATTRIBUTE = 'bloomerp-set-modal-size-to'
-
-
-/**
- * Modal Component
- * 
- * Manages modal behavior including:
- * - Opening/closing with animations
- * - Fullscreen toggle functionality
- * - Backdrop click-to-close
- * - Keyboard navigation (ESC to close, focus trapping)
- * - Accessibility features
- * 
- * Usage in HTML:
- * <div bloomerp-component="modal" id="my-modal">
- *   <!-- modal content -->
- * </div>
- * 
- */
+/** Manage one dialog while shared utilities own its shell and open-modal stack. */
 export class Modal extends BaseComponent {
-    private static readonly SIZE_CLASS_MAP: Record<string, string> = {
-        sm: 'max-w-sm',
-        md: 'max-w-2xl',
-        lg: 'max-w-4xl',
-        xl: 'max-w-6xl',
-        full: 'max-w-full',
-    };
-    private static readonly PADDING_CLASS_PATTERN = /^!?p(?:[trblxyse])?-.+$/;
-
-    private modalId: string = '';
-    private backdropElement: HTMLElement | null = null;
     private containerElement: HTMLElement | null = null;
     private modalBodyElement: HTMLElement | null = null;
-    private isFullscreen: boolean = false;
-    private originalSize: string = 'md';
-    private onCloseCallback: (() => void) | null = null;
-
-    // Event handler references for cleanup
-    private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
-    private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
-    private tabKeyHandler: ((e: KeyboardEvent) => void) | null = null;
-    private delegatedTriggerHandler: ((e: MouseEvent) => void) | null = null;
-    private closeEventHandler: ((e: Event) => void) | null = null;
-    private readonly triggerBoundAttribute = 'data-modal-trigger-bound';
+    private lifecycle: AbortController | null = null;
     private closeAnimationTimeoutId: number | null = null;
+    private openAnimationTimeoutId: number | null = null;
+    private opener: HTMLElement | null = null;
+    private parentModal: Modal | null = null;
+    private isFullscreen = false;
+    private opened = false;
+    private destroyed = false;
 
-    // 
-
+    /** Materialize a declaration and bind lifecycle-safe modal controls. */
     public initialize(): void {
-        if (!this.element) {
-            console.warn('Modal component: element is null');
-            return;
-        }
-
-        // Extract modal ID from element ID
-        this.modalId = this.element.id;
-        
-        if (!this.modalId) {
-            console.warn('Modal component requires an id attribute', this.element);
-            return;
-        }
-
-        this.portalToDocumentBody();
-
-        // The element itself is the backdrop
-        this.backdropElement = this.element;
-        
-        // Cache element references for container and body (children of backdrop)
-        this.containerElement = this.backdropElement.querySelector(`#${this.modalId}-container`) as HTMLElement | null;
-        this.modalBodyElement = this.backdropElement.querySelector(`#${this.modalId}-body`) as HTMLElement | null;
-
-        if (!this.containerElement || !this.modalBodyElement) {
-            console.warn(`Modal structure not found for ID: ${this.modalId}`, {
-                backdrop: this.backdropElement,
-                container: this.containerElement,
-                body: this.modalBodyElement
-            });
-            return;
-        }
-
-        this.captureOriginalState();
-        this.syncPaddingState();
-
-        // Get onclose callback from data attribute if provided
-        const onCloseCallback = this.element.dataset.onClose;
-        if (onCloseCallback) {
-            this.onCloseCallback = new Function(onCloseCallback) as () => void;
-        }
-
-        // Setup event listeners
-        this.setupBackdropClickHandler();
-        this.setupEscapeKeyHandler();
-        this.setupTabKeyHandler();
-        this.setupDelegatedTriggerHandler();
-        this.setupCloseEventHandler();
-        this.setupTriggerButtons();
+        if (!this.element?.id) return;
+        buildModalShell(this.element);
+        this.containerElement = this.element.querySelector('[data-modal-container]');
+        this.modalBodyElement = this.element.querySelector('[data-modal-body]');
+        this.element.dataset.defaultModalSize ??= this.element.dataset.modalSize || 'md';
+        this.element.dataset.defaultModalPadding ??= this.element.dataset.modalPadding || 'p-3';
+        this.element.dataset.defaultBackdropClickClose ??= this.element.dataset.backdropClickClose || 'true';
+        this.setSize(this.element.dataset.modalSize || 'md');
+        this.setPadding(this.element.dataset.modalPadding || 'p-3');
+        if (!this.portalToDocumentBody()) return;
+        this.lifecycle?.abort();
+        this.lifecycle = new AbortController();
+        const options = { signal: this.lifecycle.signal };
+        document.addEventListener('click', this.handleTriggerClick, { ...options, capture: true });
+        document.addEventListener('keydown', this.handleKeyDown, options);
+        document.body.addEventListener('bloomerp:close-modal', this.handleCloseEvent, options);
+        this.element.addEventListener('click', this.handleBackdropClick, options);
+        this.element.addEventListener('htmx:beforeCleanupElement', this.handleCleanup, options);
     }
 
-    private portalToDocumentBody(): void {
-        if (!this.element || this.element.parentElement === document.body) return;
-
-        const duplicateModal = Array.from(document.querySelectorAll<HTMLElement>(`[id="${this.modalId}"]`))
-            .find((element) => element !== this.element);
-
-        if (duplicateModal) {
-            const duplicateInstance = (duplicateModal as HTMLElement & {
-                __bloomerp_component?: { destroy?: () => void };
-            }).__bloomerp_component;
-            duplicateInstance?.destroy?.();
-            duplicateModal.remove();
+    /** Portal outside stacking contexts without deleting an active duplicate. */
+    private portalToDocumentBody(): boolean {
+        if (this.element.parentElement === document.body) return true;
+        const existing = Array.from(document.querySelectorAll<HTMLElement>('[bloomerp-component="modal"]'))
+            .find((element: HTMLElement): boolean => element !== this.element && element.id === this.element.id);
+        if (existing) {
+            const instance = (existing as HTMLElement & { __bloomerp_component?: Modal }).__bloomerp_component;
+            if (instance?.opened) {
+                this.element.remove();
+                return false;
+            }
+            instance?.destroy();
+            existing.remove();
         }
-
         document.body.appendChild(this.element);
+        return true;
     }
 
-    /**
-     * Setup event listeners for trigger buttons (open, close, fullscreen)
-     */
-    private setupTriggerButtons(): void {
-        if (!this.element) return;
+    /** Handle legacy attributes once, including triggers inserted by HTMX. */
+    private handleTriggerClick = (event: MouseEvent): void => {
+        if (!(event.target instanceof Element)) return;
+        const trigger = event.target.closest<HTMLElement>(
+            '[bloomerp-open-modal], [bloomerp-close-modal], [bloomerp-full-screen-modal], [bloomerp-set-modal-title-for]',
+        );
+        if (!trigger || trigger.hasAttribute('disabled')) return;
+        const id = this.element.id;
+        if (trigger.getAttribute('bloomerp-set-modal-title-for') === id) {
+            const title = trigger.getAttribute('bloomerp-set-modal-title-to');
+            const size = trigger.getAttribute('bloomerp-set-modal-size-to');
+            if (title) this.setTitle(title);
+            if (size) this.setSize(size);
+        }
+        if (trigger.getAttribute('bloomerp-open-modal') === id) {
+            this.setOpener(trigger);
+            this.open();
+        }
+        if (trigger.getAttribute('bloomerp-close-modal') === id) this.close();
+        if (trigger.getAttribute('bloomerp-full-screen-modal') === id) this.toggleFullscreen();
+    };
 
-        let openTriggers = document.querySelectorAll(`[${OPEN_MODAL_ATTRIBUTE}="${this.element.id}"]`);
-        
-        openTriggers.forEach((trigger)=>{
-            if ((trigger as HTMLElement).getAttribute(this.triggerBoundAttribute) === `${this.modalId}:open`) {
-                return;
-            }
+    /** Close only the active dialog when its backdrop is clicked. */
+    private handleBackdropClick = (event: MouseEvent): void => {
+        if (event.target === this.element && getTopModal() === this
+            && this.element.dataset.backdropClickClose !== 'false'
+            && this.element.dataset.modalClosable !== 'false') this.close();
+    };
 
-            trigger.addEventListener('click', (e) =>{
-                this.open() 
-            });
-            (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:open`);
-        })
+    /** Keep Escape and Tab scoped to the most recently opened dialog. */
+    private handleKeyDown = (event: KeyboardEvent): void => {
+        if (getTopModal() !== this || event.defaultPrevented) return;
+        if (event.key === 'Escape' && this.element.dataset.modalClosable !== 'false') {
+            event.preventDefault();
+            this.close();
+        }
+        if (event.key !== 'Tab') return;
+        const elements = Array.from(this.containerElement.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        )).filter((element: HTMLElement): boolean => !element.hasAttribute('disabled') && element.getClientRects().length > 0);
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (!first) {
+            event.preventDefault();
+            this.focus();
+        } else if (!this.containerElement.contains(document.activeElement) || document.activeElement === this.containerElement) {
+            event.preventDefault();
+            (event.shiftKey ? last : first).focus();
+        } else if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
 
-        let closeTriggers = document.querySelectorAll(`[${CLOSE_MODAL_ATTRIBUTE}="${this.element.id}"]`);
-        
-        closeTriggers.forEach((trigger)=>{
-            if ((trigger as HTMLElement).getAttribute(this.triggerBoundAttribute) === `${this.modalId}:close`) {
-                return;
-            }
+    /** Preserve the existing server-emitted close event contract. */
+    private handleCloseEvent = (event: Event): void => {
+        if ((event as CustomEvent<{ modalId?: string }>).detail?.modalId === this.element.id) this.close();
+    };
 
-            trigger.addEventListener('click', (e) =>{
-                this.close() 
-            });
-            (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:close`);
-        })
+    /** Dispose initialized descendants before HTMX removes their DOM. */
+    private handleCleanup = (event: Event): void => {
+        const element = (event as CustomEvent<{ elt?: HTMLElement }>).detail?.elt;
+        if (!element) return;
+        const instance = (element as HTMLElement & { __bloomerp_component?: BaseComponent }).__bloomerp_component;
+        instance?.destroy();
+    };
 
-        let fullscreenTriggers = document.querySelectorAll(`[${TOGGLE_FULL_SCREEN_ATTRIBUTE}="${this.element.id}"]`);
-        
-        fullscreenTriggers.forEach((trigger)=>{
-            if ((trigger as HTMLElement).getAttribute(this.triggerBoundAttribute) === `${this.modalId}:fullscreen`) {
-                return;
-            }
-
-            trigger.addEventListener('click', (e) =>{
-                this.toggleFullscreen() 
-            });
-            (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:fullscreen`);
-        })
-
-        let setTitleTriggers = document.querySelectorAll(`[${SET_MODAL_TITLE_FOR_ATTRIBUTE}="${this.element.id}"]`);
-
-        setTitleTriggers.forEach((trigger)=>{
-            if ((trigger as HTMLElement).getAttribute(this.triggerBoundAttribute) === `${this.modalId}:set-title`) {
-                return;
-            }
-
-            trigger.addEventListener('click', (e) =>{
-                const title = (trigger as HTMLElement).getAttribute(SET_MODAL_TITLE_VALUE_ATTRIBUTE);
-                if (title) {
-                    this.setTitle(title);
-                }
-
-                const size = (trigger as HTMLElement).getAttribute(SET_MODAL_SIZE_VALUE_ATTRIBUTE);
-                if (size) {
-                    this.setSize(size);
-                }
-            });
-            (trigger as HTMLElement).setAttribute(this.triggerBoundAttribute, `${this.modalId}:set-title`);
-        });
-    }
-
-    private setupDelegatedTriggerHandler(): void {
-        if (this.delegatedTriggerHandler) return;
-
-        this.delegatedTriggerHandler = (event: MouseEvent) => {
-            const target = event.target instanceof HTMLElement ? event.target : null;
-            if (!target) return;
-
-            const openTrigger = target.closest<HTMLElement>(`[${OPEN_MODAL_ATTRIBUTE}="${this.modalId}"]`);
-            if (openTrigger) {
-                this.open();
-                return;
-            }
-
-            const closeTrigger = target.closest<HTMLElement>(`[${CLOSE_MODAL_ATTRIBUTE}="${this.modalId}"]`);
-            if (closeTrigger) {
-                this.close();
-                return;
-            }
-
-            const fullscreenTrigger = target.closest<HTMLElement>(`[${TOGGLE_FULL_SCREEN_ATTRIBUTE}="${this.modalId}"]`);
-            if (fullscreenTrigger) {
-                this.toggleFullscreen();
-            }
-        };
-
-        document.addEventListener('click', this.delegatedTriggerHandler);
-    }
-
-    private setupCloseEventHandler(): void {
-        if (this.closeEventHandler) return;
-
-        this.closeEventHandler = (event: Event) => {
-            const customEvent = event as CustomEvent<{ modalId?: string }>;
-            if (customEvent.detail?.modalId === this.modalId) {
-                this.close();
-            }
-        };
-
-        document.body.addEventListener('bloomerp:close-modal', this.closeEventHandler);
-    }
-
-    /**
-     * Called after HTMX swaps new content
-     */
+    /** Wire swapped forms before their eagerly initialized Save shortcuts can run. */
     public onAfterSwap(): void {
-        // Re-setup trigger buttons after content swap
-        this.setupTriggerButtons();
-    }
-
-    private setupBackdropClickHandler(): void {
-        if (!this.backdropElement) return;
-
-        if (this.backdropClickHandler) {
-            this.backdropElement.removeEventListener('click', this.backdropClickHandler);
+        for (const child of Array.from(this.modalBodyElement?.children || [])) {
+            htmx.process(child as HTMLElement);
         }
-
-        this.backdropClickHandler = null;
-
-        if (!this.shouldCloseOnBackdrop()) return;
-
-        this.backdropClickHandler = (e: MouseEvent) => {
-            if (e.target === this.backdropElement) {
-                this.close();
-            }
-        };
-        this.backdropElement.addEventListener('click', this.backdropClickHandler);
     }
 
-    private setupEscapeKeyHandler(): void {
-        this.escapeKeyHandler = (e: KeyboardEvent) => {
-            if (e.key !== 'Escape') return;
-
-            // Find currently visible modal backdrops (our modal elements have
-            // `bloomerp-component="modal"` and are hidden when closed)
-            const openModals = document.querySelectorAll('[bloomerp-component="modal"]:not(.hidden)') as NodeListOf<HTMLElement>;
-            if (openModals.length === 0) return;
-
-            const lastModal = openModals[openModals.length - 1];
-            const modalId = lastModal.id;
-            if (modalId === this.modalId) {
-                this.close();
-            }
-        };
-
-        document.addEventListener('keydown', this.escapeKeyHandler);
+    /** Remember the launching control and owning parent before content is loaded. */
+    public setOpener(opener: HTMLElement): void {
+        if (this.opened) return;
+        this.opener = opener;
+        const parent = opener.closest<HTMLElement>('[bloomerp-component="modal"]');
+        this.parentModal = parent !== this.element
+            ? (parent as HTMLElement & { __bloomerp_component?: Modal })?.__bloomerp_component || null
+            : null;
     }
 
-    private setupTabKeyHandler(): void {
-        this.tabKeyHandler = (e: KeyboardEvent) => {
-            if (e.key === 'Tab' && this.isOpen()) {
-                const focusableElements = this.containerElement?.querySelectorAll(
-                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-                ) as NodeListOf<HTMLElement> | undefined;
-
-                if (focusableElements && focusableElements.length > 0) {
-                    const firstElement = focusableElements[0];
-                    const lastElement = focusableElements[focusableElements.length - 1];
-
-                    if (e.shiftKey && document.activeElement === firstElement) {
-                        e.preventDefault();
-                        lastElement.focus();
-                    } else if (!e.shiftKey && document.activeElement === lastElement) {
-                        e.preventDefault();
-                        firstElement.focus();
-                    }
-                }
-            }
-        };
-
-        document.addEventListener('keydown', this.tabKeyHandler);
+    /** Focus the dialog without scrolling its preserved form contents. */
+    public focus(): void {
+        this.containerElement?.focus({ preventScroll: true });
     }
 
-    /**
-     * Open the modal with animation
-     */
+    /** Open this instance without replacing any other dialog's contents. */
     public open(): void {
-        // If modalId is empty, try to get it from this.element
-        if (!this.modalId && this.element) {
-            this.modalId = this.element.id;
+        if (this.destroyed || !this.element.isConnected) return;
+        if (this.closeAnimationTimeoutId !== null) {
+            window.clearTimeout(this.closeAnimationTimeoutId);
+            this.closeAnimationTimeoutId = null;
+            this.finishOpening();
         }
-        
-        // Get fresh references in case they weren't found during initialize
-        const backdrop = this.backdropElement || (this.modalId ? document.getElementById(this.modalId) : null);
-        const container = this.containerElement || (this.modalId ? document.getElementById(`${this.modalId}-container`) : null);
-        
-        if (!backdrop || !container) {
-            console.warn(`Modal elements not found for ID: ${this.modalId}`, {
-                element: this.element,
-                modalId: this.modalId,
-                backdrop: backdrop,
-                container: container
-            });
-            return;
-        }
-        
-        // Display the backdrop
-        backdrop.classList.remove('hidden');
-        backdrop.classList.add('flex');
-        
-        // Add animation with a slight delay to ensure the display change is processed
-        setTimeout(() => {
-            container.classList.remove('scale-95', 'opacity-0');
-            container.classList.add('scale-100', 'opacity-100');
-        }, 10);
-        
-        // Prevent body scroll
-        document.body.style.overflow = 'hidden';
-        
-        // Focus container
-        container.focus();
-
-        this.element?.dispatchEvent(new CustomEvent('bloomerp:modal-opened', {
-            bubbles: true,
-            detail: { modalId: this.modalId },
+        if (this.opened) return;
+        this.opened = true;
+        if (!this.opener && document.activeElement instanceof HTMLElement) this.setOpener(document.activeElement);
+        this.element.classList.remove('hidden');
+        this.element.classList.add('flex');
+        activateModal(this, this.opener);
+        this.focus();
+        this.openAnimationTimeoutId = window.setTimeout(this.finishOpening, 10);
+        this.element.dispatchEvent(new CustomEvent('bloomerp:modal-opened', {
+            bubbles: true, detail: { modalId: this.element.id },
         }));
     }
 
-    /**
-     * Close the modal with animation
-     */
+    /** Apply the enter animation only while this instance is still open. */
+    private finishOpening = (): void => {
+        this.openAnimationTimeoutId = null;
+        if (!this.opened || this.destroyed || this.closeAnimationTimeoutId !== null) return;
+        this.containerElement.classList.remove('scale-95', 'opacity-0');
+        this.containerElement.classList.add('scale-100', 'opacity-100');
+    };
+
+    /** Close this dialog and its owned children, preserving any surviving parent. */
     public close(): void {
-        // Get fresh references in case they weren't found during initialize
-        const backdrop = this.backdropElement || document.getElementById(this.modalId);
-        const container = this.containerElement || document.getElementById(`${this.modalId}-container`);
-        
-        if (!backdrop || !container) {
-            console.warn(`Modal elements not found for ID: ${this.modalId}`);
-            return;
-        }
-        
-        // Add closing animation
-        container.classList.remove('scale-100', 'opacity-100');
-        container.classList.add('scale-95', 'opacity-0');
-
-        if (this.closeAnimationTimeoutId !== null) {
-            window.clearTimeout(this.closeAnimationTimeoutId);
-            this.closeAnimationTimeoutId = null;
-        }
-        
-        // Wait for animation to complete before hiding
-        this.closeAnimationTimeoutId = window.setTimeout(() => {
-            backdrop.classList.remove('flex');
-            backdrop.classList.add('hidden');
-            
-            // Restore body scroll
-            document.body.style.overflow = '';
-
-            if (this.onCloseCallback) {
-                this.onCloseCallback();
-            }
-
-            this.element?.dispatchEvent(new CustomEvent('bloomerp:modal-closed', {
-                bubbles: true,
-                detail: { modalId: this.modalId },
-            }));
-            this.closeAnimationTimeoutId = null;
-        }, 200);
+        if (!this.opened || this.closeAnimationTimeoutId !== null) return;
+        this.closeChildren();
+        this.containerElement.classList.remove('scale-100', 'opacity-100');
+        this.containerElement.classList.add('scale-95', 'opacity-0');
+        this.closeAnimationTimeoutId = window.setTimeout(this.finishClosing, 200);
     }
 
-    /**
-     * Check if modal is currently open
-     */
-    private isOpen(): boolean {
-        return this.backdropElement ? !this.backdropElement.classList.contains('hidden') : false;
-    }
+    /** Complete closure before notifying owners and disposing temporary form content. */
+    private finishClosing = (): void => {
+        this.closeAnimationTimeoutId = null;
+        this.opened = false;
+        this.element.classList.remove('flex');
+        this.element.classList.add('hidden');
+        this.element.inert = false;
+        this.element.setAttribute('aria-hidden', 'true');
+        deactivateModal(this);
+        this.opener = null;
+        this.element.dispatchEvent(new CustomEvent('bloomerp:modal-closed', {
+            bubbles: true, detail: { modalId: this.element.id },
+        }));
+        if (this.element.dataset.modalDisposable === 'true') this.destroy();
+        const callback = this.element.dataset.onClose;
+        if (callback) new Function(callback)();
+    };
 
-    /**
-     * Toggle fullscreen mode
-     */
-    public toggleFullscreen(): void {
-        // Get fresh references in case they weren't found during initialize
-        if (!this.modalId && this.element) {
-            this.modalId = this.element.id;
-        }
-        
-        const container = this.containerElement || (this.modalId ? document.getElementById(`${this.modalId}-container`) : null);
-        const modalBody = this.modalBodyElement || (this.modalId ? document.getElementById(`${this.modalId}-body`) : null);
-        
-        if (!container || !modalBody) {
-            console.warn(`Modal elements not found for fullscreen toggle: ${this.modalId}`);
-            return;
-        }
-
-        if (this.isFullscreen) {
-            this.exitFullscreen(container, modalBody);
-        } else {
-            this.enterFullscreen(container, modalBody);
-        }
-    }
-
-    private enterFullscreen(container: HTMLElement, modalBody: HTMLElement): void {
-        this.captureOriginalState(container, modalBody);
-
-        const sizeClasses = ['max-w-sm', 'max-w-2xl', 'max-w-4xl', 'max-w-6xl'];
-        const currentSize = container.getAttribute('data-original-size') || 'md';
-
-        this.originalSize = currentSize;
-
-        // Remove all size classes from container
-        sizeClasses.forEach((sizeClass) => {
-            container.classList.remove(sizeClass);
-        });
-
-        // Set fullscreen on container - make it flex column for proper layout
-        container.classList.add('max-w-full', 'w-full', 'h-full', 'rounded-none', 'flex', 'flex-col');
-
-        // Preserve body classes and padding while expanding the scroll region.
-        modalBody.classList.remove('max-h-96');
-        modalBody.classList.add('flex-1');
-
-        this.isFullscreen = true;
-    }
-
-    private captureOriginalState(
-        container: HTMLElement | null = this.containerElement,
-        modalBody: HTMLElement | null = this.modalBodyElement
-    ): void {
-        if (!container || !modalBody) return;
-
-        if (!container.getAttribute('data-original-size')) {
-            container.setAttribute('data-original-size', this.detectCurrentSize(container));
-        }
-
-        this.syncPaddingState();
-    }
-
-    private detectCurrentSize(container: HTMLElement): string {
-        const sizeClasses = Object.values(Modal.SIZE_CLASS_MAP);
-
-        for (const sizeClass of sizeClasses) {
-            if (container.classList.contains(sizeClass)) {
-                if (sizeClass === 'max-w-sm') return 'sm';
-                if (sizeClass === 'max-w-2xl') return 'md';
-                if (sizeClass === 'max-w-4xl') return 'lg';
-                if (sizeClass === 'max-w-6xl') return 'xl';
-                if (sizeClass === 'max-w-full') return 'full';
+    /** Dispose child dialogs when their owning form is no longer available. */
+    private closeChildren(): void {
+        for (const element of document.querySelectorAll<HTMLElement>('[bloomerp-component="modal"]')) {
+            const child = (element as HTMLElement & { __bloomerp_component?: Modal }).__bloomerp_component;
+            if (child !== this && child?.parentModal === this) {
+                if (child.element.dataset.modalDisposable === 'true') child.destroy();
+                else child.close();
             }
         }
-
-        return 'md';
     }
 
-    private exitFullscreen(container: HTMLElement, modalBody: HTMLElement): void {
-        // Remove fullscreen classes from container
-        container.classList.remove('max-w-full', 'h-full', 'rounded-none', 'flex', 'flex-col');
-
-        // Get original size from data attribute (more reliable) or instance property
-        const storedSize = container.getAttribute('data-original-size') || this.originalSize;
-        this.applySizeToElements(storedSize);
-
-        modalBody.classList.add('overflow-y-auto');
-
-        this.isFullscreen = false;
-    }
-
-    /**
-     * Clean up event listeners
-     */
+    /** Release listeners, requests and child components when an instance is removed. */
     public destroy(): void {
-        if (this.closeAnimationTimeoutId !== null) {
-            window.clearTimeout(this.closeAnimationTimeoutId);
-            this.closeAnimationTimeoutId = null;
+        if (this.destroyed) return;
+        this.destroyed = true;
+        this.closeChildren();
+        this.lifecycle?.abort();
+        if (this.closeAnimationTimeoutId !== null) window.clearTimeout(this.closeAnimationTimeoutId);
+        if (this.openAnimationTimeoutId !== null) window.clearTimeout(this.openAnimationTimeoutId);
+        for (const element of [this.element, ...this.element.querySelectorAll<HTMLElement>('*')]) {
+            htmx.trigger(element, 'htmx:abort');
+            if (element === this.element) continue;
+            const instance = (element as HTMLElement & { __bloomerp_component?: BaseComponent }).__bloomerp_component;
+            instance?.destroy();
         }
-
-        if (this.backdropElement && this.backdropClickHandler) {
-            this.backdropElement.removeEventListener('click', this.backdropClickHandler);
-        }
-
-        if (this.escapeKeyHandler) {
-            document.removeEventListener('keydown', this.escapeKeyHandler);
-        }
-
-        if (this.tabKeyHandler) {
-            document.removeEventListener('keydown', this.tabKeyHandler);
-        }
-
-        if (this.delegatedTriggerHandler) {
-            document.removeEventListener('click', this.delegatedTriggerHandler);
-        }
-
-        if (this.closeEventHandler) {
-            document.body.removeEventListener('bloomerp:close-modal', this.closeEventHandler);
-        }
+        deactivateModal(this);
+        if (this.element.dataset.modalDisposable === 'true') this.element.remove();
+        super.destroy();
     }
 
+    /** Return the stable, instance-local HTMX content target. */
     public getBodyElement(): HTMLElement | null {
         return this.modalBodyElement;
     }
 
+    /** Update the visible title and accessible dialog name using plain text. */
     public setTitle(title: string): void {
-        if (!this.element) return;
-
-        const titleElement = this.element.querySelector(`#${this.element.id}-title`) as HTMLElement | null;
-        if (titleElement) {
-            titleElement.textContent = title;
-        }
+        const heading = this.containerElement?.querySelector('h3');
+        if (heading) heading.textContent = title;
+        this.containerElement?.setAttribute('aria-label', title);
     }
 
+    /** Change the preferred size while respecting a temporary fullscreen state. */
     public setSize(size: string): void {
-        if (!this.element) return;
-
-        this.element.setAttribute('data-modal-size', size);
-        this.originalSize = size;
-
-        if (this.containerElement) {
-            this.containerElement.setAttribute('data-original-size', size);
-        }
-
-        if (!this.isFullscreen) {
-            this.applySizeToElements(size);
-        }
+        this.element.dataset.modalSize = size in MODAL_SIZE_CLASSES ? size : 'md';
+        this.applySize();
     }
 
-    public setBackdrop(enabled: boolean): void {
-        if (!this.element) return;
-
-        this.element.setAttribute('data-backdrop-click-close', String(enabled));
-        this.setupBackdropClickHandler();
-    }
-
-    public resetToDefaults(): void {
-        if (!this.element) return;
-
-        if (this.isFullscreen) {
-            this.toggleFullscreen();
-        }
-
-        const defaultSize = this.element.getAttribute('data-default-modal-size') || 'md';
-        const defaultBackdrop = (this.element.getAttribute('data-default-backdrop-click-close') || 'true') !== 'false';
-        const defaultPadding = this.getDefaultPadding();
-
-        this.setSize(defaultSize);
-        this.setBackdrop(defaultBackdrop);
-        this.setPadding(defaultPadding);
-    }
-
-    private shouldCloseOnBackdrop(): boolean {
-        const backdropClickClose = this.element?.getAttribute('data-backdrop-click-close');
-        return backdropClickClose !== 'false';
-    }
-
-    private applySizeToElements(size: string): void {
+    /** Apply either fullscreen geometry or the configured declaration size. */
+    private applySize(): void {
         if (!this.containerElement || !this.modalBodyElement) return;
-
-        const normalizedSize = size in Modal.SIZE_CLASS_MAP ? size : 'md';
-        const sizeClasses = Object.values(Modal.SIZE_CLASS_MAP);
-
-        this.containerElement.classList.remove(...sizeClasses);
-        this.containerElement.classList.remove('h-full', 'rounded-none');
-        this.containerElement.classList.add(Modal.SIZE_CLASS_MAP[normalizedSize], 'w-full');
-
-        if (normalizedSize === 'full') {
-            this.containerElement.classList.add('h-full', 'rounded-none');
-            this.modalBodyElement.classList.add('flex-1');
-            this.modalBodyElement.classList.remove('max-h-96');
-        } else {
-            this.modalBodyElement.classList.remove('flex-1');
-            this.modalBodyElement.classList.add('max-h-96');
-        }
+        const size = this.isFullscreen ? 'full' : this.element.dataset.modalSize || 'md';
+        this.containerElement.classList.remove(...Object.values(MODAL_SIZE_CLASSES));
+        this.containerElement.classList.add(MODAL_SIZE_CLASSES[size]);
+        this.containerElement.classList.toggle('h-full', size === 'full');
+        this.containerElement.classList.toggle('rounded-none', size === 'full');
+        this.modalBodyElement.classList.toggle('flex-1', size === 'full');
+        this.modalBodyElement.classList.toggle('max-h-96', size !== 'full');
     }
 
-    private syncPaddingState(): void {
-        if (!this.element || !this.modalBodyElement) return;
-
-        const detectedPadding = this.detectBodyPadding();
-        const currentPadding = this.element.getAttribute(MODAL_PADDING_ATTRIBUTE)?.trim() || detectedPadding;
-        const defaultPadding = this.element.getAttribute(DEFAULT_MODAL_PADDING_ATTRIBUTE)?.trim() || detectedPadding;
-
-        this.element.setAttribute(MODAL_PADDING_ATTRIBUTE, currentPadding);
-        this.element.setAttribute(DEFAULT_MODAL_PADDING_ATTRIBUTE, defaultPadding);
-
-        this.applyPaddingToBody(currentPadding);
+    /** Toggle fullscreen while retaining the configured size and body padding. */
+    public toggleFullscreen(): void {
+        this.isFullscreen = !this.isFullscreen;
+        this.applySize();
     }
 
-    private detectBodyPadding(): string {
-        if (!this.modalBodyElement) {
-            return 'p-3';
-        }
-
-        const paddingClasses = Array.from(this.modalBodyElement.classList).filter((className) =>
-            Modal.PADDING_CLASS_PATTERN.test(className)
-        );
-
-        return paddingClasses.join(' ') || 'p-3';
+    /** Configure whether clicking this dialog's backdrop closes it. */
+    public setBackdrop(enabled: boolean): void {
+        this.element.dataset.backdropClickClose = String(enabled);
     }
 
-    private applyPaddingToBody(padding: string): void {
-        if (!this.modalBodyElement) return;
-
-        const existingPaddingClasses = Array.from(this.modalBodyElement.classList).filter((className) =>
-            Modal.PADDING_CLASS_PATTERN.test(className)
-        );
-
-        if (existingPaddingClasses.length > 0) {
-            this.modalBodyElement.classList.remove(...existingPaddingClasses);
-        }
-
-        const nextPaddingClasses = padding.split(/\s+/).filter(Boolean);
-        if (nextPaddingClasses.length > 0) {
-            this.modalBodyElement.classList.add(...nextPaddingClasses);
-        }
-    }
-
-    private getDefaultPadding(): string {
-        return this.element?.getAttribute(DEFAULT_MODAL_PADDING_ATTRIBUTE)?.trim() || 'p-3';
-    }
-
+    /** Replace only padding classes while retaining caller-supplied body styling. */
     public setPadding(padding: string): void {
-        if (!this.element || !this.modalBodyElement) return;
-
-        const normalizedPadding = padding.trim() || this.getDefaultPadding();
-
-        this.element.setAttribute(MODAL_PADDING_ATTRIBUTE, normalizedPadding);
-        this.applyPaddingToBody(normalizedPadding);
+        if (!this.modalBodyElement) return;
+        for (const className of Array.from(this.modalBodyElement.classList)) {
+            if (/^!?p(?:[trblxyse])?-.+$/.test(className)) this.modalBodyElement.classList.remove(className);
+        }
+        const normalized = padding.trim() || this.element.dataset.defaultModalPadding || 'p-3';
+        this.element.dataset.modalPadding = normalized;
+        this.modalBodyElement.classList.add(...normalized.split(/\s+/));
     }
 
+    /** Restore declaration defaults for legacy callers that reuse one modal. */
+    public resetToDefaults(): void {
+        this.isFullscreen = false;
+        this.setSize(this.element.dataset.defaultModalSize || 'md');
+        this.setPadding(this.element.dataset.defaultModalPadding || 'p-3');
+        this.setBackdrop(this.element.dataset.defaultBackdropClickClose !== 'false');
+    }
 }

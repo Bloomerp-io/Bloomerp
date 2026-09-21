@@ -1,6 +1,7 @@
 import { getItemNavigationKey } from "@/utils/itemNavigation";
 import renderDataView from "@/utils/dataview";
-import { getComponent } from "../BaseComponent";
+import { createModalInstance } from "@/utils/modals";
+import { t } from "@/utils/i18n";
 import { Modal } from "../Modal";
 import type { ForeignFieldSelection } from "@/components/data_view_components/ForeignFieldDataViewContainer";
 import htmx from "htmx.org";
@@ -38,6 +39,8 @@ export default class ForeignFieldWidget extends BaseWidget {
     private previewCleanupFns: Array<() => void> = [];
     private widgetInstanceId: string = '';
     private createSuccessHandler: ((event: Event) => void) | null = null;
+    private createModal: Modal | null = null;
+    private advancedModal: Modal | null = null;
     private advancedSelectionHandler: ((event: Event) => void) | null = null;
     private advancedSelectionTarget: HTMLElement | null = null;
     private advancedModalClosedHandler: (() => void) | null = null;
@@ -101,6 +104,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         document.addEventListener('click', this.outsideClickHandler);
     }
 
+    /** Release widget listeners and any dialogs owned by this field. */
     public destroy(): void {
         if (this.input && this.boundOnInput) this.input.removeEventListener('input', this.boundOnInput);
         if (this.input && this.boundOnFocus) this.input.removeEventListener('focus', this.boundOnFocus);
@@ -115,6 +119,10 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.cleanupPreviewHandlers();
         this.teardownCreateSuccessListener();
         this.teardownAdvancedSelectionListener();
+        this.createModal?.destroy();
+        this.advancedModal?.destroy();
+        this.createModal = null;
+        this.advancedModal = null;
         this.restoreDropdown();
     }
 
@@ -168,29 +176,41 @@ export default class ForeignFieldWidget extends BaseWidget {
             .filter((item) => item.length > 0);
     }
 
-    // Click handlers
-    private handleCreateClick(e: Event) {
+    /** Load a new object form into a private dialog while preserving parent forms. */
+    private handleCreateClick(e: Event): void {
         e.preventDefault();
         this.hideDropdown();
-        let modal = getComponent(document.querySelector('#create-object-modal')) as Modal;
-        if (!modal || !this.contentTypeId) return;
-
+        if (!this.contentTypeId || this.createModal?.element.isConnected) return;
+        const modal = createModalInstance('create-object-modal', this.input || this.element);
+        this.createModal = modal;
+        modal.element.addEventListener('bloomerp:modal-closed', this.handleCreateModalClosed, { once: true });
         this.setupCreateSuccessListener(modal);
-
-        htmx.ajax('get', `/components/create-object/${this.contentTypeId}/?foreign_field_widget_id=${encodeURIComponent(this.widgetInstanceId)}`, {
-            target: modal.getBodyElement(),
+        const body = modal.getBodyElement();
+        body.textContent = t('Loading…');
+        modal.open();
+        void htmx.ajax('get', `/components/create-object/${this.contentTypeId}/?foreign_field_widget_id=${encodeURIComponent(this.widgetInstanceId)}`, {
+            source: body,
+            target: body,
             swap: 'innerHTML',
-        }).then(() => {
-            modal.open();
+        }).catch((error: unknown): void => {
+            if (body.isConnected) body.textContent = t('Unable to load this form. Close the dialog and try again.');
+            console.error('Failed to load create object modal:', error);
         });
     }
 
-    private async handleAdvancedClick(e: Event) {
+    /** Release the creation subscription when the user cancels or completes a dialog. */
+    private handleCreateModalClosed = (): void => {
+        this.teardownCreateSuccessListener();
+        this.createModal = null;
+    };
+
+    /** Open an instance-local advanced selector, including inside a create dialog. */
+    private async handleAdvancedClick(e: Event): Promise<void> {
         e.preventDefault();
         this.hideDropdown();
-        // 1. Get the modal
-        let modal = getComponent(document.querySelector('#advanced-query-modal')) as Modal;
-        if (!modal || !this.contentTypeId) return;
+        if (!this.contentTypeId || this.advancedModal?.element.isConnected) return;
+        const modal = createModalInstance('advanced-query-modal', this.input || this.element);
+        this.advancedModal = modal;
 
         modal.setSize('full');
         modal.open();
@@ -678,11 +698,12 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.createSuccessHandler = null;
     }
 
+    /** Route selections and cancellation from this widget's own advanced dialog. */
     private setupAdvancedSelectionListener(modal: Modal): void {
         this.teardownAdvancedSelectionListener();
         this.advancedSelectionTarget = modal.getBodyElement();
         this.advancedModalClosedTarget = modal.element;
-        this.advancedSelectionHandler = (event: Event) => {
+        this.advancedSelectionHandler = (event: Event): void => {
             const selection = (event as CustomEvent<ForeignFieldSelection>).detail;
             if (!selection?.objectId) return;
 
@@ -696,8 +717,9 @@ export default class ForeignFieldWidget extends BaseWidget {
                 this.teardownAdvancedSelectionListener();
             }
         };
-        this.advancedModalClosedHandler = () => {
+        this.advancedModalClosedHandler = (): void => {
             this.teardownAdvancedSelectionListener();
+            this.advancedModal = null;
         };
         this.advancedSelectionTarget.addEventListener(
             this.advancedSelectionEventName,

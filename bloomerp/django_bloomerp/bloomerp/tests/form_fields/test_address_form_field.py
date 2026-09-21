@@ -3,7 +3,6 @@ from bloomerp.form_fields.address_field import AddressFormField
 from bloomerp.tests.base import (
     BloomerpFormFieldTestCase,
     FormFieldScenario,
-    ExpectedFormFieldException,
 )
 
 
@@ -13,3 +12,16 @@ class TestAddressFormField(BloomerpFormFieldTestCase):
     def get_test_scenarios(self) -> list[FormFieldScenario[AddressFormField]]:
         # Add only the scenarios this class needs.
         return []
+
+    def test_clean_accepts_a_structured_address_mapping(self) -> None:
+        """Clean the dictionary-shaped value used by behavior and API callers."""
+        value = {
+            "street_1": "Main street 1",
+            "street_2": "",
+            "postal_code": "1000",
+            "city": "Brussels",
+            "state": "",
+            "country": "BE",
+        }
+
+        self.assertEqual(AddressFormField().clean(value), value)

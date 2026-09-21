@@ -42,6 +42,7 @@ class BehaviorFieldReference:
 
     field: ApplicationField
     permission: Literal["view", "change"] = "view"
+    draft: bool = True
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -84,7 +85,7 @@ class FieldStateUpdate:
 
     field: str
     visible: bool | None = None
-    disabled: bool = False
+    disabled: bool | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

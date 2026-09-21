@@ -15,7 +15,7 @@ type Evaluation = { field: string; event: BehaviorEvent };
 type BehaviorResponse = {
     revision: number;
     values: Array<{ field: string; value: unknown }>;
-    states: Array<{ field: string; visible: boolean | null; disabled: boolean }>;
+    states: Array<{ field: string; visible: boolean | null; disabled: boolean | null }>;
     messages: Array<{ type: "info" | "success" | "warning" | "danger"; message: string }>;
 };
 type Field = { element: HTMLElement; cell: DetailViewCell; name: string };

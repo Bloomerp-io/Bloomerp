@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from django import forms
 
@@ -110,6 +111,21 @@ class AddressFormField(forms.MultiValueField):
         if self.required and normalized is None:
             raise forms.ValidationError("Enter an address.")
         return normalized
+
+    def clean(self, value: Any) -> AddressValue | None:
+        """Accept the address field's public mapping format before form validation.
+
+        Django's ``MultiValueField`` expects a positional list from its widget,
+        while programmatic callers use the structured mapping returned by this
+        field. Convert only that public mapping into the widget's component
+        order, then retain Django's usual child-field validation and compression.
+        """
+        if isinstance(value, dict):
+            value = [
+                value.get(key, "")
+                for key, _label, _autocomplete in ADDRESS_COMPONENTS
+            ]
+        return super().clean(value)
 
     def to_python(self, value):
         if isinstance(value, dict) or isinstance(value, str):

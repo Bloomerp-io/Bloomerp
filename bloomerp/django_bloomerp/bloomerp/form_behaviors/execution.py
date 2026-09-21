@@ -344,10 +344,11 @@ class BehaviorExecutor:
                     configured.config,
                     request=self.request,
                     listener_layout_config=self.items[listener.field].config,
+                    target_layout_config=self.items[target.field].config if target else None,
                 )
                 for reference in iter_config_field_references(cleaned):
                     field = reference.field
-                    if field.content_type_id == listener.content_type_id:
+                    if reference.draft and field.content_type_id == listener.content_type_id:
                         self._add_draft_value(draft, values, field.field)
                 result = action.execute(
                     BehaviorContext(
@@ -391,7 +392,10 @@ class BehaviorExecutor:
                             state.visible is not None
                             and not isinstance(state.visible, bool)
                         )
-                        or not isinstance(state.disabled, bool)
+                        or (
+                            state.disabled is not None
+                            and not isinstance(state.disabled, bool)
+                        )
                     ):
                         raise ValidationError(
                             "Action returned an invalid state target."

@@ -12,10 +12,12 @@ from bloomerp.forms.model_form import (
     get_model_form_application_fields,
 )
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import FieldLayout
 from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.services.sectioned_layout_services import create_default_layout
 from bloomerp.views.mixins.application_field_layout_form_mixin import (
     ApplicationFieldLayoutFormMixin,
 )
@@ -50,6 +52,32 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
             target_content_type=target_content_type,
             layout_mode=self.layout_mode,
         )
+
+    def get_layout(self) -> FieldLayout:
+        """Render surviving model fields without overwriting stale saved layouts.
+
+        Field metadata may have been deleted or recreated since a preference
+        was saved. Resolve against this model before form/widget rendering;
+        the existing permission checks still decide which fields are usable.
+        """
+        cached_layout = getattr(self, "_resolved_model_layout", None)
+        if cached_layout is not None:
+            return cached_layout
+
+        layout = super().get_layout().model_copy(deep=True)
+        available_fields = list(
+            ApplicationField.objects.filter(content_type=self.layout_content_type)
+        )
+        available_ids = {str(field.pk) for field in available_fields}
+        had_items = any(row.items for row in layout.rows)
+        for row in layout.rows:
+            row.items = [item for item in row.items if str(item.id) in available_ids]
+
+        if had_items and not any(row.items for row in layout.rows):
+            layout = create_default_layout(self.model, application_fields=available_fields)
+
+        self._resolved_model_layout = layout
+        return layout
 
     def get_can_change(self):
         return PreferenceManager(self.get_user()).can_manage(self.get_layout_object())

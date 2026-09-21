@@ -20,6 +20,12 @@ export function initializeWidget(root: HTMLElement, value?: unknown): void {
 
 /** Read widget values, optionally allowing incomplete inputs during dependent-form refreshes. */
 export function readWidget(root: HTMLElement, validate: boolean = true): unknown {
+    // Composite filter editors own their nested value inputs; read only their JSON output.
+    const componentOutput = root.querySelector<HTMLInputElement>('input[data-widget-output]');
+    if (componentOutput) {
+        if (validate && !componentOutput.value) throw new Error(t('Complete every filter condition before applying.'));
+        return componentOutput.value;
+    }
     // A component owns its descendants; never flatten its internal form controls.
     for (const node of root.querySelectorAll<HTMLElement>('[bloomerp-component]')) {
         const component = getComponent(node);

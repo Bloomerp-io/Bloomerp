@@ -7,9 +7,8 @@ from django.http import HttpResponse
 
 from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.form_behaviors.builtins import (
-    DISABLE_FIELD,
-    ENABLE_FIELD,
-    HIDE_FIELD,
+    SET_FIELD_INTERACTION,
+    SET_FIELD_VISIBILITY,
     SET_VALUE,
 )
 from bloomerp.form_behaviors.definition import (
@@ -120,7 +119,11 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                     id="suggest-and-hide",
                     actions=[
                         self._set_last_name(),
-                        BehaviorAction(action=HIDE_FIELD, target_field="last_name"),
+                        BehaviorAction(
+                            action=SET_FIELD_VISIBILITY,
+                            target_field="last_name",
+                            config={"visibility": "hidden"},
+                        ),
                     ],
                 )
             ],
@@ -130,8 +133,9 @@ class TestExecuteComponent(BloomerpComponentTestCase):
             [FormBehavior(
                 id="disable-last-name",
                 actions=[BehaviorAction(
-                    action=DISABLE_FIELD,
+                    action=SET_FIELD_INTERACTION,
                     target_field="last_name",
+                    config={"interaction": "disabled"},
                 )],
             )],
         )
@@ -140,8 +144,9 @@ class TestExecuteComponent(BloomerpComponentTestCase):
             [FormBehavior(
                 id="enable-last-name",
                 actions=[BehaviorAction(
-                    action=ENABLE_FIELD,
+                    action=SET_FIELD_INTERACTION,
                     target_field="last_name",
+                    config={"interaction": "enabled"},
                 )],
             )],
         )
@@ -334,7 +339,7 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                                 "states": [{
                                     "field": "last_name",
                                     "visible": False,
-                                    "disabled": False,
+                                    "disabled": None,
                                 }],
                                 "messages": [],
                             }

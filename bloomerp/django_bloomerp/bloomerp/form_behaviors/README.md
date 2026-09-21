@@ -143,39 +143,41 @@ each later action sees earlier value updates. Failure returns no partial batch.
   batches record reads and enforces row and field visibility. Deleted rows
   and blank related sources are skipped. This does not identify the one row
   that changed; existing destination values on active rows are overwritten.
-- `CALCULATE_O2M_ROW` is a targetless collection action that writes its listener
-  value after calculating one numeric destination column per active row. Its
-  restricted expression language accepts numeric child-column names, numeric
-  literals, parentheses, unary signs, and `+`, `-`, `*`, `/`. It uses Decimal
-  arithmetic, treats blank operands as zero, rejects destination self-reference,
-  and requires view permission for sources plus change permission for the
-  destination child column. Its write policy can recalculate always, only when
-  the destination is empty, or when it is empty or numerically zero.
-- `CALCULATE_FIELD` applies the same restricted Decimal expression engine to
-  eligible top-level numeric source fields and writes one declared numeric,
-  compatible text, or property target. Its listener can be any rendered field;
-  the configured source references remain permission-aware, and the executor
-  owns target authorization, coercion, validation, and serialization.
-- Reusable expression parsing/evaluation, numeric eligibility, destination
-  normalization, and scalar write decisions live under `shared/calculate.py`
-  and `shared/write_policy.py`. Built-ins retain only their action-specific
-  iteration, configuration relationships, and result construction.
+- `CALCULATE` writes either a scalar target or, when the target is one-to-many,
+  a selected numeric target column in every active row. Formulas accept numeric
+  parent fields, `collection.column`, decimal literals, parentheses, unary
+  signs, and `+`, `-`, `*`, `/`. Scalar formulas can use `sum`, `count`, `first`,
+  and `last` over one collection expression, for example `sum(lines.total)`.
+  Row formulas use the target collection's qualified columns, for example
+  `lines.unit_price * lines.quantity * (1 + invoice_tax_rate)`. The parser
+  rejects arbitrary Python calls, cross-collection references, and target
+  self-reference. Deleted rows are skipped; blank numeric operands are zero.
+  The write policy controls whether existing values are replaced.
+- Restricted formula parsing/evaluation lives in the unified `CALCULATE` action;
+  reusable numeric eligibility, destination normalization, and write policies
+  live under `shared/calculate.py` and `shared/write_policy.py`.
 - `CLEAR_VALUE` targets a normal top-level field and derives its empty public
   value from the registered form-field contract. This yields the appropriate
   scalar, boolean, relation, multi-value, or collection representation while
   retaining the executor's normal declared-target and write-access checks.
-- `AGGREGATE_O2M_COLUMN` writes a top-level numeric target from one numeric
-  child column using sum, nonblank count, first, or last. Deleted rows and blank
-  operands are excluded; empty first/last results use the target's public empty
-  value. Its backward-compatible write policy can always replace the target,
-  write only when empty, or write when empty or numerically zero. Source view
-  access and target change access are enforced by the executor.
-- `DISABLE_FIELD` applies only `disabled=true` to its declared top-level target.
-  Visibility and the draft value remain unchanged; the browser uses an inert
-  container lock rather than disabling native controls, so submission retains
-  the field value.
-- `ENABLE_FIELD` symmetrically applies only `disabled=false`, restoring
-  interaction without changing visibility or the draft value.
+- `SET_FIELD_VISIBILITY` shows or hides its declared target without changing
+  interaction or its draft value. `SET_FIELD_INTERACTION` enables or disables
+  interaction without changing visibility or its draft value. The browser uses
+  an inert container lock rather than disabling native controls, so submission
+  retains the field value.
+- `COPY_FIELD_VALUE` copies either the listener's compatible value or a
+  compatible field of its selected related record. The latter reads through
+  the user's accessible queryset and verifies field visibility on the record.
+- `FETCH` uses one permission-checked lookup contract with structured `filters`,
+  a source `model`, optional `order_by`, and `fetch` selection. A scalar target
+  uses `first` or `last` plus one source `column`. A one-to-many target uses
+  `mode: populate` with `fetch: all` and target-to-source `column_mappings`, or
+  `mode: per_row` with `first`/`last`, one source `column`, and a rendered
+  `target_column`. Only per-row filters may use `{{ row.column }}`; all modes may
+  use `{{ object.field }}`. Ordering defaults to record ID and uses ID as a
+  tie-breaker when an explicit source field is selected. Bulk `if_empty` keeps
+  existing active rows, while `replace_unsaved` replaces draft rows only if no
+  persisted row ID is present. Lookups return at most 1000 rows and never save.
 - `TRANSFORM_TEXT` reads a text listener and writes its declared text target.
   Uppercase, lowercase, and title case use Python's Unicode-aware string
   operations. Sentence case uppercases the first code point and lowercases the

@@ -9,6 +9,7 @@ from colorama import Fore, Style
 from bloomerp.config.definition import BloomerpAppI18nSettings
 
 
+
 class BloomerpApp(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "bloomerp"
@@ -50,31 +51,13 @@ class BloomerpApp(AppConfig):
         from bloomerp.signals.activity_log_signals import after_delete_of_object  # noqa: F401
         from bloomerp.lookups.registry import LOOKUP_REGISTRY  # noqa: F401
         from bloomerp.config.utils import set_model_config
+        from bloomerp.config.utils import set_detail_view_url
         from django.contrib.auth.models import Group
-        from bloomerp.models.definition import DetailViewSettings, FieldLayout, LayoutItem, LayoutRow
+        from bloomerp.config.builtins.group import GROUP_MODEL_CONFIG
         
         # Set model config of group's model
-        set_model_config(
-            Group,
-            BloomerpModelConfig(
-                module="users",
-                detail_view_settings=DetailViewSettings(
-                    layouts=[
-                        FieldLayout(
-                            rows=[
-                                LayoutRow(
-                                    columns=1,
-                                    title="Details",
-                                    items=[
-                                        LayoutItem(id="name")
-                                    ]
-                                )
-                            ]
-                        )
-                    ]
-                )
-            )
-        )
+        set_model_config(Group, GROUP_MODEL_CONFIG)
+        set_detail_view_url(Group)
 
         configure_bloomerp_allauth_settings()
 
