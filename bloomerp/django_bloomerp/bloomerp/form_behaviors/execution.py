@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Model
+from django.db.models import Model, Q
 from django.http import HttpRequest
 
 from bloomerp.field_types.utils.form_field_factories import build_form_field
@@ -40,6 +40,7 @@ from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
 from bloomerp.permissions.manager import UserPolicyManager
+from bloomerp.services.preference_services import PreferenceManager
 
 LayoutOwner = Form | UserObjectLayoutPreference
 
@@ -72,6 +73,15 @@ def iter_config_field_references(
 class BehaviorExecutor:
     """Authorize a layout and evaluate actions using its model's field contracts."""
 
+    def _can_access_preference(self, owner: UserObjectLayoutPreference) -> bool:
+        """Return whether the user owns or currently receives the preference."""
+        return (
+            PreferenceManager(self.user)
+            .get_available(UserObjectLayoutPreference)
+            .filter(Q(pk=owner.pk) | Q(source_object_id=owner.pk))
+            .exists()
+        )
+
     def __init__(
         self,
         owner: LayoutOwner,
@@ -102,7 +112,7 @@ class BehaviorExecutor:
             if not user.is_authenticated:
                 raise PermissionDenied
             if isinstance(owner, UserObjectLayoutPreference):
-                if owner.user_id != user.pk:
+                if not self._can_access_preference(owner):
                     raise PermissionDenied
             elif isinstance(owner, Form):
                 if not self.manager.has_access_to_object(owner, "view"):

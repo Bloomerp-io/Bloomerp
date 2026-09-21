@@ -205,9 +205,10 @@ class TestExecuteComponent(BloomerpComponentTestCase):
         shared_owner = self._preference(
             "Shared behavior layout",
             [FormBehavior(id="shared-suggestion", actions=[self._set_last_name()])],
+            owned_by_admin=False,
         )
-        shared_owner.shared_with_users.add(self.normal_user)
-        PreferenceManager(self.normal_user).select(shared_owner)
+        shared_owner.shared_with_users.add(self.admin_user)
+        PreferenceManager(self.admin_user).select(shared_owner)
         shared_payload = self._payload(shared_owner)
         shared_payload.pop("object_id")
         normal_owner = self._preference(
@@ -431,7 +432,7 @@ class TestExecuteComponent(BloomerpComponentTestCase):
             RequestScenario(
                 name="A selected shared preference can execute its owner's live behaviors",
                 method="POST",
-                user=self.normal_user,
+                user=self.admin_user,
                 content_type="application/json",
                 data=shared_payload,
                 expected=ExpectedResult(
