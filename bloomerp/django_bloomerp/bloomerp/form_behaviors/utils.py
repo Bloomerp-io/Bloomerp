@@ -20,10 +20,13 @@ def build_action_config_form(
     target_field: ApplicationField | None = None,
     *,
     request: HttpRequest | None = None,
+    listener_layout_config: Mapping[str, Any] | None = None,
 ) -> type[forms.Form]:
-    """Return the action's form class after the separate target selection step."""
+    """Return an action form with the listener's rendered layout configuration."""
     if action.requires_target_field and target_field is None:
         raise ValidationError("Select a target field first.")
+    if listener_field is not None:
+        listener_field._behavior_layout_config = dict(listener_layout_config or {})
     return action.config_form_factory(target_field, listener_field, request)
 
 
@@ -36,10 +39,15 @@ def action_config_form(
     prefix: str = "",
     bound: bool = False,
     request: HttpRequest | None = None,
+    listener_layout_config: Mapping[str, Any] | None = None,
 ) -> forms.Form:
     """Create a prefixed editor or validator, resolving portable field-name choices."""
     form_class = build_action_config_form(
-        action, listener, target, request=request
+        action,
+        listener,
+        target,
+        request=request,
+        listener_layout_config=listener_layout_config,
     )
     values = dict(config)
     form = form_class(prefix=prefix, initial=values.copy())
@@ -67,10 +75,17 @@ def clean_action_config(
     config: Mapping[str, Any],
     *,
     request: HttpRequest | None = None,
+    listener_layout_config: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Validate portable JSON configuration using the same form used by the editor."""
     form = action_config_form(
-        action, listener, target, config, bound=True, request=request
+        action,
+        listener,
+        target,
+        config,
+        bound=True,
+        request=request,
+        listener_layout_config=listener_layout_config,
     )
     if not form.is_valid():
         raise ValidationError(form.errors.as_json())

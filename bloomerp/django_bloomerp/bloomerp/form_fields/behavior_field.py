@@ -67,5 +67,6 @@ class BehaviorField(forms.JSONField):
                     target,
                     configured.config,
                     request=self.request,
+                    listener_layout_config=self.widget.listener_layout_config,
                 )
         return config.to_storage()

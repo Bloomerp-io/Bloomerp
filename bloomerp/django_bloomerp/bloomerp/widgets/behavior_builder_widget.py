@@ -25,6 +25,7 @@ class BehaviorBuilderWidget(forms.Widget):
         self.source_field = source_field or {}
         self.field_catalog = field_catalog or []
         self.layout_context: dict[str, Any] = {}
+        self.listener_layout_config: dict[str, Any] = {}
 
     def format_value(self, value: Any) -> str:
         """Serialize declarations, normalizing Django JSONField's empty JSON value."""

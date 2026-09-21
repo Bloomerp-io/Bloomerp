@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from bloomerp.form_behaviors.builtins.fetch_o2m_value import FETCH_O2M_VALUE
@@ -15,7 +16,10 @@ from bloomerp.form_behaviors.definition import (
     BehaviorResult,
     FieldValueUpdate,
 )
-from bloomerp.form_behaviors.utils import clean_action_config
+from bloomerp.form_behaviors.utils import (
+    build_action_config_form,
+    clean_action_config,
+)
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.tests.base import BehaviorActionScenario, BloomerpBehaviorActionTestCase
@@ -151,6 +155,34 @@ class TestFetchO2mValueAction(BloomerpBehaviorActionTestCase):
         self.assertEqual(self.action.group, "Data lookup")
         self.assertIn("one-to-many", self.action.label.lower())
         self.assertIn("every active child row", self.action.description.lower())
+
+    def test_destination_choices_follow_rendered_inline_columns(self) -> None:
+        """Do not save a destination that the one-to-many draft cannot contain."""
+        form_class = build_action_config_form(
+            self.action,
+            self._listener(),
+            listener_layout_config={"inline_fields": ["currency"]},
+        )
+
+        self.assertEqual(
+            list(
+                form_class.base_fields["target_column"].queryset.values_list(
+                    "field", flat=True
+                )
+            ),
+            ["currency"],
+        )
+
+    def test_row_placeholders_must_reference_rendered_columns(self) -> None:
+        """Reject row placeholders whose values are absent from the submitted draft."""
+        with self.assertRaises(ValidationError):
+            clean_action_config(
+                self.action,
+                self._listener(),
+                None,
+                self._config(),
+                listener_layout_config={"inline_fields": ["exchange_rate"]},
+            )
 
     def test_row_placeholders_declare_child_field_dependencies(self) -> None:
         """Expose child columns so the executor loads their supplied draft values."""

@@ -343,6 +343,7 @@ class BehaviorExecutor:
                     target,
                     configured.config,
                     request=self.request,
+                    listener_layout_config=self.items[listener.field].config,
                 )
                 for reference in iter_config_field_references(cleaned):
                     field = reference.field

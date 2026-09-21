@@ -9,11 +9,12 @@ from typing import Any
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
+from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.filters.definition import Filter, Filters
 from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.form_behaviors.builtins.set_o2m_value import compatible_columns
@@ -37,6 +38,18 @@ FILTERS_ADAPTER = TypeAdapter(list[Filter])
 VALUE_REFERENCE = re.compile(
     r"^\s*\{\{\s*(object|row)\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}\s*$"
 )
+
+
+def single_value_fields(
+    fields: QuerySet[ApplicationField],
+) -> QuerySet[ApplicationField]:
+    """Exclude multi-valued relations that cannot satisfy a single-value action."""
+    return fields.exclude(
+        field_type__in=(
+            FIELD_TYPE_REGISTRY.MANY_TO_MANY_FIELD.id,
+            FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id,
+        )
+    )
 
 
 def _content_type_from_initial(value: Any) -> ContentType | None:
@@ -103,13 +116,21 @@ def resolve_behavior_field_references(
     *,
     object_model: type[Model],
     row_model: type[Model] | None = None,
+    allowed_row_fields: QuerySet[ApplicationField] | None = None,
 ) -> tuple[BehaviorFieldReference, ...]:
     """Resolve placeholder dependencies so the executor loads and authorizes them."""
     references: list[BehaviorFieldReference] = []
     for scope, field_name in sorted(filter_value_references(filters)):
         model = object_model if scope == "object" else row_model
+        candidates = (
+            allowed_row_fields
+            if scope == "row" and allowed_row_fields is not None
+            else ApplicationField.get_for_model(model)
+            if model is not None
+            else ApplicationField.objects.none()
+        )
         field = (
-            ApplicationField.get_for_model(model).filter(field=field_name).first()
+            candidates.filter(field=field_name).first()
             if model is not None
             else None
         )
@@ -208,7 +229,7 @@ def fetch_value_config_form_factory(
                 model=model, include_controls=False
             )
             self.fields["fetch_field"].queryset = compatible_columns(
-                ApplicationField.get_for_model(model), target
+                single_value_fields(ApplicationField.get_for_model(model)), target
             )
 
         def clean(self) -> dict[str, Any]:
@@ -261,6 +282,14 @@ def fetch_value(
     )
 
 
+def fetch_value_target_fields(
+    fields: QuerySet[ApplicationField],
+    listener: ApplicationField | None,
+) -> QuerySet[ApplicationField]:
+    """Offer only scalar and single-record relation targets."""
+    return single_value_fields(fields)
+
+
 FETCH_VALUE = BehaviorActionDefinition(
     id="fetch_value",
     label="Fetch value from a record",
@@ -270,6 +299,7 @@ FETCH_VALUE = BehaviorActionDefinition(
     ),
     requires_target_field=True,
     config_form_factory=fetch_value_config_form_factory,
+    get_target_fields=fetch_value_target_fields,
     execute=fetch_value,
     group="Data lookup",
 )

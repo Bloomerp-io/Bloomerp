@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
 
+from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.fetch_value import FETCH_VALUE
 from bloomerp.form_behaviors.definition import (
     BehaviorContext,
@@ -14,6 +15,7 @@ from bloomerp.form_behaviors.definition import (
     FieldValueUpdate,
 )
 from bloomerp.form_behaviors.utils import clean_action_config
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.tests.base import BehaviorActionScenario, BloomerpBehaviorActionTestCase
 
@@ -147,6 +149,28 @@ class TestFetchValueAction(BloomerpBehaviorActionTestCase):
         self.assertEqual(self.action.group, "Data lookup")
         self.assertIn("record", self.action.label.lower())
         self.assertIn("filters", self.action.description.lower())
+
+    def test_collection_fields_are_excluded_from_targets(self) -> None:
+        """Offer only values that the action can fetch and serialize as one value."""
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        many_to_many = ApplicationField.objects.create(
+            content_type=content_type,
+            field="unsupported_many_to_many",
+            field_type=FIELD_TYPE_REGISTRY.MANY_TO_MANY_FIELD.id,
+        )
+        one_to_many = ApplicationField.objects.create(
+            content_type=content_type,
+            field="unsupported_one_to_many",
+            field_type=FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id,
+        )
+        last_name = self.get_application_field("last_name")
+        candidates = ApplicationField.objects.filter(
+            pk__in=[many_to_many.pk, one_to_many.pk, last_name.pk]
+        )
+
+        eligible = self.action.get_target_fields(candidates, None)
+
+        self.assertEqual(list(eligible.values_list("field", flat=True)), ["last_name"])
 
     def test_object_placeholders_declare_executor_dependencies(self) -> None:
         """Expose referenced fields so the executor loads their supplied draft values."""

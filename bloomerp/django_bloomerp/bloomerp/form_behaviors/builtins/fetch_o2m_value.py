@@ -36,6 +36,16 @@ from bloomerp.widgets.filter_widget import FilterWidget
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
 
+def rendered_value_columns(
+    listener: ApplicationField,
+) -> QuerySet[ApplicationField]:
+    """Return editable value columns rendered by the listener's configured widget."""
+    layout_config = getattr(listener, "_behavior_layout_config", {})
+    widget = listener.get_widget(layout_config=layout_config)
+    rendered_ids = [column.pk for column in widget.get_columns()]
+    return value_columns(listener.get_related_model()).filter(pk__in=rendered_ids)
+
+
 def fetch_o2m_value_config_form_factory(
     target: ApplicationField | None,
     listener: ApplicationField | None,
@@ -44,7 +54,7 @@ def fetch_o2m_value_config_form_factory(
     """Build a lookup form for a destination column in the listener's child rows."""
     if listener is None or listener.get_related_model() is None:
         raise forms.ValidationError("Select a one-to-many listener first.")
-    columns = value_columns(listener.get_related_model())
+    columns = rendered_value_columns(listener)
 
     class FetchO2MValueForm(forms.Form):
         """Configure a per-row lookup and its destination child column."""
@@ -124,6 +134,7 @@ def fetch_o2m_value_config_form_factory(
                     cleaned["filters"],
                     object_model=listener.get_model(),
                     row_model=listener.get_related_model(),
+                    allowed_row_fields=columns,
                 )
             except forms.ValidationError as error:
                 self.add_error("filters", error)

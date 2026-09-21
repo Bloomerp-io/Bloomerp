@@ -14,13 +14,14 @@ from bloomerp.models import ApplicationField
 from bloomerp.models.definition import FieldLayout, LayoutItem
 from bloomerp.models.forms.form import Form
 from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.utils.requests import render_blank_form
 from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
-
 
 LAYOUT_OBJECT_MODELS = {
     Form,
@@ -78,6 +79,10 @@ def create_form(
         for form_field in attrs.values():
             if isinstance(form_field.widget, BehaviorBuilderWidget):
                 form_field.widget.field_catalog = field_catalog
+                form_field.widget.listener_layout_config = _get_item_config(
+                    target.layout_object,
+                    application_field,
+                )
                 form_field.widget.layout_context = {
                     "layout_object_content_type_id": ContentType.objects.get_for_model(target.layout_object).pk,
                     "layout_object_id": str(target.layout_object.pk),
