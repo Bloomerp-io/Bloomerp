@@ -41,7 +41,7 @@ class SelectContentTypeForm(forms.Form):
         label=_("Content type"),
         widget=ForeignFieldWidget(
             model=ContentType,
-            attrs={"class": "input"},
+            attrs={"class": "input w-full"},
         ),
     )
 
