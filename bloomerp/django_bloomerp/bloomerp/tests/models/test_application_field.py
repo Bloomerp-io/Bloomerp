@@ -996,6 +996,45 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
             ).exists()
         )
 
+    def test_model_form_ignores_serialized_one_to_many_file_names(self) -> None:
+        """
+        Use case: A stored form submission replays an inline avatar filename.
+        Expected result: The filename is not rebound as an uploaded file.
+        """
+        # 1. Configure an inline layout containing the child avatar field.
+        form_class = bloomerp_modelform_factory(
+            self.CustomerModel,
+            fields=["lines"],
+        )
+        relation_field = ApplicationField.get_by_field(
+            self.CustomerModel,
+            "lines",
+        )
+        form_class.base_fields["lines"].widget = relation_field.get_widget(
+            layout_config={
+                "inline_fields": ["description", "hours", "avatar"],
+            }
+        )
+
+        # 2. Replay the JSON-compatible row produced by submission serialization.
+        restored_form = form_class.from_deserialized_data(
+            {
+                "lines": [
+                    {
+                        "id": "",
+                        "description": "Reviewed line",
+                        "hours": "2.50",
+                        "avatar": "inline-avatar.gif",
+                    }
+                ]
+            }
+        )
+
+        # 3. Confirm the row remains valid without treating its filename as a file.
+        self.assertTrue(restored_form.is_valid(), restored_form.errors)
+        restored_lines = restored_form.cleaned_data["lines"]
+        self.assertFalse(restored_lines.to_save[0].avatar)
+
     def test_model_form_prepares_omitted_values_for_partial_update(self):
         customer = self.create_customer("Partial", "Update", 44)
         form_class = bloomerp_modelform_factory(

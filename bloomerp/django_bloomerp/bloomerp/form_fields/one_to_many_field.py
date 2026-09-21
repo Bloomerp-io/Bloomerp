@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import UploadedFile
 from django.db import models
 
 from bloomerp.form_fields.structured_value import (
@@ -122,7 +123,11 @@ class OneToManyField(forms.Field):
                     result.to_delete.append(instance)
                 continue
 
-            child_form = child_form_class(row, files=row, instance=instance)
+            child_form = child_form_class(
+                row,
+                files=self._uploaded_files(row),
+                instance=instance,
+            )
             if not child_form.is_valid():
                 errors.append(
                     ValidationError(
@@ -141,6 +146,15 @@ class OneToManyField(forms.Field):
         if errors:
             raise ValidationError(errors)
         return result
+
+    @staticmethod
+    def _uploaded_files(row: dict[str, Any]) -> dict[str, UploadedFile]:
+        """Return only genuine uploads for the child form's file mapping."""
+        return {
+            field_name: value
+            for field_name, value in row.items()
+            if isinstance(value, UploadedFile)
+        }
 
     def _resolve_parent_field_name(self) -> str | None:
         try:
