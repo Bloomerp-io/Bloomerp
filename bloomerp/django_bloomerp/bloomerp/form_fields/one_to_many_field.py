@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field as dataclass_field
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from typing import TYPE_CHECKING, Any
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from bloomerp.form_fields.structured_value import StructuredFormValue, serialize_form_value
+from bloomerp.form_fields.structured_value import (
+    StructuredFormValue,
+    serialize_form_value,
+)
 
 if TYPE_CHECKING:
     from bloomerp.models.application_field import ApplicationField
@@ -21,7 +25,7 @@ ROW_DELETE_KEY = "DELETE"
 class OneToManyCleanedData(StructuredFormValue):
     """Validated one-to-many changes produced without writing to the database."""
 
-    application_field: "ApplicationField"
+    application_field: ApplicationField
     to_save: list[models.Model] = dataclass_field(default_factory=list)
     to_delete: list[models.Model] = dataclass_field(default_factory=list)
     _forms: list[forms.ModelForm] = dataclass_field(default_factory=list, repr=False)
@@ -66,7 +70,13 @@ class OneToManyCleanedData(StructuredFormValue):
 class OneToManyField(forms.Field):
     """Validate inline child rows and return related instances grouped by action."""
 
-    def __init__(self, *, application_field: "ApplicationField", **kwargs):
+    def __init__(
+        self,
+        *,
+        application_field: ApplicationField,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize an inline field for one reverse model relation."""
         kwargs.setdefault("required", False)
         super().__init__(**kwargs)
         self.application_field = application_field
@@ -79,6 +89,7 @@ class OneToManyField(forms.Field):
         self.parent_instance = instance
 
     def clean(self, value: Any) -> OneToManyCleanedData:
+        """Validate inline rows with nested uploads bound as child-form files."""
         rows = super().clean(value) or []
         if not isinstance(rows, list):
             raise ValidationError("Invalid one-to-many field value.", code="invalid")
@@ -111,7 +122,7 @@ class OneToManyField(forms.Field):
                     result.to_delete.append(instance)
                 continue
 
-            child_form = child_form_class(row, instance=instance)
+            child_form = child_form_class(row, files=row, instance=instance)
             if not child_form.is_valid():
                 errors.append(
                     ValidationError(

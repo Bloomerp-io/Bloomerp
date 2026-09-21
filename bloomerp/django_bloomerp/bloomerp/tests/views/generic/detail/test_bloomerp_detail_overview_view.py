@@ -1,15 +1,35 @@
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpResponse
 from django.urls import reverse
 
 from bloomerp.lookups import builtins as lookups
-from bloomerp.models import ApplicationField, FieldPolicy, Policy, RowPolicy, RowPolicyRule
-from bloomerp.models.audit.activity_log import ActivityLog, ActivityLogAction, ActivityLogSource
+from bloomerp.models import (
+    ApplicationField,
+    FieldLayout,
+    FieldPolicy,
+    LayoutItem,
+    LayoutRow,
+    Policy,
+    RowPolicy,
+    RowPolicyRule,
+)
+from bloomerp.models.audit.activity_log import (
+    ActivityLog,
+    ActivityLogAction,
+    ActivityLogSource,
+)
 from bloomerp.models.project_management import Initiative, Todo
 from bloomerp.models.users.user import DetailSidebarViewPreference
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
-from bloomerp.tests.base.request_test_case_mixin import ExpectedResult, ModelRequestScenario
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
+from bloomerp.tests.base.request_test_case_mixin import (
+    ExpectedResult,
+    ModelRequestScenario,
+)
 from bloomerp.tests.base.view_test_case import BloomerpDetailViewTestCase
 
 
@@ -33,6 +53,7 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         return self.customer
 
     def get_test_scenarios(self) -> list[ModelRequestScenario]:
+        """Return the permission, layout, persistence, and activity scenarios."""
         customer_kwargs = {"pk": self.customer.pk}
         return [
             ModelRequestScenario(
@@ -144,6 +165,29 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 data={"first_name": "Allowed Updated"},
                 prepare=self.grant_first_name_change,
                 expected=ExpectedResult(status_code=302, response_validators=self.first_name_was_updated),
+            ),
+            ModelRequestScenario(
+                name="One-to-many avatar upload persists",
+                description="UC: An administrator adds a related object with an avatar through an explicit inline layout.\nExpected Result: The related object and its avatar are persisted.",
+                model=self.CountryModel,
+                method="POST",
+                user=self.admin_user,
+                view_kwargs={"pk": self.CountryModel.objects.get(name="Belgium").pk},
+                data={
+                    "customers__0__first_name": "Avatar",
+                    "customers__0__last_name": "Customer",
+                    "customers__0__age": 31,
+                    "customers__0__avatar": SimpleUploadedFile(
+                        "inline-avatar.gif",
+                        b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00ccc,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
+                        content_type="image/gif",
+                    ),
+                },
+                prepare=self.configure_one_to_many_avatar_layout,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=self.one_to_many_avatar_was_saved,
+                ),
             ),
             ModelRequestScenario(
                 name="Detail available-items endpoint returns layout items",
@@ -288,6 +332,54 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
     def first_name_was_updated(self, _response):
         self.customer.refresh_from_db()
         return self.customer.first_name == "Allowed Updated"
+
+    def configure_one_to_many_avatar_layout(
+        self,
+        _scenario: ModelRequestScenario,
+    ) -> None:
+        """Select a country detail layout that exposes the customer avatar column."""
+        content_type = ContentType.objects.get_for_model(self.CountryModel)
+        customers_field = ApplicationField.get_by_field(
+            self.CountryModel,
+            "customers",
+        )
+        UserObjectLayoutPreference.objects.filter(
+            user=self.admin_user,
+            content_type=content_type,
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=content_type,
+            selected=True,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        columns=1,
+                        items=[
+                            LayoutItem(
+                                id=customers_field.pk,
+                                config={
+                                    "inline_fields": [
+                                        "first_name",
+                                        "last_name",
+                                        "age",
+                                        "avatar",
+                                    ]
+                                },
+                            )
+                        ],
+                    )
+                ]
+            ).model_dump(mode="json"),
+        )
+
+    def one_to_many_avatar_was_saved(self, _response: HttpResponse) -> bool:
+        """Return whether the inline customer retained its uploaded avatar."""
+        customer = self.CustomerModel.objects.filter(
+            first_name="Avatar",
+            last_name="Customer",
+        ).first()
+        return customer is not None and bool(customer.avatar)
 
     def target_activity_todo(self, scenario):
         self.activity_todo = Todo.objects.create(title="START")
