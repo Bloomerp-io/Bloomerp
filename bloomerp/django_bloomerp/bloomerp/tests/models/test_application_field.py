@@ -1,3 +1,5 @@
+from datetime import date, datetime, timezone
+
 from bloomerp.field_types.registry import FieldContext
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -7,6 +9,7 @@ from django.db import models
 from django.db import connection
 from django.http import QueryDict
 from django.utils.datastructures import MultiValueDict
+from django.utils.translation import override
 
 from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.access_control.field_policy import FieldPolicy
@@ -315,6 +318,29 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertIsInstance(field_type.widget_factory(FieldContext()), WeekWidget)
         self.assertEqual(field_type.construction.defaults["max_length"], 8)
         self.assertIn(lookups.EQUALS, field_type.lookups)
+
+    def test_temporal_field_widgets_use_browser_standard_values_when_localized(
+        self,
+    ) -> None:
+        """
+        Use case: A localized overview renders date and datetime fields.
+        Expected result: Native HTML controls receive ISO-compatible initial values.
+        """
+        # 1. Render the widgets while Django is using a non-English locale.
+        with override("nl"):
+            date_html = FIELD_TYPE_REGISTRY.DATE_FIELD.widget_factory(
+                FieldContext()
+            ).render("date", date(2026, 9, 21))
+            datetime_html = FIELD_TYPE_REGISTRY.DATE_TIME_FIELD.widget_factory(
+                FieldContext()
+            ).render(
+                "datetime",
+                datetime(2026, 9, 21, 14, 30, tzinfo=timezone.utc),
+            )
+
+        # 2. Ensure browser-native controls keep their locale-independent values.
+        self.assertIn('value="2026-09-21"', date_html)
+        self.assertIn('value="2026-09-21T14:30:00"', datetime_html)
 
     def test_address_form_field_normalizes_structured_value(self):
         form_field = AddressFormField()

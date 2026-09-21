@@ -39,7 +39,11 @@ DATE_FIELD = FieldTypeDefinition(
             AUTO_NOW_ADD_FIELD_OPTION,
         ),
     ),
-    widget_factory=widget(forms.widgets.DateInput, attrs={"type": "date"}),
+    widget_factory=widget(
+        forms.widgets.DateInput,
+        attrs={"type": "date"},
+        format="%Y-%m-%d",
+    ),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 
@@ -73,7 +77,9 @@ DATE_TIME_FIELD = FieldTypeDefinition(
         ),
     ),
     widget_factory=widget(
-        forms.widgets.DateTimeInput, attrs={"type": "datetime-local"}
+        forms.widgets.DateTimeInput,
+        attrs={"type": "datetime-local"},
+        format="%Y-%m-%dT%H:%M:%S",
     ),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
