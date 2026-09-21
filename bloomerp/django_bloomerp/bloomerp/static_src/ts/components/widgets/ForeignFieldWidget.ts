@@ -50,6 +50,8 @@ export default class ForeignFieldWidget extends BaseWidget {
     private repositionDropdownHandler: (() => void) | null = null;
     private searchAbortController: AbortController | null = null;
     private searchRequestId: number = 0;
+    private selectionAbortController: AbortController | null = null;
+    private selectionRequestId: number = 0;
 
     private createControlEl: HTMLElement | null = null;
     private advancedControlEl: HTMLElement | null = null;
@@ -116,6 +118,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         if (this.boundOnFocusOut) this.element.removeEventListener('focusout', this.boundOnFocusOut);
         document.removeEventListener('click', this.outsideClickHandler);
         this.cancelPendingSearch();
+        this.selectionAbortController?.abort();
         this.cleanupPreviewHandlers();
         this.teardownCreateSuccessListener();
         this.teardownAdvancedSelectionListener();
@@ -779,6 +782,8 @@ export default class ForeignFieldWidget extends BaseWidget {
             ? value.map((item) => String(item))
             : (typeof value === "string" && value ? [value] : []);
         const existingSelections = this.getSelections();
+        this.selectionAbortController?.abort();
+        const selectionRequestId = ++this.selectionRequestId;
 
         this.getSelectionInputs().forEach((input) => input.remove());
 
@@ -810,8 +815,45 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.renderSelectedState();
         this.hideDropdown();
 
+        const unresolvedIds = nextValues.filter((id: string): boolean =>
+            !existingSelections.some((selection): boolean => selection.id === id && selection.label !== id),
+        );
+        if (unresolvedIds.length) void this.resolveSelections(unresolvedIds, selectionRequestId);
+
         if (emitChange && !this.valuesEqual(previousValue, this.getValue())) {
             this.onChange();
+        }
+    }
+
+    /** Resolve programmatically selected IDs to labels through the authorized object search. */
+    private async resolveSelections(ids: string[], requestId: number): Promise<void> {
+        if (!this.contentTypeId) return;
+        const controller = new AbortController();
+        this.selectionAbortController = controller;
+        const params = new URLSearchParams();
+        ids.forEach((id: string): void => { params.append('fk_selected_id', id); });
+        try {
+            const response = await fetch(`/components/search-objects/${this.contentTypeId}/?${params}`, {
+                credentials: 'same-origin',
+                signal: controller.signal,
+            });
+            if (!response.ok || requestId !== this.selectionRequestId || !this.element.isConnected) return;
+            const data: { objects?: Array<{ id: string; string_representation: string; detail_url?: string }> } = await response.json();
+            if (requestId !== this.selectionRequestId || !this.element.isConnected) return;
+            for (const object of data.objects ?? []) {
+                const selection = this.getSelectionInputs().find((input: HTMLInputElement): boolean => input.value === String(object.id));
+                if (!selection) continue;
+                selection.dataset.label = object.string_representation;
+                selection.dataset.url = object.detail_url ?? '';
+            }
+            if (this.input && !this.isM2M) {
+                this.input.value = this.getSelections()[0]?.label ?? '';
+            }
+            this.renderSelectedState();
+        } catch (error) {
+            if (!controller.signal.aborted) console.error('ForeignFieldWidget selection lookup error', error);
+        } finally {
+            if (this.selectionAbortController === controller) this.selectionAbortController = null;
         }
     }
 
@@ -825,6 +867,8 @@ export default class ForeignFieldWidget extends BaseWidget {
 
     /** Restore selections from serialized widget state without retaining an empty sentinel. */
     public override setSerializableState(state: BaseWidgetSerializableState, emitChange: boolean = false): void {
+        this.selectionAbortController?.abort();
+        this.selectionRequestId += 1;
         const previousValue = this.getValue();
         const nextState = state as ForeignFieldWidgetSerializableState;
         const nextSelections = Array.isArray(nextState.selections) ? nextState.selections : [];

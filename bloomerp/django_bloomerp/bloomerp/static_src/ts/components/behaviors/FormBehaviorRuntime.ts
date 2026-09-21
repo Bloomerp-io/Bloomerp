@@ -2,7 +2,7 @@ import { getCsrfToken } from "@/utils/cookies";
 import showMessage from "@/utils/messages";
 import { getComponent } from "../BaseComponent";
 import { MessageType } from "../UiMessage";
-import { DetailViewCell, type DetailViewCellChangeDetail, type DetailViewCellValue } from "../detail_view_components/DetailViewCell";
+import { DetailViewCell, type DetailViewCellChangeDetail, type DetailViewCellChangeSource, type DetailViewCellValue } from "../detail_view_components/DetailViewCell";
 import {
     applyBehaviorFieldState,
     captureBehaviorFieldState,
@@ -11,7 +11,7 @@ import {
 } from "./behaviorFieldState";
 
 type BehaviorEvent = "initial" | "change";
-type Evaluation = { field: string; event: BehaviorEvent };
+type Evaluation = { field: string; event: BehaviorEvent; source?: DetailViewCellChangeSource };
 type BehaviorResponse = {
     revision: number;
     values: Array<{ field: string; value: unknown }>;
@@ -142,16 +142,16 @@ export default class FormBehaviorRuntime {
         this.pending.set(`${evaluation.event}:${evaluation.field}`, evaluation);
     }
 
-    /** Queue evaluation only when the user changed a configured listener field. */
+    /** Queue configured listeners for user edits and values changed by behaviors. */
     private onChange = (event: Event): void => {
         const detail = (event as CustomEvent<DetailViewCellChangeDetail>).detail;
-        if (!detail || detail.source === "behavior") return;
+        if (!detail) return;
         const field = this.fields().find((candidate: Field): boolean => candidate.cell === detail.cell);
         if (!field || !this.listens(field, "change")) return;
         this.revision += 1;
         for (const evaluation of this.failed.values()) this.enqueue(evaluation);
         this.failed.clear();
-        this.enqueue({ field: field.name, event: "change" });
+        this.enqueue({ field: field.name, event: "change", source: detail.source });
         void this.flush();
     };
 
@@ -189,11 +189,18 @@ export default class FormBehaviorRuntime {
         }
     }
 
-    /** Evaluate queued snapshots, retrying stale results against the latest draft. */
+    /** Evaluate queued snapshots, retrying stale results and stopping cyclic updates. */
     private async drain(): Promise<void> {
+        let cascadedEvaluations = 0;
         while (this.pending.size && !this.destroyed) {
             const [key, evaluation] = this.pending.entries().next().value!;
             this.pending.delete(key);
+            if (evaluation.source === "behavior" && ++cascadedEvaluations > 32) {
+                this.pending.clear();
+                this.failed.set(key, evaluation);
+                this.message("Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors.", MessageType.ERROR);
+                break;
+            }
             const revision = this.revision;
             const generation = this.generation;
             this.active = evaluation;
@@ -251,7 +258,7 @@ export default class FormBehaviorRuntime {
         this.controller = null;
     }
 
-    /** Apply server values through existing widget adapters without firing more behaviors. */
+    /** Apply server values through widget adapters and notify dependent listeners. */
     private apply(result: BehaviorResponse, trackChanges: boolean): void {
         const fields = new Map(this.fields().map((field: Field): [string, Field] => [field.name, field]));
         for (const update of [...result.values, ...result.states]) {

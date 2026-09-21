@@ -202,6 +202,7 @@ export default class OneToManyFieldWidget extends BaseWidget {
             const rowElement = fragment.querySelector<HTMLElement>("[data-one-to-many-row]");
             this.tbody?.appendChild(fragment);
             if (rowElement) {
+                initComponents(rowElement);
                 this.applyRowData(rowElement, {
                     ...this.getDefaultRowData(),
                     ...rowData,
