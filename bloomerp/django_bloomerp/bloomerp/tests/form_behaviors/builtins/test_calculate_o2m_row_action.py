@@ -7,7 +7,7 @@ from typing import Any
 from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from bloomerp.form_behaviors.builtins.calculate_o2m_row import CALCULATE_O2M_ROW
@@ -390,12 +390,12 @@ class TestCalculateO2mRowAction(BloomerpBehaviorActionTestCase):
             ).model_dump(mode="json"),
         )
 
-    def _evaluate_with_permissions(
+    def _evaluate_with_denied_field_permission(
         self,
         denied_field: str,
         denied_permission: str,
-    ) -> None:
-        """Run the real executor while denying one child-column capability."""
+    ) -> BehaviorResult:
+        """Evaluate supplied draft rows while a child-field policy would deny access."""
         invoice = self.invoice_model.objects.create(name="Draft invoice")
         executor = BehaviorExecutor(
             self._execution_owner(), self.admin_user, instance=invoice
@@ -408,15 +408,12 @@ class TestCalculateO2mRowAction(BloomerpBehaviorActionTestCase):
             """Deny exactly the child-field capability selected by the scenario."""
             return not (field.field == denied_field and permission == denied_permission)
 
-        with (
-            patch.object(
-                executor.manager,
-                "has_field_permission",
-                side_effect=has_field_permission,
-            ),
-            self.assertRaises(PermissionDenied),
-        ):
-            executor.evaluate(
+        with patch.object(
+            executor.manager,
+            "has_field_permission",
+            side_effect=has_field_permission,
+        ) as permission_check:
+            result = executor.evaluate(
                 "lines",
                 {
                     "name": invoice.name,
@@ -429,14 +426,18 @@ class TestCalculateO2mRowAction(BloomerpBehaviorActionTestCase):
                     ],
                 },
             )
+        permission_check.assert_not_called()
+        return result
 
-    def test_execution_requires_view_access_to_expression_sources(self) -> None:
-        """Expression names cannot bypass source ApplicationField visibility."""
-        self._evaluate_with_permissions("unit_price", "view")
+    def test_execution_does_not_require_view_access_to_supplied_row_values(self) -> None:
+        """Arithmetic over client-supplied row values performs no server-side read."""
+        result = self._evaluate_with_denied_field_permission("unit_price", "view")
+        self.assertEqual(result.values[0].value[0]["line_total"], "10.00")
 
-    def test_execution_requires_change_access_to_destination(self) -> None:
-        """The destination child column requires change access."""
-        self._evaluate_with_permissions("line_total", "change")
+    def test_execution_defers_destination_change_access_to_submission(self) -> None:
+        """A draft suggestion is calculated before submission authorizes its write."""
+        result = self._evaluate_with_denied_field_permission("line_total", "change")
+        self.assertEqual(result.values[0].value[0]["line_total"], "10.00")
 
     def test_write_policy_uses_shared_subset_and_legacy_default(self) -> None:
         """Row calculation uses all scalar policies and defaults omissions."""

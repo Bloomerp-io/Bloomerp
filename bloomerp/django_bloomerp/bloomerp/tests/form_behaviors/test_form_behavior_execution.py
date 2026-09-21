@@ -280,7 +280,7 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         with self.assertRaisesMessage(ValidationError, "undeclared"):
             self._evaluate([BehaviorAction(action=definition, target_field="last_name")])
 
-    def test_targetless_actions_may_update_their_writable_listener(self) -> None:
+    def test_targetless_actions_may_update_their_layout_listener(self) -> None:
         """Targetless actions retain a safe, useful self-update capability."""
         definition = BehaviorActionDefinition(
             id="unit-listener-update",
@@ -353,8 +353,8 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
                 self.customer.refresh_from_db()
                 self.assertEqual(self.customer.last_name, "Stored")
 
-    def test_disable_field_requires_an_authorized_declared_target(self) -> None:
-        """Interaction state cannot escape the executor's writable target boundary."""
+    def test_disable_field_requires_a_declared_layout_target(self) -> None:
+        """Interaction state cannot escape the executor's layout target boundary."""
         owner = self._owner([FormBehavior(
             id="disable-last-name",
             actions=[BehaviorAction(
@@ -363,7 +363,7 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
             )],
         )])
         executor = BehaviorExecutor(owner, self.admin_user, instance=self.customer)
-        executor.write_fields.pop("last_name")
+        executor.fields.pop("last_name")
         with self.assertRaises(PermissionDenied):
             executor.evaluate("first_name", self.values)
 
@@ -601,9 +601,11 @@ class TestFormBehaviorExecution(BaseBloomerpTestCaseWithModels):
         ])
         self.assertEqual(values, original)
         self.assertEqual(self.CustomerModel.objects.count(), count)
-        with patch.object(
-            executor.manager,
-            "get_accessible_fields_for_object",
+        with patch(
+            "bloomerp.form_behaviors.builtins.set_o2m_value."
+            "UserPolicyManager.get_accessible_fields_for_object",
             return_value=ApplicationField.objects.none(),
-        ), self.assertRaises(PermissionDenied):
-            executor.evaluate("name", values)
+        ):
+            denied = executor.evaluate("name", values)
+        self.assertEqual(denied.values, ())
+        self.assertIn("Permission denied", denied.messages[0].message)

@@ -1,10 +1,12 @@
 """Django adapter for the backend-defined behavior editor."""
 import json
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from django import forms
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.urls import reverse
+
 from bloomerp.form_behaviors.definition import BehaviorConfig
 
 
@@ -43,9 +45,9 @@ class BehaviorBuilderWidget(forms.Widget):
 
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         """Publish applicable action metadata and supported condition fields."""
+        from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
         from bloomerp.form_behaviors.registry import ACTION_REGISTRY
         from bloomerp.models.application_field import ApplicationField
-        from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
 
         context = super().get_context(name, value, attrs)
         listener = ApplicationField.objects.filter(pk=self.source_field.get("id")).first()
@@ -58,7 +60,7 @@ class BehaviorBuilderWidget(forms.Widget):
             for action in ACTION_REGISTRY.values():
                 if action.get_listener_fields(available).filter(pk=listener.pk).exists():
                     actions.append({
-                        "id": action.id, "label": action.label,
+                        "id": action.id, "label": action.label, "group": action.group,
                         "requires_target_field": action.requires_target_field,
                         "targets": [{"name": f.field, "label": f.title} for f in action.get_target_fields(available, listener)],
                     })

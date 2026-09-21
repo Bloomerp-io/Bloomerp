@@ -293,8 +293,8 @@ class TestCalculateFieldAction(BloomerpBehaviorActionTestCase):
             total=Decimal("1.00"),
         )
 
-    def test_executor_enforces_sources_and_never_persists(self) -> None:
-        """Authorized source reads produce a typed draft update without saving it."""
+    def test_executor_requires_layout_sources_and_never_persists(self) -> None:
+        """Layout source values produce a typed draft update without saving it."""
         instance = self._instance()
         executor = BehaviorExecutor(self._owner(), self.admin_user, instance=instance)
         values = {
@@ -314,12 +314,12 @@ class TestCalculateFieldAction(BloomerpBehaviorActionTestCase):
         instance.refresh_from_db()
         self.assertEqual(instance.total, Decimal("1.00"))
 
-        executor.read_fields.pop("quantity")
+        executor.fields.pop("quantity")
         with self.assertRaises(PermissionDenied):
             executor.evaluate("note", values)
 
-    def test_executor_enforces_target_authorization_and_validation(self) -> None:
-        """Declared target access and native max length remain executor-owned."""
+    def test_executor_enforces_target_layout_and_validation(self) -> None:
+        """Declared target membership and native max length remain executor-owned."""
         instance = self._instance()
         executor = BehaviorExecutor(self._owner(), self.admin_user, instance=instance)
         values = {
@@ -329,7 +329,7 @@ class TestCalculateFieldAction(BloomerpBehaviorActionTestCase):
             "discount": "0.50",
             "total": "1.00",
         }
-        executor.write_fields.pop("total")
+        executor.fields.pop("total")
         with self.assertRaises(PermissionDenied):
             executor.evaluate("note", values)
 

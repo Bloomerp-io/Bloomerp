@@ -6,7 +6,12 @@ from bloomerp.form_behaviors.builtins.calculate_o2m_row import CALCULATE_O2M_ROW
 from bloomerp.form_behaviors.builtins.clear_value import CLEAR_VALUE
 from bloomerp.form_behaviors.builtins.disable_field import DISABLE_FIELD
 from bloomerp.form_behaviors.builtins.enable_field import ENABLE_FIELD
+from bloomerp.form_behaviors.builtins.fetch_o2m_value import FETCH_O2M_VALUE
+from bloomerp.form_behaviors.builtins.fetch_value import FETCH_VALUE
 from bloomerp.form_behaviors.builtins.increment_o2m_value import INCREMENT_O2M_VALUE
+from bloomerp.form_behaviors.builtins.set_user_field_to_current_user import (
+    SET_USER_FIELD_TO_CURRENT_USER,
+)
 from bloomerp.form_behaviors.builtins.show_message import SHOW_MESSAGE
 from bloomerp.form_behaviors.builtins.transform_text import TRANSFORM_TEXT
 
@@ -33,4 +38,7 @@ BUILTIN_ACTIONS = (
     DISABLE_FIELD,
     ENABLE_FIELD,
     TRANSFORM_TEXT,
+    FETCH_O2M_VALUE,
+    FETCH_VALUE,
+    SET_USER_FIELD_TO_CURRENT_USER,
 )

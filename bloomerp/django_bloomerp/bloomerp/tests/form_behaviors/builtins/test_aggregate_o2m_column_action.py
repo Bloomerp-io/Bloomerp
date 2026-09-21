@@ -316,23 +316,17 @@ class TestAggregateO2mColumnAction(BloomerpBehaviorActionTestCase):
             self._execution_owner(target_field), self.admin_user, instance=invoice
         )
 
-    def test_execution_requires_view_access_to_source_column(self) -> None:
-        """The configured child source cannot bypass field visibility."""
+    def test_execution_does_not_apply_child_field_permissions_to_draft_rows(
+        self,
+    ) -> None:
+        """Draft-only aggregation does not treat supplied row values as a server read."""
         executor = self._executor()
-
-        def deny_amount_view(field: ApplicationField, permission: str) -> bool:
-            """Deny only view access to the aggregate source column."""
-            return not (field.field == "amount" and permission == "view")
-
-        with (
-            patch.object(
-                executor.manager,
-                "has_field_permission",
-                side_effect=deny_amount_view,
-            ),
-            self.assertRaises(PermissionDenied),
-        ):
-            executor.evaluate(
+        with patch.object(
+            executor.manager,
+            "has_field_permission",
+            return_value=False,
+        ) as permission_check:
+            result = executor.evaluate(
                 "lines",
                 {
                     "name": "Draft",
@@ -340,11 +334,13 @@ class TestAggregateO2mColumnAction(BloomerpBehaviorActionTestCase):
                     "total": "0.00",
                 },
             )
+        permission_check.assert_not_called()
+        self.assertEqual(result.values[0].value, "2.00")
 
-    def test_execution_requires_change_access_to_target(self) -> None:
-        """The top-level aggregate target remains inside the write boundary."""
+    def test_execution_requires_target_to_belong_to_layout(self) -> None:
+        """The top-level aggregate target remains inside the layout boundary."""
         executor = self._executor()
-        executor.write_fields.pop("total")
+        executor.fields.pop("total")
         with self.assertRaises(PermissionDenied):
             executor.evaluate(
                 "lines",

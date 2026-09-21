@@ -48,7 +48,7 @@ LayoutOwner = Form | UserObjectLayoutPreference
 def iter_config_field_references(
     value: Any,
 ) -> Iterator[BehaviorFieldReference]:
-    """Yield permission-aware field references from nested cleaned configuration."""
+    """Yield field references from nested cleaned action configuration."""
     if isinstance(value, BehaviorFieldReference):
         yield value
         return
@@ -71,7 +71,7 @@ def iter_config_field_references(
 
 
 class BehaviorExecutor:
-    """Authorize a layout and evaluate actions using its model's field contracts."""
+    """Authorize a layout and evaluate actions against its unsaved draft fields."""
 
     def _can_access_preference(self, owner: UserObjectLayoutPreference) -> bool:
         """Return whether the user owns or currently receives the preference."""
@@ -91,7 +91,7 @@ class BehaviorExecutor:
         form_submission_access: bool = False,
         request: HttpRequest | None = None,
     ) -> None:
-        """Bind request/user context, an owner, and layout-scoped field access.
+        """Bind request/user context, an owner, and layout-scoped draft fields.
 
         ``form_submission_access`` mirrors the fields deliberately exposed by a
         Form submission page. It is limited to unsaved create drafts and never
@@ -122,26 +122,14 @@ class BehaviorExecutor:
         self.model = owner.content_type.model_class()
         if self.model is None:
             raise ValidationError("Layout model is unavailable.")
-        permission = "add" if instance is None else "change"
-        if form_submission_access:
-            readable = ApplicationField.objects.filter(content_type=owner.content_type)
-            writable = readable
-        elif instance is not None:
-            if not self.manager.has_global_permission(self.model, permission):
-                raise PermissionDenied
-            if not isinstance(
-                instance, self.model
-            ) or not self.manager.has_access_to_object(instance, permission):
-                raise PermissionDenied
-            readable = self.manager.get_accessible_fields_for_object(instance, "view")
-            writable = self.manager.get_accessible_fields_for_object(
-                instance, permission
+        if instance is not None and (
+            not isinstance(instance, self.model)
+            or (
+                not form_submission_access
+                and not self.manager.has_access_to_object(instance, "view")
             )
-        else:
-            if not self.manager.has_global_permission(self.model, permission):
-                raise PermissionDenied
-            readable = self.manager.get_accessible_fields(self.model, "view")
-            writable = self.manager.get_accessible_fields(self.model, permission)
+        ):
+            raise PermissionDenied
         fields = list(ApplicationField.objects.filter(content_type=owner.content_type))
         by_reference = {
             key: field for field in fields for key in (field.field, str(field.pk))
@@ -154,10 +142,12 @@ class BehaviorExecutor:
                     if field.field in self.items:
                         raise ValidationError("Each layout field must occur once.")
                     self.items[field.field] = item
-        self.readable = readable.filter(field__in=self.items)
-        self.writable = writable.filter(field__in=self.items)
-        self.read_fields = {field.field: field for field in self.readable}
-        self.write_fields = {field.field: field for field in self.writable}
+        available = ApplicationField.objects.filter(
+            content_type=owner.content_type,
+            field__in=self.items,
+        )
+        self.layout_fields = available
+        self.fields = {field.field: field for field in self.layout_fields}
 
     def _clean_value(self, field: ApplicationField, value: Any) -> Any:
         """Coerce field values without requiring completion of the whole draft."""
@@ -196,13 +186,6 @@ class BehaviorExecutor:
             "False",
         ):
             raise ValidationError(f"Field '{field.field}' requires a boolean value.")
-        if (
-            isinstance(form_field, forms.ModelChoiceField)
-            and not self.form_submission_access
-        ):
-            form_field.queryset = self.manager.get_accessible_queryset(
-                form_field.queryset.model, "view"
-            )
         if isinstance(form_field, forms.JSONField):
             value = json.dumps(value)
         cleaned = form_field.clean(value)
@@ -213,16 +196,7 @@ class BehaviorExecutor:
         return cleaned
 
     def _clean_rows(self, field: ApplicationField, value: Any) -> list[dict[str, Any]]:
-        """Validate partial collection rows without invoking persistence or full child forms.
-
-        Public Form submissions may evaluate new rows from their exposed create
-        contract. Persisted row identities remain restricted to authorized object
-        edits until candidate child-row policies can be enforced.
-        """
-        if not self.user.is_superuser and not self.form_submission_access:
-            raise PermissionDenied(
-                "Collection execution awaits child-row permission checks."
-            )
+        """Validate partial collection rows without persistence or child-row policy checks."""
         if value is None:
             return []
         if not isinstance(value, list) or len(value) > 1000:
@@ -265,47 +239,12 @@ class BehaviorExecutor:
             rows.append(cleaned)
         return rows
 
-    def _resolve_related_values(
-        self, source: ApplicationField, accessor: ApplicationField,
-        identities: tuple[Any, ...],
-    ) -> Mapping[str, Any]:
-        """Read one related column in bulk, enforcing record and per-record field access."""
-        model = source.get_related_model()
-        if model is None or accessor.get_model() is not model:
-            raise ValidationError("Accessor must belong to the source relation's model.")
-        if self.form_submission_access:
-            records = list(model._default_manager.filter(pk__in=identities))
-        else:
-            if not self.manager.has_global_permission(model, "view"):
-                raise PermissionDenied
-            records = list(
-                self.manager.get_accessible_queryset(model, "view").filter(
-                    pk__in=identities
-                )
-            )
-        if {str(record.pk) for record in records} != {str(identity) for identity in identities}:
-            raise PermissionDenied("A related source record is unavailable.")
-        values: dict[str, Any] = {}
-        model_field = model._meta.get_field(accessor.field)
-        if not model_field.concrete or model_field.many_to_many:
-            raise ValidationError("Accessor must expose a single stored value.")
-        for record in records:
-            if (
-                not self.form_submission_access
-                and not self.manager.get_accessible_fields_for_object(
-                    record, "view"
-                ).filter(pk=accessor.pk).exists()
-            ):
-                raise PermissionDenied("The related source field is unavailable.")
-            values[str(record.pk)] = getattr(record, model_field.attname)
-        return values
-
     def _matches(self, group: Filter, values: Mapping[str, Any]) -> bool:
         """Evaluate all group predicates with their registered Python lookup implementations."""
         matches = []
         for condition in group.conditions:
             name = condition.field_path
-            if name not in self.read_fields or name not in values:
+            if name not in self.fields or name not in values:
                 raise ValidationError("Condition field is unavailable in this draft.")
             _, _, lookup, expected = resolve_condition(condition, model=self.model)
             evaluator = lookup.get_python_evaluator()
@@ -323,12 +262,12 @@ class BehaviorExecutor:
         """Clean one declared draft dependency exactly once."""
         if field_name in draft:
             return
-        if field_name not in self.read_fields or field_name not in values:
+        if field_name not in self.fields or field_name not in values:
             raise ValidationError(
                 f"Field '{field_name}' is unavailable in this draft."
             )
         draft[field_name] = self._clean_value(
-            self.read_fields[field_name], deepcopy(values[field_name])
+            self.fields[field_name], deepcopy(values[field_name])
         )
 
     def evaluate(
@@ -342,13 +281,13 @@ class BehaviorExecutor:
         if event not in {"initial", "change"}:
             raise ValidationError("Unknown behavior event.")
         if (
-            listener_field not in self.read_fields
-            or not set(values) <= self.read_fields.keys()
+            listener_field not in self.fields
+            or not set(values) <= self.fields.keys()
         ):
             raise PermissionDenied
         if listener_field not in values:
             raise ValidationError("Listener field value is missing from the draft.")
-        listener = self.read_fields[listener_field]
+        listener = self.fields[listener_field]
         draft: dict[str, Any] = {}
         self._add_draft_value(draft, values, listener_field)
         config = BehaviorConfig.model_validate(
@@ -374,13 +313,13 @@ class BehaviorExecutor:
                 if action is None:
                     raise ValidationError(f"Unknown action: {configured.action}.")
                 if (
-                    not action.get_listener_fields(self.readable)
+                    not action.get_listener_fields(self.layout_fields)
                     .filter(pk=listener.pk)
                     .exists()
                 ):
                     raise ValidationError("Action is not applicable to this listener.")
                 target = (
-                    self.write_fields.get(configured.target_field)
+                    self.fields.get(configured.target_field)
                     if configured.target_field
                     else None
                 )
@@ -391,7 +330,7 @@ class BehaviorExecutor:
                 if target is not None:
                     self._add_draft_value(draft, values, target.field)
                     if (
-                        not action.get_target_fields(self.writable, listener)
+                        not action.get_target_fields(self.layout_fields, listener)
                         .filter(pk=target.pk)
                         .exists()
                     ):
@@ -408,27 +347,12 @@ class BehaviorExecutor:
                 for reference in iter_config_field_references(cleaned):
                     field = reference.field
                     if field.content_type_id == listener.content_type_id:
-                        available_fields = (
-                            self.read_fields
-                            if reference.permission == "view"
-                            else self.write_fields
-                        )
-                        if field.field not in available_fields:
-                            raise PermissionDenied
                         self._add_draft_value(draft, values, field.field)
-                    elif (
-                        not self.form_submission_access
-                        and not self.manager.has_field_permission(
-                            field, reference.permission
-                        )
-                    ):
-                        raise PermissionDenied
                 result = action.execute(
                     BehaviorContext(
                         values=deepcopy(draft),
                         listener_field=listener.field,
                         target_field=target.field if target else "",
-                        resolve_related_values=self._resolve_related_values,
                     ),
                     cleaned,
                     self.user,
@@ -440,7 +364,7 @@ class BehaviorExecutor:
                     for items in (result.values, result.states, result.messages)
                 ):
                     raise ValidationError("Action result collections must be tuples.")
-                declared_update_field = target or self.write_fields.get(listener.field)
+                declared_update_field = target or self.fields.get(listener.field)
                 for update in result.values:
                     if (
                         not isinstance(update, FieldValueUpdate)

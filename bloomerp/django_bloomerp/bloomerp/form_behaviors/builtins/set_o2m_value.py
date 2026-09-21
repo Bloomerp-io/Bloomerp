@@ -1,10 +1,11 @@
 """Copy row values or a related record's field into a collection column."""
 
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
 from django import forms
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, PermissionDenied
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 
@@ -17,11 +18,13 @@ from bloomerp.form_behaviors.definition import (
     CleanedConfigData,
     FieldValueUpdate,
 )
+from bloomerp.form_behaviors.shared.permissions import permission_denied_result
 from bloomerp.form_behaviors.shared.write_policy import (
     WritePolicyField,
     should_write_value,
 )
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.permissions.manager import UserPolicyManager
 
 
 def collection_rows(value: Any) -> list[dict[str, Any]]:
@@ -42,24 +45,32 @@ def value_columns(model: type[Model]) -> QuerySet[ApplicationField]:
             model_field = model._meta.get_field(field.field)
         except FieldDoesNotExist:
             continue
-        if (model_field.concrete and not model_field.primary_key
-                and not model_field.many_to_many and model_field.editable
-                and field.get_form_field() is not None):
+        if (
+            model_field.concrete
+            and not model_field.primary_key
+            and not model_field.many_to_many
+            and model_field.editable
+            and field.get_form_field() is not None
+        ):
             eligible.append(field.pk)
     return fields.filter(pk__in=eligible)
 
 
 def compatible_columns(
-    fields: QuerySet[ApplicationField], target: ApplicationField | None,
+    fields: QuerySet[ApplicationField],
+    target: ApplicationField | None,
 ) -> QuerySet[ApplicationField]:
     """Match the existing copy-value type contract and preserve relation identity types."""
     if target is None:
         return fields
-    return fields.filter(field_type=target.field_type, related_model_id=target.related_model_id)
+    return fields.filter(
+        field_type=target.field_type, related_model_id=target.related_model_id
+    )
 
 
 def config_form_factory(
-    target: ApplicationField | None, listener: ApplicationField | None,
+    target: ApplicationField | None,
+    listener: ApplicationField | None,
     request: HttpRequest | None = None,
 ) -> type[forms.Form]:
     """Return a form class whose choices depend on its current initial configuration."""
@@ -73,32 +84,48 @@ def config_form_factory(
         """Select a destination, source column, and optional related-record accessor."""
 
         refresh_fields = ("from_column", "to_column")
-        
+
         from_column = forms.ModelChoiceField(queryset=columns, label="From column")
         to_column = forms.ModelChoiceField(queryset=columns, label="To column")
         accessor = forms.ModelChoiceField(
-            queryset=ApplicationField.objects.none(), required=False,
+            queryset=ApplicationField.objects.none(),
+            required=False,
             help_text="Optional field on the selected related record, for example sales_price.",
         )
         write_policy = WritePolicyField(
             allowed=("always", "if_empty_or_zero"),
             default="always",
         )
+
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             """Rebuild dependent choices from partial configuration before validation."""
             super().__init__(*args, **kwargs)
-            target_column = columns.filter(field=self.initial.get("to_column", "")).first()
-            source_ids = set(compatible_columns(columns, target_column).values_list("pk", flat=True))
+            target_column = columns.filter(
+                field=self.initial.get("to_column", "")
+            ).first()
+            source_ids = set(
+                compatible_columns(columns, target_column).values_list("pk", flat=True)
+            )
             for column in columns.filter(related_model__isnull=False):
-                if compatible_columns(value_columns(column.get_related_model()), target_column).exists():
+                if compatible_columns(
+                    value_columns(column.get_related_model()), target_column
+                ).exists():
                     source_ids.add(column.pk)
             self.fields["from_column"].queryset = columns.filter(pk__in=source_ids)
-            source_column = self.fields["from_column"].queryset.filter(
-                field=self.initial.get("from_column", ""),
-            ).first()
-            if source_column is not None and source_column.get_related_model() is not None:
+            source_column = (
+                self.fields["from_column"]
+                .queryset.filter(
+                    field=self.initial.get("from_column", ""),
+                )
+                .first()
+            )
+            if (
+                source_column is not None
+                and source_column.get_related_model() is not None
+            ):
                 self.fields["accessor"].queryset = compatible_columns(
-                    value_columns(source_column.get_related_model()), target_column,
+                    value_columns(source_column.get_related_model()),
+                    target_column,
                 )
             else:
                 self.fields["accessor"].widget = forms.HiddenInput()
@@ -114,19 +141,61 @@ def config_form_factory(
             if source is not None and destination is not None:
                 effective_source = accessor or source
                 if not compatible_columns(
-                    ApplicationField.objects.filter(pk=effective_source.pk), destination,
+                    ApplicationField.objects.filter(pk=effective_source.pk),
+                    destination,
                 ).exists():
-                    self.add_error("accessor", "Select a related field compatible with the target column.")
+                    self.add_error(
+                        "accessor",
+                        "Select a related field compatible with the target column.",
+                    )
             return cleaned
 
     return SetO2MValueForm
 
 
 def collection_targets(
-    fields: QuerySet[ApplicationField], listener: ApplicationField | None,
+    fields: QuerySet[ApplicationField],
+    listener: ApplicationField | None,
 ) -> QuerySet[ApplicationField]:
     """Limit this action to fields exposing the collection row value schema."""
     return fields.filter(field_type=FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id)
+
+
+def resolve_related_values(
+    source: ApplicationField,
+    accessor: ApplicationField,
+    identities: tuple[Any, ...],
+    user: BehaviorUser,
+) -> Mapping[str, Any]:
+    """Read one related column after authorizing its model, rows, and field."""
+    model = source.get_related_model()
+    if model is None or accessor.get_model() is not model:
+        raise forms.ValidationError(
+            "Accessor must belong to the source relation's model."
+        )
+    manager = UserPolicyManager(user)
+    if not manager.has_global_permission(model, "view"):
+        raise PermissionDenied
+    records = list(
+        manager.get_accessible_queryset(model, "view").filter(pk__in=identities)
+    )
+    if {str(record.pk) for record in records} != {
+        str(identity) for identity in identities
+    }:
+        raise PermissionDenied("A related source record is unavailable.")
+    model_field = model._meta.get_field(accessor.field)
+    if not model_field.concrete or model_field.many_to_many:
+        raise forms.ValidationError("Accessor must expose a single stored value.")
+    values: dict[str, Any] = {}
+    for record in records:
+        if (
+            not manager.get_accessible_fields_for_object(record, "view")
+            .filter(pk=accessor.pk)
+            .exists()
+        ):
+            raise PermissionDenied("The related source field is unavailable.")
+        values[str(record.pk)] = getattr(record, model_field.attname)
+    return values
 
 
 def set_o2m_value(
@@ -140,15 +209,31 @@ def set_o2m_value(
     accessor: ApplicationField | None = config.get("accessor")
     write_policy: str = config["write_policy"]
     rows = collection_rows(context.target_value)
-    
-    active = [row for row in rows if row.get("DELETE") not in (True, "true", "True", "1", "on", "yes")]
+
+    active = [
+        row
+        for row in rows
+        if row.get("DELETE") not in (True, "true", "True", "1", "on", "yes")
+    ]
     related_values: dict[str, Any] = {}
     if accessor is not None:
-        if context.resolve_related_values is None:
-            raise forms.ValidationError("Related-value execution requires an authorized resolver.")
-        identities = tuple(row[source.field] for row in active if row.get(source.field) not in (None, ""))
+        identities = tuple(
+            row[source.field]
+            for row in active
+            if row.get(source.field) not in (None, "")
+        )
         if identities:
-            related_values = dict(context.resolve_related_values(source, accessor, identities))
+            try:
+                resolver = context.resolve_related_values
+                related_values = dict(
+                    resolver(source, accessor, identities)
+                    if resolver is not None
+                    else resolve_related_values(source, accessor, identities, user)
+                )
+            except PermissionDenied:
+                return permission_denied_result(
+                    "you cannot read the configured related data"
+                )
     changed = False
     for row in active:
         if source.field not in row:
@@ -160,15 +245,21 @@ def set_o2m_value(
             if str(value) not in related_values:
                 raise forms.ValidationError("A related source value is unavailable.")
             value = related_values[str(value)]
-        
+
         should_write = should_write_value(
             row.get(destination.field), write_policy, field=destination
         )
-        
+
         if row.get(destination.field) != value and should_write:
             row[destination.field] = deepcopy(value)
             changed = True
-    return BehaviorResult(values=(FieldValueUpdate(field=context.target_field, value=rows),)) if changed else BehaviorResult()
+    return (
+        BehaviorResult(
+            values=(FieldValueUpdate(field=context.target_field, value=rows),)
+        )
+        if changed
+        else BehaviorResult()
+    )
 
 
 SET_O2M_VALUE = BehaviorActionDefinition(
