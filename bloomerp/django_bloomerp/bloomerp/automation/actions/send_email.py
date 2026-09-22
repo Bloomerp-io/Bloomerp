@@ -2,6 +2,7 @@ from bloomerp.communication.emails.email_providers import EmailProviderDefinitio
 from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 
 from ..base_executor import BaseExecutor
 from bloomerp.automation.schema import (
@@ -29,7 +30,7 @@ class SendEmailForm(Form):
         help_text="Use a literal email or a value reference like {{ input.instance.email }}.",
     )
     subject = forms.CharField(label="Email Subject", max_length=255)
-    body = forms.CharField(label="Email Body", widget=forms.Textarea)
+    body = forms.CharField(label="Email Body", widget=BloomerpTextEditorWidget)
 
 
 class SendEmailExecutor(BaseExecutor):
@@ -58,6 +59,7 @@ class SendEmailExecutor(BaseExecutor):
         input_schema: WorkflowIOSchema | None = None,
         port_id: str = "default",
     ) -> WorkflowIOSchema:
+        """Include the upstream fields alongside the email send result fields."""
         upstream_fields = (
             remap_schema_field_paths(input_schema.fields, {})
             if input_schema and input_schema.value_type != "none"
@@ -77,6 +79,7 @@ class SendEmailExecutor(BaseExecutor):
         )
     
     def execute(self, input_data: dict) -> dict:
+        """Resolve the configured email and send its body as rich HTML."""
         params = self.resolve_config(input_data)
         recipient = stringify_value(params.get("recipient"))
         subject = stringify_value(params.get("subject"))
@@ -98,8 +101,8 @@ class SendEmailExecutor(BaseExecutor):
         adapter.send_email(
             to=[recipient],
             subject=subject,
-            body_text=body,
-            body_html=None,
+            body_text=None,
+            body_html=body,
         )
         
         
