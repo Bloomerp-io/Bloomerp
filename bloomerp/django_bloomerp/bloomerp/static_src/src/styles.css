@@ -31,6 +31,11 @@
   */
   --font-sans: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
+  /*
+  * Semantic surfaces and foregrounds
+  */
+  --color-surface-sidebar: #f4f2f0;
+
     /*
     * Primary 
     */
@@ -94,6 +99,19 @@
     */
     --color-dark: #5d5e5e
 
+}
+
+:root {
+  --background: var(--color-white);
+  --surface-panel: var(--color-white);
+  --surface-muted: var(--color-secondary-50);
+  --surface-sidebar: var(--color-surface-sidebar);
+  --brand-primary: var(--color-primary);
+  --foreground-strong: var(--color-secondary-900);
+  --foreground-soft: var(--color-secondary-500);
+  --foreground-subtle: var(--color-secondary-400);
+  --border-soft: var(--color-secondary-200);
+  --border-strong: var(--color-secondary-300);
 }
 
 /* Dark-mode overrides for component classes that use @apply. */
@@ -363,7 +381,7 @@
     }
 
     .btn {
-        @apply px-4 py-2 font-semibold rounded-xl shadow-xs;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 font-semibold shadow-xs;
     }
 
     .btn:focus {
@@ -401,7 +419,7 @@
     }
 
     .btn-secondary {
-        @apply bg-secondary-100 text-[var(--color-secondary-900)] border-[var(--color-secondary-300)] ring-[var(--color-secondary-500)];
+        @apply bg-secondary-100 text-[var(--foreground-strong)] border-[var(--color-gray-200)] ring-[var(--color-secondary-500)];
     }
 
     .dark .btn-secondary {
@@ -409,11 +427,27 @@
     }
 
     .btn-secondary:hover:not(:disabled) {
-        @apply bg-[var(--color-secondary-200)] border-[var(--color-secondary-400)];
+        @apply bg-[var(--color-secondary-200)] border-[var(--color-gray-300)];
     }
 
     .dark .btn-secondary:hover:not(:disabled) {
         @apply bg-secondary-800 border-secondary-600;
+    }
+
+    .btn-ghost {
+        @apply bg-transparent text-[var(--foreground-soft)] border-transparent ring-[var(--color-primary-500)];
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+        @apply bg-secondary-100 text-[var(--foreground-strong)];
+    }
+
+    .dark .btn-ghost {
+        @apply text-secondary-300;
+    }
+
+    .dark .btn-ghost:hover:not(:disabled) {
+        @apply bg-secondary-800 text-secondary-100;
     }
 
     .btn-success {
@@ -1080,94 +1114,12 @@
 /*--------------------------------------------------------------
 # Custom
 --------------------------------------------------------------*/
-.timesheet-entry {
-  padding: 2px;
-}
-
-.timesheet-entry:hover {
-  border: 1px solid;
-  border-radius: 1;
-}
-
-
-.filter-section .bi-plus-lg {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex;
-}
-
-.filter-section .filter-item {
-  background-color:rgb(235, 235, 235);
-  padding: 8px;
-  padding-left: 15px;
-  padding-right: 15px;
-  border-radius: 10px;
-  margin: 10px;
-}
-
-.filter-section .filter-item:hover {
-  background-color:rgb(238, 238, 238);
-}
-
-.dropdown-menu.filter-dropdown-menu {
-  padding: 10px;
-  width: 30vw;
-}
-
-@media (max-width: 576px) {
-  .dropdown-menu.filter-dropdown-menu {
-    width: 100vw;
-  }
-}
-
-
 .pointer {
   cursor: pointer;
 }
 
 .pointer:hover {
   color: var(--primary-hover);
-}
-
-.copy-icon {
-  cursor: pointer; /* Changes the cursor to indicate the icon is clickable */
-  margin-left: 5px; /* Adds a little space between the text and the icon */
-  position: relative;
-  size: 2;
-}
-
-.copy-icon:hover {
-  color: #b5d2fd;
-}
-
-.list-view-avatar {
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  -o-object-fit: cover;
-     object-fit: cover;
-}
-
-
-.label-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: start;
-  color: white;
-}
-
-.label-span {
-  display: flex;
-  flex-wrap: wrap;
-  margin-right: 4px;
-  margin-bottom: 4px;
-  padding: 7px;
-  background-color: var(--primary);
-  cursor: pointer;
-}
-
-.label-span:hover {
-  background-color: #6776f4;
 }
 
 /* 
@@ -1185,57 +1137,10 @@ Dashboard
   margin: 10px;
 }
 
-.dropzone-container {
-  background-color: var(--main-light);
-}
-
-.dropzone-row {
-  background-color: #edf3ff;
-  border: 1px dashed #b5b5b5;
-  padding: 20px;
-  margin: 20px;
-}
-
-.dropzone-row.dropzone-row-add-col {
-  position:absolute;
-  top: 0;
-}
-
-.dropzone-col.dragover {
-  background-color: #6e7685;
-  border: 1px dashed var(--dark);
-  z-index: 1000;
-
-}
-
-.save-layout-div {
-  position: fixed;
-  bottom: 15px; /* Distance from the bottom */
-  right: 60px;  /* Distance from the right */
-  z-index: 1000; /* Ensure it appears above other elements */
-  background-color: transparent;
-}
-
 .href {
   cursor: pointer;
   color : var(--primary);
 }
-
-.file-breadcrumb-item {
-  color: var(--dark);
-  font-size:x-large;
-  font-weight: bold;
-}
-
-.checkmark {
-  color: var(--main-dark);
-  font-size: 20px;
-  margin-left: 5px;
-  position: absolute;
-  top: -5px;
-  right: -5px;
-}
-
 
 .htmx-indicator{
   display:none;
@@ -1249,50 +1154,6 @@ Dashboard
 }
 .htmx-request.htmx-indicator{
   display:inline;
-}
-
-/* 
-  CSS for content layout
-*/
-.content-layout-row {
-  background-color: #edf3ff;
-  border: 1px dashed #b5b5b5;
-  padding: 10px;
-  margin: 10px;
-}
-
-.content-layout-column {
-  background-color: #c9dafc;
-  border: 1px solid #b5b5b5;
-  padding: 5px;
-  margin: 5px;
-}
-
-.content-layout-column.dragover {
-  background-color: #6e7685;
-  border: 1px dashed var(--dark);
-}
-
-.content-layout-column.draggable {
-  cursor: move;
-}
-
-.content-layout-item {
-  background-color: #bed3fd;
-  border: 1px solid #b5b5b5;
-  padding: 5px;
-  margin: 5px;
-}
-
-
-.is-loading {
-  background: #eee;
-  background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
-  border-radius: 5px;
-  background-size: 200% 100%;
-  -webkit-animation: 1.5s shine linear infinite;
-          animation: 1.5s shine linear infinite;
-  z-index: 1000;
 }
 
 @-webkit-keyframes shine {
@@ -1446,27 +1307,6 @@ Dashboard
 }
 
 /* 
-  LLM CSS
-*/
-.assistant-bubble {
-  background-color: white;
-  color: black;
-  padding: 10px;
-  border-radius: 10px;
-  max-width: 75%;
-  word-wrap: break-word;
-  border: var(--primary) 2px solid;
-}
-.user-bubble {
-  background-color: var(--primary);
-  color: #fff;
-  padding: 10px;
-  border-radius: 10px;
-  max-width: 75%;
-  word-wrap: break-word;
-}
-
-/* 
   Signature css
 */
 
@@ -1549,18 +1389,6 @@ Dashboard
 [data-text-editor-toolbar-reveal]:focus-visible {
   opacity: 1;
   transform: scale(1.05);
-}
-
-/*
-  Legend
-*/
-
-.form-legend {
-  font-weight: 500;
-  font-size: 18px;
-  color: var(--main-dark);
-  font-weight: bold;
-  font-family: var(--font-sans);
 }
 
 /* Full callendar */
