@@ -304,7 +304,8 @@ export let COMMANDS: Record<string, Command> = {
     },
     tab: {
         command: KEY_TAB_COMMAND,
-        handler: function (event) {
+        /** Insert a real tab outside lists while preserving list indentation. */
+        handler: function (event: KeyboardEvent): boolean {
             event.preventDefault();
 
             this.editor?.update(() => {
@@ -321,7 +322,7 @@ export let COMMANDS: Record<string, Command> = {
                     return;
                 }
 
-                selection.insertText(".");
+                selection.insertRawText("\t");
             });
 
             return true;
