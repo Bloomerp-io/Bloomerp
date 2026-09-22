@@ -70,7 +70,7 @@
                 type="button"
                 data-sidebar-folder-button
                 aria-expanded="false"
-                class="btn btn-sm ml-auto shrink-0 p-1 text-xs rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer">
+                class="btn-sm ml-auto shrink-0 p-1 text-xs rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer">
                 <i data-sidebar-folder-caret class="fa-solid fa-caret-right text-secondary text-sm"></i>
             </button>
             {% endif %}
@@ -89,8 +89,11 @@
                 class="transition-opacity duration-150"
             >
                 <c-ui.dropdown.body data-ignore-toggle trigger_icon_class="fa-solid fa-ellipsis"
-                    trigger_button_class="p-1 text-xs rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer"
-                    size="sm" direction="down" fixed=True>
+                    trigger_button_class="p-1 text-xs rounded-md bg-gray-100 border-none text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer"
+                    size="sm" 
+                    direction="down" 
+                    fixed=True
+                    >
                 {% if item.is_folder %}
                 <c-ui.dropdown.submenu 
                         text="Add Subfolder" 
