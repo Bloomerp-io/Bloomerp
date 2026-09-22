@@ -1839,6 +1839,47 @@ class TestGantDataView(BaseBloomerpTestCaseWithModels):
         self.assertContains(page_response, 'draggable="true"', count=10, html=False)
         self.assertContains(page_response, "gant_unscheduled_page=3", html=False)
 
+    def test_gant_ordering_applies_to_scheduled_and_unscheduled_records(self) -> None:
+        """
+        Use case: A user orders Gantt records by an accessible field.
+        Expected result: Both scheduled rows and unscheduled items follow that order.
+        """
+        # 1. Configure descending name order and create records in a different order.
+        self.client.force_login(self.admin_user)
+        content_type, _dependency_field = self._configure_gant()
+        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference,
+            {"content_type_id": content_type.id},
+        )
+        preference.options["gantt"].update({
+            "ordering": "name",
+            "ordering_direction": "desc",
+        })
+        preference.save()
+        scheduled_a = self.GantTaskModel.objects.create(
+            name="Alpha", starts_on=date(2026, 1, 8), ends_on=date(2026, 1, 9),
+        )
+        scheduled_z = self.GantTaskModel.objects.create(
+            name="Zulu", starts_on=date(2026, 1, 1), ends_on=date(2026, 1, 2),
+        )
+        unscheduled_a = self.GantTaskModel.objects.create(name="Unscheduled Alpha")
+        unscheduled_z = self.GantTaskModel.objects.create(name="Unscheduled Zulu")
+
+        # 2. Render the Gantt component and inspect the public row markup.
+        response = self.client.get(
+            reverse("components_dataview", kwargs={"content_type_id": content_type.id}),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        markup = response.content.decode()
+        scheduled_ids = re.findall(r'data-gant-row\s+data-object-id="([^"]+)"', markup)
+        unscheduled_ids = re.findall(
+            r'data-gant-unscheduled-item\s+data-object-id="([^"]+)"', markup,
+        )
+        self.assertEqual(scheduled_ids, [str(scheduled_z.pk), str(scheduled_a.pk)])
+        self.assertEqual(unscheduled_ids, [str(unscheduled_z.pk), str(unscheduled_a.pk)])
+        self.assertIn(f'data-detail-url="{unscheduled_z.get_absolute_url()}"', markup)
+
     def test_gant_date_action_updates_multiple_records_and_individual_edges(self):
         """
         Use case: Keyboard movement updates a selection and edge dragging updates one boundary.

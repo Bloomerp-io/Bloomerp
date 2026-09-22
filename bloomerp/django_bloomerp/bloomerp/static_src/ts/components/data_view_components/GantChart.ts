@@ -4,6 +4,7 @@ import { getCsrfToken } from "../../utils/cookies";
 import showMessage from "../../utils/messages";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
+import { attachObjectPreviewTooltip } from "../../utils/objectPreviewTooltip";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -41,17 +42,34 @@ const ZOOM_LEVELS: ZoomLevel[] = [
     { pixelsPerMs: 84 / HOUR, tickUnit: 'hour', paddingMs: 6 * HOUR },
 ];
 
-export class GantChartItem extends BaseDataViewCell {
+class GantPreviewCell extends BaseDataViewCell {
+    private previewCleanup: (() => void) | null = null;
+
+    /** Attach navigation and an accessible object preview to this Gantt record. */
     public initialize(): void {
         super.initialize();
+        const contentTypeId = this.element.closest<HTMLElement>('[data-content-type-id]')?.dataset.contentTypeId;
+        const objectId = this.element.dataset.objectId;
+        if (contentTypeId && objectId) {
+            this.previewCleanup = attachObjectPreviewTooltip({
+                element: this.element,
+                contentTypeId,
+                objectId,
+            });
+        }
+    }
+
+    /** Release tooltip listeners when a Gantt record is removed. */
+    public destroy(): void {
+        this.previewCleanup?.();
+        this.previewCleanup = null;
+        super.destroy();
     }
 }
 
-export class GantChartSidebarItem extends BaseDataViewCell {
-    public initialize(): void {
-        super.initialize();
-    }
-}
+export class GantChartItem extends GantPreviewCell {}
+
+export class GantChartSidebarItem extends GantPreviewCell {}
 
 export class GantChart extends BaseDataViewComponent {
     protected cellClass = GantChartItem;

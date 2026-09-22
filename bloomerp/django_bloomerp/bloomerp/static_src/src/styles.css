@@ -851,6 +851,11 @@
     @apply bg-primary-50;
   }
 
+  [data-gant-item].cell-selected,
+  [data-gant-item].cell-focused {
+    @apply bg-primary text-white;
+  }
+
   .object-selected {
     @apply bg-primary-50 ring-2 ring-primary ring-inset;
   }
