@@ -4,7 +4,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand
 
-from bloomerp.services.default_policy_services import sync_default_policies
+from bloomerp.permissions.default_policies import sync_default_policies
 from bloomerp.services.workspace_services import create_or_update_default_tiles
 
 

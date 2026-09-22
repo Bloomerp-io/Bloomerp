@@ -11,7 +11,7 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.definition import BloomerpModelConfig, DefaultPolicy, PermissionSettings
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleContent
-from bloomerp.services.default_policy_services import sync_default_policies
+from bloomerp.permissions.default_policies import sync_default_policies
 
 
 class TestDefaultPolicySync(TestCase):
