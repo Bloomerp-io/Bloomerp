@@ -1,5 +1,6 @@
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
+import { CodeBlockNode } from "./nodes/CodeBlockNode";
 import { registerHtmlBehavior } from "./utils/htmlBehavior";
 import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
@@ -78,6 +79,7 @@ export class BloomerpTextEditor extends BaseWidget {
     public styling: string | null = null;
     public overrideDefaultStyling: boolean = false;
 
+    /** Initialize the Lexical editor and its HTML-backed form input. */
     public initialize(): void {
         // Get the editor ID
         this.editorId = this.element.dataset.editorId;
@@ -122,6 +124,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 tableRow: !this.overrideDefaultStyling ? 'border-b border-gray-200 last:border-b-0' : '',
                 tableCell: !this.overrideDefaultStyling ? 'min-w-24 border-r border-gray-200 px-1 py-1 align-top text-sm outline-none last:border-r-0' : '',
                 tableCellHeader: !this.overrideDefaultStyling ? 'bg-gray-100 font-medium' : '',
+                code: 'bloomerp-text-editor-code-block',
             },
             nodes: [
                 HeadingNode, 
@@ -133,6 +136,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 TableRowNode,
                 TableCellNode,
                 ImageNode,
+                CodeBlockNode,
                 HtmlNode,
             ],
             onError: (error: Error) => {
