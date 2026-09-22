@@ -49,6 +49,7 @@ class BloomerpApp(AppConfig):
         from bloomerp.signals.activity_log_signals import after_save_of_object
         from bloomerp.signals.activity_log_signals import before_delete_of_object  # noqa: F401
         from bloomerp.signals.activity_log_signals import after_delete_of_object  # noqa: F401
+        from bloomerp.signals import text_editor_image_signals  # noqa: F401
         from bloomerp.lookups.registry import LOOKUP_REGISTRY  # noqa: F401
         from bloomerp.config.utils import set_model_config
         from bloomerp.config.utils import set_detail_view_url
