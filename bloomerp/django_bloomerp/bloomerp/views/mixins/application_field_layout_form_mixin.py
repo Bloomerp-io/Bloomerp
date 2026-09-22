@@ -14,7 +14,7 @@ from bloomerp.forms.model_form import (
     get_model_form_application_fields,
 )
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models import LayoutItem
+from bloomerp.models import FieldLayout, LayoutItem
 from bloomerp.models.forms.form import Form
 from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
 from bloomerp.models.users.user import AbstractBloomerpUser
@@ -85,8 +85,18 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
     def get_layout_object(self) -> models.Model:
         return self.layout_binding.owner
 
-    def get_layout(self):
-        return self.layout_binding.layout
+    def get_layout(self) -> FieldLayout:
+        """Exclude references to deleted fields from the rendered layout."""
+        return self.valid_layout
+
+    @cached_property
+    def valid_layout(self) -> FieldLayout:
+        """Build a request-local layout containing only existing model fields."""
+        layout = self.layout_binding.layout.model_copy(deep=True)
+        field_ids = {str(field.pk) for field in self.get_application_fields()}
+        for row in layout.rows:
+            row.items = [item for item in row.items if str(item.id) in field_ids]
+        return layout
 
     def get_can_change(self) -> bool:
         return False
@@ -173,12 +183,13 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
         return cache[permission]
 
     def get_application_fields(self) -> models.QuerySet[ApplicationField]:
+        """Load the model's fields referenced by the saved, unfiltered layout."""
         if self.application_fields is not None:
             return self.application_fields
 
         field_ids = [
             item.id
-            for row in self.get_layout().rows
+            for row in self.layout_binding.layout.rows
             for item in row.items
         ]
         self.application_fields = ApplicationField.objects.filter(

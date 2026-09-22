@@ -92,6 +92,18 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 expected=ExpectedResult(response_validators=self.system_fields_have_correct_state),
             ),
             ModelRequestScenario(
+                name="Deleted application field is skipped in saved detail layout",
+                description="UC: A saved layout references a deleted field.\nExpected Result: The overview renders its remaining field without an error.",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.configure_layout_with_deleted_field,
+                expected=ExpectedResult(
+                    status_code=200,
+                    response_validators=self.deleted_field_is_skipped,
+                ),
+            ),
+            ModelRequestScenario(
                 name="Regular object detail offers create-todo action",
                 description="UC: An administrator opens a regular object.\nExpected Result: The create-todo side action is present.",
                 model=self.CustomerModel,
@@ -293,6 +305,40 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             all(str(self.fields_by_name[name].pk) not in items for name in system_names)
             and items[str(self.fields_by_name["files"].pk)].is_visible
             and "disabled" not in items[str(self.fields_by_name["files"].pk)].content
+        )
+
+    def configure_layout_with_deleted_field(
+        self, _scenario: ModelRequestScenario
+    ) -> None:
+        """Save a detail layout with one valid field and one deleted field ID."""
+        missing_id = ApplicationField.objects.order_by("-pk").values_list("pk", flat=True).first()
+        self.deleted_field_id = (missing_id or 0) + 1
+        UserObjectLayoutPreference.objects.filter(
+            user=self.admin_user,
+            content_type=self.content_type,
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            selected=True,
+            layout=FieldLayout(
+                rows=[LayoutRow(columns=2, items=[
+                    LayoutItem(id=self.fields_by_name["first_name"].pk),
+                    LayoutItem(id=self.deleted_field_id),
+                ])]
+            ).model_dump(mode="json"),
+        )
+
+    def deleted_field_is_skipped(self, response: HttpResponse) -> bool:
+        """Check that the valid field remains and the stale item is absent."""
+        item_ids = {
+            str(item.id)
+            for row in response.context["layout"].rows
+            for item in row.items
+        }
+        return (
+            str(self.fields_by_name["first_name"].pk) in item_ids
+            and str(self.deleted_field_id) not in item_ids
         )
 
     def select_comments_sidebar(self, _scenario):
