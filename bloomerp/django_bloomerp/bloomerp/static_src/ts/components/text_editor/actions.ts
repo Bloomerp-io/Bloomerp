@@ -1,6 +1,7 @@
 import { $createHeadingNode } from "@lexical/rich-text";
 import {
     $createListNode,
+    type ListType,
 } from "@lexical/list";
 import { $setBlocksType } from "@lexical/selection";
 import { $createTableNodeWithDimensions } from "@lexical/table";
@@ -70,6 +71,38 @@ function canWrapSelectionInInlineNode(nodes: LexicalNode[]): boolean {
     ));
 }
 
+/** Convert the selected block to a list while removing a slash-command trigger. */
+function handleList(textEditor: BloomerpTextEditor, listType: ListType): void {
+    const editor = getLexicalEditor(textEditor);
+    if (!editor) return;
+
+    /** Replace the selected block inside Lexical's update transaction. */
+    function convertSelectedBlock(): void {
+        removeTriggerWord();
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+            $setBlocksType(selection, () => $createListNode(listType));
+        }
+    }
+
+    editor.update(convertSelectedBlock);
+}
+
+/** Insert a checklist using the same list conversion as the other list actions. */
+function handleChecklist(textEditor: BloomerpTextEditor): void {
+    handleList(textEditor, "check");
+}
+
+/** Insert an unordered list using the shared list conversion. */
+function handleUnorderedList(textEditor: BloomerpTextEditor): void {
+    handleList(textEditor, "bullet");
+}
+
+/** Insert an ordered list using the shared list conversion. */
+function handleOrderedList(textEditor: BloomerpTextEditor): void {
+    handleList(textEditor, "number");
+}
+
 export let ACTIONS: Record<string, Action> = {
     h1: {
         label: "Heading 1",
@@ -104,44 +137,17 @@ export let ACTIONS: Record<string, Action> = {
     unordered_list: {
         label: "Bullet List",
         icon: "fa-solid fa-list-ul",
-        handler: (textEditor) => {
-            const editor = getLexicalEditor(textEditor);
-            if (!editor) {
-                return;
-            }
-
-            editor.update(() => {
-                removeTriggerWord()
-                const selection = $getSelection();
-
-                if (!$isRangeSelection(selection)) {
-                    return;
-                }
-
-                $setBlocksType(selection, () => $createListNode('bullet'))
-            });
-        }
+        handler: handleUnorderedList,
     },
     ordered_list: {
         label: "Numbered List",
         icon: "fa-solid fa-list-ol",
-        handler: (textEditor) => {
-            const editor = getLexicalEditor(textEditor);
-            if (!editor) {
-                return;
-            }
-
-            editor.update(() => {
-                removeTriggerWord()
-                const selection = $getSelection();
-
-                if (!$isRangeSelection(selection)) {
-                    return;
-                }
-
-                $setBlocksType(selection, () => $createListNode('number'))
-            });
-        }
+        handler: handleOrderedList,
+    },
+    checklist: {
+        label: "Checklist",
+        icon: "fa-solid fa-list-check",
+        handler: handleChecklist,
     },
     table: {
         label: "Table",
