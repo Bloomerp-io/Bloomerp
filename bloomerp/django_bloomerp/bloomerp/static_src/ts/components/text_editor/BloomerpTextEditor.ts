@@ -63,7 +63,7 @@ export class BloomerpTextEditor extends BaseWidget {
     private actionsToolbar: HTMLElement | null = null;
     private toolbarToggleButton: HTMLButtonElement | null = null;
     private toolbarRevealButton: HTMLButtonElement | null = null;
-    private toolbarHidden: boolean = false;
+    private toolbarHidden: boolean = true;
     private toolbarVisibilityHandler: ((event: Event) => void) | null = null;
     private hiddenInput:HTMLInputElement;
     private suppressNextChange: boolean = false;
