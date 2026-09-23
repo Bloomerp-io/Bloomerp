@@ -1,7 +1,12 @@
+import html
+import re
+from typing import Any
+
 from bloomerp.communication.emails.email_providers import EmailProviderDefinition
 from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 
 from ..base_executor import BaseExecutor
 from bloomerp.automation.schema import (
@@ -10,7 +15,7 @@ from bloomerp.automation.schema import (
     WorkflowValueField,
     remap_schema_field_paths,
 )
-from bloomerp.automation.values import stringify_value
+from bloomerp.automation.values import TEMPLATE_PATTERN, get_path_value, stringify_value
 from django.forms import Form
 from django import forms
 
@@ -29,7 +34,33 @@ class SendEmailForm(Form):
         help_text="Use a literal email or a value reference like {{ input.instance.email }}.",
     )
     subject = forms.CharField(label="Email Subject", max_length=255)
-    body = forms.CharField(label="Email Body", widget=forms.Textarea)
+    body = forms.CharField(label="Email Body", widget=BloomerpTextEditorWidget)
+    body_format = forms.CharField(widget=forms.HiddenInput, initial="html")
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Show legacy plain text safely when an old node opens in the editor."""
+        initial = kwargs.get("initial")
+        if isinstance(initial, dict) and initial.get("body_format") != "html":
+            legacy_body = initial.get("body")
+            if isinstance(legacy_body, str) and legacy_body:
+                converted_body = html.escape(legacy_body).replace("\n", "<br>")
+                kwargs["initial"] = {
+                    **initial,
+                    "body": f"<p>{converted_body}</p>",
+                    "body_format": "html",
+                }
+        super().__init__(*args, **kwargs)
+
+
+def resolve_email_html_body(template: str, input_data: dict) -> str:
+    """Escape workflow values inserted into author-created email HTML."""
+
+    def replace_reference(match: re.Match[str]) -> str:
+        """Resolve one workflow reference as safe HTML text."""
+        value = get_path_value({"input": input_data}, match.group(1))
+        return html.escape(stringify_value(value), quote=True)
+
+    return TEMPLATE_PATTERN.sub(replace_reference, template)
 
 
 class SendEmailExecutor(BaseExecutor):
@@ -58,6 +89,7 @@ class SendEmailExecutor(BaseExecutor):
         input_schema: WorkflowIOSchema | None = None,
         port_id: str = "default",
     ) -> WorkflowIOSchema:
+        """Include the upstream fields alongside the email send result fields."""
         upstream_fields = (
             remap_schema_field_paths(input_schema.fields, {})
             if input_schema and input_schema.value_type != "none"
@@ -77,10 +109,20 @@ class SendEmailExecutor(BaseExecutor):
         )
     
     def execute(self, input_data: dict) -> dict:
+        """Send editor HTML safely while preserving legacy plain-text bodies."""
         params = self.resolve_config(input_data)
         recipient = stringify_value(params.get("recipient"))
         subject = stringify_value(params.get("subject"))
-        body = stringify_value(params.get("body"))
+        is_html_body = self.config.get("body_format") == "html"
+        if is_html_body:
+            configured_body = self.config.get("body", "")
+            body = (
+                resolve_email_html_body(configured_body, input_data)
+                if isinstance(configured_body, str)
+                else html.escape(stringify_value(params.get("body")), quote=True)
+            )
+        else:
+            body = stringify_value(params.get("body"))
         from_email = params.get("from_account")
         
         # Get the email account
@@ -98,8 +140,8 @@ class SendEmailExecutor(BaseExecutor):
         adapter.send_email(
             to=[recipient],
             subject=subject,
-            body_text=body,
-            body_html=None,
+            body_text=None if is_html_body else body,
+            body_html=body if is_html_body else None,
         )
         
         
