@@ -432,7 +432,6 @@ export class BloomerpTextEditor extends BaseWidget {
         if (event.clientX < bounds.left || event.clientX > bounds.left + 24) return false;
 
         event.preventDefault();
-        listItem.focus();
         this.toggleChecklistItem(listItem);
         return true;
     }
