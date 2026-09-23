@@ -1401,10 +1401,23 @@ Dashboard
   Text editor toolbar visibility
 */
 
+[bloomerp-component="bloomerp-text-editor"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
 [data-text-editor-toolbar] {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
   max-height: 100rem;
   opacity: 1;
   transition: max-height 220ms ease, opacity 180ms ease, margin-bottom 220ms ease;
+}
+
+[data-text-editor-toolbar] > button {
+  flex-shrink: 0;
 }
 
 [data-text-editor-toolbar][data-toolbar-hidden="true"] {
