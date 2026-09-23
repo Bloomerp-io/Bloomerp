@@ -111,7 +111,7 @@
 	</section>
 
 	<!--Side section-->
-	<c-ui.resizable_div id="detail-aside" start_width="22rem" fit_to_main_bottom="true" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
+	<c-ui.resizable_div id="detail-aside" start_width="22rem" fit_to_main_bottom="true" force_open="{% if highlight_comment_id %}true{% endif %}" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
 		<aside class="xl:h-full xl:min-h-0">
 			<div class="relative flex flex-col overflow-hidden border-r border-gray-200 bg-white xl:h-full xl:min-h-0" data-resizable-div-panel>
 				<div class="pointer-events-none absolute left-0 top-0 z-40 h-full w-px bg-gray-200"></div>
@@ -163,7 +163,7 @@
 					</div>
 					<div
 						data-detail-sidebar-loader
-						hx-get="{% if detail_sidebar_view == 'comments' %}{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}{% else %}{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}{% endif %}"
+						hx-get="{% if detail_sidebar_view == 'comments' %}{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}{% if highlight_comment_id %}?highlight={{ highlight_comment_id|urlencode }}{% endif %}{% else %}{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}{% endif %}"
 						hx-target="#object-sidesection" 
 						hx-trigger="load"
 						hx-swap="innerHTML"

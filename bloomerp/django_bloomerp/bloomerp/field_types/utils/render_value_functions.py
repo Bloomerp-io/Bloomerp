@@ -7,6 +7,11 @@ from bloomerp.utils.labels import safe_object_label
 
 from django.db.models import Model
 from django.urls import reverse
+from django.utils.html import format_html
+from django.utils.text import Truncator
+
+
+MAX_RELATED_OBJECT_LABEL_LENGTH = 60
 
 
 def render_m2m_dataview_value(application_field: "ApplicationField", object: Model) -> str:
@@ -36,8 +41,8 @@ def render_m2m_dataview_value(application_field: "ApplicationField", object: Mod
     for obj in related_objects:
         # Get the URL for the related object (assuming it has a get_absolute_url method)
         url = getattr(obj, "get_absolute_url", lambda: "#")()
-        name = safe_object_label(obj)
-        a_tag_formatted = a_tag.format(url=url, name=name)
+        name = Truncator(safe_object_label(obj)).chars(MAX_RELATED_OBJECT_LABEL_LENGTH)
+        a_tag_formatted = format_html(a_tag, url=url, name=name)
         div = div.replace("{content}", a_tag_formatted + "{content}")
 
     if has_addendum:
@@ -67,8 +72,8 @@ def render_foreign_key_dataview_value(application_field: "ApplicationField", obj
 
     # Render the related object as a link to its detail page (assuming it has a get_absolute_url method)
     url = getattr(related_object, "get_absolute_url", lambda: "#")()
-    name = safe_object_label(related_object)
-    return f'<a href="{url}" class="text-primary hover:underline">{name}</a>'
+    name = Truncator(safe_object_label(related_object)).chars(MAX_RELATED_OBJECT_LABEL_LENGTH)
+    return format_html('<a href="{}" class="text-primary hover:underline">{}</a>', url, name)
 
 
 def render_generic_relation_value(application_field: "ApplicationField", object: Model) -> str:

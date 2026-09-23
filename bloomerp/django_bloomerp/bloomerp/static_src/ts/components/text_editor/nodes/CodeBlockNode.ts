@@ -17,12 +17,32 @@ function ignoreCodeBlockChild(_node: LexicalNode, _parent: LexicalNode | null | 
     return null;
 }
 
+/** Read pasted HTML code while retaining explicit line and block breaks. */
+function readCodeText(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? "";
+    if (node instanceof HTMLBRElement) return "\n";
+
+    let text = "";
+    const children = Array.from(node.childNodes);
+    for (const [index, child] of children.entries()) {
+        const isBlock = child instanceof HTMLElement
+            && ["DIV", "P", "LI"].includes(child.tagName);
+        if (isBlock && text && !text.endsWith("\n")) text += "\n";
+        text += readCodeText(child);
+        if (isBlock && index < children.length - 1 && !text.endsWith("\n")) {
+            text += "\n";
+        }
+    }
+    return text;
+}
+
 /** Convert a pre element into one editable block of literal source text. */
 function convertCodeBlock(element: HTMLElement): DOMConversionOutput {
     const block = $createCodeBlockNode();
     const content = element.querySelector("code") ?? element;
-    if (content.textContent) {
-        block.append($createTextNode(content.textContent));
+    const text = readCodeText(content);
+    if (text) {
+        block.append($createTextNode(text));
     }
     return { node: block, forChild: ignoreCodeBlockChild };
 }
@@ -57,9 +77,9 @@ export class CodeBlockNode extends ElementNode {
     }
 
     /** Create an editable preformatted block in the editor. */
-    createDOM(_config: EditorConfig): HTMLElement {
+    createDOM(config: EditorConfig): HTMLElement {
         const element = document.createElement("pre");
-        element.className = "bloomerp-text-editor-code-block";
+        element.className = config.theme.code ?? "";
         return element;
     }
 

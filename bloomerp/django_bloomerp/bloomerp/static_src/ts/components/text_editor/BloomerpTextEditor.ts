@@ -10,12 +10,15 @@ import {
     $isBlockElementNode,
     $createParagraphNode,
     $getRoot,
+    $getNearestNodeFromDOMNode,
     $getSelection,
     $insertNodes,
     $isInlineElementOrDecoratorNode,
     $isRangeSelection,
     $isTextNode,
     COMMAND_PRIORITY_LOW,
+    CLICK_COMMAND,
+    KEY_SPACE_COMMAND,
     createEditor,
     LexicalEditor,
     type LexicalNode,
@@ -33,7 +36,7 @@ import {
     createEmptyHistoryState,
     registerHistory,
 } from "@lexical/history";
-import { ListItemNode, ListNode } from "@lexical/list";
+import { $isListItemNode, $isListNode, ListItemNode, ListNode } from "@lexical/list";
 import { LinkNode } from "@lexical/link";
 import {
     TableCellNode,
@@ -61,7 +64,7 @@ export class BloomerpTextEditor extends BaseWidget {
     private actionsToolbar: HTMLElement | null = null;
     private toolbarToggleButton: HTMLButtonElement | null = null;
     private toolbarRevealButton: HTMLButtonElement | null = null;
-    private toolbarHidden: boolean = false;
+    private toolbarHidden: boolean = true;
     private toolbarVisibilityHandler: ((event: Event) => void) | null = null;
     private hiddenInput:HTMLInputElement;
     private suppressNextChange: boolean = false;
@@ -79,7 +82,7 @@ export class BloomerpTextEditor extends BaseWidget {
     public styling: string | null = null;
     public overrideDefaultStyling: boolean = false;
 
-    /** Initialize the Lexical editor and its HTML-backed form input. */
+    /** Create the Lexical editor and connect its actions to the widget value. */
     public initialize(): void {
         // Get the editor ID
         this.editorId = this.element.dataset.editorId;
@@ -96,13 +99,13 @@ export class BloomerpTextEditor extends BaseWidget {
         // Get the hidden input
         this.hiddenInput = this.element.querySelector('[data-text-editor-input="true"]') as HTMLInputElement;
 
-        // Get the styling from the data attribute
-        const styling = this.element.dataset.styling ?? null;
-        this.setStyling(styling);
-
         // Get the override styling from the data attribute
         const overrideDefaultStyling = this.element.dataset.overrideDefaultStyling ?? 'False';
         this.overrideDefaultStyling = parseBoolean(overrideDefaultStyling, false);
+
+        // Get the styling from the data attribute
+        const styling = this.element.dataset.styling ?? null;
+        this.setStyling(styling);
 
         this.editor = createEditor({
             namespace: "BloomerpTextEditor",
@@ -116,6 +119,9 @@ export class BloomerpTextEditor extends BaseWidget {
                 list: {
                     ul: !this.overrideDefaultStyling ? 'list-disc list-inside pl-4' : '',
                     ol: !this.overrideDefaultStyling ? 'list-decimal list-inside pl-4' : '',
+                    checklist: 'bloomerp-text-editor-checklist',
+                    listitemChecked: 'bloomerp-text-editor-checklist-item-checked',
+                    listitemUnchecked: 'bloomerp-text-editor-checklist-item-unchecked',
                     nested: {
                         listitem: 'bloomerp-text-editor-nested-list-item',
                     },
@@ -124,7 +130,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 tableRow: !this.overrideDefaultStyling ? 'border-b border-gray-200 last:border-b-0' : '',
                 tableCell: !this.overrideDefaultStyling ? 'min-w-24 border-r border-gray-200 px-1 py-1 align-top text-sm outline-none last:border-r-0' : '',
                 tableCellHeader: !this.overrideDefaultStyling ? 'bg-gray-100 font-medium' : '',
-                code: 'bloomerp-text-editor-code-block',
+                code: !this.overrideDefaultStyling ? 'bloomerp-text-editor-code-block' : '',
             },
             nodes: [
                 HeadingNode, 
@@ -176,6 +182,8 @@ export class BloomerpTextEditor extends BaseWidget {
             registerTableBehavior(this.editor, this.element),
             registerHtmlBehavior(this.editor),
             registerImageBehavior(this.editor, this.element),
+            this.editor.registerCommand(CLICK_COMMAND, this.handleChecklistClick.bind(this), COMMAND_PRIORITY_LOW),
+            this.editor.registerCommand(KEY_SPACE_COMMAND, this.handleChecklistSpace.bind(this), COMMAND_PRIORITY_LOW),
             this.editor.registerUpdateListener(() => {
                 this.updateNestedListMarkers(editorRef);
 
@@ -398,6 +406,7 @@ export class BloomerpTextEditor extends BaseWidget {
         }
     }
 
+    /** Hide markers on list wrappers and make checklist items keyboard reachable. */
     private updateNestedListMarkers(editorRoot: HTMLElement): void {
         editorRoot.querySelectorAll<HTMLElement>('.bloomerp-text-editor-nested-list-item').forEach((listItem) => {
             const elementChildren = Array.from(listItem.children);
@@ -406,6 +415,54 @@ export class BloomerpTextEditor extends BaseWidget {
 
             listItem.classList.toggle('list-none', containsOnlyNestedList);
         });
+        editorRoot.querySelectorAll<HTMLElement>('li[role="checkbox"]').forEach((listItem) => {
+            listItem.tabIndex = 0;
+        });
+    }
+
+    /** Toggle a checklist item when its visible checkbox marker is clicked. */
+    private handleChecklistClick(event: MouseEvent): boolean {
+        const target = event.target;
+        if (!(target instanceof Element)) return false;
+
+        const listItem = target.closest<HTMLElement>('li[role="checkbox"]');
+        if (!listItem || !this.editor?.getRootElement()?.contains(listItem)) return false;
+
+        const bounds = listItem.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.left + 24) return false;
+
+        event.preventDefault();
+        listItem.focus();
+        this.toggleChecklistItem(listItem);
+        return true;
+    }
+
+    /** Toggle a focused checklist item with the Space key. */
+    private handleChecklistSpace(event: KeyboardEvent): boolean {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || !target.matches('li[role="checkbox"]')) return false;
+        if (!this.editor?.getRootElement()?.contains(target)) return false;
+
+        event.preventDefault();
+        this.toggleChecklistItem(target);
+        return true;
+    }
+
+    /** Change the Lexical checked state so the next HTML save retains it. */
+    private toggleChecklistItem(listItem: HTMLElement): void {
+        const editor = this.editor;
+        if (!editor) return;
+
+        /** Update only a checklist item belonging to this editor. */
+        function toggleNode(): void {
+            const node = $getNearestNodeFromDOMNode(listItem);
+            const parent = node?.getParent();
+            if ($isListItemNode(node) && $isListNode(parent) && parent.getListType() === 'check') {
+                node.toggleChecked();
+            }
+        }
+
+        editor.update(toggleNode);
     }
 
     private normalizeImportedNodesForRoot(nodes: LexicalNode[]): LexicalNode[] {

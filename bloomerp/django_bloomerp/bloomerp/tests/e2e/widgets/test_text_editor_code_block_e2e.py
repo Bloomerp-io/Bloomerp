@@ -3,6 +3,7 @@ import re
 from django.urls import reverse
 from playwright.sync_api import expect
 
+from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import BloomerpE2ETestCase, E2EAction, E2ERequestScenario
 from bloomerp.utils.models import get_create_view_url
@@ -14,6 +15,17 @@ class TestTextEditorCodeBlockE2E(BloomerpE2ETestCase):
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
         """Describe creation and persistence of a preformatted code block."""
         create_url = reverse(get_create_view_url(model=Todo))
+        imported_todo = Todo.objects.create(
+            title="Code block HTML import",
+            content=(
+                "<pre><code>first<br>second</code></pre>"
+                "<pre><code><div>alpha</div><div>beta</div></code></pre>"
+            ),
+        )
+        document_template = DocumentTemplate.objects.create(
+            name="Unstyled code block",
+            template="<pre><code>plain</code></pre>",
+        )
         return [
             E2ERequestScenario(
                 name="Code block preserves tabs and line breaks after saving",
@@ -57,7 +69,51 @@ class TestTextEditorCodeBlockE2E(BloomerpE2ETestCase):
                     ),
                 ],
             ),
+            E2ERequestScenario(
+                name="HTML line and block breaks survive code block import",
+                user=self.admin_user,
+                url=imported_todo.get_absolute_url(),
+                actions=[
+                    E2EAction(
+                        name="Inspect imported code blocks",
+                        execute=self.check_imported_markup_breaks,
+                    ),
+                ],
+            ),
+            E2ERequestScenario(
+                name="Document template code blocks omit Bloomerp styling",
+                user=self.admin_user,
+                url=reverse(
+                    "document_templates_detail_builder",
+                    kwargs={"pk": document_template.pk},
+                ),
+                actions=[
+                    E2EAction(
+                        name="Inspect the template code block",
+                        execute=self.check_template_code_styling,
+                    ),
+                ],
+            ),
         ]
+
+    def check_imported_markup_breaks(self) -> None:
+        """Verify imported br and block elements become literal code newlines."""
+        widget = self.page.locator(
+            '[bloomerp-component="bloomerp-text-editor"][data-name="content"]'
+        )
+        expect(widget.locator("pre.bloomerp-text-editor-code-block")).to_have_count(2)
+        field = widget.locator('input[name="content"]')
+        expect(field).to_have_value(re.compile(r"first\nsecond.*alpha\nbeta", re.S))
+
+    def check_template_code_styling(self) -> None:
+        """Verify document-template code blocks do not use Bloomerp theme CSS."""
+        widget = self.page.locator(
+            '[bloomerp-component="bloomerp-text-editor"][data-name="template"]'
+        )
+        expect(widget).to_have_attribute("data-override-default-styling", "True")
+        code = widget.locator("pre").first
+        expect(code).to_be_visible()
+        expect(code).not_to_have_class(re.compile("bloomerp-text-editor-code-block"))
 
     def enter_slash_code(self) -> None:
         """Open the slash menu and select the code block action."""
@@ -91,6 +147,7 @@ class TestTextEditorCodeBlockE2E(BloomerpE2ETestCase):
         editor.click()
         editor.press("ControlOrMeta+A")
         editor.press("Backspace")
+        widget.get_by_role("button", name="Show formatting toolbar").click()
         widget.get_by_role("button", name="Code Block").click()
         editor.type("if ready:")
         editor.press("Enter")
