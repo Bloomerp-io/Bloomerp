@@ -69,7 +69,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
             ApplicationField.objects.filter(content_type=self.layout_content_type)
         )
         available_ids = {str(field.pk) for field in available_fields}
-        had_items = any(row.items for row in layout.rows)
+        had_items = any(row.items for row in self.layout_binding.layout.rows)
         for row in layout.rows:
             row.items = [item for item in row.items if str(item.id) in available_ids]
 

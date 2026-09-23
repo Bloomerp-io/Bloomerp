@@ -93,7 +93,14 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
     def valid_layout(self) -> FieldLayout:
         """Build a request-local layout containing only existing model fields."""
         layout = self.layout_binding.layout.model_copy(deep=True)
-        field_ids = {str(field.pk) for field in self.get_application_fields()}
+        saved_ids = [item.id for row in layout.rows for item in row.items]
+        fields = self.application_fields
+        if fields is None:
+            fields = ApplicationField.objects.filter(
+                content_type=self.layout_content_type,
+                id__in=saved_ids,
+            )
+        field_ids = {str(field.pk) for field in fields}
         for row in layout.rows:
             row.items = [item for item in row.items if str(item.id) in field_ids]
         return layout
@@ -183,13 +190,13 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
         return cache[permission]
 
     def get_application_fields(self) -> models.QuerySet[ApplicationField]:
-        """Load the model's fields referenced by the saved, unfiltered layout."""
+        """Load the model's fields referenced by the resolved layout."""
         if self.application_fields is not None:
             return self.application_fields
 
         field_ids = [
             item.id
-            for row in self.layout_binding.layout.rows
+            for row in self.get_layout().rows
             for item in row.items
         ]
         self.application_fields = ApplicationField.objects.filter(
