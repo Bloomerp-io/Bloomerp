@@ -99,6 +99,7 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         return True
 
     def get_context_data(self, **kwargs: Any) -> dict:
+        """Build detail context, honoring an explicit sidebar deep link."""
         context = super().get_context_data(**kwargs)
         context["exclude_header"] = self.exclude_header
         if self.tabs:
@@ -106,7 +107,17 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
             
         content_type = ContentType.objects.get_for_model(self.model)
         context["detail_view_content_type_id"] = content_type.pk
-        context["detail_sidebar_view"] = self.request.user.detail_sidebar_view_preference
+        requested_sidebar = self.request.GET.get("sidebar")
+        context["detail_sidebar_view"] = (
+            requested_sidebar if requested_sidebar in {"activity", "comments"}
+            else self.request.user.detail_sidebar_view_preference
+        )
+        comment_id = self.request.GET.get("comment", "")
+        context["highlight_comment_id"] = (
+            comment_id
+            if context["detail_sidebar_view"] == "comments" and comment_id.isascii() and comment_id.isdecimal()
+            else ""
+        )
         context["can_change_avatar"] = self._can_change_avatar(content_type)
         tabs_preference = self.detail_tabs_preference
         preference_manager = PreferenceManager(self.request.user)
