@@ -1352,13 +1352,13 @@ Dashboard
 .bloomerp-text-editor-checklist > li[role="checkbox"] {
   position: relative;
   list-style: none;
-  padding-left: 1.75rem;
+  padding-left: 1.5rem;
 }
 
 .bloomerp-text-editor-checklist > li[role="checkbox"]::before {
   content: "";
   position: absolute;
-  top: 0.3em;
+  top: calc((1lh - 1rem) / 2);
   left: 0;
   width: 1rem;
   height: 1rem;
@@ -1371,20 +1371,38 @@ Dashboard
 .bloomerp-text-editor-checklist > li[aria-checked="true"]::before {
   content: "✓";
   color: white;
-  background: #15803d;
-  border-color: #15803d;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   font-size: 0.8rem;
   line-height: 0.9rem;
   text-align: center;
 }
 
 .bloomerp-text-editor-checklist > li[role="checkbox"]:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
+  outline: none;
+}
+
+.bloomerp-text-editor-checklist > li[role="checkbox"]:focus-visible::before {
+  box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 [data-text-editor-body] {
   position: relative;
+}
+
+.bloomerp-text-editor-code-block,
+pre[data-text-editor-code-block] {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  background: #f3f4f6;
+  padding: 0.75rem 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 4;
 }
 
 [data-text-editor-body][data-placeholder][data-empty="true"]::before {

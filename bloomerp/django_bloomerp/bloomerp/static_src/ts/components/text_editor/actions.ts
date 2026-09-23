@@ -7,6 +7,7 @@ import { $setBlocksType } from "@lexical/selection";
 import { $createTableNodeWithDimensions } from "@lexical/table";
 import {
     $createParagraphNode,
+    $getRoot,
     $getSelection,
     $insertNodes,
     $isInlineElementOrDecoratorNode,
@@ -19,6 +20,7 @@ import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./u
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 import { promptImageUpload } from "./utils/imageBehavior";
 import { promptHtmlInsert } from "./utils/htmlBehavior";
+import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
 
 
 export type Action = {
@@ -55,6 +57,27 @@ function handleHeading(textEditor: BloomerpTextEditor, heading: "h1" | "h2" | "h
 
         $setBlocksType(selection, () => $createHeadingNode(heading))
     });
+}
+
+/** Turn the selected paragraph or blocks into editable preformatted code. */
+function handleCodeBlock(textEditor: BloomerpTextEditor): void {
+    const editor = getLexicalEditor(textEditor);
+    if (!editor) return;
+
+    /** Convert the selected blocks or insert a block without a selection. */
+    function insertCodeBlock(): void {
+        removeTriggerWord();
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+            $setBlocksType(selection, () => $createCodeBlockNode());
+        } else {
+            const block = $createCodeBlockNode();
+            $getRoot().append(block);
+            block.selectStart();
+        }
+    }
+
+    editor.update(insertCodeBlock);
 }
 
 function canWrapSelectionInInlineNode(nodes: LexicalNode[]): boolean {
@@ -104,6 +127,11 @@ function handleOrderedList(textEditor: BloomerpTextEditor): void {
 }
 
 export let ACTIONS: Record<string, Action> = {
+    code_block: {
+        label: "Code Block",
+        icon: "fa-solid fa-code",
+        handler: handleCodeBlock,
+    },
     h1: {
         label: "Heading 1",
         icon: "fa-solid fa-heading",

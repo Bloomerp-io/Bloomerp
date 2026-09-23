@@ -1,5 +1,6 @@
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
+import { CodeBlockNode } from "./nodes/CodeBlockNode";
 import { registerHtmlBehavior } from "./utils/htmlBehavior";
 import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
@@ -98,18 +99,18 @@ export class BloomerpTextEditor extends BaseWidget {
         // Get the hidden input
         this.hiddenInput = this.element.querySelector('[data-text-editor-input="true"]') as HTMLInputElement;
 
-        // Get the styling from the data attribute
-        const styling = this.element.dataset.styling ?? null;
-        this.setStyling(styling);
-
         // Get the override styling from the data attribute
         const overrideDefaultStyling = this.element.dataset.overrideDefaultStyling ?? 'False';
         this.overrideDefaultStyling = parseBoolean(overrideDefaultStyling, false);
 
+        // Get the styling from the data attribute
+        const styling = this.element.dataset.styling ?? null;
+        this.setStyling(styling);
+
         this.editor = createEditor({
             namespace: "BloomerpTextEditor",
             theme: {
-                paragraph: !this.overrideDefaultStyling ? 'text-md' : '',
+                paragraph: !this.overrideDefaultStyling ? 'text-md mb-2 last:mb-0' : '',
                 heading: {
                     h1: !this.overrideDefaultStyling ? 'text-4xl font-bold mb-2' : '',
                     h2: !this.overrideDefaultStyling ? 'text-2xl font-bold mb-1' : '',
@@ -129,6 +130,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 tableRow: !this.overrideDefaultStyling ? 'border-b border-gray-200 last:border-b-0' : '',
                 tableCell: !this.overrideDefaultStyling ? 'min-w-24 border-r border-gray-200 px-1 py-1 align-top text-sm outline-none last:border-r-0' : '',
                 tableCellHeader: !this.overrideDefaultStyling ? 'bg-gray-100 font-medium' : '',
+                code: !this.overrideDefaultStyling ? 'bloomerp-text-editor-code-block' : '',
             },
             nodes: [
                 HeadingNode, 
@@ -140,6 +142,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 TableRowNode,
                 TableCellNode,
                 ImageNode,
+                CodeBlockNode,
                 HtmlNode,
             ],
             onError: (error: Error) => {
@@ -429,7 +432,6 @@ export class BloomerpTextEditor extends BaseWidget {
         if (event.clientX < bounds.left || event.clientX > bounds.left + 24) return false;
 
         event.preventDefault();
-        listItem.focus();
         this.toggleChecklistItem(listItem);
         return true;
     }
