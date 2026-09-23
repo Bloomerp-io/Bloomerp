@@ -29,6 +29,7 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
                             LayoutItem(id="name"),
                             LayoutItem(id="content_type"),
                             LayoutItem(id="description", colspan=2),
+                            LayoutItem(id="success_text", colspan=2),
                         ]
                     ),
                     LayoutRow(
@@ -71,6 +72,12 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
         null=True,
         blank=True,
         verbose_name=_("Description"),
+    )
+    success_text = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name=_("Success Text"),
+        help_text=_("Text shown after a successful form submission."),
     )
     content_type = models.ForeignKey(
         to=ContentType,

@@ -7,7 +7,9 @@
 <div class="mx-auto max-w-6xl p-4">
     <div class="space-y-4">
         <c-ui.text.title>{{ object.name }}</c-ui.text.title>
-        <c-ui.text.text>{{ object.description|safe|default:"" }}</c-ui.text.text>
+        {% if not form_submitted_successfully %}
+            <c-ui.text.text>{{ object.description|safe|default:"" }}</c-ui.text.text>
+        {% endif %}
     
         {% if layout_non_field_errors %}
             <div class="space-y-2 mb-4">

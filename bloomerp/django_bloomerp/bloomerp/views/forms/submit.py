@@ -1,5 +1,7 @@
 from django.contrib import messages
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
+from django.utils.translation import gettext as _
 from django.views.generic.detail import DetailView
 
 from bloomerp.forms.model_form import BloomerpModelForm
@@ -77,7 +79,8 @@ class SubmitFormView(ApplicationFieldLayoutFormMixin, DetailView):
         )
         return cached_form
     
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
+        """Register a valid submission and render its configured success message."""
         self.object = self.get_object()
         form = self.get_form()
         manager = FormManager(self.object)
@@ -95,7 +98,9 @@ class SubmitFormView(ApplicationFieldLayoutFormMixin, DetailView):
             return self.render_to_response(
                 self.get_context_data(
                     form_submitted_successfully=True,
-                    form_submission_message="Form successfully filled in.",
+                    form_submission_message=(
+                        self.object.success_text or _("Form successfully filled in.")
+                    ),
                 )
             )
 
