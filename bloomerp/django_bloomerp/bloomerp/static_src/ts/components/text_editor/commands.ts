@@ -57,11 +57,12 @@ function getSelectedListItem(node: LexicalNode): ListItemNode | null {
     return null;
 }
 
+/** Nest an item under its preceding sibling when its list supports indentation. */
 function indentListItem(listItem: ListItemNode): boolean {
     const list = listItem.getParent();
     const previousSibling = listItem.getPreviousSibling();
 
-    if (!$isListNode(list) || !["bullet", "number"].includes(list.getListType()) || !$isListItemNode(previousSibling)) {
+    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType()) || !$isListItemNode(previousSibling)) {
         return false;
     }
 
@@ -111,10 +112,11 @@ function isEmptyCurrentListItem(listItem: ListItemNode): boolean {
     return listItem.getTextContent().trim() === '';
 }
 
+/** Leave an empty list item, or reduce its indent, when Enter is pressed. */
 function exitEmptyListItem(listItem: ListItemNode): boolean {
     const list = listItem.getParent();
 
-    if (!$isListNode(list) || !["bullet", "number"].includes(list.getListType()) || !isEmptyCurrentListItem(listItem)) {
+    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType()) || !isEmptyCurrentListItem(listItem)) {
         return false;
     }
 
@@ -139,14 +141,15 @@ function exitEmptyListItem(listItem: ListItemNode): boolean {
     return true;
 }
 
+/** Add the next item in the current list, leaving checklist items unchecked. */
 function insertListItemAfter(listItem: ListItemNode): boolean {
     const list = listItem.getParent();
 
-    if (!$isListNode(list) || !["bullet", "number"].includes(list.getListType())) {
+    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType())) {
         return false;
     }
 
-    const nextListItem = $createListItemNode();
+    const nextListItem = $createListItemNode(list.getListType() === "check" ? false : undefined);
     listItem.insertAfter(nextListItem);
     nextListItem.selectStart();
 
@@ -203,7 +206,7 @@ export let COMMANDS: Record<string, Command> = {
                 launchContextMenu(
                     editor,
                     contextMenu,
-                    ["h1", "h2", "h3", "image", "unordered_list", "ordered_list", "table"].concat(
+                    ["h1", "h2", "h3", "image", "unordered_list", "ordered_list", "checklist", "table"].concat(
                         this.slashExtraActions
                     ),
                     currentWord.slice(1),
@@ -270,7 +273,7 @@ export let COMMANDS: Record<string, Command> = {
                 launchContextMenu(
                     editor,
                     contextMenu,
-                    ["h1", "h2", "h3", "ordered_list", "unordered_list"],
+                    ["h1", "h2", "h3", "ordered_list", "unordered_list", "checklist"],
                     currentWord.slice(1),
                 );
             });
@@ -304,7 +307,8 @@ export let COMMANDS: Record<string, Command> = {
     },
     tab: {
         command: KEY_TAB_COMMAND,
-        handler: function (event) {
+        /** Insert a real tab outside lists while preserving list indentation. */
+        handler: function (event: KeyboardEvent): boolean {
             event.preventDefault();
 
             this.editor?.update(() => {
@@ -321,7 +325,7 @@ export let COMMANDS: Record<string, Command> = {
                     return;
                 }
 
-                selection.insertText(".");
+                selection.insertRawText("\t");
             });
 
             return true;

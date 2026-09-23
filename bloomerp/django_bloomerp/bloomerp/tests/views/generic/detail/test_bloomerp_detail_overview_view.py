@@ -121,6 +121,16 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 expected=ExpectedResult(response_validators=self.comments_sidebar_is_selected),
             ),
             ModelRequestScenario(
+                name="Comment deep link overrides the saved sidebar preference",
+                description="UC: A comment link opens an object.\nExpected Result: Comments loads with the linked comment highlighted.",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                view_kwargs=customer_kwargs,
+                query_params={"sidebar": "comments", "comment": "17"},
+                prepare=self.reset_sidebar_preference,
+                expected=ExpectedResult(response_validators=self.linked_comment_sidebar_is_selected),
+            ),
+            ModelRequestScenario(
                 name="Activity sidebar is the default",
                 description="UC: A user has no detail-sidebar preference.\nExpected Result: The initial sidebar request targets Activity.",
                 model=self.CustomerModel,
@@ -356,6 +366,17 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
 
     def comments_sidebar_is_selected(self, response):
         return self.sidebar_url(response) == reverse("components_comments", kwargs={"content_type_id": self.content_type.pk, "object_id": self.customer.pk})
+
+    def linked_comment_sidebar_is_selected(self, response: HttpResponse) -> bool:
+        """Check the deep link's fragment URL and forced-open sidebar."""
+        expected_url = reverse("components_comments", kwargs={"content_type_id": self.content_type.pk, "object_id": self.customer.pk})
+        document = BeautifulSoup(response.content, "html.parser")
+        sidebar = document.select_one("#resizable-div-detail-aside")
+        return (
+            self.sidebar_url(response) == f"{expected_url}?highlight=17"
+            and sidebar is not None
+            and sidebar.get("data-force-open") == "true"
+        )
 
     def activity_sidebar_is_selected(self, response):
         expected = f'{reverse("components_activity_log")}?content_type_id={self.content_type.pk}&object_id={self.customer.pk}'

@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 
 class Comment(
     TimestampModelMixin,
@@ -38,3 +39,7 @@ class Comment(
 
     def __str__(self):
         return f"{self.content} - {self.created_by} - {self.datetime_created}"
+
+    def get_absolute_url(self) -> str:
+        """Link to a redirect that resolves the related object when opened."""
+        return reverse("comment_detail_redirect", kwargs={"comment_id": self.pk})

@@ -1,7 +1,7 @@
 import { getComponent } from '../BaseComponent';
 import FilterContainer from './FilterContainer';
 import RenderedFilter, { type RenderedFilterData, type RenderedFilterEventDetail } from './RenderedFilter';
-import { parseInitialFilters, type Filter } from './definition';
+import { parseInitialFilters, type Filter, type FilterCondition } from './definition';
 import { FilterApi } from './api';
 import type { SavedFilter } from './definition';
 import { t } from '@/utils/i18n';
@@ -48,6 +48,7 @@ export class RenderedFilters {
         catch { /* The host/backend reports invalid query filters; never rewrite them here. */ }
     }
 
+    /** Render the active filters and resolve labels for relation values. */
     public setFilters(filters: Filter[], identity?: AppliedFilterIdentity): void {
         const scope = this.root.dataset.scope;
         if (scope !== 'model' && scope !== 'workspace') return;
@@ -68,6 +69,48 @@ export class RenderedFilters {
         this.serialized = serialized;
         this.entries = entries;
         this.render();
+        void this.refreshLabels(serialized);
+    }
+
+    /** Replace relation identifiers with the labels already supplied by their filter widgets. */
+    private async refreshLabels(serialized: string): Promise<void> {
+        const entries = this.entries.filter(entry => !entry.savedFilterId && !entry.defaultFilterId);
+        await Promise.all(entries.map(entry => this.refreshEntryLabel(entry, serialized)));
+    }
+
+    /** Update one badge only while it still represents the active filter state. */
+    private async refreshEntryLabel(entry: RenderedFilterData, serialized: string): Promise<void> {
+        const labels = await Promise.all(entry.filters.map(group => this.describeGroup(group)));
+        if (this.serialized !== serialized || !this.entries.includes(entry)) return;
+        entry.label = labels.map(label => entry.filters.length > 1 ? `(${label})` : label).join(` ${t('AND')} `);
+        const index = this.entries.indexOf(entry);
+        this.components[index]?.setFilter(entry);
+    }
+
+    /** Describe a filter group while preserving its connector and empty-group wording. */
+    private async describeGroup(group: Filter): Promise<string> {
+        if (!group.conditions.length) return group.connector === 'AND' ? t('All rows') : t('No rows');
+        const conditions = await Promise.all(group.conditions.map(condition => this.describeCondition(condition)));
+        return conditions.join(` ${group.connector} `);
+    }
+
+    /** Ask the existing value editor for a relation's selected object label. */
+    private async describeCondition(condition: FilterCondition): Promise<string> {
+        let value = typeof condition.value === 'string' ? condition.value : JSON.stringify(condition.value);
+        if (value != null && value !== '') {
+            try {
+                const { widget } = await this.api.editor(condition.field_path, condition.lookup_id, condition.value);
+                const selected = new DOMParser().parseFromString(widget, 'text/html')
+                    .querySelector<HTMLElement>('[data-selected-labels]');
+                if (selected?.dataset.selectedLabels) {
+                    const names: unknown = JSON.parse(selected.dataset.selectedLabels);
+                    if (Array.isArray(names) && names.every(name => typeof name === 'string') && names.length) {
+                        value = names.join(', ');
+                    }
+                }
+            } catch { /* Keep the original value when its editor is unavailable. */ }
+        }
+        return `${condition.field_path.replace(/__/g, ' › ').replace(/_/g, ' ')} ${condition.lookup_id.replace(/_/g, ' ')} ${value ?? ''}`.trim();
     }
 
     private withoutDefaultFilters(filters: Filter[]): Filter[] {
@@ -93,6 +136,7 @@ export class RenderedFilters {
             .map(label => groups.length > 1 ? `(${label})` : label).join(` ${t('AND')} `);
     }
 
+    /** Apply a badge edit or removal and update its host view. */
     private async change(event: Event, remove: boolean): Promise<void> {
         const detail = (event as CustomEvent<RenderedFilterEventDetail>).detail;
         const current = this.entries.find(entry => entry.key === detail?.key);
@@ -116,6 +160,7 @@ export class RenderedFilters {
         const filters = this.entries.flatMap(entry => entry.filters);
         this.serialized = filterIdentity(filters);
         this.render();
+        void this.refreshLabels(this.serialized);
         this.update(filters);
     }
 
