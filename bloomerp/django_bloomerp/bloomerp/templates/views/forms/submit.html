@@ -23,7 +23,7 @@
 
         {% if form_submitted_successfully %}
 
-            <c-ui.text.text>{{ form_submission_message }}</c-ui.text.text>
+            <c-ui.text.text>{{ form_submission_message|safe }}</c-ui.text.text>
             <a href="{{ request.path }}" class="btn btn-sm btn-primary">
                 {% blocktrans %}Submit a new form{% endblocktrans %}
             </a>

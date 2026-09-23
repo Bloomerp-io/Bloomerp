@@ -19,7 +19,7 @@ class TestSubmitFormView(BloomerpDetailViewTestCase):
         return Form.objects.create(
             name="Customer intake",
             description="Complete this customer form.",
-            success_text="Thank you for submitting your details.",
+            success_text="<p>Thank you for submitting your details.</p>",
             content_type=self.get_content_type_for_model(self.CustomerModel),
             layout=create_default_layout(self.CustomerModel).model_dump(),
             requires_review=False,
@@ -34,7 +34,7 @@ class TestSubmitFormView(BloomerpDetailViewTestCase):
                 data={"first_name": "Ada", "last_name": "Lovelace", "age": 36},
                 expected=ExpectedResult(
                     response_validators=[
-                        self.contains_text("Thank you for submitting your details."),
+                        self.contains_text("<p>Thank you for submitting your details.</p>"),
                         self.does_not_contain_text("Complete this customer form."),
                     ],
                 ),
