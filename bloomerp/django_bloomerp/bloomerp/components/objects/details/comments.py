@@ -15,6 +15,7 @@ from bloomerp.utils.models import get_object_model_and_content_type_or_404
     url_name='components_comments'
 )
 def comments(request:HttpRequest, content_type_id:int, object_id:str) -> HttpResponse:
+    """Render comments for an object after checking its view permission."""
     object, _, content_type = get_object_model_and_content_type_or_404(content_type_id, object_id)
     
     # Check permissions
@@ -39,6 +40,9 @@ def comments(request:HttpRequest, content_type_id:int, object_id:str) -> HttpRes
         content_type=content_type,
         object_id=object.id
     )
+    highlighted_comment_id = request.GET.get("highlight", "")
+    if not highlighted_comment_id.isdecimal():
+        highlighted_comment_id = ""
     
     return render(
         request,
@@ -46,6 +50,7 @@ def comments(request:HttpRequest, content_type_id:int, object_id:str) -> HttpRes
         context={
             "object" : object,
             "content_type_id" : content_type_id,
-            "comments" : comments
+            "comments" : comments,
+            "highlighted_comment_id": highlighted_comment_id,
         }
     )

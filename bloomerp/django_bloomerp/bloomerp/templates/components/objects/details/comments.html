@@ -2,6 +2,8 @@
     <c-ui.chat.container class="pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
         {% for comment in comments %}
             <c-ui.chat.message
+                id="comment-{{ comment.pk }}"
+                highlight="{% if comment.pk|stringformat:'s' == highlighted_comment_id %}true{% endif %}"
                 sender="{{ comment.created_by.get_full_name|default:comment.created_by|default:'Unknown' }}"
                 :message="comment.content"
                 :datetime="comment.datetime_created"

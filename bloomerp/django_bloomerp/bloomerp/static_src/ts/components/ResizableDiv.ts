@@ -24,6 +24,7 @@ export default class ResizableDiv extends BaseComponent {
     private currentWidth = "";
     private resizeFrom: "left" | "right" = "left";
 
+    /** Restore panel size and expand a deep-linked detail sidebar. */
     public initialize(): void {
         if (!this.element) return;
 
@@ -31,6 +32,10 @@ export default class ResizableDiv extends BaseComponent {
         this.resizeFrom = this.element.dataset.resizeFrom === "right" ? "right" : "left";
         this.cookieKey = `bloomerp_resizable_div_width_v3_${id}`;
         this.currentWidth = parseWidth(getCookie(this.cookieKey) || this.element.dataset.startWidth);
+        if (this.element.dataset.forceOpen === "true" && Number.parseFloat(this.currentWidth) === 0) {
+            this.currentWidth = parseWidth(this.element.dataset.startWidth);
+            setCookie(this.cookieKey, this.currentWidth, 30);
+        }
 
         this.applyWidth(this.currentWidth);
         this.element.style.minWidth = `${MIN_WIDTH}px`;
