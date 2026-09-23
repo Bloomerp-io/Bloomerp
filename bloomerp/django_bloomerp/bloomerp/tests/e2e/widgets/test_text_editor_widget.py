@@ -41,6 +41,18 @@ class TestTextEditorWidgetE2E(BloomerpE2ETestCase):
                 ],
             ),
             E2ERequestScenario(
+                name="Enter spaces paragraphs while Shift Enter stays within one paragraph",
+                user=self.admin_user,
+                url=create_path,
+                actions=[
+                    E2EAction(
+                        name="Type a paragraph and a soft line break",
+                        execute=self.type_paragraph_and_soft_break,
+                        validators=self.expect_paragraph_spacing,
+                    ),
+                ],
+            ),
+            E2ERequestScenario(
                 name="Formatting toolbar stays within a phone viewport",
                 user=self.admin_user,
                 url=create_path,
@@ -117,6 +129,39 @@ class TestTextEditorWidgetE2E(BloomerpE2ETestCase):
         editor.type("before")
         editor.press("Tab")
         editor.type("after")
+
+    def type_paragraph_and_soft_break(self) -> None:
+        """Enter a new paragraph followed by a line break within that paragraph."""
+        editor = self.page.locator(
+            '[bloomerp-component="bloomerp-text-editor"][data-name="content"] '
+            '[contenteditable]'
+        )
+        editor.click()
+        editor.press("ControlOrMeta+A")
+        editor.press("Backspace")
+        editor.type("First paragraph")
+        editor.press("Enter")
+        self.page.keyboard.insert_text("Second line")
+        editor.press("Shift+Enter")
+        self.page.keyboard.insert_text("Same paragraph")
+
+    def expect_paragraph_spacing(self) -> None:
+        """Check that Enter adds a visible gap and Shift Enter adds only a br."""
+        editor = self.page.locator(
+            '[bloomerp-component="bloomerp-text-editor"][data-name="content"] '
+            '[contenteditable]'
+        )
+        paragraphs = editor.locator("p")
+        expect(paragraphs).to_have_count(2)
+        expect(paragraphs.nth(1).locator("br")).to_have_count(1)
+        expect(paragraphs.nth(1)).to_contain_text("Same paragraph")
+
+        first_box = paragraphs.nth(0).bounding_box()
+        second_box = paragraphs.nth(1).bounding_box()
+        self.assertIsNotNone(first_box)
+        self.assertIsNotNone(second_box)
+        gap = second_box["y"] - (first_box["y"] + first_box["height"])
+        self.assertGreaterEqual(gap, 6)
 
     def expect_saved_tab(self) -> None:
         """Verify that the database stores a tab between the typed words."""

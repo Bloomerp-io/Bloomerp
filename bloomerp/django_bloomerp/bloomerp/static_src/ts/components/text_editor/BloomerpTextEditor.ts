@@ -110,7 +110,7 @@ export class BloomerpTextEditor extends BaseWidget {
         this.editor = createEditor({
             namespace: "BloomerpTextEditor",
             theme: {
-                paragraph: !this.overrideDefaultStyling ? 'text-md' : '',
+                paragraph: !this.overrideDefaultStyling ? 'text-md mb-2 last:mb-0' : '',
                 heading: {
                     h1: !this.overrideDefaultStyling ? 'text-4xl font-bold mb-2' : '',
                     h2: !this.overrideDefaultStyling ? 'text-2xl font-bold mb-1' : '',
