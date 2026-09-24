@@ -62,11 +62,18 @@ class ObjectIfConditionExecutor(BaseExecutor):
         incoming_schema: WorkflowIOSchema | None,
         config: dict[str, Any] | None = None,
     ) -> bool:
-        """Accept object inputs that expose an identifier."""
+        """Accept direct objects and objects wrapped by CRUD triggers."""
         return (
             incoming_schema is not None
             and incoming_schema.value_type == WorkflowValueType.OBJECT
-            and any(field.path == "id" for field in incoming_schema.fields)
+            and any(
+                field.path in {"id", "instance.id"}
+                or (
+                    field.path == "instance"
+                    and any(child.path == "instance.id" for child in field.children)
+                )
+                for field in incoming_schema.fields
+            )
         )
 
     @classmethod
@@ -90,7 +97,11 @@ class ObjectIfConditionExecutor(BaseExecutor):
             filters = _FILTERS_ADAPTER.validate_python(filters, strict=True)
 
         queryset = ModelFilterManager(model).apply(filters, queryset=model.objects.all())
-        matches = queryset.filter(pk=input_data.get("id")).exists()
+        object_id = input_data.get("id")
+        if object_id is None:
+            instance = input_data.get("instance")
+            object_id = instance.get("id") if isinstance(instance, dict) else getattr(instance, "pk", None)
+        matches = object_id is not None and queryset.filter(pk=object_id).exists()
         return RouteResult(
             port_id="true" if matches else "false",
             output=input_data,
