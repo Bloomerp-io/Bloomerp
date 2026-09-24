@@ -1,10 +1,10 @@
 """Route an incoming object according to grouped model filters."""
 
-import json
 from typing import Any
 
 from django import forms
 from django.contrib.contenttypes.models import ContentType
+from pydantic import TypeAdapter
 
 from bloomerp.automation.base_executor import BaseExecutor
 from bloomerp.automation.ports import WorkflowNodeOutputPort
@@ -14,11 +14,15 @@ from bloomerp.automation.schema import (
     WorkflowInputRequirement,
     WorkflowValueType,
 )
+from bloomerp.filters.definition import Filters
 from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.filters.parser import deserialize_filters
 from bloomerp.forms.base_content_type_form import BaseContentTypeForm
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.widgets.filter_widget import FilterWidget
+
+
+_FILTERS_ADAPTER = TypeAdapter(Filters)
 
 
 class ObjectIfConditionForm(BaseContentTypeForm):
@@ -83,7 +87,7 @@ class ObjectIfConditionExecutor(BaseExecutor):
         if isinstance(filters, str):
             filters = deserialize_filters(filters)
         else:
-            filters = deserialize_filters(json.dumps(filters))
+            filters = _FILTERS_ADAPTER.validate_python(filters, strict=True)
 
         queryset = ModelFilterManager(model).apply(filters, queryset=model.objects.all())
         matches = queryset.filter(pk=input_data.get("id")).exists()
