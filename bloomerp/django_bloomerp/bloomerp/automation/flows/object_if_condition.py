@@ -39,6 +39,7 @@ class ObjectIfConditionForm(BaseContentTypeForm):
         if content_type_id:
             self.fields["filters"].widget = FilterWidget(
                 content_type=ContentType(pk=content_type_id),
+                include_controls=False,
             )
 
 

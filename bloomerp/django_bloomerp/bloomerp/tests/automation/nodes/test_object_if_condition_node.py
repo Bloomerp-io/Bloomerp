@@ -54,7 +54,7 @@ class TestObjectIfConditionNode(BloomerpWorkflowNodeTestCase):
         restored = ObjectIfConditionForm(initial=form.cleaned_data)
         widget = restored.fields["filters"].widget
         self.assertEqual(widget.content_type_id, content_type.pk)
-        self.assertTrue(widget.include_controls)
+        self.assertFalse(widget.include_controls)
         self.assertEqual(json.loads(widget.format_value(restored.initial["filters"])), groups)
 
     def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
