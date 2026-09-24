@@ -1,3 +1,5 @@
+from email.policy import default
+
 from django import forms
 
 class BloomerpTextEditorWidget(forms.Textarea):
@@ -16,5 +18,6 @@ class BloomerpTextEditorWidget(forms.Textarea):
             'disabled': widget_context.get('attrs', {}).get('disabled', False),
             'include_toolbar' : True,
             'compact': 'one-to-many-field-widget__input' in widget_classes,
+            'has_border' : attrs.get("has_border", False)
         })
         return new_context

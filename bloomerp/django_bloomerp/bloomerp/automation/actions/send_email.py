@@ -34,7 +34,11 @@ class SendEmailForm(Form):
         help_text="Use a literal email or a value reference like {{ input.instance.email }}.",
     )
     subject = forms.CharField(label="Email Subject", max_length=255)
-    body = forms.CharField(label="Email Body", widget=BloomerpTextEditorWidget)
+    body = forms.CharField(label="Email Body", widget=BloomerpTextEditorWidget(
+        attrs={
+            "has_border" : True
+        }
+    ))
     body_format = forms.CharField(widget=forms.HiddenInput, initial="html")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

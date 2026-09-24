@@ -11,6 +11,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from bloomerp.mcp.definition import McpTool
+from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
 from bloomerp.utils.api import ApiAccessResolver
 from bloomerp.utils.models import model_name_plural_underline
@@ -108,6 +110,23 @@ class AssistantMutationCatalogQuerySerializer(serializers.Serializer):
     route_type="api",
     name="Assistant Mutation Catalog",
     url_name="api_assistant_mutation_catalog",
+    mcp=McpTool(
+        title="List available mutations",
+        description=(
+            "List generated API resources, operations, and writable fields available "
+            "to the authenticated user."
+        ),
+        input_schema=lambda: serializer_input_schema(
+            AssistantMutationCatalogQuerySerializer
+        ),
+        output_schema=lambda: serializer_output_schema(
+            AssistantMutationCatalogResponseSerializer
+        ),
+        read_only_hint=True,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=False,
+    ),
 )
 class AssistantMutationCatalogView(BaseBloomerpApiView):
     """List generated API resources and writable fields for assistant mutations."""
@@ -412,6 +431,23 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
     route_type="api",
     name="Assistant Mutations",
     url_name="api_assistant_mutations",
+    mcp=McpTool(
+        title="Mutate an object",
+        description=(
+            "Create, update, or delete an object through Bloomerp's "
+            "permission-aware generated API."
+        ),
+        input_schema=lambda: serializer_input_schema(
+            AssistantMutationRequestSerializer
+        ),
+        output_schema=lambda: serializer_output_schema(
+            AssistantMutationResponseSerializer
+        ),
+        read_only_hint=False,
+        destructive_hint=True,
+        idempotent_hint=False,
+        open_world_hint=False,
+    ),
 )
 class AssistantMutationView(BaseBloomerpApiView):
     """Create, update, or delete one generated API object by resource key."""
