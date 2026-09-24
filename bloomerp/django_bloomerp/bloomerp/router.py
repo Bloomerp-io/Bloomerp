@@ -10,13 +10,17 @@ from typing import Optional
 from django.db.models import Model
 import importlib
 import os
+import re
 from functools import wraps
-from typing import Callable, List, Literal
+from typing import Any, Callable, List, Literal
 
+from bloomerp.mcp.definition import McpTool
 from bloomerp.models.definition import get_model_config
 from bloomerp.i18n.models import model_verbose_name_in_source_language
 from bloomerp.modules.definition import BloomerpModule, ModuleConfig, module_registry
 logger = logging.getLogger(__name__)
+
+MCP_TOOL_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
 def _generate_description(
     name: Optional[str] = None,
@@ -152,6 +156,7 @@ class RouteType(Enum):
     API_MODEL = "api_model"
     API_DETAIL = "api_detail"
     WEBSOCKET = "websocket"
+    MCP = "mcp"
 
 class ViewType(Enum):
     CLASS = "class"
@@ -178,6 +183,14 @@ class BloomerpRoute:
     message_format_values: Optional[dict[str, object]] = None
     re_path: Optional[str] = None
     base_url_name: Optional[str] = None
+    mcp: Optional[McpTool] = None
+
+    @property
+    def mcp_tool_name(self) -> Optional[str]:
+        """Return the route-derived MCP tool name when MCP is enabled."""
+        if self.mcp is None:
+            return None
+        return self.url_name
 
     def _translation_context(self, field: str) -> str:
         owner = self.owner_app_label or "bloomerp"
@@ -400,6 +413,8 @@ def _auto_generate_url_name(name: Optional[str], route_type: RouteType, model: O
             return _transform_str(name)
         case RouteType.WEBSOCKET:
             return _transform_str(name)
+        case RouteType.MCP:
+            return _transform_str(name)
         case RouteType.API_MODEL:
             model_path = _get_api_model_path(model)
             return f"{model_path}-list" if name is None else _transform_str(name)
@@ -436,8 +451,11 @@ class BloomerpRouteRegistry:
         self._model_route_templates: List[dict] = []
 
     def _routes_conflict(self, existing: BloomerpRoute, incoming: BloomerpRoute) -> bool:
+        """Detect conflicting routes without treating all pathless MCP tools alike."""
         if existing.route_type != incoming.route_type:
             return False
+        if incoming.route_type == RouteType.MCP:
+            return existing.url_name == incoming.url_name
         if existing.model != incoming.model:
             return False
         if existing.module != incoming.module:
@@ -455,19 +473,60 @@ class BloomerpRouteRegistry:
         ]
 
         if route.override:
-            self.routes = [
+            remaining_routes = [
                 existing
                 for existing in self.routes
                 if not self._routes_conflict(existing, route)
             ]
+            self._validate_mcp_route(route, routes=remaining_routes)
+            self.routes = remaining_routes
             self.routes.append(route)
             return True
 
         if any(existing.override for existing in conflicting_routes):
             return False
 
+        self._validate_mcp_route(route)
         self.routes.append(route)
         return True
+
+    def _validate_mcp_route(
+        self,
+        route: BloomerpRoute,
+        *,
+        routes: Optional[List[BloomerpRoute]] = None,
+    ) -> None:
+        """Validate MCP route types and server-wide tool-name uniqueness."""
+        if route.mcp is None:
+            if route.route_type == RouteType.MCP:
+                raise ValueError("MCP-only routes require an MCP contract")
+            return
+
+        if not (_is_api_route(route.route_type) or route.route_type == RouteType.MCP):
+            raise ValueError(
+                "MCP tools can only be attached to API routes or MCP-only routes"
+            )
+        if route.route_type != RouteType.MCP and (
+            route.nr_of_args() or route.re_path is not None
+        ):
+            raise ValueError(
+                "MCP API routes cannot require URL arguments or use re_path"
+            )
+
+        tool_name = route.mcp_tool_name
+        if tool_name is None or MCP_TOOL_NAME_PATTERN.fullmatch(tool_name) is None:
+            raise ValueError(
+                "MCP tool names must be 1-128 characters and contain only "
+                "letters, numbers, underscores, hyphens, or dots"
+            )
+
+        existing_routes = self.routes if routes is None else routes
+        if any(
+            existing.mcp is not None
+            and existing.mcp_tool_name == tool_name
+            for existing in existing_routes
+        ):
+            raise ValueError(f"Duplicate MCP tool name: {tool_name}")
 
     def route(self, *args, **kwargs):
         return self.register(*args, **kwargs)
@@ -554,7 +613,7 @@ class BloomerpRouteRegistry:
         self,
         path: str = None,
         re_path: Optional[str] = None,
-        route_type: Literal['app', 'module', 'detail', 'model', 'api', 'api_model', 'api_detail', 'websocket'] = 'app',
+        route_type: Literal['app', 'module', 'detail', 'model', 'api', 'api_model', 'api_detail', 'websocket', 'mcp'] | RouteType | None = None,
         models: Union[Model, List[Model], str, None] = None,
         modules: Union[BloomerpModule, List[BloomerpModule], str, None] = None,
         exclude_models:Union[Model, List[Model], str, None] = None,
@@ -565,7 +624,8 @@ class BloomerpRouteRegistry:
         translatable: Optional[bool] = None,
         searchable: Optional[bool] = None,
         message_format_values: Optional[dict[str, object]] = None,
-    ):
+        mcp: Optional[McpTool] = None,
+    ) -> Callable[[Callable[..., Any] | type[View]], Callable[..., Any] | type[View]]:
         """
         Decorator for registering routes with the registry.
         Works for both function-based and class-based views.
@@ -578,8 +638,11 @@ class BloomerpRouteRegistry:
             name: Name for the route (optional, derived from view if not provided)
             description: Description of the route
             override: Whether to override existing routes with same path
+            mcp: Optional MCP tool contract. Without a path or route type, this
+                selects an MCP-only route with no Django URL pattern.
         """
-        def decorator(view):
+        def decorator(view: Callable[..., Any] | type[View]) -> Callable[..., Any] | type[View]:
+            """Register the decorated view and preserve its original interface."""
             if path is not None and re_path is not None:
                 raise ValueError("Only one of 'path' or 're_path' may be provided")
 
@@ -589,8 +652,15 @@ class BloomerpRouteRegistry:
             _path = path
             _re_path = re_path
             _url_name = url_name
-            _route_type = route_type if isinstance(route_type, RouteType) else RouteType(str(route_type).lower())
+            selected_type = route_type or (
+                RouteType.MCP if mcp is not None and path is None and re_path is None
+                else RouteType.APP
+            )
+            _route_type = selected_type if isinstance(selected_type, RouteType) else RouteType(str(selected_type).lower())
             _modules = modules
+
+            if _route_type == RouteType.MCP and (_path is not None or _re_path is not None):
+                raise ValueError("MCP-only routes cannot define a URL path")
 
             if _is_websocket_route(_route_type) and not hasattr(view, 'as_asgi'):
                 raise TypeError(
@@ -604,12 +674,13 @@ class BloomerpRouteRegistry:
                 actual_url_name: str,
                 actual_name: str,
                 actual_description: str,
-            ) -> dict:
+            ) -> dict[str, Any]:
+                """Build shared metadata for the route being registered."""
                 is_component = (
                     actual_path.lstrip("/").startswith("components/")
                     or actual_url_name.startswith("components_")
                 )
-                is_api = _is_api_route(_route_type)
+                is_api = _is_api_route(_route_type) or _route_type == RouteType.MCP
                 should_translate = (
                     translatable
                     if translatable is not None
@@ -628,6 +699,7 @@ class BloomerpRouteRegistry:
                     "translatable": should_translate,
                     "searchable": should_search,
                     "message_format_values": message_format_values,
+                    "mcp": mcp,
                 }
             
             # Determine view type and handle accordingly
@@ -640,13 +712,15 @@ class BloomerpRouteRegistry:
             elif callable(view):
                 # Function-based view - wrap it to preserve functionality
                 @wraps(view)
-                def wrapped_view(*args, **kwargs):
+                def wrapped_view(*args: Any, **kwargs: Any) -> Any:
+                    """Preserve function-view metadata while forwarding the call."""
                     return view(*args, **kwargs)
                 registered_view = wrapped_view
             else:
                 raise TypeError("The provided view is neither a valid function-based view nor a class-based view.")
             
             def _auto_path() -> str:
+                """Derive the route path from the decorator or view name."""
                 if _re_path is not None:
                     return _re_path
                 if _path is not None:
@@ -658,18 +732,51 @@ class BloomerpRouteRegistry:
                 return "/unnamed-route/"
 
             def _auto_description(actual_name: str) -> str:
+                """Derive a human-facing route description."""
                 if _description:
                     return _description
                 if hasattr(view, '__doc__') and view.__doc__:
                     return view.__doc__.strip()
                 return f"Route for {actual_name}"
 
-            def _resolved_path(actual_path: str, model=None, module=None) -> str:
+            def _resolved_path(
+                actual_path: str,
+                model: Model | None = None,
+                module: ModuleConfig | None = None,
+            ) -> str:
+                """Expand route-relative paths into their final URL paths."""
                 if _re_path is not None:
                     return actual_path
                 return _generate_path(actual_path, _route_type, model, module)
 
             match _route_type:
+                case RouteType.MCP:
+                    if _modules or models or exclude_models:
+                        raise ValueError("MCP-only routes cannot specify modules or models")
+                    if mcp is None:
+                        raise ValueError("MCP-only routes require an MCP contract")
+                    actual_name = _generate_name(
+                        _name, None, registered_view, None, message_format_values
+                    )
+                    actual_description = _auto_description(actual_name)
+                    actual_url_name = _url_name or actual_name
+                    generated_url_name = _auto_generate_url_name(actual_url_name, _route_type)
+                    self._add_route(
+                        BloomerpRoute(
+                            path="",
+                            route_type=_route_type,
+                            name=actual_name,
+                            url_name=generated_url_name,
+                            view=registered_view,
+                            view_type=view_type,
+                            description=actual_description,
+                            override=override,
+                            **_route_metadata(
+                                "", generated_url_name, actual_name, actual_description
+                            ),
+                        )
+                    )
+
                 case RouteType.APP:
                     if _modules or models or exclude_models:
                         raise ValueError("Modules and models parameters are not applicable for 'app' route type")
@@ -789,6 +896,7 @@ class BloomerpRouteRegistry:
                         'translatable': translatable,
                         'searchable': searchable,
                         'message_format_values': message_format_values,
+                        'mcp': mcp,
                         'models': models,
                         'exclude_models': exclude_models,
                         'view': view,
@@ -1051,6 +1159,7 @@ class BloomerpRouteRegistry:
                     else not is_component and not is_api
                 ),
                 message_format_values=template.get('message_format_values'),
+                mcp=template.get('mcp'),
             )
             self._add_route(route)
 
@@ -1092,6 +1201,14 @@ class BloomerpRouteRegistry:
         self._auto_import_views()
         return [route for route in self.routes if route.model == model]
 
+    def get_mcp_routes(self) -> List[BloomerpRoute]:
+        """Return MCP-enabled routes in deterministic tool-name order."""
+        self._auto_import_views()
+        return sorted(
+            (route for route in self.routes if route.mcp is not None),
+            key=lambda route: route.mcp_tool_name or "",
+        )
+
     def get_routes_by_app(self, app: AppConfig) -> List[BloomerpRoute]:
         """Get all routes owned by a specific Django app."""
         self._auto_import_views()
@@ -1113,7 +1230,7 @@ class BloomerpRouteRegistry:
         self._auto_import_views()
         return [route for route in self.routes if route.view_type == ViewType.CLASS]
 
-    def create_url_patterns(self, prefix:Optional[str]=None):
+    def create_url_patterns(self, prefix: Optional[str] = None) -> list[Any]:
         """
         Create Django URL patterns from registered routes.
         Returns a list of path() objects that can be used in urlpatterns.
@@ -1122,7 +1239,7 @@ class BloomerpRouteRegistry:
 
         patterns = []
         for route in self.routes:
-            if _is_websocket_route(route.route_type):
+            if _is_websocket_route(route.route_type) or route.route_type == RouteType.MCP:
                 continue
             patterns.append(self.build_url_pattern(route))
 
@@ -1153,11 +1270,14 @@ class BloomerpRouteRegistry:
 
         return view_callable
 
-    def build_url_pattern(self, route: BloomerpRoute):
+    def build_url_pattern(self, route: BloomerpRoute) -> Any:
+        """Build a Django URL pattern for an HTTP route."""
         from django.urls import path as django_path, re_path as django_re_path
 
         if _is_websocket_route(route.route_type):
             raise ValueError("Websocket routes must be built with build_websocket_url_pattern")
+        if route.route_type == RouteType.MCP:
+            raise ValueError("MCP-only routes do not have Django URL patterns")
 
         args = self._get_route_kwargs(route)
         view_callable = self._build_view_callable(route, args)
@@ -1195,7 +1315,7 @@ class BloomerpRouteRegistry:
 
     def filter(
         self,
-        route_type: Optional[Literal['app', 'model', 'module', 'detail', 'api', 'api_model', 'api_detail', 'websocket']] | Optional[RouteType] = None,
+        route_type: Optional[Literal['app', 'model', 'module', 'detail', 'api', 'api_model', 'api_detail', 'websocket', 'mcp']] | Optional[RouteType] = None,
         model: Optional[Model] = None,
         module: Optional[ModuleConfig] = None,
         view_type: Optional[str] | Optional[ViewType] = None,

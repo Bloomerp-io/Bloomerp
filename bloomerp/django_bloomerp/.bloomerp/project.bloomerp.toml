@@ -10,3 +10,9 @@ python_version="3.12"
 
 [django]
 installed_apps = ["bloomerp_modules", "debug_toolbar"]
+
+[bloomerp.auth.api_key]
+enabled = true
+
+[bloomerp.auth.oauth]
+enabled = true

@@ -17,6 +17,7 @@ from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.utils.urls import IntOrUUIDConverter
 from rest_framework.routers import DefaultRouter
 from bloomerp.router import router
+from bloomerp.mcp.view import McpEndpointView
 from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 from django.urls import reverse_lazy
@@ -122,6 +123,7 @@ if logout_url.startswith('/'):
 
 # Get the base URL from the settings
 urlpatterns = [
+    path("mcp", McpEndpointView.as_view(), name="mcp"),
     # login URL
     path(login_url, BloomerpLoginView.as_view(), name='login'),
     path(logout_url, auth_views.LogoutView.as_view(next_page=reverse_lazy('login')), name='logout'),

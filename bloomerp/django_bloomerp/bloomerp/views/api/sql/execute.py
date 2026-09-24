@@ -1,5 +1,7 @@
 from django.http import HttpRequest
 
+from bloomerp.mcp.definition import McpTool
+from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
 from bloomerp.services.sql_services import SqlExecutor
 from bloomerp.views.api.base import BaseBloomerpApiView
@@ -69,6 +71,16 @@ class ExecuteSqlErrorResponseSerializer(serializers.Serializer):
     route_type="api",
     name="Execute SQL",
     url_name="api_sql_execute",
+    mcp=McpTool(
+        title="Execute SQL",
+        description="Execute a permission-filtered read-only SQL query.",
+        input_schema=lambda: serializer_input_schema(ExecuteSqlRequestSerializer),
+        output_schema=lambda: serializer_output_schema(ExecuteSqlResponseSerializer),
+        read_only_hint=True,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=False,
+    ),
 )
 class ExecuteSqlView(BaseBloomerpApiView):
     serializer_class = ExecuteSqlRequestSerializer
