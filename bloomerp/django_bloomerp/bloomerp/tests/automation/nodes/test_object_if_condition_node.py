@@ -9,6 +9,7 @@ from bloomerp.automation.flows.object_if_condition import (
     ObjectIfConditionForm,
 )
 from bloomerp.automation.results import RouteResult
+from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
@@ -53,11 +54,11 @@ class TestObjectIfConditionNode(BloomerpWorkflowNodeTestCase):
         restored = ObjectIfConditionForm(initial=form.cleaned_data)
         widget = restored.fields["filters"].widget
         self.assertEqual(widget.content_type_id, content_type.pk)
-        self.assertTrue(widget.include_controls)
+        self.assertFalse(widget.include_controls)
         self.assertEqual(json.loads(widget.format_value(restored.initial["filters"])), groups)
 
     def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
-        """Exercise routing with grouped filters and native resolved values."""
+        """Exercise direct and CRUD trigger inputs with grouped filters."""
         due_date = date(2026, 9, 24)
         todo = Todo.objects.create(title="Condition subject", required_by=due_date)
         other = Todo.objects.create(title="Another subject")
@@ -68,6 +69,8 @@ class TestObjectIfConditionNode(BloomerpWorkflowNodeTestCase):
             {"field_path": "title", "lookup_id": "equals", "value": "No match"},
             {"field_path": "title", "lookup_id": "equals", "value": todo.title},
         ]}]
+        trigger_input = ObjectCrudTrigger({}).execute({"instance": todo, "event": "created"})
+        trigger_schema = ObjectCrudTrigger.get_output_schema({"content_type_id": content_type.pk})
 
         return [
             WorkflowNodeScenario(
@@ -101,5 +104,16 @@ class TestObjectIfConditionNode(BloomerpWorkflowNodeTestCase):
                     port_id="true",
                     output={"id": str(todo.pk), "due_date": due_date},
                 ),
+            ),
+            WorkflowNodeScenario(
+                name="CRUD trigger instance matches and its schema is accepted",
+                parameters={
+                    "content_type_id": content_type.pk,
+                    "filters": matching_groups,
+                },
+                trigger_data=trigger_input,
+                expected_output=RouteResult(port_id="true", output=trigger_input),
+                input_schema=trigger_schema,
+                output_schema_validators=ObjectIfConditionExecutor.accepts_input_schema,
             ),
         ]
