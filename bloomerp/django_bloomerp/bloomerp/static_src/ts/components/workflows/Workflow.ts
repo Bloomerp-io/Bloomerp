@@ -1914,18 +1914,26 @@ export default class Workflow extends BaseComponent {
         form.removeAttribute('action');
     }
 
+    /** Connect workflow node form edits to persisted configuration updates. */
     private setupNodeConfigForm(container: HTMLElement): void {
         const form = container.querySelector<HTMLFormElement>('form[data-workflow-node-config-form="true"]');
         if (!form) return;
 
-        const scheduleSave = (event: Event) => {
+        /** Save ordinary field edits while the filter editor awaits Apply. */
+        const scheduleSave = (event: Event): void => {
+            if (event.target instanceof Element && event.target.closest('[bloomerp-component="unified-filter-container"]')) return;
             this.scheduleNodeConfigSave(
                 form,
                 this.shouldRefreshNodeConfigFormForEvent(event),
             );
         };
+        /** Persist filters after the editor has updated its hidden JSON value. */
+        const saveAppliedFilters = (): void => {
+            this.scheduleNodeConfigSave(form);
+        };
         form.addEventListener('change', scheduleSave);
         form.addEventListener(BaseWidget.changeEventName, scheduleSave);
+        form.addEventListener('bloomerp:filters-apply', saveAppliedFilters);
         form.querySelectorAll<HTMLButtonElement>('[data-workflow-config-edit-mode]').forEach((button) => {
             button.addEventListener('click', () => {
                 const editMode = button.dataset.workflowConfigEditMode;
@@ -1941,11 +1949,14 @@ export default class Workflow extends BaseComponent {
         }, true);
     }
 
+    /** Refresh dependent fields only when their source changes. */
     private shouldRefreshNodeConfigFormForEvent(event: Event): boolean {
         const target = event.target;
         if (!(target instanceof Element)) return true;
 
-        return !target.closest('[bloomerp-component="code-editor-widget"]');
+        return !target.closest(
+            '[bloomerp-component="code-editor-widget"], [bloomerp-component="unified-filter-container"]',
+        );
     }
 
     private async switchNodeConfigEditMode(form: HTMLFormElement, editMode: 'form' | 'json'): Promise<void> {
