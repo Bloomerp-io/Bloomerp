@@ -6,6 +6,8 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from django.utils.html import strip_tags
+from django.utils.text import Truncator
 
 class Comment(
     TimestampModelMixin,
@@ -37,8 +39,10 @@ class Comment(
         verbose_name=_("Content"),
     )
 
-    def __str__(self):
-        return f"{self.content} - {self.created_by} - {self.datetime_created}"
+    def __str__(self) -> str:
+        """Return a short plain-text label for rich-text comment content."""
+        content = Truncator(strip_tags(self.content)).chars(80)
+        return content or f"Comment {self.pk}"
 
     def get_absolute_url(self) -> str:
         """Link to a redirect that resolves the related object when opened."""
