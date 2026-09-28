@@ -32,12 +32,20 @@ if TYPE_CHECKING:
 UID_PATTERN = re.compile(rb"\bUID\s+(\d+)\b")
 FLAGS_PATTERN = re.compile(rb"\bFLAGS\s+\(([^)]*)\)")
 SMTP_TIMEOUT_SECONDS = 10
+SENT_COPY_TIMEOUT_SECONDS = 10
 logger = logging.getLogger(__name__)
 
 
 class ImapSmtpAdapter(BaseEmailAdapter):
-    def __init__(self, email_account: "EmailAccount"):
+    def __init__(
+        self,
+        email_account: "EmailAccount",
+        *,
+        imap_timeout: float | None = None,
+    ) -> None:
+        """Configure the account and an optional timeout for IMAP network operations."""
         super().__init__(email_account)
+        self.imap_timeout = imap_timeout
         self.connection: imaplib.IMAP4 | imaplib.IMAP4_SSL | None = None
 
     def __enter__(self) -> Self:
@@ -53,6 +61,7 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         self.close()
 
     def connect(self) -> imaplib.IMAP4 | imaplib.IMAP4_SSL:
+        """Connect and authenticate using the configured IMAP socket timeout."""
         if self.connection is not None:
             return self.connection
 
@@ -64,11 +73,13 @@ class ImapSmtpAdapter(BaseEmailAdapter):
                 connection: imaplib.IMAP4 | imaplib.IMAP4_SSL = imaplib.IMAP4_SSL(
                     self.email_account.imap_host,
                     self.email_account.imap_port,
+                    timeout=self.imap_timeout,
                 )
             else:
                 connection = imaplib.IMAP4(
                     self.email_account.imap_host,
                     self.email_account.imap_port,
+                    timeout=self.imap_timeout,
                 )
                 if self.email_account.imap_security == "starttls":
                     connection.starttls()
@@ -210,7 +221,9 @@ class ImapSmtpAdapter(BaseEmailAdapter):
 
     def _save_sent_copy(self, message: EmailMessage) -> None:
         """Append the complete SMTP message to the account's Sent mailbox as read."""
-        with ImapSmtpAdapter(self.email_account) as adapter:
+        with ImapSmtpAdapter(
+            self.email_account, imap_timeout=SENT_COPY_TIMEOUT_SECONDS
+        ) as adapter:
             connection = adapter.connect()
             mailbox = adapter._sent_mailbox()
             status, _ = connection.append(

@@ -8,7 +8,10 @@ from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
 from bloomerp.communication.emails.base_adapter import EmailAttachment
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.emails.providers.imap_smtp import (
+    SENT_COPY_TIMEOUT_SECONDS,
+    ImapSmtpAdapter,
+)
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.views.communication.create_email_account import EmailAccountSettingsForm
 
@@ -147,6 +150,64 @@ class SentEmailCopyTests(SimpleTestCase):
         self.assertTrue(message_id.startswith("<"))
         self.smtp.send_message.assert_called_once()
         self.imap.append.assert_not_called()
+
+    def test_copy_connection_is_bounded_in_all_security_modes(self) -> None:
+        """Use case: Save over SSL, STARTTLS, or plain IMAP. Expected result: Bounded socket waits."""
+        # 1. Exercise every supported security mode with fake connections.
+        with patch(
+            "bloomerp.communication.emails.providers.imap_smtp.imaplib.IMAP4",
+            return_value=self.imap,
+        ) as plain_constructor:
+            for security in ("ssl_tls", "starttls", "none"):
+                with self.subTest(security=security):
+                    self.account.imap_security = security
+                    self.imap_constructor.reset_mock()
+                    plain_constructor.reset_mock()
+                    self.imap.starttls.reset_mock()
+                    # 2. Verify the copy's socket timeout and STARTTLS negotiation.
+                    self.send_message()
+                    constructor = (
+                        self.imap_constructor
+                        if security == "ssl_tls"
+                        else plain_constructor
+                    )
+                    constructor.assert_called_once_with(
+                        "imap.example.com",
+                        993,
+                        timeout=SENT_COPY_TIMEOUT_SECONDS,
+                    )
+                    if security == "starttls":
+                        self.imap.starttls.assert_called_once_with()
+                    else:
+                        self.imap.starttls.assert_not_called()
+
+    def test_stalled_copy_operations_do_not_turn_success_into_send_failure(
+        self,
+    ) -> None:
+        """Use case: IMAP stalls after sending. Expected result: Warn and return SMTP success."""
+        # 1. Cover the greeting, authentication, discovery, saving, and cleanup.
+        for operation in (
+            self.imap_constructor,
+            self.imap.login,
+            self.imap.list,
+            self.imap.append,
+            self.imap.close,
+            self.imap.logout,
+        ):
+            with self.subTest(operation=operation):
+                operation.side_effect = TimeoutError("IMAP operation timed out")
+                self.smtp.send_message.reset_mock()
+                try:
+                    # 2. Preserve the accepted SMTP send and emit a copy warning.
+                    with self.assertLogs(
+                        "bloomerp.communication.emails.providers.imap_smtp",
+                        level="WARNING",
+                    ):
+                        message_id = self.send_message()
+                    self.assertTrue(message_id.startswith("<"))
+                    self.smtp.send_message.assert_called_once()
+                finally:
+                    operation.side_effect = None
 
     def test_neo_sent_folder_without_special_use_flag(self) -> None:
         """Use case: Neo lists a plain Sent folder. Expected result: Save in that folder."""
