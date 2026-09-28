@@ -31,6 +31,14 @@
             </span>
         </div>
         {% endfor %}
+
+        {% if object_actions %}
+            <div class="flex gap-2 flex-wrap">
+                {% for action in object_actions %}
+                    {% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+                {% endfor %}
+            </div>
+        {% endif %}
     </div>
 </div>
 {% empty %}
