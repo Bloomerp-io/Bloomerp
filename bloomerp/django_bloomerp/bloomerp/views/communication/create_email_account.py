@@ -37,6 +37,7 @@ class EmailAccountSettingsForm(forms.ModelForm):
             "smtp_host",
             "smtp_port",
             "smtp_security",
+            "save_sent_emails",
             "oauth_client_id",
             "oauth_client_secret",
             "oauth_tenant_id",
@@ -61,8 +62,11 @@ class EmailAccountSettingsForm(forms.ModelForm):
         self._apply_provider_fields()
 
     def _apply_field_styles(self) -> None:
+        """Style account inputs and the optional Sent-copy checkbox for setup."""
         for field in self.fields.values():
             field.widget.attrs.setdefault("class", "input w-full")
+
+        self.fields["save_sent_emails"].widget.attrs["class"] = "checkbox checkbox-primary"
 
         self.fields["name"].required = False
         self.fields["name"].widget.attrs.setdefault("placeholder", _("Accounting inbox"))

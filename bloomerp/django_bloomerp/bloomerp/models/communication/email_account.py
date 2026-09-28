@@ -76,6 +76,7 @@ class EmailAccount(BloomerpModel):
                         LayoutItem(id="smtp_host"),
                         LayoutItem(id="smtp_port"),
                         LayoutItem(id="smtp_security"),
+                        LayoutItem(id="save_sent_emails"),
                         LayoutItem(id="last_validated_at"),
                     ]
                 ),
@@ -161,6 +162,14 @@ class EmailAccount(BloomerpModel):
         choices=SecurityMode.choices,
         default=SecurityMode.STARTTLS,
         verbose_name=_("SMTP Security"),
+    )
+    save_sent_emails = models.BooleanField(
+        default=False,
+        verbose_name=_("Save sent emails via IMAP"),
+        help_text=_(
+            "Save a copy in the server's Sent folder after sending. Enable for providers "
+            "such as Neo; leave disabled if your provider already saves sent emails automatically."
+        ),
     )
     oauth_client_id = models.CharField(
         max_length=255,

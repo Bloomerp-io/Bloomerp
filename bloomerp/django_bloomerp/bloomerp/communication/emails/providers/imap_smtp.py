@@ -5,10 +5,11 @@ from email import message_from_bytes
 from email.header import decode_header, make_header
 from email.message import Message
 from email.message import EmailMessage
-from email.policy import default
+from email.policy import default, SMTP
 from email.utils import formatdate, getaddresses, make_msgid, parsedate_to_datetime
 from html import escape
 import imaplib
+import logging
 import mimetypes
 import re
 import smtplib
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
 UID_PATTERN = re.compile(rb"\bUID\s+(\d+)\b")
 FLAGS_PATTERN = re.compile(rb"\bFLAGS\s+\(([^)]*)\)")
 SMTP_TIMEOUT_SECONDS = 10
+logger = logging.getLogger(__name__)
 
 
 class ImapSmtpAdapter(BaseEmailAdapter):
@@ -130,6 +132,7 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         in_reply_to: str | None = None,
         references: list[str] | None = None,
     ) -> str:
+        """Send mail and optionally save a read copy without retrying a successful send."""
         if not self.email_account.smtp_host or not self.email_account.smtp_port:
             raise ValidationError("SMTP host and port are required.")
         if not to:
@@ -191,7 +194,55 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         except smtplib.SMTPException as exc:
             raise ValidationError(f"Unable to send email through the SMTP server: {exc}") from exc
 
+        if self.email_account.save_sent_emails:
+            try:
+                self._save_sent_copy(message)
+            except (ValidationError, imaplib.IMAP4.error, OSError):
+                # SMTP has succeeded: raising here could cause duplicate sends on retry.
+                logger.warning(
+                    "Email %s was sent, but its copy could not be saved to the Sent folder "
+                    "for email account %s. Do not resend the message.",
+                    message_id,
+                    self.email_account.pk,
+                )
+
         return message_id
+
+    def _save_sent_copy(self, message: EmailMessage) -> None:
+        """Append the complete SMTP message to the account's Sent mailbox as read."""
+        with ImapSmtpAdapter(self.email_account) as adapter:
+            connection = adapter.connect()
+            mailbox = adapter._sent_mailbox()
+            status, _ = connection.append(
+                adapter._quote_mailbox(mailbox),
+                r"(\Seen)",
+                None,
+                message.as_bytes(policy=SMTP),
+            )
+            if status != "OK":
+                raise ValidationError("The email was sent, but its Sent copy could not be saved.")
+
+    def _sent_mailbox(self) -> str:
+        """Find a selectable Sent folder by its special-use flag or common name."""
+        status, data = self.connect().list()
+        if status != "OK" or not data:
+            raise ValidationError("Unable to discover the Sent folder.")
+        mailboxes: list[str] = []
+        for item in data:
+            if not isinstance(item, bytes) or not self._is_selectable_mailbox(item):
+                continue
+            mailbox = self._parse_mailbox_name(item)
+            flags_match = re.match(rb"^\(([^)]*)\)", item.lstrip())
+            flags = flags_match.group(1).lower().split() if flags_match else []
+            if mailbox and br"\sent" in flags:
+                return mailbox
+            if mailbox:
+                mailboxes.append(mailbox)
+        for candidate in ("Sent", "Sent Items", "Sent Messages", "INBOX.Sent", "INBOX/Sent"):
+            for mailbox in mailboxes:
+                if mailbox.casefold() == candidate.casefold():
+                    return mailbox
+        raise ValidationError("No Sent folder was found for this email account.")
 
     def fetch_email_content(self, email_id: str, *, mailbox: str = "INBOX") -> str:
         message = self._fetch_message(email_id, mailbox=mailbox)
