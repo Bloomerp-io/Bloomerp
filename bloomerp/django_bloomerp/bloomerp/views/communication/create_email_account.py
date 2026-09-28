@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
-from bloomerp.communication.emails.actions import get_mailboxes_for_account
 from bloomerp.communication.utils.crypto import encrypt_email_secret
 from bloomerp.communication.emails.email_providers import EmailProviderDefinition
 from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
@@ -242,7 +242,8 @@ class CreateEmailAccountView(WizardMixin, BaseBloomerpView, TemplateView):
             context["wizard_submit_label"] = _("Create account")
         return context
 
-    def done(self):
+    def done(self) -> HttpResponse | WizardError | None:
+        """Validate SMTP and IMAP before saving an active, validated email account."""
         payload = self.orchestrator.get_all_session_data()
         provider = EMAIL_PROVIDER_REGISTRY.get(payload.get(PROVIDER_SESSION_KEY))
         settings = payload.get(SETTINGS_SESSION_KEY) or {}
@@ -255,21 +256,27 @@ class CreateEmailAccountView(WizardMixin, BaseBloomerpView, TemplateView):
             )
         
         try:
+            email_account = EmailAccount(
+                provider=provider.key,
+                created_by=self.request.user,
+                updated_by=self.request.user,
+                **settings,
+            )
+            adapter = provider.adapter_class(email_account)
+            email_account.mailboxes = adapter.validate_connection()
+            email_account.mark_validated(save=False)
             with transaction.atomic():
-                email_account = EmailAccount(
-                    provider=provider.key,
-                    status=EmailAccount.Status.ACTIVE,
-                    created_by=self.request.user,
-                    updated_by=self.request.user,
-                    **settings,
-                )
                 email_account.save()
-                email_account.mailboxes = get_mailboxes_for_account(email_account)
-                email_account.save(update_fields=["mailboxes", "datetime_updated"])
+        except ValidationError as exc:
+            return WizardError(
+                message="; ".join(exc.messages),
+                title=_("Email connection failed"),
+                step=1,
+            )
         except Exception as exc:
             return WizardError(
                 message=str(exc),
-                title=_("Mailbox connection failed"),
+                title=_("Email connection failed"),
                 step=1,
             )
             

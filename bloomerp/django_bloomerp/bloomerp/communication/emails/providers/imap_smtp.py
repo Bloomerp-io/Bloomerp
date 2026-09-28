@@ -33,6 +33,7 @@ UID_PATTERN = re.compile(rb"\bUID\s+(\d+)\b")
 FLAGS_PATTERN = re.compile(rb"\bFLAGS\s+\(([^)]*)\)")
 SMTP_TIMEOUT_SECONDS = 10
 SENT_COPY_TIMEOUT_SECONDS = 10
+ACCOUNT_VALIDATION_TIMEOUT_SECONDS = 10
 logger = logging.getLogger(__name__)
 
 
@@ -81,13 +82,20 @@ class ImapSmtpAdapter(BaseEmailAdapter):
                     self.email_account.imap_port,
                     timeout=self.imap_timeout,
                 )
+            try:
                 if self.email_account.imap_security == "starttls":
                     connection.starttls()
-
-            connection.login(
-                self.email_account.username or self.email_account.email_address,
-                self.email_account.get_password_secret(),
-            )
+                connection.login(
+                    self.email_account.username or self.email_account.email_address,
+                    self.email_account.get_password_secret(),
+                )
+            except Exception:
+                # Failed authentication never hands the connection to the caller.
+                try:
+                    connection.shutdown()
+                except OSError:
+                    pass
+                raise
         except socket.gaierror as exc:
             raise ValidationError(
                 f"Unable to resolve IMAP host '{self.email_account.imap_host}'. "
@@ -219,6 +227,43 @@ class ImapSmtpAdapter(BaseEmailAdapter):
 
         return message_id
 
+    def validate_connection(self) -> list[str]:
+        """Check SMTP and discover IMAP mailboxes with bounded network waits."""
+        self.validate_smtp_connection()
+        with ImapSmtpAdapter(
+            self.email_account, imap_timeout=ACCOUNT_VALIDATION_TIMEOUT_SECONDS
+        ) as adapter:
+            return adapter.list_mailboxes()
+
+    def validate_smtp_connection(self) -> None:
+        """Verify SMTP connectivity and authentication without sending an email."""
+        if not self.email_account.smtp_host or not self.email_account.smtp_port:
+            raise ValidationError("SMTP host and port are required.")
+        try:
+            with self._connect_smtp() as smtp:
+                status, _ = smtp.noop()
+                if status != 250:
+                    raise ValidationError("SMTP connection check failed. Check the outgoing server settings.")
+        except smtplib.SMTPAuthenticationError as exc:
+            raise ValidationError("SMTP authentication failed. Check the username and password or app password.") from exc
+        except socket.gaierror as exc:
+            raise ValidationError(
+                f"Unable to resolve SMTP host '{self.email_account.smtp_host}'. "
+                "Use a hostname like 'smtp.example.com' without a URL scheme."
+            ) from exc
+        except TimeoutError as exc:
+            raise ValidationError(
+                f"SMTP server '{self.email_account.smtp_host}' timed out. "
+                "Check its host, port, and security settings."
+            ) from exc
+        except smtplib.SMTPException as exc:
+            raise ValidationError("SMTP connection check failed. Check the outgoing server settings.") from exc
+        except OSError as exc:
+            raise ValidationError(
+                f"Unable to connect to SMTP host '{self.email_account.smtp_host}' "
+                f"on port {self.email_account.smtp_port}."
+            ) from exc
+
     def _save_sent_copy(self, message: EmailMessage) -> None:
         """Append the complete SMTP message to the account's Sent mailbox as read."""
         with ImapSmtpAdapter(
@@ -340,9 +385,12 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         return emails
 
     def list_mailboxes(self) -> list[str]:
+        """Return selectable mailboxes, reporting failed IMAP folder discovery."""
         connection = self.connect()
         status, data = connection.list()
-        if status != "OK" or not data:
+        if status != "OK":
+            raise ValidationError("IMAP folder discovery failed. Check the incoming server settings.")
+        if not data:
             return []
 
         mailboxes: list[str] = []
