@@ -263,7 +263,7 @@ class ObjectAction(BaseModel):
 
     label:str
 
-    execution_func:Callable[[HttpRequest, Model], HttpResponse]
+    execution_func:Callable[[HttpRequest, Model], HttpResponse | None]
     
     should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
     

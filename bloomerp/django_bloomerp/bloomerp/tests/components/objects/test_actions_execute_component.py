@@ -13,4 +13,6 @@ class TestActionsExecuteComponent(BloomerpComponentTestCase):
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         # Add only the route scenarios this callable needs.
-        return []
+        return [
+            
+        ]
