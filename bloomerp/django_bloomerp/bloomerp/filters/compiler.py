@@ -17,6 +17,7 @@ from bloomerp.filters.definition import FilterCondition, FilterField, Filters
 from bloomerp.filters.resolver import FilterExecutionTarget, FilterFieldResolver, resolve_lookup
 from bloomerp.lookups.builtins.equals_user import EQUALS_USER
 from bloomerp.lookups.definition import BoundLookup, CompiledLookup, CompiledSQL, SQLLookupContext
+from bloomerp.middleware import current_request
 
 Connector = Literal["AND", "OR"]
 
@@ -74,8 +75,24 @@ def clean_lookup_value(field: FilterField, lookup: BoundLookup, value: Any) -> A
     return cleaned
 
 
+def _resolve_execution_condition(
+    condition: FilterCondition, *,
+    model: type[Model] | None = None,
+    resolver: FilterFieldResolver | None = None,
+) -> tuple[FilterField, FilterExecutionTarget, BoundLookup, Any]:
+    """Bind the current-user placeholder only for execution, preserving presets."""
+    if condition.lookup_id == EQUALS_USER.id and condition.value == "$user":
+        request = current_request()
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated or user.pk is None:
+            raise ValidationError("Current-user condition requires an authenticated request")
+        condition = condition.model_copy(update={"value": user.pk})
+    return resolve_condition(condition, model=model, resolver=resolver)
+
+
 def compile_condition(condition: FilterCondition, *, model: type[Model]) -> CompiledLookup:
-    field, target, lookup, value = resolve_condition(condition, model=model)
+    """Compile one condition after binding request-owned runtime values."""
+    field, target, lookup, value = _resolve_execution_condition(condition, model=model)
     factory = lookup.get_q_factory()
     if factory is None:
         raise ValidationError("Lookup does not support Django filtering")
@@ -163,7 +180,7 @@ def compile_sql_filters(
     for group in filters:
         predicates = []
         for condition in group.conditions:
-            field, target, lookup, value = resolve_condition(condition, model=model)
+            field, target, lookup, value = _resolve_execution_condition(condition, model=model)
             if lookup.get_sql_factory() is None:
                 raise ValidationError("Lookup does not support SQL filtering")
             _, model_field, keys = resolve_model_path(model, target.field_path)
@@ -208,7 +225,7 @@ def compile_sql_field_filters(filters: Filters, *, resolver: FilterFieldResolver
     for group in filters:
         predicates = []
         for condition in group.conditions:
-            _, target, lookup, value = resolve_condition(condition, resolver=resolver)
+            _, target, lookup, value = _resolve_execution_condition(condition, resolver=resolver)
             if target.backend != "sql" or target.sql_context is None:
                 raise ValidationError("Expected a configured SQL result column")
             factory = lookup.get_sql_factory()
