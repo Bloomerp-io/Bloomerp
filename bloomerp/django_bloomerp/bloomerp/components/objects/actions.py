@@ -41,7 +41,7 @@ def actions_execute(
     try:
         response = action.execution_func(request, object)
         
-        if not isinstance(response, HttpResponse):
+        if not response:
             return render_message(
                 request=request,
                 message=action.success_message or "Action executed successfully",
