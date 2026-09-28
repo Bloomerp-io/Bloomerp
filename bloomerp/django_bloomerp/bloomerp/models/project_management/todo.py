@@ -389,7 +389,10 @@ class Todo(BloomerpModel):
         blank=True,
         related_name='todos',
         verbose_name=_("Assigned To"),
-        help_text=_("The user to whom the todo is assigned")
+        help_text=_("The user to whom the todo is assigned"),
+        limit_choices_to={
+            "is_staff" : True
+        }
         )
     requested_by = UserField( 
         null=True, 
@@ -397,7 +400,10 @@ class Todo(BloomerpModel):
         on_delete=models.CASCADE, 
         related_name='requested_todos', 
         verbose_name=_("Requested By"),
-        help_text=_("The user who requested the todo")
+        help_text=_("The user who requested the todo"),
+        limit_choices_to={
+            "is_staff" : True
+        }
         )
     required_by = models.DateField(
         null=True, 

@@ -2,6 +2,7 @@ import { getItemNavigationKey } from "@/utils/itemNavigation";
 import renderDataView from "@/utils/dataview";
 import { createModalInstance } from "@/utils/modals";
 import { t } from "@/utils/i18n";
+import { parseInitialFilters } from "@/components/filters/definition";
 import { Modal } from "../Modal";
 import type { ForeignFieldSelection } from "@/components/data_view_components/ForeignFieldDataViewContainer";
 import htmx from "htmx.org";
@@ -226,6 +227,9 @@ export default class ForeignFieldWidget extends BaseWidget {
                 modal.getBodyElement(),
                 Number(this.contentTypeId),
                 'foreign-field-dataview',
+                this.element.dataset.choicesFilter
+                    ? parseInitialFilters(this.element.dataset.choicesFilter)
+                    : undefined,
             );
         } catch (err) {
             // handle render/init errors gracefully
@@ -352,13 +356,18 @@ export default class ForeignFieldWidget extends BaseWidget {
         }, 250);
     }
 
-    private async fetchResults(query: string) {
+    /** Search authorized objects within the source field's allowed choices. */
+    private async fetchResults(query: string): Promise<void> {
         if (!this.contentTypeId) return;
         const requestId = ++this.searchRequestId;
         this.searchAbortController?.abort();
         const abortController = new AbortController();
         this.searchAbortController = abortController;
-        const url = `/components/search-objects/${this.contentTypeId}/?fk_search_results_query=${encodeURIComponent(query)}`;
+        const params = new URLSearchParams({ fk_search_results_query: query });
+        if (this.element.dataset.choicesFilter) {
+            params.set('filter', this.element.dataset.choicesFilter);
+        }
+        const url = `/components/search-objects/${this.contentTypeId}/?${params}`;
         try {
             const resp = await fetch(url, {
                 credentials: 'same-origin',
@@ -831,6 +840,9 @@ export default class ForeignFieldWidget extends BaseWidget {
         const controller = new AbortController();
         this.selectionAbortController = controller;
         const params = new URLSearchParams();
+        if (this.element.dataset.choicesFilter) {
+            params.set('filter', this.element.dataset.choicesFilter);
+        }
         ids.forEach((id: string): void => { params.append('fk_selected_id', id); });
         try {
             const response = await fetch(`/components/search-objects/${this.contentTypeId}/?${params}`, {

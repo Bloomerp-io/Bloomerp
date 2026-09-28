@@ -1,16 +1,21 @@
 import htmx from "htmx.org";
 import { DataViewContainer } from "@/components/data_view_components/DataViewContainer";
 import { getComponent } from "@/components/BaseComponent";
+import type { Filter } from "@/components/filters/definition";
 
-/** Render and initialize a dataview with its request owned by the target element. */
+/** Render and initialize a dataview with optional filters and an element-owned request. */
 export default function renderDataView(
     element: HTMLElement,
     contentTypeId: number|string,
     componentId?: string,
+    filters?: Filter[],
 ): Promise<DataViewContainer> {
     const url = new URL(`/components/dataview/${contentTypeId}/`, window.location.origin);
     if (componentId) {
         url.searchParams.set('_component_id', componentId);
+    }
+    if (filters?.length) {
+        url.searchParams.set('filter', JSON.stringify(filters));
     }
     const requestUrl = `${url.pathname}${url.search}`;
 

@@ -2,6 +2,7 @@
 
 import json
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
 
@@ -18,9 +19,12 @@ class TestSearchObjectsComponent(BloomerpComponentTestCase):
     view_name = 'components_search_objects'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Exercise exact selection lookup with and without row access."""
+        """Exercise exact selection access and filtering of related-user choices."""
         customer = self.CustomerModel.objects.first()
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        user_model = get_user_model()
+        user_model.objects.create(username="nonstaff", is_staff=False)
+        user_content_type = ContentType.objects.get_for_model(user_model)
         return [
             RequestScenario(
                 name="selected ID resolves to its object label",
@@ -35,6 +39,26 @@ class TestSearchObjectsComponent(BloomerpComponentTestCase):
                 view_kwargs={"content_type_id": content_type.pk},
                 query_params={"fk_selected_id": str(customer.pk)},
                 expected=ExpectedResult(response_validators=self._has_no_objects),
+            ),
+            RequestScenario(
+                name="staff filter excludes non-staff users from choices",
+                user=self.admin_user,
+                view_kwargs={"content_type_id": user_content_type.pk},
+                query_params={
+                    "filter": json.dumps([
+                        {
+                            "connector": "AND",
+                            "conditions": [
+                                {
+                                    "field_path": "is_staff",
+                                    "lookup_id": "equals",
+                                    "value": True,
+                                },
+                            ],
+                        },
+                    ]),
+                },
+                expected=ExpectedResult(response_validators=self._has_only_staff_users),
             ),
         ]
 
@@ -51,3 +75,11 @@ class TestSearchObjectsComponent(BloomerpComponentTestCase):
     def _has_no_objects(self, response: HttpResponse) -> bool:
         """Check that a denied exact lookup reveals no object data."""
         return json.loads(response.content)["objects"] == []
+
+    def _has_only_staff_users(self, response: HttpResponse) -> bool:
+        """Require both staff fixtures and exclude the non-staff user from choices."""
+        objects = json.loads(response.content)["objects"]
+        return {obj["id"] for obj in objects} == {
+            str(self.admin_user.pk),
+            str(self.normal_user.pk),
+        }
