@@ -107,6 +107,7 @@ class EmailProvider(BaseTypeDefinition):
             "smtp_host",
             "smtp_port",
             "smtp_security",
+            "save_sent_emails",
         ],
         required_fields=[
             "email_address",

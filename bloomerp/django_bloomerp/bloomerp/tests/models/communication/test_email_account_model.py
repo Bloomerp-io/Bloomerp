@@ -14,7 +14,21 @@ class TestEmailAccountModel(BloomerpModelTestCase):
     model = EmailAccount
 
     def get_test_scenarios(self) -> list[ModelScenario[EmailAccount]]:
+        """Verify provider validation and persistence of optional Sent-copy saving."""
         return [
+            ModelScenario(
+                name="Sent-copy saving defaults off and can be enabled",
+                create_args={
+                    "email_address": "sent-copy@example.com",
+                    "imap_host": "imap.example.com",
+                    "imap_port": 993,
+                    "smtp_host": "smtp.example.com",
+                    "smtp_port": 587,
+                },
+                create_validators=self.sent_copy_is_disabled,
+                update_args={"save_sent_emails": True},
+                update_validators=self.sent_copy_is_enabled,
+            ),
             ModelScenario(
                 name="Email account validates provider-required fields",
                 description=(
@@ -41,3 +55,13 @@ class TestEmailAccountModel(BloomerpModelTestCase):
         )
         account.full_clean()
         return account
+
+    @staticmethod
+    def sent_copy_is_disabled(account: EmailAccount) -> bool:
+        """Check that existing and new accounts do not save extra Sent copies by default."""
+        return account.save_sent_emails is False
+
+    @staticmethod
+    def sent_copy_is_enabled(account: EmailAccount) -> bool:
+        """Check that opting into Sent-copy saving persists on the account."""
+        return account.save_sent_emails is True
