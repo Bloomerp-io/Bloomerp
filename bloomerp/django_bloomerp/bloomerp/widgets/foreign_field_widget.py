@@ -5,10 +5,11 @@ from uuid import UUID
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.forms import widgets
-from django.db.models import Model
+from django.db.models import Model, Q
 from django.urls import reverse
 
 from bloomerp.filters.utils import dict_to_filter
+from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.utils.labels import safe_object_label
 
 if TYPE_CHECKING:
@@ -139,7 +140,18 @@ class ForeignFieldWidget(widgets.Widget):
             if hasattr(model_field, "get_limit_choices_to"):
                 choices = model_field.get_limit_choices_to()
                 if choices:
-                    choices_filter = dict_to_filter(choices, model=related_model_class)
+                    if isinstance(choices, Q):
+                        choices_filter = Filter(connector="AND", conditions=[
+                            FilterCondition(
+                                field_path="pk",
+                                lookup_id="values_in",
+                                value=list(related_model_class._default_manager.filter(
+                                    choices,
+                                ).values_list("pk", flat=True)),
+                            ),
+                        ])
+                    else:
+                        choices_filter = dict_to_filter(choices, model=related_model_class)
                     context["choices_filter_json"] = json.dumps(
                         [choices_filter.model_dump(mode="json")]
                     )
