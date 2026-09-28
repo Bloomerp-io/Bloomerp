@@ -1,4 +1,4 @@
-from django.http import Http404, HttpRequest
+from django.http import Http404, HttpRequest, HttpResponse
 from bloomerp.models.definition import ObjectAction, get_model_config
 from bloomerp.router import router
 from bloomerp.utils.models import get_object_model_and_content_type_or_404
@@ -39,7 +39,16 @@ def actions_execute(
         raise Http404("Action not found")
     
     try:
-        return action.execution_func(request, object)
+        response = action.execution_func(request, object)
+        
+        if not response:
+            return render_message(
+                request=request,
+                message=action.success_message or "Action executed successfully",
+                type="success",
+            )
+        return response
+    
     except Exception as e:
         return render_message(
             request,
