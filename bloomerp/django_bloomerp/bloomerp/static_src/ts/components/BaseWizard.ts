@@ -31,7 +31,7 @@ export default class BaseWizard extends BaseComponent {
     };
     /** Release component listeners when HTMX removes this wizard root. */
     private readonly cleanupHandler: (event: Event) => void = (event: Event): void => {
-        if (event.target === this.element) this.destroy();
+        if (event.target === this.element) window.setTimeout(() => this.destroy(), 0);
     };
     private pendingRequest: PendingWizardRequest | null = null;
 
