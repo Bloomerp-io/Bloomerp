@@ -73,6 +73,18 @@ function clampToViewport(x: number, y: number, menu: HTMLDivElement): { x: numbe
 	};
 }
 
+/** Place menus launched inside a modal immediately above that modal in the stacking order. */
+function syncMenuLayer(menu: HTMLDivElement, trigger: HTMLElement): void {
+	const modal = trigger.closest<HTMLElement>('[bloomerp-component="modal"]');
+	if (!modal) {
+		menu.style.zIndex = '';
+		return;
+	}
+
+	const modalZIndex = Number.parseInt(window.getComputedStyle(modal).zIndex, 10);
+	menu.style.zIndex = String((Number.isFinite(modalZIndex) ? modalZIndex : 100) + 1);
+}
+
 export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuController {
 	const existing = menuCache.get(id);
 	if (existing) return existing;
@@ -82,8 +94,10 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 	let activeIndex = -1;
 	let upAtFirstArmed = false;
 
+	/** Hide the menu and reset its modal-specific stacking layer. */
 	const hide = (): void => {
 		element.classList.add('hidden');
+		element.style.zIndex = '';
 		activeIndex = -1;
 		upAtFirstArmed = false;
 		if (activeMenu === controller) activeMenu = null;
@@ -207,12 +221,14 @@ export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuControl
 		if (activeHideOnViewportChange) hide();
 	}, { signal: abortController.signal });
 
+	/** Display menu items at a viewport point and layer them over their triggering modal. */
 	const showAt = (
 		position: { x: number; y: number },
 		trigger: HTMLElement,
 		items: ContextMenuItem[],
 		options: ContextMenuShowOptions = {},
 	): void => {
+		syncMenuLayer(element, trigger);
 		// Populate
 		const ul = clearMenu(element);
 
