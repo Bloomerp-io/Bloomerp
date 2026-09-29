@@ -56,18 +56,6 @@ def relation_widget(*, multiple: bool = False) -> WidgetFactory:
         from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
         application_field = context.application_field
-        if application_field is not None:
-            model_field = application_field._get_model_field()
-            if (
-                not multiple
-                and (model_field.many_to_one or model_field.one_to_one)
-                and not model_field.target_field.primary_key
-            ):
-                form_field = model_field.formfield()
-                if form_field is not None:
-                    form_field.widget.attrs.update(context.attrs)
-                    return form_field.widget
-
         return ForeignFieldWidget(
             attrs={
                 "is_m2m": multiple,

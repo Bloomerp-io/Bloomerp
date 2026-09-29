@@ -64,33 +64,3 @@ class TestOneToOneWidget(SimpleTestCase):
                     picker.value_from_datadict(QueryDict("owner="), {}, "owner"),
                     "",
                 )
-
-    def test_non_primary_target_uses_native_choice_widget(self) -> None:
-        """Keep Django's target-field values when a relation uses ``to_field``."""
-        related_model = get_user_model()
-        model_field = models.OneToOneField(
-            related_model,
-            to_field="username",
-            on_delete=models.CASCADE,
-        )
-        model_field.set_attributes_from_name("owner")
-        application_field = ApplicationField(
-            field="owner",
-            field_type="OneToOneField",
-            meta={"data-test": "target-picker"},
-        )
-
-        with (
-            patch.object(application_field, "_get_model_field", return_value=model_field),
-            patch.object(application_field, "get_related_model", return_value=related_model),
-        ):
-            widget = application_field.get_widget()
-            form_field = application_field.get_form_field()
-
-        self.assertIsInstance(widget, forms.Select)
-        self.assertIsInstance(form_field.widget, forms.Select)
-        self.assertEqual(form_field.to_field_name, "username")
-        self.assertEqual(widget.choices.field.to_field_name, "username")
-        self.assertEqual(form_field.widget.choices.field.to_field_name, "username")
-        self.assertEqual(widget.attrs["data-test"], "target-picker")
-        self.assertEqual(form_field.widget.attrs["data-test"], "target-picker")
