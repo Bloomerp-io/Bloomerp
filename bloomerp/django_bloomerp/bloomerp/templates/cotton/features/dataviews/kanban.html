@@ -59,7 +59,7 @@ TODO: This and dataview_kanban_cards need to be merged
                 {% include "components/objects/dataview_kanban_cards.html" %}
                 <div class="kanban-destinations absolute inset-0 z-10 flex-col overflow-hidden rounded-b-xl" aria-hidden="true">
                     {% for destination in group.destinations %}
-                    <div data-kanban-dropzone data-kanban-target data-column-value="{{ destination.value }}" class="kanban-category flex flex-1 min-h-0 items-center justify-center border border-gray-300 p-3 text-sm text-center" {% if destination.colour %}style="--kanban-category-colour: {{ destination.colour }}"{% endif %}>
+                    <div data-kanban-dropzone data-kanban-target data-column-value="{{ destination.value }}" class="kanban-category flex flex-1 min-h-0 items-center justify-center border border-gray-200 p-3 text-sm text-center" {% if destination.colour %}style="--kanban-category-colour: {{ destination.colour }}"{% endif %}>
                         <span class="rounded px-2 py-1 bg-white">{{ destination.label }}</span>
                     </div>
                     {% endfor %}
@@ -87,12 +87,6 @@ TODO: This and dataview_kanban_cards need to be merged
     transform: rotate(2deg);
 }
 
-.kanban-column-body.drag-over {
-    background-color: rgb(219 234 254); /* blue-100 */
-    border: 2px dashed rgb(59 130 246); /* blue-500 */
-    border-radius: 0.375rem;
-}
-
 .kanban-card.drag-preview {
     position: fixed;
     pointer-events: none;
@@ -107,10 +101,9 @@ TODO: This and dataview_kanban_cards need to be merged
 .kanban-destinations { display: none; }
 .kanban-board.kanban-moving .kanban-destinations { display: flex; }
 .kanban-category { background: color-mix(in srgb, var(--kanban-category-colour, #f3f4f6) 18%, white); }
-.kanban-category.drag-over, .kanban-category.keyboard-target { background: color-mix(in srgb, var(--kanban-category-colour, #3b82f6) 35%, white); outline: 2px solid #3b82f6; outline-offset: -2px; }
+.kanban-category.drag-over, .kanban-category.keyboard-target { background: color-mix(in srgb, var(--kanban-category-colour, #3b82f6) 35%, white); }
 .kanban-card.dragging { position: relative; z-index: 20; }
 .kanban-board.kanban-moving .kanban-column-body { overflow: hidden; }
 .kanban-move-help { display: none; }
 .kanban-board.kanban-keyboard-moving + .kanban-move-help { display: block; }
-[data-kanban-target].drag-over { outline: 2px solid currentColor; }
 </style>
