@@ -1,4 +1,4 @@
-{% load tailwind_field %}
+{% load tailwind_field bloomerp_form_fields %}
 
 {% if field.is_hidden %}
     {{ field }}
@@ -11,7 +11,7 @@
         {% elif field|is_radioselect %}
             {% include 'tailwind/layout/radioselect.html' %}
         {% else %}
-            {% tailwind_field field %}
+            {% bloomerp_field field %}
         {% endif %}
 
         {% for error in field.errors %}

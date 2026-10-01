@@ -1,4 +1,4 @@
-{% load tailwind_field %}
+{% load tailwind_field bloomerp_form_fields %}
 
 {% if field.is_hidden %}
     {{ field }}
@@ -27,7 +27,7 @@
         </div>
     {% else %}
         {# otherwise use django rendering with additional classes added #}
-        {% tailwind_field field %}
+        {% bloomerp_field field %}
     {% endif %}
 
     {% include 'tailwind/layout/help_text_and_errors.html' %}
