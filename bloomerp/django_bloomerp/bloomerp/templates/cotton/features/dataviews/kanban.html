@@ -50,27 +50,20 @@ TODO: This and dataview_kanban_cards need to be merged
                 </div>
             </div>
             
-            {% if group.destinations|length > 1 %}
-            <div class="p-2 space-y-1">
-                <label class="text-xs text-gray-500"><c-i18n.blocktrans>Move to</c-i18n.blocktrans>
-                    <select data-kanban-destination class="select select-sm w-full">
-                        {% for destination in group.destinations %}<option value="{{ destination.value }}">{{ destination.label }}</option>{% endfor %}
-                    </select>
-                </label>
-                <div class="kanban-destinations space-y-1">
-                    {% for destination in group.destinations %}
-                    <div data-kanban-dropzone data-kanban-target data-column-value="{{ destination.value }}" class="rounded-xl border border-gray-200 p-2 text-sm">{{ destination.label }}</div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
             <!-- Column Body (Drop Zone) -->
             <div
-                class="kanban-column-body flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]"
+                class="kanban-column-body relative flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]"
                 data-kanban-dropzone
-                data-column-value="{{ group.request_value }}"
+                data-column-value="{{ group.destination_value }}"
             >
                 {% include "components/objects/dataview_kanban_cards.html" %}
+                <div class="kanban-destinations absolute inset-0 z-10 flex-col overflow-hidden rounded-b-xl" aria-hidden="true">
+                    {% for destination in group.destinations %}
+                    <div data-kanban-dropzone data-kanban-target data-column-value="{{ destination.value }}" class="kanban-category flex flex-1 min-h-0 items-center justify-center border border-gray-300 p-3 text-sm text-center" {% if destination.colour %}style="--kanban-category-colour: {{ destination.colour }}"{% endif %}>
+                        <span class="rounded px-2 py-1 bg-white">{{ destination.label }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -85,6 +78,7 @@ TODO: This and dataview_kanban_cards need to be merged
         </div>
     {% endif %}
 </c-features.dataviews.base_data_view>
+<p class="kanban-move-help text-xs text-gray-500" role="status">Use arrow keys to choose a category, Enter to move, or Escape to cancel.</p>
 
 <style>
 /* Kanban specific styles */
@@ -111,6 +105,12 @@ TODO: This and dataview_kanban_cards need to be merged
 
 <style>
 .kanban-destinations { display: none; }
-.kanban-board:has(.dragging) .kanban-destinations { display: block; }
+.kanban-board.kanban-moving .kanban-destinations { display: flex; }
+.kanban-category { background: color-mix(in srgb, var(--kanban-category-colour, #f3f4f6) 18%, white); }
+.kanban-category.drag-over, .kanban-category.keyboard-target { background: color-mix(in srgb, var(--kanban-category-colour, #3b82f6) 35%, white); outline: 2px solid #3b82f6; outline-offset: -2px; }
+.kanban-card.dragging { position: relative; z-index: 20; }
+.kanban-board.kanban-moving .kanban-column-body { overflow: hidden; }
+.kanban-move-help { display: none; }
+.kanban-board.kanban-keyboard-moving + .kanban-move-help { display: block; }
 [data-kanban-target].drag-over { outline: 2px solid currentColor; }
 </style>

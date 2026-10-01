@@ -16,7 +16,7 @@
             type="button"
             data-display-options-submit
             data-display-options-values='{"view_type": "{{ view_type.key }}"}'
-            class="flex-1 shrink-0 whitespace-nowrap flex items-center justify-center gap-2 py-1.5 px-3 rounded-md shadow text-sm font-medium {% if preference.view_type == view_type.key %}bg-white text-light ring-1 ring-primary-500{% else %}text-light hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            class="flex-none w-auto max-w-none whitespace-nowrap flex items-center justify-center gap-2 py-1.5 px-3 rounded-md shadow text-sm font-medium {% if preference.view_type == view_type.key %}bg-white text-light ring-1 ring-primary-500{% else %}text-light hover:text-gray-700 hover:bg-gray-50{% endif %}">
             <i class="{{ view_type.icon }} text-sm text-primary"></i>
             {{ view_type.label }}
         </button>

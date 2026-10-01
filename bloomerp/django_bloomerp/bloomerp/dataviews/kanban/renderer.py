@@ -402,7 +402,23 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             group["colour"] = colours.get(colour_key)
             group.setdefault("destinations", [{"value": group["request_value"], "label": group["label"]}])
             group["destination_value"] = group["destinations"][0]["value"]
+            for destination in group["destinations"]:
+                destination["colour"] = colours.get(destination["value"], group["colour"])
+            for item in group["items"]:
+                raw_value = getattr(item, model_field.attname) if model_field else getattr(item, field_name)
+                item.kanban_header_colour = colours.get(cls._format_column_value(raw_value), group["colour"])
+                item.kanban_header_foreground = cls._header_foreground(item.kanban_header_colour)
         return groups
+
+    @staticmethod
+    def _header_foreground(colour: str | None) -> str:
+        """Choose the higher-contrast black or white text for a configured header."""
+        if not colour:
+            return "#111827"
+        channels = [int(colour[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
+        luminance = sum(channel * weight for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True))
+        return "#000000" if luminance > 0.179 else "#ffffff"
 
     @classmethod
     def _merge_custom_groups(

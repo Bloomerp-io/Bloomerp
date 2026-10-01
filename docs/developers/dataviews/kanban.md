@@ -30,10 +30,16 @@ combined lane queryset.
 
 In display options, select the grouping field first, then add named custom
 mappings and click **Apply**. The colour editor lists the resulting
-lanes after the grouping is saved. While dragging, each grouped lane exposes
-its individual destinations. Its **Move to** selector controls the destination
-for a drop into the lane body and for keyboard moves. Dropping onto an individual
-destination always uses that value, including within the card's current lane.
+lanes after the grouping is saved. During dragging, each lane is divided into
+equal-height sections for its individual categories. Dropping onto a section
+uses its concrete field value, including within the card's current lane.
+Alt+Left/Right starts a keyboard move. Left/Right selects a lane, Up/Down selects
+a category, Enter confirms, and Escape cancels. Category sections are hidden
+when movement ends.
+
+Card headers use the original category's configured colour, falling back to
+the custom lane colour. Header text automatically uses contrasting black or
+white. Category sections show a tint of the same colour during movement.
 
 ## Reusable mapping field
 

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
+from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from bloomerp.dataviews.definition import DataviewState
@@ -181,3 +182,70 @@ class TestKanbanCustomGroups(BaseBloomerpTestCaseWithModels):
             ["backlog", "scoped"],
         )
         self.assertIn("completed", [group["request_value"] for group in groups])
+
+    def test_single_member_custom_lane_renders_concrete_drop_value(self) -> None:
+        """
+        Use case: A custom lane contains only one choice status.
+        Expected result: Dropping into its body uses the status value, not its custom name.
+        """
+        # 1. Build a single-member choice lane with an actual card.
+        Todo.objects.create(title="Single status card", status="backlog")
+        field = ApplicationField.get_by_field(Todo, "status")
+        options = KanbanDataView(custom_groupings={"Planning": ["backlog"]})
+        groups = KanbanDataviewRenderer.build_groups(
+            Todo.objects.all(), field, options=options
+        )
+        # 2. Render the board with the generated lane metadata.
+        html = render_to_string(
+            "cotton/features/dataviews/kanban.html",
+            {
+                "kanban_groups": groups,
+                "content_type_id": ContentType.objects.get_for_model(Todo).pk,
+                "preference": SimpleNamespace(pk=1, split_view_enabled=False),
+                "fields": [],
+            },
+        )
+        # 3. Verify the body uses a concrete model value without needing a selector.
+        self.assertIn(
+            'data-kanban-dropzone\n                data-column-value="backlog"', html
+        )
+        self.assertNotIn('data-column-value="__group__:Planning"\n            >', html)
+        self.assertNotIn("data-kanban-destination", html)
+        self.assertIn('data-kanban-target data-column-value="backlog"', html)
+
+    def test_card_headers_use_member_colour_with_custom_lane_fallback(self) -> None:
+        """
+        Use case: A custom lane and one of its member statuses have colours.
+        Expected result: Card headers use the member colour when present and the lane colour otherwise.
+        """
+        # 1. Create cards in each member of a custom lane.
+        Todo.objects.create(title="Backlog card", status="backlog")
+        Todo.objects.create(title="Scoped card", status="scoped")
+        options = KanbanDataView(
+            custom_groupings={"Planning": ["backlog", "scoped"]},
+            lane_colouring={"Planning": "#123456", "scoped": "#eeeeee"},
+        )
+        # 2. Build the lane and inspect the card presentation metadata.
+        groups = KanbanDataviewRenderer.build_groups(
+            Todo.objects.all(),
+            ApplicationField.get_by_field(Todo, "status"),
+            options=options,
+        )
+        cards = {card.status: card for card in groups[0]["items"]}
+        self.assertEqual(cards["backlog"].kanban_header_colour, "#123456")
+        self.assertEqual(cards["backlog"].kanban_header_foreground, "#ffffff")
+        self.assertEqual(cards["scoped"].kanban_header_colour, "#eeeeee")
+        self.assertEqual(cards["scoped"].kanban_header_foreground, "#000000")
+        # 3. Verify actual headers and movement categories receive these colours.
+        html = render_to_string(
+            "cotton/features/dataviews/kanban.html",
+            {
+                "kanban_groups": groups,
+                "content_type_id": 27,
+                "fields": [],
+                "preference": SimpleNamespace(pk=1),
+            },
+        )
+        self.assertIn("background-color: #123456; color: #ffffff", html)
+        self.assertIn("background-color: #eeeeee; color: #000000", html)
+        self.assertIn("--kanban-category-colour: #eeeeee", html)
