@@ -53,15 +53,15 @@
         >
             <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
             {% for field in dataview_options_form.visible_fields %}
-            <div class="{% if field.name == 'custom_groupings' or field.name == 'lane_colouring' %}space-y-2{% else %}flex items-center justify-between{% endif %}">
-                <div class="flex items-center gap-2 text-sm text-gray-600">
-                    <span>{{ field.label }}</span>
+            <div class="space-y-1">
+                <div class="{% if field.name == 'custom_groupings' or field.name == 'lane_colouring' %}space-y-2{% else %}flex items-center justify-between gap-3{% endif %}">
+                    <div class="text-sm text-gray-600 shrink-0">
+                        <span>{{ field.label }}</span>
+                    </div>
+                    {{ field }}
                 </div>
-                {{ field }}
                 {% if field.help_text %}<p class="text-xs text-gray-500">{{ field.help_text }}</p>{% endif %}
-                <span class="hidden">
-                    {{ field.errors }}
-                </span>
+                <span class="hidden">{{ field.errors }}</span>
             </div>
             {% endfor %}
         </form>

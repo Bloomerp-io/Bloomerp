@@ -1,6 +1,6 @@
-<div data-mapping-row class="flex items-center gap-2">
+<div data-mapping-row class="flex items-center gap-1.5">
     <input type="hidden" name="{{ widget.name }}__rows" value="{{ row.index }}">
     <div class="min-w-0 flex-1">{{ row.left }}</div>
     <div class="min-w-0 flex-1">{{ row.right }}</div>
-    {% if widget.allow_adding_groups %}<button type="button" data-mapping-remove class="btn btn-sm" aria-label="Remove mapping">×</button>{% endif %}
+    {% if widget.allow_adding_groups %}<button type="button" data-mapping-remove class="shrink-0 text-gray-400 hover:text-danger-dark px-1 py-1 text-sm" aria-label="Remove mapping">×</button>{% endif %}
 </div>

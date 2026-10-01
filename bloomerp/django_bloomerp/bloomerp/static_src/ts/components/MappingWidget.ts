@@ -18,6 +18,15 @@ export default class MappingWidget extends BaseComponent {
     /** Keep intermediate row edits local until the user applies the whole mapping. */
     private onChange = (event: Event): void => {
         event.stopPropagation();
+        const target = event.target as HTMLElement | null;
+        const selection = target?.closest<HTMLElement>('[data-mapping-selection]');
+        const summary = selection?.querySelector<HTMLElement>('[data-mapping-summary]');
+        if (!selection || !summary) return;
+        const labels: string[] = [];
+        for (const input of selection.querySelectorAll<HTMLInputElement>('input:checked')) {
+            labels.push(input.dataset.choiceLabel ?? input.value);
+        }
+        summary.textContent = labels.join(', ') || selection.dataset.emptyLabel || '';
     };
 
     /** Add, remove or apply mapping rows using the server-rendered child widgets. */

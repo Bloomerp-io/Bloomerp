@@ -11,6 +11,25 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 
 
+class MappingSelectMultipleWidget(forms.SelectMultiple):
+    """Present multiple values in a compact disclosure containing labelled checkboxes."""
+
+    template_name = "widgets/mapping_multiple.html"
+
+    def get_context(
+        self, name: str, value: Any, attrs: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """Expose selected labels while preserving Django's multi-value extraction."""
+        context = super().get_context(name, value, attrs)
+        context["widget"]["selected_labels"] = [
+            str(option["label"])
+            for _label, options, _index in context["widget"]["optgroups"]
+            for option in options
+            if option["selected"]
+        ]
+        return context
+
+
 class MappingWidget(forms.Widget):
     """Render arbitrary Django widgets on either side of an editable mapping."""
 
@@ -29,6 +48,11 @@ class MappingWidget(forms.Widget):
         super().__init__(attrs)
         self.left_widget = deepcopy(left_widget or forms.TextInput())
         self.right_widget = deepcopy(right_widget or forms.TextInput())
+        if type(self.right_widget) is forms.SelectMultiple:
+            self.right_widget = MappingSelectMultipleWidget(
+                attrs=self.right_widget.attrs,
+                choices=self.right_widget.choices,
+            )
         self.left = left
         self.allow_adding_groups = allow_adding_groups
 
@@ -63,7 +87,7 @@ class MappingWidget(forms.Widget):
         """Render uniquely named child inputs for one mapping row."""
         child_attrs = {
             **attrs,
-            "class": "input input-sm w-full border border-gray-200 rounded-xl",
+            "class": "w-full min-w-0 rounded-lg border border-gray-200 bg-base px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary",
         }
         base_id = attrs.get("id", name)
         return {

@@ -34,7 +34,9 @@ class TestMappingWidget(BloomerpWidgetTestCase[MappingWidget]):
             for fragment in [
                 'name="mapping__key_0"',
                 'id="id_mapping__value_0"',
-                'value="email" selected',
+                'data-choice-label="Email" checked',
+                "Website, Email",
+                "data-mapping-selection",
                 "data-mapping-template",
                 "__prefix__",
             ]

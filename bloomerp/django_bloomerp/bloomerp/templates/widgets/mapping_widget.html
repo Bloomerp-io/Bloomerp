@@ -5,9 +5,11 @@
             {% include "widgets/mapping_row.html" %}
         {% endfor %}
     </div>
+    <div class="flex items-center justify-between gap-2 pt-1">
     {% if widget.allow_adding_groups %}
     <template data-mapping-template>{% with row=widget.empty_row %}{% include "widgets/mapping_row.html" %}{% endwith %}</template>
-    <button type="button" data-mapping-add class="btn btn-primary btn-sm"><c-i18n.blocktrans>Add mapping</c-i18n.blocktrans></button>
+    <button type="button" data-mapping-add class="text-xs text-gray-500 hover:text-primary px-1 py-1"><c-i18n.blocktrans>+ Add row</c-i18n.blocktrans></button>
     {% endif %}
-    <button type="button" data-mapping-apply class="btn btn-primary btn-sm"><c-i18n.blocktrans>Apply mappings</c-i18n.blocktrans></button>
+    <button type="button" data-mapping-apply class="text-xs text-primary hover:underline px-1 py-1 ml-auto"><c-i18n.blocktrans>Apply</c-i18n.blocktrans></button>
+    </div>
 </div>

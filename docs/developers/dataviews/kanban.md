@@ -29,7 +29,7 @@ removed or reused in the display options. Pagination and sorting apply to the
 combined lane queryset.
 
 In display options, select the grouping field first, then add named custom
-mappings and click **Apply mappings**. The colour editor lists the resulting
+mappings and click **Apply**. The colour editor lists the resulting
 lanes after the grouping is saved. While dragging, each grouped lane exposes
 its individual destinations. Its **Move to** selector controls the destination
 for a drop into the lane body and for keyboard moves. Dropping onto an individual
@@ -69,6 +69,9 @@ The widget delegates rendering and submitted-value extraction to the child
 widgets, including multiple selections. Dictionaries and JSON strings are
 accepted as input alongside the indexed rows posted by the browser.
 
+Multiple selections use a compact dropdown with checkboxes and a summary of
+the selected labels. Add/remove controls keep each mapping row compact.
+
 Intermediate changes do not trigger automatic display-option submission.
-**Apply mappings** emits a change event on the containing form; ordinary form
+**Apply** emits a change event on the containing form; ordinary form
 submission also includes all mapping rows.
