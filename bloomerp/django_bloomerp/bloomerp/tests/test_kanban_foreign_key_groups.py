@@ -127,6 +127,11 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
 
         # 3. Verify row permissions further reduce the eligible lanes.
         self.assertEqual([group["label"] for group in groups], ["Netherlands"])
+        belgium = self.CountryModel.objects.get(name="Belgium")
+        self.assertIsNone(KanbanDataviewRenderer.build_column_group(
+            self.CustomerModel.objects.all(), self.country_field, str(belgium.pk),
+            user=self.normal_user,
+        ))
 
     def test_more_than_fifty_allowed_values_requires_another_grouping(self) -> None:
         """

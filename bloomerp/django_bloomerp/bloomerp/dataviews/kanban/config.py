@@ -41,6 +41,39 @@ class KanbanDataView(BaseDataview):
     }
 
     @classmethod
+    def _mapping_lane_metadata(cls, state: DataviewState) -> list[dict[str, Any]]:
+        """Reuse one permission-filtered metadata query across both mapping editors."""
+        from .renderer import KanbanDataviewRenderer
+
+        cache_key = "_kanban_mapping_lane_metadata"
+        if cache_key not in state.context:
+            grouping = KanbanDataviewRenderer.get_group_by_field(
+                state.fields, state.options
+            )
+            related_queryset = None
+            if grouping and isinstance(
+                grouping._get_model_field(), (ForeignKey, OneToOneField)
+            ):
+                related_queryset = KanbanDataviewRenderer.get_allowed_related_queryset(
+                    grouping, state.request.user
+                )
+                if KanbanDataviewRenderer.has_too_many_related_columns(
+                    related_queryset
+                ):
+                    grouping = None
+            state.context[cache_key] = (
+                KanbanDataviewRenderer.build_lane_metadata(
+                    state.queryset,
+                    grouping,
+                    state.request.user,
+                    related_queryset,
+                )
+                if grouping
+                else []
+            )
+        return state.context[cache_key]
+
+    @classmethod
     def create_form_field(
         cls, name: str, field_info: FieldInfo, state: DataviewState
     ) -> forms.Field:
@@ -48,31 +81,8 @@ class KanbanDataView(BaseDataview):
         if name in {"custom_groupings", "lane_colouring"}:
             from .renderer import KanbanDataviewRenderer
 
-            grouping = KanbanDataviewRenderer.get_group_by_field(
-                state.fields, state.options
-            )
-            choices = []
-            allowed_related_queryset = None
-            if grouping and isinstance(
-                grouping._get_model_field(), (ForeignKey, OneToOneField)
-            ):
-                allowed_related_queryset = (
-                    KanbanDataviewRenderer.get_allowed_related_queryset(
-                        grouping, state.request.user
-                    )
-                )
-                if KanbanDataviewRenderer.has_too_many_related_columns(
-                    allowed_related_queryset
-                ):
-                    grouping = None
-            if grouping:
-                groups = KanbanDataviewRenderer.build_groups(
-                    state.queryset,
-                    grouping,
-                    user=state.request.user,
-                    allowed_related_queryset=allowed_related_queryset,
-                )
-                choices = [(group["request_value"], group["label"]) for group in groups]
+            groups = cls._mapping_lane_metadata(state)
+            choices = [(group["request_value"], group["label"]) for group in groups]
             if name == "custom_groupings":
                 known_values = {key for key, _label in choices}
                 choices.extend(
@@ -91,18 +101,14 @@ class KanbanDataView(BaseDataview):
                         "Name each lane and select its values. Unmapped values keep their own lanes."
                     ),
                 )
-            if grouping:
-                coloured_groups = KanbanDataviewRenderer.build_groups(
-                    state.queryset,
-                    grouping,
-                    user=state.request.user,
-                    options=state.options,
-                    allowed_related_queryset=allowed_related_queryset,
-                )
-                choices = [
-                    (group.get("colour_key", group["request_value"]), group["label"])
-                    for group in coloured_groups
-                ]
+            coloured_groups = KanbanDataviewRenderer.merge_lane_metadata(
+                groups,
+                getattr(state.options, "custom_groupings", {}),
+            )
+            choices = [
+                (group.get("colour_key", group["request_value"]), group["label"])
+                for group in coloured_groups
+            ]
             known = {key for key, _label in choices}
             choices.extend(
                 (key, key)

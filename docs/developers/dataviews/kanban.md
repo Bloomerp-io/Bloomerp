@@ -28,6 +28,11 @@ object IDs). Colours for removed or unavailable lanes are ignored, and can be
 removed or reused in the display options. Pagination and sorting apply to the
 combined lane queryset.
 
+Lane metadata is collected separately from card objects. The mapping editors
+reuse one metadata result per dataview state, and custom lanes are combined
+before their card pages are loaded. A lazy-loading request filters to its
+requested ordinary or custom lane and loads only that lane's page.
+
 In display options, select the grouping field first, then add named custom
 mappings and click **Apply**. The colour editor lists the resulting
 lanes after the grouping is saved. During dragging, each lane is divided into

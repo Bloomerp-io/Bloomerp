@@ -249,3 +249,180 @@ class TestKanbanCustomGroups(BaseBloomerpTestCaseWithModels):
         self.assertIn("background-color: #123456; color: #ffffff", html)
         self.assertIn("background-color: #eeeeee; color: #000000", html)
         self.assertIn("--kanban-category-colour: #eeeeee", html)
+
+    def test_mapping_form_reuses_metadata_without_loading_cards(self) -> None:
+        """
+        Use case: Both mapping editors need labels for many scalar lanes.
+        Expected result: One aggregate query supplies both editors without loading cards.
+        """
+        from unittest.mock import patch
+
+        # 1. Configure several scalar lanes and the canonical options form state.
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        request = RequestFactory().get("/")
+        request.user = self.admin_user
+        state = DataviewState(
+            request=request,
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            model=self.CustomerModel,
+            preference=SimpleNamespace(options={}),
+            queryset=self.CustomerModel.objects.all(),
+            fields=SimpleNamespace(accessible_fields=[(field, True)]),
+            render_fields=[],
+            avatar_field=None,
+            options=KanbanDataView(
+                group_by_field="age", custom_groupings={"Young": ["20", "30"]}
+            ),
+        )
+        # 2. Build the complete form and prohibit materializing any card pages.
+        field._get_model_field()  # Warm the schema lookup; measure only lane data queries.
+        with (
+            patch.object(
+                KanbanDataviewRenderer,
+                "_materialize_lane",
+                side_effect=AssertionError("Mapping choices must not load cards"),
+            ),
+            patch.object(
+                KanbanDataviewRenderer,
+                "build_lane_metadata",
+                wraps=KanbanDataviewRenderer.build_lane_metadata,
+            ) as metadata_builder,
+            self.assertNumQueries(1),
+        ):
+            form_class = KanbanDataView.form_factory(state)
+        # 3. Both editors reuse the one metadata result and preserve custom labels.
+        metadata_builder.assert_called_once()
+        self.assertEqual(
+            list(form_class.base_fields["custom_groupings"].right_field.choices),
+            [("20", "20"), ("30", "30"), ("40", "40")],
+        )
+        self.assertIn(
+            ("Young", "Young"),
+            form_class.base_fields["lane_colouring"].left_field.widget.choices,
+        )
+
+    def test_lazy_column_query_count_does_not_grow_with_other_lanes(self) -> None:
+        """
+        Use case: A lazy-loaded custom lane has many unrelated scalar lanes nearby.
+        Expected result: Only the requested page loads and the query count stays constant.
+        """
+        # 1. Request the second page of a sorted custom lane.
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        options = KanbanDataView(
+            custom_groupings={"Young": ["20", "30"]},
+            lane_colouring={"Young": "#123456"},
+        )
+        preference = SimpleNamespace(options={"kanban": {"sort_field": "first_name"}})
+        with self.assertNumQueries(3):
+            group = KanbanDataviewRenderer.build_column_group(
+                self.CustomerModel.objects.all(),
+                field,
+                "__group__:Young",
+                preference=preference,
+                page_size=2,
+                page_number=2,
+                options=options,
+            )
+        self.assertEqual([card.first_name for card in group["items"]], ["Card 2"])
+        self.assertEqual(group["count"], 3)
+        self.assertEqual(group["items"][0].kanban_header_colour, "#123456")
+        # 2. Add thirty unrelated lanes with card objects of their own.
+        country = self.CountryModel.objects.get(name="Belgium")
+        self.CustomerModel.objects.bulk_create(
+            [
+                self.CustomerModel(
+                    first_name=f"Other {index}",
+                    last_name="Test",
+                    age=index,
+                    country=country,
+                )
+                for index in range(100, 130)
+            ]
+        )
+        # 3. Loading either an ordinary or custom lane still costs just three queries.
+        with self.assertNumQueries(3):
+            group = KanbanDataviewRenderer.build_column_group(
+                self.CustomerModel.objects.all(),
+                field,
+                "__group__:Young",
+                preference=preference,
+                page_size=2,
+                page_number=2,
+                options=options,
+            )
+        self.assertEqual([card.first_name for card in group["items"]], ["Card 2"])
+        with self.assertNumQueries(3):
+            ordinary = KanbanDataviewRenderer.build_column_group(
+                self.CustomerModel.objects.all(),
+                field,
+                "40",
+                page_size=2,
+                options=options,
+            )
+        self.assertEqual(ordinary["count"], 1)
+        self.assertEqual([card.age for card in ordinary["items"]], [40])
+
+    def test_lazy_column_action_materializes_only_the_requested_page(self) -> None:
+        """
+        Use case: The component requests another page of a merged lane.
+        Expected result: Only that lane loads, retaining sorting, colour and pagination metadata.
+        """
+        from unittest.mock import patch
+
+        # 1. Build the request and canonical renderer state for page two.
+        self.create_cards()
+        country = self.CountryModel.objects.get(name="Belgium")
+        self.CustomerModel.objects.bulk_create([
+            self.CustomerModel(first_name=f"Grouped {index:02}", last_name="Test", age=20, country=country)
+            for index in range(12)
+        ])
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        request = RequestFactory().get(
+            "/", {"kanban_column": "__group__:Young", "kanban_page": "2"}
+        )
+        request.user = self.admin_user
+        options = KanbanDataView(
+            group_by_field="age",
+            custom_groupings={"Young": ["20", "30"]},
+            lane_colouring={"Young": "#123456"},
+            page_size=10,
+        )
+        preference = SimpleNamespace(
+            pk=1, options={"kanban": {"sort_field": "first_name"}}
+        )
+        state = DataviewState(
+            request=request,
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            model=self.CustomerModel,
+            preference=preference,
+            queryset=self.CustomerModel.objects.all(),
+            fields=SimpleNamespace(accessible_fields=[(field, True)]),
+            render_fields=[],
+            avatar_field=None,
+            options=options,
+        )
+        # 2. The endpoint must never fall back to loading the full board.
+        with (
+            patch.object(
+                KanbanDataviewRenderer,
+                "build_groups",
+                side_effect=AssertionError("Lazy loading must not build the board"),
+            ),
+            patch.object(
+                KanbanDataviewRenderer,
+                "_materialize_lane",
+                wraps=KanbanDataviewRenderer._materialize_lane,
+            ) as materializer,
+        ):
+            response = KanbanDataviewRenderer.handle_action("column", request, state)
+        # 3. The second page contains only its own sorted cards with the custom colour.
+        self.assertEqual(response.status_code, 200)
+        materializer.assert_called_once()
+        html = response.content.decode()
+        self.assertIn("Grouped 07", html)
+        self.assertNotIn("Grouped 06", html)
+        self.assertNotIn("Card 0", html)
+        self.assertNotIn("Card 3", html)
+        self.assertIn("background-color: #123456", html)

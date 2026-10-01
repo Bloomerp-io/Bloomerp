@@ -156,14 +156,14 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if not column_value:
             return HttpResponse("Missing kanban column.", status=400)
 
-        groups = cls.build_groups(
-            state.queryset, group_by_field, user=request.user,
+        group = cls.build_column_group(
+            state.queryset, group_by_field, column_value,
             preference=state.preference,
             options=state.options,
+            user=request.user,
             page_size=getattr(state.options, "page_size", 25),
             page_number=request.GET.get("kanban_page", 1),
         )
-        group = next((item for item in groups if item["request_value"] == column_value), None)
         if group is None:
             return HttpResponse("Kanban column not found.", status=404)
 
@@ -241,38 +241,163 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     @classmethod
     def build_column_group(
         cls,
-        queryset,
-        group_by_field,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
         column_value: str,
-        preference=None,
+        preference: UserListViewPreference | None = None,
         page_size: int | None = None,
-        page_number=1,
-    ) -> dict | None:
-        field_name = group_by_field.field
-        field_type = group_by_field.field_type
-        model_field = cls._get_model_field(queryset, field_name)
-        value = cls._coerce_column_value(column_value, model_field)
-
-        column_queryset = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
-        item_count = column_queryset.count()
-        if item_count == 0 and value is not None:
-            return None
-
-        if value is None:
-            label = "Unassigned"
-        elif field_type in ["ForeignKey", "OneToOneField"]:
-            label = cls._get_related_label(queryset, field_name, value)
+        page_number: int | str = 1,
+        options: KanbanDataView | None = None,
+        user: AbstractBloomerpUser | None = None,
+    ) -> dict[str, Any] | None:
+        """Resolve and paginate only the requested ordinary or custom lane."""
+        custom_groupings = getattr(options, "custom_groupings", {})
+        if (
+            column_value.startswith("__group__:")
+            and column_value[len("__group__:") :] in custom_groupings
+        ):
+            requested_keys = custom_groupings.get(column_value[len("__group__:") :], [])
         else:
-            label = cls._get_choice_label(model_field, value)
-
-        return cls._build_group(
-            value,
-            label,
-            column_queryset,
-            page_size,
-            page_number,
-            item_count=item_count,
+            requested_keys = [column_value]
+        if not requested_keys:
+            return None
+        model_field = cls._get_model_field(queryset, group_by_field.field)
+        values = []
+        for key in requested_keys:
+            try:
+                if key == KANBAN_EMPTY_COLUMN_VALUE:
+                    value = None
+                elif isinstance(model_field, (ForeignKey, OneToOneField)):
+                    value = model_field.target_field.to_python(key)
+                else:
+                    value = model_field.to_python(key) if model_field else key
+            except (TypeError, ValueError, ValidationError):
+                continue
+            values.append(value)
+        if not values:
+            return None
+        lane_queryset = cls._lane_queryset(queryset, group_by_field, values, preference)
+        related_queryset = None
+        if isinstance(model_field, (ForeignKey, OneToOneField)):
+            related_queryset = cls.get_allowed_related_queryset(
+                group_by_field, user
+            ).filter(pk__in=[value for value in values if value is not None])
+        metadata = cls.build_lane_metadata(
+            lane_queryset,
+            group_by_field,
+            user,
+            related_queryset,
         )
+        metadata = cls.merge_lane_metadata(metadata, custom_groupings)
+        group = next(
+            (item for item in metadata if item["request_value"] == column_value), None
+        )
+        if group is None:
+            return None
+        return cls._materialize_lane(
+            queryset, group_by_field, group, preference, page_size, page_number, options
+        )
+
+    @classmethod
+    def build_lane_metadata(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        user: AbstractBloomerpUser | None = None,
+        allowed_related_queryset: QuerySet | None = None,
+    ) -> list[dict[str, Any]]:
+        """Collect eligible lane labels, keys and counts without querying any card objects."""
+        field_name = group_by_field.field
+        model_field = cls._get_model_field(queryset, field_name)
+        counts = {
+            row[field_name]: row["item_count"]
+            for row in queryset.order_by()
+            .values(field_name)
+            .annotate(item_count=Count("pk"))
+            .order_by(field_name)
+        }
+        empty_count = sum(
+            count for value, count in counts.items() if value in (None, "")
+        )
+        groups = (
+            [cls._lane_metadata(None, "Unassigned", empty_count)] if empty_count else []
+        )
+        if isinstance(model_field, (ForeignKey, OneToOneField)):
+            related_queryset = allowed_related_queryset
+            if related_queryset is None:
+                related_queryset = cls.get_allowed_related_queryset(
+                    group_by_field, user
+                )
+            groups.extend(
+                cls._lane_metadata(item.pk, str(item), counts.get(item.pk, 0))
+                for item in related_queryset
+            )
+            return groups
+        seen_values = {None, ""}
+        for value, label in cls._iter_choices(
+            getattr(model_field, "choices", None) or []
+        ):
+            if value in seen_values:
+                continue
+            groups.append(cls._lane_metadata(value, str(label), counts.get(value, 0)))
+            seen_values.add(value)
+        groups.extend(
+            cls._lane_metadata(value, str(value), count)
+            for value, count in counts.items()
+            if value not in seen_values
+        )
+        return groups
+
+    @classmethod
+    def _lane_metadata(cls, value: Any, label: str, count: int) -> dict[str, Any]:
+        """Describe an ordinary lane without constructing or evaluating its card queryset."""
+        return {
+            "value": value,
+            "request_value": cls._format_column_value(value),
+            "label": label,
+            "count": count,
+            "member_values": [value],
+        }
+
+    @classmethod
+    def merge_lane_metadata(
+        cls,
+        groups: list[dict[str, Any]],
+        custom_groupings: dict[str, list[str]],
+    ) -> list[dict[str, Any]]:
+        """Merge eligible member descriptions and counts without loading cards."""
+        by_value = {group["request_value"]: group for group in groups}
+        consumed: set[str] = set()
+        merged = []
+        for label, values in custom_groupings.items():
+            members = [
+                by_value[value]
+                for value in values
+                if value in by_value and value not in consumed
+            ]
+            if not members:
+                continue
+            consumed.update(member["request_value"] for member in members)
+            merged.append(
+                {
+                    "value": label,
+                    "label": label,
+                    "request_value": "__group__:" + label,
+                    "colour_key": label,
+                    "count": sum(member["count"] for member in members),
+                    "member_values": [
+                        value for member in members for value in member["member_values"]
+                    ],
+                    "destinations": [
+                        {"value": member["request_value"], "label": member["label"]}
+                        for member in members
+                    ],
+                }
+            )
+        merged.extend(
+            group for group in groups if group["request_value"] not in consumed
+        )
+        return merged
 
     @classmethod
     def build_groups(
@@ -286,130 +411,102 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         page_number: int | str = 1,
         options: KanbanDataView | None = None,
     ) -> list[dict[str, Any]]:
-        """Build eligible lanes, merging configured members without hiding unmapped cards."""
-        field_name = group_by_field.field
-        model_field = cls._get_model_field(queryset, field_name)
-        groups = []
-
-        if isinstance(model_field, (ForeignKey, OneToOneField)):
-            count_rows = list(
-                queryset
-                .values(field_name)
-                .annotate(item_count=Count("pk"))
-                .order_by(field_name)
+        """Resolve lane metadata first, then load only each final lane's visible page."""
+        metadata = cls.build_lane_metadata(
+            queryset, group_by_field, user, allowed_related_queryset
+        )
+        metadata = cls.merge_lane_metadata(
+            metadata, getattr(options, "custom_groupings", {})
+        )
+        return [
+            cls._materialize_lane(
+                queryset,
+                group_by_field,
+                group,
+                preference,
+                page_size,
+                page_number,
+                options,
             )
-            counts_by_value = {
-                row[field_name]: row["item_count"]
-                for row in count_rows
-            }
+            for group in metadata
+        ]
 
-            if None in counts_by_value:
-                items = cls._build_column_queryset(queryset, field_name, model_field, None, preference=preference)
-                groups.append(cls._build_group(
-                    None, "Unassigned", items, page_size, page_number,
-                    item_count=counts_by_value[None]
-                ))
+    @classmethod
+    def _lane_queryset(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        values: list[Any],
+        preference: UserListViewPreference | None,
+    ) -> QuerySet:
+        """Filter concrete lane members and apply the saved Kanban sorting once."""
+        model_field = cls._get_model_field(queryset, group_by_field.field)
+        lane_filter = Q(pk__in=[])
+        for value in values:
+            lane_filter |= (
+                cls._build_empty_filter(group_by_field.field, model_field)
+                if value is None
+                else Q(**{group_by_field.field: value})
+            )
+        items = queryset.filter(lane_filter)
+        sort_options = (
+            (preference.options or {}).get("kanban", {}) if preference else {}
+        )
+        sort_field = sort_options.get("sort_field")
+        if sort_field:
+            items = items.order_by(
+                ("-" if sort_options.get("sort_direction") == "desc" else "")
+                + sort_field
+            )
+        return items
 
-            if allowed_related_queryset is None:
-                allowed_related_queryset = cls.get_allowed_related_queryset(
-                    group_by_field,
-                    user,
-                )
-
-            for related_object in allowed_related_queryset:
-                value = related_object.pk
-                items = cls._build_column_queryset(
-                    queryset,
-                    field_name,
-                    model_field,
-                    value,
-                    preference=preference,
-                )
-                groups.append(cls._build_group(
-                    value,
-                    str(related_object),
-                    items,
-                    page_size,
-                    page_number,
-                    item_count=counts_by_value.get(value, 0),
-                ))
-        else:
-            empty_count = queryset.filter(cls._build_empty_filter(field_name, model_field)).count()
-            if empty_count:
-                items = cls._build_column_queryset(queryset, field_name, model_field, None, preference=preference)
-                groups.append(cls._build_group(
-                    None, "Unassigned", items, page_size, page_number,
-                    item_count=empty_count
-                ))
-
-            if model_field and getattr(model_field, "choices", None):
-                seen_values = set()
-                counts_by_value = {
-                    row[field_name]: row["item_count"]
-                    for row in (
-                        queryset
-                        .exclude(cls._build_empty_filter(field_name, model_field))
-                        .values(field_name)
-                        .annotate(item_count=Count("pk"))
-                        .order_by(field_name)
-                    )
-                }
-
-                for choice_value, choice_label in cls._iter_choices(model_field.choices):
-                    if choice_value in (None, ""):
-                        continue
-
-                    choice_items = cls._build_column_queryset(queryset, field_name, model_field, choice_value, preference=preference)
-                    groups.append(cls._build_group(
-                        choice_value, str(choice_label), choice_items, page_size, page_number,
-                        item_count=counts_by_value.get(choice_value, 0)
-                    ))
-                    seen_values.add(choice_value)
-
-                for value, item_count in counts_by_value.items():
-                    if value in seen_values:
-                        continue
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
-                    groups.append(cls._build_group(
-                        value, str(value), items, page_size, page_number,
-                        item_count=item_count
-                    ))
-            else:
-                count_rows = (
-                    queryset
-                    .exclude(cls._build_empty_filter(field_name, model_field))
-                    .values(field_name)
-                    .annotate(item_count=Count("pk"))
-                    .order_by(field_name)
-                )
-                for row in count_rows:
-                    value = row[field_name]
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
-                    groups.append(cls._build_group(
-                        value, str(value), items, page_size, page_number,
-                        item_count=row["item_count"]
-                    ))
-
-        custom_groupings = getattr(options, "custom_groupings", {})
+    @classmethod
+    def _materialize_lane(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        metadata: dict[str, Any],
+        preference: UserListViewPreference | None,
+        page_size: int | None,
+        page_number: int | str,
+        options: KanbanDataView | None,
+    ) -> dict[str, Any]:
+        """Paginate one final lane and attach its header and destination presentation."""
+        items = cls._lane_queryset(
+            queryset, group_by_field, metadata["member_values"], preference
+        )
+        group = cls._build_group(
+            metadata["value"],
+            metadata["label"],
+            items,
+            page_size,
+            page_number,
+            metadata["count"],
+        )
+        group.update(metadata)
         colours = getattr(options, "lane_colouring", {})
-        if custom_groupings:
-            groups = cls._merge_custom_groups(
-                groups, custom_groupings, queryset, group_by_field,
-                preference, page_size, page_number,
+        group["colour"] = colours.get(group.get("colour_key", group["request_value"]))
+        group["foreground"] = cls._header_foreground(group["colour"])
+        group.setdefault(
+            "destinations", [{"value": group["request_value"], "label": group["label"]}]
+        )
+        group["destination_value"] = group["destinations"][0]["value"]
+        for destination in group["destinations"]:
+            destination["colour"] = colours.get(destination["value"], group["colour"])
+        model_field = cls._get_model_field(queryset, group_by_field.field)
+        for item in group["items"]:
+            raw_value = (
+                getattr(item, model_field.attname)
+                if model_field
+                else getattr(item, group_by_field.field)
             )
-        for group in groups:
-            colour_key = group.get("colour_key", group["request_value"])
-            group["colour"] = colours.get(colour_key)
-            group["foreground"] = cls._header_foreground(group["colour"])
-            group.setdefault("destinations", [{"value": group["request_value"], "label": group["label"]}])
-            group["destination_value"] = group["destinations"][0]["value"]
-            for destination in group["destinations"]:
-                destination["colour"] = colours.get(destination["value"], group["colour"])
-            for item in group["items"]:
-                raw_value = getattr(item, model_field.attname) if model_field else getattr(item, field_name)
-                item.kanban_header_colour = colours.get(cls._format_column_value(raw_value), group["colour"])
-                item.kanban_header_foreground = cls._header_foreground(item.kanban_header_colour)
-        return groups
+            item.kanban_header_colour = colours.get(
+                cls._format_column_value(raw_value), group["colour"]
+            )
+            item.kanban_header_foreground = cls._header_foreground(
+                item.kanban_header_colour
+            )
+        return group
 
     @staticmethod
     def _header_foreground(colour: str | None) -> str:
@@ -420,52 +517,6 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         linear = [channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
         luminance = sum(channel * weight for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True))
         return "#000000" if luminance > 0.179 else "#ffffff"
-
-    @classmethod
-    def _merge_custom_groups(
-        cls,
-        groups: list[dict[str, Any]],
-        custom_groupings: dict[str, list[str]],
-        queryset: QuerySet,
-        group_by_field: ApplicationField,
-        preference: UserListViewPreference | None,
-        page_size: int | None,
-        page_number: int | str,
-    ) -> list[dict[str, Any]]:
-        """Combine eligible member querysets before pagination and retain original lanes."""
-        by_value = {group["request_value"]: group for group in groups}
-        consumed: set[str] = set()
-        merged: list[dict[str, Any]] = []
-        model_field = cls._get_model_field(queryset, group_by_field.field)
-        for label, values in custom_groupings.items():
-            members = [by_value[value] for value in values if value in by_value and value not in consumed]
-            if not members:
-                continue
-            lane_filter = Q(pk__in=[])
-            for member in members:
-                consumed.add(member["request_value"])
-                if member["value"] is None:
-                    lane_filter |= cls._build_empty_filter(group_by_field.field, model_field)
-                else:
-                    lane_filter |= Q(**{group_by_field.field: member["value"]})
-            items = queryset.filter(lane_filter)
-            sort_options = (preference.options or {}).get("kanban", {}) if preference else {}
-            sort_field = sort_options.get("sort_field")
-            if sort_field:
-                items = items.order_by(("-" if sort_options.get("sort_direction") == "desc" else "") + sort_field)
-            group = cls._build_group(
-                label, label, items, page_size, page_number,
-                item_count=sum(member["count"] for member in members),
-            )
-            group.update({
-                "request_value": "__group__:" + label,
-                "colour_key": label,
-                "destinations": [{"value": member["request_value"], "label": member["label"]} for member in members],
-            })
-            merged.append(group)
-        merged.extend(group for group in groups if group["request_value"] not in consumed)
-        return merged
-
 
     @staticmethod
     def _format_column_value(value) -> str:
