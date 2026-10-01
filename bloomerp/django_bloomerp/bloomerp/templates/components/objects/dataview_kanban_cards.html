@@ -9,7 +9,7 @@
     data-object-string="{{ object }}"
     bloomerp-component="kanban-card"
 >
-    <div class="kanban-card-header mb-2 flex items-center gap-2{% if object.kanban_header_colour %} -mx-3 -mt-3 rounded-t-xl p-3{% endif %}" {% if object.kanban_header_colour %}style="background-color: {{ object.kanban_header_colour }}; color: {{ object.kanban_header_foreground }}"{% endif %}>
+    <div class="kanban-card-header mb-2 flex items-center gap-2 -mx-3 -mt-3 rounded-t-xl p-3" {% if object.kanban_header_colour %}style="background-color: {{ object.kanban_header_colour }}; color: {{ object.kanban_header_foreground }}"{% endif %}>
         {% if avatar_field %}
             <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover shrink-0" />
         {% endif %}

@@ -400,6 +400,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         for group in groups:
             colour_key = group.get("colour_key", group["request_value"])
             group["colour"] = colours.get(colour_key)
+            group["foreground"] = cls._header_foreground(group["colour"])
             group.setdefault("destinations", [{"value": group["request_value"], "label": group["label"]}])
             group["destination_value"] = group["destinations"][0]["value"]
             for destination in group["destinations"]:
