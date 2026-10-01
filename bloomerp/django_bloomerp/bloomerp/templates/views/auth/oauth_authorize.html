@@ -1,5 +1,5 @@
 {% extends "views/base.html" %}
-{% load static %}
+{% load static i18n %}
 
 {% block body %}
 <main class="min-h-screen flex flex-col items-center justify-center px-4 py-8 sm:px-6">
@@ -11,46 +11,46 @@
                 <i class="fa-solid fa-link text-xl" aria-hidden="true"></i>
             </div>
             <h1 id="oauth-consent-title" class="text-2xl font-bold tracking-tight">
-                <c-i18n.blocktrans>Connect ChatGPT to Bloomerp</c-i18n.blocktrans>
+                {% translate "Connect ChatGPT to Bloomerp" %}
             </h1>
             <p class="mt-2 text-sm text-gray-500 dark:text-zinc-400">
-                <c-i18n.blocktrans>Review the access below before connecting your account.</c-i18n.blocktrans>
+                {% translate "Review the access below before connecting your account." %}
             </p>
 
             <div class="mt-6 rounded-xl border border-gray-200 bg-base p-4 dark:border-zinc-700 dark:bg-zinc-800">
                 <p class="text-xs font-medium text-gray-500 dark:text-zinc-400">
-                    <c-i18n.blocktrans>Signed in as</c-i18n.blocktrans>
+                    {% translate "Signed in as" %}
                 </p>
                 <p class="mt-1 font-semibold break-words">{{ consent_user }}</p>
                 <p class="mt-1 text-xs text-gray-500 break-all dark:text-zinc-400">{{ resource }}</p>
             </div>
 
             <h2 class="mt-6 text-sm font-semibold">
-                <c-i18n.blocktrans>By allowing access, ChatGPT can:</c-i18n.blocktrans>
+                {% translate "By allowing access, ChatGPT can:" %}
             </h2>
             <ul class="mt-3 space-y-3 text-sm">
                 <li class="flex gap-3">
                     <i class="fa-solid fa-check mt-1 text-primary" aria-hidden="true"></i>
-                    <span><c-i18n.blocktrans>Use Bloomerp MCP tools with your existing account permissions.</c-i18n.blocktrans></span>
+                    <span>{% translate "Use Bloomerp MCP tools with your existing account permissions." %}</span>
                 </li>
                 <li class="flex gap-3">
                     <i class="fa-solid fa-clock mt-1 text-primary" aria-hidden="true"></i>
-                    <span><c-i18n.blocktrans>Stay connected for two weeks before you need to authorize again.</c-i18n.blocktrans></span>
+                    <span>{% translate "Stay connected for two weeks before you need to authorize again." %}</span>
                 </li>
             </ul>
 
             <div class="mt-6 rounded-xl bg-warning-light p-4 text-sm text-warning-dark">
-                <p class="font-semibold"><c-i18n.blocktrans>This includes tools that can change data.</c-i18n.blocktrans></p>
-                <p class="mt-1"><c-i18n.blocktrans>ChatGPT can only access records and perform actions your account is permitted to use.</c-i18n.blocktrans></p>
+                <p class="font-semibold">{% translate "This includes tools that can change data." %}</p>
+                <p class="mt-1">{% translate "ChatGPT can only access records and perform actions your account is permitted to use." %}</p>
             </div>
 
             <form method="post" class="mt-6 flex flex-col gap-3 sm:flex-row">
                 {% csrf_token %}
                 <button type="submit" name="decision" value="approve" class="btn btn-primary flex-1">
-                    <c-i18n.blocktrans>Allow access</c-i18n.blocktrans>
+                    {% translate "Allow access" %}
                 </button>
                 <button type="submit" name="decision" value="deny" class="btn btn-secondary flex-1">
-                    <c-i18n.blocktrans>Deny</c-i18n.blocktrans>
+                    {% translate "Deny" %}
                 </button>
             </form>
         </div>
