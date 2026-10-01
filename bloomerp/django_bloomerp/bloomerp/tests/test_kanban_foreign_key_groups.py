@@ -5,6 +5,7 @@ from django.test import RequestFactory
 
 from bloomerp.dataviews.definition import DataviewPagination, DataviewState
 from bloomerp.dataviews.kanban.renderer import KanbanDataviewRenderer
+from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
     ApplicationField,
@@ -13,10 +14,7 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
 )
-from bloomerp.models.access_control.row_policy_rule import (
-    RowPolicyRuleCondition,
-    RowPolicyRuleContent,
-)
+from bloomerp.permissions.definition import RowPolicyRuleContent
 from bloomerp.permissions.manager import ensure_model_permissions
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 
@@ -79,7 +77,7 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
             [("Belgium", 1), ("Brazil", 0), ("Netherlands", 0)],
         )
 
-    def test_foreign_key_groups_use_related_row_permissions(self):
+    def test_foreign_key_groups_use_related_row_permissions(self) -> None:
         """
         Use case: A user can view only one otherwise eligible foreign-key value.
         Expected result: Only that value is available as a Kanban lane.
@@ -87,7 +85,6 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
         # 1. Create a row policy granting access only to Netherlands.
         ensure_model_permissions(self.CountryModel)
         content_type = ContentType.objects.get_for_model(self.CountryModel)
-        name_field = ApplicationField.get_by_field(self.CountryModel, "name")
         field_policy = FieldPolicy.objects.create(
             content_type=content_type,
             name="Kanban country fields",
@@ -102,9 +99,9 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
             rule=RowPolicyRuleContent(
                 connector="OR",
                 conditions=[
-                    RowPolicyRuleCondition(
-                        application_field_id=str(name_field.pk),
-                        operator=lookups.EQUALS.id,
+                    FilterCondition(
+                        field_path="name",
+                        lookup_id=lookups.EQUALS.id,
                         value="Netherlands",
                     )
                 ],
@@ -131,7 +128,7 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
         # 3. Verify row permissions further reduce the eligible lanes.
         self.assertEqual([group["label"] for group in groups], ["Netherlands"])
 
-    def test_more_than_fifty_allowed_values_requires_another_grouping(self):
+    def test_more_than_fifty_allowed_values_requires_another_grouping(self) -> None:
         """
         Use case: A grouping field exposes fifty-one eligible foreign-key values.
         Expected result: No partial board renders and the user sees the limit message.
@@ -151,7 +148,7 @@ class TestKanbanForeignKeyGroups(BaseBloomerpTestCaseWithModels):
             request=request,
             content_type=content_type,
             model=self.CustomerModel,
-            preference=SimpleNamespace(view_type="kanban", options={}),
+            preference=SimpleNamespace(pk=1, view_type="kanban", options={}),
             queryset=self.CustomerModel.objects.all(),
             fields=SimpleNamespace(
                 accessible_fields=[(self.country_field, True)],

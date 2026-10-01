@@ -36,6 +36,7 @@ TODO: This and dataview_kanban_cards need to be merged
             class="kanban-column flex-shrink-0 w-72 bg-base rounded-xl border border-gray-200 flex flex-col max-h-full"
             data-column-value="{{ group.request_value }}"
             data-kanban-total-count="{{ group.count }}"
+            {% if group.colour %}style="border-top: 4px solid {{ group.colour }}"{% endif %}
         >
             <!-- Column Header -->
             <div class="kanban-column-header p-3 border-b border-gray-200 bg-base rounded-t-lg">
@@ -49,6 +50,20 @@ TODO: This and dataview_kanban_cards need to be merged
                 </div>
             </div>
             
+            {% if group.destinations|length > 1 %}
+            <div class="p-2 space-y-1">
+                <label class="text-xs text-gray-500"><c-i18n.blocktrans>Move to</c-i18n.blocktrans>
+                    <select data-kanban-destination class="select select-sm w-full">
+                        {% for destination in group.destinations %}<option value="{{ destination.value }}">{{ destination.label }}</option>{% endfor %}
+                    </select>
+                </label>
+                <div class="kanban-destinations space-y-1">
+                    {% for destination in group.destinations %}
+                    <div data-kanban-dropzone data-kanban-target data-column-value="{{ destination.value }}" class="rounded-xl border border-gray-200 p-2 text-sm">{{ destination.label }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             <!-- Column Body (Drop Zone) -->
             <div
                 class="kanban-column-body flex-1 p-2 space-y-2 overflow-y-auto min-h-[100px]"
@@ -92,4 +107,10 @@ TODO: This and dataview_kanban_cards need to be merged
     transform: rotate(3deg);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
+</style>
+
+<style>
+.kanban-destinations { display: none; }
+.kanban-board:has(.dragging) .kanban-destinations { display: block; }
+[data-kanban-target].drag-over { outline: 2px solid currentColor; }
 </style>

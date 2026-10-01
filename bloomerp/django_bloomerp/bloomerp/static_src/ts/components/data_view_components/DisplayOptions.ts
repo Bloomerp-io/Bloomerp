@@ -1,4 +1,6 @@
 import BaseComponent, { getComponent, initComponents } from "../BaseComponent";
+import showMessage from "../../utils/messages";
+import { MessageType } from "../UiMessage";
 import { getCsrfToken } from "@/utils/cookies";
 
 type DisplayOptionValue = string | string[];
@@ -75,6 +77,7 @@ export class DataViewDisplayOptions extends BaseComponent {
         }
     }
 
+    /** Persist options and display validation errors while retaining the editable form. */
     private async submitValues(values: Record<string, DisplayOptionValue>): Promise<void> {
         if (!this.element) return;
 
@@ -107,7 +110,7 @@ export class DataViewDisplayOptions extends BaseComponent {
         });
 
         if (!response.ok) {
-            console.error("Failed to update data view display options:", response.statusText);
+            showMessage(await response.text() || "Unable to save display options.", MessageType.ERROR);
             return;
         }
 

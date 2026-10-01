@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Count, ForeignKey, OneToOneField, Q, QuerySet
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
-from typing import TYPE_CHECKING
 
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
+
+from ..definition import DataviewPagination, DataviewState
+from .config import KanbanDataView
 
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
@@ -16,7 +20,6 @@ if TYPE_CHECKING:
     from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 
 from ..definition import BaseDataviewRenderer
-
 
 KANBAN_EMPTY_COLUMN_VALUE = "__none__"
 KANBAN_MAX_RELATED_COLUMNS = 50
@@ -26,7 +29,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     template_name = "cotton/features/dataviews/kanban.html"
     reserved_query_params = {"kanban_page", "kanban_column"}
 
-    def get_context_data(self, pagination) -> dict:
+    def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
+        """Build paginated lanes and their configured drop targets and colours."""
         context = super().get_context_data(pagination)
         move_url = reverse(
             "components_dataview_renderer_operation",
@@ -72,6 +76,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                     allowed_related_queryset=allowed_related_queryset,
                     preference=self.state.preference,
                     page_size=page_size,
+                    options=self.options,
                 )
 
         context.update({
@@ -133,7 +138,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         )
 
     @classmethod
-    def handle_action(cls, action: str, request, state) -> HttpResponse:
+    def handle_action(cls, action: str, request: HttpRequest, state: DataviewState) -> HttpResponse:
+        """Handle card moves and additional pages of ordinary or custom lanes."""
         if action == "move":
             return cls._move_card(request, state)
         if action != "column":
@@ -150,14 +156,14 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if not column_value:
             return HttpResponse("Missing kanban column.", status=400)
 
-        group = cls.build_column_group(
-            state.queryset,
-            group_by_field,
-            column_value,
+        groups = cls.build_groups(
+            state.queryset, group_by_field, user=request.user,
             preference=state.preference,
+            options=state.options,
             page_size=getattr(state.options, "page_size", 25),
             page_number=request.GET.get("kanban_page", 1),
         )
+        group = next((item for item in groups if item["request_value"] == column_value), None)
         if group is None:
             return HttpResponse("Kanban column not found.", status=404)
 
@@ -178,7 +184,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         )
 
     @classmethod
-    def _move_card(cls, request, state) -> HttpResponse:
+    def _move_card(cls, request: HttpRequest, state: DataviewState) -> HttpResponse:
+        """Persist a concrete lane value after existing object and field checks."""
         if request.method != "POST":
             return HttpResponse("Method not allowed", status=405)
 
@@ -214,7 +221,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if normalized_value is None:
             if not model_field.null and not model_field.blank:
                 return HttpResponse("Field does not allow empty values", status=400)
-            value = None
+            value = "" if model_field.empty_strings_allowed and not model_field.null else None
         else:
             try:
                 if isinstance(model_field, (ForeignKey, OneToOneField)):
@@ -270,14 +277,16 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     @classmethod
     def build_groups(
         cls,
-        queryset,
-        group_by_field,
-        user=None,
-        allowed_related_queryset=None,
-        preference=None,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        user: AbstractBloomerpUser | None = None,
+        allowed_related_queryset: QuerySet | None = None,
+        preference: UserListViewPreference | None = None,
         page_size: int | None = None,
-        page_number=1,
-    ) -> list[dict]:
+        page_number: int | str = 1,
+        options: KanbanDataView | None = None,
+    ) -> list[dict[str, Any]]:
+        """Build eligible lanes, merging configured members without hiding unmapped cards."""
         field_name = group_by_field.field
         model_field = cls._get_model_field(queryset, field_name)
         groups = []
@@ -381,7 +390,65 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                         item_count=row["item_count"]
                     ))
 
+        custom_groupings = getattr(options, "custom_groupings", {})
+        colours = getattr(options, "lane_colouring", {})
+        if custom_groupings:
+            groups = cls._merge_custom_groups(
+                groups, custom_groupings, queryset, group_by_field,
+                preference, page_size, page_number,
+            )
+        for group in groups:
+            colour_key = group.get("colour_key", group["request_value"])
+            group["colour"] = colours.get(colour_key)
+            group.setdefault("destinations", [{"value": group["request_value"], "label": group["label"]}])
+            group["destination_value"] = group["destinations"][0]["value"]
         return groups
+
+    @classmethod
+    def _merge_custom_groups(
+        cls,
+        groups: list[dict[str, Any]],
+        custom_groupings: dict[str, list[str]],
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        preference: UserListViewPreference | None,
+        page_size: int | None,
+        page_number: int | str,
+    ) -> list[dict[str, Any]]:
+        """Combine eligible member querysets before pagination and retain original lanes."""
+        by_value = {group["request_value"]: group for group in groups}
+        consumed: set[str] = set()
+        merged: list[dict[str, Any]] = []
+        model_field = cls._get_model_field(queryset, group_by_field.field)
+        for label, values in custom_groupings.items():
+            members = [by_value[value] for value in values if value in by_value and value not in consumed]
+            if not members:
+                continue
+            lane_filter = Q(pk__in=[])
+            for member in members:
+                consumed.add(member["request_value"])
+                if member["value"] is None:
+                    lane_filter |= cls._build_empty_filter(group_by_field.field, model_field)
+                else:
+                    lane_filter |= Q(**{group_by_field.field: member["value"]})
+            items = queryset.filter(lane_filter)
+            sort_options = (preference.options or {}).get("kanban", {}) if preference else {}
+            sort_field = sort_options.get("sort_field")
+            if sort_field:
+                items = items.order_by(("-" if sort_options.get("sort_direction") == "desc" else "") + sort_field)
+            group = cls._build_group(
+                label, label, items, page_size, page_number,
+                item_count=sum(member["count"] for member in members),
+            )
+            group.update({
+                "request_value": "__group__:" + label,
+                "colour_key": label,
+                "destinations": [{"value": member["request_value"], "label": member["label"]} for member in members],
+            })
+            merged.append(group)
+        merged.extend(group for group in groups if group["request_value"] not in consumed)
+        return merged
+
 
     @staticmethod
     def _format_column_value(value) -> str:

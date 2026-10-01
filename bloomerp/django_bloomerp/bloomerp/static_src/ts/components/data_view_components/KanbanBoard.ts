@@ -178,30 +178,38 @@ export class KanbanBoard extends BaseDataViewComponent {
         await this.moveCardTo(this.currentCell.element, destinationDropzone);
     }
 
-    private async moveCardTo(card: HTMLElement, destinationDropzone: HTMLElement): Promise<void> {
-        const originDropzone = card.closest('[data-kanban-dropzone]') as HTMLElement | null;
-        const originValue = originDropzone?.dataset.columnValue ?? null;
-        const destinationValue = destinationDropzone.dataset.columnValue ?? null;
-
-        if (originDropzone === destinationDropzone) return;
-        if (destinationValue === null || originValue === null) return;
-
-        this.removeEmptyPlaceholder(destinationDropzone);
-        destinationDropzone.appendChild(card);
-        this.ensureEmptyPlaceholder(originDropzone);
-        this.adjustColumnTotals(originDropzone, destinationDropzone);
-        this.updateCounts();
-
+    /** Move to a concrete status, including another status inside the same custom lane. */
+    private async moveCardTo(card: HTMLElement, targetDropzone: HTMLElement): Promise<void> {
+        const originDropzone = card.closest<HTMLElement>('.kanban-column-body');
+        const destinationColumn = targetDropzone.closest<HTMLElement>('.kanban-column');
+        const destinationDropzone = destinationColumn?.querySelector<HTMLElement>('.kanban-column-body');
+        if (!originDropzone || !destinationDropzone || card.dataset.kanbanMoving === 'true') return;
+        const selector = destinationColumn?.querySelector<HTMLSelectElement>('[data-kanban-destination]');
+        const destinationValue = targetDropzone.hasAttribute('data-kanban-target')
+            ? targetDropzone.dataset.columnValue
+            : (selector?.value ?? targetDropzone.dataset.columnValue);
+        if (destinationValue === undefined) return;
+        const sameLane = originDropzone === destinationDropzone;
+        if (sameLane && !selector) return;
+        const nextSibling = card.nextSibling;
+        card.dataset.kanbanMoving = 'true';
+        if (!sameLane) {
+            this.removeEmptyPlaceholder(destinationDropzone);
+            destinationDropzone.appendChild(card);
+            this.ensureEmptyPlaceholder(originDropzone);
+            this.adjustColumnTotals(originDropzone, destinationDropzone);
+            this.updateCounts();
+        }
         const updateSucceeded = await this.persistMove(card, destinationValue);
-        if (!updateSucceeded) {
-            if (originDropzone) {
-                this.removeEmptyPlaceholder(originDropzone);
-                originDropzone.appendChild(card);
-            }
+        if (!updateSucceeded && !sameLane) {
+            this.removeEmptyPlaceholder(originDropzone);
+            originDropzone.insertBefore(card, nextSibling?.parentNode === originDropzone ? nextSibling : null);
             this.ensureEmptyPlaceholder(destinationDropzone);
             this.adjustColumnTotals(destinationDropzone, originDropzone);
             this.updateCounts();
         }
+        delete card.dataset.kanbanMoving;
+        if (updateSucceeded) this.dataViewContainer?.refresh();
     }
 
     private async persistMove(card: HTMLElement, destinationValue: string): Promise<boolean> {
@@ -270,13 +278,14 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     }
 
+    /** Refresh counts from lane totals rather than destination target elements. */
     private updateCounts(): void {
         if (!this.element) return;
 
         const columns = Array.from(this.element.querySelectorAll<HTMLElement>('.kanban-column'));
         for (const column of columns) {
             const countEl = column.querySelector<HTMLElement>('[data-kanban-count]');
-            const dropzone = column.querySelector<HTMLElement>('[data-kanban-dropzone]');
+            const dropzone = column.querySelector<HTMLElement>('.kanban-column-body');
             if (!countEl || !dropzone) continue;
 
             const totalCount = column.dataset.kanbanTotalCount;
@@ -312,6 +321,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     }
 
+    /** Find the adjacent lane body for a keyboard move. */
     private getAdjacentDropzone(direction: -1 | 1, card: HTMLElement): HTMLElement | null {
         if (!this.element) return null;
 
@@ -329,7 +339,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         if (nextColumnIndex >= columns.length) nextColumnIndex = columns.length - 1;
 
         const targetColumn = columns[nextColumnIndex];
-        return targetColumn.querySelector<HTMLElement>('[data-kanban-dropzone]');
+        return targetColumn.querySelector<HTMLElement>('.kanban-column-body');
     }
     
     // Helper functions
@@ -356,6 +366,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         return nextEl ? (getComponent(nextEl) as KanbanCard | null) : null;
     }
 
+    /** Find a card in the adjacent lane body for keyboard navigation. */
     private getCardInAdjacentColumn(direction: -1 | 1): KanbanCard | null {
         if (!this.element || !this.currentCell?.element) return null;
 
@@ -374,7 +385,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         if (nextColumnIndex >= columns.length) nextColumnIndex = columns.length - 1;
 
         const targetColumn = columns[nextColumnIndex];
-        const targetBody = targetColumn.querySelector<HTMLElement>('[data-kanban-dropzone]');
+        const targetBody = targetColumn.querySelector<HTMLElement>('.kanban-column-body');
         if (!targetBody) return null;
 
         const currentBody = currentEl.closest('[data-kanban-dropzone]') as HTMLElement | null;

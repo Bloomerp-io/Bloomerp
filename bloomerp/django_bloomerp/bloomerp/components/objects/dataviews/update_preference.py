@@ -15,7 +15,7 @@ from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.user_services import toggle_field_visibility
 from django.contrib.contenttypes.models import ContentType
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 
 
@@ -53,8 +53,9 @@ def _change_data_view_field_visibility(
 
 def _change_data_view_options(
     state: DataviewState,
-    post_data,
+    post_data: QueryDict,
 ) -> HttpResponse | None:
+    """Validate typed options and return useful errors for invalid mapping rows."""
     preference = state.preference
     view_type = post_data["dataview_options_view_type"]
     if view_type != preference.view_type:
@@ -67,7 +68,7 @@ def _change_data_view_options(
     form_cls = definition.config_cls.form_factory(state)
     form = form_cls(post_data)
     if not form.is_valid():
-        return HttpResponse("Invalid options", status=400)
+        return HttpResponse(f"Invalid options: {form.errors.as_text()}", status=400)
 
     options = dict(preference.options or {})
     option_model = definition.config_cls

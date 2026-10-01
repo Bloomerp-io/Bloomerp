@@ -80,8 +80,50 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
             for call in self.form_factory.call_args_list
         )
 
+    def _kanban_defaults_saved(self, preference: UserListViewPreference) -> bool:
+        """Verify ordinary options persist alongside empty optional mappings."""
+        return preference.options["kanban"] == {
+            "group_by_field": "age",
+            "custom_groupings": {},
+            "lane_colouring": {},
+            "page_size": 50,
+            "sort_field": "first_name",
+            "sort_direction": "desc",
+        }
+
+    def _prepare_mapping_options(self, scenario: RequestScenario) -> None:
+        """Select numeric grouping and submit the reusable widget's indexed rows."""
+        country = self.CountryModel.objects.get(name="Belgium")
+        for age in [20, 30]:
+            self.CustomerModel.objects.create(first_name="Mapping", last_name="Test", age=age, country=country)
+        preference = self._preference()
+        preference.view_type = "kanban"
+        preference.options = {"kanban": {"group_by_field": "age"}}
+        preference.save(update_fields=["view_type", "options"])
+        scenario.data.update({
+            "custom_groupings__rows": ["0"],
+            "custom_groupings__key_0": "Young",
+            "custom_groupings__value_0": ["20", "30"],
+            "lane_colouring__rows": ["0"],
+            "lane_colouring__key_0": "Young",
+            "lane_colouring__value_0": "#123456",
+        })
+
+    def _mapping_options_saved(self, _response: HttpResponse) -> bool:
+        """Check that indexed mapping rows reach persisted typed options."""
+        options = self._preference().options["kanban"]
+        return options["custom_groupings"] == {"Young": ["20", "30"]} and options["lane_colouring"] == {"Young": "#123456"}
+
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Cover preference operations and their persisted configuration."""
         return [
+            RequestScenario(
+                name="Persist indexed Kanban mapping widget rows",
+                method="POST", user=self.admin_user, view_kwargs=self.view_kwargs,
+                prepare=self._prepare_mapping_options,
+                data={"dataview_options_view_type": "kanban", "group_by_field": "age", "page_size": "25", "sort_direction": "asc"},
+                expected=ExpectedResult(response_validators=self._mapping_options_saved),
+            ),
             RequestScenario(
                 name="Reject GET requests",
                 user=self.admin_user,
@@ -143,13 +185,7 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
                 },
                 expected=ExpectedResult(
                     response_validators=self._preference_matches(
-                        lambda preference: preference.options["kanban"]
-                        == {
-                            "group_by_field": "age",
-                            "page_size": 50,
-                            "sort_field": "first_name",
-                            "sort_direction": "desc",
-                        }
+                        self._kanban_defaults_saved
                     )
                 ),
             ),
