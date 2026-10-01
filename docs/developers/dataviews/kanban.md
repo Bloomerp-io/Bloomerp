@@ -91,3 +91,9 @@ the selected labels. Add/remove controls keep each mapping row compact.
 Intermediate changes do not trigger automatic display-option submission.
 **Apply** emits a change event on the containing form; ordinary form
 submission also includes all mapping rows.
+
+The mapping editor inherits from `BaseWidget`. Its `getValue()` returns ordered
+key/value pairs so unfinished rows and duplicate keys survive serializable state
+restoration. `setValue()` accepts pairs or a mapping object and restores child
+widgets silently by default. Row edits emit `bloomerp:widget-change` with the
+whole mapping; the display options form still submits only when Apply is clicked.
