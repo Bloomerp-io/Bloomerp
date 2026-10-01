@@ -1,3 +1,4 @@
+import MappingWidget from './components/MappingWidget';
 /**
  * Bloomerp Main TypeScript Entry Point
  * 
@@ -170,6 +171,7 @@ registerComponent('sidebar-item', SidebarItem)
 registerComponent('focus-in', FocusIn)
 registerComponent('shortcut-tooltip', ShortcutTooltip);
 registerComponent('ordered-field-select', OrderedFieldSelect);
+registerComponent('mapping-widget', MappingWidget);
 registerComponent('behavior-builder', BehaviorBuilder);
 
 registerComponent('focus-on-form', FocusOnForm);

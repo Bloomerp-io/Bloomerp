@@ -20,12 +20,24 @@ export class KanbanBoard extends BaseDataViewComponent {
     private activeDragSource: HTMLElement | null = null;
     private activeDragSourceValue: string | null = null;
 
+    private keyboardMoveCard: HTMLElement | null = null;
+    private keyboardMoveTarget: HTMLElement | null = null;
+    private readonly onMoveKeyDown = this.handleMoveKeyDown.bind(this);
+
+    /** Initialize card navigation, drag targets and keyboard category selection. */
     public initialize(): void {
         if (!this.element) return;
 
         super.initialize();
 
         this.setupDragAndDrop();
+    }
+
+    /** Clear active movement state and release inherited event listeners on teardown. */
+    public override destroy(): void {
+        this.cancelKeyboardMove();
+        this.onDragEnd();
+        super.destroy();
     }
 
     public override constructContextMenu(): ContextMenuItem[] {
@@ -96,10 +108,12 @@ export class KanbanBoard extends BaseDataViewComponent {
         return true;
     }
 
+    /** Register abortable movement listeners for lane bodies and category sections. */
     private setupDragAndDrop(): void {
         if (!this.element) return;
         const abortController = this.ensureAbortController();
 
+        this.element.addEventListener('keydown', this.onMoveKeyDown, { capture: true, signal: abortController.signal });
         this.element.addEventListener('dragstart', this.onDragStart, { signal: abortController.signal });
         this.element.addEventListener('dragend', this.onDragEnd, { signal: abortController.signal });
 
@@ -114,6 +128,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     }
 
+    /** Keep the source card available while revealing category sections after drag starts. */
     private onDragStart = (event: DragEvent): void => {
         const eventTarget = event.target as HTMLElement | null;
         const target = eventTarget?.closest<HTMLElement>(`[${componentIdentifier}="kanban-card"]`) ?? null;
@@ -123,17 +138,23 @@ export class KanbanBoard extends BaseDataViewComponent {
         this.activeDragSource = target.closest('[data-kanban-dropzone]') as HTMLElement | null;
         this.activeDragSourceValue = this.activeDragSource?.dataset.columnValue ?? null;
 
+        this.cancelKeyboardMove();
         target.classList.add('dragging');
+        requestAnimationFrame((): void => {
+            if (this.activeDragCard === target) this.element?.classList.add('kanban-moving');
+        });
         if (event.dataTransfer) {
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', target.dataset.objectId ?? '');
         }
     };
 
+    /** Restore ordinary card lanes when dragging ends. */
     private onDragEnd = (): void => {
         if (this.activeDragCard) {
             this.activeDragCard.classList.remove('dragging');
         }
+        this.element?.classList.remove('kanban-moving');
         this.clearDropzoneHighlights();
         this.activeDragCard = null;
         this.activeDragSource = null;
@@ -147,61 +168,126 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     };
 
+    /** Highlight only the concrete category under the pointer, without shared drag styles. */
     private onDragEnter = (event: DragEvent): void => {
         const dropzone = (event.currentTarget as HTMLElement | null);
-        if (!dropzone) return;
-        dropzone.classList.add('drag-over');
+        if (!dropzone?.hasAttribute('data-kanban-target')) return;
+        dropzone.classList.add('kanban-drag-over');
     };
 
+    /** Clear a category highlight only when the pointer leaves its full section. */
     private onDragLeave = (event: DragEvent): void => {
         const dropzone = (event.currentTarget as HTMLElement | null);
         if (!dropzone) return;
-        dropzone.classList.remove('drag-over');
+        if (event.relatedTarget instanceof Node && dropzone.contains(event.relatedTarget)) return;
+        dropzone.classList.remove('kanban-drag-over');
     };
 
+    /** Persist the concrete category under the pointer without bubbling to its lane body. */
     private onDrop = async (event: DragEvent): Promise<void> => {
         event.preventDefault();
+        event.stopPropagation();
         const dropzone = event.currentTarget as HTMLElement | null;
         if (!dropzone || !this.activeDragCard) return;
 
-        dropzone.classList.remove('drag-over');
+        dropzone.classList.remove('kanban-drag-over');
 
         await this.moveCardTo(this.activeDragCard, dropzone);
     };
 
+    /** Begin a keyboard move in the adjacent lane and let the user choose its category. */
     private async moveCardByDirection(direction: -1 | 1): Promise<void> {
         if (!this.currentCell?.element) return;
-
-        const destinationDropzone = this.getAdjacentDropzone(direction, this.currentCell.element);
-        if (!destinationDropzone) return;
-
-        await this.moveCardTo(this.currentCell.element, destinationDropzone);
+        if (this.currentCell.element.dataset.kanbanMoving === 'true') return;
+        const destination = this.getAdjacentDropzone(direction, this.currentCell.element);
+        const target = destination?.querySelector<HTMLElement>('[data-kanban-target]');
+        if (!target) return;
+        this.keyboardMoveCard = this.currentCell.element;
+        this.element?.classList.add('kanban-moving', 'kanban-keyboard-moving');
+        this.selectKeyboardTarget(target);
     }
 
-    private async moveCardTo(card: HTMLElement, destinationDropzone: HTMLElement): Promise<void> {
-        const originDropzone = card.closest('[data-kanban-dropzone]') as HTMLElement | null;
-        const originValue = originDropzone?.dataset.columnValue ?? null;
-        const destinationValue = destinationDropzone.dataset.columnValue ?? null;
+    /** Handle category navigation, confirmation and cancellation during a keyboard move. */
+    private handleMoveKeyDown(event: KeyboardEvent): void {
+        if (!this.keyboardMoveCard || !this.keyboardMoveTarget) return;
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Tab'].includes(event.key)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (event.key === 'Escape' || event.key === 'Tab') {
+            this.cancelKeyboardMove();
+            return;
+        }
+        if (event.key === 'Enter') {
+            const card = this.keyboardMoveCard;
+            const target = this.keyboardMoveTarget;
+            this.cancelKeyboardMove();
+            void this.moveCardTo(card, target);
+            return;
+        }
+        const columns = Array.from(this.element.querySelectorAll<HTMLElement>('.kanban-column'));
+        const column = this.keyboardMoveTarget.closest<HTMLElement>('.kanban-column');
+        const targets = Array.from(column?.querySelectorAll<HTMLElement>('[data-kanban-target]') ?? []);
+        const categoryIndex = targets.indexOf(this.keyboardMoveTarget);
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            const index = Math.max(0, Math.min(targets.length - 1, categoryIndex + (event.key === 'ArrowUp' ? -1 : 1)));
+            this.selectKeyboardTarget(targets[index]);
+        } else {
+            const index = Math.max(0, Math.min(columns.length - 1, columns.indexOf(column!) + (event.key === 'ArrowLeft' ? -1 : 1)));
+            const nextTargets = Array.from(columns[index].querySelectorAll<HTMLElement>('[data-kanban-target]'));
+            this.selectKeyboardTarget(nextTargets[Math.min(categoryIndex, nextTargets.length - 1)]);
+        }
+    }
 
-        if (originDropzone === destinationDropzone) return;
-        if (destinationValue === null || originValue === null) return;
+    /** Highlight and announce the selected category while keeping keyboard focus on the board. */
+    private selectKeyboardTarget(target: HTMLElement | undefined): void {
+        if (!target) return;
+        this.keyboardMoveTarget?.classList.remove('keyboard-target');
+        this.keyboardMoveTarget = target;
+        target.classList.add('keyboard-target');
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        const help = this.element.nextElementSibling;
+        if (help?.classList.contains('kanban-move-help')) {
+            help.textContent = `Move to ${target.textContent?.trim()}. Use arrow keys to choose a category, Enter to move, or Escape to cancel.`;
+        }
+        this.element.focus();
+    }
 
-        this.removeEmptyPlaceholder(destinationDropzone);
-        destinationDropzone.appendChild(card);
-        this.ensureEmptyPlaceholder(originDropzone);
-        this.adjustColumnTotals(originDropzone, destinationDropzone);
-        this.updateCounts();
+    /** Close category selection without changing the card's stored value. */
+    private cancelKeyboardMove(): void {
+        this.keyboardMoveTarget?.classList.remove('keyboard-target');
+        this.keyboardMoveCard = null;
+        this.keyboardMoveTarget = null;
+        this.element?.classList.remove('kanban-moving', 'kanban-keyboard-moving');
+    }
 
+    /** Move to a concrete status, including another status inside the same custom lane. */
+    private async moveCardTo(card: HTMLElement, targetDropzone: HTMLElement): Promise<void> {
+        const originDropzone = card.closest<HTMLElement>('.kanban-column-body');
+        const destinationColumn = targetDropzone.closest<HTMLElement>('.kanban-column');
+        const destinationDropzone = destinationColumn?.querySelector<HTMLElement>('.kanban-column-body');
+        if (!originDropzone || !destinationDropzone || card.dataset.kanbanMoving === 'true') return;
+        const destinationValue = targetDropzone.dataset.columnValue;
+        if (destinationValue === undefined) return;
+        const sameLane = originDropzone === destinationDropzone;
+        const nextSibling = card.nextSibling;
+        card.dataset.kanbanMoving = 'true';
+        if (!sameLane) {
+            this.removeEmptyPlaceholder(destinationDropzone);
+            destinationDropzone.appendChild(card);
+            this.ensureEmptyPlaceholder(originDropzone);
+            this.adjustColumnTotals(originDropzone, destinationDropzone);
+            this.updateCounts();
+        }
         const updateSucceeded = await this.persistMove(card, destinationValue);
-        if (!updateSucceeded) {
-            if (originDropzone) {
-                this.removeEmptyPlaceholder(originDropzone);
-                originDropzone.appendChild(card);
-            }
+        if (!updateSucceeded && !sameLane) {
+            this.removeEmptyPlaceholder(originDropzone);
+            originDropzone.insertBefore(card, nextSibling?.parentNode === originDropzone ? nextSibling : null);
             this.ensureEmptyPlaceholder(destinationDropzone);
             this.adjustColumnTotals(destinationDropzone, originDropzone);
             this.updateCounts();
         }
+        delete card.dataset.kanbanMoving;
+        if (updateSucceeded) this.dataViewContainer?.refresh();
     }
 
     private async persistMove(card: HTMLElement, destinationValue: string): Promise<boolean> {
@@ -270,13 +356,14 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     }
 
+    /** Refresh counts from lane totals rather than destination target elements. */
     private updateCounts(): void {
         if (!this.element) return;
 
         const columns = Array.from(this.element.querySelectorAll<HTMLElement>('.kanban-column'));
         for (const column of columns) {
             const countEl = column.querySelector<HTMLElement>('[data-kanban-count]');
-            const dropzone = column.querySelector<HTMLElement>('[data-kanban-dropzone]');
+            const dropzone = column.querySelector<HTMLElement>('.kanban-column-body');
             if (!countEl || !dropzone) continue;
 
             const totalCount = column.dataset.kanbanTotalCount;
@@ -302,16 +389,18 @@ export class KanbanBoard extends BaseDataViewComponent {
         column.dataset.kanbanTotalCount = String(Math.max(0, current + delta));
     }
 
+    /** Remove Kanban-specific hover states from all registered drop zones. */
     private clearDropzoneHighlights(): void {
         if (!this.element) return;
         const dropzones = Array.from(
-            this.element.querySelectorAll<HTMLElement>('[data-kanban-dropzone].drag-over')
+            this.element.querySelectorAll<HTMLElement>('[data-kanban-dropzone].kanban-drag-over')
         );
         for (const dropzone of dropzones) {
-            dropzone.classList.remove('drag-over');
+            dropzone.classList.remove('kanban-drag-over');
         }
     }
 
+    /** Find the adjacent lane body for a keyboard move. */
     private getAdjacentDropzone(direction: -1 | 1, card: HTMLElement): HTMLElement | null {
         if (!this.element) return null;
 
@@ -329,7 +418,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         if (nextColumnIndex >= columns.length) nextColumnIndex = columns.length - 1;
 
         const targetColumn = columns[nextColumnIndex];
-        return targetColumn.querySelector<HTMLElement>('[data-kanban-dropzone]');
+        return targetColumn.querySelector<HTMLElement>('.kanban-column-body');
     }
     
     // Helper functions
@@ -356,6 +445,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         return nextEl ? (getComponent(nextEl) as KanbanCard | null) : null;
     }
 
+    /** Find a card in the adjacent lane body for keyboard navigation. */
     private getCardInAdjacentColumn(direction: -1 | 1): KanbanCard | null {
         if (!this.element || !this.currentCell?.element) return null;
 
@@ -374,7 +464,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         if (nextColumnIndex >= columns.length) nextColumnIndex = columns.length - 1;
 
         const targetColumn = columns[nextColumnIndex];
-        const targetBody = targetColumn.querySelector<HTMLElement>('[data-kanban-dropzone]');
+        const targetBody = targetColumn.querySelector<HTMLElement>('.kanban-column-body');
         if (!targetBody) return null;
 
         const currentBody = currentEl.closest('[data-kanban-dropzone]') as HTMLElement | null;

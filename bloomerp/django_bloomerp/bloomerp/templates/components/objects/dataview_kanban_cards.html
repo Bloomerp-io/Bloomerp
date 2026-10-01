@@ -9,11 +9,11 @@
     data-object-string="{{ object }}"
     bloomerp-component="kanban-card"
 >
-    <div class="mb-2 flex items-center gap-2">
+    <div class="kanban-card-header mb-2 flex items-center gap-2 -mx-3 -mt-3 rounded-t-xl p-3" {% if object.kanban_header_colour %}style="background-color: {{ object.kanban_header_colour }}; color: {{ object.kanban_header_foreground }}"{% endif %}>
         {% if avatar_field %}
             <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover shrink-0" />
         {% endif %}
-        <div class="min-w-0 flex-1 font-medium text-gray-900 text-sm truncate" title="{{ object }}">
+        <div class="min-w-0 flex-1 font-medium text-sm truncate" title="{{ object }}">
             {{ object }}
         </div>
         <c-features.dataviews.checkbox 
