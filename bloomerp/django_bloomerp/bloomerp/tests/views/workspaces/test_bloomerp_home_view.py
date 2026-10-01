@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.urls import reverse
 
-from bloomerp.models import User, Workspace
+from bloomerp.models import Workspace
 from bloomerp.tests.base import (
     BloomerpViewTestCase,
     ExpectedResult,
@@ -17,9 +17,11 @@ class TestBloomerpHomeView(BloomerpViewTestCase):
 
     view_name = 'bloomerp_home_view'
 
-    def extendedSetup(self):
+    def extendedSetup(self) -> None:
+        """Prepare a root module returned by the shared permission manager."""
         self.staff_module = SimpleNamespace(
             id="staff",
+            parent_module_id=None,
             name="Staff",
             description="Staff module",
             icon="fa-users",
@@ -140,21 +142,17 @@ class TestBloomerpHomeView(BloomerpViewTestCase):
             **kwargs,
         )
 
-    def show_staff_module(self, _scenario):
-        self.root_modules_patcher = patch(
-            "bloomerp.views.workspaces.home.module_registry.get_root_modules",
+    def show_staff_module(self, _scenario: RequestScenario) -> None:
+        """Isolate home rendering from permission-manager module discovery."""
+        self.modules_patcher = patch(
+            "bloomerp.views.workspaces.home.UserPolicyManager.get_accessible_modules",
             return_value=[self.staff_module],
         )
-        self.module_models_patcher = patch(
-            "bloomerp.views.workspaces.home.module_registry.get_models_for_module",
-            return_value=[User],
-        )
-        self.root_modules_patcher.start()
-        self.module_models_patcher.start()
+        self.modules_patcher.start()
 
-    def stop_module_patches(self, _scenario):
-        self.module_models_patcher.stop()
-        self.root_modules_patcher.stop()
+    def stop_module_patches(self, _scenario: RequestScenario) -> None:
+        """Restore the shared discovery method after each scenario."""
+        self.modules_patcher.stop()
 
     def create_module_workspace(self, _scenario):
         self.create_workspace(

@@ -4,16 +4,17 @@ from pathlib import Path
 from string import Formatter
 from typing import Any, Callable
 
-from pydantic import BaseModel, Field
 import yaml
 from django.db import models
 from django.db.models import Model
+from pydantic import BaseModel, Field
 
-from bloomerp.field_types.registry import load_builtin_field_types, FieldTypeDefinition
+from bloomerp.field_types.registry import FieldTypeDefinition, load_builtin_field_types
 from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import BloomerpModelConfig
-from bloomerp.modules.definition import ModuleConfig, module_registry
-from bloomerp.modules.definition import BaseConfig
+from bloomerp.models.definition import BloomerpModelConfig, WorkspaceLayout
+from bloomerp.modules.definition import BaseConfig, ModuleConfig, module_registry
+from bloomerp.workspaces.base import BaseTileConfig
+from bloomerp.workspaces.registry import TILE_TYPE_REGISTRY
 
 
 def _get_field_type_definition(field_type: str) -> FieldTypeDefinition:
@@ -282,7 +283,28 @@ def _load_model_configs(module_dir: Path) -> list[ModelConfig]:
     return models
 
 
+def _load_module_tiles(raw_tiles: list[dict[str, Any]]) -> list[BaseTileConfig]:
+    """Hydrate YAML tile definitions through the registered tile config models."""
+    tiles: list[BaseTileConfig] = []
+    for raw_tile in raw_tiles:
+        tile_data = dict(raw_tile)
+        tile_type = tile_data.pop("tile_type", None)
+        if tile_type is None:
+            tile_type = tile_data.pop("type", None)
+        definition = TILE_TYPE_REGISTRY.get(tile_type) if isinstance(tile_type, str) else None
+        if definition is None or definition.model is None:
+            raise ValueError(f"Unknown module tile type: {tile_type!r}")
+        tiles.append(definition.model.model_validate(tile_data))
+    return tiles
+
+
+def _load_module_workspaces(raw_workspaces: list[dict[str, Any]]) -> list[WorkspaceLayout]:
+    """Hydrate YAML workspace rows and items into declarative layouts."""
+    return [WorkspaceLayout.model_validate(workspace) for workspace in raw_workspaces]
+
+
 def _scan_module_tree(module_dir: Path, parent_module_id: str | None = None) -> list[ModuleConfig]:
+    """Load one YAML module and recursively load its child modules."""
     config_path = module_dir / "config.yaml"
     if not config_path.exists():
         return []
@@ -305,6 +327,8 @@ def _scan_module_tree(module_dir: Path, parent_module_id: str | None = None) -> 
         full_id=full_id,
         visible=module_data.get("visible", True),
         owner_app_label="bloomerp_modules",
+        tiles=_load_module_tiles(module_data.get("tiles") or []),
+        workspaces=_load_module_workspaces(module_data.get("workspaces") or []),
     )
 
     modules = [module]
@@ -359,6 +383,7 @@ def load_all_models_from_modules() -> dict[str, type[Model]]:
 
 
 def parse_yaml_config(yaml_file_path: str) -> ModuleConfig:
+    """Parse a standalone module YAML file into a hydrated module config."""
     data = _load_yaml(Path(yaml_file_path))
     if not data or "module" not in data:
         raise ValueError(f"Invalid module YAML file: {yaml_file_path}")
@@ -373,4 +398,6 @@ def parse_yaml_config(yaml_file_path: str) -> ModuleConfig:
         parent_module_id=module_data.get("parent_module_id"),
         visible=module_data.get("visible", True),
         owner_app_label="bloomerp_modules",
+        tiles=_load_module_tiles(module_data.get("tiles") or []),
+        workspaces=_load_module_workspaces(module_data.get("workspaces") or []),
     )

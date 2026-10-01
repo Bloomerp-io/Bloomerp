@@ -2,13 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import copy
+from typing import Any
 
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import (
+    FieldDoesNotExist,
+    ValidationError as DjangoValidationError,
+)
+from django.db.models import Model
 from django.http import HttpRequest
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from bloomerp.mcp.definition import McpTool
@@ -18,6 +24,122 @@ from bloomerp.utils.api import ApiAccessResolver
 from bloomerp.utils.models import model_name_plural_underline
 from bloomerp.views.api.base import BaseBloomerpApiView
 from bloomerp.views.api.generic.base import BaseModelApiView, get_auto_api_models
+
+
+class AssistantObjectRetrieveRequestSerializer(serializers.Serializer):
+    """Accept the model label and primary key supplied by an object artifact."""
+
+    model_label = serializers.RegexField(
+        regex=r"^[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*$",
+        help_text="The object's Django model label, for example `sales.Customer`.",
+    )
+    object_id = serializers.CharField(
+        max_length=255,
+        help_text="The target object's primary key from the object artifact.",
+    )
+
+
+class AssistantObjectRetrieveResponseSerializer(serializers.Serializer):
+    """Return current permitted fields and the resource key used for mutations."""
+
+    resource = serializers.CharField()
+    model_label = serializers.CharField()
+    object_id = serializers.CharField()
+    object = serializers.DictField()
+
+
+def object_retrieve_input_schema() -> dict[str, Any]:
+    """Describe the artifact identity accepted by the read-only MCP tool."""
+    return serializer_input_schema(AssistantObjectRetrieveRequestSerializer)
+
+
+def object_retrieve_output_schema() -> dict[str, Any]:
+    """Describe the retrieved object and its mutation resource key."""
+    return serializer_output_schema(AssistantObjectRetrieveResponseSerializer)
+
+
+@router.register(
+    path="objects/retrieve/",
+    route_type="api",
+    name="Assistant Object Retrieval",
+    url_name="api_assistant_object_retrieve",
+    mcp=McpTool(
+        title="Retrieve an object",
+        description=(
+            "Read an object's current permitted fields using the model_label and "
+            "object_id from an object artifact. Returns the resource key for mutations."
+        ),
+        input_schema=object_retrieve_input_schema,
+        output_schema=object_retrieve_output_schema,
+        read_only_hint=True,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=False,
+    ),
+)
+class AssistantObjectRetrieveView(BaseBloomerpApiView):
+    """Retrieve one generated API object directly from an artifact identity."""
+
+    permission_classes = (IsAuthenticated,)
+    http_method_names = ["get", "options"]
+
+    @extend_schema(
+        tags=["Assistant"],
+        parameters=[AssistantObjectRetrieveRequestSerializer],
+        responses={
+            200: AssistantObjectRetrieveResponseSerializer,
+            400: serializers.DictField(),
+            403: serializers.DictField(),
+            404: serializers.DictField(),
+        },
+        description=(
+            "Retrieve an object exposed by the generated model API using its model "
+            "label and primary key. Applies the generated API's row and field access."
+        ),
+    )
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """Resolve an exposed model and delegate retrieval to its generated API."""
+        serializer = AssistantObjectRetrieveRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        model_label = serializer.validated_data["model_label"]
+        object_id = serializer.validated_data["object_id"]
+        model = self._get_model_for_label(model_label)
+        if model is None:
+            raise ValidationError({"model_label": "Unknown generated API model."})
+
+        try:
+            model._meta.pk.to_python(object_id)
+        except (DjangoValidationError, ValueError, TypeError) as exc:
+            raise ValidationError(
+                {"object_id": "Invalid primary key for this model."}
+            ) from exc
+
+        viewset = BaseModelApiView()
+        viewset.model = model
+        viewset.request = request
+        viewset.action = "retrieve"
+        viewset.args = ()
+        viewset.kwargs = {"pk": object_id}
+        viewset.format_kwarg = None
+        viewset.filter_backends = ()
+        response = viewset.retrieve(request)
+        return Response(
+            {
+                "resource": model_name_plural_underline(model),
+                "model_label": model._meta.label,
+                "object_id": object_id,
+                "object": response.data,
+            },
+            status=response.status_code,
+            headers=response.headers,
+        )
+
+    def _get_model_for_label(self, model_label: str) -> type[Model] | None:
+        """Resolve only models currently exposed by the generated API."""
+        for model in get_auto_api_models():
+            if model._meta.label_lower == model_label.lower():
+                return model
+        return None
 
 
 class AssistantMutationRequestSerializer(serializers.Serializer):

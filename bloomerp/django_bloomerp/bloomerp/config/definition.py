@@ -1,6 +1,11 @@
+import os
 from typing import Literal, Optional
+
 from django.conf import settings
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
+
+from bloomerp.agents.definition import RunBudgets
+from bloomerp.agents.runtime import AgentRuntimeConfig
 
 INTERNAL_MODELS = [
     
@@ -97,7 +102,7 @@ class BloomerpI18nLLMSettings(BaseModel):
     configured provider integration can be installed by the consuming project.
     """
 
-    model: str = "gpt-4.1-mini"
+    model: str = "gpt-6-luna"
     provider: str | None = "openai"
     temperature: float = 0
     batch_size: int = Field(default=30, ge=1, le=100)
@@ -122,6 +127,43 @@ class BloomerpI18nSettings(BaseModel):
     )
     mark_machine_translations_fuzzy: bool = True
     llm: BloomerpI18nLLMSettings = Field(default_factory=BloomerpI18nLLMSettings)
+
+
+def default_agent_runtime_config() -> AgentRuntimeConfig:
+    """Build the default runtime settings for a Bloomerp agent instance."""
+    return AgentRuntimeConfig(
+        runtime="pydantic_ai",
+        provider="openai",
+        model="gpt-6-luna",
+        agent_key="bloomai",
+        agent_version="1",
+        instructions="Help the user with their questions.",
+    )
+
+
+def default_agent_budgets() -> RunBudgets:
+    """Apply the project's default duration and token limits to agent runs."""
+    return RunBudgets(max_duration_seconds=300, max_tokens=20000)
+
+
+class BloomerpAgentSettings(BaseModel):
+    """Configure agent execution and credentials for one Bloomerp project."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    config: AgentRuntimeConfig = Field(default_factory=default_agent_runtime_config)
+    api_key: SecretStr | None = Field(
+        default_factory=lambda: SecretStr(os.getenv("BLOOMERP_AGENT_API_KEY")) if os.getenv("BLOOMERP_AGENT_API_KEY") else None, 
+        exclude=True, 
+        repr=False
+    )
+    credentials_resolver: str | None = None
+    runtime_factory: str = "bloomerp.agents.pydantic_ai.PydanticAIRuntime"
+    mcp_origin: str = "http://localhost"
+    lease_seconds: int = Field(default=60, ge=10)
+    history_limit: int = Field(default=100, ge=1, le=1000)
+    budgets: RunBudgets = Field(default_factory=default_agent_budgets)
+
 
 class BloomerpConfig(BaseModel):
     """
@@ -151,9 +193,22 @@ class BloomerpConfig(BaseModel):
 
     i18n: BloomerpI18nSettings = Field(default_factory=BloomerpI18nSettings)
 
-    email_secret_key: Optional[str] = None
+    email_secret_key: Optional[str] = Field(
+        default_factory=lambda: SecretStr(os.getenv("BLOOMERP_EMAIL_SECRET_KEY") if os.getenv("BLOOMERP_EMAIL_SECRET_KEY") else None),
+        exclude=True,
+        repr=False
+    )
+    
+    bloomai_settings: BloomerpAgentSettings | None = Field(
+        default_factory=BloomerpAgentSettings
+    )
 
 def get_bloomerp_config() -> BloomerpConfig:
+    """Returns the bloomerp config
+
+    Returns:
+        BloomerpConfig: the bloomerp config
+    """
     config = getattr(settings, "BLOOMERP_CONFIG", None)
     if isinstance(config, BloomerpConfig):
         return config

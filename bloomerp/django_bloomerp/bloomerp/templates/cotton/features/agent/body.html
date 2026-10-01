@@ -1,0 +1,138 @@
+{% load i18n static %}
+{% if request.user.is_authenticated %}
+<div bloomerp-component="bloomerp:agent-chat" data-agent-user="{{ request.user.pk }}"
+    data-artifact-url-template="{% url 'components_render_agent_artifact' artifact_id='00000000-0000-0000-0000-000000000000' %}"
+    data-status-history-empty="{% trans 'No conversations yet.' %}"
+    data-status-history-loading="{% trans 'Loading…' %}"
+    data-status-today="{% trans 'Today' %}"
+    data-status-yesterday="{% trans 'Yesterday' %}"
+    data-status-earlier="{% trans 'Earlier' %}"
+    data-status-running="{% trans 'Running' %}"
+    data-status-queued="{% trans 'Queued' %}"
+    data-status-waiting="{% trans 'Awaiting approval' %}"
+    data-status-archived="{% trans 'Archived — restore this conversation to send a message.' %}"
+    data-status-unread="{% trans 'New activity' %}"
+    data-status-approval="{% trans 'Approval required' %}"
+    data-status-pending="{% trans 'Review this action before it runs.' %}"
+    data-status-approved="{% trans 'Approved' %}"
+    data-status-rejected="{% trans 'Rejected' %}"
+    data-status-approve="{% trans 'Approve' %}"
+    data-status-reject="{% trans 'Reject' %}"
+    data-status-ready="{% trans 'Connected' %}"
+    data-status-disconnected="{% trans 'Disconnected — waiting for connection' %}"
+    data-status-responding="{% trans 'BloomAI is responding…' %}"
+    data-status-stopping="{% trans 'Stopping…' %}"
+    data-status-cancelled="{% trans 'Response stopped.' %}"
+    data-status-interrupted="{% trans 'Connection interrupted. The response may be incomplete.' %}"
+    data-status-failed="{% trans 'The response could not be completed. Please try again.' %}">
+    <button type="button" data-agent-action="open" aria-controls="bloomerp-agent-panel" aria-expanded="false"
+        aria-label="{% trans 'Ask BloomAI' %}" title="{% trans 'Ask BloomAI' %}"
+        class="bloomerp-agent-launcher fixed bottom-6 right-6 z-[85] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">
+        <span class="bloomerp-agent-orb" aria-hidden="true"></span>
+    </button>
+
+    <section id="bloomerp-agent-panel" data-agent-panel hidden aria-label="{% trans 'BloomAI assistant' %}"
+        class="fixed inset-y-3 right-3 z-[85] flex w-[calc(100%-1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+        <header class="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-zinc-800">
+            <div class="flex items-center gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white">
+                    <img src="{% static 'bloomerp/img/bloomai-logo.png' %}" alt="" class="h-8 w-8 object-contain" width="32" height="32" />
+                </span>
+                <h2 class="text-sm font-semibold">BloomAI</h2>
+            </div>
+            <div class="flex items-center gap-1">
+                <button type="button" data-agent-action="history" aria-label="{% trans 'Conversation history' %}" title="{% trans 'Conversation history' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span data-agent-unread hidden class="h-2 w-2 rounded-full bg-primary-500"></span></button>
+                <button type="button" data-agent-action="reset" aria-label="{% trans 'New conversation' %}" title="{% trans 'New conversation' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+                <button type="button" data-agent-action="close" aria-label="{% trans 'Close assistant' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            </div>
+        </header>
+
+        <div data-agent-conversation-tools hidden class="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-5 py-2 dark:border-zinc-800">
+            <h3 data-agent-title class="min-w-0 truncate text-sm font-medium"></h3>
+            <c-ui.dropdown.body trigger_icon_class="fa-solid fa-ellipsis" trigger_aria_label="{% trans 'Conversation actions' %}" position="right" size="sm" fixed=True>
+                <c-ui.dropdown.item close_menu=True icon="fa-solid fa-pen">
+                    <button type="button" data-agent-action="rename" role="menuitem" class="w-full text-left">{% trans 'Rename' %}</button>
+                </c-ui.dropdown.item>
+                <c-ui.dropdown.item close_menu=True icon="fa-solid fa-box-archive">
+                    <button type="button" data-agent-action="archive" role="menuitem" class="w-full text-left">{% trans 'Archive' %}</button>
+                    <button type="button" data-agent-action="restore" role="menuitem" hidden class="w-full text-left">{% trans 'Restore' %}</button>
+                </c-ui.dropdown.item>
+            </c-ui.dropdown.body>
+        </div>
+        <p data-agent-error hidden role="alert" class="px-5 py-2 text-sm text-red-600"></p>
+        <form data-agent-rename-form hidden class="flex shrink-0 gap-2 px-5 py-3">
+            <label for="agent-conversation-name" class="sr-only">{% trans 'Conversation title' %}</label>
+            <input id="agent-conversation-name" data-agent-name required maxlength="255" class="min-w-0 flex-1 rounded-lg border border-gray-200 px-2 py-1 text-sm dark:bg-zinc-800" />
+            <button type="submit" class="btn btn-primary btn-sm">{% trans 'Save' %}</button>
+            <button type="button" data-agent-action="cancel-rename" class="btn btn-secondary btn-sm">{% trans 'Cancel' %}</button>
+        </form>
+        <div data-agent-history hidden class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <div class="mb-3 flex items-center justify-between">
+                <h3 class="font-semibold">{% trans 'Conversations' %}</h3>
+                <button type="button" data-agent-action="history-back" class="text-sm text-primary-600">{% trans 'Back to chat' %}</button>
+            </div>
+            <label for="agent-history-search" class="sr-only">{% trans 'Search conversations' %}</label>
+            <input id="agent-history-search" data-agent-search type="search" maxlength="255" placeholder="{% trans 'Search conversations…' %}" class="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-zinc-800" />
+            <label class="mb-3 flex items-center gap-2 text-xs text-gray-500"><input type="checkbox" data-agent-archived />{% trans 'Archived' %}</label>
+            <p data-agent-history-status role="status" class="py-3 text-sm text-gray-500"></p>
+            <div data-agent-history-list class="space-y-1"></div>
+            <button type="button" data-agent-action="history-more" hidden class="mt-4 w-full text-sm text-primary-600">{% trans 'Load more conversations' %}</button>
+        </div>
+        <div data-agent-scroll class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div data-agent-welcome class="flex min-h-full flex-col justify-center px-6 py-8">
+                <p class="mb-2 text-xs font-medium uppercase tracking-widest text-gray-400">{% trans 'Your workspace assistant' %}</p>
+                <h3 class="text-2xl font-semibold tracking-tight">{% trans 'What can I help you with?' %}</h3>
+                <p class="mt-3 text-sm leading-6 text-gray-500 dark:text-zinc-400">{% trans 'Explore your data, find your way, or get a hand with the page you’re on.' %}</p>
+                <div class="mt-8 space-y-2">
+                    <button type="button" data-agent-prompt="revenue" class="group flex w-full items-center gap-3 rounded-xl border border-gray-200 p-3.5 text-left transition hover:border-primary-200 hover:bg-primary-50 dark:border-zinc-700 dark:hover:border-primary-500/50 dark:hover:bg-primary-500/10">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i></span>
+                        <span class="flex-1 text-sm">{% trans 'Show me a revenue overview' %}</span><i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-gray-300 group-hover:text-primary-500" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" data-agent-prompt="page" class="group flex w-full items-center gap-3 rounded-xl border border-gray-200 p-3.5 text-left transition hover:border-primary-200 hover:bg-primary-50 dark:border-zinc-700 dark:hover:border-primary-500/50 dark:hover:bg-primary-500/10">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400"><i class="fa-regular fa-compass" aria-hidden="true"></i></span><span class="flex-1 text-sm">{% trans 'Help me understand this page' %}</span><i class="fa-solid fa-arrow-right text-xs text-gray-300 group-hover:text-primary-500" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" data-agent-prompt="form" class="group flex w-full items-center gap-3 rounded-xl border border-gray-200 p-3.5 text-left transition hover:border-primary-200 hover:bg-primary-50 dark:border-zinc-700 dark:hover:border-primary-500/50 dark:hover:bg-primary-500/10">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></span><span class="flex-1 text-sm">{% trans 'Help me fill in a form' %}</span><i class="fa-solid fa-arrow-right text-xs text-gray-300 group-hover:text-primary-500" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="mt-5 text-xs leading-5 text-gray-400">{% trans 'Choose a suggestion or ask a question.' %}</p>
+            </div>
+            <button type="button" data-agent-action="older" hidden class="w-full px-5 pt-4 text-sm text-primary-600">{% trans 'Load older messages' %}</button>
+            <div data-agent-messages role="log" aria-label="{% trans 'Conversation' %}" aria-live="polite" aria-relevant="additions text" class="space-y-5 px-5 py-6"></div>
+        </div>
+
+        <p data-agent-status role="status" class="sr-only">{% trans 'Connecting…' %}</p>
+        <footer data-agent-footer class="shrink-0 p-4">
+            <p data-agent-archived-notice hidden class="mb-2 text-xs text-gray-500">{% trans 'Archived — restore this conversation to send a message.' %}</p>
+            <form data-agent-form bloomerp-component="bloomerp:artifact-picker"
+                data-artifact-search-url="{% url 'components_search_artifacts' %}" data-artifact-upload-url="{% url 'components_upload_artifact' %}"
+                data-picker-loading="{% trans 'Loading…' %}" data-picker-error="{% trans 'Could not load attachments. Please try again.' %}"
+                data-picker-empty="{% trans 'No matching items.' %}" data-picker-upload="{% trans 'Upload a file' %}"
+                data-picker-uploading="{% trans 'Uploading…' %}" data-picker-remove="{% trans 'Remove' %}" data-picker-limit="{% trans 'You can attach up to 20 items.' %}"
+                class="relative rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                {% csrf_token %}
+                <div data-artifact-menu hidden class="absolute inset-x-0 bottom-full z-30 mb-3 rounded-xl border border-gray-200 bg-white p-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                    <div class="flex items-center gap-2 px-2 pb-2 pt-1">
+                        <button type="button" data-artifact-back hidden aria-label="{% trans 'Back to attachment types' %}" class="rounded-full p-2 hover:bg-gray-100"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button>
+                        <input data-artifact-search type="search" aria-label="{% trans 'Search attachments' %}" placeholder="{% trans 'Search' %}" maxlength="255" class="min-w-0 flex-1 border-0 bg-transparent p-2 text-sm focus:ring-0" />
+                    </div>
+                    <div data-artifact-options role="listbox" aria-label="{% trans 'Attachments' %}" class="max-h-64 overflow-y-auto"></div>
+                    <p data-artifact-status role="status" class="px-4 py-1 text-xs text-gray-500"></p>
+                    <button type="button" data-artifact-more hidden class="w-full rounded-full p-2 text-sm text-primary-600">{% trans 'Load more' %}</button>
+                </div>
+                <input data-artifact-file type="file" hidden />
+                <div data-artifact-chips class="mb-2 flex flex-wrap gap-1.5"></div>
+                <label for="bloomerp-agent-input" class="sr-only">{% trans 'Message BloomAI' %}</label>
+                <textarea id="bloomerp-agent-input" data-agent-input rows="2" placeholder="{% trans 'Ask anything about your workspace…' %}" class="block max-h-36 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-zinc-100"></textarea>
+                <div class="mt-2 flex items-center justify-between">
+                    <button type="button" data-artifact-plus aria-label="{% trans 'Add files or modules' %}" aria-haspopup="listbox" aria-expanded="false" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+                    <span class="text-[11px] text-gray-400">{% trans 'Enter to send' %}<span class="mx-1.5">·</span>{% trans 'Shift + Enter for a new line' %}</span>
+                    <button type="button" data-agent-action="stop" hidden class="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium dark:border-zinc-700">{% trans 'Stop' %}</button>
+                    <button type="submit" data-agent-send disabled aria-label="{% trans 'Send message' %}" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-default disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-zinc-700"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+                </div>
+            </form>
+        </footer>
+    </section>
+
+</div>
+{% endif %}

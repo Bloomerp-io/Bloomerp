@@ -1,7 +1,3 @@
-
-
-
-
 from typing import Optional, Type
 
 from django.db.models import Model
@@ -54,6 +50,5 @@ def set_detail_view_url(model:Type[Model]) -> None:
         return reverse(get_detail_view_url(self.__class__), kwargs={'pk': self.pk})
     
     setattr(model, "get_absolute_url", get_absolute_url) 
-    
     
     
