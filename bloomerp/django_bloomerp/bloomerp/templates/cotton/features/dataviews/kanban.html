@@ -98,9 +98,10 @@ TODO: This and dataview_kanban_cards need to be merged
 
 <style>
 .kanban-destinations { display: none; }
+.kanban-board .kanban-column-body > .kanban-destinations { margin: 0; }
 .kanban-board.kanban-moving .kanban-destinations { display: flex; }
 .kanban-category { background: color-mix(in srgb, var(--kanban-category-colour, #f3f4f6) 18%, white); }
-.kanban-category.drag-over, .kanban-category.keyboard-target { background: color-mix(in srgb, var(--kanban-category-colour, #3b82f6) 35%, white); }
+.kanban-category.kanban-drag-over, .kanban-category.keyboard-target { background: color-mix(in srgb, var(--kanban-category-colour, #dbeafe) 35%, white); }
 .kanban-card.dragging { position: relative; z-index: 20; }
 .kanban-board.kanban-moving .kanban-column-body { overflow: hidden; }
 .kanban-move-help { display: none; }

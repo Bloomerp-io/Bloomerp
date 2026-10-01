@@ -168,16 +168,19 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     };
 
+    /** Highlight only the concrete category under the pointer, without shared drag styles. */
     private onDragEnter = (event: DragEvent): void => {
         const dropzone = (event.currentTarget as HTMLElement | null);
-        if (!dropzone) return;
-        dropzone.classList.add('drag-over');
+        if (!dropzone?.hasAttribute('data-kanban-target')) return;
+        dropzone.classList.add('kanban-drag-over');
     };
 
+    /** Clear a category highlight only when the pointer leaves its full section. */
     private onDragLeave = (event: DragEvent): void => {
         const dropzone = (event.currentTarget as HTMLElement | null);
         if (!dropzone) return;
-        dropzone.classList.remove('drag-over');
+        if (event.relatedTarget instanceof Node && dropzone.contains(event.relatedTarget)) return;
+        dropzone.classList.remove('kanban-drag-over');
     };
 
     /** Persist the concrete category under the pointer without bubbling to its lane body. */
@@ -187,7 +190,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         const dropzone = event.currentTarget as HTMLElement | null;
         if (!dropzone || !this.activeDragCard) return;
 
-        dropzone.classList.remove('drag-over');
+        dropzone.classList.remove('kanban-drag-over');
 
         await this.moveCardTo(this.activeDragCard, dropzone);
     };
@@ -386,13 +389,14 @@ export class KanbanBoard extends BaseDataViewComponent {
         column.dataset.kanbanTotalCount = String(Math.max(0, current + delta));
     }
 
+    /** Remove Kanban-specific hover states from all registered drop zones. */
     private clearDropzoneHighlights(): void {
         if (!this.element) return;
         const dropzones = Array.from(
-            this.element.querySelectorAll<HTMLElement>('[data-kanban-dropzone].drag-over')
+            this.element.querySelectorAll<HTMLElement>('[data-kanban-dropzone].kanban-drag-over')
         );
         for (const dropzone of dropzones) {
-            dropzone.classList.remove('drag-over');
+            dropzone.classList.remove('kanban-drag-over');
         }
     }
 
