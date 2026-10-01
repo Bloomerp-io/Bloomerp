@@ -1,14 +1,14 @@
 """
 All rights reserved. 
 """
-from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.users.user_list_view_preference import UserListViewPreference
-from django.contrib.contenttypes.models import ContentType
-from bloomerp.models.users.user import AbstractBloomerpUser
-from django.core.cache import cache
 from dataclasses import dataclass
 
+from django.contrib.contenttypes.models import ContentType
+
+from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
@@ -33,6 +33,16 @@ class DataViewFields:
     """
     visible_fields: list[ApplicationField]
     accessible_fields: list[tuple]
+
+    @property
+    def ordered_fields(self) -> list[tuple[ApplicationField, bool]]:
+        """List displayed fields in their saved order, followed by other accessible fields."""
+        visible_ids = {field.id for field in self.visible_fields}
+        return [(field, True) for field in self.visible_fields] + [
+            (field, False)
+            for field, _is_visible in self.accessible_fields
+            if field.id not in visible_ids
+        ]
 
 
 def _sanitize_visible_field_ids(

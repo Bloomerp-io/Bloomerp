@@ -41,6 +41,11 @@ Card headers use the original category's configured colour, falling back to
 the custom lane colour. Header text automatically uses contrasting black or
 white. Category sections show a tint of the same colour during movement.
 
+The display options field chips list visible fields in their displayed order,
+followed by hidden accessible fields. Drag a visible chip's handle to reorder
+the card fields. The order is saved for the current view type; other views keep
+their own order. Clicking a chip still toggles its visibility.
+
 ## Reusable mapping field
 
 `MappingField` returns a dictionary with string keys and values cleaned by a
