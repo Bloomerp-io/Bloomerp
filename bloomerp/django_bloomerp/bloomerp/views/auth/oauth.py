@@ -13,11 +13,9 @@ from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import format_html
-from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from bloomerp.models.auth.oauth import OAuthAccessToken, OAuthAuthorizationCode
 from bloomerp.oauth import (
@@ -187,17 +185,10 @@ def authorize(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path(), settings.LOGIN_URL)
     if request.method == "GET":
-        csrf_token = get_token(request)
-        body = format_html(
-            "<h1>Connect ChatGPT to Bloomerp?</h1>"
-            "<p>Signed in as {}. ChatGPT will be able to call Bloomerp MCP tools "
-            "using your existing permissions, including tools that can change data.</p>"
-            "<form method='post'><input type='hidden' name='csrfmiddlewaretoken' value='{}'>"
-            "<button name='decision' value='approve'>Allow</button> "
-            "<button name='decision' value='deny'>Deny</button></form>",
-            request.user, csrf_token,
+        response = render(
+            request, "views/auth/oauth_authorize.html",
+            {"consent_user": request.user, "resource": values["resource"]},
         )
-        response = HttpResponse(body)
         response["Cache-Control"] = "no-store"
         return response
     if request.POST.get("decision") != "approve":
@@ -254,7 +245,7 @@ def exchange_token(request: HttpRequest) -> HttpResponse:
         user = authorization.user
         authorization.delete()
         token = TOKEN_PREFIX + secrets.token_urlsafe(48)
-        expires_in = 12 * 60 * 60
+        expires_in = 14 * 24 * 60 * 60
         OAuthAccessToken.objects.create(
             token_hash=hash_oauth_secret(token), user=user, client_id=client_id,
             resource=resource, scope=MCP_SCOPE,
