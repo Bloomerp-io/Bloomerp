@@ -142,7 +142,7 @@ export class DataViewDisplayOptions extends BaseComponent {
         }
     }
 
-    /** Persist options and display validation errors while retaining the editable form. */
+    /** Persist options and replace the panel while retaining its current scroll position. */
     private async submitValues(values: Record<string, DisplayOptionValue>): Promise<boolean> {
         if (!this.element) return false;
 
@@ -187,6 +187,16 @@ export class DataViewDisplayOptions extends BaseComponent {
 
         const parent = this.element.parentElement;
         const previousCallback = this.optionChangedCallback;
+        const scrollStates: { element: HTMLElement; top: number; left: number }[] = [];
+        for (let scroller: HTMLElement | null = this.element; scroller; scroller = scroller.parentElement) {
+            if (scroller === this.element || scroller.scrollHeight > scroller.clientHeight || scroller.scrollWidth > scroller.clientWidth) {
+                scrollStates.push({
+                    element: scroller === this.element ? replacement : scroller,
+                    top: scroller.scrollTop,
+                    left: scroller.scrollLeft,
+                });
+            }
+        }
         this.destroy();
         this.element.replaceWith(replacement);
         initComponents(parent);
@@ -198,6 +208,10 @@ export class DataViewDisplayOptions extends BaseComponent {
         }
 
         previousCallback?.();
+        for (const scrollState of scrollStates) {
+            scrollState.element.scrollTop = scrollState.top;
+            scrollState.element.scrollLeft = scrollState.left;
+        }
         return true;
     }
 
