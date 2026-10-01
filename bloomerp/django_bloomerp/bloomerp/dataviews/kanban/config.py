@@ -25,12 +25,34 @@ if TYPE_CHECKING:
     from bloomerp.models.application_field import ApplicationField
 
 
+class KanbanOptionsForm(forms.Form):
+    """Keep editable lane rows aligned with their separately persisted order."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Restore the mapping editor in explicit lane order after a database reload."""
+        super().__init__(*args, **kwargs)
+        groups = self.initial.get("custom_groupings", {})
+        order = self.initial.get("custom_group_order", [])
+        if isinstance(groups, dict):
+            ordered = {label: groups[label] for label in order if label in groups}
+            ordered.update(groups)
+            self.initial["custom_groupings"] = ordered
+
+    def clean(self) -> dict[str, Any]:
+        """Derive lane order from validated submitted rows rather than JSON object keys."""
+        cleaned = super().clean()
+        if "custom_groupings" in cleaned:
+            cleaned["custom_group_order"] = list(cleaned["custom_groupings"])
+        return cleaned
+
+
 class KanbanDataView(BaseDataview):
     """A declarative Kanban dataview."""
 
     view_type: Literal["kanban"] = "kanban"
     group_by_field: str | None = None
     custom_groupings: dict[str, list[str]] = Field(default_factory=dict)
+    custom_group_order: list[str] = Field(default_factory=list)
     lane_colouring: dict[str, str] = Field(default_factory=dict)
     page_size: Literal[10, 25, 50, 100] = 25
     sort_field: str | None = None
@@ -39,6 +61,11 @@ class KanbanDataView(BaseDataview):
         "group_by_field": "single",
         "sort_field": "single",
     }
+
+    @classmethod
+    def form_factory(cls, state: DataviewState) -> type[forms.Form]:
+        """Apply lane-order restoration and cleaning to the generated options form."""
+        return type("KanbanOrderedOptionsForm", (KanbanOptionsForm, super().form_factory(state)), {})
 
     @classmethod
     def _mapping_lane_metadata(cls, state: DataviewState) -> list[dict[str, Any]]:
@@ -78,6 +105,8 @@ class KanbanDataView(BaseDataview):
         cls, name: str, field_info: FieldInfo, state: DataviewState
     ) -> forms.Field:
         """Build typed mapping editors from the currently accessible grouping values."""
+        if name == "custom_group_order":
+            return forms.JSONField(required=False, widget=forms.HiddenInput())
         if name in {"custom_groupings", "lane_colouring"}:
             from .renderer import KanbanDataviewRenderer
 
@@ -104,6 +133,7 @@ class KanbanDataView(BaseDataview):
             coloured_groups = KanbanDataviewRenderer.merge_lane_metadata(
                 groups,
                 getattr(state.options, "custom_groupings", {}),
+                getattr(state.options, "custom_group_order", []),
             )
             choices = [
                 (group.get("colour_key", group["request_value"]), group["label"])

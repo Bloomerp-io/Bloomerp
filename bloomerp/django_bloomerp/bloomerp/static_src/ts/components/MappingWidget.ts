@@ -15,6 +15,7 @@ export default class MappingWidget extends BaseWidget {
         this.lifecycle?.abort();
         this.lifecycle = new AbortController();
         this.nextIndex = this.element.querySelectorAll('[data-mapping-row]').length;
+        this.updateRowButtons();
         this.element.addEventListener('click', this.onClick, { signal: this.lifecycle.signal });
         this.element.addEventListener('change', this.handleInputChange, { signal: this.lifecycle.signal });
         this.element.addEventListener(BaseWidget.changeEventName, this.handleWidgetChange, { signal: this.lifecycle.signal });
@@ -62,6 +63,7 @@ export default class MappingWidget extends BaseWidget {
                 this.writeSide(row.querySelector('[data-mapping-value]'), mappedValue);
             }
         }
+        this.updateRowButtons();
         if (emitChange) this.onChange();
     }
 
@@ -165,6 +167,7 @@ export default class MappingWidget extends BaseWidget {
         rows.appendChild(copy.content.cloneNode(true));
         const row = rows.lastElementChild as HTMLElement;
         initComponents(row);
+        this.updateRowButtons();
         return row;
     }
 
@@ -172,13 +175,40 @@ export default class MappingWidget extends BaseWidget {
     private removeRow(row: HTMLElement): void {
         for (const node of row.querySelectorAll<HTMLElement>('[bloomerp-component]')) getComponent(node)?.destroy();
         row.remove();
+        this.updateRowButtons();
+    }
+
+    /** Disable moves beyond the first and last editable rows. */
+    private updateRowButtons(): void {
+        const rows = this.element?.querySelectorAll<HTMLElement>('[data-mapping-rows] > [data-mapping-row]');
+        if (!rows) return;
+        for (let index = 0; index < rows.length; index++) {
+            const up = rows[index].querySelector<HTMLButtonElement>('[data-mapping-up]');
+            const down = rows[index].querySelector<HTMLButtonElement>('[data-mapping-down]');
+            if (up) up.disabled = index === 0;
+            if (down) down.disabled = index === rows.length - 1;
+        }
+    }
+
+    /** Move a row without rebuilding child widgets or changing their input identifiers. */
+    private moveRow(row: HTMLElement, direction: 'up' | 'down'): void {
+        const sibling = direction === 'up' ? row.previousElementSibling : row.nextElementSibling;
+        if (!sibling || !row.parentElement) return;
+        if (direction === 'up') row.parentElement.insertBefore(row, sibling);
+        else row.parentElement.insertBefore(sibling, row);
+        this.updateRowButtons();
+        this.onChange();
     }
 
     /** Add, remove or apply mapping rows using the server-rendered child widgets. */
     private onClick = (event: MouseEvent): void => {
         const target = event.target as HTMLElement | null;
         if (!this.element || !target) return;
-        if (target.closest('[data-mapping-add]')) {
+        const move = target.closest<HTMLButtonElement>('[data-mapping-up], [data-mapping-down]');
+        if (move) {
+            const row = move.closest<HTMLElement>('[data-mapping-row]');
+            if (row && !move.disabled) this.moveRow(row, move.hasAttribute('data-mapping-up') ? 'up' : 'down');
+        } else if (target.closest('[data-mapping-add]')) {
             if (this.addRow()) this.onChange();
         } else if (target.closest('[data-mapping-remove]')) {
             const row = target.closest<HTMLElement>('[data-mapping-row]');

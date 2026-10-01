@@ -97,3 +97,10 @@ key/value pairs so unfinished rows and duplicate keys survive serializable state
 restoration. `setValue()` accepts pairs or a mapping object and restores child
 widgets silently by default. Row edits emit `bloomerp:widget-change` with the
 whole mapping; the display options form still submits only when Apply is clicked.
+
+Custom lane order is persisted separately in `custom_group_order`, an ordered
+list of names. The options form derives it from submitted mapping rows and uses
+it to restore row order. The board and colour picker use the same list; JSON
+object key order is never relied upon once this order has been saved. Older
+preferences gain an explicit order on their next Apply. Small up/down buttons
+beside the remove button move rows locally; Apply saves the new sequence.

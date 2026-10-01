@@ -36,6 +36,8 @@ class TestMappingWidget(BloomerpWidgetTestCase[MappingWidget]):
                 'id="id_mapping__value_0"',
                 'data-choice-label="Email" checked',
                 "Website, Email",
+                "data-mapping-up",
+                "data-mapping-down",
                 "data-mapping-key",
                 "data-mapping-value",
                 "data-mapping-selection",
