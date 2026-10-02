@@ -6,7 +6,7 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from bloomerp.dataviews.definition import DataviewState
-from bloomerp.dataviews.kanban.config import KanbanDataView
+from bloomerp.dataviews.kanban.config import KanbanDataView, KanbanOptionsForm
 from bloomerp.dataviews.kanban.renderer import KanbanDataviewRenderer
 from bloomerp.models import ApplicationField
 from bloomerp.models.project_management.todo import Todo
@@ -26,6 +26,30 @@ class TestKanbanCustomGroups(BaseBloomerpTestCaseWithModels):
             )
             for index, age in enumerate([20, 30, 20, 40])
         ]
+
+    def test_explicit_order_survives_reordered_json_keys(self) -> None:
+        """Keep saved lane order even when JSON storage returns Aanbod's key first."""
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        options = KanbanDataView(
+            custom_groupings={"5. Aanbod": ["30"], "1. Instroom": ["20"]},
+            custom_group_order=["1. Instroom", "5. Aanbod"],
+        )
+        reloaded = KanbanDataView.model_validate(options.dump_options())
+        form = KanbanOptionsForm(initial=reloaded.dump_options())
+        self.assertEqual(list(form.initial["custom_groupings"]), ["1. Instroom", "5. Aanbod"])
+        groups = KanbanDataviewRenderer.build_groups(
+            self.CustomerModel.objects.all(), field, options=reloaded,
+        )
+        self.assertEqual([group["label"] for group in groups], ["1. Instroom", "5. Aanbod", "40"])
+
+    def test_lane_order_tolerates_removed_and_unlisted_groups(self) -> None:
+        """Ignore stale order entries and append newer groups without duplicating lanes."""
+        metadata = [KanbanDataviewRenderer._lane_metadata(value, value, 0) for value in ["20", "30", "40"]]
+        groups = KanbanDataviewRenderer.merge_lane_metadata(
+            metadata, {"New": ["30"], "First": ["20"]}, ["Removed", "First", "First"],
+        )
+        self.assertEqual([group["label"] for group in groups], ["First", "New", "40"])
 
     def test_merged_lanes_paginate_and_keep_unmapped_values(self) -> None:
         """

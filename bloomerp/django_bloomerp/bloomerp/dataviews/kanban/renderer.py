@@ -288,7 +288,9 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             user,
             related_queryset,
         )
-        metadata = cls.merge_lane_metadata(metadata, custom_groupings)
+        metadata = cls.merge_lane_metadata(
+            metadata, custom_groupings, getattr(options, "custom_group_order", [])
+        )
         group = next(
             (item for item in metadata if item["request_value"] == column_value), None
         )
@@ -364,12 +366,15 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         cls,
         groups: list[dict[str, Any]],
         custom_groupings: dict[str, list[str]],
+        custom_group_order: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Merge eligible member descriptions and counts without loading cards."""
         by_value = {group["request_value"]: group for group in groups}
         consumed: set[str] = set()
         merged = []
-        for label, values in custom_groupings.items():
+        labels = dict.fromkeys([*(custom_group_order or []), *custom_groupings])
+        for label in labels:
+            values = custom_groupings.get(label, [])
             members = [
                 by_value[value]
                 for value in values
@@ -416,7 +421,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             queryset, group_by_field, user, allowed_related_queryset
         )
         metadata = cls.merge_lane_metadata(
-            metadata, getattr(options, "custom_groupings", {})
+            metadata, getattr(options, "custom_groupings", {}),
+            getattr(options, "custom_group_order", []),
         )
         return [
             cls._materialize_lane(

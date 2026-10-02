@@ -85,6 +85,7 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
         return preference.options["kanban"] == {
             "group_by_field": "age",
             "custom_groupings": {},
+            "custom_group_order": [],
             "lane_colouring": {},
             "page_size": 50,
             "sort_field": "first_name",
@@ -114,9 +115,37 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
         options = self._preference().options["kanban"]
         return options["custom_groupings"] == {"Young": ["20", "30"]} and options["lane_colouring"] == {"Young": "#123456"}
 
+    def _prepare_reordered_mappings(self, scenario: RequestScenario) -> None:
+        """Submit rows in DOM order with deliberately nonsequential input identifiers."""
+        self._prepare_mapping_options(scenario)
+        scenario.data.update({
+            "custom_groupings__rows": ["7", "2"],
+            "custom_groupings__key_7": "1. Instroom",
+            "custom_groupings__value_7": ["20"],
+            "custom_groupings__key_2": "5. Aanbod",
+            "custom_groupings__value_2": ["30"],
+        })
+
+    def _reordered_mappings_saved(self, response: HttpResponse) -> bool:
+        """Verify explicit order survives saving and drives the returned mapping editor."""
+        options = self._preference().options["kanban"]
+        html = response.content.decode()
+        return (
+            options["custom_group_order"] == ["1. Instroom", "5. Aanbod"]
+            and options["custom_groupings"] == {"1. Instroom": ["20"], "5. Aanbod": ["30"]}
+            and html.index('value="1. Instroom"') < html.index('value="5. Aanbod"')
+        )
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover preference operations and their persisted configuration."""
         return [
+            RequestScenario(
+                name="Persist explicit Kanban row order",
+                method="POST", user=self.admin_user, view_kwargs=self.view_kwargs,
+                data={"dataview_options_view_type": "kanban", "group_by_field": "age"},
+                prepare=self._prepare_reordered_mappings,
+                expected=ExpectedResult(response_validators=self._reordered_mappings_saved),
+            ),
             RequestScenario(
                 name="Persist indexed Kanban mapping widget rows",
                 method="POST", user=self.admin_user, view_kwargs=self.view_kwargs,
