@@ -1,7 +1,7 @@
 {% load i18n %}
 {% if kind == "pdf" %}
     <div class="h-full min-h-0 bg-slate-900">
-        <iframe src="data:application/pdf;base64,{{ encoded_pdf }}" class="block h-full w-full border-0" title="{{ file.name }}"></iframe>
+        <iframe src="{{ media_url }}" class="block h-full w-full border-0" title="{{ file.name }}"></iframe>
     </div>
 {% elif kind == "image" %}
     <div class="flex h-full min-h-0 items-center justify-center bg-gray-50 p-6">

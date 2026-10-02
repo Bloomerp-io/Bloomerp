@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-import base64
+import asyncio
 import codecs
 import csv
 import mimetypes
 import re
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import AsyncIterator, Iterable, Iterator, Sequence
 from io import StringIO
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from django.contrib.auth.decorators import login_required
+from django.core.handlers.asgi import ASGIRequest
 from django.http import FileResponse, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -37,10 +38,22 @@ def _media_chunks(file: File, start: int, length: int) -> Iterator[bytes]:
             yield chunk
 
 
+async def _async_media_chunks(
+    file: File, start: int, length: int
+) -> AsyncIterator[bytes]:
+    """Read bounded chunks off-thread so ASGI never buffers a synchronous file iterator."""
+    chunks = _media_chunks(file, start, length)
+    try:
+        while (chunk := await asyncio.to_thread(next, chunks, None)) is not None:
+            yield chunk
+    finally:
+        await asyncio.to_thread(chunks.close)
+
+
 def _media_response(
     request: HttpRequest, file: File
 ) -> HttpResponse | StreamingHttpResponse:
-    """Serve authorized media bytes with range support for native player seeking."""
+    """Stream authorized media under WSGI or ASGI, supporting PDF and player byte ranges."""
     size = file.file.size
     content_type = mimetypes.guess_type(file.file.name)[0] or "application/octet-stream"
     requested_range = request.headers.get("Range")
@@ -61,16 +74,25 @@ def _media_response(
             response["Content-Range"] = f"bytes */{size}"
             return response
         response = StreamingHttpResponse(
-            _media_chunks(file, start, end - start + 1),
+            _async_media_chunks(file, start, end - start + 1)
+            if isinstance(request, ASGIRequest)
+            else _media_chunks(file, start, end - start + 1),
             status=206,
             content_type=content_type,
         )
         response["Content-Range"] = f"bytes {start}-{end}/{size}"
         response["Content-Length"] = str(end - start + 1)
+    elif isinstance(request, ASGIRequest):
+        response = StreamingHttpResponse(
+            _async_media_chunks(file, 0, size), content_type=content_type
+        )
+        response["Content-Length"] = str(size)
     else:
         response = FileResponse(file.file.open("rb"), content_type=content_type)
     response["Accept-Ranges"] = "bytes"
     response["X-Content-Type-Options"] = "nosniff"
+    if file.file_extension.lower() == "pdf":
+        response["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
 
@@ -158,10 +180,7 @@ def preview_file(
         )
     extension = file.file_extension.lower()
     if extension == "pdf":
-        with file.file.open("rb") as source:
-            context.update(
-                kind="pdf", encoded_pdf=base64.b64encode(source.read()).decode("ascii")
-            )
+        context["kind"] = "pdf"
     elif extension in {
         "apng",
         "avif",
@@ -223,7 +242,7 @@ def preview_file(
         except (UnicodeError, OSError):
             context["kind"] = "unsupported"
     if request.GET.get("raw") == "1":
-        if context["kind"] not in {"image", "video", "audio"}:
+        if context["kind"] not in {"pdf", "image", "video", "audio"}:
             return HttpResponse(status=400)
         return _media_response(request, file)
     return render(request, "components/files/preview.html", context)
