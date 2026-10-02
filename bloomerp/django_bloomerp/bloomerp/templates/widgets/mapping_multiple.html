@@ -1,0 +1,19 @@
+{% load i18n %}
+{% translate "Select values" as empty_label %}
+<details data-mapping-selection data-empty-label="{{ empty_label }}" class="relative min-w-0">
+    <summary id="{{ widget.attrs.id }}" class="{{ widget.attrs.class }} cursor-pointer list-none flex items-center gap-1" {% if widget.attrs.disabled %}aria-disabled="true"{% endif %}>
+        <span data-mapping-summary class="truncate flex-1">{% if widget.selected_labels %}{{ widget.selected_labels|join:", " }}{% else %}{{ empty_label }}{% endif %}</span>
+        <span aria-hidden="true" class="text-gray-400">⌄</span>
+    </summary>
+    <div class="absolute left-0 top-full z-30 mt-1 w-full min-w-40 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-xs">
+        {% for group_name, options, index in widget.optgroups %}
+            {% if group_name %}<div class="px-2 py-1 text-xs text-gray-500">{{ group_name }}</div>{% endif %}
+            {% for option in options %}
+            <label class="flex items-center gap-2 rounded-md px-2 py-1 text-xs hover:bg-base cursor-pointer">
+                <input type="checkbox" name="{{ widget.name }}" value="{{ option.value }}" data-choice-label="{{ option.label }}" {% if option.selected %}checked{% endif %} {% if widget.attrs.disabled %}disabled{% endif %}>
+                <span>{{ option.label }}</span>
+            </label>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</details>

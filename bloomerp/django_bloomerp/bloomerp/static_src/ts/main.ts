@@ -1,4 +1,5 @@
 import ArtifactPicker from './components/agent/ArtifactPicker';
+import MappingWidget from './components/MappingWidget';
 /**
  * Bloomerp Main TypeScript Entry Point
  * 
@@ -75,6 +76,7 @@ import { loadTranslations } from './utils/i18n';
 import { FileBrowser } from './components/data_view_components/FileBrowser';
 import { initBrowserAgent } from './utils/agent';
 import AgentChat from './components/agent/AgentChat';
+
 
 Object.assign(window, { showMessage });
 initBrowserAgent();
@@ -176,6 +178,7 @@ registerComponent('sidebar-item', SidebarItem)
 registerComponent('focus-in', FocusIn)
 registerComponent('shortcut-tooltip', ShortcutTooltip);
 registerComponent('ordered-field-select', OrderedFieldSelect);
+registerComponent('mapping-widget', MappingWidget);
 registerComponent('behavior-builder', BehaviorBuilder);
 
 registerComponent('focus-on-form', FocusOnForm);

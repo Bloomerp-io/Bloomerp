@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Literal, Optional, Type
 from urllib.parse import urlsplit
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
 from bloomerp.permissions.definition import AccessRule
@@ -36,6 +36,7 @@ class LayoutItem(BaseModel):
     edit_url: Optional[str] = None
     search_keywords: Optional[str] = None
     extra_attrs: Optional[dict] = Field(default_factory=dict)
+    label_content_right : Optional[str] = None
 
     @property
     def config_json(self) -> str:
@@ -263,7 +264,7 @@ class ObjectAction(BaseModel):
 
     label:str
 
-    execution_func:Callable[[HttpRequest, Model], HttpResponse | None]
+    execution_func:Callable[[HttpRequest, Model], HttpResponse | StreamingHttpResponse | None]
     
     should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
     
@@ -273,6 +274,11 @@ class ObjectAction(BaseModel):
     
     success_message:Optional[str] = None
     
+    target: str = "#object-actions-target"
+
+    button_attrs: dict[str, Any] | None = None
+
+
 class ObjectModalAction(BaseModel):
     id:str
     

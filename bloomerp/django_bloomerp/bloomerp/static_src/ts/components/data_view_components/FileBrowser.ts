@@ -1,5 +1,6 @@
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
+import { attachObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
 import { getCsrfToken } from "@/utils/cookies";
 import { MessageType } from "../UiMessage";
 import showMessage from "@/utils/messages";
@@ -9,6 +10,9 @@ import showMessage from "@/utils/messages";
 export class FileBrowser extends BaseDataViewComponent {
     protected cellClass = BaseDataViewCell;
 
+    private previewCleanups: Array<() => void> = [];
+
+    /** Bind folder actions, file uploads, drag-and-drop, and object previews. */
     public override initialize(): void {
         super.initialize();
         if (!this.element) return;
@@ -18,6 +22,37 @@ export class FileBrowser extends BaseDataViewComponent {
         });
         this.bindUploadInput();
         this.bindDragAndDrop();
+        this.bindObjectPreviews();
+    }
+
+    /** Refresh previews after HTMX replaces the browser's rows. */
+    public override onAfterSwap(): void {
+        this.bindObjectPreviews();
+    }
+
+    /** Release tooltip listeners when the browser is removed. */
+    public override destroy(): void {
+        this.clearObjectPreviews();
+        super.destroy();
+    }
+
+    /** Dispose all previews before rebinding to the current rows. */
+    private clearObjectPreviews(): void {
+        for (const cleanup of this.previewCleanups) cleanup();
+        this.previewCleanups = [];
+    }
+
+    /** Reuse object preview tooltips for field-aware object navigation links. */
+    private bindObjectPreviews(): void {
+        this.clearObjectPreviews();
+        if (!this.element) return;
+        for (const link of this.element.querySelectorAll<HTMLElement>("[data-preview-object-id]")) {
+            const objectId = link.dataset.previewObjectId;
+            const contentTypeId = link.dataset.previewContentTypeId;
+            if (objectId && contentTypeId) {
+                this.previewCleanups.push(attachObjectPreviewTooltip({ element: link, objectId, contentTypeId }));
+            }
+        }
     }
 
     private bindUploadInput(): void {

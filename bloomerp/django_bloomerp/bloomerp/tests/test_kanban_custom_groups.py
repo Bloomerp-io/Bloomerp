@@ -1,0 +1,452 @@
+from types import SimpleNamespace
+from typing import Any
+
+from django.contrib.contenttypes.models import ContentType
+from django.template.loader import render_to_string
+from django.test import RequestFactory
+
+from bloomerp.dataviews.definition import DataviewState
+from bloomerp.dataviews.kanban.config import KanbanDataView, KanbanOptionsForm
+from bloomerp.dataviews.kanban.renderer import KanbanDataviewRenderer
+from bloomerp.models import ApplicationField
+from bloomerp.models.project_management.todo import Todo
+from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
+
+
+class TestKanbanCustomGroups(BaseBloomerpTestCaseWithModels):
+    auto_create_customers = False
+    create_foreign_models = True
+
+    def create_cards(self) -> list[Any]:
+        """Create integer lane values with deterministic card ordering."""
+        country = self.CountryModel.objects.get(name="Belgium")
+        return [
+            self.CustomerModel.objects.create(
+                first_name=f"Card {index}", last_name="Test", age=age, country=country
+            )
+            for index, age in enumerate([20, 30, 20, 40])
+        ]
+
+    def test_explicit_order_survives_reordered_json_keys(self) -> None:
+        """Keep saved lane order even when JSON storage returns Aanbod's key first."""
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        options = KanbanDataView(
+            custom_groupings={"5. Aanbod": ["30"], "1. Instroom": ["20"]},
+            custom_group_order=["1. Instroom", "5. Aanbod"],
+        )
+        reloaded = KanbanDataView.model_validate(options.dump_options())
+        form = KanbanOptionsForm(initial=reloaded.dump_options())
+        self.assertEqual(list(form.initial["custom_groupings"]), ["1. Instroom", "5. Aanbod"])
+        groups = KanbanDataviewRenderer.build_groups(
+            self.CustomerModel.objects.all(), field, options=reloaded,
+        )
+        self.assertEqual([group["label"] for group in groups], ["1. Instroom", "5. Aanbod", "40"])
+
+    def test_lane_order_tolerates_removed_and_unlisted_groups(self) -> None:
+        """Ignore stale order entries and append newer groups without duplicating lanes."""
+        metadata = [KanbanDataviewRenderer._lane_metadata(value, value, 0) for value in ["20", "30", "40"]]
+        groups = KanbanDataviewRenderer.merge_lane_metadata(
+            metadata, {"New": ["30"], "First": ["20"]}, ["Removed", "First", "First"],
+        )
+        self.assertEqual([group["label"] for group in groups], ["First", "New", "40"])
+
+    def test_merged_lanes_paginate_and_keep_unmapped_values(self) -> None:
+        """
+        Use case: Numeric values share a coloured custom lane.
+        Expected result: Counts and pagination cover members; unmapped cards remain visible.
+        """
+        # 1. Configure a lane spanning integer values and a stale colour.
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        options = KanbanDataView(
+            group_by_field="age",
+            custom_groupings={"Young": ["20", "30"]},
+            lane_colouring={"Young": "#123456", "40": "#abcdef", "Removed": "#ffffff"},
+        )
+        preference = SimpleNamespace(options={"kanban": {"sort_field": "first_name"}})
+        # 2. Build both pages from the combined queryset.
+        groups = KanbanDataviewRenderer.build_groups(
+            self.CustomerModel.objects.all(),
+            field,
+            options=options,
+            preference=preference,
+            page_size=2,
+        )
+        next_groups = KanbanDataviewRenderer.build_groups(
+            self.CustomerModel.objects.all(),
+            field,
+            options=options,
+            preference=preference,
+            page_size=2,
+            page_number=2,
+        )
+        # 3. Verify counts, drop destinations, colours and page contents.
+        self.assertEqual(
+            [(group["label"], group["count"], group["colour"]) for group in groups],
+            [("Young", 3, "#123456"), ("40", 1, "#abcdef")],
+        )
+        self.assertEqual(
+            [item["value"] for item in groups[0]["destinations"]], ["20", "30"]
+        )
+        self.assertEqual(
+            [item.first_name for item in groups[0]["items"]], ["Card 0", "Card 1"]
+        )
+        self.assertEqual(
+            [item.first_name for item in next_groups[0]["items"]], ["Card 2"]
+        )
+
+    def test_foreign_key_custom_groups_keep_eligible_empty_members(self) -> None:
+        """
+        Use case: Related values are combined into a custom lane.
+        Expected result: Empty eligible destinations remain available and stale members are ignored.
+        """
+        # 1. Configure two eligible countries and an obsolete member.
+        self.create_cards()
+        belgium = self.CountryModel.objects.get(name="Belgium")
+        netherlands = self.CountryModel.objects.get(name="Netherlands")
+        field = ApplicationField.get_by_field(self.CustomerModel, "country")
+        options = KanbanDataView(
+            custom_groupings={
+                "Europe": [str(belgium.pk), str(netherlands.pk), "obsolete"]
+            }
+        )
+        # 2. Build lanes with the related-object permission filter.
+        groups = KanbanDataviewRenderer.build_groups(
+            self.CustomerModel.objects.all(),
+            field,
+            user=self.admin_user,
+            options=options,
+        )
+        # 3. Verify only eligible values contribute to the custom lane.
+        self.assertEqual(groups[0]["label"], "Europe")
+        self.assertEqual(groups[0]["count"], 4)
+        self.assertEqual(
+            [item["label"] for item in groups[0]["destinations"]],
+            ["Belgium", "Netherlands"],
+        )
+
+    def test_removing_grouping_ignores_custom_lane_colours(self) -> None:
+        """
+        Use case: Custom grouping is removed while its colours remain saved.
+        Expected result: Original value colours apply and stale custom colours are ignored.
+        """
+        # 1. Keep colours for an obsolete custom lane and an original value.
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        options = KanbanDataView(lane_colouring={"Young": "#123456", "20": "#abcdef"})
+        # 2. Build ordinary lanes.
+        groups = KanbanDataviewRenderer.build_groups(
+            self.CustomerModel.objects.all(), field, options=options
+        )
+        # 3. Verify active lane keys determine their colours.
+        self.assertEqual([group["colour"] for group in groups], ["#abcdef", None, None])
+
+    def test_move_uses_concrete_values_and_checks_permissions(self) -> None:
+        """
+        Use case: A card moves to another status within a merged lane.
+        Expected result: The concrete integer is saved and unauthorized users cannot move cards.
+        """
+        # 1. Build a request and canonical state for a merged lane.
+        card = self.create_cards()[0]
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        request = RequestFactory().post(
+            "/", {"object_id": card.pk, "group_value": "30"}
+        )
+        request.user = self.admin_user
+        state = DataviewState(
+            request=request,
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            model=self.CustomerModel,
+            preference=SimpleNamespace(options={}),
+            queryset=self.CustomerModel.objects.all(),
+            fields=SimpleNamespace(accessible_fields=[(field, True)]),
+            render_fields=[],
+            avatar_field=None,
+            options=KanbanDataView(
+                group_by_field="age", custom_groupings={"Young": ["20", "30"]}
+            ),
+        )
+        # 2. Save the concrete value, then attempt the move as a denied user.
+        response = KanbanDataviewRenderer.handle_action("move", request, state)
+        card.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(card.age, 30)
+        request.user = self.normal_user
+        self.assertEqual(
+            KanbanDataviewRenderer.handle_action("move", request, state).status_code,
+            403,
+        )
+        # 3. Reject a custom lane name as a model value.
+        request.user = self.admin_user
+        request.POST = request.POST.copy()
+        request.POST["group_value"] = "Young"
+        self.assertEqual(
+            KanbanDataviewRenderer.handle_action("move", request, state).status_code,
+            400,
+        )
+
+    def test_choice_groups_include_unused_status_destinations(self) -> None:
+        """
+        Use case: A custom lane combines populated and unused choice statuses.
+        Expected result: Both choice destinations are available and other statuses retain lanes.
+        """
+        # 1. Create one card in the grouped choice field.
+        Todo.objects.create(title="Grouped card", status="backlog")
+        field = ApplicationField.get_by_field(Todo, "status")
+        options = KanbanDataView(custom_groupings={"Planning": ["backlog", "scoped"]})
+        # 2. Build grouped choice lanes.
+        groups = KanbanDataviewRenderer.build_groups(
+            Todo.objects.all(), field, options=options
+        )
+        # 3. Verify empty configured members and unmapped choice lanes remain available.
+        self.assertEqual(groups[0]["count"], 1)
+        self.assertEqual(
+            [target["value"] for target in groups[0]["destinations"]],
+            ["backlog", "scoped"],
+        )
+        self.assertIn("completed", [group["request_value"] for group in groups])
+
+    def test_single_member_custom_lane_renders_concrete_drop_value(self) -> None:
+        """
+        Use case: A custom lane contains only one choice status.
+        Expected result: Dropping into its body uses the status value, not its custom name.
+        """
+        # 1. Build a single-member choice lane with an actual card.
+        Todo.objects.create(title="Single status card", status="backlog")
+        field = ApplicationField.get_by_field(Todo, "status")
+        options = KanbanDataView(custom_groupings={"Planning": ["backlog"]})
+        groups = KanbanDataviewRenderer.build_groups(
+            Todo.objects.all(), field, options=options
+        )
+        # 2. Render the board with the generated lane metadata.
+        html = render_to_string(
+            "cotton/features/dataviews/kanban.html",
+            {
+                "kanban_groups": groups,
+                "content_type_id": ContentType.objects.get_for_model(Todo).pk,
+                "preference": SimpleNamespace(pk=1, split_view_enabled=False),
+                "fields": [],
+            },
+        )
+        # 3. Verify the body uses a concrete model value without needing a selector.
+        self.assertIn(
+            'data-kanban-dropzone\n                data-column-value="backlog"', html
+        )
+        self.assertNotIn('data-column-value="__group__:Planning"\n            >', html)
+        self.assertNotIn("data-kanban-destination", html)
+        self.assertIn('data-kanban-target data-column-value="backlog"', html)
+
+    def test_card_headers_use_member_colour_with_custom_lane_fallback(self) -> None:
+        """
+        Use case: A custom lane and one of its member statuses have colours.
+        Expected result: Card headers use the member colour when present and the lane colour otherwise.
+        """
+        # 1. Create cards in each member of a custom lane.
+        Todo.objects.create(title="Backlog card", status="backlog")
+        Todo.objects.create(title="Scoped card", status="scoped")
+        options = KanbanDataView(
+            custom_groupings={"Planning": ["backlog", "scoped"]},
+            lane_colouring={"Planning": "#123456", "scoped": "#eeeeee"},
+        )
+        # 2. Build the lane and inspect the card presentation metadata.
+        groups = KanbanDataviewRenderer.build_groups(
+            Todo.objects.all(),
+            ApplicationField.get_by_field(Todo, "status"),
+            options=options,
+        )
+        cards = {card.status: card for card in groups[0]["items"]}
+        self.assertEqual(cards["backlog"].kanban_header_colour, "#123456")
+        self.assertEqual(cards["backlog"].kanban_header_foreground, "#ffffff")
+        self.assertEqual(cards["scoped"].kanban_header_colour, "#eeeeee")
+        self.assertEqual(cards["scoped"].kanban_header_foreground, "#000000")
+        # 3. Verify actual headers and movement categories receive these colours.
+        html = render_to_string(
+            "cotton/features/dataviews/kanban.html",
+            {
+                "kanban_groups": groups,
+                "content_type_id": 27,
+                "fields": [],
+                "preference": SimpleNamespace(pk=1),
+            },
+        )
+        self.assertIn("background-color: #123456; color: #ffffff", html)
+        self.assertIn("background-color: #eeeeee; color: #000000", html)
+        self.assertIn("--kanban-category-colour: #eeeeee", html)
+
+    def test_mapping_form_reuses_metadata_without_loading_cards(self) -> None:
+        """
+        Use case: Both mapping editors need labels for many scalar lanes.
+        Expected result: One aggregate query supplies both editors without loading cards.
+        """
+        from unittest.mock import patch
+
+        # 1. Configure several scalar lanes and the canonical options form state.
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        request = RequestFactory().get("/")
+        request.user = self.admin_user
+        state = DataviewState(
+            request=request,
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            model=self.CustomerModel,
+            preference=SimpleNamespace(options={}),
+            queryset=self.CustomerModel.objects.all(),
+            fields=SimpleNamespace(accessible_fields=[(field, True)]),
+            render_fields=[],
+            avatar_field=None,
+            options=KanbanDataView(
+                group_by_field="age", custom_groupings={"Young": ["20", "30"]}
+            ),
+        )
+        # 2. Build the complete form and prohibit materializing any card pages.
+        field._get_model_field()  # Warm the schema lookup; measure only lane data queries.
+        with (
+            patch.object(
+                KanbanDataviewRenderer,
+                "_materialize_lane",
+                side_effect=AssertionError("Mapping choices must not load cards"),
+            ),
+            patch.object(
+                KanbanDataviewRenderer,
+                "build_lane_metadata",
+                wraps=KanbanDataviewRenderer.build_lane_metadata,
+            ) as metadata_builder,
+            self.assertNumQueries(1),
+        ):
+            form_class = KanbanDataView.form_factory(state)
+        # 3. Both editors reuse the one metadata result and preserve custom labels.
+        metadata_builder.assert_called_once()
+        self.assertEqual(
+            list(form_class.base_fields["custom_groupings"].right_field.choices),
+            [("20", "20"), ("30", "30"), ("40", "40")],
+        )
+        self.assertIn(
+            ("Young", "Young"),
+            form_class.base_fields["lane_colouring"].left_field.widget.choices,
+        )
+
+    def test_lazy_column_query_count_does_not_grow_with_other_lanes(self) -> None:
+        """
+        Use case: A lazy-loaded custom lane has many unrelated scalar lanes nearby.
+        Expected result: Only the requested page loads and the query count stays constant.
+        """
+        # 1. Request the second page of a sorted custom lane.
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        options = KanbanDataView(
+            custom_groupings={"Young": ["20", "30"]},
+            lane_colouring={"Young": "#123456"},
+        )
+        preference = SimpleNamespace(options={"kanban": {"sort_field": "first_name"}})
+        with self.assertNumQueries(3):
+            group = KanbanDataviewRenderer.build_column_group(
+                self.CustomerModel.objects.all(),
+                field,
+                "__group__:Young",
+                preference=preference,
+                page_size=2,
+                page_number=2,
+                options=options,
+            )
+        self.assertEqual([card.first_name for card in group["items"]], ["Card 2"])
+        self.assertEqual(group["count"], 3)
+        self.assertEqual(group["items"][0].kanban_header_colour, "#123456")
+        # 2. Add thirty unrelated lanes with card objects of their own.
+        country = self.CountryModel.objects.get(name="Belgium")
+        self.CustomerModel.objects.bulk_create(
+            [
+                self.CustomerModel(
+                    first_name=f"Other {index}",
+                    last_name="Test",
+                    age=index,
+                    country=country,
+                )
+                for index in range(100, 130)
+            ]
+        )
+        # 3. Loading either an ordinary or custom lane still costs just three queries.
+        with self.assertNumQueries(3):
+            group = KanbanDataviewRenderer.build_column_group(
+                self.CustomerModel.objects.all(),
+                field,
+                "__group__:Young",
+                preference=preference,
+                page_size=2,
+                page_number=2,
+                options=options,
+            )
+        self.assertEqual([card.first_name for card in group["items"]], ["Card 2"])
+        with self.assertNumQueries(3):
+            ordinary = KanbanDataviewRenderer.build_column_group(
+                self.CustomerModel.objects.all(),
+                field,
+                "40",
+                page_size=2,
+                options=options,
+            )
+        self.assertEqual(ordinary["count"], 1)
+        self.assertEqual([card.age for card in ordinary["items"]], [40])
+
+    def test_lazy_column_action_materializes_only_the_requested_page(self) -> None:
+        """
+        Use case: The component requests another page of a merged lane.
+        Expected result: Only that lane loads, retaining sorting, colour and pagination metadata.
+        """
+        from unittest.mock import patch
+
+        # 1. Build the request and canonical renderer state for page two.
+        self.create_cards()
+        country = self.CountryModel.objects.get(name="Belgium")
+        self.CustomerModel.objects.bulk_create([
+            self.CustomerModel(first_name=f"Grouped {index:02}", last_name="Test", age=20, country=country)
+            for index in range(12)
+        ])
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        request = RequestFactory().get(
+            "/", {"kanban_column": "__group__:Young", "kanban_page": "2"}
+        )
+        request.user = self.admin_user
+        options = KanbanDataView(
+            group_by_field="age",
+            custom_groupings={"Young": ["20", "30"]},
+            lane_colouring={"Young": "#123456"},
+            page_size=10,
+        )
+        preference = SimpleNamespace(
+            pk=1, options={"kanban": {"sort_field": "first_name"}}
+        )
+        state = DataviewState(
+            request=request,
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+            model=self.CustomerModel,
+            preference=preference,
+            queryset=self.CustomerModel.objects.all(),
+            fields=SimpleNamespace(accessible_fields=[(field, True)]),
+            render_fields=[],
+            avatar_field=None,
+            options=options,
+        )
+        # 2. The endpoint must never fall back to loading the full board.
+        with (
+            patch.object(
+                KanbanDataviewRenderer,
+                "build_groups",
+                side_effect=AssertionError("Lazy loading must not build the board"),
+            ),
+            patch.object(
+                KanbanDataviewRenderer,
+                "_materialize_lane",
+                wraps=KanbanDataviewRenderer._materialize_lane,
+            ) as materializer,
+        ):
+            response = KanbanDataviewRenderer.handle_action("column", request, state)
+        # 3. The second page contains only its own sorted cards with the custom colour.
+        self.assertEqual(response.status_code, 200)
+        materializer.assert_called_once()
+        html = response.content.decode()
+        self.assertIn("Grouped 07", html)
+        self.assertNotIn("Grouped 06", html)
+        self.assertNotIn("Card 0", html)
+        self.assertNotIn("Card 3", html)
+        self.assertIn("background-color: #123456", html)

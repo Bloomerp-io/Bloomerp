@@ -5,13 +5,15 @@ from typing import TYPE_CHECKING, Any, Literal
 from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
+from pydantic import Field
 
+from bloomerp.dataviews.calendar.config import date_field_choices
 from bloomerp.dataviews.definition import (
     BaseDataview,
     page_size_choices,
 )
-from bloomerp.dataviews.calendar.config import date_field_choices
-from pydantic import Field
+from bloomerp.dataviews.table.config import sort_direction_choices, sort_field_choices
+from bloomerp.dataviews.table.renderer import TableDataviewRenderer
 
 if TYPE_CHECKING:
     from bloomerp.models.application_field import ApplicationField
@@ -26,17 +28,30 @@ class GanttDataView(BaseDataview):
     dependency_from_field: str | None = None
     dependency_for_field: str | None = None
     page_size: Literal[10, 25, 50, 100] = 25
+    ordering: str | None = None
+    ordering_direction: Literal["asc", "desc"] = "asc"
     display_fields: list = Field(default_factory=list)
     application_field_options = {
         "start_field": "single",
         "end_field": "single",
         "dependency_from_field": "single",
         "dependency_for_field": "single",
+        "ordering": "single",
     }
 
     @classmethod
-    def create_form_field(cls, name, field_info, state):
+    def create_form_field(cls, name: str, field_info: Any, state: Any) -> forms.Field:
+        """Build a Gantt option field using the shared sorting choices where appropriate."""
         application_fields = state.accessible_fields
+        ordering_options = sort_field_choices(application_fields)
+        eligible_ordering_fields = TableDataviewRenderer._get_sortable_fields_by_name(
+            state.queryset, state.fields,
+        )
+        ordering_options["choices"] = [
+            (value, label)
+            for value, label in ordering_options["choices"]
+            if not value or value in eligible_ordering_fields
+        ]
         field_options = {
             "start_field": (
                 forms.TypedChoiceField,
@@ -80,6 +95,23 @@ class GanttDataView(BaseDataview):
                     **page_size_choices(application_fields),
                     "label": _("Rows per page"),
                     "help_text": _("The number of timeline rows loaded at a time."),
+                    "required": False,
+                },
+            ),
+            "ordering": (
+                forms.TypedChoiceField,
+                {
+                    **ordering_options,
+                    "label": _("Order by"),
+                    "help_text": _("The field used to order timeline records."),
+                    "required": False,
+                },
+            ),
+            "ordering_direction": (
+                forms.ChoiceField,
+                {
+                    **sort_direction_choices(application_fields),
+                    "label": _("Order direction"),
                     "required": False,
                 },
             ),

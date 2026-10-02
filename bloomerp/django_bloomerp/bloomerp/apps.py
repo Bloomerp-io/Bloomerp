@@ -41,6 +41,7 @@ class BloomerpApp(AppConfig):
         from bloomerp.config.settings import configure_bloomerp_allauth_settings
         from bloomerp.config.validator import validate_runtime_configuration
         from bloomerp.permissions.manager import ensure_bloomerp_model_permissions
+        from bloomerp.signals import file_signals  # noqa: F401
         from bloomerp.signals.automation_signals import setup_automation_signals
         from bloomerp.signals.inbox_source_signals import ensure_inbox_source_schedules
         from bloomerp.communication.inbox_sources import InboxSourceRegistry

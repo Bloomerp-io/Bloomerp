@@ -192,6 +192,7 @@ ONE_TO_ONE_FIELD = FieldTypeDefinition(
             UNIQUE_FIELD_OPTION,
         ),
     ),
+    widget_factory=relation_widget(),
     render_value=render_foreign_key_dataview_value,
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
