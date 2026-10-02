@@ -2,14 +2,13 @@
 
 from unittest.mock import patch
 
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from django import forms
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.http import QueryDict
 from django.test import SimpleTestCase
-
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
 
 class TestOneToOneWidget(SimpleTestCase):
