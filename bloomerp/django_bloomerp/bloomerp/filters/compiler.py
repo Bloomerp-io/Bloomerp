@@ -170,6 +170,7 @@ def compile_sql_filters(
     The surrounding SELECT must use the model's physical table name. This is
     predicate compilation, not authorization or arbitrary-query rewriting.
     Aggregate SQL factories need a separate HAVING contract and are rejected.
+    Virtual model fields compile through their registered Django query adapter.
     """
     from bloomerp.filters.utils import resolve_model_path
 
@@ -181,9 +182,12 @@ def compile_sql_filters(
         predicates = []
         for condition in group.conditions:
             field, target, lookup, value = _resolve_execution_condition(condition, model=model)
+            _, model_field, keys = resolve_model_path(model, target.field_path)
+            if not model_field.concrete and not model_field.is_relation:
+                predicates.append(compile_condition(condition, model=model).predicate)
+                continue
             if lookup.get_sql_factory() is None:
                 raise ValidationError("Lookup does not support SQL filtering")
-            _, model_field, keys = resolve_model_path(model, target.field_path)
             if model_field.one_to_many or model_field.many_to_many:
                 raise ValidationError("SQL collection filtering requires an aggregate/subquery contract")
             context = SQLLookupContext(

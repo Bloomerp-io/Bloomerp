@@ -11,13 +11,19 @@ import pandas as pd
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.db.models import Field
-from django.db.models import Model, QuerySet
+from django.db.models import Field, Model, QuerySet
 from django.forms import BaseFormSet, formset_factory
-from django.forms.widgets import CheckboxInput, CheckboxSelectMultiple, HiddenInput, RadioSelect
+from django.forms.widgets import (
+    CheckboxInput,
+    CheckboxSelectMultiple,
+    HiddenInput,
+    RadioSelect,
+)
 from django.http import QueryDict
 
+from bloomerp.celery.utils import is_celery_available
 from bloomerp.forms.bulk_upload_form import (
     AUTO_MANAGED_FIELD_NAMES,
     BloomerpBulkForm,
@@ -27,10 +33,8 @@ from bloomerp.models import ApplicationField
 from bloomerp.models.files import File
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
-from bloomerp.celery.utils import is_celery_available
 from bloomerp.utils.model_io import BloomerpModelIO
 from bloomerp.utils.realtime import ToastPayload, send_toast_message
-
 
 DEFAULT_REVIEW_PAGE_SIZE = 50
 MAX_VALIDATION_ERRORS = 25
@@ -179,7 +183,7 @@ class BulkCrudService:
         """
         return f"{self.model.__name__}__bulk_upload_template.{extension}"
 
-    def create_draft(self, uploaded_file, *, previous_file_id: str | None = None) -> BulkUploadDraft:
+    def create_draft(self, uploaded_file: UploadedFile | None, *, previous_file_id: str | None = None) -> BulkUploadDraft:
         """Create a bulk upload draft from an uploaded file.
 
         Args:
@@ -194,6 +198,8 @@ class BulkCrudService:
 
         self.delete_draft_file(previous_file_id)
 
+        from bloomerp.models.files.file import BulkUploadFileMetadata, FileMetadata
+
         draft_file = File(
             file=uploaded_file,
             name=getattr(uploaded_file, "name", None) or "bulk-upload",
@@ -201,13 +207,11 @@ class BulkCrudService:
             persisted=False,
             created_by=self.user,
             updated_by=self.user,
-            meta={
-                "bulk_upload_draft": True,
-                "content_type_id": self.content_type.pk,
-                "model_label": self.model._meta.label_lower,
-                "original_filename": getattr(uploaded_file, "name", "") or "",
-                "upload_type": "bulk_upload",
-            },
+            meta=FileMetadata(bulk_upload=BulkUploadFileMetadata(
+                content_type_id=self.content_type.pk,
+                model_label=self.model._meta.label_lower,
+                original_filename=getattr(uploaded_file, "name", "") or "",
+            )),
         )
         draft_file.save()
 
@@ -228,7 +232,7 @@ class BulkCrudService:
         """Get the draft file for a given file ID."""
         if not file_id:
             return None
-        return File.objects.filter(pk=file_id, meta__bulk_upload_draft=True).first()
+        return File.objects.filter(pk=file_id, meta__bulk_upload__isnull=False).first()
 
     def delete_draft_file(self, file_id: str | None) -> None:
         """Delete the draft file for a given file ID."""
@@ -466,7 +470,9 @@ class BulkCrudService:
 
         if is_celery_available():
             try:
-                from bloomerp.celery.tasks.bulk_upload_task import process_bulk_upload_submission
+                from bloomerp.celery.tasks.bulk_upload_task import (
+                    process_bulk_upload_submission,
+                )
 
                 process_bulk_upload_submission.delay(
                     content_type_id=self.content_type.pk,

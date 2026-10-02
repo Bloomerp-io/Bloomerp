@@ -74,6 +74,7 @@ import MarkdownCodeBlock from './components/MarkdownCodeBlock';
 import { loadTranslations } from './utils/i18n';
 import { FileBrowser } from './components/data_view_components/FileBrowser';
 
+
 Object.assign(window, { showMessage });
 
 // Register components here

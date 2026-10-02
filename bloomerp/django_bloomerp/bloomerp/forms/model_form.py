@@ -10,6 +10,7 @@ from django.db.models import Model, QuerySet
 from django.utils.datastructures import MultiValueDict
 from django.db import models
 
+from bloomerp.form_fields.bloomerp_file_field import BloomerpFileFormField
 from bloomerp.form_fields.one_to_many_field import (
     OneToManyCleanedData,
     OneToManyField,
@@ -191,7 +192,12 @@ class BloomerpModelForm(forms.ModelForm):
             except ValidationError as error:
                 self.add_error(field_name, error)
 
+    def _get_validation_exclusions(self) -> set[str]:
+        """Let registered virtual form fields validate their pending structured values."""
+        return super()._get_validation_exclusions() | set(self.bloomerp_non_model_field_names)
+
     def _save_model_fields(self, *, commit: bool) -> Model:
+        """Save Django-owned fields while keeping virtual values for structured persistence."""
         detached_values = {
             field_name: self.cleaned_data.pop(field_name)
             for field_name in self.bloomerp_non_model_field_names
@@ -218,6 +224,7 @@ class BloomerpModelForm(forms.ModelForm):
         self.save_structured_fields()
 
     def save(self, commit: bool = True) -> Model:
+        """Save the parent and its structured fields in the same database transaction."""
         if not commit:
             return self._save_model_fields(commit=False)
 
@@ -355,14 +362,15 @@ def bloomerp_modelform_factory(
 
     meta_class = type("Meta", (), {"model": model_cls, "fields": model_field_names})
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self: BloomerpModelForm, *args: Any, **kwargs: Any) -> None:
+        """Bind structured editors to their parent and populate virtual initial values."""
         BloomerpModelForm.__init__(self, *args, **kwargs)
         instance = getattr(self, "instance", None)
 
         for field_name in self.bloomerp_read_only_field_names:
             self.fields[field_name].disabled = True
         for form_field in self.fields.values():
-            if isinstance(form_field, OneToManyField):
+            if isinstance(form_field, (OneToManyField, BloomerpFileFormField)):
                 form_field.bind_parent(instance)
 
         if instance is None or instance._state.adding:

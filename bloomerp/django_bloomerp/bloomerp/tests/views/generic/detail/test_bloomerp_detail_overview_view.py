@@ -56,6 +56,7 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Return the permission, layout, persistence, and activity scenarios."""
         customer_kwargs = {"pk": self.customer.pk}
         return [
+            *self.get_attachment_scenarios(),
             ModelRequestScenario(
                 name="Object overview requires global view permission",
                 description="UC: A row policy matches but global view access is absent.\nExpected Result: The detail page returns 403.",
@@ -456,3 +457,221 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         activity = ActivityLog.objects.filter(object_id=self.activity_todo.pk, content_type=ContentType.objects.get_for_model(Todo)).first()
         self.activity_todo.refresh_from_db()
         return activity is not None and activity.action == ActivityLogAction.CHANGE and activity.source == ActivityLogSource.DETAIL and self.activity_todo.title == "AFTER" and self.activity_todo.updated_by == self.admin_user
+
+    def get_attachment_scenarios(self) -> list[ModelRequestScenario]:
+        """Exercise single/multiple uploads and individual/all removals through detail POSTs."""
+        return [
+            ModelRequestScenario(
+                name="Add one field attachment",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_single_upload,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.one_attachment_saved
+                ),
+            ),
+            ModelRequestScenario(
+                name="Add multiple field attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_multiple_uploads,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.two_attachments_saved
+                ),
+            ),
+            ModelRequestScenario(
+                name="Remove one of multiple field attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_remove_one,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.one_attachment_removed
+                ),
+            ),
+            ModelRequestScenario(
+                name="Remove all field attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_remove_all,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.all_attachments_removed
+                ),
+            ),
+            ModelRequestScenario(
+                name="Invalid upload preserves existing attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_invalid_upload,
+                expected=ExpectedResult(
+                    status_code=200, response_validators=self.invalid_upload_is_safe
+                ),
+            ),
+            ModelRequestScenario(
+                name="Foreign attachment ID is rejected",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_foreign_attachment,
+                expected=ExpectedResult(
+                    status_code=200, response_validators=self.foreign_attachment_is_safe
+                ),
+            ),
+        ]
+
+    def configure_attachment_layout(
+        self, scenario: ModelRequestScenario, *, multiple: bool
+    ) -> None:
+        """Expose only the picture field in a selected detail layout."""
+        self.attachment_field = self.CustomerModel._meta.get_field("picture")
+        self.attachment_field.multiple = multiple
+        self.attachment_field.allowed_extensions = [".pdf"]
+        scenario.view_kwargs = {"pk": self.customer.pk}
+        scenario.data = {"picture__present": "1"}
+        UserObjectLayoutPreference.objects.filter(
+            user=self.admin_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            selected=True,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        columns=1,
+                        items=[LayoutItem(id=self.fields_by_name["picture"].pk)],
+                    )
+                ]
+            ).model_dump(mode="json"),
+        )
+
+    def prepare_single_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a single PDF to an empty single-file field."""
+        self.configure_attachment_layout(scenario, multiple=False)
+        scenario.data["picture"] = SimpleUploadedFile("one.pdf", b"one")
+
+    def prepare_multiple_uploads(self, scenario: ModelRequestScenario) -> None:
+        """Submit two PDFs to a multiple-file field."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        scenario.data["picture"] = [
+            SimpleUploadedFile("one.pdf", b"one"),
+            SimpleUploadedFile("two.pdf", b"two"),
+        ]
+
+    def seed_attachments(self) -> None:
+        """Create two owned attachments and remember their IDs and storage names."""
+        from bloomerp.models.files.file import File
+
+        self.attachment_field.on_save(
+            self.customer,
+            [],
+            [
+                SimpleUploadedFile("one.pdf", b"one"),
+                SimpleUploadedFile("two.pdf", b"two"),
+            ],
+        )
+        self.original_attachment_ids = [str(file.pk) for file in self.customer.picture]
+        self.original_files = list(
+            File.objects.filter(pk__in=self.original_attachment_ids)
+        )
+
+    def prepare_remove_one(self, scenario: ModelRequestScenario) -> None:
+        """Retain one of two existing attachments."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        self.seed_attachments()
+        scenario.data["picture__retain"] = [self.original_attachment_ids[0]]
+
+    def prepare_remove_all(self, scenario: ModelRequestScenario) -> None:
+        """Submit the editor with neither existing attachment retained."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        self.seed_attachments()
+
+    def prepare_invalid_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a disallowed replacement while existing attachments remain."""
+        self.prepare_remove_all(scenario)
+        scenario.data["picture__retain"] = self.original_attachment_ids
+        scenario.data["picture"] = SimpleUploadedFile("bad.exe", b"bad")
+
+    def prepare_foreign_attachment(self, scenario: ModelRequestScenario) -> None:
+        """Attempt to retain a file belonging to a different object."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        self.other_customer = self.create_customer("Other", "Person", 40)
+        self.attachment_field.on_save(
+            self.other_customer, [], [SimpleUploadedFile("private.pdf", b"private")]
+        )
+        scenario.data["picture__retain"] = [str(file.pk) for file in self.other_customer.picture]
+
+    def attachment_count_is(self, count: int) -> bool:
+        """Check IDs, object ownership, field metadata, and persisted storage."""
+        from bloomerp.models.files.file import File
+
+        self.customer.refresh_from_db()
+        files = list(self.customer.picture)
+        return (
+            len(files) == count
+            and len(self.customer.picture) == count
+            and all(
+                file.field_reference.application_field.content_type_id == self.content_type.pk
+                and file.field_reference.object_id == str(self.customer.pk)
+                and file.field_reference.application_field.field == "picture"
+                and file.persisted
+                and file.file.storage.exists(file.file.name)
+                for file in files
+            )
+        )
+
+    def one_attachment_saved(self, _response: HttpResponse) -> bool:
+        """Check one upload was attached to the detail object."""
+        return self.attachment_count_is(1)
+
+    def two_attachments_saved(self, _response: HttpResponse) -> bool:
+        """Check both uploads were attached to the detail object."""
+        return self.attachment_count_is(2)
+
+    def one_attachment_removed(self, _response: HttpResponse) -> bool:
+        """Check removal deletes only the deselected record and its stored bytes."""
+        from bloomerp.models.files.file import File
+
+        removed_id = self.original_attachment_ids[1]
+        removed = next(
+            file for file in self.original_files if str(file.pk) == removed_id
+        )
+        return (
+            self.attachment_count_is(1)
+            and not File.objects.filter(pk=removed_id).exists()
+            and not removed.file.storage.exists(removed.file.name)
+        )
+
+    def all_attachments_removed(self, _response: HttpResponse) -> bool:
+        """Check clearing the field removes all owned records and their bytes."""
+        from bloomerp.models.files.file import File
+
+        return (
+            self.attachment_count_is(0)
+            and not File.objects.filter(pk__in=self.original_attachment_ids).exists()
+            and all(
+                not file.file.storage.exists(file.file.name)
+                for file in self.original_files
+            )
+        )
+
+    def invalid_upload_is_safe(self, response: HttpResponse) -> bool:
+        """Check invalid input renders errors and preserves both stored attachments."""
+        return (
+            self.attachment_count_is(2)
+            and "Unsupported file extension" in response.content.decode()
+        )
+
+    def foreign_attachment_is_safe(self, response: HttpResponse) -> bool:
+        """Check a forged retained ID cannot attach or delete another object's file."""
+        from bloomerp.models.files.file import File
+
+        return (
+            self.attachment_count_is(0)
+            and File.objects.filter(pk__in=[file.pk for file in self.other_customer.picture]).count() == 1
+            and "Attachments do not belong" in response.content.decode()
+        )

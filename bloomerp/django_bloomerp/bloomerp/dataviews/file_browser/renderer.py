@@ -2,7 +2,7 @@ from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.urls import reverse
 
 from bloomerp.dataviews.definition import BaseDataviewRenderer
@@ -23,15 +23,13 @@ class FileBrowserRenderer(BaseDataviewRenderer):
     template_name = "dataviews/files.html"
     reserved_query_params = {"folder_id"}
 
-    def _visible_files(self, files):
-        """Apply linked-object row and files-field permissions before rendering."""
-        from bloomerp.services.file_permission_services import user_can_view_file
+    def _visible_files(self, files: QuerySet[File]) -> list[File]:
+        """Batch-load reference owners and enforce their row and field permissions."""
+        from bloomerp.services.file_permission_services import prepare_file_linked_objects, user_can_view_file
 
-        return [
-            file
-            for file in files.select_related("content_type")
-            if user_can_view_file(self.state.request, file)
-        ]
+        prepared = list(files.select_related("content_type", "field_reference__application_field__content_type"))
+        prepare_file_linked_objects(prepared)
+        return [file for file in prepared if user_can_view_file(self.state.request, file)]
 
     def _visible_folders(self, folders):
         """Do not disclose folders whose linked file scope is inaccessible."""
@@ -106,12 +104,25 @@ class FileBrowserRenderer(BaseDataviewRenderer):
 
     @staticmethod
     def _scope_query(scopes: dict[int, set[str]]) -> Q:
+        """Filter folders and generic file ownership to the supplied object scopes."""
         query = Q(pk__in=[])
         for content_type_id, object_ids in scopes.items():
             if object_ids:
                 query |= Q(
                     content_type_id=content_type_id,
                     object_id__in=object_ids,
+                )
+        return query
+
+    @staticmethod
+    def _file_scope_query(scopes: dict[int, set[str]]) -> Q:
+        """Include both generic files and files owned through application fields."""
+        query = FileBrowserRenderer._scope_query(scopes)
+        for content_type_id, object_ids in scopes.items():
+            if object_ids:
+                query |= Q(
+                    field_reference__application_field__content_type_id=content_type_id,
+                    field_reference__object_id__in=object_ids,
                 )
         return query
 
@@ -171,7 +182,8 @@ class FileBrowserRenderer(BaseDataviewRenderer):
         context["scope_object_id"] = scope_object_id
         return super().render(pagination, extra_context=context)
 
-    def _get_file_model_items(self, current_folder):
+    def _get_file_model_items(self, current_folder: FileFolder | None) -> tuple[FileFolder | None, list[FileFolder], list[File]]:
+        """Collect folder contents, including field-owned files under an object scope."""
         content_type = _resolve_content_type(self.state)
         linked_object = _resolve_object(self.state)
         related_scopes = {}
@@ -212,6 +224,13 @@ class FileBrowserRenderer(BaseDataviewRenderer):
                 if is_host_folder
                 else self._related_file_queryset().filter(folder=current_folder)
             )
+            if is_host_folder:
+                field_files = self._related_file_queryset().filter(
+                    folder=current_folder,
+                    field_reference__application_field__content_type=content_type,
+                    field_reference__object_id=str(linked_object.pk),
+                )
+                files = (files | field_files).distinct()
             if (
                 is_host_folder
                 and current_folder.protected
@@ -223,7 +242,7 @@ class FileBrowserRenderer(BaseDataviewRenderer):
                     | (related_query & Q(protected=True))
                 )
                 files = (
-                    files | self._related_file_queryset().filter(related_query)
+                    files | self._related_file_queryset().filter(self._file_scope_query(related_scopes))
                 ).distinct()
         else:
             folder_query = {"parent__isnull": True}
@@ -242,7 +261,8 @@ class FileBrowserRenderer(BaseDataviewRenderer):
             self._visible_files(files),
         )
 
-    def _get_related_model_items(self, current_folder):
+    def _get_related_model_items(self, current_folder: FileFolder | None) -> tuple[list[FileFolder], list[File]]:
+        """Collect generic and reference-owned files for the host collection's objects."""
         object_ids = list(
             self.state.queryset.values_list("pk", flat=True)
         )
@@ -274,7 +294,7 @@ class FileBrowserRenderer(BaseDataviewRenderer):
             base_folders = FileFolder.objects.filter(
                 Q(content_type=self.state.content_type) | related_query
             )
-            files = self._related_file_queryset().filter(self._scope_query(scopes))
+            files = self._related_file_queryset().filter(self._file_scope_query(scopes))
 
         folders = string_search_on_qs(
             base_folders,
