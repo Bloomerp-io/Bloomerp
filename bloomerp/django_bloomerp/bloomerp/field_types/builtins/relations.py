@@ -6,7 +6,6 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import QuerySet
 from django.db.models.fields.reverse_related import ManyToManyRel
-from django.forms.boundfield import BoundField
 from django.forms.models import ModelChoiceField, ModelMultipleChoiceField
 
 from bloomerp.field_types.builtins.display import (
@@ -82,59 +81,6 @@ class SingleRelationChoiceField(ModelChoiceField):
                 raise ValidationError("Enter a single value.", code="invalid_list")
             value = value[0]
         return super().to_python(value)
-
-
-class PrimaryKeyRelationBoundField(BoundField):
-    """Keep submitted picker IDs separate from stored target-field initial values."""
-
-    def value(self) -> Any:
-        """Translate only initial values; submitted picker values already are IDs."""
-        if self.form.is_bound and not self.field.disabled:
-            return self.data
-        return self.field.prepare_value(self.initial)
-
-
-class PrimaryKeyRelationChoiceField(ModelChoiceField):
-    """Use picker IDs while accepting model-form initial values from a unique target."""
-
-    def __init__(self, *, relation_target_field: str, **kwargs: Any) -> None:
-        """Store the initial-value target while validating choices by primary key."""
-        self.relation_target_field = relation_target_field
-        kwargs["to_field_name"] = None
-        super().__init__(**kwargs)
-
-    def prepare_value(self, value: Any) -> Any:
-        """Convert a stored target-field value to the primary key used by the picker."""
-        if value not in self.empty_values and not isinstance(value, models.Model):
-            try:
-                value = self.queryset.get(**{self.relation_target_field: value})
-            except (self.queryset.model.DoesNotExist, ValidationError, ValueError, TypeError):
-                pass
-        return super().prepare_value(value)
-
-    def get_bound_field(self, form: forms.BaseForm, field_name: str) -> BoundField:
-        """Render bound IDs without interpreting them as stored target-field values."""
-        return PrimaryKeyRelationBoundField(form, self, field_name)
-
-    def _clean_bound_field(self, bound_field: BoundField) -> models.Model | None:
-        """Convert disabled initial values before primary-key choice validation."""
-        value = self.prepare_value(bound_field.initial) if self.disabled else bound_field.data
-        return self.clean(value)
-
-
-def one_to_one_form(
-    context: FieldContext, default: forms.Field | None,
-) -> forms.Field | None:
-    """Adapt concrete non-primary relations to the picker's primary-key contract."""
-    if context.application_field is None:
-        return default
-    model_field = context.application_field._get_model_field()
-    if isinstance(model_field, models.OneToOneField) and not model_field.target_field.primary_key:
-        return model_field.formfield(
-            form_class=PrimaryKeyRelationChoiceField,
-            relation_target_field=model_field.target_field.name,
-        )
-    return default
 
 
 @dataclass
@@ -247,7 +193,6 @@ ONE_TO_ONE_FIELD = FieldTypeDefinition(
         ),
     ),
     widget_factory=relation_widget(),
-    form_factory=one_to_one_form,
     render_value=render_foreign_key_dataview_value,
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
