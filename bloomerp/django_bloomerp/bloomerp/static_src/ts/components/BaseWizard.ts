@@ -25,10 +25,22 @@ export default class BaseWizard extends BaseComponent {
     private form: HTMLFormElement | null = null;
     private submitHandler: ((event: SubmitEvent) => void) | null = null;
     private afterRequestHandler: ((event: Event) => void) | null = null;
+    /** Route keyboard events from the wizard root to its shortcut handler. */
+    private readonly keydownHandler: (event: KeyboardEvent) => void = (event: KeyboardEvent): void => {
+        this.handleKeyboardShortcut(event);
+    };
+    /** Release component listeners when HTMX removes this wizard root. */
+    private readonly cleanupHandler: (event: Event) => void = (event: Event): void => {
+        if (event.target === this.element) window.setTimeout(() => this.destroy(), 0);
+    };
     private pendingRequest: PendingWizardRequest | null = null;
 
+    /** Bind submit, request, keyboard shortcut, and HTMX cleanup listeners. */
     public initialize(): void {
         if (!this.element) return;
+
+        this.element.addEventListener("keydown", this.keydownHandler);
+        this.element.addEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
 
         this.form = this.element.querySelector("form");
         if (!this.form) return;
@@ -40,7 +52,11 @@ export default class BaseWizard extends BaseComponent {
         this.form.addEventListener("htmx:afterRequest", this.afterRequestHandler);
     }
 
+    /** Remove listeners and clear references when the wizard is replaced. */
     public destroy(): void {
+        this.element?.removeEventListener("keydown", this.keydownHandler);
+        this.element?.removeEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
+
         if (this.form && this.submitHandler) {
             this.form.removeEventListener("submit", this.submitHandler);
         }
@@ -53,6 +69,40 @@ export default class BaseWizard extends BaseComponent {
         this.submitHandler = null;
         this.afterRequestHandler = null;
         this.pendingRequest = null;
+    }
+
+    /** Submit the corresponding wizard control for a supported keyboard shortcut. */
+    private handleKeyboardShortcut(event: KeyboardEvent): void {
+        if (
+            event.isComposing
+            || !(event.metaKey || event.ctrlKey)
+            || event.altKey
+            || event.shiftKey
+        ) {
+            return;
+        }
+
+        const key = event.key.toLowerCase();
+        const buttonSelector = key === "s"
+            ? 'button[name="_wizard_action"][value="next"]'
+            : key === "."
+                ? 'button[name="_wizard_action"][value="back"]'
+                : key === ","
+                    ? 'button[hx-get*="reset_wizard=true"]'
+                    : null;
+
+        if (!buttonSelector) return;
+
+        const button = this.element?.querySelector<HTMLButtonElement>(buttonSelector);
+        if (!button || button.disabled) return;
+
+        event.preventDefault();
+        if (key === ",") {
+            button.click();
+            return;
+        }
+
+        this.form?.requestSubmit(button);
     }
 
     public setOnDone(callback: WizardCallback): void {

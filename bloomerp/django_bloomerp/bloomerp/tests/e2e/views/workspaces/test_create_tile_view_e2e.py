@@ -4,6 +4,7 @@ from bloomerp.tests.base import (
     E2EAction,
     E2ERequestScenario,
 )
+from playwright.sync_api import expect
 
 
 class TestCreateTileViewE2E(BloomerpE2ETestCase):
@@ -12,5 +13,37 @@ class TestCreateTileViewE2E(BloomerpE2ETestCase):
     view_name = 'Create Tile'
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
-        # Add only the browser scenarios this view needs.
-        return []
+        """Describe keyboard navigation across the create-tile wizard steps."""
+        return [
+            E2ERequestScenario(
+                name="Keyboard shortcuts move through and reset the wizard",
+                user=self.admin_user,
+                url="/create-tile",
+                actions=[
+                    E2EAction(
+                        name="Use next, back, and reset shortcuts",
+                        execute=self.exercise_keyboard_shortcuts,
+                    ),
+                ],
+            ),
+        ]
+
+    def exercise_keyboard_shortcuts(self) -> None:
+        """Verify keyboard shortcuts invoke the wizard's next, back, and reset controls."""
+        root = self.page.locator('#wizard-root')
+        self.page.locator('[bloomerp-component="selectable-cards"] [data-value]').first.click()
+
+        root.get_by_role("button", name="Continue").focus()
+        self.page.keyboard.press("ControlOrMeta+s")
+        expect(root).to_have_attribute("data-wizard-step-index", "1")
+
+        root.get_by_role("button", name="Back").focus()
+        self.page.keyboard.press("ControlOrMeta+.")
+        expect(root).to_have_attribute("data-wizard-step-index", "0")
+        expect(root.get_by_role("button", name="Reset")).to_be_visible()
+
+        root.get_by_role("button", name="Reset").focus()
+        self.page.keyboard.press("ControlOrMeta+,")
+        expect(root).to_have_attribute("data-wizard-step-index", "0")
+        expect(root.get_by_role("button", name="Reset")).to_be_hidden()
+        expect(root.locator('[name="tile_type"]')).to_have_value("")
