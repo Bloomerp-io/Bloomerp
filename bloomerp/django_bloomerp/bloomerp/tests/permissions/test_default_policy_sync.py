@@ -17,6 +17,44 @@ from bloomerp.permissions.default_policies import sync_default_policies
 class TestDefaultPolicySync(TestCase):
     """Verify persistence and updates of model-owned policy declarations."""
 
+    def test_global_only_policy_syncs_without_row_or_field_grants(self) -> None:
+        """
+        Use case: A model declares a policy with only global permissions.
+        Expected result: Sync persists and updates those grants without scoped rules.
+        """
+        # 1. Declare only a global permission and synchronize it.
+        declaration = DefaultPolicy(
+            id="bulk-operator", name="Bulk operator",
+            global_permissions=[BloomerpPermission.BULK_DELETE],
+        )
+        config = BloomerpModelConfig(
+            permission_settings=PermissionSettings(default_policies=[declaration]),
+        )
+        with patch.object(Todo, "bloomerp_config", config):
+            first = sync_default_policies([Todo])["bloomerp.todo:bulk-operator"]
+            self.assertEqual(first.field_policy.rule, {})
+            self.assertFalse(first.row_policy.rules.exists())
+            self.assertEqual(
+                set(first.global_permissions.values_list("codename", flat=True)),
+                {"bulk_delete_todo"},
+            )
+
+            # 2. An unchanged declaration keeps the stored scoped policies.
+            second = sync_default_policies([Todo])["bloomerp.todo:bulk-operator"]
+            self.assertEqual(second.pk, first.pk)
+            self.assertEqual(second.row_policy_id, first.row_policy_id)
+
+            # 3. Changing only global grants updates the same policy.
+            declaration.global_permissions.append(BloomerpPermission.VIEW)
+            third = sync_default_policies([Todo])["bloomerp.todo:bulk-operator"]
+            self.assertEqual(third.pk, first.pk)
+            self.assertEqual(
+                set(third.global_permissions.values_list("codename", flat=True)),
+                {"bulk_delete_todo", "view_todo"},
+            )
+            self.assertEqual(third.field_policy.rule, {})
+            self.assertFalse(third.row_policy.rules.exists())
+
     def test_sync_preserves_policy_identity_and_assignments(self) -> None:
         """
         Use case: A configured policy is synchronized twice, then its rule changes.

@@ -13,9 +13,14 @@ from bloomerp.permissions.manager import PolicyManager, ensure_model_permissions
 
 
 def _policy_hash(declaration: DefaultPolicy) -> str:
-    """Return a stable digest of the access rule that requires a database rebuild."""
+    """Return a stable digest of the declared grants requiring a rebuild."""
+    grants = declaration.access_rule.model_dump(mode="json")
+    if declaration.global_permissions is not None:
+        grants["global_permissions"] = declaration.model_dump(
+            mode="json", include={"global_permissions"},
+        )["global_permissions"]
     payload = json.dumps(
-        declaration.access_rule.model_dump(mode="json"), sort_keys=True,
+        grants, sort_keys=True,
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
@@ -47,12 +52,18 @@ def sync_default_policies(
                 ).first()
 
                 if existing is None:
-                    policy = PolicyManager.create_policy(model, declaration.access_rule)
+                    policy = PolicyManager.create_policy(
+                        model, declaration.access_rule,
+                        global_permissions=declaration.global_permissions,
+                    )
                     policy.default_policy_key = key
                     policy.default_policy_hash = digest
                     policy.system_created = True
                 elif existing.default_policy_hash != digest:
-                    replacement = PolicyManager.create_policy(model, declaration.access_rule)
+                    replacement = PolicyManager.create_policy(
+                        model, declaration.access_rule,
+                        global_permissions=declaration.global_permissions,
+                    )
                     old_row_policy = existing.row_policy
                     old_field_policy = existing.field_policy
                     permission_ids = list(

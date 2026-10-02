@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from django.http import HttpRequest, HttpResponse
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
-from bloomerp.permissions.definition import AccessRule
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission
 from bloomerp.workspaces.base import BaseTileConfig
 from pydantic import (
     BaseModel,
@@ -461,14 +461,15 @@ class ActivityLogSettings(BaseModel):
 
 
 class DefaultPolicy(BaseModel):
-    """A named, stable policy declaration for one configured model."""
+    """A named policy with optional scoped and explicit global grants."""
 
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(min_length=1, max_length=255)
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
-    access_rule: AccessRule
+    access_rule: AccessRule = Field(default_factory=AccessRule)
+    global_permissions: list[BloomerpPermission | str] | None = None
 
     @field_validator("id", "name")
     @classmethod
