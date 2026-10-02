@@ -3,6 +3,7 @@ from bloomerp.models.project_management.todo import Todo
 from bloomerp.router import router
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 from django.contrib.contenttypes.models import ContentType
+from typing import Any
 
 @router.register(
     path="todos/",
@@ -21,15 +22,16 @@ class ObjectTodosView(BaseBloomerpDetailView):
     template_name = "views/generic/detail/todos.html"
     
     
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Provide dataview filters for to-dos attached to this object."""
         ctx = super().get_context_data(**kwargs)
         ctx["todo_content_type_id"] = ContentType.objects.get_for_model(Todo).id
         ctx["filters"] = {
-            "object_id": self.object.pk,
-            "content_type_id": ContentType.objects.get_for_model(self.object).id
+            "object_id": str(self.object.pk),
+            "content_type": ContentType.objects.get_for_model(self.object).id,
         }
         ctx["args"] = {
-            "hide-filters" : "object_id,content_type_id"
+            "hide_filters": "object_id,content_type"
         }
         
         return ctx

@@ -1,28 +1,40 @@
 import json
-from typing import Optional
+from typing import Any, Optional, TYPE_CHECKING
 from uuid import UUID
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.forms import widgets
-from django.db.models import Model
+from django.db.models import Model, Q
 from django.urls import reverse
 
+from bloomerp.filters.utils import dict_to_filter
+from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.utils.labels import safe_object_label
+
+if TYPE_CHECKING:
+    from bloomerp.models.application_field import ApplicationField
 
 
 class ForeignFieldWidget(widgets.Widget):
     template_name = 'widgets/foreign_field_widget.html'
     is_m2m: bool = False
-
-    def __init__(self, model=None, attrs=None):
+    source_field: "ApplicationField | None"
+    
+    def __init__(
+        self,
+        model: type[Model] | dict[str, Any] | None = None,
+        attrs: dict[str, Any] | None = None,
+    ) -> None:
+        """Store the related model and source field used to restrict choices."""
         if attrs is None and isinstance(model, dict):
             attrs = model
             model = None
-
+        
         attrs = attrs.copy() if attrs else {}
         self.is_m2m = attrs.pop('is_m2m', False)
         self.model = attrs.pop('model', model)
+        self.source_field = attrs.pop('source_field', None)
         super().__init__(attrs)
 
     def get_related_content_type_id(self) -> Optional[int]:
@@ -107,17 +119,42 @@ class ForeignFieldWidget(widgets.Widget):
 
         return value
 
-    def get_context(self, name, value:Model, attrs):
+    def get_context(
+        self, name: str, value: Any, attrs: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Render selected objects and serialize the source field's choice filter."""
         context = super().get_context(name, value, attrs)
         context["widget"]["is_m2m"] = self.is_m2m
         context["content_type_id"] = self.get_related_content_type_id() or ""
-
+        
         # Check if an invalid entry was made
         if (attrs or {}).get('aria-invalid', 'false') == 'true':
             context['invalid'] = True
         
         # Get the related model class
         related_model_class = self.get_related_model_class()
+        
+        context["choices_filter_json"] = ""
+        if self.source_field and related_model_class is not None:
+            model_field = self.source_field._get_model_field()
+            if hasattr(model_field, "get_limit_choices_to"):
+                choices = model_field.get_limit_choices_to()
+                if choices:
+                    if isinstance(choices, Q):
+                        choices_filter = Filter(connector="AND", conditions=[
+                            FilterCondition(
+                                field_path="pk",
+                                lookup_id="values_in",
+                                value=list(related_model_class._default_manager.filter(
+                                    choices,
+                                ).values_list("pk", flat=True)),
+                            ),
+                        ])
+                    else:
+                        choices_filter = dict_to_filter(choices, model=related_model_class)
+                    context["choices_filter_json"] = json.dumps(
+                        [choices_filter.model_dump(mode="json")]
+                    )
         
         # Set selected value(s)
         selected_ids = []

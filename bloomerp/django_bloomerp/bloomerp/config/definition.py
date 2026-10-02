@@ -52,6 +52,12 @@ class ApiKeyAuthSettings(BaseModel):
     header_name: str = "X-API-Key"
 
 
+class OAuthSettings(BaseModel):
+    """Enable Bloomerp's optional OAuth authorization provider."""
+
+    enabled: bool = False
+
+
 class AuthorizationAuthSettings(BaseModel):
     enabled: bool = False
 
@@ -66,6 +72,7 @@ class BloomerpAuthSettings(BaseModel):
     session: SessionAuthSettings = Field(default_factory=SessionAuthSettings)
     bearer: BearerAuthSettings = Field(default_factory=BearerAuthSettings)
     api_key: ApiKeyAuthSettings = Field(default_factory=ApiKeyAuthSettings)
+    oauth: OAuthSettings = Field(default_factory=OAuthSettings)
     authorization: AuthorizationAuthSettings = Field(default_factory=AuthorizationAuthSettings)
     custom: CustomAuthSettings = Field(default_factory=CustomAuthSettings)
 

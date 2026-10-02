@@ -13,6 +13,9 @@ registration in a top-level `dataviews.py` module or `dataviews` package inside
 an installed Django application. Bloomerp discovers those modules during
 application startup.
 
+See [Kanban grouping and colours](kanban.md) for built-in lane configuration
+and the reusable mapping field.
+
 ## Public API
 
 Import extension primitives from `bloomerp.dataviews`:

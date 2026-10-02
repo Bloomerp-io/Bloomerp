@@ -8,6 +8,7 @@ Parameters:
 - id (str): The id of the resizable div. This will be used to store the value in the cookies. 
 - start_width (str): The initial width of the resizable div. Is a string with the unit, e.g. "200px" or "50%". 
 - fit_to_main_bottom (bool, optional): If true, keep the div height aligned with the bottom of the main panel.
+- force_open (bool, optional): Expand a panel that was saved at zero width for a direct link.
 - resize_from (str, optional): Edge used as the resize handle: "left" (default) or "right".
 - class (str, optional): Additional classes to add to the resizable div. Default is "".
 
@@ -18,6 +19,7 @@ Slots:
 
 <div 
     bloomerp-component="resizable-div"
+    data-force-open="{{ force_open|default:'' }}"
     data-id="{{ id }}"
     data-start-width="{{ start_width }}"
     data-fit-to-main-bottom="{{ fit_to_main_bottom|default:'false' }}"

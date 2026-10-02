@@ -1,4 +1,5 @@
 import {
+    $createTabNode,
     $createParagraphNode,
     $getSelection,
     $isRangeSelection,
@@ -22,6 +23,7 @@ import { getContextMenu } from "@/utils/contextMenu";
 import { launchContextMenu } from "./utils/editorContextMenu";
 import { getCurrentWord, removeTextFromCurrentNode } from "./utils/wordSelector";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
+import { $isCodeBlockNode } from "./nodes/CodeBlockNode";
 
 const COMMAND_CONTEXT_MENU_ID = 'bloomerp-text-editor-command-menu';
 const RANGE_CONTEXT_MENU_ID = 'bloomerp-text-editor-range-menu';
@@ -57,11 +59,77 @@ function getSelectedListItem(node: LexicalNode): ListItemNode | null {
     return null;
 }
 
+/** Check whether the selection is inside an editable code block. */
+function isCodeBlockSelection(node: LexicalNode): boolean {
+    let current: LexicalNode | null = node;
+    while (current) {
+        if ($isCodeBlockNode(current)) return true;
+        current = current.getParent();
+    }
+    return false;
+}
+
+/** Insert a literal tab in code or apply the editor's existing list indentation. */
+function handleTab(this: BloomerpTextEditor, event?: KeyboardEvent): boolean {
+    event?.preventDefault();
+
+    /** Apply the tab to the current Lexical selection. */
+    function insertTab(): void {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
+
+        if (isCodeBlockSelection(selection.anchor.getNode())) {
+            selection.insertNodes([$createTabNode()]);
+            return;
+        }
+
+        const listItem = getSelectedListItem(selection.anchor.getNode());
+        if (listItem) {
+            indentListItem(listItem);
+            return;
+        }
+
+        selection.insertRawText("\t");
+    }
+
+    this.editor?.update(insertTab);
+    return true;
+}
+
+/** Insert a line break while keeping the caret inside a code block. */
+function handleCodeBlockEnter(this: BloomerpTextEditor, event?: KeyboardEvent): boolean {
+    const editor = this.editor;
+    if (!editor) return false;
+    let isCodeBlock = false;
+
+    /** Read whether the caret is currently in a code block. */
+    function detectCodeBlockSelection(): void {
+        const selection = $getSelection();
+        isCodeBlock = $isRangeSelection(selection)
+            && isCodeBlockSelection(selection.anchor.getNode());
+    }
+
+    editor.getEditorState().read(detectCodeBlockSelection);
+    if (!isCodeBlock) return false;
+
+    event?.preventDefault();
+
+    /** Insert a Lexical line break without splitting the code block. */
+    function insertCodeLineBreak(): void {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) selection.insertLineBreak();
+    }
+
+    editor.update(insertCodeLineBreak);
+    return true;
+}
+
+/** Nest an item under its preceding sibling when its list supports indentation. */
 function indentListItem(listItem: ListItemNode): boolean {
     const list = listItem.getParent();
     const previousSibling = listItem.getPreviousSibling();
 
-    if (!$isListNode(list) || !["bullet", "number"].includes(list.getListType()) || !$isListItemNode(previousSibling)) {
+    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType()) || !$isListItemNode(previousSibling)) {
         return false;
     }
 
@@ -111,10 +179,11 @@ function isEmptyCurrentListItem(listItem: ListItemNode): boolean {
     return listItem.getTextContent().trim() === '';
 }
 
+/** Leave an empty list item, or reduce its indent, when Enter is pressed. */
 function exitEmptyListItem(listItem: ListItemNode): boolean {
     const list = listItem.getParent();
 
-    if (!$isListNode(list) || !["bullet", "number"].includes(list.getListType()) || !isEmptyCurrentListItem(listItem)) {
+    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType()) || !isEmptyCurrentListItem(listItem)) {
         return false;
     }
 
@@ -139,14 +208,15 @@ function exitEmptyListItem(listItem: ListItemNode): boolean {
     return true;
 }
 
+/** Add the next item in the current list, leaving checklist items unchecked. */
 function insertListItemAfter(listItem: ListItemNode): boolean {
     const list = listItem.getParent();
 
-    if (!$isListNode(list) || !["bullet", "number"].includes(list.getListType())) {
+    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType())) {
         return false;
     }
 
-    const nextListItem = $createListItemNode();
+    const nextListItem = $createListItemNode(list.getListType() === "check" ? false : undefined);
     listItem.insertAfter(nextListItem);
     nextListItem.selectStart();
 
@@ -203,7 +273,7 @@ export let COMMANDS: Record<string, Command> = {
                 launchContextMenu(
                     editor,
                     contextMenu,
-                    ["h1", "h2", "h3", "image", "unordered_list", "ordered_list", "table"].concat(
+                    ["h1", "h2", "h3", "code_block", "image", "unordered_list", "ordered_list", "checklist", "table"].concat(
                         this.slashExtraActions
                     ),
                     currentWord.slice(1),
@@ -270,7 +340,7 @@ export let COMMANDS: Record<string, Command> = {
                 launchContextMenu(
                     editor,
                     contextMenu,
-                    ["h1", "h2", "h3", "ordered_list", "unordered_list"],
+                    ["h1", "h2", "h3", "ordered_list", "unordered_list", "checklist"],
                     currentWord.slice(1),
                 );
             });
@@ -304,28 +374,12 @@ export let COMMANDS: Record<string, Command> = {
     },
     tab: {
         command: KEY_TAB_COMMAND,
-        handler: function (event) {
-            event.preventDefault();
-
-            this.editor?.update(() => {
-                const selection = $getSelection();
-
-                if (!$isRangeSelection(selection)) {
-                    return;
-                }
-
-                const listItem = getSelectedListItem(selection.anchor.getNode());
-
-                if (listItem) {
-                    indentListItem(listItem);
-                    return;
-                }
-
-                selection.insertText(".");
-            });
-
-            return true;
-        },
+        handler: handleTab,
+    },
+    codeBlockEnter: {
+        command: KEY_ENTER_COMMAND,
+        priority: COMMAND_PRIORITY_CRITICAL,
+        handler: handleCodeBlockEnter,
     },
     removeEmptyNestedListItemBackward: {
         command: KEY_BACKSPACE_COMMAND,

@@ -9,10 +9,12 @@ Parameters:
 - side: Message side, "left" or "right". Default is "left".
 - background: Bubble background, "primary" or "secondary". Default is "secondary".
 - variant: Alias for background.
+- id: Optional anchor for linking to the message.
+- highlight: If true, pulse a primary ring around the message bubble.
 - class: Additional classes for the message row
 {% endcomment %}
 
-<article class="flex min-w-0 gap-3 {% if side == 'right' %}flex-row-reverse{% endif %} {{ class|default:'' }}">
+<article id="{{ id|default:'' }}" class="flex min-w-0 gap-3 {% if side == 'right' %}flex-row-reverse{% endif %} {{ class|default:'' }}">
     <div class="shrink-0">
         <c-ui.avatar
             object=""
@@ -29,7 +31,7 @@ Parameters:
                 <time datetime="{{ datetime|date:'c' }}" class="text-xs text-gray-400">{{ datetime|timesince }} ago</time>
             {% endif %}
         </div>
-        <div class="mt-1 inline-block max-w-full rounded-md px-3 py-2 text-left text-sm leading-6 {% if background == 'primary' or variant == 'primary' %}bg-primary-600 text-white{% else %}bg-gray-50 text-gray-700{% endif %}">
+        <div class="mt-1 inline-block max-w-full rounded-md px-3 py-2 text-left text-sm leading-6 {% if background == 'primary' or variant == 'primary' %}bg-primary-600 text-white{% else %}bg-gray-50 text-gray-700{% endif %} {% if highlight == 'true' %}ring-4 ring-primary-500 animate-pulse{% endif %}">
             {{ message|safe }}
         </div>
     </div>

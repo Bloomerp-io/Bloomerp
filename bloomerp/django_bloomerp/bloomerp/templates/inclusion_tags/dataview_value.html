@@ -7,7 +7,7 @@ TODO: M2M relationship should be enhanced
     data-dropdown="cell-menu"
     data-column-index="{{ column_index }}"
     data-row-index="{{ row_index }}"
-    data-value="{{ value }}"
+    data-value="{{ value|force_escape }}"
     
     data-object-id="{{ object.pk }}"
     data-object-string="{{ object_string }}"

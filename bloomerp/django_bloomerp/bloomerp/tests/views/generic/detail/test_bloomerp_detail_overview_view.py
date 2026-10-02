@@ -92,6 +92,18 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 expected=ExpectedResult(response_validators=self.system_fields_have_correct_state),
             ),
             ModelRequestScenario(
+                name="Deleted application field is skipped in saved detail layout",
+                description="UC: A saved layout references a deleted field.\nExpected Result: The overview renders its remaining field without an error.",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.configure_layout_with_deleted_field,
+                expected=ExpectedResult(
+                    status_code=200,
+                    response_validators=self.deleted_field_is_skipped,
+                ),
+            ),
+            ModelRequestScenario(
                 name="Regular object detail offers create-todo action",
                 description="UC: An administrator opens a regular object.\nExpected Result: The create-todo side action is present.",
                 model=self.CustomerModel,
@@ -107,6 +119,16 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 view_kwargs=customer_kwargs,
                 prepare=self.select_comments_sidebar,
                 expected=ExpectedResult(response_validators=self.comments_sidebar_is_selected),
+            ),
+            ModelRequestScenario(
+                name="Comment deep link overrides the saved sidebar preference",
+                description="UC: A comment link opens an object.\nExpected Result: Comments loads with the linked comment highlighted.",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                view_kwargs=customer_kwargs,
+                query_params={"sidebar": "comments", "comment": "17"},
+                prepare=self.reset_sidebar_preference,
+                expected=ExpectedResult(response_validators=self.linked_comment_sidebar_is_selected),
             ),
             ModelRequestScenario(
                 name="Activity sidebar is the default",
@@ -295,6 +317,40 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             and "disabled" not in items[str(self.fields_by_name["files"].pk)].content
         )
 
+    def configure_layout_with_deleted_field(
+        self, _scenario: ModelRequestScenario
+    ) -> None:
+        """Save a detail layout with one valid field and one deleted field ID."""
+        missing_id = ApplicationField.objects.order_by("-pk").values_list("pk", flat=True).first()
+        self.deleted_field_id = (missing_id or 0) + 1
+        UserObjectLayoutPreference.objects.filter(
+            user=self.admin_user,
+            content_type=self.content_type,
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            selected=True,
+            layout=FieldLayout(
+                rows=[LayoutRow(columns=2, items=[
+                    LayoutItem(id=self.fields_by_name["first_name"].pk),
+                    LayoutItem(id=self.deleted_field_id),
+                ])]
+            ).model_dump(mode="json"),
+        )
+
+    def deleted_field_is_skipped(self, response: HttpResponse) -> bool:
+        """Check that the valid field remains and the stale item is absent."""
+        item_ids = {
+            str(item.id)
+            for row in response.context["layout"].rows
+            for item in row.items
+        }
+        return (
+            str(self.fields_by_name["first_name"].pk) in item_ids
+            and str(self.deleted_field_id) not in item_ids
+        )
+
     def select_comments_sidebar(self, _scenario):
         self.admin_user.detail_sidebar_view_preference = DetailSidebarViewPreference.COMMENTS
         self.admin_user.save(update_fields=["detail_sidebar_view_preference"])
@@ -310,6 +366,17 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
 
     def comments_sidebar_is_selected(self, response):
         return self.sidebar_url(response) == reverse("components_comments", kwargs={"content_type_id": self.content_type.pk, "object_id": self.customer.pk})
+
+    def linked_comment_sidebar_is_selected(self, response: HttpResponse) -> bool:
+        """Check the deep link's fragment URL and forced-open sidebar."""
+        expected_url = reverse("components_comments", kwargs={"content_type_id": self.content_type.pk, "object_id": self.customer.pk})
+        document = BeautifulSoup(response.content, "html.parser")
+        sidebar = document.select_one("#resizable-div-detail-aside")
+        return (
+            self.sidebar_url(response) == f"{expected_url}?highlight=17"
+            and sidebar is not None
+            and sidebar.get("data-force-open") == "true"
+        )
 
     def activity_sidebar_is_selected(self, response):
         expected = f'{reverse("components_activity_log")}?content_type_id={self.content_type.pk}&object_id={self.customer.pk}'

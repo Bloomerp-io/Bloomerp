@@ -1,0 +1,15 @@
+<div {% if widget.attrs.id %}id="{{ widget.attrs.id }}"{% endif %} bloomerp-component="mapping-widget" class="w-full space-y-2" data-mapping-name="{{ widget.name }}">
+    <input type="hidden" name="{{ widget.name }}__present" value="1">
+    <div data-mapping-rows class="space-y-2">
+        {% for row in widget.rows %}
+            {% include "widgets/mapping_row.html" %}
+        {% endfor %}
+    </div>
+    <div class="flex items-center justify-between gap-2 pt-1">
+    {% if widget.allow_adding_groups %}
+    <template data-mapping-template>{% with row=widget.empty_row %}{% include "widgets/mapping_row.html" %}{% endwith %}</template>
+    <button type="button" data-mapping-add class="text-xs text-gray-500 hover:text-primary px-1 py-1"><c-i18n.blocktrans>+ Add row</c-i18n.blocktrans></button>
+    {% endif %}
+    <button type="button" data-mapping-apply class="text-xs text-primary hover:underline px-1 py-1 ml-auto"><c-i18n.blocktrans>Apply</c-i18n.blocktrans></button>
+    </div>
+</div>

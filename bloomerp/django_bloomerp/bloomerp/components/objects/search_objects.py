@@ -7,6 +7,8 @@ from django.http import HttpRequest, HttpResponse
 from django.urls import NoReverseMatch, reverse
 
 from bloomerp.models import BloomerpModel
+from bloomerp.filters.manager import ModelFilterManager
+from bloomerp.filters.parser import deserialize_filters
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
@@ -41,6 +43,11 @@ def search_objects(request:HttpRequest, content_type_id:int) -> HttpResponse:
         Model,
         BloomerpPermission.VIEW
     )
+
+    if request.GET.get('filter'):
+        filters = deserialize_filters(request.GET['filter'])
+        permission_manager.validate_filters(Model, filters)
+        base_queryset = ModelFilterManager(Model).apply(filters, base_queryset)
     
     if selected_ids:
         primary_key_field = Model._meta.pk

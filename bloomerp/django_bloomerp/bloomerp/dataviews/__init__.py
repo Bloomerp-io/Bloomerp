@@ -30,25 +30,46 @@ _REGISTRY_EXPORTS = {
     "register_dataview",
 }
 
+_CONFIG_EXPORTS = {
+    "CalendarDataView": "calendar.config",
+    "CardDataView": "card.config",
+    "FileBrowserDataview": "file_browser.config",
+    "GanttDataView": "gant.config",
+    "KanbanDataView": "kanban.config",
+    "PivotTableDataView": "pivot_table.config",
+    "TableDataView": "table.config",
+}
+
 
 def __getattr__(name: str) -> Any:
-    """Load registry exports lazily to avoid Django model import cycles."""
-    if name not in _REGISTRY_EXPORTS:
+    """Load registry and built-in configs lazily to avoid model import cycles."""
+    if name in _REGISTRY_EXPORTS:
+        module_name = "registry"
+    elif name in _CONFIG_EXPORTS:
+        module_name = _CONFIG_EXPORTS[name]
+    else:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-    registry = import_module("bloomerp.dataviews.registry")
-    return getattr(registry, name)
+    module = import_module(f"{__name__}.{module_name}")
+    return getattr(module, name)
 
 
 __all__ = [
+    "DATAVIEW_REGISTRY",
     "BaseDataview",
     "BaseDataviewRenderer",
-    "DATAVIEW_REGISTRY",
+    "CalendarDataView",
+    "CardDataView",
     "DataviewPagination",
     "DataviewRegistry",
     "DataviewState",
     "DataviewTypeDefinition",
+    "FileBrowserDataview",
+    "GanttDataView",
+    "KanbanDataView",
     "PageSize",
+    "PivotTableDataView",
+    "TableDataView",
     "application_field_choices",
     "application_field_name_choices",
     "get_dataview_type_choices",

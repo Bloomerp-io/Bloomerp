@@ -1,5 +1,9 @@
 """Convert model metadata into the shared field-discovery contract."""
-from bloomerp.filters.definition import FilterField, FilterFieldGroup
+from typing import Any
+
+from django.db.models import Model
+
+from bloomerp.filters.definition import Filter, FilterField, FilterFieldGroup
 from bloomerp.lookups.definition import FilterFieldContext
 
 
@@ -49,3 +53,11 @@ def resolve_model_path(model, field_path):
         if not getattr(field, "related_model", None):
             raise ValidationError(f"Field {part!r} cannot be traversed")
         owner = field.related_model
+
+
+def dict_to_filter(filter: dict[str, Any], *, model: type[Model]) -> Filter:
+    """Convert Django field lookups into a shared AND filter for the model."""
+    from bloomerp.filters.parser import parse_shorthand_filters
+
+    filters = parse_shorthand_filters(filter, model=model)
+    return filters[0] if filters else Filter(connector="AND")

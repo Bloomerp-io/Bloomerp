@@ -1,11 +1,54 @@
 from django.http import QueryDict
 from django.test import SimpleTestCase
+from django.db import models
+from unittest.mock import Mock, patch
 import json
 
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
 
 class TestForeignFieldWidget(SimpleTestCase):
+    def _staff_q_limit(self) -> models.Q:
+        """Return a callable relation limit using Django's Q representation."""
+        return models.Q(is_staff=True)
+
+    def test_get_context_serializes_q_choice_limits(self) -> None:
+        """Render Q limits as eligible IDs, including an empty matching set."""
+        limits = [
+            (models.Q(is_staff=True), [1, 2]),
+            (models.Q(is_staff=True) | ~models.Q(is_active=True), [1, 2]),
+            (self._staff_q_limit, [1, 2]),
+            (models.Q(pk__in=[]), []),
+        ]
+        for limit, matching_ids in limits:
+            with self.subTest(limit=limit):
+                model_field = models.ForeignKey(
+                    "auth.User", on_delete=models.CASCADE, limit_choices_to=limit,
+                )
+                source_field = Mock()
+                source_field._get_model_field.return_value = model_field
+                related_model = Mock()
+                eligible_ids = related_model._default_manager.filter.return_value.values_list
+                eligible_ids.return_value = matching_ids
+                widget = ForeignFieldWidget(attrs={"source_field": source_field})
+
+                with (
+                    patch.object(widget, "get_related_content_type_id", return_value=1),
+                    patch.object(widget, "get_related_model_class", return_value=related_model),
+                ):
+                    context = widget.get_context("assigned_to", None, {})
+
+                self.assertEqual(json.loads(context["choices_filter_json"]), [{
+                    "connector": "AND",
+                    "conditions": [{
+                        "field_path": "pk", "lookup_id": "values_in", "value": matching_ids,
+                    }],
+                }])
+                related_model._default_manager.filter.assert_called_once_with(
+                    model_field.get_limit_choices_to(),
+                )
+                eligible_ids.assert_called_once_with("pk", flat=True)
+
     def test_get_context_exposes_is_m2m_to_template(self):
         widget = ForeignFieldWidget(attrs={"is_m2m": True})
 

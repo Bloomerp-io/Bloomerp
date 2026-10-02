@@ -1,11 +1,49 @@
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from typing import Any
+
+from django.http import HttpRequest
+from django.utils import timezone
 
 from bloomerp.config.definition import get_bloomerp_config
 from bloomerp.models.api.api_key import ApiKey
+from bloomerp.models.auth.oauth import OAuthAccessToken
+from bloomerp.oauth import (
+    MCP_SCOPE, TOKEN_PREFIX, hash_oauth_secret, oauth_enabled, oauth_resource,
+)
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
+
+
+class BloomerpOAuthAuthentication(BaseAuthentication):
+    """Validate resource-bound OAuth tokens where a view explicitly opts in."""
+
+    def authenticate(self, request: HttpRequest) -> tuple[Any, OAuthAccessToken] | None:
+        """Resolve a valid OAuth bearer token to its active Bloomerp user."""
+        if not oauth_enabled():
+            return None
+        parts = get_authorization_header(request).split()
+        if len(parts) != 2 or parts[0].lower() != b"bearer":
+            return None
+        raw_token = parts[1].decode("ascii", errors="ignore")
+        if not raw_token.startswith(TOKEN_PREFIX):
+            return None
+        record = OAuthAccessToken.objects.select_related("user").filter(
+            token_hash=hash_oauth_secret(raw_token)
+        ).first()
+        if (
+            record is None or record.revoked_at is not None
+            or record.expires_at <= timezone.now()
+            or record.resource != oauth_resource(request)
+            or record.scope != MCP_SCOPE or not record.user.is_active
+        ):
+            raise AuthenticationFailed("Invalid OAuth token for this resource.")
+        return record.user, record
+
+    def authenticate_header(self, request: HttpRequest) -> str:
+        """Identify the bearer scheme when an opted-in view challenges a client."""
+        return "Bearer"
 
 class BloomerpApiKeyAuthenticationExtension(OpenApiAuthenticationExtension):
     target_class = "bloomerp.views.api.authentication.BloomerpApiKeyAuthentication"

@@ -1,6 +1,10 @@
 """The same predicates must select the same rows through Q, SQL and permissions."""
+from unittest.mock import patch
+
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.db import connection
+from django.test import RequestFactory
 from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.filters.compiler import compile_filters, compile_sql_filters, resolve_condition
@@ -217,3 +221,60 @@ class TestSharedFilterCompiler(BaseBloomerpTestCaseWithModels):
                 {"field": "__all__"},
                 {"field_path": "age", "lookup_id": "equals", "value": "invalid"},
             ]})
+
+
+    def test_current_user_filters_bind_at_execution_without_mutating_presets(self) -> None:
+        """Use case: Reuse a user filter; expected result: each user's rows match."""
+        # 1. Create owned and unassigned rows and one reusable filter.
+        self.entries[1].user_account = self.admin_user
+        self.entries[1].save()
+        self.entries[2].user_account = self.normal_user
+        self.entries[2].save()
+        condition = FilterCondition(field_path="user_account", lookup_id="equals_user", value="$user")
+        groups = [Filter(connector="AND", conditions=[condition])]
+        request = RequestFactory().get("/")
+
+        # 2. Both ORM and SQL compilation bind the request user.
+        for user, ages in [(self.admin_user, {2}), (self.normal_user, {4})]:
+            request.user = user
+            with patch("bloomerp.filters.compiler.current_request", return_value=request):
+                self.assert_backends_match(groups, ages)
+                restricted = self.CustomerModel.objects.filter(age=2)
+                result = ModelFilterManager(self.CustomerModel).apply(groups, restricted)
+                self.assertEqual(set(result.values_list("age", flat=True)), ages & {2})
+
+        # 3. Validation and stored values retain the placeholder.
+        self.assertEqual(condition.value, "$user")
+        self.assertEqual(resolve_condition(condition, model=self.CustomerModel)[3], "$user")
+
+    def test_current_user_filters_require_an_authenticated_request(self) -> None:
+        """Use case: No request user exists; expected result: execution rejects the filter."""
+        # 1. Build a current-user filter and an anonymous request.
+        groups = [Filter(connector="AND", conditions=[
+            FilterCondition(field_path="user_account", lookup_id="equals_user", value="$user"),
+        ])]
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+
+        # 2. Neither execution backend passes an unresolved placeholder to Django.
+        for context in (None, request):
+            with patch("bloomerp.filters.compiler.current_request", return_value=context):
+                for compiler in (compile_filters, compile_sql_filters):
+                    with self.assertRaisesMessage(ValidationError, "authenticated request"):
+                        compiler(groups, model=self.CustomerModel)
+
+    def test_permission_bound_current_user_values_ignore_request_context(self) -> None:
+        """Use case: Permissions bind a user; expected result: ambient requests cannot override it."""
+        # 1. Bind a concrete user PK as permission compilers already do.
+        self.entries[1].user_account = self.admin_user
+        self.entries[1].save()
+        groups = [Filter(connector="AND", conditions=[
+            FilterCondition(field_path="user_account", lookup_id="equals_user", value=self.admin_user.pk),
+        ])]
+        request = RequestFactory().get("/")
+        request.user = self.normal_user
+
+        # 2. Concrete values compile identically with or without a different request user.
+        for context in (None, request):
+            with patch("bloomerp.filters.compiler.current_request", return_value=context):
+                self.assert_backends_match(groups, {2})

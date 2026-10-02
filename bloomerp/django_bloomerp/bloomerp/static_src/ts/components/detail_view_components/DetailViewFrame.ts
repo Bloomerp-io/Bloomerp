@@ -64,8 +64,17 @@ export default class DetailViewFrame extends BaseComponent {
             });
     }
 
+    /** Reveal a comment target after the Comments fragment loads. */
     public onAfterSwap(): void {
+        this.revealLinkedComment();
         this.reapplyAfterLayout();
+    }
+
+    /** Scroll to a linked comment once HTMX has loaded the sidebar fragment. */
+    private revealLinkedComment(): void {
+        if (!this.element || !/^#comment-\d+$/.test(window.location.hash)) return;
+        const comment = this.element.querySelector<HTMLElement>(window.location.hash);
+        comment?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
 
     private reapplyAfterLayout(): void {

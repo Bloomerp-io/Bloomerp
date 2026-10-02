@@ -1,6 +1,6 @@
 # Bloomerp Router
 
-Bloomerp uses a small route registry on top of Django URLs. Views register themselves with `@router.register(...)`; the registry auto-imports view and component modules, expands model/module scoped routes, and finally turns every registered route into Django `path(...)` entries from `bloomerp.urls`.
+Bloomerp uses a small route registry on top of Django URLs. Views register themselves with `@router.register(...)`; the registry auto-imports view and component modules, expands model/module scoped routes, and turns HTTP routes into Django `path(...)` entries from `bloomerp.urls`. MCP-only routes are discovered by the registry but have no individual Django URL.
 
 Use the router for Bloomerp application pages, model pages, object detail tabs/actions, module landing pages, and HTMX/API-like component endpoints that should live inside the Bloomerp URL map.
 
@@ -21,7 +21,7 @@ urlpatterns.extend(router.create_url_patterns())
 `create_url_patterns()` auto-imports configured route directories, so decorators in `views/`, `components/`, and direct module files execute before URL patterns are built. Each decorated view becomes a `BloomerpRoute` with:
 
 - `path`: final URL path
-- `route_type`: `app`, `module`, `model`, or `detail`
+- `route_type`: `app`, `module`, `model`, `detail`, `api`, `api_model`, `api_detail`, `websocket`, or `mcp`
 - `name`: human-facing route name
 - `url_name`: Django URL name used by `reverse(...)`
 - `model`: model class for model/detail routes
@@ -40,6 +40,8 @@ The route type decides the URL shape and what context gets attached to the view.
 | `module` | One or more modules | `/<module>/path/` | Module home pages and module-level tools |
 | `model` | A model collection | `/<module>/<model-plural>/path/` | List, create, bulk, profile, and model-wide pages |
 | `detail` | One object | `/<module>/<model-plural>/<pk>/path/` | Object overview, edit, delete, files, related tabs/actions |
+| `api` | Global API | `/api/path/` | JSON API views, optionally exposed as MCP tools |
+| `mcp` | MCP-only | No individual URL | Tools without a useful REST endpoint |
 
 `<module>` uses `module.route_path` when set, otherwise the module id. `<model-plural>` comes from `model._meta.verbose_name_plural`, lowercased with spaces replaced by hyphens. Detail routes use the `int_or_uuid` converter for `pk`.
 
@@ -246,6 +248,68 @@ The router can enforce the global staff-only gate from `BLOOMERP_CONFIG.require_
 
 For model/detail pages, prefer existing Bloomerp base views and permission services instead of hand-rolling access checks.
 
+## MCP Tools (MVP)
+
+Attach `McpTool` to an existing API route to expose the same view as an MCP tool. The route's `url_name` becomes the stable, server-wide tool name; the view remains responsible for its normal validation and permissions. For example, the SQL and mutation API views already use serializer-derived schemas:
+
+```python
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+from bloomerp.mcp.definition import McpTool
+from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
+from bloomerp.router import router
+from bloomerp.views.api.base import BaseBloomerpApiView
+
+@router.register(
+    path="reports/run/",
+    route_type="api",
+    url_name="api_reports_run",
+    mcp=McpTool(
+        description="Run an authorized report.",
+        input_schema=serializer_input_schema(ReportRequestSerializer),
+        output_schema=serializer_output_schema(ReportResponseSerializer),
+        read_only_hint=True,
+    ),
+)
+class RunReportView(BaseBloomerpApiView):
+    """Run a report using the caller's existing API permissions."""
+
+    permission_classes = (IsAuthenticated,)
+    http_method_names = ["post", "options"]
+
+    def post(self, request: Request) -> Response:
+        """Validate and execute one report request."""
+        ...
+```
+
+For a tool with no REST URL, register an explicit `route_type="mcp"` or omit both `path` and `route_type` when `mcp` is supplied. Existing registrations without `mcp` still default to an `app` route. An MCP-only `url_name` is a tool name, not a reversible Django URL name.
+
+```python
+from django.http import HttpRequest
+from rest_framework.response import Response
+
+from bloomerp.mcp.definition import McpTool
+from bloomerp.router import router
+
+@router.register(
+    url_name="my_plugin_current_user",
+    mcp=McpTool(
+        description="Identify the authenticated caller.",
+        input_schema={"type": "object", "additionalProperties": False},
+        read_only_hint=True,
+    ),
+)
+def current_user(request: HttpRequest) -> Response:
+    """Return the authenticated caller without creating a REST endpoint."""
+    return Response({"username": request.user.get_username()})
+```
+
+Both forms are exposed through the single `POST /mcp` endpoint on the existing Django/Daphne service. MCP clients should send `Content-Type: application/json`, `Accept: application/json, text/event-stream`, and an instance-supported credential (for example `Authorization: Bearer <API key>` when API keys are enabled). The endpoint supports `initialize`, `ping`, `tools/list`, `tools/call`, and notifications. It returns JSON responses, operates without MCP sessions or SSE, and responds `405` to `GET /mcp`.
+
+The endpoint requires authentication. Calls to API-backed tools re-enter the registered view with that identity, so its DRF permissions and Bloomerp access checks still apply. MCP-only function views receive the authenticated caller but must implement any additional authorization themselves; MCP-only class views can use their normal DRF permission classes. The current MVP lists all registered tool names to authenticated callers; per-user `tools/list` filtering is deferred. API-backed class views currently need exactly one GET or POST handler, function views are dispatched as POST, and API-backed tools cannot require URL path parameters or `re_path`.
+
 ## Components
 
 HTMX component endpoints commonly use `app` routes with explicit component paths and names:
@@ -290,4 +354,5 @@ This replays applicable `model` and `detail` route templates for that model, ass
 - Use `models="__all__"` only for generic views that truly work for every model.
 - Use `exclude_models` for generic routes with known exceptions.
 - Keep permission checks in the view or service layer.
+- Use `mcp=McpTool(...)` on eligible API routes, or `route_type="mcp"` for a tool without a REST URL.
 - Use `override=True` only when replacing a route intentionally.

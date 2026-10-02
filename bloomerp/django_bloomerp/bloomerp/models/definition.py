@@ -36,6 +36,7 @@ class LayoutItem(BaseModel):
     edit_url: Optional[str] = None
     search_keywords: Optional[str] = None
     extra_attrs: Optional[dict] = Field(default_factory=dict)
+    label_content_right : Optional[str] = None
 
     @property
     def config_json(self) -> str:
@@ -263,7 +264,7 @@ class ObjectAction(BaseModel):
 
     label:str
 
-    execution_func:Callable[[HttpRequest, Model], HttpResponse]
+    execution_func:Callable[[HttpRequest, Model], HttpResponse | None]
     
     should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
     

@@ -80,6 +80,10 @@ class BaseEmailAdapter:
         self.email_account = email_account
     
     
+    def validate_connection(self) -> list[str]:
+        """Verify incoming and outgoing connections and return available mailboxes."""
+        raise NotImplementedError("Subclasses must implement account connection validation.")
+
     def mark_as_read(self, email_id: str, *, mailbox: str = "INBOX"):
         """
         Mark an email as read in the external service.

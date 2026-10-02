@@ -49,8 +49,10 @@ def inline_widget(context: FieldContext) -> forms.Widget:
 
 
 def relation_widget(*, multiple: bool = False) -> WidgetFactory:
+    """Build relation widgets with the metadata defining their allowed choices."""
 
     def build(context: FieldContext) -> forms.Widget:
+        """Pass the related model and source application field to the widget."""
         from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
         application_field = context.application_field
@@ -61,6 +63,7 @@ def relation_widget(*, multiple: bool = False) -> WidgetFactory:
                 "model": (
                     application_field.get_related_model() if application_field else None
                 ),
+                "source_field": application_field,
             }
         )
 

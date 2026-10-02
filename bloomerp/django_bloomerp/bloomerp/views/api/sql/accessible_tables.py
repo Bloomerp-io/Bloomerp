@@ -1,5 +1,7 @@
 from django.http import HttpRequest
 
+from bloomerp.mcp.definition import McpTool
+from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
 from bloomerp.services.sql_services import DatabaseTable, SqlExecutor
 from bloomerp.views.api.base import BaseBloomerpApiView
@@ -38,7 +40,20 @@ class AccessibleTablesResponseSerializer(serializers.Serializer):
 @router.register(
     path="sql/accessible-tables/",
     name="api_sql_accessible_tables",
-    route_type="api"
+    route_type="api",
+    mcp=McpTool(
+        title="List Accessible SQL Tables",
+        description=(
+            "List the SQL tables and fields accessible to the current user, "
+            "with optional search and pagination."
+        ),
+        input_schema=serializer_input_schema(AccessibleTablesQuerySerializer),
+        output_schema=serializer_output_schema(AccessibleTablesResponseSerializer),
+        read_only_hint=True,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=False,
+    ),
 )
 class AccessibleTablesView(BaseBloomerpApiView):
     serializer_class = AccessibleTablesQuerySerializer
