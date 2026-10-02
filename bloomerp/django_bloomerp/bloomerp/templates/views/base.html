@@ -64,6 +64,15 @@
 
 		<div id="object-actions-target"></div>
 
+		<c-ui.drawer id="bloomerp-general-use-drawer" size="xl">
+			<div class="flex h-full min-h-0 flex-col">
+				<div class="flex shrink-0 justify-end border-b border-gray-200 p-3">
+					<button type="button" class="btn btn-secondary btn-sm" bloomerp-close-drawer="bloomerp-general-use-drawer">{% translate "Close" %}</button>
+				</div>
+				<div id="bloomerp-general-use-drawer-body" class="min-h-0 flex-1 overflow-auto"></div>
+			</div>
+		</c-ui.drawer>
+
 		{% block scripts %}
 		
 		{% endblock scripts %}

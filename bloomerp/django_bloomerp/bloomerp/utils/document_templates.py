@@ -1,5 +1,7 @@
 from bloomerp.models.document_templates import DocumentTemplate
 from bloomerp.models.files import File
+from bloomerp.models.files.file import DocumentTemplateFileMetadata, FileMetadata, FileSignatureMetadata
+from typing import Any
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.utils.pdf import generate_pdf
 from django.db.models import Model
@@ -22,10 +24,10 @@ class DocumentController:
     def create_document(
             self,
             document_template:DocumentTemplate, 
-            instance:Model, 
-            free_variables: dict=None,
-            persist:bool=True
-        ):
+            instance: Model | None,
+            free_variables: dict[str, Any] | None = None,
+            persist: bool = True,
+        ) -> File | ContentFile:
         ''' Creates a document for a particular template, using the model variable and the free variables:
             - Template : The document template
             - Instance : The model instance
@@ -40,10 +42,12 @@ class DocumentController:
         data["vars"] = free_variables or {}
 
         #Create metadata variable
-        meta_data = {}
-        meta_data['document_template'] = document_template.pk
-
-        meta_data['signed'] = False
+        meta_data = FileMetadata(
+            document_template=DocumentTemplateFileMetadata(
+                id=document_template.pk, name=document_template.name,
+            ),
+            signature=FileSignatureMetadata(signed=False),
+        )
         
         #Format HTML       
         django_engine = engines["django"]
@@ -96,33 +100,16 @@ class DocumentController:
         content_file = ContentFile(document_bytes)
         
         if persist:
-            file_object = File()
-        
-            #Save the file
-            file_object.file.save(document_template.name + ' ' + str(instance) + '.pdf', content_file)
-
-            file_object.name = document_template.name + ' ' + str(instance)
-            file_object.content_object = instance
-
-            # Add created by
-            file_object.created_by = self.user
-            file_object.updated_by = self.user
-            
-
-            #Save metadata
-            file_object.meta = meta_data
-
-            file_object.save()
-
-            if document_template.save_to_folder:
-                file_object.folder = document_template.save_to_folder
-                file_object.save(update_fields=["folder"])
-                
-
+            file_object = File(
+                name=f"{document_template.name} {instance}",
+                content_object=instance, persisted=True, meta=meta_data,
+                created_by=self.user, updated_by=self.user,
+                folder=document_template.save_to_folder,
+            )
+            file_object.file.save(f"{file_object.name}.pdf", content_file)
             return file_object
-        else:
-            return content_file
-        
+        return content_file
+
     def create_preview_document(
             self,
             document_template:DocumentTemplate,
@@ -196,19 +183,13 @@ class DocumentController:
         '''
         file_path = file.file.path
 
-        # Create metadata variable
-        meta_data = {}
-
-        # If a user is present, add the user to the metadata
-        if self.user:
-            meta_data['user'] = self.user.pk
-
-        # Check if the file object has a document template
-        if 'document_template' in file.meta:
-            meta_data['document_template'] = file.meta['document_template']
-
-        # Add signed equals to true
-        meta_data['signed'] = True
+        # Preserve template provenance and type the signature information.
+        meta_data = FileMetadata(
+            document_template=file.metadata.document_template,
+            signature=FileSignatureMetadata(
+                signed=True, user_id=self.user.pk if self.user else None,
+            ),
+        )
 
         # Create a PdfHandler object
         handler = PdfHandler(file_path)
@@ -222,20 +203,17 @@ class DocumentController:
         # Create a content file
         content_file = ContentFile(document_bytes)
         
-        # Create a file object
-        signed_file_obj = File()
+        # Save the signed output with validated provenance and its generic owner.
+        signed_file_obj = File(
+            name=f"{file.name} - signed.pdf", content_object=file.linked_object,
+            persisted=True, meta=meta_data, created_by=self.user, updated_by=self.user,
+        )
+        signed_file_obj.file.save(signed_file_obj.name, content_file)
 
-        #Save the file
-        signed_file_obj.file.save(file.name + '- signed' '.pdf', content_file)
-
-        signed_file_obj.content_object = file.content_object
-
-        signed_file_obj.meta = meta_data
-        signed_file_obj.name = file.name + '- signed.pdf' 
-        signed_file_obj.save()
-        
         # Update the original file with the signed file id
-        file.meta = {'signed_file_id': str(signed_file_obj.pk)}
+        file.meta = file.metadata.model_copy(update={
+            "signature": FileSignatureMetadata(signed_file_id=signed_file_obj.pk),
+        })
         file.save()
 
         return signed_file_obj

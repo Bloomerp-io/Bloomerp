@@ -10,6 +10,7 @@ export default class DetailViewFrame extends BaseComponent {
     private sidebarPreferenceSaveQueue: Promise<void> = Promise.resolve();
     private readonly sidebarClickHandler = (event: Event) => this.saveSidebarView(event);
 
+    /** Bind sidebar actions, resizing, and deep-link field focus. */
     public initialize(): void {
         if (!this.element) return;
 
@@ -21,9 +22,13 @@ export default class DetailViewFrame extends BaseComponent {
 
         this.setupResizeObserver();
         this.reapplyAfterLayout();
+        this.focusLinkedField();
+        window.addEventListener("hashchange", this.fieldHashHandler);
     }
 
+    /** Release deep-link listeners and layout observers. */
     public destroy(): void {
+        window.removeEventListener("hashchange", this.fieldHashHandler);
         this.element?.removeEventListener("click", this.sidebarClickHandler);
 
         if (this.resizeHandler) {
@@ -64,8 +69,30 @@ export default class DetailViewFrame extends BaseComponent {
             });
     }
 
+    /** Focus a visible, enabled field after a browser fragment changes. */
+    private readonly fieldHashHandler = (): void => {
+        this.focusLinkedField();
+    };
+
+    /** Resolve a field name without treating the URL fragment as a CSS selector. */
+    private focusLinkedField(): void {
+        if (!this.element || !window.location.hash) return;
+        let name: string;
+        try {
+            name = decodeURIComponent(window.location.hash.slice(1));
+        } catch {
+            return;
+        }
+        const field = Array.from(this.element.querySelectorAll<HTMLElement>("[name]"))
+            .find((element: HTMLElement): boolean => element.getAttribute("name") === name);
+        if (!field || field.hasAttribute("disabled")) return;
+        field.scrollIntoView({ block: "center" });
+        field.focus({ preventScroll: true });
+    }
+
     /** Reveal a comment target after the Comments fragment loads. */
     public onAfterSwap(): void {
+        this.focusLinkedField();
         this.revealLinkedComment();
         this.reapplyAfterLayout();
     }

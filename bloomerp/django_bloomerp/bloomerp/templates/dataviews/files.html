@@ -53,7 +53,16 @@
                     <td>
                         <i class="fa {{file.icon_class}} text-xl mr-2"></i>
                         {{ file.name }}</td>
-                    <td>{{ file.content_object|default:"" }}</td>
+                    <td data-no-file-drag>
+                        {% if file.linked_object_url %}
+                        <a href="{{ file.linked_object_url }}" hx-get="{{ file.linked_object_url }}"
+                           hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}" hx-swap="innerHTML" hx-push-url="true"
+                           data-preview-object-id="{{ file.linked_object_id }}" data-preview-content-type-id="{{ file.linked_content_type_id }}"
+                           class="link">
+                            {{ file.linked_object }}{% if file.linked_field_label %} ({{ file.linked_field_label }}){% endif %}
+                        </a>
+                        {% else %}{{ file.linked_object|default:"" }}{% endif %}
+                    </td>
                     <td>{{ file.size_str }}</td>
                     <td>{{ file.datetime_created }}</td>
                     <td data-no-file-drag>

@@ -1,17 +1,23 @@
 import os
 import uuid
-from typing import Iterable
+from typing import TYPE_CHECKING, Any, Iterable
+from urllib.parse import quote
+from uuid import UUID
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
-from django.db import models
-from django.http import HttpRequest, HttpResponse
+from django.db import models, transaction
+from django.http import HttpRequest
 from django.urls import reverse
-from django.utils.translation import gettext_lazy as _, gettext_noop
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.dataviews.file_browser.config import FileBrowserDataview
-from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.components.files.items.preview import preview_file
 from bloomerp.models import BloomerpModel
 from bloomerp.models.definition import (
     BloomerpModelConfig,
@@ -19,6 +25,7 @@ from bloomerp.models.definition import (
     DataviewModalAction,
     ModelViewSettings,
     ObjectAction,
+    ObjectHTMLAction,
     ObjectModalAction,
     StringSearchSettings,
     get_default_dataview_actions,
@@ -27,20 +34,80 @@ from bloomerp.models.mixins.timestamp_model_mixin import TimestampModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
 
+if TYPE_CHECKING:
+    from bloomerp.models.files.file_folder import FileFolder
+
+
+class DocumentTemplateFileMetadata(BaseModel):
+    """Identify the document template that generated a stored file."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: UUID
+    name: str
+
+
+class BulkUploadFileMetadata(BaseModel):
+    """Describe a temporary bulk-import source file."""
+
+    model_config = ConfigDict(extra="forbid")
+    content_type_id: int = Field(gt=0)
+    model_label: str
+    original_filename: str
+
+
+class FileSignatureMetadata(BaseModel):
+    """Track PDF signature status, signer identity, and a signed output file."""
+
+    model_config = ConfigDict(extra="forbid")
+    signed: bool = False
+    user_id: int | UUID | None = None
+    signed_file_id: UUID | None = None
+
+
+class FileMetadata(BaseModel):
+    """Validated provenance for generated documents and bulk imports."""
+
+    model_config = ConfigDict(extra="forbid")
+    document_template: DocumentTemplateFileMetadata | None = None
+    bulk_upload: BulkUploadFileMetadata | None = None
+    signature: FileSignatureMetadata | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_metadata(cls, value: Any) -> Any:
+        """Accept historical document-template and bulk-draft JSON without data loss."""
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            return value
+        value = value.copy()
+        if "document_template_id" in value:
+            value["document_template"] = {
+                "id": value.pop("document_template_id"),
+                "name": value.pop("document_template_name", ""),
+            }
+        if "document_template" in value and isinstance(value["document_template"], (str, UUID)):
+            value["document_template"] = {"id": value["document_template"], "name": ""}
+        if any(key in value for key in ("signed", "user", "signed_file_id")):
+            value["signature"] = {
+                "signed": value.pop("signed", False),
+                "user_id": value.pop("user", None),
+                "signed_file_id": value.pop("signed_file_id", None),
+            }
+        if value.pop("bulk_upload_draft", False):
+            value["bulk_upload"] = {
+                "content_type_id": value.pop("content_type_id", None),
+                "model_label": value.pop("model_label", None),
+                "original_filename": value.pop("original_filename", ""),
+            }
+            value.pop("upload_type", None)
+        return value
+
 
 def _can_view_file(request: HttpRequest, file: "File") -> bool:
     from bloomerp.services.file_permission_services import user_can_view_file
 
     return file.persisted and bool(file.file) and user_can_view_file(request, file)
-
-
-def _view_file(request: HttpRequest, file: "File") -> HttpResponse:
-    """Redirect an HTMX object action to the stored file URL."""
-    if not _can_view_file(request, file):
-        return HttpResponse(status=403)
-    response = HttpResponse(status=204)
-    response["HX-Redirect"] = file.url
-    return response
 
 
 def _can_manage_file(request: HttpRequest, file: "File") -> bool:
@@ -108,8 +175,10 @@ class File(
             ObjectAction(
                 id="view_file",
                 label=gettext_noop("View"),
-                execution_func=_view_file,
                 should_render_func=_can_view_file,
+                execution_func=preview_file,
+                target="#bloomerp-general-use-drawer-body",
+                button_attrs={"bloomerp-open-drawer": "bloomerp-general-use-drawer"},
             ),
             ObjectModalAction(
                 id="rename_file",
@@ -212,6 +281,51 @@ class File(
     meta = models.JSONField(blank=True, null=True, verbose_name=_("Meta"))
 
     @property
+    def metadata(self) -> FileMetadata:
+        """Expose validated metadata rather than untyped JSON."""
+        return FileMetadata.model_validate(self.meta)
+
+    @property
+    def linked_object(self) -> models.Model | None:
+        """Return the reference owner or the generic object associated with this file."""
+        from bloomerp.services.file_permission_services import get_file_linked_object
+
+        return get_file_linked_object(self)
+
+    @property
+    def linked_field_name(self) -> str:
+        """Resolve the owning field from the canonical reference rather than metadata."""
+        reference = getattr(self, "field_reference", None)
+        return reference.application_field.field if reference is not None else ""
+
+    @property
+    def linked_object_id(self) -> str | None:
+        """Return the parent identifier for reference-backed and generic files."""
+        reference = getattr(self, "field_reference", None)
+        return reference.object_id if reference is not None else self.object_id
+
+    @property
+    def linked_content_type_id(self) -> int | None:
+        """Return the parent model identifier for file-browser object previews."""
+        reference = getattr(self, "field_reference", None)
+        return reference.application_field.content_type_id if reference is not None else self.content_type_id
+
+    @property
+    def linked_object_url(self) -> str:
+        """Link to the owning object's detail view and attachment field."""
+        linked_object = self.linked_object
+        if linked_object is None or not hasattr(linked_object, "get_absolute_url"):
+            return ""
+        url = linked_object.get_absolute_url()
+        return f"{url}#{quote(self.linked_field_name)}" if self.linked_field_name else url
+
+    @property
+    def linked_field_label(self) -> str:
+        """Return the canonical application field's human-readable label."""
+        reference = getattr(self, "field_reference", None)
+        return str(reference.application_field.title) if reference is not None else ""
+
+    @property
     def url(self):
         return self.file.url
 
@@ -273,11 +387,29 @@ class File(
             updated_by=self.updated_by,
         )
 
-    def save(self, *args, **kwargs):
+    def validate_metadata(self) -> None:
+        """Normalize valid provenance to JSON and expose schema errors as Django errors."""
+        try:
+            self.meta = FileMetadata.model_validate(self.meta).model_dump(
+                mode="json", exclude_none=True
+            )
+        except PydanticValidationError as error:
+            raise ValidationError({"meta": str(error)}) from error
+
+    def clean_fields(self, exclude: set[str] | None = None) -> None:
+        """Validate typed provenance before Django validates the JSON column."""
+        if not exclude or "meta" not in exclude:
+            self.validate_metadata()
+        super().clean_fields(exclude=exclude)
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Validate metadata and save the file in its owning object's folder."""
+        self.validate_metadata()
         # Check if a new file is being uploaded
         if self.pk:
             try:
-                old_file = File.objects.get(pk=self.pk).file
+                previous = File.objects.get(pk=self.pk)
+                old_file = previous.file
                 # If the file field is changed, delete the old file
                 if old_file and old_file != self.file:
                     old_file.delete(save=False)
@@ -291,15 +423,24 @@ class File(
         if self.folder_id is None and self.content_type_id and self.object_id:
             self.folder = self._ensure_auto_folder_hierarchy()
 
-        super().save(*args, **kwargs)
+        with transaction.atomic(using=kwargs.get("using") or self._state.db):
+            super().save(*args, **kwargs)
+            if self.content_type_id and self.object_id:
+                self.detach_from_field()
 
-    def delete(self, *args, **kwargs):
-        # Delete the file when the object is deleted
-        try:
-            self.file.delete()
-        except FileNotFoundError:
-            pass
-        super().delete(*args, **kwargs)
+    def detach_from_field(self) -> None:
+        """Remove the old field reference after moving this file to a generic owner."""
+        from bloomerp.models.files.file_field_reference import FileFieldReference
+
+        reference = FileFieldReference.objects.using(self._state.db).filter(file_id=self.pk).first()
+        if reference is not None:
+            reference.delete(preserve_file=True)
+        self._state.fields_cache.pop("field_reference", None)
+        self.__dict__.pop("_linked_object", None)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        """Delete the file and cascade its canonical field reference."""
+        return super().delete(*args, **kwargs)
 
     def auto_name(self):
         """Returns the name of the file."""
@@ -352,8 +493,3 @@ class File(
             file.save()
             moved_files.append(file)
         return moved_files
-    
-        
-    
-
-    

@@ -1,7 +1,22 @@
-from bloomerp.field_types.utils.form_field_factories import form
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from django import forms
-from bloomerp.field_types.display_options import LABEL_OPTION
-from bloomerp.lookups import builtins as lookups
+from django.db import models
+from django.db.models import (
+    CharField,
+    Exists,
+    Expression,
+    Func,
+    OuterRef,
+    Q,
+    UUIDField,
+    Value,
+)
+from django.db.models.functions import Cast, Concat, Substr
+
+from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
     COMMON_FIELD_OPTIONS,
@@ -10,19 +25,34 @@ from bloomerp.field_types.construction import (
     NULL_FIELD_OPTION,
     PROPERTY_EXPRESSION,
     UPLOAD_TO_FIELD_OPTION,
+    FieldConstructionOption,
 )
-from bloomerp.field_types.utils.widget_factories import widget
-from bloomerp.model_fields.file_field import BloomerpFileField
-from bloomerp.model_fields.status_field import StatusField
-from bloomerp.widgets.code_editor_widget import CodeEditorWidget
-from django.db import models
+from bloomerp.field_types.display_options import LABEL_OPTION
+from bloomerp.field_types.lookups import TEXT_LOOKUPS
 from bloomerp.field_types.registry import (
     FieldConstruction,
     FieldTypeDefinition,
     FieldTypeRegistry,
 )
-from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
-from bloomerp.field_types.lookups import TEXT_LOOKUPS
+from bloomerp.field_types.utils.file_values import (
+    load_file_field_values,
+    render_file_field_value,
+)
+from bloomerp.field_types.utils.form_field_factories import form
+from bloomerp.field_types.utils.widget_factories import widget
+from bloomerp.lookups import builtins as lookups
+from bloomerp.lookups.builtins.utils import is_truthy
+from bloomerp.lookups.definition import BoundLookup, CompiledLookup
+from bloomerp.model_fields.file_field import BloomerpFileField
+from bloomerp.model_fields.status_field import StatusField
+from bloomerp.widgets.code_editor_widget import CodeEditorWidget
+
+if TYPE_CHECKING:
+    from django.db.backends.base.base import BaseDatabaseWrapper
+    from django.db.models.sql.compiler import SQLCompiler
+
+    from bloomerp.models import ApplicationField
+
 
 PROPERTY = FieldTypeDefinition(
     id="Property",
@@ -48,7 +78,9 @@ FILE_FIELD = FieldTypeDefinition(
             HELP_TEXT_FIELD_OPTION,
         ),
     ),
-    render_value=lambda field, obj: f"<a class='text-primary' href='{(getattr(getattr(obj, field.field), 'url') if getattr(obj, field.field) else None)}'>{getattr(obj, field.field)}</a>",
+    render_value=lambda field, obj: (
+        f"<a class='text-primary' href='{(getattr(obj, field.field).url if getattr(obj, field.field) else None)}'>{getattr(obj, field.field)}</a>"
+    ),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 
@@ -110,7 +142,7 @@ JSON_FIELD = FieldTypeDefinition(
             HELP_TEXT_FIELD_OPTION,
         ),
     ),
-    widget_factory=widget(CodeEditorWidget, attrs={}, **{"language": "json"}),
+    widget_factory=widget(CodeEditorWidget, attrs={}, language="json"),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 
@@ -139,12 +171,106 @@ STATUS_FIELD = FieldTypeDefinition(
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 
+
+class CanonicalUUIDText(Func):
+    """Match canonical reference IDs even when a backend stores UUIDs without hyphens."""
+
+    output_field = CharField()
+
+    def as_sql(
+        self,
+        compiler: SQLCompiler,
+        connection: BaseDatabaseWrapper,
+        **extra_context: Any,
+    ) -> tuple[str, list[Any]]:
+        """Convert the outer UUID to text without transforming the indexed reference column."""
+        text = Cast(self.source_expressions[0], output_field=CharField())
+        if not connection.features.has_native_uuid_field:
+            text = Concat(
+                Substr(text, 1, 8),
+                Value("-"),
+                Substr(text, 9, 4),
+                Value("-"),
+                Substr(text, 13, 4),
+                Value("-"),
+                Substr(text, 17, 4),
+                Value("-"),
+                Substr(text, 21, 12),
+                output_field=CharField(),
+            )
+        sql, parameters = compiler.compile(text)
+        return sql, list(parameters)
+
+
+def file_field_is_null_q_factory(
+    application_field: ApplicationField, field_path: str, expression: str, value: Any
+) -> CompiledLookup:
+    """Match empty or populated file fields using their scoped reference existence."""
+    from bloomerp.models import FileFieldReference
+
+    prefix, _separator, _name = field_path.rpartition("__")
+    owner_path = f"{prefix}__pk" if prefix else "pk"
+    owner_id: Expression = OuterRef(owner_path)
+    if isinstance(application_field.get_model()._meta.pk, UUIDField):
+        owner_id = CanonicalUUIDText(owner_id)
+    else:
+        owner_id = Cast(owner_id, output_field=CharField())
+    references = FileFieldReference.objects.filter(
+        application_field_id=application_field.pk,
+        object_id=owner_id,
+    )
+    exists = Exists(references)
+    return CompiledLookup(predicate=Q(~exists if is_truthy(value) else exists))
+
+
+
 BLOOMERP_FILE_FIELD = FieldTypeDefinition(
     id="BloomerpFileField",
     icon="fa-solid fa-file-lines",
     label="Bloomerp File Field",
     model_field_cls=BloomerpFileField,
-    lookups=(),
+    batch_value_loader=load_file_field_values,
+    render_value=render_file_field_value,
+    lookups=(
+        BoundLookup(
+            lookup=lookups.IS_NULL,
+            q_factory=file_field_is_null_q_factory,
+            python_evaluator=lambda actual, expected: (not actual) is is_truthy(expected),
+        ),
+    ),
+    construction=FieldConstruction(
+        defaults={"blank": True, "multiple": False},
+        options=(
+            BLANK_FIELD_OPTION,
+            HELP_TEXT_FIELD_OPTION,
+            FieldConstructionOption(
+                id="multiple",
+                label="Allow Multiple Files",
+                primitive_input_type="bool",
+                default_value=False,
+                python_type=bool,
+            ),
+            FieldConstructionOption(
+                id="allowed_extensions",
+                label="Allowed File Extensions",
+                primitive_input_type="list",
+                description="Optional extensions such as .pdf and .docx; empty accepts all files.",
+                python_type=list[str],
+            ),
+            FieldConstructionOption(
+                id="max_files",
+                label="Maximum Files",
+                primitive_input_type="number",
+                python_type=int,
+            ),
+            FieldConstructionOption(
+                id="max_file_size",
+                label="Maximum File Size (Bytes)",
+                primitive_input_type="number",
+                python_type=int,
+            ),
+        ),
+    ),
     display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
 )
 

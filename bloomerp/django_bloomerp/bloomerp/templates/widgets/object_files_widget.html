@@ -3,7 +3,10 @@
         <ul class="divide-y rounded-xl border border-gray-200 divide-gray-200 bg-white">
             {% for file in files %}
                 <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                    <a href="{{ file.url }}" target="_blank" class="truncate font-medium text-primary">
+                    <a href="{% url 'components_preview_file' file_id=file.pk %}"
+                       hx-get="{% url 'components_preview_file' file_id=file.pk %}"
+                       hx-target="#bloomerp-general-use-drawer-body" hx-swap="innerHTML" hx-push-url="false"
+                       bloomerp-open-drawer="bloomerp-general-use-drawer" class="truncate font-medium text-primary">
                         {{ file.name }}
                     </a>
                     <span class="shrink-0 text-xs">{{ file.size_str }}</span>

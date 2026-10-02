@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Callable, TYPE_CHECKING, Any
 from bloomerp.field_types.display_options import FieldDisplayOption
 from bloomerp.field_types.construction import FieldConstructionOption
@@ -29,6 +29,8 @@ FormFactory = Callable[[FieldContext, forms.Field | None], forms.Field | None]
 
 ValueRenderer = Callable[["ApplicationField", models.Model], Any]
 
+BatchValueLoader = Callable[[Sequence[models.Model], Sequence["ApplicationField"]], None]
+
 
 @dataclass(frozen=True, kw_only=True)
 class FieldConstruction:
@@ -52,6 +54,7 @@ class FieldTypeDefinition:
     model_field_cls: type[models.Field] | None = None
     construction: FieldConstruction | None = None
 
+    batch_value_loader: BatchValueLoader | None = None
     widget_factory: WidgetFactory | None = None
     form_factory: FormFactory | None = None
     render_value: ValueRenderer = lambda application_field, instance: getattr(
