@@ -69,7 +69,27 @@ class GantPreviewCell extends BaseDataViewCell {
 
 export class GantChartItem extends GantPreviewCell {}
 
-export class GantChartSidebarItem extends GantPreviewCell {}
+export class GantChartSidebarItem extends GantPreviewCell {
+    /** Bind keyboard activation to the focused sidebar cell or unscheduled card. */
+    public override initialize(): void {
+        super.initialize();
+        this.element.addEventListener('keydown', this.onKeyDown);
+    }
+
+    /** Open this record without invoking the parent chart's selected-bar handler. */
+    private onKeyDown = (event: KeyboardEvent): void => {
+        if (event.key !== 'Enter' || event.target !== this.element) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.click();
+    };
+
+    /** Remove keyboard activation when the sidebar cell or card is destroyed. */
+    public override destroy(): void {
+        this.element.removeEventListener('keydown', this.onKeyDown);
+        super.destroy();
+    }
+}
 
 export class GantChart extends BaseDataViewComponent {
     protected cellClass = GantChartItem;
@@ -316,12 +336,13 @@ export class GantChart extends BaseDataViewComponent {
         this.scheduleDependencyDraw();
     }
 
+    /** Collapse only the records sidebar, keeping the unscheduled tray interactive. */
     private syncSidebarChrome(): void {
         if (!this.element) return;
 
         const collapsed = this.sidebarWidth <= 1;
         const sidebarCells = this.element.querySelectorAll<HTMLElement>(
-            '[data-gant-sidebar], [bloomerp-component="gant-chart-sidebar-item"]',
+            '[data-gant-sidebar], [data-gant-row] > [bloomerp-component="gant-chart-sidebar-item"]',
         );
         for (const cell of sidebarCells) {
             cell.style.visibility = collapsed ? 'hidden' : '';
