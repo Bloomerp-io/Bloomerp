@@ -14,7 +14,7 @@ Slots:
 - default: layout items
 - buttons_left: buttons on the left side of the header
 - buttons_right: buttons on the right side of the header
-- below_buttons: content displayed below both header button groups
+- bellow_header: content displayed below both header button groups
 {% endcomment %}
 
 
@@ -136,9 +136,9 @@ Slots:
     </div>
     <!--End Header Section-->
 
-    {% if below_buttons %}
+    {% if bellow_header %}
     <div class="mb-4" data-layout-header-section-2>
-        {{ below_buttons }}
+        {{ bellow_header }}
     </div>
     {% endif %}
 

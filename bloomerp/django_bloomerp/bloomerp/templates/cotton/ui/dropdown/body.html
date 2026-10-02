@@ -25,6 +25,8 @@ Parameters:
 {% if icon %}{% endif %}
 
 <div class="relative inline-block text-left {% if wrapper_class %}{{ wrapper_class }}{% endif %}"
+    bloomerp-component="dropdown-keyboard"
+    data-dropdown-trigger-selector="{{ trigger_selector }}"
     id="{{ id }}"
     x-data="{
         open: false,
@@ -78,17 +80,18 @@ Parameters:
         if (open) {
             wasOpen = true;
         } else if (wasOpen) {
-            window.dispatchEvent(new CustomEvent('{{ close_on_item_event|default:'dropdown-close' }}'));
             wasOpen = false;
+            $dispatch('dropdown-dismissed');
+            window.dispatchEvent(new CustomEvent('{{ close_on_item_event|default:'dropdown-close' }}'));
         }
     "
     @click.away="open = false"
     @keydown.escape.window="
-        if (open) {
+        if (open && !$event.defaultPrevented) {
             open = false;
-            $el.querySelector('[aria-haspopup=&quot;true&quot;]')?.focus();
         }
     "
+    @dropdown-dismiss="open = false"
     {% if fixed %}
     @resize.window="if (open) resolvePlacement()"
     @scroll.window="if (open) resolvePlacement()"
@@ -173,6 +176,7 @@ Parameters:
     <!-- Dropdown menu -->
     <div 
         x-ref="menu"
+        data-dropdown-panel
         class="
             bloomerp-dropdown-menu
             {% if fixed %}fixed z-[140]{% else %}absolute z-[90]{% endif %}
@@ -215,6 +219,7 @@ Parameters:
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
         role="menu" 
+        :aria-hidden="(!open).toString()"
         aria-orientation="vertical" 
         {% if fixed %}
         :style="`${menuStyle} display: ${open ? 'block' : 'none'};`"

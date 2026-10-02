@@ -50,25 +50,178 @@
     >   
         <!--Buttons left-->
         <c-slot name="buttons_left">
-            <div data-toggle-non-required-fields-container>
-                <c-ui.shortcut_tooltip
-                    shortcut="mod+."
-                    position="bottom">
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-secondary"
-                        data-toggle-non-required-fields
-                        aria-pressed="false"
+            {# UI draft: sample results only; selections do not persist tags. #}
+            <c-ui.shortcut_tooltip
+                shortcut="mod+shift+t"
+                action="click"
+                position="bottom"
+                target="button[name=tag-draft]"
+            >
+                <c-ui.dropdown.body
+                    trigger_text="{% translate 'Tag' %}"
+                    trigger_icon_class="fa-solid fa-tag"
+                    trigger_button_class="btn-secondary"
+                    trigger_class="gap-2"
+                    trigger_button_name="tag-draft"
+                    size="sm"
+                    position="left"
+                    fixed=True
+                >
+                    <c-ui.dropdown.submenu
+                        text="{% translate 'People' %}"
+                        icon="fa-solid fa-users"
+                        direction="right"
+                        width="w-72"
                     >
-                        <i class="fa fa-asterisk"></i>
-                        <span data-toggle-non-required-fields-label>
-                            {% blocktrans trimmed %}
-                                Show Required Only
-                            {% endblocktrans %}
-                        </span>
-                    </button>
-                </c-ui.shortcut_tooltip>
-            </div>
+                        <div x-data="{ query: '' }">
+                            <div class="px-3 py-2">
+                                <input
+                                    type="search"
+                                    class="input input-sm w-full"
+                                    placeholder="{% translate 'Search people…' %}"
+                                    aria-label="{% translate 'Search people' %}"
+                                    autocomplete="off"
+                                    x-model="query"
+                                    x-effect="if (open) $nextTick($el.focus.bind($el))"
+                                    @keydown.enter.prevent
+                                >
+                            </div>
+                            <c-ui.dropdown.divider />
+                            <div x-show="'david bloomer'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="David Bloomer"
+                                    icon="fa-solid fa-user"
+                                    close_menu=True
+                                />
+                            </div>
+                            <div x-show="'emma janssens'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Emma Janssens"
+                                    icon="fa-solid fa-user"
+                                    close_menu=True
+                                />
+                            </div>
+                            <div x-show="'lucas peeters'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Lucas Peeters"
+                                    icon="fa-solid fa-user"
+                                    close_menu=True
+                                />
+                            </div>
+                            <p
+                                x-show="!'david bloomer'.includes(query.trim().toLowerCase()) && !'emma janssens'.includes(query.trim().toLowerCase()) && !'lucas peeters'.includes(query.trim().toLowerCase())"
+                                x-cloak
+                                class="px-4 py-2 text-sm text-gray-500"
+                                role="status"
+                            >
+                                {% translate 'No results found' %}
+                            </p>
+                        </div>
+                    </c-ui.dropdown.submenu>
+                    <c-ui.dropdown.submenu
+                        text="{% translate 'Objects' %}"
+                        icon="fa-solid fa-cubes"
+                        direction="right"
+                        width="w-72"
+                    >
+                        <div x-data="{ query: '' }">
+                            <div class="px-3 py-2">
+                                <input
+                                    type="search"
+                                    class="input input-sm w-full"
+                                    placeholder="{% translate 'Search objects…' %}"
+                                    aria-label="{% translate 'Search objects' %}"
+                                    autocomplete="off"
+                                    x-model="query"
+                                    x-effect="if (open) $nextTick($el.focus.bind($el))"
+                                    @keydown.enter.prevent
+                                >
+                            </div>
+                            <c-ui.dropdown.divider />
+                            <div x-show="'acme corporation'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Acme Corporation"
+                                    icon="fa-solid fa-building"
+                                    close_menu=True
+                                />
+                            </div>
+                            <div x-show="'website redesign'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Website redesign"
+                                    icon="fa-solid fa-folder"
+                                    close_menu=True
+                                />
+                            </div>
+                            <div x-show="'invoice inv-2026-042'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Invoice INV-2026-042"
+                                    icon="fa-solid fa-file-invoice"
+                                    close_menu=True
+                                />
+                            </div>
+                            <p
+                                x-show="!'acme corporation'.includes(query.trim().toLowerCase()) && !'website redesign'.includes(query.trim().toLowerCase()) && !'invoice inv-2026-042'.includes(query.trim().toLowerCase())"
+                                x-cloak
+                                class="px-4 py-2 text-sm text-gray-500"
+                                role="status"
+                            >
+                                {% translate 'No results found' %}
+                            </p>
+                        </div>
+                    </c-ui.dropdown.submenu>
+                    <c-ui.dropdown.submenu
+                        text="{% translate 'Labels' %}"
+                        icon="fa-solid fa-tags"
+                        direction="right"
+                        width="w-72"
+                    >
+                        <div x-data="{ query: '' }">
+                            <div class="px-3 py-2">
+                                <input
+                                    type="search"
+                                    class="input input-sm w-full"
+                                    placeholder="{% translate 'Search labels…' %}"
+                                    aria-label="{% translate 'Search labels' %}"
+                                    autocomplete="off"
+                                    x-model="query"
+                                    x-effect="if (open) $nextTick($el.focus.bind($el))"
+                                    @keydown.enter.prevent
+                                >
+                            </div>
+                            <c-ui.dropdown.divider />
+                            <div x-show="'urgent'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Urgent"
+                                    icon="fa-solid fa-tag"
+                                    close_menu=True
+                                />
+                            </div>
+                            <div x-show="'follow up'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Follow up"
+                                    icon="fa-solid fa-tag"
+                                    close_menu=True
+                                />
+                            </div>
+                            <div x-show="'internal'.includes(query.trim().toLowerCase())">
+                                <c-ui.dropdown.item
+                                    text="Internal"
+                                    icon="fa-solid fa-tag"
+                                    close_menu=True
+                                />
+                            </div>
+                            <p
+                                x-show="!'urgent'.includes(query.trim().toLowerCase()) && !'follow up'.includes(query.trim().toLowerCase()) && !'internal'.includes(query.trim().toLowerCase())"
+                                x-cloak
+                                class="px-4 py-2 text-sm text-gray-500"
+                                role="status"
+                            >
+                                {% translate 'No results found' %}
+                            </p>
+                        </div>
+                    </c-ui.dropdown.submenu>
+                </c-ui.dropdown.body>
+            </c-ui.shortcut_tooltip>
         </c-slot>
         <!--End buttons left-->
 
@@ -133,6 +286,11 @@
         </c-slot>
         {% else %}
         <c-slot name="buttons_right">
+            <c-ui.shortcut_tooltip
+                    shortcut="mod+shift+p"
+                    action="click"
+                    position="bottom"
+                >
             <c-features.preferences.select_preference_button
                 model="UserObjectLayoutPreference"
                 :args="{
@@ -140,6 +298,7 @@
                 }"
                 selected_preference_name="{{ layout_preference_object.name }}"
             />
+            </c-ui.shortcut_tooltip>
 
             <div class="hidden flex gap-3" id="object-crud-container-buttons">
                 <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-back-button">
@@ -188,6 +347,49 @@
             </div>
         </c-slot>
         {% endif %}
+
+        <c-slot name="bellow_header">
+            {# UI draft: examples of the people, objects, and labels attached to a record. #}
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-3 py-2">
+                <div class="flex flex-wrap items-center gap-2" role="group" aria-label="{% translate 'Tagged people' %}">
+                    <span class="text-xs font-medium text-gray-500">{% translate 'People' %}</span>
+                    <span class="badge badge-secondary">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        David Bloomer
+                    </span>
+                    <span class="badge badge-secondary">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        Emma Janssens
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2" role="group" aria-label="{% translate 'Tagged objects' %}">
+                    <span class="text-xs font-medium text-gray-500">{% translate 'Objects' %}</span>
+                    <span class="badge badge-neutral">
+                        <i class="fa-solid fa-building" aria-hidden="true"></i>
+                        Acme Corporation
+                    </span>
+                    <span class="badge badge-neutral">
+                        <i class="fa-solid fa-folder" aria-hidden="true"></i>
+                        Website redesign
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2" role="group" aria-label="{% translate 'Tagged labels' %}">
+                    <span class="text-xs font-medium text-gray-500">{% translate 'Labels' %}</span>
+                    <span class="badge badge-danger">
+                        <i class="fa-solid fa-tag" aria-hidden="true"></i>
+                        {% translate 'Urgent' %}
+                    </span>
+                    <span class="badge badge-warning">
+                        <i class="fa-solid fa-tag" aria-hidden="true"></i>
+                        {% translate 'Follow up' %}
+                    </span>
+                    <span class="badge badge-info">
+                        <i class="fa-solid fa-tag" aria-hidden="true"></i>
+                        {% translate 'Internal' %}
+                    </span>
+                </div>
+            </div>
+        </c-slot>
         
     </c-features.layout.container>
 </form>

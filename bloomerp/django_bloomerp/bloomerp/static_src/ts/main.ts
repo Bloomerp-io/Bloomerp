@@ -51,6 +51,7 @@ import ForeignFieldDataViewContainer from './components/data_view_components/For
 import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
 import ShortcutTooltip from './components/ShortcutTooltip';
+import DropdownKeyboard from './components/DropdownKeyboard';
 import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
 import BehaviorBuilder from './components/inputs/BehaviorBuilder';
 import FocusOnForm from './components/FocusOnForm';
@@ -170,6 +171,7 @@ registerComponent('workspace-tile-canvas', Canvas);
 registerComponent('sidebar-item', SidebarItem)
 registerComponent('focus-in', FocusIn)
 registerComponent('shortcut-tooltip', ShortcutTooltip);
+registerComponent('dropdown-keyboard', DropdownKeyboard);
 registerComponent('ordered-field-select', OrderedFieldSelect);
 registerComponent('mapping-widget', MappingWidget);
 registerComponent('behavior-builder', BehaviorBuilder);
