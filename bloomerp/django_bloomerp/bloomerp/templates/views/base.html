@@ -9,7 +9,8 @@
 	</head>
 
 	
-	<body class="bg-base text-gray-900 dark:bg-zinc-950 dark:text-zinc-100" id="bloomerpBody" x-data>
+	<body class="bg-base text-gray-900 dark:bg-zinc-950 dark:text-zinc-100" id="bloomerpBody" x-data
+		{% if request.user.is_authenticated %}data-bloomerp-agent="enabled"{% endif %}>
 		{% block body %}
 
 		<!-- Sidebar -->
@@ -58,6 +59,8 @@
 			class="fixed top-5 left-5 z-[80] hidden rounded-full border border-gray-200 bg-white p-2 shadow-lg hover:bg-gray-50 hover:cursor-pointer">
 			<c-icons.lines_horizontal size="24"/>
 		</button>
+
+		<c-features.agent.body />
 
 		<!--Messages -->
 		<c-ui.modal id="bloomerp-general-use-modal"/>

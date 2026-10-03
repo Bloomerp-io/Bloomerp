@@ -158,6 +158,8 @@ dependencies = [
     "django-countries==9.0.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.8",
+    "pydantic-ai-slim[anthropic,openai]>=1.38,<1.39",
+    "anthropic>=0.75,<0.76",
 ]
 
 [project.optional-dependencies]

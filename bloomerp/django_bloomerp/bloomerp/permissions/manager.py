@@ -28,6 +28,7 @@ from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models import BloomerpModel
 from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.modules.definition import ModuleConfig
 from bloomerp.permissions.compilers.django_q_permission_compiler import (
     CompiledDjangoAccess,
     DjangoQPermissionCompiler,
@@ -530,18 +531,19 @@ class UserPolicyManager:
         """
         if not isinstance(obj, models.Model) or obj.pk is None:
             return False
-        if check_global and not self.has_global_permission(type(obj), permissions, match):
+        model = obj._meta.model
+        if check_global and not self.has_global_permission(model, permissions, match):
             return False
 
         has_row_permission = self.get_accessible_queryset(
-            type(obj),
+            model,
             permissions,
             match,
         ).filter(pk=obj.pk).exists()
 
         if fields:
             accessible_fields = self.get_accessible_fields_for_object(obj, permissions, match)
-            _, content_type = resolve_model_and_content_type(type(obj))
+            _, content_type = resolve_model_and_content_type(model)
             try:
                 requested_field_ids = {
                     ApplicationField.resolve_for_content_type(content_type, field).pk
@@ -590,7 +592,8 @@ class UserPolicyManager:
         permissions: Optional[list[str] | list[BloomerpPermission] | str | BloomerpPermission],
         match: PermissionMatch = PermissionMatch.ANY,
     ) -> QuerySet[ApplicationField]:
-        model, content_type = resolve_model_and_content_type(type(obj))
+        """Return fields accessible on a persisted object, including lazy model wrappers."""
+        model, content_type = resolve_model_and_content_type(obj._meta.model)
         fields = self._field_queryset(content_type)
         if obj.pk is None or self.is_anonymous:
             return fields.none()
@@ -920,7 +923,32 @@ class UserPolicyManager:
         )
         return evaluator.matches(candidate)
 
-    
+    def get_accessible_modules(
+        self,
+        permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission,
+        match: PermissionMatch = PermissionMatch.ANY,
+    ) -> list[ModuleConfig]:
+        """Return enabled, visible modules with access to a direct or descendant model."""
+        from bloomerp.modules.definition import module_registry
+
+        if self.is_anonymous:
+            return []
+        accessible = set(self.get_accessible_models(permissions, match))
+        return [
+            module
+            for module in module_registry.get_enabled().values()
+            if module.visible
+            and (
+                getattr(self.user, "is_superuser", False)
+                or any(
+                    model in accessible
+                    for model in module_registry.get_models_for_module(
+                        module.full_id or module.id, include_descendants=True
+                    )
+                )
+            )
+        ]
+
 
 class PolicyManager:
     @staticmethod
