@@ -5,6 +5,7 @@ from unittest import skip
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
+from django.http import QueryDict
 from pydantic import TypeAdapter
 
 from bloomerp.dataviews.definition import BaseDataview, DataviewTypeDefinition
@@ -133,6 +134,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         return set_fields
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Exercise dataview rendering, filter recovery, and access enforcement."""
         for i in range(10):
             planet = self.PlanetModel.objects.create(name=f"Planet {i}")
             country = self.CountryModel.objects.create(name=f"Country {i}", planet=planet)
@@ -259,13 +261,13 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(response_validators=self.contains_entries(customers.none())),
             ),
             RequestScenario(
-                name="FILTERS: Invalid lookup value returns 400",
+                name="FILTERS: Invalid lookup is discarded",
                 user=self.admin_user,
                 view_kwargs=kwargs,
                 query_params=filter_query_params(Filter(connector="AND", conditions=[
                     FilterCondition(field_path="age", lookup_id="invalid_lookup", value="not a number"),
                 ])),
-                expected=ExpectedResult(status_code=400),
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.all())),
             ),
             RequestScenario(
                 name="FILTERS: Filters still work with GET args",
@@ -458,6 +460,94 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             )
         ]
         
+        for name, query_params in [
+            ("Blank required shorthand value", {"age": ""}),
+            ("Malformed shorthand value", {"age": "not a number"}),
+            ("Unknown shorthand field", {"missing": "value"}),
+            ("Malformed JSON", {"filter": "broken"}),
+            ("OR group containing only invalid values", filter_query_params(
+                Filter(connector="OR", conditions=[
+                    FilterCondition(field_path="age", lookup_id="equals", value=""),
+                ]),
+            )),
+        ]:
+            request_scenarios.append(RequestScenario(
+                name=f"FILTERS: {name} is discarded",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params=query_params,
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.all())),
+            ))
+
+        for connector in ("AND", "OR"):
+            request_scenarios.append(RequestScenario(
+                name=f"FILTERS: Valid {connector} condition survives invalid siblings",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params=filter_query_params(Filter(connector=connector, conditions=[
+                    FilterCondition(field_path="age", lookup_id="equals", value=""),
+                    FilterCondition(field_path="age", lookup_id="equals", value=3),
+                    FilterCondition(field_path="missing", lookup_id="equals", value=3),
+                ])),
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.filter(age=3))),
+            ))
+
+        request_scenarios.extend([
+            RequestScenario(
+                name="FILTERS: Explicitly empty OR still matches no rows",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params=filter_query_params(Filter(connector="OR")),
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.none())),
+            ),
+            RequestScenario(
+                name="FILTERS: Valid repeated shorthand survives invalid values",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params=QueryDict("age=&age=3&missing=value"),
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.filter(age=3))),
+            ),
+            RequestScenario(
+                name="FILTERS: Invalid shorthand preserves default filters",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=add_default_filter,
+                query_params={"age": ""},
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.filter(age__gt=2))),
+            ),
+            RequestScenario(
+                name="FILTERS: Discarding invalid input preserves row permissions",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=self.set_policies(
+                    policies=[AccessRule(
+                        row_permissions=[RowPolicyRuleContent(
+                            connector="AND",
+                            conditions=[FilterCondition(field_path="age", lookup_id="equals", value=3)],
+                            permissions=[BloomerpPermission.VIEW],
+                        )],
+                        field_permissions={"__all__": [BloomerpPermission.VIEW]},
+                    )],
+                    global_permissions=[BloomerpPermission.VIEW],
+                ),
+                query_params={"age": ""},
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.filter(age=3))),
+            ),
+            RequestScenario(
+                name="FILTERS: Invalid value does not bypass field permissions",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=self.set_policies(
+                    policies=[AccessRule(
+                        row_permissions=[],
+                        field_permissions={"first_name": [BloomerpPermission.VIEW]},
+                    )],
+                    global_permissions=[BloomerpPermission.VIEW],
+                ),
+                query_params={"age": ""},
+                expected=ExpectedResult(status_code=403),
+            ),
+        ])
         return request_scenarios
     
     def set_policies(self, policies:list[AccessRule], global_permissions:list[BloomerpPermission]):
