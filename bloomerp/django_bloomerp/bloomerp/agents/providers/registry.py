@@ -40,12 +40,14 @@ def register_builtins() -> None:
     from .builtins.pydantic_anthropic import AnthropicSettings, create_anthropic_model
     from .builtins.pydantic_deepseek import create_deepseek_model
     from .builtins.pydantic_open_ai import create_openai_chat_model, create_openai_model
+    from .builtins.pydantic_openrouter import create_openrouter_model
 
     descriptions = {
         "openai": "Use OpenAI agents through the Responses API, including compatible reasoning models.",
         "openai_chat": "Use OpenAI or compatible endpoints through the Chat Completions API.",
         "deepseek": "Use DeepSeek models through its OpenAI-compatible Chat Completions API.",
         "anthropic": "Use Claude models through the Anthropic Messages API.",
+        "openrouter": "Use OpenRouter with a vendor/model identifier. Available tools and settings depend on the selected model.",
     }
     for key, name, factory, schema in [
         ("openai", "OpenAI", create_openai_model, PydanticAISettings),
@@ -57,6 +59,7 @@ def register_builtins() -> None:
         ),
         ("deepseek", "DeepSeek", create_deepseek_model, PydanticAISettings),
         ("anthropic", "Anthropic", create_anthropic_model, AnthropicSettings),
+        ("openrouter", "OpenRouter", create_openrouter_model, PydanticAISettings),
     ]:
         AI_PROVIDER_REGISTRY.register(
             key,
