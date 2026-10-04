@@ -1,6 +1,10 @@
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+from django.core.exceptions import ImproperlyConfigured
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
@@ -90,15 +94,41 @@ class ActivityLogHtmlFilterTests(SimpleTestCase):
 
 
 class ViteBundleTemplateTests(SimpleTestCase):
-    @override_settings(DEBUG=False)
-    @patch("bloomerp.templatetags.bloomerp.version", return_value="1.15.13")
-    def test_built_bundle_url_is_versioned(self, _version):
-        """
-        Use case: A browser loads compiled assets after a Bloomerp upgrade.
-        Expected result: The package version changes the bundle URL and bypasses stale caches.
-        """
-        # 1. Render the production bundle snippet for a known package version.
-        rendered = render_to_string("snippets/vite_bundle.html")
+    def render_built_bundle(self, filename: str, static_url: str = "/static/") -> str:
+        """Render the production snippet against a compiled entry manifest."""
+        with TemporaryDirectory() as directory:
+            manifest_path = Path(directory) / "manifest.json"
+            manifest_path.write_text(
+                json.dumps({"ts/entry.ts": {"file": filename, "isEntry": True}}),
+                encoding="utf-8",
+            )
+            with override_settings(DEBUG=False, STATIC_URL=static_url):
+                with patch("django.contrib.staticfiles.finders.find", return_value=str(manifest_path)):
+                    return render_to_string("snippets/vite_bundle.html")
 
-        # 2. Verify the compiled entry URL includes the release cache key.
-        self.assertIn("/static/bloomerp/js/dist/main.js?v=1.15.13", rendered)
+    def test_built_bundle_uses_the_same_hashed_url_as_lazy_imports(self) -> None:
+        """Keep the page's module identity consistent with Whiteboard lazy imports."""
+        rendered = self.render_built_bundle("main-first-build.js")
+        self.assertIn('src="/static/bloomerp/js/dist/main-first-build.js"', rendered)
+        self.assertNotIn("?v=", rendered)
+        self.assertNotIn("dist/main.js", rendered)
+
+    def test_rebuild_changes_the_entry_url_without_a_package_version_change(self) -> None:
+        """Invalidate browser caches whenever the compiled application changes."""
+        first = self.render_built_bundle("main-first-build.js")
+        second = self.render_built_bundle("main-second-build.js")
+        self.assertIn("main-first-build.js", first)
+        self.assertIn("main-second-build.js", second)
+        self.assertNotEqual(first, second)
+
+    def test_built_bundle_respects_a_cdn_static_url(self) -> None:
+        """Resolve the hashed entry through Django's configured static storage."""
+        rendered = self.render_built_bundle("main-cdn-build.js", "https://cdn.example.com/assets/")
+        self.assertIn('src="https://cdn.example.com/assets/bloomerp/js/dist/main-cdn-build.js"', rendered)
+
+    @override_settings(DEBUG=False)
+    @patch("django.contrib.staticfiles.finders.find", return_value=None)
+    def test_missing_manifest_reports_the_required_build(self, _find: MagicMock) -> None:
+        """Report missing compiled assets instead of falling back to the stale entry."""
+        with self.assertRaisesMessage(ImproperlyConfigured, "Run npm run build:js"):
+            render_to_string("snippets/vite_bundle.html")
