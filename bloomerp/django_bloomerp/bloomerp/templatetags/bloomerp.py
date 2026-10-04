@@ -5,6 +5,7 @@ from pathlib import Path
 import bleach
 from django import template
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.http import HttpRequest
 from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, ObjectModalAction
@@ -61,11 +62,11 @@ ACTIVITY_LOG_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
 @register.simple_tag
 def bloomerp_asset_version() -> str:
-    """Invalidate rebuilt development bundles without changing the release version."""
+    """Invalidate rebuilt development CSS using the current build manifest timestamp."""
     if settings.DEBUG:
         from django.contrib.staticfiles import finders
 
-        entry = finders.find("bloomerp/js/dist/main.js")
+        entry = finders.find("bloomerp/js/dist/manifest.json")
         if entry:
             try:
                 return f"dev-{Path(entry).stat().st_mtime_ns}"
@@ -75,6 +76,28 @@ def bloomerp_asset_version() -> str:
         return version("Bloomerp")
     except PackageNotFoundError:
         return "dev"
+
+
+@register.simple_tag
+def bloomerp_vite_entry() -> str:
+    """Resolve the hashed production entry shared by the page and lazy imports."""
+    from django.contrib.staticfiles import finders
+
+    manifest_path = finders.find("bloomerp/js/dist/manifest.json")
+    message = "Bloomerp's Vite manifest is missing or invalid. Run npm run build:js in bloomerp/static_src."
+    if not manifest_path:
+        raise ImproperlyConfigured(message)
+
+    try:
+        manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+        entry = manifest["ts/entry.ts"]
+        filename = entry["file"]
+        if not entry.get("isEntry") or not isinstance(filename, str) or not filename:
+            raise ValueError("Missing Vite entry filename")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        raise ImproperlyConfigured(message) from error
+
+    return f"bloomerp/js/dist/{filename}"
 
 
 @register.simple_tag
