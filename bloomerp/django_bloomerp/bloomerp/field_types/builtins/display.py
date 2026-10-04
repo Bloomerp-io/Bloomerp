@@ -149,3 +149,4 @@ BEHAVIORS_DISPLAY_OPTION = FieldDisplayOption(
     required=False,
     help_text="Define what this form should do when the field changes.",
 )
+

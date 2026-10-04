@@ -1,3 +1,4 @@
+import ArtifactPicker from './components/agent/ArtifactPicker';
 import ColoredChoices from './components/ColoredChoices';
 import MappingWidget from './components/MappingWidget';
 /**
@@ -74,13 +75,18 @@ import ThemeProvider from './components/theme/ThemeProvider';
 import MarkdownCodeBlock from './components/MarkdownCodeBlock';
 import { loadTranslations } from './utils/i18n';
 import { FileBrowser } from './components/data_view_components/FileBrowser';
+import { initBrowserAgent } from './utils/agent';
+import AgentChat from './components/agent/AgentChat';
 
 
 Object.assign(window, { showMessage });
+initBrowserAgent();
 
 // Register components here
+registerComponent('bloomerp:artifact-picker', ArtifactPicker);
 registerComponent('modal', Modal);
 registerComponent('drawer', Drawer);
+registerComponent('bloomerp:agent-chat', AgentChat);
 registerComponent('sidebar', Sidebar);
 registerComponent('breadcrumb', Breadcrumb);
 registerComponent('resizable-div', ResizableDiv);

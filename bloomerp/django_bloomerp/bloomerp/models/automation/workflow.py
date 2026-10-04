@@ -172,7 +172,7 @@ class Workflow(
                             name="workflow_name",
                             opts={
                                 "label": "Workflow",
-                                "advanced_formatting": """<a href="{% url 'workflows_detail_overview' pk=var_workflow_id %}">{{ var_workflow_name }}</a>""",
+                                "advanced_formatting": """<a href="{% url 'workflows_detail_overview' pk=var_workflow_id %}" hx-get="{% url 'workflows_detail_overview' pk=var_workflow_id %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true">{{ var_workflow_name }}</a>""",
                             },
                         ),
                         FieldConfig(name="issue", opts={"label": "Issue"}),

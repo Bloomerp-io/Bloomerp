@@ -15,6 +15,9 @@
     "build:tailwind": "cross-env NODE_ENV=production tailwindcss --postcss -i ./src/styles.css -o ../static/bloomerp/css/dist/styles.css --minify",
     "build:js": "tsc && vite build",
     "test:theme": "node --experimental-strip-types --test ts/components/theme/theme.test.ts",
+    "test:agent": "node --experimental-strip-types --experimental-test-module-mocks --test ts/utils/agent.test.ts ts/utils/agentEditorState.test.ts",
+    "test:agent-markdown": "node --experimental-strip-types --test ts/utils/agentMarkdown.test.ts",
+    "test:agent-progress": "node --experimental-strip-types --test ts/utils/agentProgress.test.ts",
     "preview": "vite preview",
     "tailwindcss": "node ./node_modules/tailwindcss/lib/cli.js",
     "type-check": "tsc --noEmit"
@@ -28,9 +31,11 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
     "@types/drawflow": "^0.0.12",
+    "@types/jsdom": "^21.1.7",
     "@types/node": "^22.10.1",
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
+    "jsdom": "^26.1.0",
     "postcss": "^8.5.1",
     "postcss-import": "^16.1.0",
     "postcss-nested": "^7.0.2",
@@ -56,11 +61,13 @@
     "@tailwindcss/postcss": "^4.1.18",
     "ace-builds": "^1.32.9",
     "alpinejs": "^3.15.3",
+    "dompurify": "^3.4.16",
     "drawflow": "^0.0.60",
     "grapesjs": "^0.22.14",
     "grapesjs-preset-webpage": "^1.0.3",
     "htmx.org": "^2.0.3",
     "lexical": "^0.18.0",
+    "marked": "^16.4.2",
     "sortablejs": "^1.15.7"
   }
 }

@@ -244,7 +244,11 @@ def resolve_detail_layout_rows(
 
 
 def get_layout_widget_attrs(*, widget: forms.Widget) -> dict[str, str]:
-    widget_choices = getattr(widget, "get_choices", lambda *_args, **_kwargs: getattr(widget, "choices", []))()
+    """Style layout widgets while preserving compact checkbox controls."""
+    if isinstance(widget, forms.CheckboxInput):
+        return {"class": "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"}
+    choices_getter = getattr(widget, "get_choices", None)
+    widget_choices = choices_getter() if choices_getter else getattr(widget, "choices", [])
     is_select_widget = isinstance(widget, forms.Select) or bool(widget_choices)
     return {
         "class": "select w-full" if is_select_widget else "input w-full",

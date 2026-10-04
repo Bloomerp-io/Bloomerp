@@ -16,3 +16,4 @@ enabled = true
 
 [bloomerp.auth.oauth]
 enabled = true
+

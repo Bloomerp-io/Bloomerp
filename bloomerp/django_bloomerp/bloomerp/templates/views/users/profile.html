@@ -1,1 +1,30 @@
-Coming soon
+{% load i18n %}
+
+
+
+{% if layout_non_field_errors %}
+    <div class="space-y-2" role="alert">
+        {% for error in layout_non_field_errors %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" action="{{ request.path }}">
+    {% csrf_token %}
+    <c-features.layout.container
+        :component_name="ts_container_component"
+        :layout="layout"
+        :layout_object_id="layout_object_id"
+        :can_change="can_change"
+        :change_context="change_context"
+        :extra_attrs="layout_container_extra_attrs"
+    >
+        <c-slot name="buttons_right">
+            <button type="submit" class="btn btn-sm btn-primary">
+                {% trans "Save profile" %}
+            </button>
+        </c-slot>
+    </c-features.layout.container>
+</form>
+

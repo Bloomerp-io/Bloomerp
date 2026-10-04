@@ -1,6 +1,6 @@
 # Bloomerp Router
 
-Bloomerp uses a small route registry on top of Django URLs. Views register themselves with `@router.register(...)`; the registry auto-imports view and component modules, expands model/module scoped routes, and turns HTTP routes into Django `path(...)` entries from `bloomerp.urls`. MCP-only routes are discovered by the registry but have no individual Django URL.
+Bloomerp uses a small route registry on top of Django URLs. Views register themselves with `@router.register(...)`; the registry auto-imports view and component modules, expands model/module scoped routes, and turns HTTP routes into Django `path(...)` entries from `bloomerp.urls`. MCP-only tools and resources are discovered by the registry but have no individual Django URL.
 
 Use the router for Bloomerp application pages, model pages, object detail tabs/actions, module landing pages, and HTMX/API-like component endpoints that should live inside the Bloomerp URL map.
 
@@ -18,12 +18,13 @@ At URL load time, `bloomerp.urls` calls:
 urlpatterns.extend(router.create_url_patterns())
 ```
 
-`create_url_patterns()` auto-imports configured route directories, so decorators in `views/`, `components/`, and direct module files execute before URL patterns are built. Each decorated view becomes a `BloomerpRoute` with:
+`create_url_patterns()` auto-imports configured route directories, so decorators in `views/`, `components/`, `mcp_resources/`, and direct module files execute before URL patterns are built. Each decorated view becomes a `BloomerpRoute` with:
 
 - `path`: final URL path
-- `route_type`: `app`, `module`, `model`, `detail`, `api`, `api_model`, `api_detail`, `websocket`, or `mcp`
+- `route_type`: `app`, `module`, `model`, `detail`, `api`, `api_model`, `api_detail`, `websocket`, `mcp`, or `mcp_resource`
 - `name`: human-facing route name
-- `url_name`: Django URL name used by `reverse(...)`
+- `url_name`: Django URL name used by `reverse(...)` for HTTP routes; catalog name for MCP-only routes
+- `mcp`: optional `McpTool`, `McpResource`, or `McpResourceTemplate` contract
 - `model`: model class for model/detail routes
 - `module`: module config for module/model/detail routes
 - `view_type`: class or function view
@@ -42,6 +43,7 @@ The route type decides the URL shape and what context gets attached to the view.
 | `detail` | One object | `/<module>/<model-plural>/<pk>/path/` | Object overview, edit, delete, files, related tabs/actions |
 | `api` | Global API | `/api/path/` | JSON API views, optionally exposed as MCP tools |
 | `mcp` | MCP-only | No individual URL | Tools without a useful REST endpoint |
+| `mcp_resource` | MCP resource | No individual URL | Reference documents and parameterized resource readers |
 
 `<module>` uses `module.route_path` when set, otherwise the module id. `<model-plural>` comes from `model._meta.verbose_name_plural`, lowercased with spaces replaced by hyphens. Detail routes use the `int_or_uuid` converter for `pk`.
 
@@ -248,7 +250,7 @@ The router can enforce the global staff-only gate from `BLOOMERP_CONFIG.require_
 
 For model/detail pages, prefer existing Bloomerp base views and permission services instead of hand-rolling access checks.
 
-## MCP Tools (MVP)
+## MCP Tools
 
 Attach `McpTool` to an existing API route to expose the same view as an MCP tool. The route's `url_name` becomes the stable, server-wide tool name; the view remains responsible for its normal validation and permissions. For example, the SQL and mutation API views already use serializer-derived schemas:
 
@@ -284,7 +286,7 @@ class RunReportView(BaseBloomerpApiView):
         ...
 ```
 
-For a tool with no REST URL, register an explicit `route_type="mcp"` or omit both `path` and `route_type` when `mcp` is supplied. Existing registrations without `mcp` still default to an `app` route. An MCP-only `url_name` is a tool name, not a reversible Django URL name.
+For a tool with no REST URL, register an explicit `route_type="mcp"` or omit both `path` and `route_type` when `mcp=McpTool(...)` is supplied. Existing registrations without `mcp` still default to an `app` route. An MCP-only `url_name` is a tool name, not a reversible Django URL name.
 
 ```python
 from django.http import HttpRequest
@@ -306,9 +308,60 @@ def current_user(request: HttpRequest) -> Response:
     return Response({"username": request.user.get_username()})
 ```
 
-Both forms are exposed through the single `POST /mcp` endpoint on the existing Django/Daphne service. MCP clients should send `Content-Type: application/json`, `Accept: application/json, text/event-stream`, and an instance-supported credential (for example `Authorization: Bearer <API key>` when API keys are enabled). The endpoint supports `initialize`, `ping`, `tools/list`, `tools/call`, and notifications. It returns JSON responses, operates without MCP sessions or SSE, and responds `405` to `GET /mcp`.
+Both forms are exposed through the single `POST /mcp` endpoint on the existing Django/Daphne service. MCP clients should send `Content-Type: application/json`, `Accept: application/json, text/event-stream`, and an instance-supported credential (for example `Authorization: Bearer <API key>` when API keys are enabled). The endpoint supports `initialize`, `ping`, `tools/list`, `tools/call`, resource discovery and reads, and notifications. It returns JSON responses, operates without MCP sessions or SSE, and responds `405` to `GET /mcp`.
 
-The endpoint requires authentication. Calls to API-backed tools re-enter the registered view with that identity, so its DRF permissions and Bloomerp access checks still apply. MCP-only function views receive the authenticated caller but must implement any additional authorization themselves; MCP-only class views can use their normal DRF permission classes. The current MVP lists all registered tool names to authenticated callers; per-user `tools/list` filtering is deferred. API-backed class views currently need exactly one GET or POST handler, function views are dispatched as POST, and API-backed tools cannot require URL path parameters or `re_path`.
+Tool calls and resource reads require authentication; OAuth-enabled clients may discover catalog metadata before account linking. Calls to API-backed tools re-enter the registered view with that identity, so its DRF permissions and Bloomerp access checks still apply. MCP-only function views receive the authenticated caller but must implement any additional authorization themselves; MCP-only class views can use their normal DRF permission classes. The tool catalog lists all registered tool names; per-user `tools/list` filtering is deferred. API-backed class views currently need exactly one GET or POST handler, function views are dispatched as POST, and API-backed tools cannot require URL path parameters or `re_path`.
+
+## MCP Resources
+
+Use the same `router.register(...)` API with `McpResource` for a concrete URI or
+`McpResourceTemplate` for a parameterized URI. The router infers
+`route_type="mcp_resource"` from either contract, or you can set it explicitly.
+
+```python
+from django.http import HttpRequest
+
+from bloomerp.mcp.definition import McpResource
+from bloomerp.router import router
+
+
+@router.register(
+    name="Create policy guide",
+    url_name="create_policy_guide",
+    description="Explain how to construct and assign a Bloomerp policy.",
+    mcp=McpResource(
+        uri="bloomerp://guides/create-policy",
+        mime_type="text/markdown",
+    ),
+)
+def create_policy_guide(request: HttpRequest) -> str:
+    """Return policy authoring guidance for the authenticated caller."""
+    return "# Create a policy\n\nDefine its rules, then assign it to users or groups."
+```
+
+Resource registrations reject `path`, `re_path`, model/module selectors, and
+`searchable=True`. They do not create HTTP or websocket URL patterns and do not
+appear in `tools/list`. Their `url_name` is catalog metadata rather than a Django
+reverse target. Put Python resource readers directly in an installed app's
+`views/mcp/` directory, which the existing views discovery imports. Keep their
+Markdown documentation in `views/mcp/resources/` and include it in package data.
+
+Resource identity is its URI; template identity normalizes variable names. A
+duplicate identity is rejected unless replaced with `override=True`. Exact URI
+matches take precedence over templates; multiple matching templates are ambiguous.
+
+Readers receive an authenticated GET request. Template arguments are decoded and
+passed as named string parameters, with optional JSON Schema validation. Readers
+can return text, bytes, dictionaries/lists, Django `HttpResponse`, or DRF
+`Response`. Class readers must support GET. Enforce any additional model, object,
+or field permissions in the reader.
+
+The transport advertises `resources: {}` and supports `resources/list`,
+`resources/templates/list`, and `resources/read`. Templates currently support
+simple `{name}` variables; subscriptions and change notifications are not enabled.
+See [Registering MCP resources](../mcp/resources.md) for complete examples,
+validation rules, and reader contracts, or the [MCP overview](../mcp/index.md) for
+client setup.
 
 ## Components
 
@@ -355,4 +408,5 @@ This replays applicable `model` and `detail` route templates for that model, ass
 - Use `exclude_models` for generic routes with known exceptions.
 - Keep permission checks in the view or service layer.
 - Use `mcp=McpTool(...)` on eligible API routes, or `route_type="mcp"` for a tool without a REST URL.
+- Use `mcp=McpResource(...)` or `mcp=McpResourceTemplate(...)` for resource readers.
 - Use `override=True` only when replacing a route intentionally.

@@ -78,6 +78,7 @@ Slots:
     {{attr}}="{{value}}"
     {% endfor %}
 >
+    {% if not no_header == True %}
     <!--Header Section-->    
     <div 
         class="flex flex-wrap items-center justify-between mb-4 gap-4"
@@ -140,6 +141,7 @@ Slots:
     <div class="mb-4" data-layout-header-section-2>
         {{ below_buttons }}
     </div>
+    {% endif %}
     {% endif %}
 
     <!--Layout items-->

@@ -6,3 +6,4 @@ is read from .bloomerp/project.bloomerp.toml when settings load.
 from .generated.common import MIDDLEWARE
 
 MIDDLEWARE = MIDDLEWARE + ["debug_toolbar.middleware.DebugToolbarMiddleware"]
+
