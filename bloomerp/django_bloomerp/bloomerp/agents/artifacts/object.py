@@ -96,10 +96,9 @@ class CreatedObjectAdapter(AIArtifactToolResultAdapter):
     def adapt(
         cls, result: AIArtifactToolResult, request: HttpRequest
     ) -> list[AIArtifactCandidate]:
-        """Match create results and resolve resource/PK through the existing API model catalog."""
+        """Attach matching created objects using their shared model-label identity."""
         from bloomerp.utils.api import ApiAccessResolver
-        from bloomerp.utils.models import model_name_plural_underline
-        from bloomerp.views.api.generic.base import get_auto_api_models
+        from bloomerp.views.api.mutations import resolve_assistant_model
 
         body = result.result.get("structuredContent")
         if result.result.get("isError") or not isinstance(body, dict):
@@ -109,41 +108,41 @@ class CreatedObjectAdapter(AIArtifactToolResultAdapter):
             or body.get("operation") != "create"
         ):
             return []
-        resource = body.get("resource")
-        if resource != result.arguments.get("resource"):
+        model_label = result.arguments.get("model_label")
+        returned_label = body.get("model_label")
+        if not isinstance(model_label, str) or not isinstance(returned_label, str):
+            return []
+        model = resolve_assistant_model(model_label)
+        if model is None or resolve_assistant_model(returned_label) is not model:
             return []
         record = body.get("object")
         if not isinstance(record, dict):
             return []
-        for model in get_auto_api_models():
-            if model_name_plural_underline(model) != resource:
-                continue
-            object_id = record.get(model._meta.pk.name)
-            if isinstance(object_id, bool) or not isinstance(object_id, (str, int)):
-                return []
-            resolver = ApiAccessResolver(request)
-            if not resolver.get_queryset(model, "retrieve").filter(pk=object_id).exists():
-                return []
-            readable_fields = resolver.get_accessible_field_names(model, "retrieve")
-            object_name = record.get("name")
-            if (
-                not isinstance(object_name, str)
-                or not object_name.strip()
-                or (readable_fields is not None and "name" not in readable_fields)
-            ):
-                object_name = f"{model._meta.verbose_name} / {object_id}"
-            payload = ObjectArtifactPayload(
-                model_label=model._meta.label,
-                object_id=str(object_id),
-                object_name=object_name[:500],
+        object_id = record.get(model._meta.pk.name)
+        if isinstance(object_id, bool) or not isinstance(object_id, (str, int)):
+            return []
+        resolver = ApiAccessResolver(request)
+        if not resolver.get_queryset(model, "retrieve").filter(pk=object_id).exists():
+            return []
+        readable_fields = resolver.get_accessible_field_names(model, "retrieve")
+        object_name = record.get("name")
+        if (
+            not isinstance(object_name, str)
+            or not object_name.strip()
+            or (readable_fields is not None and "name" not in readable_fields)
+        ):
+            object_name = f"{model._meta.verbose_name} / {object_id}"
+        payload = ObjectArtifactPayload(
+            model_label=model._meta.label,
+            object_id=str(object_id),
+            object_name=object_name[:500],
+        )
+        return [
+            AIArtifactCandidate(
+                key=f"{model._meta.label}:{object_id}",
+                payload=payload.model_dump(mode="json"),
             )
-            return [
-                AIArtifactCandidate(
-                    key=f"{model._meta.label}:{object_id}",
-                    payload=payload.model_dump(mode="json"),
-                )
-            ]
-        return []
+        ]
 
 
 def search_objects(

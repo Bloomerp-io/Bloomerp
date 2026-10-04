@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from unittest import IsolatedAsyncioTestCase
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -22,7 +23,6 @@ from pydantic_ai.models.function import (
     FunctionModel,
 )
 
-from bloomerp.agents.pydantic_ai import PydanticAIRuntime
 from bloomerp.agents.runtime import (
     AgentRuntimeCheckpoint,
     AgentRuntimeConfig,
@@ -34,6 +34,7 @@ from bloomerp.agents.runtime import (
     AgentRuntimeToolOutcome,
     AgentRuntimeToolProposal,
 )
+from bloomerp.agents.runtimes.pydantic_ai import PydanticAIRuntime
 
 
 class Coordinator:
@@ -117,6 +118,32 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
     async def asyncTearDown(self) -> None:
         """Release adapters even after assertion failures."""
         await self.runtime.aclose()
+
+    async def test_model_receives_structured_result_without_duplicate_text(
+        self,
+    ) -> None:
+        """Project MCP results for the model while retaining the complete coordinator outcome."""
+        outcome = self.coordinator.outcome().model_copy(
+            update={
+                "result": {
+                    "structuredContent": {"value": 42},
+                    "content": [{"type": "text", "text": '{"value":42}'}],
+                }
+            }
+        )
+        with patch.object(self.coordinator, "outcome", return_value=outcome):
+            events = await self.collect(self.request)
+        self.assertEqual(events[-1].kind, "run.completed")
+        returns = [
+            part
+            for message in self.histories[-1]
+            for part in message.parts
+            if isinstance(part, ToolReturnPart)
+        ]
+        self.assertEqual(returns[-1].content, {"structuredContent": {"value": 42}})
+        self.assertEqual(
+            outcome.result["content"], [{"type": "text", "text": '{"value":42}'}]
+        )
 
     def factory(
         self,
@@ -324,11 +351,10 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
                     credentials=AgentRuntimeCredentials(),
                     coordinator=self.coordinator,
                 )
-        request = AgentRuntimeRunRequest.model_validate(
-            self.request.model_dump() | {"budgets": {"max_cost": 1}}
-        )
-        with self.assertRaisesRegex(ValueError, "pricing"):
-            self.runtime.validate_request(request)
+        with self.assertRaises(ValueError):
+            AgentRuntimeRunRequest.model_validate(
+                self.request.model_dump() | {"budgets": {"max_cost": 1}}
+            )
 
     async def test_cancel_interrupts_model_and_closes_client(self) -> None:
         """Cancel the exact attempt while its provider is awaiting a response."""
@@ -528,7 +554,7 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
 
     async def test_explicit_provider_construction(self) -> None:
         """Construct all supported SDK models with isolated credentials and endpoints."""
-        from bloomerp.agents.pydantic_ai import create_model
+        from bloomerp.agents.runtimes.pydantic_ai import create_model
 
         async with httpx.AsyncClient() as client:
             for provider, expected_system in (
@@ -663,14 +689,44 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
         )
         self.assertEqual(self.coordinator.calls, [])
 
+    def register_provider(self, key: str, integration: object) -> None:
+        """Register an integration in the production registry with test-owned cleanup."""
+        from bloomerp.agents.providers.definition import AIProviderDefinition
+        from bloomerp.agents.providers.registry import (
+            AI_PROVIDER_REGISTRY,
+            pydantic_runtime,
+        )
+
+        AI_PROVIDER_REGISTRY.register(
+            key,
+            AIProviderDefinition(
+                id=key,
+                name=key,
+                runtime_factory=pydantic_runtime,
+                config_schema=integration.settings_schema,
+                integration=integration,
+            ),
+        )
+        self.addCleanup(self.remove_provider, key)
+
+    def remove_provider(self, key: str) -> None:
+        """Release a test-owned provider if the test has not already removed it."""
+        from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY
+
+        if AI_PROVIDER_REGISTRY.get(key) is not None:
+            AI_PROVIDER_REGISTRY.unregister(key)
+
     async def test_registered_provider_executes_with_custom_validated_settings(
         self,
     ) -> None:
         """Support a new provider and typed options without changing runtime dispatch."""
         from pydantic import Field
 
-        from bloomerp.agents.pydantic_ai import PydanticAIProvider, PydanticAISettings
+        from bloomerp.agents.providers.builtins.pydantic_ai_common import (
+            PydanticAISettings,
+        )
         from bloomerp.agents.runtime import AgentRuntime
+        from bloomerp.agents.runtimes.pydantic_ai import PydanticAIProvider
 
         class VendorSettings(PydanticAISettings):
             """Describe an additional control understood by this example provider."""
@@ -685,11 +741,10 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
             yield "Custom provider works"
 
         self.model_stream = vendor_model
-        self.runtime = PydanticAIRuntime(
-            providers={
-                "vendor": PydanticAIProvider(self.factory, VendorSettings),
-            }
+        self.register_provider(
+            "vendor", PydanticAIProvider(self.factory, VendorSettings)
         )
+        self.runtime = PydanticAIRuntime()
         self.assertIn(AgentRuntime, PydanticAIRuntime.__mro__)
         config = self.request.config.model_copy(
             update={
@@ -711,20 +766,17 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
                 request.model_copy(update={"config": invalid})
             )
 
-    async def test_provider_registrations_are_isolated_and_copied(self) -> None:
-        """Prevent one instance's registration changes from affecting other runtimes."""
-        from bloomerp.agents.pydantic_ai import PydanticAIProvider
+    async def test_provider_registry_is_shared(self) -> None:
+        """Ensure fresh runtimes resolve custom integrations through one shared registry."""
+        from bloomerp.agents.runtimes.pydantic_ai import PydanticAIProvider
 
-        providers = {"vendor": PydanticAIProvider(self.factory)}
-        runtime = PydanticAIRuntime(providers=providers)
-        providers.clear()
+        self.register_provider("vendor", PydanticAIProvider(self.factory))
         config = self.request.config.model_copy(update={"provider": "vendor"})
         request = self.request.model_copy(update={"config": config})
+        runtime = PydanticAIRuntime()
         try:
             runtime.validate_request(request)
-            with self.assertRaisesRegex(ValueError, "Unregistered"):
-                self.runtime.validate_request(request)
-            runtime.validate_request(self.request)
+            self.runtime.validate_request(request)
         finally:
             await runtime.aclose()
 
@@ -732,10 +784,12 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
         self,
     ) -> None:
         """Register a compatible provider without adding another conditional branch."""
-        from bloomerp.agents.pydantic_ai import (
+        from bloomerp.agents.providers.builtins.pydantic_open_ai import (
+            create_openai_chat_model,
+        )
+        from bloomerp.agents.runtimes.pydantic_ai import (
             PydanticAIProvider,
             create_model,
-            create_openai_chat_model,
         )
 
         config = self.request.config.model_copy(
@@ -746,19 +800,23 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
             }
         )
         request = self.request.model_copy(update={"config": config})
-        providers = {"private_gateway": PydanticAIProvider(create_openai_chat_model)}
+        self.register_provider(
+            "private_gateway", PydanticAIProvider(create_openai_chat_model)
+        )
         async with httpx.AsyncClient() as client:
             model = create_model(
                 request,
                 AgentRuntimeCredentials(api_key="instance-key"),
                 client,
-                providers=providers,
             )
             self.assertEqual(model.model_name, "custom-model")
             self.assertEqual(
                 str(model.client.base_url), "https://models.example.test/v1/"
             )
             self.assertEqual(model.client.api_key, "instance-key")
+            from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY
+
+            AI_PROVIDER_REGISTRY.unregister("private_gateway")
             with self.assertRaisesRegex(ValueError, "Unregistered"):
                 create_model(
                     request, AgentRuntimeCredentials(api_key="instance-key"), client
@@ -779,7 +837,7 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
 
     async def test_pre_refactor_checkpoint_remains_compatible(self) -> None:
         """Restore the original version-one payload shape without migrating state."""
-        from bloomerp.agents.pydantic_ai import SDK_VERSION
+        from bloomerp.agents.runtimes.pydantic_ai import SDK_VERSION
 
         checkpoint = AgentRuntimeCheckpoint(
             run_id=self.request.run_id,
@@ -805,3 +863,21 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
             event.checkpoint for event in events if event.kind == "checkpoint.created"
         ][-1]
         self.assertEqual(restored.state, checkpoint.state)
+
+
+def test_provider_and_runtime_package_exports_and_defaults() -> None:
+    """Expose stable package imports and model-compatible defaults without network discovery."""
+    from bloomerp.agents.providers import AI_PROVIDER_REGISTRY
+    from bloomerp.agents.providers.builtins.pydantic_ai_common import PydanticAISettings
+    from bloomerp.agents.providers.builtins.pydantic_anthropic import AnthropicSettings
+    from bloomerp.agents.runtimes import PydanticAIRuntime
+
+    assert AI_PROVIDER_REGISTRY.get("anthropic").config_schema is AnthropicSettings
+    assert AI_PROVIDER_REGISTRY.get("openai").config_schema is PydanticAISettings
+    assert all(
+        AI_PROVIDER_REGISTRY.get(key).description
+        for key in ("openai", "openai_chat", "deepseek", "anthropic")
+    )
+    assert AnthropicSettings().max_tokens == 4096
+    assert PydanticAISettings().model_dump(exclude_none=True) == {}
+    assert PydanticAIRuntime.__module__ == "bloomerp.agents.runtimes.pydantic_ai"

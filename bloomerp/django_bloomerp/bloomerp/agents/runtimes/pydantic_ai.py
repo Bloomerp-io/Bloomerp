@@ -14,17 +14,13 @@ history and must have the same access restrictions as the conversation.
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterable, Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import AsyncIterable
 from importlib.metadata import version
-from types import MappingProxyType
-from typing import Any, Literal, Self, cast
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import httpx
-from anthropic import AsyncAnthropic
-from openai import AsyncOpenAI
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, JsonValue
 from pydantic_ai import Agent, DeferredToolRequests, RunContext
 from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import (
@@ -43,11 +39,6 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models import Model
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
-from pydantic_ai.providers.deepseek import DeepSeekProvider
-from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.result import AgentStream
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.tools import ToolDefinition
@@ -56,13 +47,16 @@ from pydantic_ai.usage import RunUsage as ProviderUsage
 from pydantic_ai.usage import UsageLimits
 
 from bloomerp.agents.definition import AgentError
+from bloomerp.agents.providers.builtins.pydantic_ai_common import (
+    ModelFactory,
+    PydanticAIProvider,
+)
 from bloomerp.agents.runtime import (
     AgentRuntimeAttempt,
     AgentRuntimeBudgetExceeded,
     AgentRuntimeCheckpoint,
     AgentRuntimeCredentials,
     AgentRuntimeMessage,
-    AgentRuntimePayload,
     AgentRuntimePendingToolProposal,
     AgentRuntimeRunFinishedEvent,
     AgentRuntimeRunPausedEvent,
@@ -78,25 +72,6 @@ SDK_VERSION = version("pydantic-ai-slim")
 RUNTIME_VERSION = "1"
 
 
-class PydanticAISettings(AgentRuntimePayload):
-    """Allow documented model controls without bypassing the tool/secret boundary.
-
-    ``max_tokens`` is a per-response output cap, separate from the run's token
-    budget. Provider-specific settings can be added deliberately as needed.
-    Arbitrary headers, request bodies, and provider-hosted tools are not accepted.
-    """
-
-    max_tokens: int | None = Field(default=None, gt=0, strict=True)
-    temperature: float | None = Field(default=None, ge=0, le=2)
-    top_p: float | None = Field(default=None, ge=0, le=1)
-    parallel_tool_calls: bool | None = Field(default=None, strict=True)
-    seed: int | None = Field(default=None, strict=True)
-    stop_sequences: list[str] | None = None
-    openai_reasoning_effort: (
-        Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None
-    ) = None
-
-
 class _State(AgentRuntimeState):
     """Preserve SDK continuation fields alongside the shared runtime state."""
 
@@ -105,150 +80,65 @@ class _State(AgentRuntimeState):
     queued_messages: list[JsonValue] = Field(default_factory=list)
 
 
-type ModelFactory = Callable[
-    [AgentRuntimeRunRequest, AgentRuntimeCredentials, httpx.AsyncClient], Model
-]
+def _provider(identifier: str) -> PydanticAIProvider:
+    """Resolve integrations through the single shared provider registry."""
+    from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY
 
-
-class AnthropicSettings(PydanticAISettings):
-    """Validate the settings supported by the built-in Anthropic integration."""
-
-    @model_validator(mode="after")
-    def validate_supported_settings(self) -> Self:
-        """Reject OpenAI-only controls before an Anthropic model is contacted."""
-        if self.openai_reasoning_effort is not None:
-            raise ValueError("openai_reasoning_effort is not an Anthropic setting")
-        if self.seed is not None:
-            raise ValueError("Anthropic does not support seed")
-        return self
-
-
-@dataclass(frozen=True)
-class PydanticAIProvider:
-    """Register a model factory and its typed settings for one provider identifier.
-
-    Factories receive the request, explicit credentials, and an attempt-owned HTTP
-    client. They must return a PydanticAI Model, avoid global credential defaults,
-    and use the supplied client or manage their own resources. Settings subclasses
-    can add validated provider-specific options without modifying the runtime.
-    """
-
-    factory: ModelFactory
-    settings_schema: type[PydanticAISettings] = PydanticAISettings
-
-
-def _api_key(credentials: AgentRuntimeCredentials) -> str:
-    """Require explicit API credentials for the built-in remote providers."""
-    if credentials.api_key is None or not credentials.api_key.get_secret_value():
-        raise ValueError("This provider requires explicitly resolved API credentials")
-    return credentials.api_key.get_secret_value()
-
-
-def _openai_client(
-    request: AgentRuntimeRunRequest,
-    credentials: AgentRuntimeCredentials,
-    client: httpx.AsyncClient,
-    *,
-    default_url: str = "https://api.openai.com/v1",
-) -> AsyncOpenAI:
-    """Build a compatible SDK client without ambient API keys or endpoint defaults."""
-    return AsyncOpenAI(
-        api_key=_api_key(credentials),
-        base_url=request.config.base_url or default_url,
-        http_client=client,
-        max_retries=0,
-    )
-
-
-def create_openai_model(
-    request: AgentRuntimeRunRequest,
-    credentials: AgentRuntimeCredentials,
-    client: httpx.AsyncClient,
-) -> Model:
-    """Construct an OpenAI Responses model using the instance configuration."""
-    provider = OpenAIProvider(
-        openai_client=_openai_client(request, credentials, client)
-    )
-    return OpenAIResponsesModel(request.config.model, provider=provider)
-
-
-def create_openai_chat_model(
-    request: AgentRuntimeRunRequest,
-    credentials: AgentRuntimeCredentials,
-    client: httpx.AsyncClient,
-) -> Model:
-    """Construct a Chat Completions model, including configured compatible endpoints."""
-    provider = OpenAIProvider(
-        openai_client=_openai_client(request, credentials, client)
-    )
-    return OpenAIChatModel(request.config.model, provider=provider)
-
-
-def create_deepseek_model(
-    request: AgentRuntimeRunRequest,
-    credentials: AgentRuntimeCredentials,
-    client: httpx.AsyncClient,
-) -> Model:
-    """Construct a DeepSeek model with its provider-specific reasoning profile."""
-    sdk = _openai_client(
-        request, credentials, client, default_url="https://api.deepseek.com"
-    )
-    return OpenAIChatModel(
-        request.config.model, provider=DeepSeekProvider(openai_client=sdk)
-    )
-
-
-def create_anthropic_model(
-    request: AgentRuntimeRunRequest,
-    credentials: AgentRuntimeCredentials,
-    client: httpx.AsyncClient,
-) -> Model:
-    """Construct an Anthropic Messages model using explicit instance credentials."""
-    sdk = AsyncAnthropic(
-        api_key=_api_key(credentials),
-        base_url=request.config.base_url or "https://api.anthropic.com",
-        http_client=client,
-        max_retries=0,
-    )
-    return AnthropicModel(
-        request.config.model, provider=AnthropicProvider(anthropic_client=sdk)
-    )
-
-
-def default_providers() -> dict[str, PydanticAIProvider]:
-    """Return fresh registrations so customization never changes another runtime."""
-    return {
-        "openai": PydanticAIProvider(create_openai_model),
-        "openai_chat": PydanticAIProvider(create_openai_chat_model),
-        "anthropic": PydanticAIProvider(create_anthropic_model, AnthropicSettings),
-        "deepseek": PydanticAIProvider(create_deepseek_model),
-    }
-
-
-def _provider(
-    identifier: str,
-    providers: Mapping[str, PydanticAIProvider],
-) -> PydanticAIProvider:
-    """Resolve a registered provider without silently falling back to another API."""
-    try:
-        return providers[identifier]
-    except KeyError:
-        raise ValueError(f"Unregistered PydanticAI provider: {identifier}") from None
+    definition = AI_PROVIDER_REGISTRY.get(identifier)
+    if definition is None or definition.integration is None:
+        raise ValueError(f"Unregistered PydanticAI provider: {identifier}")
+    return definition.integration
 
 
 def create_model(
     request: AgentRuntimeRunRequest,
     credentials: AgentRuntimeCredentials,
     client: httpx.AsyncClient,
-    *,
-    providers: Mapping[str, PydanticAIProvider] | None = None,
 ) -> Model:
-    """Construct a model through the supplied registry or built-in registrations."""
-    registration = _provider(
-        request.config.provider, default_providers() if providers is None else providers
-    )
+    """Construct an SDK model using the registered provider's validated parameters."""
+    registration = _provider(request.config.provider)
     registration.settings_schema.model_validate(request.config.parameters)
     return registration.factory(request, credentials, client)
+
+
+def _model_tool_result(result: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Remove JSON text mirrors of structured MCP data without changing stored results."""
+    if not isinstance(result, dict) or not isinstance(
+        result.get("structuredContent"), dict
+    ):
+        return result
+    blocks = result.get("content")
+    if not isinstance(blocks, list):
+        return result
+    structured = json.dumps(
+        result["structuredContent"], sort_keys=True, ensure_ascii=False
+    )
+    retained = []
+    for block in blocks:
+        # Annotated text and non-text blocks may carry additional information.
+        if (
+            isinstance(block, dict)
+            and set(block) == {"type", "text"}
+            and block["type"] == "text"
+        ):
+            try:
+                decoded = json.loads(block["text"])
+                if (
+                    json.dumps(decoded, sort_keys=True, ensure_ascii=False)
+                    == structured
+                ):
+                    continue
+            except (TypeError, ValueError):
+                pass
+        retained.append(block)
+    if len(retained) == len(blocks):
+        return result
+    projected = dict(result)
+    if retained:
+        projected["content"] = retained
+    else:
+        projected.pop("content")
+    return projected
 
 
 def _messages(
@@ -279,7 +169,10 @@ def _messages(
                 parts.append(
                     ToolReturnPart(
                         names[block.provider_call_id],
-                        {"is_error": block.is_error, "result": block.result},
+                        {
+                            "is_error": block.is_error,
+                            "result": _model_tool_result(block.result),
+                        },
                         block.provider_call_id,
                     )
                 )
@@ -317,7 +210,7 @@ def _serialize(history: list[ModelMessage]) -> list[JsonValue]:
 
 
 class PydanticAIRuntime(BaseAgentRuntime[_State]):
-    """Adapt PydanticAI models and histories to the shared runtime lifecycle."""
+    """Adapt PydanticAI agents and histories to the shared runtime lifecycle."""
 
     runtime_name = "pydantic_ai"
     runtime_version = RUNTIME_VERSION
@@ -325,24 +218,15 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
     def __init__(
         self,
         *,
-        providers: Mapping[str, PydanticAIProvider] | None = None,
         model_factory: ModelFactory | None = None,
     ) -> None:
-        """Copy instance provider registrations and optionally override models for tests.
-
-        Supplied registrations extend or override the defaults for this runtime
-        only. Model names remain unrestricted strings selected per request.
-        """
+        """Create fresh attempt state, optionally supplying an offline model factory for tests."""
         super().__init__()
-        registrations = default_providers()
-        if providers is not None:
-            registrations.update(providers)
-        self._providers = MappingProxyType(registrations)
         self._model_factory = model_factory
 
     def _validate_request(self, request: AgentRuntimeRunRequest) -> None:
         """Check registered model settings and supported artifact input modalities."""
-        registration = _provider(request.config.provider, self._providers)
+        registration = _provider(request.config.provider)
         registration.settings_schema.model_validate(request.config.parameters)
         for message in request.messages:
             for block in message.content:
@@ -399,7 +283,7 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
             outcome = item.outcome
             assert outcome is not None
             content = (
-                outcome.result
+                _model_tool_result(outcome.result)
                 if outcome.status == "completed"
                 else {
                     "error": outcome.error.model_dump(mode="json")
@@ -430,7 +314,7 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
         tokens = ProviderUsage()
         request = attempt.request
         identity = {"run_id": request.run_id, "attempt_id": request.attempt_id}
-        registration = _provider(request.config.provider, self._providers)
+        registration = _provider(request.config.provider)
         settings = registration.settings_schema.model_validate(
             request.config.parameters
         ).model_dump(exclude_none=True)

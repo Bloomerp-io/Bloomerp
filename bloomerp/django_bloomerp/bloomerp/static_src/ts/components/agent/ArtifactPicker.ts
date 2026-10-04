@@ -22,6 +22,12 @@ export default class ArtifactPicker extends BaseComponent {
     private uploading = false;
     private revision = 0;
 
+    /** Restore validated draft selections and rebuild the visible attachment chips. */
+    public restoreSelection(items: ArtifactChoice[]): void {
+        this.selected = [...items];
+        this.publish();
+    }
+
     /** Bind the form-local menu and own all listeners and pending requests. */
     public initialize(): void {
         if (!this.element) return;

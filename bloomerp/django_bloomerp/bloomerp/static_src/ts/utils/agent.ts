@@ -1,3 +1,5 @@
+export type ConversationApprovalRules = {default: 'writes' | 'always' | 'never'; tools: Record<string, 'always' | 'never'>};
+
 /**
  * One browser bridge per authenticated base page, started by the main bundle.
  * Components supply item handlers; a chat UI listens for `chat.event` events.
@@ -27,8 +29,35 @@ type PageState = {
     focused: boolean;
 };
 
+/** Navigate within the persistent application shell using its HTMX history target. */
+export async function navigateAgentPage(url: string): Promise<void> {
+    const target = document.querySelector('#main-content');
+    if (!target) throw new Error('Main content is unavailable');
+    const { default: htmx } = await import('htmx.org');
+    let failed = false;
+    /** Observe HTTP errors because HTMX resolves its request promise for error responses too. */
+    function onAfterRequest(event: Event): void {
+        const detail = (event as CustomEvent<{
+            target?: Element; failed?: boolean; pathInfo?: {requestPath?: string};
+        }>).detail;
+        if (detail?.target === target && detail.pathInfo?.requestPath === url) failed = detail.failed === true;
+    }
+    document.addEventListener('htmx:afterRequest', onAfterRequest);
+    try {
+        await htmx.ajax('get', url, {target: '#main-content', swap: 'innerHTML', push: 'true'});
+        if (failed) throw new Error('Destination could not be loaded');
+    } finally { document.removeEventListener('htmx:afterRequest', onAfterRequest); }
+}
+
 /** Connect this tab to the backend without owning component or chat rendering. */
 export default class BloomerpAgent extends EventTarget {
+    private readonly navigate: (url: string) => Promise<void>;
+
+    /** Allow navigation to be exercised independently of sockets and the HTMX DOM runtime. */
+    constructor(navigate: (url: string) => Promise<void> = navigateAgentPage) {
+        super();
+        this.navigate = navigate;
+    }
     readonly tabId: string = this.resolveTabId();
     private pageId: string = crypto.randomUUID();
     private socket: WebSocket | null = null;
@@ -102,8 +131,8 @@ export default class BloomerpAgent extends EventTarget {
             before_sequence: beforeSequence});
     }
 
-    /** Rename, archive or restore a conversation without changing execution state. */
-    editConversation(requestId: string, conversationId: string, changes: {title?: string; archived?: boolean}): void {
+    /** Update owned conversation metadata, model selection or live approval rules. */
+    editConversation(requestId: string, conversationId: string, changes: {title?: string; archived?: boolean; agent_id?: string; approval_rules?: ConversationApprovalRules}): void {
         this.send({type: 'chat.edit_conversation', request_id: requestId, conversation_id: conversationId, ...changes});
     }
 
@@ -112,11 +141,18 @@ export default class BloomerpAgent extends EventTarget {
         this.send({type: 'chat.approval', approval_id: approvalId, decision});
     }
 
+    /** Refresh the enabled models this user may select for future runs. */
+    listAgents(): void {
+        this.send({type: 'chat.agents'});
+    }
+
     /** Send correlated chat input to the persisted agent controller. */
     sendChat(message: string, conversationId: string | null = null,
-        clientMessageId: string = crypto.randomUUID(), attachments: string[] = []): void {
+        clientMessageId: string = crypto.randomUUID(), attachments: string[] = [], agentId: string | null = null, approvalRules?: ConversationApprovalRules): void {
         this.send({
             type: 'chat.message',
+            agent_id: agentId,
+            ...(approvalRules ? {approval_rules: approvalRules} : {}),
             ...(attachments.length ? {attachments} : {}),
             message,
             conversation_id: conversationId,
@@ -227,9 +263,8 @@ export default class BloomerpAgent extends EventTarget {
                 if (url.origin !== window.location.origin) {
                     throw new Error('Navigation must stay within this instance');
                 }
-                // Acceptance precedes unloading; it does not confirm destination loading.
-                this.sendResult(command.command_id, 'accepted', { url: url.href });
-                window.location.assign(url.href);
+                await this.navigate(url.href);
+                this.sendResult(command.command_id, 'completed', { url: url.href });
                 return;
             }
             const handler = this.handlers.get(command.action);
@@ -278,9 +313,9 @@ function isCommand(value: Record<string, unknown>): value is AgentCommand {
 let browserAgent: BloomerpAgent | null = null;
 
 /** Initialize once on authenticated base pages; expose the bridge to future chat UI. */
-export function initBrowserAgent(): void {
+export function initBrowserAgent(navigate: (url: string) => Promise<void> = navigateAgentPage): void {
     if (document.body?.dataset.bloomerpAgent !== 'enabled' || browserAgent) return;
-    browserAgent = new BloomerpAgent();
+    browserAgent = new BloomerpAgent(navigate);
     Object.assign(window, { bloomerpAgent: browserAgent });
     window.addEventListener('pagehide', browserAgent.disconnect.bind(browserAgent));
     window.addEventListener('pageshow', browserAgent.connect.bind(browserAgent));

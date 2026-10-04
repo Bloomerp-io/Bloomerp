@@ -18,9 +18,20 @@
     data-status-rejected="{% trans 'Rejected' %}"
     data-status-approve="{% trans 'Approve' %}"
     data-status-reject="{% trans 'Reject' %}"
+    data-status-no-agents="{% trans 'No AI agents are available. Create and configure an AI agent, or ask your administrator to configure one and grant you access.' %}"
+    data-status-agent-unavailable="{% trans 'Your selected model is unavailable. Choose another model for your next message.' %}"
     data-status-ready="{% trans 'Connected' %}"
     data-status-disconnected="{% trans 'Disconnected — waiting for connection' %}"
     data-status-responding="{% trans 'BloomAI is responding…' %}"
+    data-status-progress-waiting="{% trans 'Waiting for a response…' %}"
+    data-status-progress-writing="{% trans 'Writing response…' %}"
+    data-status-progress-tool-running="{% trans 'Running tool' %}"
+    data-status-progress-tool-completed="{% trans 'Tool completed' %}"
+    data-status-progress-tool-failed="{% trans 'Tool did not complete' %}"
+    data-status-progress-tool-rejected="{% trans 'Tool rejected' %}"
+    data-status-progress-approval="{% trans 'Waiting for your approval…' %}"
+    data-status-progress-paused="{% trans 'Waiting to resume…' %}"
+    data-status-progress-disconnected="{% trans 'Connection interrupted — waiting to reconnect…' %}"
     data-status-stopping="{% trans 'Stopping…' %}"
     data-status-cancelled="{% trans 'Response stopped.' %}"
     data-status-interrupted="{% trans 'Connection interrupted. The response may be incomplete.' %}"
@@ -38,7 +49,9 @@
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white">
                     <img src="{% static 'bloomerp/img/bloomai-logo.png' %}" alt="" class="h-8 w-8 object-contain" width="32" height="32" />
                 </span>
-                <h2 class="text-sm font-semibold">BloomAI</h2>
+                <div>
+                    <h2 class="text-sm font-semibold">BloomAI</h2>
+                </div>
             </div>
             <div class="flex items-center gap-1">
                 <button type="button" data-agent-action="history" aria-label="{% trans 'Conversation history' %}" title="{% trans 'Conversation history' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span data-agent-unread hidden class="h-2 w-2 rounded-full bg-primary-500"></span></button>
@@ -59,6 +72,7 @@
                 </c-ui.dropdown.item>
             </c-ui.dropdown.body>
         </div>
+        <p data-agent-choice-empty hidden role="status" class="px-5 py-3 text-sm text-gray-500"></p>
         <p data-agent-error hidden role="alert" class="px-5 py-2 text-sm text-red-600"></p>
         <form data-agent-rename-form hidden class="flex shrink-0 gap-2 px-5 py-3">
             <label for="agent-conversation-name" class="sr-only">{% trans 'Conversation title' %}</label>
@@ -102,6 +116,7 @@
         </div>
 
         <p data-agent-status role="status" class="sr-only">{% trans 'Connecting…' %}</p>
+        <p data-agent-progress hidden role="status" aria-live="polite" aria-atomic="true" class="shrink-0 px-5 pb-2 text-xs text-gray-500 dark:text-zinc-400"></p>
         <footer data-agent-footer class="shrink-0 p-4">
             <p data-agent-archived-notice hidden class="mb-2 text-xs text-gray-500">{% trans 'Archived — restore this conversation to send a message.' %}</p>
             <form data-agent-form bloomerp-component="bloomerp:artifact-picker"
@@ -124,13 +139,32 @@
                 <div data-artifact-chips class="mb-2 flex flex-wrap gap-1.5"></div>
                 <label for="bloomerp-agent-input" class="sr-only">{% trans 'Message BloomAI' %}</label>
                 <textarea id="bloomerp-agent-input" data-agent-input rows="2" placeholder="{% trans 'Ask anything about your workspace…' %}" class="block max-h-36 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-zinc-100"></textarea>
-                <div class="mt-2 flex items-center justify-between">
-                    <button type="button" data-artifact-plus aria-label="{% trans 'Add files or modules' %}" aria-haspopup="listbox" aria-expanded="false" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
-                    <span class="text-[11px] text-gray-400">{% trans 'Enter to send' %}<span class="mx-1.5">·</span>{% trans 'Shift + Enter for a new line' %}</span>
-                    <button type="button" data-agent-action="stop" hidden class="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium dark:border-zinc-700">{% trans 'Stop' %}</button>
-                    <button type="submit" data-agent-send disabled aria-label="{% trans 'Send message' %}" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-default disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-zinc-700"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                    <div class="flex min-w-0 flex-1 items-center gap-1">
+                        <button type="button" data-artifact-plus aria-label="{% trans 'Add files or modules' %}" aria-haspopup="listbox" aria-expanded="false" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+                        <div class="relative min-w-0 max-w-48">
+                            <label for="agent-choice-picker" class="sr-only">{% trans 'AI agent for the next response' %}</label>
+                            <select id="agent-choice-picker" data-agent-choice title="{% trans 'AI agent for the next response' %}" class="h-8 w-full min-w-0 cursor-pointer appearance-none truncate rounded-lg border-0 bg-transparent bg-none py-1 pl-2 pr-6 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-default disabled:text-gray-400 dark:text-zinc-200 dark:hover:bg-zinc-700 dark:disabled:text-zinc-500" disabled>
+                                <option value="">{% trans 'Loading agents…' %}</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <button type="button" data-agent-action="stop" hidden class="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium dark:border-zinc-700">{% trans 'Stop' %}</button>
+                        <button type="submit" data-agent-send disabled aria-label="{% trans 'Send message' %}" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-default disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-zinc-700"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 dark:border-zinc-700">
+                    <label for="agent-approval-picker" class="text-xs text-gray-500">{% trans 'Tool approvals' %}</label>
+                    <select id="agent-approval-picker" data-agent-approval-mode title="{% trans 'Applies to new tool calls. Pending approvals still require a decision. Tool permissions always apply.' %}" class="min-w-0 flex-1 rounded-lg border-0 bg-transparent py-1 text-xs text-gray-700 focus:ring-primary-500 dark:text-zinc-200">
+                        <option value="writes">{% trans 'For changes to data' %}</option>
+                        <option value="always">{% trans 'For every tool' %}</option>
+                        <option value="never">{% trans 'No approvals' %}</option>
+                    </select>
                 </div>
             </form>
+            <p class="mt-2 text-center text-[11px] text-gray-400">{% trans 'Enter to send' %}<span class="mx-1.5">·</span>{% trans 'Shift + Enter for a new line' %}</p>
         </footer>
     </section>
 

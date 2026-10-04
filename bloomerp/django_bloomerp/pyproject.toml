@@ -192,6 +192,7 @@ bloomerp = [
     "static/**/*",
     "locale/**/*",
     "i18n/*.mjs",
+    "views/mcp/resources/*.md",
 ]
 
 [tool.coverage.run]

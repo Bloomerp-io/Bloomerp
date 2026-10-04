@@ -16,11 +16,19 @@ from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from bloomerp.agents.pydantic_ai import PydanticAIRuntime
-from bloomerp.agents.runtime import AgentRuntimeCredentials, AgentRuntimeRunRequest
+from bloomerp.agents.runtime import (
+    AgentRuntimeConfig,
+    AgentRuntimeCredentials,
+    AgentRuntimeRunRequest,
+)
+from bloomerp.agents.runtimes.pydantic_ai import PydanticAIRuntime
 from bloomerp.channels.agents.agent_consumer import AgentConsumer
 from bloomerp.models.agents import AIMessage, AIRun
-from bloomerp.tests.agents.test_controller import OPTIONS, agent_test_config
+from bloomerp.tests.agents.test_controller import (
+    agent_test_config,
+    configure_test_agent,
+    offline_runtime,
+)
 from bloomerp.tests.base import BloomerpChannelTestCase
 
 
@@ -42,7 +50,7 @@ def slow_factory(
     return FunctionModel(stream_function=slow_stream)
 
 
-def slow_runtime() -> PydanticAIRuntime:
+def slow_runtime(config: AgentRuntimeConfig) -> PydanticAIRuntime:
     """Construct the real runtime around a deliberately suspended SDK stream."""
     return PydanticAIRuntime(model_factory=slow_factory)
 
@@ -57,6 +65,13 @@ class AgentExecutionChannelTests(BloomerpChannelTestCase):
     def setUp(self) -> None:
         """Create one authenticated owner for the real channel application."""
         self.user = get_user_model().objects.create_user(username="socket-owner")
+        factory = (
+            slow_runtime
+            if self._testMethodName
+            == "test_cancel_interrupts_provider_and_persists_partial_state"
+            else offline_runtime
+        )
+        configure_test_agent(self.user, factory)
 
     async def browser(self) -> WebsocketCommunicator:
         """Connect an authenticated fixture tab using the real consumer route."""
@@ -120,12 +135,6 @@ class AgentExecutionChannelTests(BloomerpChannelTestCase):
         finally:
             await browser.disconnect()
 
-    @override_settings(
-        BLOOMERP_CONFIG=agent_test_config({
-            **OPTIONS,
-            "runtime_factory": "bloomerp.tests.agents.test_execution_channel.slow_runtime",
-        })
-    )
     async def test_cancel_interrupts_provider_and_persists_partial_state(self) -> None:
         """Cancel after visible output while the provider is stalled, using the durable flag."""
         browser = await self.browser()

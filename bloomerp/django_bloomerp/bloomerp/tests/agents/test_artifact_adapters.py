@@ -16,8 +16,10 @@ from bloomerp.agents.runtime import (
 )
 from bloomerp.components.agents.render_artifact import render_artifact
 from bloomerp.models.agents import AIArtifact, AIMessageArtifact, AIRun, AIToolCall
-from bloomerp.tests.agents.test_controller import agent_test_config
-from bloomerp.utils.models import model_name_plural_underline
+from bloomerp.tests.agents.test_controller import (
+    agent_test_config,
+    configure_test_agent,
+)
 
 
 @override_settings(BLOOMERP_CONFIG=agent_test_config())
@@ -29,14 +31,15 @@ class ArtifactAdapterTests(TestCase):
         self.user = get_user_model().objects.create_user(
             username="artifact-owner", is_superuser=True
         )
+        configure_test_agent(self.user)
         self.target = get_user_model().objects.create_user(username="artifact-target")
         self.request = HttpRequest()
         self.request.method = "GET"
         self.request.user = self.user
-        self.resource = model_name_plural_underline(get_user_model())
+        self.resource = get_user_model()._meta.label
         self.enterContext(
             patch(
-                "bloomerp.views.api.generic.base.get_auto_api_models",
+                "bloomerp.views.api.mutations.get_auto_api_models",
                 return_value=[get_user_model()],
             )
         )
@@ -49,10 +52,10 @@ class ArtifactAdapterTests(TestCase):
             executor_id="test",
             lease_duration=timedelta(minutes=1),
         )
-        self.arguments = {"resource": self.resource, "operation": "create", "data": {}}
+        self.arguments = {"model_label": self.resource, "operation": "create", "data": {}}
         self.result = {
             "structuredContent": {
-                "resource": self.resource,
+                "model_label": self.resource,
                 "operation": "create",
                 "object": {get_user_model()._meta.pk.name: self.target.pk},
             }
@@ -101,6 +104,22 @@ class ArtifactAdapterTests(TestCase):
         response = render_artifact(self.request, first[0].pk)
         self.assertEqual(response.status_code, 200)
         self.assertIn(str(self.target.pk), response.content.decode())
+
+    def test_created_object_uses_shared_model_label(self) -> None:
+        """Attach a canonical create result without translating a resource name."""
+        label = get_user_model()._meta.label
+        result = AIArtifactToolResult(
+            tool_name="api_assistant_mutations",
+            arguments={"model_label": label.lower(), "operation": "create", "data": {}},
+            result={"structuredContent": {
+                "model_label": label,
+                "operation": "create",
+                "object": {get_user_model()._meta.pk.name: self.target.pk},
+            }},
+        )
+        candidates = list(AI_ARTIFACT_REGISTRY.adapt_tool_result(result, self.request))
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][2].payload["model_label"], label)
 
     def test_ignore_failed_update_and_unrelated_results(self) -> None:
         """Only matching successful creates yield artifacts, not queries or edits."""
@@ -215,6 +234,7 @@ class ArtifactAdapterTests(TestCase):
         from bloomerp.agents.mcp import McpToolCoordinator
 
         client = Mock()
+        client.user_id = self.user.pk
         client.catalog.return_value = {
             "api_assistant_mutations": {
                 "name": "api_assistant_mutations",
@@ -238,3 +258,4 @@ class ArtifactAdapterTests(TestCase):
             outcome = coordinator.execute(proposal)
         self.assertEqual(outcome.result, self.result)
         client.request.assert_not_called()
+        client.dispatch.assert_not_called()

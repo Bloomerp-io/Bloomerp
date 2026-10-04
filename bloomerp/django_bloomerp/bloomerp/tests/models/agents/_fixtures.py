@@ -25,6 +25,8 @@ class AgentModelFixtures:
     def prepare_agent_records(self) -> None:
         """Create fresh related records inside each scenario rollback boundary."""
         self.user = get_user_model().objects.create_user(username="agent-owner")
+        from bloomerp.tests.agents.test_controller import configure_test_agent
+        configure_test_agent(self.user)
         self.other_user = get_user_model().objects.create_user(username="agent-other")
         self.conversation = AIConversation.objects.create(owner=self.user)
         self.other_conversation = AIConversation.objects.create(owner=self.other_user)

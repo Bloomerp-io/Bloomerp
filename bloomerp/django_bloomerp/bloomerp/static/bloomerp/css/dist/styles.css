@@ -407,6 +407,9 @@
   .right-1 {
     right: calc(var(--spacing) * 1);
   }
+  .right-2 {
+    right: calc(var(--spacing) * 2);
+  }
   .right-3 {
     right: calc(var(--spacing) * 3);
   }
@@ -1336,6 +1339,9 @@
   .list-none {
     list-style-type: none;
   }
+  .appearance-none {
+    appearance: none;
+  }
   .grid-cols-1 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
@@ -2171,6 +2177,9 @@
     --tw-gradient-position: to bottom right in oklab;
     background-image: linear-gradient(var(--tw-gradient-stops));
   }
+  .bg-none {
+    background-image: none;
+  }
   .fill-current {
     fill: currentcolor;
   }
@@ -2332,6 +2341,9 @@
   }
   .pr-4 {
     padding-right: calc(var(--spacing) * 4);
+  }
+  .pr-6 {
+    padding-right: calc(var(--spacing) * 6);
   }
   .pr-7 {
     padding-right: calc(var(--spacing) * 7);
@@ -4096,6 +4108,13 @@
     &:where(.dark, .dark *) {
       &:disabled {
         background-color: var(--color-zinc-700);
+      }
+    }
+  }
+  .dark\:disabled\:text-zinc-500 {
+    &:where(.dark, .dark *) {
+      &:disabled {
+        color: var(--color-zinc-500);
       }
     }
   }

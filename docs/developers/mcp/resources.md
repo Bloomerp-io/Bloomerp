@@ -1,12 +1,35 @@
 # Registering MCP resources
 
+Bloomerp ships two authenticated authoring references. Their Python readers live
+directly in `bloomerp/views/mcp/authoring_references.py` and are discovered through
+the router's existing views discovery. Their Markdown documentation lives in
+`bloomerp/views/mcp/resources/`:
+
+- `bloomerp://guides/create-workflow` (`application/json`) includes a construction
+  guide and every current `WORKFLOW_NODE_REGISTRY` definition. Parameters come
+  from declared configuration form fields. Reads never instantiate forms,
+  executors or workflows, evaluate callable defaults, or enumerate model/dynamic
+  choices. Declared IO schemas and ports are baseline metadata; the editor owns
+  configuration-dependent additions. The guide documents the graph save API and
+  the current absence of a dedicated create-workflow MCP tool.
+- `bloomerp://guides/create-policy` (`text/markdown`) explains the nested policy
+  API, global/row/field grants and separate user/group assignment. Permission
+  actions and the row-rule schema are generated from current definitions.
+
+These resources contain authoring metadata, not saved workflow configurations,
+policy assignments or object choices. Reading a guide does not grant authority
+to perform the mutations it describes. Packaged Markdown files are included in
+the distribution's package data.
+
 Use the existing `router.register(...)` decorator with an `McpResource` or
 `McpResourceTemplate` contract. The router infers `route_type="mcp_resource"`;
 you can also supply that route type explicitly.
 
-Place providers in an installed app's `mcp_resources/` package for automatic
-discovery, or use an existing auto-discovered views module. Package guide files
-alongside the providers when distributing your app.
+Place Python resource readers directly in an installed app's `views/mcp/`
+directory and Markdown documentation in its `views/mcp/resources/` directory.
+The existing router discovers the views automatically; the documentation
+directory contains no Python providers. Include the Markdown files in package
+data when distributing the app.
 
 ## A packaged Markdown guide
 
@@ -30,7 +53,7 @@ from bloomerp.router import router
 )
 def create_policy_guide(request: HttpRequest) -> str:
     """Read the packaged policy authoring guide for the authenticated caller."""
-    path = Path(__file__).parent / "guides" / "create-policy.md"
+    path = Path(__file__).parent / "resources" / "create-policy.md"
     return path.read_text(encoding="utf-8")
 ```
 
@@ -129,3 +152,17 @@ For example, read a template using:
 Catalogs currently return all registrations without pagination. Subscriptions,
 completion, and change notifications are not advertised. Reconnect your MCP client
 after adding providers to refresh its discovered capabilities and catalogs.
+
+## Built-in AI agents
+
+The agent configuration form lists resources separately from tools, with all or
+selected resource access. Selections use concrete URIs or URI templates; an
+empty selected list permits no resources. Existing agents default to all
+resources. Acting-user authentication and reader permissions continue to apply.
+
+Tool-calling models discover allowed resources as read-only reader tools. The
+bridge calls `resources/read` and returns embedded resource content, including
+its URI and MIME type. Template parameters follow the registered parameter
+schema. This adaptation is local to the agent runtime: resources remain absent
+from the public MCP `tools/list` response. External integration catalogs currently
+expose tools only; their resources are not included in these built-in selectors.

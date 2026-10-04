@@ -1,11 +1,9 @@
-from bloomerp.field_types.registry import FieldContext, WidgetFactory
-
+from collections.abc import Mapping
+from typing import Any
 
 from django import forms
 
-
-from collections.abc import Mapping
-from typing import Any
+from bloomerp.field_types.registry import FieldContext, WidgetFactory
 
 
 def widget(
@@ -31,9 +29,24 @@ def widget(
 
 
 def inline_widget(context: FieldContext) -> forms.Widget:
+    """Build inline columns using explicit preferences or the model's default ordering."""
+    from bloomerp.models.definition import get_model_config
     from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 
     application_field = context.application_field
+    layout_config = dict(context.layout_config)
+    if application_field is not None and "inline_fields" not in layout_config:
+        model_config = get_model_config(application_field.get_model())
+        detail_settings = model_config.detail_view_settings if model_config else None
+        default_layout = detail_settings.get_default_layout() if detail_settings else None
+        if default_layout is not None:
+            for row in default_layout.rows:
+                for item in row.items:
+                    if (
+                        str(item.id) in {application_field.field, str(application_field.pk)}
+                        and "inline_fields" in item.config
+                    ):
+                        layout_config["inline_fields"] = item.config["inline_fields"]
     return OneToManyFieldWidget(
         attrs={
             **context.attrs,
@@ -43,7 +56,7 @@ def inline_widget(context: FieldContext) -> forms.Widget:
             "parent_model": (
                 application_field.get_model() if application_field else None
             ),
-            "layout_config": dict(context.layout_config),
+            "layout_config": layout_config,
         }
     )
 

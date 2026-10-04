@@ -342,8 +342,9 @@ def create_policy_guide(request: HttpRequest) -> str:
 Resource registrations reject `path`, `re_path`, model/module selectors, and
 `searchable=True`. They do not create HTTP or websocket URL patterns and do not
 appear in `tools/list`. Their `url_name` is catalog metadata rather than a Django
-reverse target. Put providers in an installed app's `mcp_resources/` package or
-an existing auto-discovered views module.
+reverse target. Put Python resource readers directly in an installed app's
+`views/mcp/` directory, which the existing views discovery imports. Keep their
+Markdown documentation in `views/mcp/resources/` and include it in package data.
 
 Resource identity is its URI; template identity normalizes variable names. A
 duplicate identity is rejected unless replaced with `override=True`. Exact URI

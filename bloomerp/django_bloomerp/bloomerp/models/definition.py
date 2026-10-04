@@ -487,6 +487,10 @@ class BloomerpModelConfig(BaseModel):
     """
     module: str | type | None = None
     
+    icon : Optional[str] = "fa fa-cube"
+    
+    description: Optional[str] = None
+    
     tiles: list[SerializeAsAny[BaseTileConfig]] = Field(
         default_factory=list,
         description="Optional list of reusable tile configurations associated with this model."

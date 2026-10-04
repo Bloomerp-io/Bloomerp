@@ -88,10 +88,11 @@ class AgentConfigSnapshot(AgentPayload):
     runtime: str = Field(min_length=1)
     provider: str = Field(min_length=1)
     model: str = Field(min_length=1)
+    # Legacy snapshot key identifies the configured AIAgent; preserve it for resumable runs.
+    model_record_id: str | None = None
     base_url: str | None = None
     request_timeout_seconds: float = Field(default=60, gt=0)
     instructions: str = ""
-    capabilities: list[str] = Field(default_factory=list)
     approval_rules: dict[str, JsonValue] = Field(default_factory=dict)
     parameters: dict[str, JsonValue] = Field(default_factory=dict)
 
@@ -102,8 +103,6 @@ class RunBudgets(AgentPayload):
     max_tokens: int | None = Field(default=None, gt=0)
     max_tool_calls: int | None = Field(default=None, gt=0)
     max_duration_seconds: int | None = Field(default=None, gt=0)
-    max_cost: float | None = Field(default=None, gt=0)
-    currency: str = "USD"
 
 
 class RunUsage(AgentPayload):
@@ -113,8 +112,6 @@ class RunUsage(AgentPayload):
     output_tokens: int = Field(default=0, ge=0)
     tool_calls: int = Field(default=0, ge=0)
     duration_seconds: float = Field(default=0, ge=0)
-    cost: float = Field(default=0, ge=0)
-    currency: str = "USD"
 
 
 class AgentError(AgentPayload):

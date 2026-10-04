@@ -9,7 +9,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
-from pydantic import Field, JsonValue, ValidationError
+from pydantic import AliasChoices, Field, JsonValue, ValidationError
 
 from bloomerp.agents.controller import (
     AgentApprovalDecision,
@@ -24,6 +24,7 @@ from bloomerp.agents.controller import (
     AgentRunCommand,
 )
 from bloomerp.agents.definition import BrowserContext
+from bloomerp.agents.mcp import AgentApprovalRules
 from bloomerp.channels.agents.events import agent_tab_group_name, agent_user_group_name
 from bloomerp.router import router
 
@@ -34,6 +35,10 @@ class AgentChatEnvelope(AgentControllerPayload):
     type: Literal["chat.message"]
     message: str
     attachments: list[str] = Field(default_factory=list, max_length=20)
+    agent_id: UUID | None = Field(
+        default=None, validation_alias=AliasChoices("agent_id", "model_id")
+    )
+    approval_rules: AgentApprovalRules | None = None
     conversation_id: UUID | None = None
     client_message_id: UUID | None = None
     active_run_behavior: Literal["queue", "steer"] = "queue"
@@ -101,6 +106,8 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         elif message_type == "chat.message":
             await self.handle_chat_message(content)
         elif message_type in {
+            "chat.models",
+            "chat.agents",
             "chat.history",
             "chat.conversation",
             "chat.edit_conversation",
@@ -193,7 +200,16 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         action = message.get("type")
         payload = {key: value for key, value in message.items() if key != "type"}
         try:
-            if action == "chat.history":
+            if action in {"chat.agents", "chat.models"}:
+                models = await database_sync_to_async(
+                    self.controller.available_agents
+                )()
+                response = (
+                    {"status": "agents", "agents": models}
+                    if action == "chat.agents"
+                    else {"status": "models", "models": models}
+                )
+            elif action == "chat.history":
                 data = await database_sync_to_async(
                     self.controller.conversation_history
                 )(AgentHistoryRequest.model_validate(payload))
@@ -225,6 +241,8 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 submission = await self.controller.execute(
                     AgentChatRequest(
                         content=[{"type": "text", "text": envelope.message}],
+                        agent_id=envelope.agent_id,
+                        approval_rules=envelope.approval_rules,
                         conversation_id=envelope.conversation_id,
                         client_message_id=envelope.client_message_id,
                         active_run_behavior=envelope.active_run_behavior,
@@ -283,10 +301,12 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "status": "unavailable",
                 "message": "BloomAI is not configured for this instance",
             }
-        except PermissionDenied:
+        except PermissionDenied as error:
             response = {
                 "status": "forbidden",
-                "message": "Agent operation is not permitted",
+                "message": str(error)
+                if str(error).startswith("The selected AI agent")
+                else "Agent operation is not permitted",
             }
         except AgentControllerNotImplemented:
             response = {

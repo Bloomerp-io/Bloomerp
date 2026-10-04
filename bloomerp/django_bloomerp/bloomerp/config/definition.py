@@ -4,8 +4,6 @@ from typing import Literal, Optional
 from django.conf import settings
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
-from bloomerp.agents.definition import RunBudgets
-from bloomerp.agents.runtime import AgentRuntimeConfig
 
 INTERNAL_MODELS = [
     
@@ -129,40 +127,12 @@ class BloomerpI18nSettings(BaseModel):
     llm: BloomerpI18nLLMSettings = Field(default_factory=BloomerpI18nLLMSettings)
 
 
-def default_agent_runtime_config() -> AgentRuntimeConfig:
-    """Build the default runtime settings for a Bloomerp agent instance."""
-    return AgentRuntimeConfig(
-        runtime="pydantic_ai",
-        provider="openai",
-        model="gpt-6-luna",
-        agent_key="bloomai",
-        agent_version="1",
-        instructions="Help the user with their questions.",
-    )
-
-
-def default_agent_budgets() -> RunBudgets:
-    """Apply the project's default duration and token limits to agent runs."""
-    return RunBudgets(max_duration_seconds=300, max_tokens=20000)
-
-
 class BloomerpAgentSettings(BaseModel):
-    """Configure agent execution and credentials for one Bloomerp project."""
-
+    """Configure instance-wide execution operations; model records own provider settings."""
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
-
-    config: AgentRuntimeConfig = Field(default_factory=default_agent_runtime_config)
-    api_key: SecretStr | None = Field(
-        default_factory=lambda: SecretStr(os.getenv("BLOOMERP_AGENT_API_KEY")) if os.getenv("BLOOMERP_AGENT_API_KEY") else None, 
-        exclude=True, 
-        repr=False
-    )
-    credentials_resolver: str | None = None
-    runtime_factory: str = "bloomerp.agents.pydantic_ai.PydanticAIRuntime"
     mcp_origin: str = "http://localhost"
     lease_seconds: int = Field(default=60, ge=10)
     history_limit: int = Field(default=100, ge=1, le=1000)
-    budgets: RunBudgets = Field(default_factory=default_agent_budgets)
 
 
 class BloomerpConfig(BaseModel):

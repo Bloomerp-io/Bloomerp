@@ -9,6 +9,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
 
+from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
 from channels.layers import get_channel_layer
 from django.conf import settings
@@ -17,8 +18,7 @@ from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils import timezone
-from django.utils.module_loading import import_string
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from bloomerp.agents.definition import (
     AgentError,
@@ -28,7 +28,12 @@ from bloomerp.agents.definition import (
     RunEventPayload,
     RunUsage,
 )
-from bloomerp.agents.mcp import AgentApprovalRules, LocalMcpClient, McpToolCoordinator
+from bloomerp.agents.mcp import (
+    AgentApprovalRules,
+    AgentMcpClient,
+    LocalMcpClient,
+    McpToolCoordinator,
+)
 from bloomerp.agents.runtime import (
     AgentRuntime,
     AgentRuntimeCheckpoint,
@@ -41,9 +46,16 @@ from bloomerp.agents.runtime import (
     AgentRuntimeToolCoordinator,
 )
 from bloomerp.config.definition import BloomerpAgentSettings, get_bloomerp_config
+from bloomerp.services.mcp.client import MCPUnavailableError
 
 if TYPE_CHECKING:
-    from bloomerp.models.agents import AIConversation, AIRun, AIRunAttempt, AIRunEvent
+    from bloomerp.models.agents import (
+        AIAgent,
+        AIConversation,
+        AIRun,
+        AIRunAttempt,
+        AIRunEvent,
+    )
     from bloomerp.models.users.user import AbstractBloomerpUser
 
 
@@ -74,6 +86,10 @@ class AgentChatRequest(AgentControllerPayload):
     content: MessageContent
     attachments: list[str] = Field(default_factory=list, max_length=20)
     conversation_id: UUID | None = None
+    agent_id: UUID | None = Field(
+        default=None, validation_alias=AliasChoices("agent_id", "model_id")
+    )
+    approval_rules: AgentApprovalRules | None = None
     client_message_id: UUID | None = None
     active_run_behavior: Literal["queue", "steer"] = "queue"
     browser_context: BrowserContext | None = None
@@ -138,6 +154,10 @@ class AgentConversationEdit(AgentControllerPayload):
     conversation_id: UUID
     title: str | None = Field(default=None, min_length=1, max_length=255)
     archived: bool | None = None
+    agent_id: UUID | None = Field(
+        default=None, validation_alias=AliasChoices("agent_id", "model_id")
+    )
+    approval_rules: AgentApprovalRules | None = None
 
 
 class AgentPublishedEvent(AgentControllerPayload):
@@ -182,27 +202,70 @@ class AgentController:
         """Resolve agent settings from the project's Bloomerp configuration."""
         options = get_bloomerp_config().bloomai_settings
         if options is None:
-            raise ImproperlyConfigured("BLOOMERP_CONFIG.bloomai_settings is not configured")
+            raise ImproperlyConfigured(
+                "BLOOMERP_CONFIG.bloomai_settings is not configured"
+            )
         return options
 
-    def get_config(self) -> AgentRuntimeConfig:
-        """Resolve the non-secret configuration for a new run."""
-        config = self.instance_settings().config
-        AgentApprovalRules.model_validate(config.approval_rules)
-        return config
+    def available_agents(self) -> list[dict[str, str]]:
+        """List enabled agents granted to the actor using safe picker metadata."""
+        from bloomerp.agents.access import AIAgentAccessManager
 
-    def get_credentials(self) -> AgentRuntimeCredentials:
-        """Refresh instance secrets for every attempt without storing them in the run."""
-        options = self.instance_settings()
-        if options.credentials_resolver:
-            return AgentRuntimeCredentials.model_validate(
-                import_string(options.credentials_resolver)()
+        self.authorize()
+        query = AIAgentAccessManager(self.user).get_accessible_queryset()
+        return [
+            {"id": str(agent.pk), "name": agent.name}
+            for agent in query.filter(enabled=True)
+            .exclude(credentials_encrypted={})
+            .order_by("name")
+        ]
+
+    def select_agent(self, agent_id: UUID | None) -> AIAgent:
+        """Require an explicit use grant or creator access for each new run."""
+        from bloomerp.agents.access import AIAgentAccessManager
+
+        query = (
+            AIAgentAccessManager(self.user)
+            .get_accessible_queryset()
+            .filter(enabled=True)
+            .exclude(credentials_encrypted={})
+        )
+        agent = (
+            query.filter(pk=agent_id).first()
+            if agent_id
+            else query.order_by("name").first()
+        )
+        if agent is None:
+            raise PermissionDenied(
+                "The selected AI agent is unavailable or you no longer have access. Configure an AI agent or contact your administrator."
             )
-        return AgentRuntimeCredentials(api_key=options.api_key)
+        return agent
+
+    def get_config(self, agent_id: UUID | None = None) -> AgentRuntimeConfig:
+        """Build a new run's configuration from a permitted model record."""
+        return self.select_agent(agent_id).runtime_config()
+
+    def get_credentials(self, config: AgentRuntimeConfig) -> AgentRuntimeCredentials:
+        """Resolve current credentials from the pinned model identity for each attempt."""
+        from bloomerp.models.agents import AIAgent
+
+        if not config.model_record_id:
+            raise ImproperlyConfigured("This run has no configured AI agent")
+        from bloomerp.agents.access import AIAgentAccessManager
+
+        model = AIAgent.objects.get(pk=config.model_record_id)
+        if not AIAgentAccessManager(self.user).can_use(model):
+            raise PermissionDenied("You no longer have access to this AI agent.")
+        return model.runtime_credentials(config.provider)
 
     def get_runtime(self, config: AgentRuntimeConfig) -> AgentRuntime:
-        """Instantiate the configured runtime factory, including custom provider registrations."""
-        runtime = import_string(self.instance_settings().runtime_factory)()
+        """Pass the pinned configuration to the registered provider's fresh runtime factory."""
+        from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY
+
+        provider = AI_PROVIDER_REGISTRY.get(config.provider)
+        if provider is None:
+            raise ImproperlyConfigured("Unknown AI provider")
+        runtime = provider.runtime_factory(config)
         if not isinstance(runtime, AgentRuntime):
             raise ImproperlyConfigured("Runtime factory must implement AgentRuntime")
         return runtime
@@ -210,15 +273,19 @@ class AgentController:
     def get_tool_coordinator(
         self, run: AIRun, attempt: AIRunAttempt
     ) -> AgentRuntimeToolCoordinator:
-        """Bind the shared MCP protocol to this persisted actor and executor lease."""
-        return McpToolCoordinator(run, attempt, self.get_mcp_client(run))
+        """Bind shared MCP execution and live progress to the persisted actor and executor lease."""
+        return McpToolCoordinator(
+            run, attempt, self.get_mcp_client(run), publish=async_to_sync(self.publish)
+        )
 
     def get_mcp_client(self, run: AIRun) -> LocalMcpClient:
         """Use the socket-bound instance origin, with an explicit fallback for non-browser runs."""
         origin = (run.origin_browser_context or {}).get(
             "instance_origin"
         ) or self.instance_settings().mcp_origin
-        return LocalMcpClient(self.user.pk, origin)
+        return AgentMcpClient(
+            run.initiated_by_id, origin, agent_id=run.config_snapshot.get("model_record_id")
+        )
 
     def authorize(self) -> None:
         """Require a current active authenticated account, including on worker execution."""
@@ -318,14 +385,25 @@ class AgentController:
         )
 
     def edit_conversation(self, request: AgentConversationEdit) -> dict[str, Any]:
-        """Rename/archive through model methods without mutating run state."""
+        """Authorize owner-only edits to model selection, metadata and live approval rules."""
         conversation = self.load_conversation(request.conversation_id)
-        conversation.edit_metadata(title=request.title, archived=request.archived)
+        if request.agent_id is not None:
+            selected = self.select_agent(request.agent_id)
+            conversation.selected_agent = selected
+            conversation.save(update_fields=["selected_agent"])
+        conversation.edit_metadata(
+            title=request.title,
+            archived=request.archived,
+            approval_rules=request.approval_rules,
+        )
         return {
             "conversation": {
                 "id": str(conversation.pk),
                 "title": conversation.title,
                 "status": conversation.status,
+                "approval_rules": AgentApprovalRules.model_validate(
+                    conversation.approval_rules
+                ).model_dump(mode="json"),
             }
         }
 
@@ -333,9 +411,7 @@ class AgentController:
         """Authorize and atomically create one message/run, deduplicating client retries."""
         from bloomerp.models.agents import AIArtifact, AIConversation, AIMessage
 
-        config = self.get_config()
         self.authorize()
-        options = self.instance_settings()
         if not request.content.root or any(
             block.type != "text" or block.format != "plain"
             for block in request.content.root
@@ -417,6 +493,18 @@ class AgentController:
                 raise DjangoValidationError(
                     "A response is already active; wait or stop it before sending another message"
                 )
+            selected = self.select_agent(
+                request.agent_id or conversation.selected_agent_id
+            )
+            if request.approval_rules is not None:
+                conversation.approval_rules = request.approval_rules.model_dump(
+                    mode="json"
+                )
+            config = selected.runtime_config().model_copy(
+                update={"approval_rules": conversation.approval_rules}
+            )
+            conversation.selected_agent = selected
+            conversation.save(update_fields=["selected_agent", "approval_rules"])
             message = conversation.append_message(
                 content=request.content, role="user", message_id=message_id
             )
@@ -432,7 +520,7 @@ class AgentController:
                 trigger_message=message,
                 initiated_by=self.user,
                 config=config,
-                budgets=options.budgets,
+                budgets=selected.run_budgets(),
                 browser_context=context,
             )
             return AgentSubmission(
@@ -545,7 +633,8 @@ class AgentController:
         iterator = None
         last_event_kind: str | None = None
         try:
-            runtime = self.get_runtime(run.runtime_config())
+            config = run.runtime_config()
+            runtime = self.get_runtime(config)
             context = AgentRuntimeContext(
                 user_id=str(run.initiated_by_id),
                 conversation_id=run.conversation_id,
@@ -565,14 +654,14 @@ class AgentController:
             request = AgentRuntimeRunRequest(
                 run_id=run.pk,
                 attempt_id=attempt.pk,
-                config=run.runtime_config(),
+                config=config,
                 context=context,
                 messages=messages,
                 tools=tools,
                 budgets=RunBudgets.model_validate(run.budgets),
                 usage=RunUsage.model_validate(run.usage),
             )
-            credentials = self.get_credentials()
+            credentials = await database_sync_to_async(self.get_credentials)(config)
             if run.checkpoint:
                 iterator = runtime.resume(
                     AgentRuntimeResumeRequest(
@@ -622,7 +711,7 @@ class AgentController:
                 usage=RunUsage.model_validate(attempt.usage),
                 error=AgentError(
                     code="execution_failed",
-                    message="The agent could not complete this response.",
+                    message=str(error) if isinstance(error, MCPUnavailableError) else "The agent could not complete this response.",
                     retryable=True,
                     details={
                         "exception_type": type(error).__name__,
@@ -746,10 +835,18 @@ class AgentController:
             )
 
     def replay_page(self, request: AgentReplayRequest) -> AgentReplayPage:
-        """Read a bounded owner-scoped page, excluding opaque provider checkpoints."""
+        """Reconcile pending cancellation and replay bounded owner-scoped public events."""
         run = self.load_run(request.run_id)
         if run.conversation_id != request.conversation_id:
             raise PermissionDenied("Agent access denied")
+        if run.cancel_requested_at and run.status not in {
+            "completed",
+            "cancelled",
+            "failed",
+        }:
+            # A lost executor cannot acknowledge Stop. Once its lease expires,
+            # use the same locked cancellation path to release the conversation.
+            run.request_cancel()
         rows = list(
             run.events.filter(sequence__gt=request.after_sequence).exclude(
                 event_type="checkpoint.created"

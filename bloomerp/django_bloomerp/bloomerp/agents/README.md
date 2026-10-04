@@ -59,44 +59,38 @@ by the selected endpoint. Clients and credentials are isolated per attempt.
 
 ## Adding providers
 
-Each runtime accepts a `providers` mapping. Registrations extend or override the
-built-ins for that runtime only; the mapping is copied at construction. There is
-no global mutable registry or provider allow-list in the execution loop.
+`AI_PROVIDER_REGISTRY` is the single Python registry. Register a stable identifier,
+display name, runtime factory accepting `AgentRuntimeConfig`, credential schema
+class, and configuration schema class. Factories return fresh runtime instances;
+providers may share PydanticAI or supply a custom runtime implementing `AgentRuntime`.
+The runtime receives the same pinned configuration used to construct it.
 
-For another OpenAI-compatible service, register an alias using the existing
-factory, then set that instance's `provider`, `model`, and `base_url`:
+For a compatible gateway, register provider-owned model construction:
 
 ```python
-from bloomerp.agents.pydantic_ai import (
-    PydanticAIProvider,
-    PydanticAIRuntime,
-    create_openai_chat_model,
-)
+from bloomerp.agents.providers.definition import AIProviderDefinition
+from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY, pydantic_runtime
+from bloomerp.agents.providers.builtins.pydantic_open_ai import create_openai_chat_model
+from bloomerp.agents.providers.builtins.pydantic_ai_common import PydanticAIProvider, PydanticAISettings
 
-runtime = PydanticAIRuntime(
-    providers={"private_gateway": PydanticAIProvider(create_openai_chat_model)}
-)
+AI_PROVIDER_REGISTRY.register("private_gateway", AIProviderDefinition(
+    id="private_gateway",
+    name="Private gateway",
+    runtime_factory=pydantic_runtime,
+    config_schema=PydanticAISettings,
+    integration=PydanticAIProvider(create_openai_chat_model),
+))
 ```
 
-Alternatively, use `provider="openai_chat"` with the endpoint directly; an alias
-is optional. Services with different APIs need a factory accepting
-`(AgentRuntimeRunRequest, AgentRuntimeCredentials, httpx.AsyncClient)` and returning a
-PydanticAI `Model`. Install that provider's SDK/extra in the instance and import
-it inside the factory if it is optional. The factory owns provider construction,
-including any special authentication or model profiles; it does not execute
-tools or take over the agent loop.
+Model identifiers remain extensible strings. Optional `model_identifier_factory`
+accepts validated credentials and an optional endpoint and returns identifier/label
+pairs. Discovery is advisory: outages must not invalidate saved model records.
+Registration never performs discovery or other external calls.
 
-A registration can supply `settings_schema=YourSettings`, where `YourSettings`
-extends `PydanticAISettings` with typed fields and validators. Validation happens
-before execution, and the validated settings are forwarded to PydanticAI. Keep
-secret headers and tool-bypass options out of these schemas. Custom factories
-receive credentials explicitly and should reuse the supplied HTTP client.
-
-The optional `model_factory` argument remains a testing override; normal provider
-extensions should use registrations so construction and validation stay paired.
-Unknown provider identifiers fail explicitly. If a registration changes model or
-history semantics, bump the configured `agent_version` so old checkpoints cannot
-silently resume with a different integration.
+Custom runtimes receive provider-specific validated credentials through
+`AgentRuntimeCredentials.provider_credentials`. Credentials stay out of dumps,
+logs, picker responses, and run configuration snapshots. The `model_factory`
+runtime argument remains an offline testing override.
 
 ## Runner responsibilities
 
@@ -149,16 +143,58 @@ for later implementation. Completed runs release the slot. Client message UUIDs
 provide retry deduplication, including when creating a conversation.
 
 Runtime types retain the `AgentRuntime` prefix and outgoing tool requests retain
-`AgentRuntimeToolProposal`. All tools in the existing MCP `tools/list` catalog are
-advertised using their original names, descriptions and input/output schemas.
+`AgentRuntimeToolProposal`. Allowed internal tools in the live MCP `tools/list`
+catalog retain their original names, descriptions and input/output schemas.
 `LocalMcpClient` calls the real MCP endpoint in-process as the run's current active
 user. The endpoint's permissions, validation and MCP result envelopes are unchanged.
 No internal HTTP credentials or separate agent tool implementations are needed.
-MCP resources remain resources; this integration does not silently turn them into tools.
+Built-in resources are exposed to tool-calling runtimes as read-only reader tools.
+The public MCP endpoint still advertises them only through its resource catalogs.
+Reader tools use stable `bloomerp_resource_` identifiers derived from resource URIs,
+carry the resource metadata in their versioned contracts, and dispatch through
+`resources/read` with the run actor. Template readers expose the declared string
+parameter schema and safely expand the URI. Reader permissions still apply.
+
+`internal_resource_mode="all"` includes newly registered resources and templates.
+`"selected"` permits only URIs or URI templates in `internal_resources`; an empty
+selection allows none. Resources have separate controls in the creation and
+reconfiguration forms. Removed identities remain stored but unavailable. Both
+resource selection and the resolved reader are rechecked before each read.
+
+Configure an agent's **Tools** section on creation or its **Reconfigure** tab.
+`internal_tool_mode="all"` preserves existing behavior and includes newly registered
+extensions. `"selected"` permits only names in `internal_tools`; an empty list permits
+none. Removed tool names remain stored but unavailable. The current configuration
+is reloaded before dispatch and approval resume, independently of user permissions.
+
+`mcp_integrations` selects external integration definitions, never credential records.
+`AgentMcpClient` combines internal tools with live external catalogs. Remote names use
+`external_<integration UUID hex>_<remote-name hash>` to prevent cross-server collisions
+and remain within provider name limits. Every call goes through `McpToolCoordinator`.
+Tool contract versions include integration configuration and encrypted connection
+revision fingerprints; changing either invalidates old proposals. Approval cards use
+the pinned human-readable title without issuing remote discovery requests.
+
+Shared integrations resolve their single shared connection. Personal integrations
+resolve only the acting user's existing connection, with no shared-account fallback.
+No-auth integrations need no connection. Disabled integrations and missing, revoked,
+expired or rejected accounts produce actionable run errors; discovery fails closed
+instead of advertising unavailable tools. OAuth refresh and personal connect UI remain
+separate work: expired accounts explicitly require reconnecting.
+
+Outbound calls use public HTTPS with the OAuth service's DNS-pinned transport, no
+redirects or environment proxies, MCP initialization and negotiated session/protocol
+headers, paginated catalogs and JSON/SSE replies. Limits are 20 integrations, 500
+combined tools, 1 MiB per request/response and combined catalog, 10 catalog pages,
+and 30 seconds per discovery/session with bounded HTTP timeouts. Only local JSON Schema
+references are supported. Credentials stay in transport memory and reflected stored
+secrets are redacted before contracts/results enter the runtime or persistence.
+Unknown annotations require approval under the default conversation policy. A lost
+remote tool result becomes an unknown outcome and is never automatically replayed.
 
 `McpToolCoordinator` persists proposals before execution. Read-only tools run
 immediately by default; all other tools require approval. Configure
-`config.approval_rules` as `{"default": "writes", "tools": {"navigate_user_mcp": "never"}}`
+`AIConversation.approval_rules` as `{"default": "writes", "tools": {"navigate_user_mcp": "never"}}`
 to adjust exact tool names. Defaults can be `writes`, `always`, or `never`; per-tool
 overrides are `always` or `never`. Approval is independent of endpoint permissions:
 a previously approved action can still be denied when it executes.
@@ -193,6 +229,18 @@ does not cancel work already running.
 `request_id` echoed in their responses so stale searches and selections can be
 ignored. History remains available without a configured model provider. Reads
 and edits authorize the authenticated owner independently of runtime setup.
+Chat progress reuses `tool.outcome`, `run.paused`, `approval.decided`, and
+`text.delta`. The shared MCP coordinator also commits `tool.started` immediately
+before an authorized dispatch, after approval checks, with only the pinned tool
+title. All runtimes using that coordinator receive the same tool-start behavior.
+The dedicated live status line shows waiting, running tools, outcomes, approval
+waits and visible response streaming; it clears on completion, failure or
+cancellation. Model processing stays labelled "Waiting for a response" because
+the provider does not expose finer operational stages. Private reasoning and
+tool arguments are never used for progress text. Snapshots carry the latest
+observable stage without results or checkpoint contents, so reconnects can
+restore it without regressing when older events are replayed.
+
 Conversation snapshots capture text and the latest run's event cursor under the
 same conversation lock used by writers. Replaying after that cursor appends only
 new output instead of duplicating already persisted text.
@@ -203,33 +251,52 @@ Search currently matches titles, and rich artifact rendering remains separate wo
 
 ### Instance setup
 
-Apply the agent migrations, including `0079_agent_execution_state`. Agent settings
-are part of `BloomerpConfig`; the API key defaults to the
-`BLOOMERP_AGENT_API_KEY` environment variable. For example:
+Apply the AI agent and conversation-selection migrations. `BloomerpAgentSettings`
+contains only instance operations (`mcp_origin`, `lease_seconds`, `history_limit`).
+Provider credentials, model identifiers, instructions, provider parameters,
+endpoints, and run budgets belong to shared `AIAgent` records.
 
 ```python
-from bloomerp.config.definition import BloomerpAgentSettings, BloomerpConfig
+from bloomerp.models.agents import AIAgent
 
-BLOOMERP_CONFIG = BloomerpConfig(
-    bloomai_settings=BloomerpAgentSettings(
-        config={
-            "runtime": "pydantic_ai",
-            "provider": "openai",
-            "model": "gpt-6-luna",
-            "agent_key": "bloomai",
-            "agent_version": "1",
-            "instructions": "Help the user with their questions.",
-        },
-        budgets={"max_duration_seconds": 300, "max_tokens": 20000},
-    )
-)
+model = AIAgent(name="Workspace assistant", provider="openai",
+    model_identifier="your-provider-model", default_instructions="Help the user.",
+    max_tokens=20000, max_tool_calls=30, max_duration_seconds=300)
+model.set_credentials({"api_key": "retrieve-from-your-secret-store"})
+model.save()
 ```
 
-`api_key` is excluded from config serialization and run snapshots. An optional `credentials_resolver` dotted
-callable can return `AgentRuntimeCredentials`; it runs afresh on every attempt.
-`runtime_factory` is an optional dotted, zero-argument callable returning an
-`AgentRuntime`. Use it for custom provider registrations or another implementation.
-Existing runs retain their non-secret configuration even if instance defaults change.
+Credentials use a JSON envelope with `version`, `algorithm`, and `ciphertext`.
+The credential payload is encrypted with a purpose-specific key derived from the instance's
+`SECRET_KEY`; preserve that key when moving the database. `SecretStr` masks values
+but is not the encryption mechanism. Generic model APIs are disabled and plaintext
+credentials stay out of activity logs. Use `set_credentials` to rotate keys.
+The AI agent create view is a two-step provider wizard with structured settings and
+encrypted credential inputs. Its Reconfigure detail tab reuses the wizard, loads
+current settings, and updates the same agent. Blank credential fields retain the
+stored values; switching providers requires credentials for the new provider.
+Configuration changes still require administrative row and field change grants.
+
+`AIAgentAccessManager` in `agents/access.py` grants use to active authenticated
+creators (`created_by`), explicitly listed users, members of listed groups, and
+superusers. `AIAgentAccess` records attach through the agent's `access` relation.
+The chat picker and new-run acceptance use these grants, with disabled or
+unconfigured agents excluded. Credential resolution rechecks use access on every
+attempt, so revoked users cannot resume using provider secrets. Agent use grants
+expose only safe picker metadata; they do not grant configuration, credential,
+or access-management permissions. Set `created_by` when creating agents via ORM
+to give their creator automatic use access.
+
+The chat picker saves a conversation's next-run choice. Users may switch models
+within a conversation, including during an active run. Each new run snapshots
+resolved non-secret settings and cumulative budgets. Resume/retry constructs the
+provider runtime from that snapshot and resolves current credentials separately.
+Disabling a record or changing its parameters does not alter existing runs.
+Deleting its credential-bearing record prevents further credential resolution.
+
+`max_tokens` on the model is the total input/output budget for an entire run,
+including every attempt; `parameters.max_tokens` is the per-response output cap.
+Version one has no monetary budget or currency configuration.
 
 Agent runs use a Celery worker when Celery is available with an external broker;
 a `memory://` development broker runs inline. Workers must run the
@@ -260,8 +327,7 @@ by those tests.
   A recovered proposal without a saved outcome conservatively counts as another
   dispatch, even if the coordinator finds an existing result.
 - There is also a 50-model-request safety limit per attempt.
-- Monetary budgets are rejected until pricing integration exists; reported cost
-  remains uncalculated (zero).
+- Monetary budgets and currency are outside version one.
 - Artifacts currently need extracted content in user messages. A `file_uri` alone
   is not sufficient; native PDF/image transfer is not implemented here.
 - Rich artifact presentation and input resolution remain separate integration work.
@@ -302,8 +368,14 @@ get an assistant message plus `AIMessageArtifact` link. Tool-outcome events and
 history return references; the chat loads the generic authorized component endpoint.
 An adapter error is logged and never retries or reverses the original mutation.
 
-Apply migration `0080_registered_artifact_types` before deployment. It removes fixed
-kind/version choices and keeps legacy file/analytics/form-patch payloads readable.
+Apply migration `0078_bloomai_initial` before deployment. It replaces the obsolete
+conversation table and creates the final agent, artifact, execution, and MCP schema.
+It consolidates the unmerged `0078`–`0091` migrations; databases that applied all
+14 originals are recognized through Django replacement metadata. Databases with
+only part of that development chain applied must finish it using the previous
+checkout before switching to this migration. The obsolete conversation records
+are discarded, as in the original branch migrations. Artifact kinds and versions
+remain extensible through the registry.
 New payloads validate through the artifact registry on model saves. This increment
 implements tool-created object cards and manually attached files/modules.
 PDF processing and a visualization MCP route remain separate unfinished work.
@@ -332,3 +404,5 @@ rather than inline disposition. Module search uses module-page visibility rules.
 The runtime receives reference descriptions, including a file identifier or module
 identifier. Attaching a file does not extract its contents; reading PDFs, images or
 spreadsheets belongs in separately registered MCP capabilities.
+
+Tool approval rules belong to `AIConversation`, not `AIAgent`. The chat composer can change the conversation policy during an active response. The coordinator reads current rules for each tool call; existing pending approvals still require an explicit decision. Run snapshots retain the initial rules for audit history.

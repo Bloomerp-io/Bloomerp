@@ -139,3 +139,4 @@ BEHAVIORS_DISPLAY_OPTION = FieldDisplayOption(
     help_text="Define what this form should do when the field changes.",
     get_form_field_kwargs=get_behavior_form_field_kwargs,
 )
+

@@ -24,20 +24,28 @@ from bloomerp.agents.controller import (
     AgentApprovalDecision,
     AgentChatRequest,
     AgentController,
+    AgentConversationEdit,
 )
 from bloomerp.agents.mcp import LocalMcpClient, McpToolCoordinator
-from bloomerp.agents.pydantic_ai import PydanticAIRuntime
+from bloomerp.agents.resource_access import resource_tool_name
 from bloomerp.agents.runtime import (
+    AgentRuntimeConfig,
     AgentRuntimeCredentials,
     AgentRuntimeRunRequest,
     AgentRuntimeToolProposal,
 )
-from bloomerp.mcp.definition import McpTool
+from bloomerp.agents.runtimes.pydantic_ai import PydanticAIRuntime
+from bloomerp.mcp.definition import McpResource, McpTool
 from bloomerp.mcp.view import McpEndpointView
 from bloomerp.models.agents import AIApproval, AIRun, AIToolCall
 from bloomerp.router import BloomerpRouteRegistry, router
-from bloomerp.tests.agents.test_controller import OPTIONS, agent_test_config
+from bloomerp.tests.agents.test_controller import (
+    OPTIONS,
+    agent_test_config,
+    configure_test_agent,
+)
 from bloomerp.tests.base import BloomerpChannelTestCase
+from bloomerp.tests.mcp.test_resources import guide_reader
 
 EFFECTS: list[int] = []
 
@@ -86,6 +94,20 @@ async def tool_stream(
         }
 
 
+async def resource_stream(
+    messages: list[ModelMessage], info: AgentInfo
+) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+    """Read an advertised guide and verify its embedded content reaches model history."""
+    returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+    if returns:
+        result = returns[-1].content
+        assert result["content"][0]["resource"]["uri"] == "bloomerp://tests/runtime-guide"
+        assert "Guide for user" in result["content"][0]["resource"]["text"]
+        yield "Guide read."
+    else:
+        yield {0: DeltaToolCall(name=resource_tool_name("bloomerp://tests/runtime-guide"), json_args="{}", tool_call_id="read-guide")}
+
+
 def tool_model(
     request: AgentRuntimeRunRequest,
     credentials: AgentRuntimeCredentials,
@@ -95,16 +117,18 @@ def tool_model(
     return FunctionModel(stream_function=tool_stream)
 
 
-def tool_runtime() -> PydanticAIRuntime:
+def tool_runtime(config: AgentRuntimeConfig) -> PydanticAIRuntime:
     """Construct the real runtime for persisted approval integration tests."""
     return PydanticAIRuntime(model_factory=tool_model)
 
 
 @override_settings(
-    BLOOMERP_CONFIG=agent_test_config({
-        **OPTIONS,
-        "runtime_factory": "bloomerp.tests.agents.test_mcp_execution.tool_runtime",
-    }),
+    BLOOMERP_CONFIG=agent_test_config(
+        {
+            **OPTIONS,
+            "runtime_factory": "bloomerp.tests.agents.test_mcp_execution.tool_runtime",
+        }
+    ),
     ALLOWED_HOSTS=["erp.test", "localhost"],
     CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
 )
@@ -118,6 +142,7 @@ class McpExecutionTests(BloomerpChannelTestCase):
             username="mcp-owner", is_staff=True
         )
         self.other = get_user_model().objects.create_user(username="mcp-other")
+        self.ai_agent = configure_test_agent(self.user, tool_runtime)
         self.controller = AgentController(self.user, origin="https://erp.test")
         self.client = LocalMcpClient(self.user.pk, "https://erp.test")
         registry = BloomerpRouteRegistry()
@@ -139,6 +164,8 @@ class McpExecutionTests(BloomerpChannelTestCase):
         self.enterContext(
             patch.object(router, "get_mcp_routes", return_value=registry.routes)
         )
+        self.enterContext(patch.object(router, "get_mcp_resources", return_value=[]))
+        self.enterContext(patch.object(router, "get_mcp_resource_templates", return_value=[]))
         self.enterContext(patch.object(self.controller, "schedule_dispatch"))
 
     def test_local_result_matches_rendered_http_and_persists(self) -> None:
@@ -194,6 +221,22 @@ class McpExecutionTests(BloomerpChannelTestCase):
         )
         run.refresh_from_db()
 
+    def test_resource_read_runs_through_model_and_persists_content(self) -> None:
+        """Complete a real runtime resource call without a write approval or losing content."""
+        registry = BloomerpRouteRegistry()
+        registry.register(name="Runtime guide", mcp=McpResource(uri="bloomerp://tests/runtime-guide"))(guide_reader)
+        with patch.object(router, "get_mcp_resources", return_value=registry.routes), patch(
+            "bloomerp.tests.agents.test_mcp_execution.tool_model",
+            return_value=FunctionModel(stream_function=resource_stream),
+        ):
+            run = self.new_run()
+            self.execute(run)
+        self.assertEqual(run.status, "completed", run.error)
+        self.assertFalse(AIApproval.objects.filter(tool_call__run=run).exists())
+        tool = run.tool_calls.get()
+        self.assertEqual(tool.status, "completed")
+        self.assertIn(f"Guide for user {self.user.pk}", tool.result["content"][0]["resource"]["text"])
+
     def test_approval_pause_resume_and_duplicate_delivery(self) -> None:
         """Pause without effects, approve, resume once and preserve the exact MCP result."""
         run = self.new_run()
@@ -232,6 +275,82 @@ class McpExecutionTests(BloomerpChannelTestCase):
         self.execute(run)
         self.assertEqual(run.status, "completed", run.error)
         self.assertEqual(run.tool_calls.get().status, "rejected")
+        self.assertEqual(EFFECTS, [])
+
+    def test_agent_selection_filters_live_catalog_and_direct_dispatch(self) -> None:
+        """Allow all by default, then expose only selected registered tools and enforce calls."""
+        client = LocalMcpClient(self.user.pk, "https://erp.test", str(self.ai_agent.pk))
+        self.assertEqual([item.identifier for item in client.definitions()], ["fixture_effect"])
+        self.ai_agent.internal_tool_mode = "selected"
+        self.ai_agent.internal_tools = []
+        self.ai_agent.save()
+        self.assertEqual(client.definitions(), ())
+        with self.assertRaisesMessage(PermissionDenied, "not allowed"):
+            client.request("tools/call", {"name": "fixture_effect", "arguments": {"value": 4}})
+        self.assertEqual(EFFECTS, [])
+        self.ai_agent.internal_tools = ["fixture_effect", "deleted_tool"]
+        self.ai_agent.save()
+        self.assertEqual([item.identifier for item in client.definitions()], ["fixture_effect"])
+        self.user.is_staff = False
+        self.user.save()
+        result = client.request("tools/call", {"name": "fixture_effect", "arguments": {"value": 4}})
+        self.assertTrue(result["isError"])
+        self.assertEqual(EFFECTS, [])
+
+    def test_agent_revocation_refuses_stale_approved_call(self) -> None:
+        """Reload agent restrictions on approval resume even though the run snapshot predates them."""
+        run = self.new_run()
+        self.execute(run)
+        approval = AIApproval.objects.get(tool_call__run=run)
+        async_to_sync(self.controller.decide_approval)(
+            AgentApprovalDecision(approval_id=approval.pk, decision="approved")
+        )
+        self.ai_agent.internal_tool_mode = "selected"
+        self.ai_agent.internal_tools = []
+        self.ai_agent.save()
+        self.execute(run)
+        self.assertEqual(run.status, "failed", run.error)
+        self.assertEqual(EFFECTS, [])
+
+    def test_registered_extensions_are_discovered_without_static_choices(self) -> None:
+        """Refresh labels and runtime definitions after extension registration and removal."""
+        from bloomerp.agents.tool_access import internal_tool_choices
+
+        client = LocalMcpClient(self.user.pk, "https://erp.test", str(self.ai_agent.pk))
+        self.assertEqual(len(client.definitions()), 1)
+        registry = BloomerpRouteRegistry()
+        registry.register(
+            name="Extension result", url_name="extension_result", route_type="mcp",
+            mcp=McpTool(input_schema={"type": "object"}, title="Extension result", read_only_hint=True),
+        )(typed_result)
+        live_routes = router.get_mcp_routes()
+        live_routes.extend(registry.routes)
+        self.assertEqual({item.identifier for item in client.definitions()}, {"fixture_effect", "extension_result"})
+        self.assertIn(("extension_result", "Extension result (extension_result)"), internal_tool_choices())
+        self.ai_agent.internal_tool_mode = "selected"
+        self.ai_agent.internal_tools = ["extension_result"]
+        self.ai_agent.save()
+        self.assertEqual([item.identifier for item in client.definitions()], ["extension_result"])
+        live_routes.remove(registry.routes[0])
+        self.assertEqual(client.definitions(), ())
+
+    def test_crafted_proposal_is_refused_with_unfiltered_client(self) -> None:
+        """Enforce the run's agent even when a caller supplies a client with unrestricted discovery."""
+        run = self.new_run()
+        attempt = run.create_attempt(
+            execution_mode="inline", executor_id="test", lease_duration=timedelta(minutes=1)
+        )
+        definition = self.client.definitions()[0]
+        self.ai_agent.internal_tool_mode = "selected"
+        self.ai_agent.internal_tools = []
+        self.ai_agent.save()
+        proposal = AgentRuntimeToolProposal(
+            provider_call_id="crafted-call", tool_identifier=definition.identifier,
+            tool_version=definition.version, arguments={"value": 4},
+        )
+        with self.assertRaisesMessage(PermissionDenied, "not allowed"):
+            McpToolCoordinator(run, attempt, self.client).execute(proposal)
+        self.assertFalse(run.tool_calls.exists())
         self.assertEqual(EFFECTS, [])
 
     def test_read_only_tools_run_without_approval(self) -> None:
@@ -292,13 +411,9 @@ class McpExecutionTests(BloomerpChannelTestCase):
         definition = self.client.definitions()[0]
         self.assertEqual(definition.input_schema, item["inputSchema"])
         self.assertEqual(definition.annotations, item["annotations"])
-        with override_settings(
-            BLOOMERP_CONFIG=agent_test_config({
-                **OPTIONS,
-                "config": {**OPTIONS["config"], "approval_rules": {"default": "never"}},
-            })
-        ):
-            run = self.new_run()
+        run = self.new_run()
+        run.conversation.approval_rules = {"default": "never"}
+        run.conversation.save()
         attempt = run.create_attempt(
             execution_mode="inline",
             executor_id="test",
@@ -438,3 +553,52 @@ class McpExecutionTests(BloomerpChannelTestCase):
             )
         finally:
             await browser.disconnect()
+
+    def test_conversation_approval_changes_apply_to_next_tool_in_active_run(
+        self,
+    ) -> None:
+        """Read live rules for each proposal and retain decisions on already pending approvals."""
+        from uuid import uuid4
+
+        run = self.new_run()
+        attempt = run.create_attempt(
+            execution_mode="inline",
+            executor_id="test",
+            lease_duration=timedelta(minutes=1),
+        )
+        coordinator = McpToolCoordinator(run, attempt, self.client)
+        definition = self.client.definitions()[0]
+        proposal = AgentRuntimeToolProposal(
+            provider_call_id="pending-change",
+            tool_identifier=definition.identifier,
+            tool_version=definition.version,
+            arguments={"value": 7},
+        )
+        first = coordinator.execute(proposal)
+        self.assertEqual(first.status, "waiting")
+        self.controller.edit_conversation(
+            AgentConversationEdit(
+                request_id=uuid4(),
+                conversation_id=run.conversation_id,
+                approval_rules={"default": "never"},
+            )
+        )
+        # Existing pending approval is still binding after disabling new approvals.
+        self.assertEqual(coordinator.execute(proposal).status, "waiting")
+        second = coordinator.execute(
+            proposal.model_copy(update={"provider_call_id": "new-change"})
+        )
+        self.assertEqual(second.status, "completed")
+        self.assertEqual(EFFECTS, [7])
+        self.controller.edit_conversation(
+            AgentConversationEdit(
+                request_id=uuid4(),
+                conversation_id=run.conversation_id,
+                approval_rules={"default": "always"},
+            )
+        )
+        third = coordinator.execute(
+            proposal.model_copy(update={"provider_call_id": "require-again"})
+        )
+        self.assertEqual(third.status, "waiting")
+        self.assertEqual(EFFECTS, [7])

@@ -15,6 +15,7 @@ from bloomerp.models.definition import (
     BloomerpModelConfig,
     StringSearchSettings,
 )
+from bloomerp.modules.bloomai import BloomAIModule
 
 from .fields import AgentJSONField
 
@@ -56,12 +57,13 @@ class AgentModel(BloomerpModel):
     avatar = None
     immutable_fields: ClassVar[tuple[str, ...]] = ()
     bloomerp_config = BloomerpModelConfig(
+        module=BloomAIModule,
         is_internal=True,
         api_settings=ApiSettings(enable_auto_generation=False),
         string_search_settings=StringSearchSettings(allow_global_search=False),
         activity_log_settings=ActivityLogSettings(enabled=False),
     )
-
+    
     class Meta(BloomerpModel.Meta):
         abstract = True
 

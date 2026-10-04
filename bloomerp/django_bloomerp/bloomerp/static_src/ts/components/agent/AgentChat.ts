@@ -1,21 +1,32 @@
 import htmx from 'htmx.org';
-import type { ArtifactChoice } from './ArtifactPicker';
-import BaseComponent from '../BaseComponent';
-import BloomerpAgent, { getBrowserAgent } from '../../utils/agent';
+import ArtifactPicker, { type ArtifactChoice } from './ArtifactPicker';
+import BaseComponent, { getComponent } from '../BaseComponent';
+import BloomerpAgent, { getBrowserAgent, type ConversationApprovalRules } from '../../utils/agent';
+import { parseAgentEditorState } from '../../utils/agentEditorState';
+import { renderAgentMessage } from '../../utils/agentMarkdown';
+import { updateAgentProgress, renderAgentProgress, type AgentProgressState } from '../../utils/agentProgress';
+import '../../../styles/agentMarkdown.css';
 
-type HistoryConversation = {id: string; title: string; status: string; updated_at: string; run_status?: string};
+type HistoryConversation = {id: string; title: string; status: string; updated_at: string; selected_agent_id?: string | null; run_status?: string; approval_rules?: ConversationApprovalRules};
 type ConversationSnapshot = {
     conversation: HistoryConversation;
     messages: {id: string; role: string; status: string; content: Record<string, unknown>[]; artifacts?: {id: string; position: number}[]; sequence: number; created_at: string}[];
     approvals: (Record<string, unknown> & {id: string; run_id: string; created_at: string})[];
     before_sequence: number | null;
-    run: {id: string; status: string; client_message_id: string; cursor: number; cancel_requested: boolean} | null;
+    run: {id: string; status: string; client_message_id: string; cursor: number; cancel_requested: boolean; progress?: Record<string, unknown> | null} | null;
 };
 
 /** Present streamed chat through the shared authenticated browser bridge. */
 export default class AgentChat extends BaseComponent {
     private attachments: ArtifactChoice[] = [];
     private attachmentBusy = false;
+    private approvalRules: ConversationApprovalRules = {default: 'writes', tools: {}};
+    private approvalRequestId: string | null = null;
+    private selectedAgentId: string | null = null;
+    private agentsLoaded: boolean = false;
+    private agentRequestId: string | null = null;
+    private agentSelectionRequired: boolean = false;
+    private availableAgents: {id: string; name: string}[] = [];
     private lifecycle: AbortController | null = null;
     private panel: HTMLElement | null = null;
     private input: HTMLTextAreaElement | null = null;
@@ -29,6 +40,8 @@ export default class AgentChat extends BaseComponent {
     private response: HTMLElement | null = null;
     private cancellationRequested: boolean = false;
     private responseTimer: number | null = null;
+    private markdownFrame: number | null = null;
+    private progress: AgentProgressState = {sequence: 0, key: null, toolTitle: ''};
     private artifactCards = new Map<string, HTMLElement>();
     private approvalCards = new Map<string, {element: HTMLElement; sequence: number}>();
     private paused: boolean = false;
@@ -66,6 +79,8 @@ export default class AgentChat extends BaseComponent {
         this.element.addEventListener('agent:attachments-changed', this.onAttachments, { signal });
         this.element.addEventListener('input', this.onInput, { signal });
         this.element.addEventListener('change', this.onHistoryFilter, { signal });
+        this.element.addEventListener('change', this.onAgentChanged, { signal });
+        this.element.addEventListener('change', this.onApprovalChanged, { signal });
         this.element.addEventListener('keydown', this.onKeyDown, { signal });
         document.addEventListener('keydown', this.onDocumentKeyDown, { signal });
         this.bridge = getBrowserAgent();
@@ -75,7 +90,8 @@ export default class AgentChat extends BaseComponent {
         this.bridge?.addEventListener('protocol.error', this.onProtocolError, { signal });
         this.bridge?.addEventListener('bridge.error', this.onProtocolError, { signal });
         document.addEventListener('htmx:beforeCleanupElement', this.onCleanup, { signal });
-        this.restoreActiveRun();
+        window.addEventListener('pagehide', this.saveEditorState, { signal });
+        if (!this.restoreEditorState()) this.restoreActiveRun();
         this.onConnectionChanged();
     }
 
@@ -88,6 +104,7 @@ export default class AgentChat extends BaseComponent {
         if (scroll) scroll.hidden = show;
         if (footer) footer.hidden = show;
         this.historyVisible = show;
+        this.saveEditorState();
         this.updateConversationTitle(this.conversationTitle);
         if (show) this.toggleRename(false);
         if (show) {
@@ -95,6 +112,85 @@ export default class AgentChat extends BaseComponent {
             this.element?.querySelector<HTMLInputElement>('[data-agent-search]')?.focus();
         }
     }
+
+    /** Validate safe picker metadata received from the server. */
+    private isAgentChoice(item: unknown): item is {id: string; name: string} {
+        return !!item && typeof item === 'object' && typeof (item as {id?: unknown}).id === 'string' && typeof (item as {name?: unknown}).name === 'string';
+    }
+
+    /** Reconcile the picker with server-authorized model records and explain unavailable choices. */
+    private renderAgentPicker(): void {
+        const picker = this.element?.querySelector<HTMLSelectElement>('[data-agent-choice]');
+        const empty = this.element?.querySelector<HTMLElement>('[data-agent-choice-empty]');
+        if (!picker || !this.agentsLoaded) return;
+        picker.replaceChildren();
+        const unavailable = !!this.selectedAgentId && !this.availableAgents.some((model: {id: string; name: string}): boolean => model.id === this.selectedAgentId);
+        if (!this.selectedAgentId && !this.agentSelectionRequired && this.availableAgents.length) this.selectedAgentId = this.availableAgents[0].id;
+        if (unavailable || this.agentSelectionRequired) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = this.label('agent-unavailable');
+            picker.append(option);
+            this.selectedAgentId = null;
+            this.agentSelectionRequired = true;
+        }
+        for (const model of this.availableAgents) {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = model.name;
+            picker.append(option);
+        }
+        picker.value = this.selectedAgentId ?? '';
+        picker.disabled = !this.availableAgents.length;
+        if (empty) {
+            empty.hidden = !!this.availableAgents.length && !this.agentSelectionRequired;
+            empty.textContent = this.label(this.agentSelectionRequired && this.availableAgents.length ? 'agent-unavailable' : 'no-agents');
+        }
+        const welcome = this.element?.querySelector<HTMLElement>('[data-agent-welcome]');
+        if (welcome && !this.availableAgents.length) welcome.hidden = true;
+        this.syncComposer();
+    }
+
+    /** Save the next-run choice without changing a running or paused response. */
+    private onAgentChanged = (event: Event): void => {
+        if (!(event.target instanceof HTMLSelectElement) || !event.target.matches('[data-agent-choice]')) return;
+        this.selectedAgentId = event.target.value || null;
+        this.agentSelectionRequired = false;
+        const empty = this.element?.querySelector<HTMLElement>('[data-agent-choice-empty]');
+        if (empty) empty.hidden = true;
+        if (this.conversationId && this.selectedAgentId && this.bridge?.connected) {
+            this.agentRequestId = crypto.randomUUID();
+            this.bridge.editConversation(this.agentRequestId, this.conversationId, {agent_id: this.selectedAgentId});
+        }
+        this.syncComposer();
+    };
+
+    /** Reflect the selected conversation's approval policy in the composer. */
+    private renderApprovalPicker(): void {
+        const picker = this.element?.querySelector<HTMLSelectElement>('[data-agent-approval-mode]');
+        if (picker) {
+            picker.value = this.approvalRules.default;
+            picker.disabled = this.approvalRequestId !== null || !!this.selectionRequest || (!this.conversationId && this.clientMessageId !== null);
+        }
+    }
+
+    /** Persist changes immediately for new tool calls, including during an active response. */
+    private onApprovalChanged = (event: Event): void => {
+        if (!(event.target instanceof HTMLSelectElement) || !event.target.matches('[data-agent-approval-mode]')) return;
+        const mode = event.target.value;
+        if (mode !== 'writes' && mode !== 'always' && mode !== 'never') return;
+        if (this.conversationId && !this.bridge?.connected) {
+            this.renderApprovalPicker();
+            this.showError(this.label('disconnected'));
+            return;
+        }
+        this.approvalRules = {...this.approvalRules, default: mode};
+        if (this.conversationId && this.bridge?.connected) {
+            this.approvalRequestId = crypto.randomUUID();
+            this.bridge.editConversation(this.approvalRequestId, this.conversationId, {approval_rules: this.approvalRules});
+        }
+        this.renderApprovalPicker();
+    };
 
     /** Fetch a bounded search page, discarding stale search responses by request identity. */
     private loadHistory(more: boolean = false): void {
@@ -167,6 +263,9 @@ export default class AgentChat extends BaseComponent {
 
     /** Detach only presentation state; server-side runs continue independently. */
     private detachConversation(): void {
+        this.cancelMarkdownFrame();
+        this.setProgress(null);
+        this.progress.sequence = 0;
         if (this.responseTimer !== null) window.clearTimeout(this.responseTimer);
         this.responseTimer = null;
         this.selectionRequest = null;
@@ -188,16 +287,16 @@ export default class AgentChat extends BaseComponent {
     }
 
     /** Select a persisted transcript; buffer live events until its snapshot arrives. */
-    private selectConversation(id: string, beforeSequence: number | null = null): void {
+    private selectConversation(id: string, beforeSequence: number | null = null, preserveComposer: boolean = false): void {
         if (!this.bridge?.connected || !this.isUuid(id)) return;
         if (beforeSequence === null) {
-            this.clearAttachments();
+            if (!preserveComposer) this.clearAttachments();
             this.detachConversation();
             this.conversationId = id;
             this.messages?.replaceChildren();
             this.showHistory(false);
             this.showError('');
-            if (this.input) this.input.value = '';
+            if (this.input && !preserveComposer) this.input.value = '';
             const welcome = this.element?.querySelector<HTMLElement>('[data-agent-welcome]');
             if (welcome) welcome.hidden = true;
         }
@@ -248,6 +347,12 @@ export default class AgentChat extends BaseComponent {
         const scroll = this.element?.querySelector<HTMLElement>('[data-agent-scroll]');
         const height = scroll?.scrollHeight ?? 0;
         const existing = older ? [...this.messages?.children ?? []] : [];
+        this.approvalRules = snapshot.conversation.approval_rules ?? {default: 'writes', tools: {}};
+        this.approvalRequestId = null;
+        this.renderApprovalPicker();
+        this.selectedAgentId = snapshot.conversation.selected_agent_id ?? null;
+        this.agentSelectionRequired = false;
+        this.renderAgentPicker();
         this.conversationArchived = snapshot.conversation.status === 'archived';
         this.updateConversationTitle(snapshot.conversation.title);
         for (const message of snapshot.messages) {
@@ -286,10 +391,17 @@ export default class AgentChat extends BaseComponent {
                 this.replayCursor = snapshot.run.cursor;
                 this.stateSequence = snapshot.run.cursor;
                 this.paused = snapshot.run.status === 'waiting';
+                this.progress = {sequence: 0, key: this.paused ? 'paused' : 'waiting', toolTitle: ''};
+                if (snapshot.run.progress) this.progress = updateAgentProgress(this.progress, snapshot.run.progress);
+                this.displayProgress();
                 this.cancellationRequested = snapshot.run.cancel_requested;
+                this.setStatus(this.cancellationRequested ? 'stopping' : this.paused ? 'waiting' : 'responding');
                 this.saveActiveRun();
                 this.requestReplay();
-            } else this.clearSavedRun();
+            } else {
+                this.clearSavedRun();
+                this.setStatus('ready');
+            }
             this.unreadConversations.delete(snapshot.conversation.id);
             this.updateUnreadBadge();
             const events = this.bufferedEvents;
@@ -360,8 +472,39 @@ export default class AgentChat extends BaseComponent {
         return `bloomerp.agent.active.${this.element?.getAttribute('data-agent-user') ?? ''}`;
     }
 
+    /** Save the selected chat and unsent editor state independently of run completion. */
+    private saveEditorState = (): void => {
+        try {
+            sessionStorage.setItem(`${this.storageKey()}.editor`, JSON.stringify({
+                conversationId: this.conversationId,
+                draft: this.input?.value ?? '',
+                attachments: this.attachments,
+                open: this.panel ? !this.panel.hidden : false,
+                historyVisible: this.historyVisible,
+            }));
+        } catch { /* Storage can be unavailable without disabling the editor. */ }
+    };
+
+    /** Restore drafts and panel visibility, then fetch the selected transcript on connection. */
+    private restoreEditorState(): boolean {
+        try {
+            const saved = parseAgentEditorState(sessionStorage.getItem(`${this.storageKey()}.editor`));
+            if (!saved) return false;
+            this.conversationId = saved.conversationId;
+            if (this.input) this.input.value = saved.draft;
+            this.attachments = saved.attachments;
+            const form = this.element?.querySelector<HTMLElement>('[data-artifact-search-url]');
+            const picker = form ? getComponent(form) : null;
+            if (picker instanceof ArtifactPicker) picker.restoreSelection(saved.attachments);
+            if (saved.open) this.open();
+            this.historyVisible = saved.historyVisible;
+            return true;
+        } catch { return false; }
+    }
+
     /** Keep only run identifiers across tool-triggered full-page navigation. */
     private saveActiveRun(): void {
+        this.saveEditorState();
         try {
             sessionStorage.setItem(this.storageKey(), JSON.stringify({runId: this.runId,
                 conversationId: this.conversationId, clientMessageId: this.clientMessageId}));
@@ -401,6 +544,7 @@ export default class AgentChat extends BaseComponent {
             launcher.setAttribute('aria-expanded', 'true');
         }
         this.input?.focus();
+        this.saveEditorState();
     }
 
     /** Close the assistant without discarding the current conversation. */
@@ -413,6 +557,7 @@ export default class AgentChat extends BaseComponent {
             launcher.setAttribute('aria-expanded', 'false');
         }
         this.previousFocus?.focus();
+        this.saveEditorState();
     }
 
     /** Clear the draft transcript and restore the suggested prompts. */
@@ -420,6 +565,9 @@ export default class AgentChat extends BaseComponent {
         this.detachConversation();
         this.clearSavedRun();
         this.conversationId = null;
+        this.approvalRules = {default: 'writes', tools: {}};
+        this.approvalRequestId = null;
+        this.renderApprovalPicker();
         this.conversationArchived = false;
         this.beforeMessageSequence = null;
         this.updateConversationTitle('');
@@ -491,10 +639,10 @@ export default class AgentChat extends BaseComponent {
 
     /** Send one correlated message and retain the draft if transport fails. */
     private submit(content: string): void {
-        if ((!content && !this.attachments.length) || this.attachmentBusy || this.clientMessageId || this.selectionRequest || this.conversationArchived || !this.bridge?.connected) return;
+        if (!this.selectedAgentId || (!content && !this.attachments.length) || this.attachmentBusy || this.clientMessageId || this.selectionRequest || this.conversationArchived || !this.bridge?.connected) return;
         const messageId = crypto.randomUUID();
         try {
-            this.bridge.sendChat(content, this.conversationId, messageId, this.attachments.map(this.attachmentToken));
+            this.bridge.sendChat(content, this.conversationId, messageId, this.attachments.map(this.attachmentToken), this.selectedAgentId, this.conversationId ? undefined : this.approvalRules);
         } catch {
             this.setStatus('disconnected');
             return;
@@ -515,6 +663,8 @@ export default class AgentChat extends BaseComponent {
         if (!this.conversationId) this.conversationTitle = content.slice(0, 255) || this.attachments[0]?.title || '';
         if (content) this.appendMessage(content, true);
         this.response = this.appendMessage('', false);
+        this.progress = {sequence: 0, key: 'waiting', toolTitle: ''};
+        this.displayProgress();
         this.showThinking();
         if (this.input) this.input.value = '';
         this.setStatus('responding');
@@ -552,6 +702,36 @@ export default class AgentChat extends BaseComponent {
 
     /** Route history replies and selected-run events without consuming another conversation's output. */
     private receiveChatMessage(message: Record<string, unknown>): void {
+        if (message.action === 'chat.agents' && Array.isArray(message.agents)) {
+            this.agentsLoaded = true;
+            this.availableAgents = message.agents.filter(this.isAgentChoice);
+            this.renderAgentPicker();
+            return;
+        }
+        if (message.action === 'chat.edit_conversation' && message.request_id === this.approvalRequestId) {
+            this.approvalRequestId = null;
+            if (message.status !== 'updated') {
+                this.showError(String(message.message ?? this.label('failed')));
+                if (this.conversationId && this.bridge?.connected) this.selectConversation(this.conversationId, null, true);
+            } else {
+                const conversation = message.conversation as HistoryConversation;
+                if (conversation.id === this.conversationId && conversation.approval_rules) this.approvalRules = conversation.approval_rules;
+            }
+            this.renderApprovalPicker();
+            return;
+        }
+        if (message.action === 'chat.edit_conversation' && message.request_id === this.agentRequestId) {
+            this.agentRequestId = null;
+            if (message.status !== 'updated') {
+                this.showError(String(message.message ?? this.label('agent-unavailable')));
+                if (this.bridge?.connected) this.bridge.listAgents();
+            }
+            return;
+        }
+        if (message.action === 'chat.message' && message.status === 'forbidden') {
+            this.showError(String(message.message ?? this.label('agent-unavailable')));
+            this.bridge?.listAgents();
+        }
         if (this.handleHistoryEvent(message)) return;
         if (typeof message.conversation_id === 'string' && message.conversation_id !== this.conversationId
             && message.client_message_id !== this.clientMessageId) {
@@ -617,7 +797,7 @@ export default class AgentChat extends BaseComponent {
         } else if (message.status === 'streaming' && typeof message.delta === 'string') {
             if (typeof message.sequence === 'number') {
                 this.rememberDelta(message.sequence, String(message.message_id ?? ''), message.delta);
-                this.renderDeltas();
+                this.scheduleMarkdownRender();
             }
         } else if (['completed', 'cancelled', 'failed'].includes(String(message.status))
             && typeof message.sequence === 'number') {
@@ -628,9 +808,11 @@ export default class AgentChat extends BaseComponent {
         this.scrollToLatest();
     }
 
-    /** Apply durable approval cards and pause state in sequence order during live delivery or replay. */
+    /** Apply public progress, approval cards and pause state in order during live delivery or replay. */
     private applyActionEvent(event: Record<string, unknown>): void {
         if (typeof event.sequence === 'number' && event.sequence <= this.snapshotCursor) return;
+        this.progress = updateAgentProgress(this.progress, event);
+        this.displayProgress();
         const sequence = typeof event.sequence === 'number' ? event.sequence : 0;
         const payload = event.payload as Record<string, unknown> | undefined;
         const data = payload?.data as Record<string, unknown> | undefined;
@@ -734,8 +916,27 @@ export default class AgentChat extends BaseComponent {
         this.deltas.set(sequence, {messageId, text});
     }
 
-    /** Reconstruct each message from its persisted baseline plus newer committed deltas. */
+    /** Batch live Markdown parsing until the next frame without changing raw delta storage. */
+    private scheduleMarkdownRender(): void {
+        if (this.markdownFrame === null) this.markdownFrame = window.requestAnimationFrame(this.onMarkdownFrame);
+    }
+
+    /** Render accumulated streamed text and scroll once for each scheduled frame. */
+    private onMarkdownFrame = (): void => {
+        this.markdownFrame = null;
+        this.renderDeltas();
+        this.scrollToLatest();
+    };
+
+    /** Release a pending render when switching conversations or flushing final text. */
+    private cancelMarkdownFrame(): void {
+        if (this.markdownFrame !== null) window.cancelAnimationFrame(this.markdownFrame);
+        this.markdownFrame = null;
+    }
+
+    /** Reconstruct and sanitize Markdown from the persisted baseline plus ordered committed deltas. */
     private renderDeltas(): void {
+        this.cancelMarkdownFrame();
         const texts = new Map<string, string>();
         for (const [, delta] of [...this.deltas.entries()].sort(this.compareDeltaSequence)) {
             texts.set(delta.messageId, (texts.get(delta.messageId) ?? '') + delta.text);
@@ -749,7 +950,7 @@ export default class AgentChat extends BaseComponent {
                 row = {element: text, baseline: ''};
                 this.messageRows.set(id, row);
             }
-            row.element.textContent = row.baseline + content;
+            renderAgentMessage(row.element, row.baseline + content, false);
         }
     }
 
@@ -812,6 +1013,7 @@ export default class AgentChat extends BaseComponent {
 
     /** Keep real executions attached across reconnects and replay missed committed events. */
     private onConnectionChanged = (): void => {
+        if (this.bridge?.connected) this.bridge.listAgents();
         this.replaying = false;
         if (!this.bridge?.connected) {
             if (this.responseTimer !== null) window.clearTimeout(this.responseTimer);
@@ -820,13 +1022,17 @@ export default class AgentChat extends BaseComponent {
                 this.finish('interrupted');
             }
             this.setStatus('disconnected');
+            if (this.runId) this.setProgress('disconnected');
         } else if (this.conversationId) {
             const historyWasVisible = this.historyVisible;
-            this.selectConversation(this.conversationId);
+            this.selectConversation(this.conversationId, null, true);
             if (historyWasVisible) this.showHistory(true);
             this.setStatus(this.cancellationRequested ? 'stopping' : 'responding');
             if (this.cancellationRequested) this.sendCancellation();
-        } else this.setStatus('ready');
+        } else {
+            this.setStatus('ready');
+            if (this.historyVisible) this.showHistory(true);
+        }
         if (this.bridge?.connected && this.historyVisible) this.loadHistory();
         this.syncComposer();
     };
@@ -856,6 +1062,8 @@ export default class AgentChat extends BaseComponent {
 
     /** Complete the local response lifecycle while retaining partial assistant text. */
     private finish(status: string): void {
+        this.renderDeltas();
+        this.setProgress(null);
         if (this.responseTimer !== null) window.clearTimeout(this.responseTimer);
         this.responseTimer = null;
         this.response?.querySelector('.bloomerp-agent-thinking')?.remove();
@@ -880,6 +1088,18 @@ export default class AgentChat extends BaseComponent {
     /** Read translated presentation strings supplied by the server template. */
     private label(key: string): string {
         return this.element?.getAttribute(`data-status-${key}`) ?? key;
+    }
+
+    /** Set an initial or terminal presentation stage without adding transcript content. */
+    private setProgress(key: string | null): void {
+        this.progress = {...this.progress, key, toolTitle: ''};
+        this.displayProgress();
+    }
+
+    /** Display factual run activity in the chat's dedicated, translated live region. */
+    private displayProgress(): void {
+        const target = this.element?.querySelector<HTMLElement>('[data-agent-progress]');
+        if (target) renderAgentProgress(target, this.progress, this.progress.key ? this.label(`progress-${this.progress.key}`) : '');
     }
 
     /** Announce connection and response progress without changing the transcript. */
@@ -938,13 +1158,15 @@ export default class AgentChat extends BaseComponent {
 
     /** Keep the draft composer height and send availability in sync. */
     private syncComposer(): void {
+        this.renderApprovalPicker();
+        this.saveEditorState();
         const send = this.element?.querySelector<HTMLButtonElement>('[data-agent-send]');
         const busy = this.clientMessageId !== null;
         const form = this.element?.querySelector<HTMLElement>('[data-artifact-search-url]');
         if (form) form.dataset.attachmentsDisabled = String(busy || !!this.selectionRequest || this.conversationArchived);
         for (const button of form?.querySelectorAll<HTMLButtonElement>('[data-artifact-plus], [data-artifact-remove]') ?? []) button.disabled = busy || !!this.selectionRequest || this.conversationArchived;
         if (send) {
-            send.disabled = (!this.input?.value.trim() && !this.attachments.length) || this.attachmentBusy || busy || !!this.selectionRequest || this.conversationArchived || !this.bridge?.connected;
+            send.disabled = !this.selectedAgentId || (!this.input?.value.trim() && !this.attachments.length) || this.attachmentBusy || busy || !!this.selectionRequest || this.conversationArchived || !this.bridge?.connected;
             send.hidden = busy;
         }
         const stop = this.element?.querySelector<HTMLButtonElement>('[data-agent-action="stop"]');
@@ -964,7 +1186,7 @@ export default class AgentChat extends BaseComponent {
         }
     }
 
-    /** Append user or assistant text safely without interpreting message HTML. */
+    /** Append literal user text or sanitized assistant Markdown in a block-capable bubble. */
     private appendMessage(content: string, user: boolean): HTMLElement | null {
         if (!this.messages) return null;
         const welcome = this.element?.querySelector<HTMLElement>('[data-agent-welcome]');
@@ -972,11 +1194,11 @@ export default class AgentChat extends BaseComponent {
         const row = document.createElement('div');
         row.dataset.createdAt = new Date().toISOString();
         row.className = user ? 'flex justify-end' : 'flex';
-        const text = document.createElement('p');
+        const text = document.createElement(user ? 'p' : 'div');
         text.className = user
             ? 'max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-primary px-3.5 py-2.5 text-sm leading-6 text-white'
-            : 'min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-gray-600 dark:text-zinc-300';
-        text.textContent = content;
+            : 'agent-markdown min-w-0 w-full break-words text-sm leading-6 text-gray-600 dark:text-zinc-300';
+        renderAgentMessage(text, content, user);
         row.append(text);
         this.messages.append(row);
         return text;
@@ -990,6 +1212,8 @@ export default class AgentChat extends BaseComponent {
 
     /** Release component-owned listeners when the chat is destroyed. */
     public override destroy(): void {
+        this.cancelMarkdownFrame();
+        this.setProgress(null);
         this.lifecycle?.abort();
         this.lifecycle = null;
         if (this.historySearchTimer !== null) window.clearTimeout(this.historySearchTimer);

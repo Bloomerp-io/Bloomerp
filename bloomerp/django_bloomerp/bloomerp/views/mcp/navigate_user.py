@@ -17,6 +17,7 @@ from bloomerp.router import router
 from bloomerp.views.mcp.view_pages import UI_ROUTE_TYPES
 
 
+
 class NavigateUserInputSerializer(serializers.Serializer):
     """Accept an instance-local URL and an optional explicit browser tab."""
 
@@ -93,7 +94,9 @@ def normalize_navigation_url(request: HttpRequest, value: str) -> str:
         ),
         input_schema=serializer_input_schema(NavigateUserInputSerializer),
         output_schema=serializer_output_schema(NavigateUserOutputSerializer),
-        read_only_hint=False, destructive_hint=False, open_world_hint=False,
+        read_only_hint=True, 
+        destructive_hint=False, 
+        open_world_hint=False,
     ),
 )
 def navigate_user(request: HttpRequest) -> dict[str, Any] | Response:

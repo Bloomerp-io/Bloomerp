@@ -78,6 +78,7 @@ class AgentConsumerTests(SimpleTestCase):
                         "conversation_id": str(conversation_id),
                         "client_message_id": str(message_id),
                         "active_run_behavior": "steer",
+                        "approval_rules": {"default": "never"},
                         "page": {"tab_id": str(uuid4()), "page_id": "forged"},
                     }
                 )
@@ -88,6 +89,7 @@ class AgentConsumerTests(SimpleTestCase):
                 self.assertEqual(request.conversation_id, conversation_id)
                 self.assertEqual(request.client_message_id, message_id)
                 self.assertEqual(request.active_run_behavior, "steer")
+                self.assertEqual(request.approval_rules.default, "never")
                 self.assertEqual(request.attachments, ["signed-selection"])
                 self.assertEqual(request.browser_context.tab_id, self.tab_id)
                 self.assertEqual(request.browser_context.page_id, "invoices")
@@ -111,6 +113,11 @@ class AgentConsumerTests(SimpleTestCase):
                     {"type": "chat.message", "message": " "},
                     {"type": "chat.message", "message": "Hi", "conversation_id": "bad"},
                     {"type": "chat.message", "message": "Hi", "user_id": 2},
+                    {
+                        "type": "chat.message",
+                        "message": "Hi",
+                        "approval_rules": {"default": "invalid"},
+                    },
                     {
                         "type": "chat.replay",
                         "conversation_id": str(uuid4()),

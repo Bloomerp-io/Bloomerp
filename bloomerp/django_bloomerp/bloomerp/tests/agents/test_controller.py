@@ -1,7 +1,7 @@
 """Exercise persisted controller orchestration with the real offline PydanticAI loop."""
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -21,15 +21,18 @@ from bloomerp.agents.controller import (
     AgentController,
     AgentReplayRequest,
 )
-from bloomerp.agents.pydantic_ai import PydanticAIRuntime
 from bloomerp.agents.runtime import (
+    AgentRuntime,
+    AgentRuntimeConfig,
     AgentRuntimeCredentials,
     AgentRuntimeEvent,
     AgentRuntimeRunRequest,
     AgentRuntimeToolCoordinator,
 )
+from bloomerp.agents.runtimes.pydantic_ai import PydanticAIRuntime
 from bloomerp.config.definition import BloomerpAgentSettings, BloomerpConfig
-from bloomerp.models.agents import AIMessage, AIRun
+from bloomerp.models.agents import AIAgent, AIMessage, AIRun
+from bloomerp.models.users.user import AbstractBloomerpUser
 
 OPTIONS = {
     "config": {
@@ -46,10 +49,13 @@ OPTIONS = {
 
 def agent_test_config(options: dict[str, object] | None = None) -> BloomerpConfig:
     """Build project settings with offline agent options for integration tests."""
+    operations = {
+        key: value
+        for key, value in (options or {}).items()
+        if key in {"mcp_origin", "lease_seconds", "history_limit"}
+    }
     return BloomerpConfig(
-        bloomai_settings=BloomerpAgentSettings.model_validate(
-            OPTIONS if options is None else options
-        )
+        bloomai_settings=BloomerpAgentSettings.model_validate(operations)
     )
 
 
@@ -82,9 +88,66 @@ def model_factory(
     return FunctionModel(stream_function=text_stream)
 
 
-def offline_runtime() -> PydanticAIRuntime:
+def offline_runtime(config: AgentRuntimeConfig) -> PydanticAIRuntime:
     """Return the real adapter with an offline model for controller integration tests."""
     return PydanticAIRuntime(model_factory=model_factory)
+
+
+def configure_test_agent(
+    user: AbstractBloomerpUser,
+    factory: Callable[[AgentRuntimeConfig], AgentRuntime] = offline_runtime,
+) -> AIAgent:
+    """Create an encrypted offline model and grant only its existing view/use permission."""
+    from django.contrib.auth.models import Permission
+    from django.contrib.contenttypes.models import ContentType
+
+    from bloomerp.agents.providers.builtins.pydantic_ai_common import PydanticAISettings
+    from bloomerp.agents.providers.definition import AIProviderDefinition
+    from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY
+    from bloomerp.agents.runtimes.pydantic_ai import PydanticAIProvider
+    from bloomerp.models.access_control import (
+        FieldPolicy,
+        Policy,
+        RowPolicy,
+        RowPolicyRule,
+    )
+    from bloomerp.models.agents import AIAgent
+
+    key = "test_" + factory.__name__
+    if AI_PROVIDER_REGISTRY.get(key) is None:
+        AI_PROVIDER_REGISTRY.register(
+            key,
+            AIProviderDefinition(
+                id=key,
+                name=key,
+                runtime_factory=factory,
+                config_schema=PydanticAISettings,
+                integration=PydanticAIProvider(model_factory),
+            ),
+        )
+    model = AIAgent.objects.create(
+        name="Offline model", provider=key, model_identifier="offline", created_by=user
+    )
+    model.set_credentials({"api_key": "never-store-this-secret"})
+    model.save()
+    content_type = ContentType.objects.get_for_model(AIAgent)
+    permission = Permission.objects.get(
+        content_type=content_type, codename="view_aiagent"
+    )
+    row_policy = RowPolicy.objects.create(content_type=content_type)
+    rule = RowPolicyRule.objects.create(
+        row_policy=row_policy, rule={"connector": "AND", "conditions": []}
+    )
+    rule.permissions.add(permission)
+    field_policy = FieldPolicy.objects.create(
+        name="AI picker", content_type=content_type, rule={"__all__": ["view_aiagent"]}
+    )
+    policy = Policy.objects.create(
+        name="Use AI agent", row_policy=row_policy, field_policy=field_policy
+    )
+    policy.users.add(user)
+    policy.global_permissions.add(permission)
+    return model
 
 
 class InterruptedRuntime(PydanticAIRuntime):
@@ -110,7 +173,7 @@ class InterruptedRuntime(PydanticAIRuntime):
             await stream.aclose()
 
 
-def interrupted_runtime() -> InterruptedRuntime:
+def interrupted_runtime(config: AgentRuntimeConfig) -> InterruptedRuntime:
     """Build an offline provider that simulates an executor shutdown at a safe boundary."""
     return InterruptedRuntime(model_factory=model_factory)
 
@@ -126,21 +189,21 @@ class AgentControllerTests(TestCase):
         """Create separate actors and a stable client submission identity."""
         self.user = get_user_model().objects.create_user(username="controller-owner")
         self.other = get_user_model().objects.create_user(username="controller-other")
+        self.ai_agent = configure_test_agent(self.user)
         self.controller = AgentController(self.user, tab_id=uuid4())
         self.request = AgentChatRequest(
             client_message_id=uuid4(), content=[{"type": "text", "text": "Hello"}]
         )
 
-    def test_default_api_key_comes_from_environment_without_serializing(self) -> None:
-        """Read the configured key at creation while keeping it out of project data."""
-        with patch.dict("os.environ", {"BLOOMERP_AGENT_API_KEY": "environment-test-key"}):
-            config = BloomerpConfig()
-        self.assertEqual(
-            config.bloomai_settings.api_key.get_secret_value(),
-            "environment-test-key",
-        )
-        self.assertNotIn("environment-test-key", repr(config))
-        self.assertNotIn("environment-test-key", config.model_dump_json())
+    def test_instance_settings_reject_model_specific_values(self) -> None:
+        """Keep model secrets and execution settings out of instance configuration."""
+        for values in (
+            {"api_key": "secret"},
+            {"config": OPTIONS["config"]},
+            {"budgets": {"max_tokens": 1}},
+        ):
+            with self.assertRaises(ValueError):
+                BloomerpAgentSettings.model_validate(values)
 
     def execute_run(self, run: AIRun) -> None:
         """Consume a complete attempt synchronously through the async controller API."""
@@ -261,6 +324,60 @@ class AgentControllerTests(TestCase):
         self.assertEqual(run.messages.get(sequence=3).status, "interrupted")
         self.assertEqual(run.attempts.count(), 2)
 
+    def test_replay_finishes_pending_cancellation_after_executor_loss(self) -> None:
+        """Finish Stop after lease expiry without cancelling live or unrequested work."""
+        run = AIRun.objects.get(pk=self.controller.accept_message(self.request).run_id)
+        attempt = run.create_attempt(
+            execution_mode="inline",
+            executor_id="lost-executor",
+            lease_duration=timedelta(minutes=1),
+        )
+        replay_request = AgentReplayRequest(
+            conversation_id=run.conversation_id, run_id=run.pk
+        )
+        async_to_sync(self.controller.cancel)(run.pk)
+        run.refresh_from_db()
+        requested_at = run.cancel_requested_at
+        self.controller.replay_page(replay_request)
+        run.refresh_from_db()
+        self.assertEqual(run.status, "running")
+        self.assertEqual(run.cancel_requested_at, requested_at)
+
+        attempt.lease_expires_at = timezone.now() - timedelta(seconds=1)
+        attempt.save()
+        page = async_to_sync(self.controller.replay)(replay_request)
+        run.refresh_from_db()
+        attempt.refresh_from_db()
+        self.assertEqual(run.status, "cancelled")
+        self.assertEqual(attempt.status, "abandoned")
+        self.assertEqual(run.cancel_requested_at, requested_at)
+        self.assertEqual(page.events[-1].event_type, "run.cancelled")
+        self.controller.replay_page(replay_request)
+        self.assertEqual(run.events.filter(event_type="run.cancelled").count(), 1)
+
+        fresh = self.request.model_copy(
+            update={
+                "client_message_id": uuid4(),
+                "conversation_id": run.conversation_id,
+            }
+        )
+        next_run = AIRun.objects.get(pk=self.controller.accept_message(fresh).run_id)
+        stale_attempt = next_run.create_attempt(
+            execution_mode="inline",
+            executor_id="another-lost-executor",
+            lease_duration=timedelta(minutes=1),
+        )
+        stale_attempt.lease_expires_at = timezone.now() - timedelta(seconds=1)
+        stale_attempt.save()
+        self.controller.replay_page(
+            AgentReplayRequest(
+                conversation_id=next_run.conversation_id, run_id=next_run.pk
+            )
+        )
+        next_run.refresh_from_db()
+        self.assertEqual(next_run.status, "running")
+        self.assertIsNone(next_run.cancel_requested_at)
+
     def test_dispatch_failure_and_worker_payload(self) -> None:
         """Keep worker messages secret-free and record broker failures durably."""
         run = AIRun.objects.get(pk=self.controller.accept_message(self.request).run_id)
@@ -281,9 +398,11 @@ class AgentControllerTests(TestCase):
 
     def test_worker_mode_uses_celery_availability_and_external_broker(self) -> None:
         """Dispatch through workers only when Celery has a shared broker."""
-        with patch("bloomerp.celery.utils.is_celery_available", return_value=False):
-            with override_settings(CELERY_BROKER_URL="redis://localhost:6379/0"):
-                self.assertFalse(self.controller.worker_mode())
+        with (
+            patch("bloomerp.celery.utils.is_celery_available", return_value=False),
+            override_settings(CELERY_BROKER_URL="redis://localhost:6379/0"),
+        ):
+            self.assertFalse(self.controller.worker_mode())
         with patch("bloomerp.celery.utils.is_celery_available", return_value=True):
             with override_settings(CELERY_BROKER_URL="memory://"):
                 self.assertFalse(self.controller.worker_mode())
@@ -307,11 +426,10 @@ class AgentControllerTests(TestCase):
         """Recover the same logical run after shutdown with its provider history intact."""
         run = AIRun.objects.get(pk=self.controller.accept_message(self.request).run_id)
         with (
-            override_settings(
-                BLOOMERP_CONFIG=agent_test_config({
-                    **OPTIONS,
-                    "runtime_factory": "bloomerp.tests.agents.test_controller.interrupted_runtime",
-                })
+            patch.object(
+                self.controller,
+                "get_runtime",
+                return_value=interrupted_runtime(run.runtime_config()),
             ),
             self.assertRaises(asyncio.CancelledError),
         ):

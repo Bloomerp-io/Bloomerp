@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from typing import TYPE_CHECKING, Any
@@ -90,7 +91,7 @@ class OneToManyField(forms.Field):
         self.parent_instance = instance
 
     def clean(self, value: Any) -> OneToManyCleanedData:
-        """Validate inline rows with nested uploads bound as child-form files."""
+        """Validate inline rows with repeated selections and separate child-form uploads."""
         rows = super().clean(value) or []
         if not isinstance(rows, list):
             raise ValidationError("Invalid one-to-many field value.", code="invalid")
@@ -124,7 +125,7 @@ class OneToManyField(forms.Field):
                 continue
 
             child_form = child_form_class(
-                row,
+                self._row_form_data(row, child_form_class.base_fields),
                 files=self._uploaded_files(row),
                 instance=instance,
             )
@@ -146,6 +147,24 @@ class OneToManyField(forms.Field):
         if errors:
             raise ValidationError(errors)
         return result
+
+    @staticmethod
+    def _row_form_data(
+        row: dict[str, Any], form_fields: Mapping[str, forms.Field]
+    ) -> dict[str, Any]:
+        """Normalize only multiple-choice values, preserving scalar, JSON, and file data."""
+        data = row.copy()
+        for name, field in form_fields.items():
+            if name not in data or not isinstance(
+                field, (forms.MultipleChoiceField, forms.ModelMultipleChoiceField)
+            ):
+                continue
+            value = data[name]
+            if value in (None, ""):
+                data[name] = []
+            elif not isinstance(value, (list, tuple)):
+                data[name] = [value]
+        return data
 
     @staticmethod
     def _uploaded_files(row: dict[str, Any]) -> dict[str, UploadedFile]:

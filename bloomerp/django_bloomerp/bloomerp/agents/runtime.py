@@ -89,6 +89,7 @@ class AgentRuntimeCredentials(AgentRuntimePayload):
     """
 
     api_key: SecretStr | None = Field(default=None, exclude=True, repr=False)
+    provider_credentials: BaseModel | None = Field(default=None, exclude=True, repr=False)
 
 
 class AgentRuntimeContext(AgentRuntimePayload):
@@ -372,6 +373,13 @@ class AgentRuntimeToolOutcomeEvent(AgentRuntimeEventBase):
     outcome: AgentRuntimeToolOutcome
 
 
+class AgentRuntimeToolStartedEvent(AgentRuntimeEventBase):
+    """Announce a persisted tool that has passed approval and is about to execute."""
+
+    kind: Literal["tool.started"] = "tool.started"
+    tool_call_id: UUID
+
+
 class AgentRuntimeArtifactCreatedEvent(AgentRuntimeEventBase):
     """Reference an artifact already persisted by an authorized tool operation."""
 
@@ -445,6 +453,7 @@ class AgentRuntimeRunFailedEvent(AgentRuntimeEventBase):
 
 type AgentRuntimeEvent = Annotated[
     AgentRuntimeTextDeltaEvent
+    | AgentRuntimeToolStartedEvent
     | AgentRuntimeToolOutcomeEvent
     | AgentRuntimeArtifactCreatedEvent
     | AgentRuntimeUsageUpdatedEvent
@@ -562,7 +571,6 @@ class AgentRuntimeAttempt:
             output_tokens=self.output_tokens,
             tool_calls=self.tool_calls,
             duration_seconds=max(0, monotonic() - self.started),
-            currency=self.request.budgets.currency,
         )
 
     async def emit(self, event: AgentRuntimeEvent) -> None:
@@ -622,10 +630,6 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
                 raise ValueError(
                     "Provider base_url must be an HTTP endpoint without credentials or query parameters"
                 )
-        if request.budgets.max_cost is not None:
-            raise ValueError(
-                "Cost budgets require a pricing integration; use token limits for now"
-            )
         for tool in request.tools:
             validator_for(tool.input_schema).check_schema(tool.input_schema)
             if tool.input_schema.get("type") != "object":

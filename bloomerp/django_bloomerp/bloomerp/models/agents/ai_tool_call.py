@@ -53,6 +53,7 @@ class AIToolCall(AgentModel):
         "run_id",
         "tool_identifier",
         "tool_version",
+        "tool_title",
         "provider_call_id",
         "idempotency_key",
         "arguments",
@@ -70,6 +71,7 @@ class AIToolCall(AgentModel):
     )
     tool_identifier = models.CharField(max_length=255)
     tool_version = models.CharField(max_length=100)
+    tool_title = models.CharField(max_length=511, blank=True, default="")
     provider_call_id = models.CharField(max_length=255)
     idempotency_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     status = models.CharField(
@@ -83,7 +85,9 @@ class AIToolCall(AgentModel):
     finished_at = models.DateTimeField(null=True, blank=True)
 
     def display_title(self) -> str:
-        """Return the registered MCP title for this tool, falling back to its identifier."""
+        """Return the pinned tool title, retaining local registry fallback for older calls."""
+        if self.tool_title:
+            return self.tool_title
         from bloomerp.router import router
 
         for route in router.get_mcp_routes():
@@ -133,8 +137,9 @@ class AIToolCall(AgentModel):
         proposal: "AgentRuntimeToolProposal",
         *,
         requires_approval: bool,
+        tool_title: str = "",
     ) -> tuple["AIToolCall", bool]:
-        """Serialize proposal identity, approval and dispatch ownership under the run lease."""
+        """Pin a safe display title and serialize proposal, approval and dispatch under the run lease."""
         from django.utils import timezone
 
         from .ai_approval import AIApproval
@@ -150,6 +155,7 @@ class AIToolCall(AgentModel):
                     "tool_identifier": proposal.tool_identifier,
                     "tool_version": proposal.tool_version,
                     "arguments": proposal.arguments,
+                    "tool_title": tool_title[:511],
                 },
             )
             expected = proposal_fingerprint(

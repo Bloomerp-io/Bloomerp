@@ -1,7 +1,7 @@
 /** Verify base-page startup and browser navigation without opening a real socket. */
 import assert from 'node:assert/strict';
-import test from 'node:test';
-import BloomerpAgent, { initBrowserAgent } from './agent.ts';
+import test, { mock } from 'node:test';
+import BloomerpAgent, { initBrowserAgent, navigateAgentPage } from './agent.ts';
 
 class BrowserLocation {
     origin: string = 'https://erp.test';
@@ -93,18 +93,24 @@ class BrowserSocket extends EventTarget {
 }
 
 /** Exercise the actual startup, stale-page guard, same-origin guard, and navigation ack. */
-function verifyBrowserBridge(): void {
+async function verifyBrowserBridge(): Promise<void> {
     const browserWindow = new BrowserWindow();
     const browserDocument = new BrowserDocument();
     Object.assign(globalThis, {
         window: browserWindow, document: browserDocument,
         sessionStorage: new BrowserStorage(), WebSocket: BrowserSocket,
     });
-    initBrowserAgent();
+    const navigations: string[] = [];
+    /** Capture HTMX navigation without unloading this test's shared connection. */
+    async function navigate(url: string): Promise<void> {
+        if (url.endsWith('/failed/')) throw new Error('Navigation failed');
+        navigations.push(url);
+    }
+    initBrowserAgent(navigate);
     assert.equal(BrowserSocket.sockets.length, 0, 'Anonymous pages do not connect');
     browserDocument.body.dataset.bloomerpAgent = 'enabled';
-    initBrowserAgent();
-    initBrowserAgent();
+    initBrowserAgent(navigate);
+    initBrowserAgent(navigate);
     assert.equal(BrowserSocket.sockets.length, 1, 'Startup opens exactly one connection');
     const socket = BrowserSocket.sockets[0];
     assert.match(socket.url, /^wss:\/\/erp\.test\/ws\/agents\/[0-9a-f-]+\/$/);
@@ -123,14 +129,29 @@ function verifyBrowserBridge(): void {
     assert.equal(socket.sent.at(-1)?.status, 'failed');
     assert.equal(browserWindow.location.assigned, null);
     socket.receive({ ...command, arguments: { url: '/customers/?q=one#card' } });
-    assert.equal(socket.sent.at(-1)?.status, 'accepted');
-    assert.equal(browserWindow.location.assigned, 'https://erp.test/customers/?q=one#card');
+    await Promise.resolve();
+    assert.equal(socket.sent.at(-1)?.status, 'completed');
+    assert.deepEqual(navigations, ['https://erp.test/customers/?q=one#card']);
+    assert.equal(browserWindow.location.assigned, null);
+    assert.equal(BrowserSocket.sockets.length, 1);
+    socket.receive({ ...command, arguments: { url: '/failed/' } });
+    await Promise.resolve();
+    assert.equal(socket.sent.at(-1)?.status, 'failed');
     browserDocument.dispatchEvent(new Event('htmx:afterSettle'));
     const nextPage = socket.sent.at(-1)?.page as Record<string, unknown>;
     assert.notEqual(nextPage.page_id, page.page_id);
     const bridge = browserWindow.bloomerpAgent!;
     assert.equal(bridge.connected, true);
     const messageId = crypto.randomUUID();
+    bridge.listAgents();
+    assert.deepEqual(socket.sent.at(-1), {type: 'chat.agents'});
+    bridge.sendChat('Chat request', null, messageId, [], 'configured-model-id', {default: 'never', tools: {}});
+    assert.deepEqual(socket.sent.at(-1)?.approval_rules, {default: 'never', tools: {}});
+    assert.equal(socket.sent.at(-1)?.agent_id, 'configured-model-id');
+    bridge.editConversation('model-change', 'conversation', {agent_id: 'second-model'});
+    assert.equal(socket.sent.at(-1)?.agent_id, 'second-model');
+    bridge.editConversation('approval-change', 'conversation', {approval_rules: {default: 'always', tools: {}}});
+    assert.deepEqual(socket.sent.at(-1)?.approval_rules, {default: 'always', tools: {}});
     bridge.sendChat('Chat request', null, messageId);
     assert.equal(socket.sent.at(-1)?.client_message_id, messageId);
     bridge.sendChat('', null, messageId, ['signed-file-selection']);
@@ -155,3 +176,40 @@ function verifyBrowserBridge(): void {
 }
 
 test('authenticated base pages connect and execute guarded navigation', verifyBrowserBridge);
+
+/** Exercise the production navigator's target, history options and failure propagation. */
+async function verifyHtmxNavigation(): Promise<void> {
+    const calls: unknown[][] = [];
+    let targetExists = true;
+    let failure = false;
+    const target = {};
+    const document = new EventTarget();
+    /** Resolve only the persistent application's main target for this fixture. */
+    function querySelector(selector: string): object | null {
+        assert.equal(selector, '#main-content');
+        return targetExists ? target : null;
+    }
+    /** Record the actual HTMX request and emulate a failed destination response. */
+    async function ajax(method: string, url: string, options: Record<string, unknown>): Promise<void> {
+        calls.push([method, url, options]);
+        document.dispatchEvent(new CustomEvent('htmx:afterRequest', {
+            detail: {target, failed: failure, pathInfo: {requestPath: url}},
+        }));
+    }
+    const mocked = mock.module('htmx.org', {defaultExport: {ajax}});
+    Object.assign(document, {querySelector});
+    Object.assign(globalThis, {document});
+    try {
+        await navigateAgentPage('/customers/?q=one#card');
+        assert.deepEqual(calls, [['get', '/customers/?q=one#card', {
+            target: '#main-content', swap: 'innerHTML', push: 'true',
+        }]]);
+        failure = true;
+        await assert.rejects(navigateAgentPage('/failed/'), /Destination could not be loaded/);
+        targetExists = false;
+        await assert.rejects(navigateAgentPage('/customers/'), /Main content is unavailable/);
+        assert.equal(calls.length, 2);
+    } finally { mocked.restore(); }
+}
+
+test('navigation swaps only main content and pushes HTMX history', verifyHtmxNavigation);

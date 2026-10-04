@@ -187,7 +187,7 @@ class AIRun(AgentModel):
                 execution_mode=execution_mode,
                 executor_id=executor_id,
                 lease_token=uuid4(),
-                usage=RunUsage(currency=run.budgets.get("currency", "USD")),
+                usage=RunUsage(),
                 lease_expires_at=now + lease_duration,
                 heartbeat_at=now,
                 started_at=now,
@@ -225,6 +225,20 @@ class AIRun(AgentModel):
         for message in self.messages.filter(status="streaming"):
             message.status = status
             message.save()
+
+    def progress_snapshot(self) -> dict[str, Any] | None:
+        """Restore the latest observable stage without including arguments, results or checkpoints."""
+        event = self.events.filter(
+            event_type__in=["tool.started", "tool.outcome", "text.delta", "run.paused", "approval.decided"]
+        ).order_by("-sequence").first()
+        if event is None:
+            return None
+        data = event.payload.get("data", {})
+        return {
+            "sequence": event.sequence,
+            "event_type": event.event_type,
+            "payload": {"data": {key: data[key] for key in ("tool_title", "status", "wait_kind") if key in data}},
+        }
 
     def append_event(
         self,
@@ -281,7 +295,7 @@ class AIRun(AgentModel):
         with self.locked() as run:
             if run.status in {"completed", "cancelled", "failed"}:
                 return None
-            run.cancel_requested_at = timezone.now()
+            run.cancel_requested_at = run.cancel_requested_at or timezone.now()
             active = run.attempts.filter(
                 status="running", lease_expires_at__gt=timezone.now()
             ).exists()
@@ -311,7 +325,7 @@ class AIRun(AgentModel):
     def apply_runtime_event(
         self, event: AgentRuntimeEvent, *, lease_token: UUID
     ) -> AIRunEvent:
-        """Persist fenced text, usage, checkpoints, and terminal state in one transaction."""
+        """Persist fenced progress, text, usage, checkpoints and terminal state atomically."""
         from .ai_message import AIMessage
 
         with self.locked() as run:
@@ -351,6 +365,14 @@ class AIRun(AgentModel):
                     "text": event.text,
                     "data": {"block_index": event.block_index, "format": event.format},
                 }
+            elif kind == "tool.started":
+                tool = run.tool_calls.get(pk=event.tool_call_id)
+                if tool.status != "running" or tool.first_dispatch_attempt_id != attempt.pk:
+                    raise ValidationError("Tool is not executing")
+                payload = {
+                    "tool_call_id": str(tool.pk),
+                    "data": {"tool_title": tool.display_title()},
+                }
             elif kind == "tool.outcome":
                 tool = run.tool_calls.get(pk=event.outcome.tool_call_id)
                 if tool.provider_call_id != event.outcome.provider_call_id:
@@ -360,6 +382,7 @@ class AIRun(AgentModel):
                     "data": {
                         "status": tool.status,
                         "tool_identifier": tool.tool_identifier,
+                        "tool_title": tool.display_title(),
                         "artifacts": [
                             {"id": str(link.artifact_id), "created_at": artifact_message.datetime_created.isoformat()}
                             for artifact_message in run.conversation.messages.filter(
@@ -405,17 +428,14 @@ class AIRun(AgentModel):
             if hasattr(event, "usage"):
                 attempt.usage = event.usage.model_dump(mode="json")
                 attempt.save()
-                totals = RunUsage(currency=event.usage.currency).model_dump(mode="json")
+                totals = RunUsage().model_dump(mode="json")
                 for values in run.attempts.values_list("usage", flat=True):
                     usage = RunUsage.model_validate(values)
-                    if usage.currency != totals["currency"]:
-                        raise ValidationError("Usage currencies must match")
                     for key in (
                         "input_tokens",
                         "output_tokens",
                         "tool_calls",
                         "duration_seconds",
-                        "cost",
                     ):
                         totals[key] += getattr(usage, key)
                 run.usage = totals
@@ -427,6 +447,7 @@ class AIRun(AgentModel):
                 attempt.finished_at = timezone.now()
                 run.status = "waiting" if kind == "run.paused" else attempt.status
                 if kind == "run.paused":
+                    payload["data"]["wait_kind"] = event.wait_condition.kind
                     run.wait_condition = event.wait_condition.model_dump(mode="json")
                     run.resume_after = event.resume_after
                 else:

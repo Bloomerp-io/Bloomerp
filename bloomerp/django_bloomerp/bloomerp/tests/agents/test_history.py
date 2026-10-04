@@ -18,9 +18,12 @@ from bloomerp.agents.controller import (
 )
 from bloomerp.agents.definition import MessageContent
 from bloomerp.agents.runtime import AgentRuntimeTextDeltaEvent
-from bloomerp.models.agents import AIConversation, AIRun
-from bloomerp.tests.agents.test_controller import agent_test_config
 from bloomerp.config.definition import BloomerpConfig
+from bloomerp.models.agents import AIConversation, AIRun
+from bloomerp.tests.agents.test_controller import (
+    agent_test_config,
+    configure_test_agent,
+)
 
 
 @override_settings(BLOOMERP_CONFIG=agent_test_config())
@@ -31,6 +34,7 @@ class AgentHistoryTests(TestCase):
         """Create two owners and several conversations without exposing other accounts."""
         self.user = get_user_model().objects.create_user(username="history-owner")
         self.other = get_user_model().objects.create_user(username="history-other")
+        self.ai_agent = configure_test_agent(self.user)
         self.controller = AgentController(self.user)
         self.first = AIConversation.objects.create(
             owner=self.user, title="First conversation"
@@ -206,3 +210,56 @@ class AgentHistoryTests(TestCase):
                 )
             )
         self.assertEqual(self.first.messages.count(), count)
+
+    def test_owner_can_change_approval_rules_and_other_owners_cannot(self) -> None:
+        """Persist conversation policy changes without changing another conversation's defaults."""
+        rules = {"default": "never", "tools": {"fixture_effect": "always"}}
+        response = self.controller.edit_conversation(
+            AgentConversationEdit(
+                request_id=uuid4(),
+                conversation_id=self.first.pk,
+                approval_rules=rules,
+            )
+        )
+        self.first.refresh_from_db()
+        self.assertEqual(self.first.approval_rules, rules)
+        self.assertEqual(response["conversation"]["approval_rules"], rules)
+        snapshot = self.controller.conversation_detail(
+            AgentConversationRequest(
+                request_id=uuid4(),
+                conversation_id=self.first.pk,
+            )
+        )
+        self.assertEqual(snapshot["conversation"]["approval_rules"], rules)
+        self.second.refresh_from_db()
+        self.assertEqual(self.second.approval_rules, {})
+        with self.assertRaises(PermissionDenied):
+            AgentController(self.other).edit_conversation(
+                AgentConversationEdit(
+                    request_id=uuid4(),
+                    conversation_id=self.first.pk,
+                    approval_rules={"default": "always"},
+                )
+            )
+        self.first.refresh_from_db()
+        self.assertEqual(self.first.approval_rules, rules)
+
+    def test_initial_approval_rules_are_owned_by_conversation_and_snapshot(
+        self,
+    ) -> None:
+        """Create a new chat with selected rules and retain them independently of the AI agent."""
+        submission = self.controller.accept_message(
+            AgentChatRequest(
+                content=[{"type": "text", "text": "No approval needed"}],
+                approval_rules={"default": "never"},
+            )
+        )
+        conversation = AIConversation.objects.get(pk=submission.conversation_id)
+        self.assertEqual(conversation.approval_rules["default"], "never")
+        self.assertEqual(
+            conversation.runs.get().config_snapshot["approval_rules"]["default"],
+            "never",
+        )
+        self.assertNotIn(
+            "approval_rules", {field.name for field in self.ai_agent._meta.fields}
+        )

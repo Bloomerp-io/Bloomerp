@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, transaction
 from django.db.models import Max
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.agents.definition import MessageContent, RunUsage
 from bloomerp.agents.runtime import AgentRuntimeMessage
@@ -17,6 +18,7 @@ from .base import AgentModel
 
 if TYPE_CHECKING:
     from bloomerp.agents.definition import BrowserContext, RunBudgets
+    from bloomerp.agents.mcp import AgentApprovalRules
     from bloomerp.agents.runtime import AgentRuntimeConfig
     from bloomerp.models.agents.ai_message import AIMessage
     from bloomerp.models.agents.ai_run import AIRun
@@ -43,10 +45,37 @@ class AIConversation(AgentModel):
         on_delete=models.CASCADE,
         related_name="ai_conversations",
     )
+    selected_agent = models.ForeignKey(
+        "bloomerp.AIAgent",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="conversations",
+    )
+    approval_rules = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("Tool Approval Rules"),
+        help_text=_(
+            "Conversation approval policy for new tool calls. Can be changed during a conversation; pending approvals still require a decision."
+        ),
+    )
     title = models.CharField(max_length=255, default="AI conversation")
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.OPEN
     )
+
+    def clean(self) -> None:
+        """Validate conversation approval rules before persisting metadata."""
+        from bloomerp.agents.mcp import AgentApprovalRules
+
+        super().clean()
+        try:
+            AgentApprovalRules.model_validate(self.approval_rules)
+        except ValueError as error:
+            raise ValidationError(
+                {"approval_rules": _("Invalid tool approval rules.")}
+            ) from error
 
     def __str__(self) -> str:
         """Return the user-visible conversation title."""
@@ -58,9 +87,13 @@ class AIConversation(AgentModel):
         return self.messages.count()
 
     def edit_metadata(
-        self, *, title: str | None = None, archived: bool | None = None
+        self,
+        *,
+        title: str | None = None,
+        archived: bool | None = None,
+        approval_rules: AgentApprovalRules | None = None,
     ) -> None:
-        """Rename or archive a conversation atomically without stopping any executions."""
+        """Update metadata and live tool approval rules without stopping executions."""
         with transaction.atomic():
             conversation = type(self).objects.select_for_update().get(pk=self.pk)
             if title is not None:
@@ -74,13 +107,17 @@ class AIConversation(AgentModel):
                 conversation.status = (
                     self.Status.ARCHIVED if archived else self.Status.OPEN
                 )
+            if approval_rules is not None:
+                conversation.approval_rules = approval_rules.model_dump(mode="json")
             conversation.save()
         self.refresh_from_db()
 
     def transcript_page(
         self, *, before_sequence: int | None = None, limit: int = 50
     ) -> dict[str, Any]:
-        """Read a bounded transcript and active-run replay cursor under the writer's conversation lock."""
+        """Read bounded text, safe progress and the replay cursor under the conversation lock."""
+        from bloomerp.agents.mcp import AgentApprovalRules
+
         from .ai_approval import AIApproval
 
         if not 1 <= limit <= 100 or (
@@ -92,7 +129,11 @@ class AIConversation(AgentModel):
             query = conversation.messages.filter(role__in=["user", "assistant"])
             if before_sequence is not None:
                 query = query.filter(sequence__lt=before_sequence)
-            rows = list(query.prefetch_related("artifact_links").order_by("-sequence")[: limit + 1])
+            rows = list(
+                query.prefetch_related("artifact_links").order_by("-sequence")[
+                    : limit + 1
+                ]
+            )
             has_more = len(rows) > limit
             rows = list(reversed(rows[:limit]))
             run = conversation.runs.order_by("-datetime_created", "-pk").first()
@@ -112,6 +153,12 @@ class AIConversation(AgentModel):
                     "id": str(conversation.pk),
                     "title": conversation.title,
                     "status": conversation.status,
+                    "approval_rules": AgentApprovalRules.model_validate(
+                        conversation.approval_rules
+                    ).model_dump(mode="json"),
+                    "selected_agent_id": str(conversation.selected_agent_id)
+                    if conversation.selected_agent_id
+                    else None,
                 },
                 "messages": [
                     {
@@ -120,7 +167,10 @@ class AIConversation(AgentModel):
                         "role": row.role,
                         "status": row.status,
                         "content": row.content_blocks,
-                        "artifacts": [{"id": str(link.artifact_id), "position": link.position} for link in row.artifact_links.all()],
+                        "artifacts": [
+                            {"id": str(link.artifact_id), "position": link.position}
+                            for link in row.artifact_links.all()
+                        ],
                         "created_at": row.datetime_created.isoformat(),
                     }
                     for row in rows
@@ -144,6 +194,7 @@ class AIConversation(AgentModel):
                     "client_message_id": str(run.trigger_message_id),
                     "cursor": cursor,
                     "cancel_requested": run.cancel_requested_at is not None,
+                    "progress": run.progress_snapshot(),
                 }
                 if run
                 else None,
@@ -182,7 +233,10 @@ class AIConversation(AgentModel):
             request = HttpRequest()
             request.user = self.owner
             resolved = []
-            links = {link.position: link.artifact for link in message.artifact_links.select_related("artifact")}
+            links = {
+                link.position: link.artifact
+                for link in message.artifact_links.select_related("artifact")
+            }
             for block in blocks:
                 if block.type == "text":
                     resolved.append(block)
@@ -191,7 +245,9 @@ class AIConversation(AgentModel):
                     if artifact is None:
                         raise ValidationError("Missing artifact link")
                     try:
-                        definition = AI_ARTIFACT_REGISTRY.get_type(artifact.kind, artifact.schema_version)
+                        definition = AI_ARTIFACT_REGISTRY.get_type(
+                            artifact.kind, artifact.schema_version
+                        )
                         payload = definition.model.model_validate(artifact.payload)
                         if definition.authorize is not None:
                             definition.authorize(payload, request)
@@ -278,6 +334,6 @@ class AIConversation(AgentModel):
                 agent_version=config.agent_version,
                 config_snapshot=config.to_snapshot(),
                 budgets=budgets,
-                usage=RunUsage(currency=budgets.currency),
+                usage=RunUsage(),
                 origin_browser_context=browser_context,
             )

@@ -34,7 +34,11 @@ def describe_file(payload: FileArtifactPayload) -> AIArtifactDescription:
     """Describe the reference without fetching content or asserting target access."""
     return AIArtifactDescription(
         title=payload.name,
-        summary=f"Attached file {payload.file_id} ({payload.media_type}); use an available file-reading tool to inspect it.",
+        summary=(
+            f"Attached file {payload.file_id} ({payload.media_type}); "
+            "use api_assistant_file_link with this file_id to attach it to an object "
+            "or folder without uploading it again. Use a file-reading tool to inspect its contents."
+        ),
     )
 
 

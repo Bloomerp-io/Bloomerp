@@ -110,7 +110,12 @@ class TestSearchArtifacts(BloomerpComponentTestCase):
 
     def categories(self, response: HttpResponse) -> bool:
         """Keep visualization-only types out of manual attachment discovery."""
-        return {item["key"] for item in response.json()["types"]} == {"file", "module", "object"}
+        return {item["key"] for item in response.json()["types"]} == {
+            "file",
+            "module",
+            "model",
+            "object",
+        }
 
     def signed_file(self, response: HttpResponse) -> bool:
         """Return source metadata with a signed token and never a storage URL."""

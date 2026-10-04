@@ -91,9 +91,8 @@ class TestAssistantObjectRetrieveView(BloomerpAPIViewTestCase):
         scenario.query_params["object_id"] = str(hidden_label.pk)
 
     def object_was_retrieved(self, response: HttpResponse) -> bool:
-        """Verify the artifact identity, mutation resource, and exact readable fields."""
+        """Verify the shared model-label identity and exact readable fields."""
         return response.json() == {
-            "resource": "todo_labels",
             "model_label": TodoLabel._meta.label,
             "object_id": str(self.label.pk),
             "object": {"id": str(self.label.pk), "name": "Current name"},
