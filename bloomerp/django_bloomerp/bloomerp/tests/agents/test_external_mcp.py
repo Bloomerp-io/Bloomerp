@@ -377,6 +377,38 @@ class TestExternalMcpExecution(BloomerpChannelTestCase):
         self.assertFalse(run.tool_calls.exists())
         self.assertEqual(self.server.effects, [])
 
+    def test_agent_grant_revoked_during_catalog_prevents_external_effect(self) -> None:
+        """Recheck agent use after remote catalog I/O and immediately before tools/call."""
+        from bloomerp.models.agents import AIAgentAccess
+
+        self.agent.created_by = self.other
+        self.agent.save()
+        grant = AIAgentAccess.objects.create(
+            name="Temporary agent audience",
+            model=self.agent,
+            all_authenticated_users=True,
+        )
+        _, _, proposal = self.run_coordinator()
+        handle = self.server.handle
+
+        def revoke_after_catalog(request: httpx.Request) -> httpx.Response:
+            """Revoke the grant after answering tools/list, before the effect request."""
+            response = handle(request)
+            if (
+                request.method == "POST"
+                and json.loads(request.content).get("method") == "tools/list"
+            ):
+                grant.all_authenticated_users = False
+                grant.save(update_fields=["all_authenticated_users"])
+            return response
+
+        with (
+            patch.object(self.server, "handle", side_effect=revoke_after_catalog),
+            self.assertRaises(PermissionDenied),
+        ):
+            self.client.dispatch(proposal)
+        self.assertEqual(self.server.effects, [])
+
     def test_stale_approval_refuses_rotated_credentials(self) -> None:
         """Prevent an approved proposal from running against a different account revision."""
         run = self.new_run()

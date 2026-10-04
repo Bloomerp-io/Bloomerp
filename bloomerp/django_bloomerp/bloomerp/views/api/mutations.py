@@ -418,12 +418,11 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
 
         return operations
 
-    def _has_action_access(self, resolver: ApiAccessResolver, model, action: str) -> bool:
-        if getattr(resolver.permission_manager.user, "is_superuser", False):
-            return True
-        return (
-            resolver.has_action_access(model, action)
-        )
+    def _has_action_access(
+        self, resolver: ApiAccessResolver, model: type[Model], action: str
+    ) -> bool:
+        """Use the shared operation contract, including private-model restrictions."""
+        return resolver.has_action_access(model, action)
 
     def _get_writable_fields(self, request, resolver: ApiAccessResolver, model, action: str) -> list[dict]:
         allowed_fields = resolver.get_accessible_field_names(model, action)

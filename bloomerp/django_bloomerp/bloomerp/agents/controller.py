@@ -284,7 +284,9 @@ class AgentController:
             "instance_origin"
         ) or self.instance_settings().mcp_origin
         return AgentMcpClient(
-            run.initiated_by_id, origin, agent_id=run.config_snapshot.get("model_record_id")
+            run.initiated_by_id,
+            origin,
+            agent_id=run.config_snapshot.get("model_record_id"),
         )
 
     def authorize(self) -> None:
@@ -478,6 +480,8 @@ class AgentController:
             else:
                 conversation = AIConversation.objects.create(
                     owner=self.user,
+                    created_by=self.user,
+                    updated_by=self.user,
                     title=next(
                         (
                             block.text.strip()
@@ -557,6 +561,35 @@ class AgentController:
         task = asyncio.create_task(self.dispatch(run_id))
         _live_tasks.add(task)
         task.add_done_callback(self.task_finished)
+
+    def dispatch_sync(self, run_id: UUID) -> None:
+        """Dispatch committed HTTP/MCP submissions without a short-lived background loop.
+
+        Production uses the configured Celery worker. Without an external broker,
+        the development fallback completes the attempt within the request.
+        """
+        run = self.load_run(run_id)
+        if run.status != "queued":
+            return
+        if self.worker_mode():
+            from bloomerp.celery.tasks.agent_task import execute_agent_run
+
+            try:
+                execute_agent_run.delay(str(run_id), str(self.user.pk))
+            except Exception:  # noqa: BLE001 - broker errors may contain credentials
+                event = run.fail_queued(
+                    AgentError(
+                        code="dispatch_failed",
+                        message="The agent could not be scheduled.",
+                        retryable=True,
+                    )
+                )
+                if event:
+                    async_to_sync(self.publish)(event)
+        else:
+            async_to_sync(self.run_attempt)(
+                run_id, execution_mode="inline", executor_id=f"http:{uuid4()}"
+            )
 
     async def dispatch(self, run_id: UUID) -> None:
         """Dispatch only IDs to workers, or retain a managed task on the application loop."""
@@ -711,7 +744,9 @@ class AgentController:
                 usage=RunUsage.model_validate(attempt.usage),
                 error=AgentError(
                     code="execution_failed",
-                    message=str(error) if isinstance(error, MCPUnavailableError) else "The agent could not complete this response.",
+                    message=str(error)
+                    if isinstance(error, MCPUnavailableError)
+                    else "The agent could not complete this response.",
                     retryable=True,
                     details={
                         "exception_type": type(error).__name__,

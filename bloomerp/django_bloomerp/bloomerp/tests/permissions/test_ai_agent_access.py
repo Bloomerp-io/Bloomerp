@@ -1,14 +1,15 @@
 """Exercise explicit agent-use authorization at the manager and controller boundaries."""
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser, Group
+from django.core.exceptions import PermissionDenied
+from django.test import TestCase, override_settings
+
 from bloomerp.agents.access import AIAgentAccessManager
 from bloomerp.agents.controller import AgentController
 from bloomerp.models.agents import AIAgent, AIAgentAccess
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.tests.agents.test_controller import agent_test_config
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser, Group
-from django.core.exceptions import PermissionDenied
-from django.test import TestCase, override_settings
 
 
 @override_settings(BLOOMERP_CONFIG=agent_test_config())
@@ -90,3 +91,34 @@ class AIAgentAccessTests(TestCase):
         self.assertEqual(AgentController(self.user).available_agents(), [])
         with self.assertRaises(PermissionDenied):
             AgentController(self.user).select_agent(self.agent.pk)
+
+    def test_staff_flag_and_account_revocation_refresh_stale_actors(self) -> None:
+        """Drop staff and active status live even when a socket retains an old actor."""
+        self.grant.all_staff_users = True
+        self.grant.save()
+        self.user.is_staff = True
+        self.user.save()
+        manager = AIAgentAccessManager(self.user)
+        self.assertTrue(manager.can_use(self.agent))
+        type(self.user).objects.filter(pk=self.user.pk).update(is_staff=False)
+        self.assertFalse(manager.can_use(self.agent))
+        self.grant.all_authenticated_users = True
+        self.grant.save()
+        self.assertTrue(manager.can_use(self.agent))
+        type(self.user).objects.filter(pk=self.user.pk).update(is_active=False)
+        self.assertFalse(manager.can_use(self.agent))
+
+    def test_revoked_agent_grant_blocks_tool_dispatch(self) -> None:
+        """Recheck live use grants before tools, independently of the tool allowlist."""
+        from bloomerp.agents.mcp import LocalMcpClient
+
+        self.grant.all_authenticated_users = True
+        self.grant.save()
+        client = LocalMcpClient(self.user.pk, "https://testserver", self.agent.pk)
+        client.check_tool_access(self.agent.pk, "api_assistant_mutations")
+        self.grant.all_authenticated_users = False
+        self.grant.save()
+        with self.assertRaises(PermissionDenied):
+            client.check_tool_access(self.agent.pk, "api_assistant_mutations")
+        with self.assertRaises(PermissionDenied):
+            client.request("tools/list")

@@ -1,5 +1,6 @@
 """Agent-use authorization, separate from administrative row and field policies."""
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Q, QuerySet
 
@@ -17,15 +18,22 @@ class AIAgentAccessManager:
     def get_accessible_queryset(self) -> QuerySet[AIAgent]:
         """Return agents the active actor may use, without exposing credentials."""
         query = AIAgent.objects.all()
-        if not self.user.is_authenticated or not self.user.is_active:
+        if not self.user.is_authenticated:
             return query.none()
-        if self.user.is_superuser:
+        user = get_user_model().objects.filter(pk=self.user.pk, is_active=True).first()
+        if user is None:
+            return query.none()
+        if user.is_superuser:
             return query
-        return query.filter(
-            Q(created_by_id=self.user.pk)
-            | Q(access__users=self.user)
-            | Q(access__groups__in=self.user.groups.all())
-        ).distinct()
+        grants = (
+            Q(created_by_id=user.pk)
+            | Q(access__users=user)
+            | Q(access__groups__in=user.groups.all())
+            | Q(access__all_authenticated_users=True)
+        )
+        if user.is_staff:
+            grants |= Q(access__all_staff_users=True)
+        return query.filter(grants).distinct()
 
     def can_use(self, agent: AIAgent) -> bool:
         """Check current grants for a persisted agent, including creator access."""

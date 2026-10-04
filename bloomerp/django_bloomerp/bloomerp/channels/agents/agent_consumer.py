@@ -74,6 +74,11 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             return
         self.tab_id = str(self.scope["url_route"]["kwargs"]["tab_id"])
         self.controller = AgentController(user, tab_id=UUID(self.tab_id), origin=origin)
+        try:
+            await database_sync_to_async(self.controller.authorize)()
+        except PermissionDenied:
+            await self.close(code=4403)
+            return
         self.group_name = agent_tab_group_name(user.pk, self.tab_id)
         self.user_group_name = agent_user_group_name(user.pk)
         self.pending_commands: dict[str, tuple[str, float]] = {}

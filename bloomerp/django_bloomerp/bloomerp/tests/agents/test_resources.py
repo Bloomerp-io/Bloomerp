@@ -30,7 +30,10 @@ class AgentResourceTests(TestCase):
         """Install isolated concrete and template resource readers and a configured actor."""
         self.user = get_user_model().objects.create_user(username="resource-actor")
         self.agent = AIAgent.objects.create(
-            name="Resource agent", provider="openai", model_identifier="test"
+            name="Resource agent",
+            provider="openai",
+            model_identifier="test",
+            created_by=self.user,
         )
         self.client = AgentMcpClient(self.user.pk, "https://erp.test", self.agent.pk)
         registry = BloomerpRouteRegistry()

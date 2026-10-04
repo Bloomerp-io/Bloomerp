@@ -24,6 +24,16 @@ class AIAgentAccess(BloomerpModel):
     )
     avatar = None
     name = models.CharField(max_length=255, verbose_name=_("Name"))
+    all_staff_users = models.BooleanField(
+        default=False,
+        verbose_name=_("All Staff Users"),
+        help_text=_("Allow all active staff users to use this agent."),
+    )
+    all_authenticated_users = models.BooleanField(
+        default=False,
+        verbose_name=_("All Authenticated Users"),
+        help_text=_("Allow all active authenticated users to use this agent."),
+    )
     model = models.ForeignKey(
         "bloomerp.AIAgent",
         on_delete=models.CASCADE,

@@ -71,9 +71,7 @@ class LocalMcpClient:
             require_internal_tool(self.agent_id, (params or {}).get("name"))
         if method == "resources/read":
             require_resource_uri(self.agent_id, (params or {}).get("uri"))
-        user = get_user_model().objects.filter(pk=self.user_id, is_active=True).first()
-        if user is None:
-            raise PermissionDenied("Agent access denied")
+        user = self.authorize_agent_use(self.agent_id)
         origin = urlsplit(self.origin)
         request = APIRequestFactory().post(
             "/mcp/",
@@ -121,6 +119,7 @@ class LocalMcpClient:
 
     def check_tool_access(self, agent_id: str | UUID | None, name: str) -> None:
         """Check the run's current agent independently of a client's catalog filtering."""
+        self.authorize_agent_use(agent_id)
         if name.startswith(RESOURCE_TOOL_PREFIX):
             if name not in resource_tool_catalog(agent_id):
                 raise PermissionDenied(
@@ -128,6 +127,23 @@ class LocalMcpClient:
                 )
         else:
             require_internal_tool(agent_id, name)
+
+    def authorize_agent_use(self, agent_id: str | UUID | None) -> Any:
+        """Recheck the active actor and live use grants before every MCP dispatch."""
+        from bloomerp.agents.access import AIAgentAccessManager
+
+        user = get_user_model().objects.filter(pk=self.user_id, is_active=True).first()
+        if user is None:
+            raise PermissionDenied("Agent access denied")
+        if (
+            agent_id is not None
+            and not AIAgentAccessManager(user)
+            .get_accessible_queryset()
+            .filter(pk=agent_id)
+            .exists()
+        ):
+            raise PermissionDenied("You no longer have access to this AI agent.")
+        return user
 
     def dispatch(self, proposal: AgentRuntimeToolProposal) -> dict[str, Any]:
         """Invoke the local protocol only after the coordinator owns persisted dispatch."""
@@ -169,6 +185,7 @@ class AgentMcpClient(LocalMcpClient):
 
     def check_tool_access(self, agent_id: str | UUID | None, name: str) -> None:
         """Revalidate agent selection and account ownership for reserved external identifiers."""
+        self.authorize_agent_use(agent_id)
         from bloomerp.agents.external_mcp import (
             external_integration_id,
             resolve_remote_binding,
@@ -239,6 +256,7 @@ class AgentMcpClient(LocalMcpClient):
 
     def dispatch(self, proposal: AgentRuntimeToolProposal) -> dict[str, Any]:
         """Recheck the exact remote contract and binding in the session that will execute it."""
+        self.authorize_agent_use(self.agent_id)
         from bloomerp.agents.external_mcp import (
             external_integration_id,
             redact_secrets,
@@ -264,6 +282,7 @@ class AgentMcpClient(LocalMcpClient):
             )
             if current.revision != binding.revision:
                 raise ValidationError("External MCP connection changed before dispatch")
+            self.authorize_agent_use(self.agent_id)
             result = session.request(
                 "tools/call",
                 {

@@ -280,12 +280,44 @@ Configuration changes still require administrative row and field change grants.
 `AIAgentAccessManager` in `agents/access.py` grants use to active authenticated
 creators (`created_by`), explicitly listed users, members of listed groups, and
 superusers. `AIAgentAccess` records attach through the agent's `access` relation.
+Each record also has `all_staff_users` and `all_authenticated_users`, both false
+by default. These are additive grants alongside explicit users/groups. The staff
+flag covers active staff accounts; the authenticated flag covers every active
+signed-in account, including non-staff users. Neither grants anonymous access.
+Account activity, staff status and grants are read live, including tool dispatch.
 The chat picker and new-run acceptance use these grants, with disabled or
 unconfigured agents excluded. Credential resolution rechecks use access on every
 attempt, so revoked users cannot resume using provider secrets. Agent use grants
 expose only safe picker metadata; they do not grant configuration, credential,
 or access-management permissions. Set `created_by` when creating agents via ORM
 to give their creator automatic use access.
+
+### Private conversation APIs
+
+`AIConversation` and `AIMessage` declare authenticated, owner-scoped `view` and
+`add` rules using the existing `ApiAccessSettings` row/field contracts:
+
+- `/api/ai_conversations/`: list owned conversations or create one with `title`
+  and an optional `selected_agent`. The server selects a permitted enabled agent
+  when omitted and assigns the owner/audit actor.
+- `/api/ai_messages/`: list owned user/assistant entries or send `conversation`
+  and plain-text `content_blocks`. An optional UUID `id` deduplicates retries.
+  Creation uses `AgentController.accept_message`, which also creates the run,
+  pins a permitted agent and derives the actor from the request.
+- The generated detail endpoints and MCP object-retrieval/mutation adapters use
+  the same owner boundary and fixed serializers. Even broad administrative API
+  grants cannot read somebody else's transcript or forge roles, sequence,
+  approval rules, agent/run state, or ownership. System entries are excluded.
+- API updates/deletes are not exposed for these private records. Existing
+  controller/socket commands handle conversation metadata and execution control.
+
+Message runs dispatch only after commit. A configured external Celery broker
+queues the durable IDs; the no-broker development fallback executes synchronously
+within the HTTP/MCP request. Socket submissions retain their asynchronous path.
+An agent-use grant enables that complete socket lifecycle for non-staff users;
+it never grants SQL, configuration, project-tool or administrative permissions.
+Revoking an agent grant blocks further sends/attempts/tool dispatch while owners
+may still read their own existing transcript.
 
 The chat picker saves a conversation's next-run choice. Users may switch models
 within a conversation, including during an active run. Each new run snapshots
