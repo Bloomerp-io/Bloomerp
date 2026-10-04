@@ -36,6 +36,10 @@ from bloomerp.tests.base.lookup_test_case import (
     LookupScenario,
     PythonEvaluation,
 )
+from bloomerp.tests.base.mcp_view_test_case import (
+    BloomerpMcpViewTestCase,
+    McpRequestScenario,
+)
 from bloomerp.tests.base.model_field_test_case import (
     BloomerpModelFieldTestCase,
     ExpectedModelFieldException,
@@ -98,6 +102,7 @@ __all__ = [
     "BloomerpE2ETestCase",
     "BloomerpFormFieldTestCase",
     "BloomerpLookupTestCase",
+    "BloomerpMcpViewTestCase",
     "BloomerpModelFieldTestCase",
     "BloomerpModelTestCase",
     "BloomerpModelViewTestCase",
@@ -123,6 +128,7 @@ __all__ = [
     "ExpectedWidgetException",
     "FormFieldScenario",
     "LookupScenario",
+    "McpRequestScenario",
     "ModelFieldScenario",
     "ModelRequestScenario",
     "ModelScenario",

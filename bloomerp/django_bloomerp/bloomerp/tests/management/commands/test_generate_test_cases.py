@@ -1,3 +1,4 @@
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -13,10 +14,41 @@ from bloomerp.management.commands.generate_test_cases import (
     Command,
     GeneratedTestCase,
 )
+from bloomerp.mcp.definition import McpResourceTemplate
 from bloomerp.models.project_management.todo import Todo
+from bloomerp.router import router
 
 
 class GenerateTestCasesCommandTests(SimpleTestCase):
+    def test_mcp_tools_and_resources_use_mcp_scenarios(self) -> None:
+        """Generate executable MCP scaffolds for tools, resources, and templates."""
+        command = Command(stdout=StringIO())
+        app_config = apps.get_app_config("bloomerp")
+        generated = command._discover_views(app_config)
+        for definition in ("get_content_type", "workflow_resource", "policy_resource"):
+            with self.subTest(definition=definition):
+                cases = [case for case in generated if f"`{definition}`" in case.content]
+                self.assertEqual(len(cases), 1)
+                case = cases[0]
+                self.assertIn("BloomerpMcpViewTestCase", case.content)
+                self.assertIn("    McpRequestScenario,", case.content)
+                self.assertIn("list[McpRequestScenario]", case.content)
+                compile(case.content, str(case.target), "exec")
+                self.assertIn("tests/views/mcp/", case.target.as_posix())
+
+        resource = next(
+            route for route in router.get_mcp_resources()
+            if route.mcp.uri == "bloomerp://guides/create-workflow"
+        )
+        template = replace(resource, mcp=McpResourceTemplate(
+            uri_template="bloomerp://nodes/{subtype}",
+        ))
+        with patch.object(router, "get_routes_by_app", return_value=[template]):
+            generated_template = command._discover_views(app_config)
+        self.assertEqual(len(generated_template), 1)
+        self.assertIn("BloomerpMcpViewTestCase", generated_template[0].content)
+        self.assertIn("list[McpRequestScenario]", generated_template[0].content)
+
     def setUp(self):
         self.command = Command(stdout=StringIO())
         self.app_config = apps.get_app_config("bloomerp")
