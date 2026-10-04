@@ -230,7 +230,8 @@ class FileBrowserRenderer(BaseDataviewRenderer):
                     field_reference__application_field__content_type=content_type,
                     field_reference__object_id=str(linked_object.pk),
                 )
-                files = (files | field_files).distinct()
+                # Django requires both operands to agree on query distinctness.
+                files = files.distinct() | field_files.distinct()
             if (
                 is_host_folder
                 and current_folder.protected
@@ -242,8 +243,11 @@ class FileBrowserRenderer(BaseDataviewRenderer):
                     | (related_query & Q(protected=True))
                 )
                 files = (
-                    files | self._related_file_queryset().filter(self._file_scope_query(related_scopes))
-                ).distinct()
+                    files
+                    | self._related_file_queryset().filter(
+                        self._file_scope_query(related_scopes)
+                    ).distinct()
+                )
         else:
             folder_query = {"parent__isnull": True}
             if content_type is not None:

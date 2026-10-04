@@ -1,4 +1,5 @@
 import ArtifactPicker from './components/agent/ArtifactPicker';
+import ColoredChoices from './components/ColoredChoices';
 import MappingWidget from './components/MappingWidget';
 /**
  * Bloomerp Main TypeScript Entry Point
@@ -179,6 +180,7 @@ registerComponent('focus-in', FocusIn)
 registerComponent('shortcut-tooltip', ShortcutTooltip);
 registerComponent('ordered-field-select', OrderedFieldSelect);
 registerComponent('mapping-widget', MappingWidget);
+registerComponent('colored-choices', ColoredChoices);
 registerComponent('behavior-builder', BehaviorBuilder);
 
 registerComponent('focus-on-form', FocusOnForm);

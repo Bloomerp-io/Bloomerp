@@ -75,3 +75,50 @@ Customer → Advanced → Name → Contains → "Bloom"
 The resolver carries the full path while the input comes from the terminal name field's lookup. Current paths use `__`, and workspace roots include the tile identity, for example `tile_7:customer__name`.
 
 The current path resolver requires a single unambiguous nested lookup at each traversed field. Supporting multiple traversal operations on one field requires a way to preserve the chosen operation in the path. JSON keys containing the path separator are also not yet representable unambiguously.
+
+## Layout display options
+
+`display_options` is a factory receiving the current `ApplicationField`. Resolve
+it with `definition.get_display_options(application_field)`; an omitted factory
+returns no options. This allows choices-dependent settings to disappear when
+choices are removed from a field.
+
+Each `FieldDisplayOption` uses a `form_factory` returning a fresh Django form
+field, replacing `form_field_cls`, `form_field_kwargs`, and
+`get_form_field_kwargs`:
+
+```python
+from django import forms
+
+from bloomerp.models import ApplicationField
+from bloomerp.field_types.display_options import FieldDisplayOption
+
+
+def build_page_size(application_field: ApplicationField) -> forms.Field:
+    """Create a bounded page-size editor for this field's layout."""
+    return forms.IntegerField(min_value=1, max_value=100)
+
+
+def display_options(application_field: ApplicationField) -> tuple[FieldDisplayOption, ...]:
+    """Offer the page-size setting for this application field."""
+    return (
+        FieldDisplayOption(
+            id="page_size",
+            label="Page size",
+            help_text="Choose the number of rows per page.",
+            default=10,
+            form_factory=build_page_size,
+        ),
+    )
+```
+
+Options provide label, help text, and `required=False` by default. A factory's
+nonempty label and help text override the option metadata. Set `required=None`
+on the option to keep the factory's required setting, or set it explicitly on
+the option.
+
+Built-in CharField and ChoiceField editors offer `choice_colors` when their
+metadata contains choices. This mapping editor lets users add or remove entries and stores six-digit hex
+colors in each layout item's configuration. Native selects display the current
+choice's color accent in detail and create views. Retired choice keys are
+ignored; fields without choices use an ordinary text input.

@@ -1,6 +1,18 @@
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING
+from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import FieldDoesNotExist
+from bloomerp.field_types.display_options import FieldDisplayOption
+from bloomerp.form_fields.choice_colors_field import ChoiceColorsField
+from bloomerp.widgets.colored_choices_widget import ColoredChoicesWidget
+from bloomerp.widgets.choice_color_mapping_widget import ChoiceColorMappingWidget
+
+if TYPE_CHECKING:
+    from bloomerp.models import ApplicationField
+
 from django import forms
 from bloomerp.field_types.utils.form_field_factories import form
-from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.lookups import builtins as lookups
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
@@ -26,15 +38,83 @@ from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
 from django.db import models
 from django_countries.fields import CountryField
 from bloomerp.field_types.registry import (
+    FieldContext,
     FieldConstruction,
     FieldTypeDefinition,
     FieldTypeRegistry,
 )
-from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
+from bloomerp.field_types.builtins.display import standard_display_options
 from bloomerp.field_types.lookups import TEXT_LOOKUPS
+
+
+def choice_colors_option(application_field: ApplicationField) -> forms.Field:
+    """Build editable mappings restricted to the field's current choice values."""
+    choices = (application_field.meta or {}).get("choices", [])
+    left_field = forms.ChoiceField(choices=[("", _("Choose value")), *choices])
+    right_field = forms.RegexField(
+        regex=r"^#[0-9a-fA-F]{6}$",
+        widget=forms.TextInput(attrs={"type": "color"}),
+    )
+    return ChoiceColorsField(
+        left=choices,
+        left_field=left_field,
+        right_field=right_field,
+        allow_adding_groups=True,
+        widget=ChoiceColorMappingWidget(
+            left=choices,
+            left_widget=left_field.widget,
+            right_widget=right_field.widget,
+            allow_adding_groups=True,
+        ),
+    )
+
+
+def choice_display_options(
+    application_field: ApplicationField,
+) -> tuple[FieldDisplayOption, ...]:
+    """Offer color settings only while a text field has configured choices."""
+    options = standard_display_options(application_field)
+    if not (application_field.meta or {}).get("choices"):
+        return options
+    return (
+        *options,
+        FieldDisplayOption(
+            id="choice_colors",
+            label=_("Choice colors"),
+            form_factory=choice_colors_option,
+            help_text=_(
+                "Choose a color for each value. Colors for removed choices are ignored."
+            ),
+        ),
+    )
+
+
+def choice_widget(context: FieldContext) -> forms.Widget:
+    """Use a colored select for choices and a text input when choices disappear."""
+    attrs: dict[str, Any] = dict(context.attrs)
+    choices = attrs.pop("choices", []) or []
+    if not choices:
+        return InputSelectWidget(attrs=attrs)
+    attrs.pop("colored_choices", None)
+    attrs.pop("colors", None)
+    allows_blank = False
+    if context.application_field is not None:
+        try:
+            allows_blank = context.application_field._get_model_field().blank
+        except FieldDoesNotExist:
+            pass
+    if allows_blank and not any(str(key) == "" for key, _label in choices):
+        choices = [("", "---------"), *choices]
+    return ColoredChoicesWidget(
+        attrs=attrs,
+        choices=choices,
+        colors=context.layout_config.get("choice_colors", {}),
+    )
+
 
 CHAR_FIELD = FieldTypeDefinition(
     form_factory=form(forms.CharField),
+    widget_factory=choice_widget,
     id="CharField",
     icon="fa-solid fa-font",
     model_field_cls=models.CharField,
@@ -43,7 +123,7 @@ CHAR_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={"max_length": 255}, options=COMMON_TEXT_FIELD_OPTIONS
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=choice_display_options,
 )
 CODE_FIELD = FieldTypeDefinition(
     id="CodeField",
@@ -51,7 +131,7 @@ CODE_FIELD = FieldTypeDefinition(
     model_field_cls=CodeField,
     label="Code Field",
     lookups=(),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 CHOICE_FIELD = FieldTypeDefinition(
     id="ChoiceField",
@@ -62,8 +142,8 @@ CHOICE_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={"max_length": 255}, options=tuple(COMMON_CHOICE_FIELD_OPTIONS)
     ),
-    widget_factory=widget(InputSelectWidget, attrs={}),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    widget_factory=choice_widget,
+    display_options=choice_display_options,
 )
 TEXT_FIELD = FieldTypeDefinition(
     form_factory=form(forms.CharField),
@@ -74,7 +154,7 @@ TEXT_FIELD = FieldTypeDefinition(
     lookups=tuple(TEXT_LOOKUPS),
     construction=FieldConstruction(options=COMMON_FIELD_OPTIONS),
     widget_factory=widget(BloomerpTextEditorWidget, attrs={}),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 EMAIL_FIELD = FieldTypeDefinition(
     id="EmailField",
@@ -85,8 +165,10 @@ EMAIL_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={"max_length": 254}, options=COMMON_TEXT_FIELD_OPTIONS
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
-    render_value=lambda application_field, instance: f"<a href='mailto:{getattr(instance, application_field.field)}'>{getattr(instance, application_field.field)}</a>",
+    display_options=standard_display_options,
+    render_value=lambda application_field, instance: (
+        f"<a href='mailto:{getattr(instance, application_field.field)}'>{getattr(instance, application_field.field)}</a>"
+    ),
 )
 URL_FIELD = FieldTypeDefinition(
     id="URLField",
@@ -97,8 +179,10 @@ URL_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={"max_length": 200}, options=COMMON_TEXT_FIELD_OPTIONS
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
-    render_value=lambda application_field, instance: f"<a href='{getattr(instance, application_field.field)}'>{getattr(instance, application_field.field)}</a>",
+    display_options=standard_display_options,
+    render_value=lambda application_field, instance: (
+        f"<a href='{getattr(instance, application_field.field)}'>{getattr(instance, application_field.field)}</a>"
+    ),
 )
 ADDRESS_FIELD = FieldTypeDefinition(
     id="AddressField",
@@ -111,7 +195,7 @@ ADDRESS_FIELD = FieldTypeDefinition(
     ),
     widget_factory=widget(AddressWidget, attrs={}),
     form_factory=form(AddressFormField, virtual=False),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 PHONE_NUMBER_FIELD = FieldTypeDefinition(
     id="PhoneNumberField",
@@ -124,7 +208,7 @@ PHONE_NUMBER_FIELD = FieldTypeDefinition(
     ),
     widget_factory=widget(PhoneNumberWidget, attrs={}),
     form_factory=form(PhoneNumberFormField, virtual=False),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 SLUG_FIELD = FieldTypeDefinition(
     id="SlugField",
@@ -135,7 +219,7 @@ SLUG_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={"max_length": 50}, options=tuple(COMMON_TEXT_FIELD_OPTIONS)
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 IP_ADDRESS_FIELD = FieldTypeDefinition(
     id="IPAddressField",
@@ -146,7 +230,7 @@ IP_ADDRESS_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={}, options=tuple(COMMON_TEXT_FIELD_OPTIONS)
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 GENERIC_IP_ADDRESS_FIELD = FieldTypeDefinition(
     id="GenericIPAddressField",
@@ -157,7 +241,7 @@ GENERIC_IP_ADDRESS_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={}, options=tuple(COMMON_TEXT_FIELD_OPTIONS)
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 ICON_FIELD = FieldTypeDefinition(
     id="IconField",
@@ -170,7 +254,7 @@ ICON_FIELD = FieldTypeDefinition(
     ),
     widget_factory=widget(IconPickerWidget, attrs={}),
     form_factory=form(IconFormField, virtual=False),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 COUNTRY_FIELD = FieldTypeDefinition(
     id="CountryField",
@@ -179,7 +263,7 @@ COUNTRY_FIELD = FieldTypeDefinition(
     label="Country Field",
     lookups=(lookups.EQUALS, lookups.NOT_EQUALS, lookups.VALUES_IN, lookups.IS_NULL),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 

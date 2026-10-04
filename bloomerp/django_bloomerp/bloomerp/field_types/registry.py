@@ -62,7 +62,9 @@ class FieldTypeDefinition:
     )
 
     lookups: tuple[LookupDefinition, ...] = ()
-    display_options: tuple[FieldDisplayOption, ...] = ()
+    display_options: (
+        Callable[["ApplicationField"], tuple[FieldDisplayOption, ...]] | None
+    ) = None
     
     
     @property
@@ -83,15 +85,23 @@ class FieldTypeDefinition:
         """
         return self.model_field_cls is not None
 
+    def get_display_options(
+        self, application_field: "ApplicationField"
+    ) -> tuple[FieldDisplayOption, ...]:
+        """Resolve settings against the current application field metadata."""
+        if self.display_options is None:
+            return ()
+        return tuple(self.display_options(application_field))
+
     def get_lookup_by_id(self, lookup_id: str) -> LookupDefinition | None:
         for lookup in self.lookups:
             if lookup.id == lookup_id:
                 return lookup
         return None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Freeze lookup sequences without evaluating field-dependent factories."""
         object.__setattr__(self, "lookups", tuple(self.lookups))
-        object.__setattr__(self, "display_options", tuple(self.display_options))
 
 
 class FieldTypeRegistry(BaseRegistry[FieldTypeDefinition]):
