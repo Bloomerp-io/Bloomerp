@@ -5,25 +5,33 @@ from __future__ import annotations
 import base64
 import json
 from datetime import datetime, timedelta
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar, Literal
 from uuid import uuid4
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.core import signing
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.base import ContentFile
 from django.db import models
+from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
+from django.utils.translation import gettext_lazy as _
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ValidationError as PydanticValidationError
 from rest_framework.exceptions import NotFound, ValidationError
 
+from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.definition import (
     ActivityLogSettings,
     ApiSettings,
     BloomerpModelConfig,
+    DetailViewSettings,
+    ModelViewSettings,
     StringSearchSettings,
 )
 
@@ -31,6 +39,96 @@ MAX_RESULT_BYTES = 8 * 1024 * 1024
 MAX_STORED_BYTES = 12 * 1024 * 1024
 MAX_RESPONSE_BYTES = 48 * 1024
 MAX_RECORDS = 20000
+MAX_MANIFEST_BYTES = 20 * 1024
+
+
+class ManifestEntry(BaseModel):
+    """Reject unexpected index attributes and preserve exact JSON scalar types."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    text: str = Field(max_length=80)
+
+
+class ManifestPage(ManifestEntry):
+    """Identify one PDF page in the compact table of contents."""
+
+    page: int = Field(ge=1, le=100)
+
+
+class ManifestSection(ManifestEntry):
+    """Identify a shortened section label in the compact table of contents."""
+
+    section: str = Field(max_length=80)
+
+
+class ManifestSheet(ManifestEntry):
+    """Identify one workbook sheet in the compact table of contents."""
+
+    sheet: str = Field(max_length=31)
+
+
+class ManifestIndex(BaseModel):
+    """Bound each typed index while leaving full records in encrypted storage."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    pages: list[ManifestPage] = Field(max_length=16)
+    sections: list[ManifestSection] = Field(max_length=16)
+    sheets: list[ManifestSheet] = Field(max_length=16)
+
+
+class FileExtractionManifest(BaseModel):
+    """Validate the existing compact summary without changing its JSON contract."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    format: Literal["txt", "xlsx", "pdf", "png", "jpg", "jpeg", "tif", "tiff", "webp"]
+    record_count: int = Field(ge=0, le=MAX_RECORDS)
+    source_truncated: bool
+    index: ManifestIndex
+    index_truncated: bool
+    preview: str = Field(max_length=128)
+    warnings: list[Annotated[str, Field(max_length=120)]] = Field(max_length=4)
+    truncation_reasons: list[Annotated[str, Field(max_length=40)]] = Field(
+        max_length=12
+    )
+
+
+class ManifestJSONField(models.JSONField):
+    """Validate manifest cleaning and literal ORM writes in this removable module."""
+
+    def normalize(self, value: Any) -> dict[str, Any]:
+        """Preserve the empty lifecycle sentinel or return a bounded typed manifest."""
+        if isinstance(value, dict) and not value:
+            return {}
+        if isinstance(value, BaseModel):
+            value = value.model_dump(mode="json")
+        try:
+            result = FileExtractionManifest.model_validate(value).model_dump(
+                mode="json"
+            )
+            if (
+                len(json.dumps(result, ensure_ascii=True, allow_nan=False).encode())
+                > MAX_MANIFEST_BYTES
+            ):
+                raise ValueError("Manifest exceeds its byte limit")
+            return result
+        except (PydanticValidationError, ValueError, TypeError) as error:
+            raise DjangoValidationError(
+                _("Invalid file extraction manifest.")
+            ) from error
+
+    def clean(self, value: Any, model_instance: models.Model) -> Any:
+        """Validate empty and nonempty values before ordinary Django field cleaning."""
+        return super().clean(self.normalize(value), model_instance)
+
+    def get_db_prep_value(
+        self, value: Any, connection: BaseDatabaseWrapper, prepared: bool = False
+    ) -> Any:
+        """Validate save, bulk insert and queryset-update values before JSON encoding."""
+        return super().get_db_prep_value(self.normalize(value), connection, prepared)
+
+    def get_db_prep_save(self, value: Any, connection: BaseDatabaseWrapper) -> Any:
+        """Reject null writes instead of taking JSONField's unvalidated SQL-null path."""
+        return self.get_db_prep_value(value, connection)
 
 
 def extraction_expiry() -> datetime:
@@ -43,12 +141,26 @@ def extraction_start_deadline() -> datetime:
     return timezone.now() + timedelta(minutes=2)
 
 
-class FileExtraction(models.Model):
+class FileExtraction(BloomerpModel):
     """Keep ownership, lifecycle and bounded result access in one private record."""
 
+    avatar = None
     bloomerp_config = BloomerpModelConfig(
         is_internal=True,
         api_settings=ApiSettings(enable_auto_generation=False),
+        model_view_settings=ModelViewSettings(
+            skip_views=["model", "add", "bulk_upload"]
+        ),
+        detail_view_settings=DetailViewSettings(
+            skip_views=[
+                "overview",
+                "delete",
+                "files",
+                "todos",
+                "document_templates",
+                "create_user_for_object",
+            ]
+        ),
         string_search_settings=StringSearchSettings(allow_global_search=False),
         activity_log_settings=ActivityLogSettings(enabled=False),
     )
@@ -56,39 +168,57 @@ class FileExtraction(models.Model):
     class Status(models.TextChoices):
         """Expose explicit terminal outcomes without parser exception details."""
 
-        QUEUED = "queued"
-        RUNNING = "running"
-        SUCCEEDED = "succeeded"
-        FAILED = "failed"
-        UNAVAILABLE = "unavailable"
-        EXPIRED = "expired"
-        CANCELLED = "cancelled"
+        QUEUED = "queued", _("Queued")
+        RUNNING = "running", _("Running")
+        SUCCEEDED = "succeeded", _("Succeeded")
+        FAILED = "failed", _("Failed")
+        UNAVAILABLE = "unavailable", _("Unavailable")
+        EXPIRED = "expired", _("Expired")
+        CANCELLED = "cancelled", _("Cancelled")
 
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     source_file = models.ForeignKey(
-        "bloomerp.File", null=True, on_delete=models.SET_NULL
+        "bloomerp.File",
+        null=True,
+        on_delete=models.SET_NULL,
+        verbose_name=_("Source File"),
     )
-    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name=_("Requested By"),
+    )
     status = models.CharField(
-        max_length=16, choices=Status.choices, default=Status.QUEUED
+        max_length=16,
+        choices=Status.choices,
+        default=Status.QUEUED,
+        verbose_name=_("Status"),
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    started_at = models.DateTimeField(null=True)
-    finished_at = models.DateTimeField(null=True)
-    start_deadline = models.DateTimeField(default=extraction_start_deadline)
-    expires_at = models.DateTimeField(default=extraction_expiry)
-    error_code = models.CharField(max_length=40, blank=True)
+    started_at = models.DateTimeField(null=True, verbose_name=_("Started At"))
+    finished_at = models.DateTimeField(null=True, verbose_name=_("Finished At"))
+    start_deadline = models.DateTimeField(
+        default=extraction_start_deadline, verbose_name=_("Start Deadline")
+    )
+    expires_at = models.DateTimeField(
+        default=extraction_expiry, verbose_name=_("Expires At")
+    )
+    error_code = models.CharField(
+        max_length=40, blank=True, verbose_name=_("Error Code")
+    )
     result = models.FileField(
-        upload_to="bloomerp/extractions/%Y/%m/%d", blank=True, max_length=255
+        upload_to="bloomerp/extractions/%Y/%m/%d",
+        blank=True,
+        max_length=255,
+        verbose_name=_("Result"),
     )
-    manifest = models.JSONField(default=dict)
+    manifest = ManifestJSONField(default=dict, blank=True, verbose_name=_("Manifest"))
 
     class Meta:
-        """Avoid automatic CRUD permissions for internal extraction contents."""
+        """Keep experiment labels and Django permission defaults explicit."""
 
         db_table = "bloomerp_file_extraction"
         default_permissions = ()
+        verbose_name = _("File Extraction")
+        verbose_name_plural = _("File Extractions")
         indexes: ClassVar[list[models.Index]] = [
             models.Index(
                 fields=["status", "expires_at"], name="file_extract_status_exp_idx"
@@ -123,7 +253,7 @@ class FileExtraction(models.Model):
                 status=self.Status.EXPIRED,
                 error_code="expired",
                 finished_at=now,
-                updated_at=now,
+                datetime_updated=now,
             )
             self.refresh_from_db()
             self.delete_result()
@@ -132,7 +262,7 @@ class FileExtraction(models.Model):
                 status=self.Status.UNAVAILABLE,
                 error_code="worker_start_timeout",
                 finished_at=now,
-                updated_at=now,
+                datetime_updated=now,
             )
             self.refresh_from_db()
         elif (
@@ -146,19 +276,19 @@ class FileExtraction(models.Model):
                 status=self.Status.FAILED,
                 error_code="execution_timeout",
                 finished_at=now,
-                updated_at=now,
+                datetime_updated=now,
             )
             self.refresh_from_db()
 
     def finish(self, status: str, error_code: str = "") -> None:
         """Persist a fixed error code only if this observed lifecycle state is still current."""
         type(self).objects.filter(
-            pk=self.pk, status=self.status, updated_at=self.updated_at
+            pk=self.pk, status=self.status, datetime_updated=self.datetime_updated
         ).update(
             status=status,
             error_code=error_code,
             finished_at=timezone.now(),
-            updated_at=timezone.now(),
+            datetime_updated=timezone.now(),
         )
         self.refresh_from_db()
 
@@ -171,7 +301,7 @@ class FileExtraction(models.Model):
             except Exception:  # noqa: BLE001 - storage provider errors must not expose private paths.
                 return
             type(self).objects.filter(pk=self.pk, result=name).update(
-                result="", manifest={}, updated_at=timezone.now()
+                result="", manifest={}, datetime_updated=timezone.now()
             )
             self.refresh_from_db()
 
@@ -183,14 +313,30 @@ class FileExtraction(models.Model):
         )[:20]:
             job.refresh_lifecycle()
 
+    def validated_manifest(self) -> dict[str, Any]:
+        """Recheck historical JSON at the read boundary and hide malformed summaries."""
+        if self.status != self.Status.SUCCEEDED:
+            return {}
+        try:
+            manifest = self._meta.get_field("manifest").normalize(self.manifest)
+            if not manifest:
+                raise DjangoValidationError(
+                    _("A completed extraction needs a manifest.")
+                )
+            return manifest
+        except DjangoValidationError:
+            self.finish(self.Status.FAILED, "result_unavailable")
+            return {}
+
     def describe(self) -> dict[str, Any]:
         """Return small status metadata and a bounded index, never a storage URL."""
+        manifest = self.validated_manifest()
         return {
             "job_id": str(self.pk),
             "status": self.status,
             "error_code": self.error_code or None,
             "expires_at": self.expires_at.isoformat(),
-            "manifest": self.manifest if self.status == self.Status.SUCCEEDED else {},
+            "manifest": manifest,
             "poll_after_seconds": 3
             if self.status in (self.Status.QUEUED, self.Status.RUNNING)
             else None,
@@ -304,6 +450,8 @@ class FileExtraction(models.Model):
         """Reauthorize every read and enforce the stored document's hard byte ceiling."""
         current = self.authorized(request, self.pk)
         if current.status != self.Status.SUCCEEDED or not current.result:
+            return {}
+        if not current.validated_manifest():
             return {}
         try:
             with current.result.storage.open(current.result.name, "rb") as handle:

@@ -26,7 +26,7 @@ from bloomerp.tests.models.files.test_file_extraction_model import (
     create_source,
     install_extraction_storage,
 )
-from bloomerp.views.api import file_extraction as api
+from bloomerp.views.api.files import start_file_extraction as api
 
 
 class TestStartFileExtractionView(BloomerpAPIViewTestCase):

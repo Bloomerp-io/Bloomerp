@@ -7,14 +7,17 @@ import json
 import random
 import subprocess
 import tempfile
+from copy import deepcopy
 from datetime import timedelta
 from io import BytesIO
 from typing import Any
 from unittest.mock import Mock, patch
 
 from django.core import signing
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import InMemoryStorage, Storage
+from django.db import connection, transaction
 from django.http import HttpRequest
 from django.test import TestCase
 from django.utils import timezone
@@ -23,14 +26,17 @@ from rest_framework.exceptions import NotFound, ValidationError
 
 from bloomerp.models.files.file import File
 from bloomerp.models.files.file_extraction import (
+    MAX_MANIFEST_BYTES,
+    MAX_RECORDS,
     MAX_RESPONSE_BYTES,
     MAX_RESULT_BYTES,
     MAX_STORED_BYTES,
     FileExtraction,
+    FileExtractionManifest,
 )
 from bloomerp.tests.base import BloomerpModelTestCase, ModelScenario
 from bloomerp.tests.utils.users import create_admin, create_normal_user
-from bloomerp.views.api import file_extraction as api
+from bloomerp.views.api.files import start_file_extraction as api
 
 
 class StorageWithoutPath(Storage):
@@ -125,6 +131,16 @@ class TestFileExtractionModel(BloomerpModelTestCase):
                 create_validators=self.valid_queued_job,
             ),
             ModelScenario(
+                name="Dictionary manifest preserves its JSON contract",
+                create_operation=self.create_dictionary_manifest_job,
+                create_validators=self.manifest_roundtrip_is_valid,
+            ),
+            ModelScenario(
+                name="Pydantic manifest persists as ordinary JSON",
+                create_operation=self.create_typed_manifest_job,
+                create_validators=self.manifest_roundtrip_is_valid,
+            ),
+            ModelScenario(
                 name="Expired result loses its bytes and manifest",
                 create_operation=self.expired_job,
                 post_create=self.refresh_job,
@@ -158,8 +174,189 @@ class TestFileExtractionModel(BloomerpModelTestCase):
             and payload["poll_after_seconds"] == 3
             and payload["content_is_untrusted"]
             and "result" not in payload
+            and job.manifest == {}
             and not FileExtraction._meta.default_permissions
         )
+
+    def sample_manifest(self) -> dict[str, Any]:
+        """Build a representative existing manifest with each supported index kind."""
+        return api.compact_manifest(
+            {
+                "format": "pdf",
+                "records": [{"id": 1, "page": 1, "text": "Private preview"}],
+                "index": {
+                    "pages": [{"page": 1, "text": "Page preview"}],
+                    "sections": [
+                        {"section": "Introduction", "text": "Section preview"}
+                    ],
+                    "sheets": [{"sheet": "Overview", "text": "Sheet preview"}],
+                },
+                "truncated": False,
+                "warnings": [],
+                "truncation_reasons": [],
+            }
+        )
+
+    def create_dictionary_manifest_job(self) -> FileExtraction:
+        """Create a job using the established plain-dictionary manifest format."""
+        return self.create_job(manifest=self.sample_manifest())
+
+    def create_typed_manifest_job(self) -> FileExtraction:
+        """Create a job using the typed schema accepted by the JSON field."""
+        return self.create_job(
+            manifest=FileExtractionManifest.model_validate(self.sample_manifest())
+        )
+
+    def manifest_roundtrip_is_valid(self, job: FileExtraction) -> bool:
+        """Verify both accepted inputs reload with the exact existing JSON shape."""
+        return isinstance(job.manifest, dict) and job.manifest == self.sample_manifest()
+
+    def invalid_manifests(self) -> list[Any]:
+        """Cover strict scalar, nested, collection, and whole-payload limits."""
+        valid = self.sample_manifest()
+        wrong_page = deepcopy(valid)
+        wrong_page["index"]["pages"][0]["page"] = True
+        unexpected_entry = deepcopy(valid)
+        unexpected_entry["index"]["pages"][0]["private_path"] = "must not escape"
+        too_many_entries = deepcopy(valid)
+        too_many_entries["index"]["pages"] *= 17
+        oversized_bytes = deepcopy(valid)
+        oversized_bytes["index"]["sections"] = [
+            {"section": "🙂" * 80, "text": "🙂" * 80} for _ in range(16)
+        ]
+        return [
+            [],
+            None,
+            {"format": "txt"},
+            {**valid, "private_path": "must not escape"},
+            {**valid, "record_count": MAX_RECORDS + 1},
+            {**valid, "source_truncated": "false"},
+            {**valid, "preview": "x" * 129},
+            {**valid, "warnings": ["warning"] * 5},
+            wrong_page,
+            unexpected_entry,
+            too_many_entries,
+            oversized_bytes,
+        ]
+
+    def test_manifest_validation_covers_all_literal_write_paths(self) -> None:
+        """Reject invalid metadata before save, worker update, and bulk insert writes."""
+        job = self.create_job()
+        field = FileExtraction._meta.get_field("manifest")
+        self.assertEqual(field.clean({}, job), {})
+        for value in self.invalid_manifests():
+            for operation in ("clean", "save", "update", "bulk_create"):
+                with (
+                    self.subTest(value=value, operation=operation),
+                    self.assertRaises(DjangoValidationError),
+                    transaction.atomic(),
+                ):
+                    if operation == "clean":
+                        field.clean(value, job)
+                    elif operation == "save":
+                        self.create_job(manifest=value)
+                    elif operation == "update":
+                        FileExtraction.objects.filter(pk=job.pk).update(manifest=value)
+                    else:
+                        FileExtraction.objects.bulk_create(
+                            [
+                                FileExtraction(
+                                    source_file=self.source,
+                                    requested_by=self.owner,
+                                    manifest=value,
+                                )
+                            ]
+                        )
+        job.refresh_from_db()
+        self.assertEqual(job.manifest, {})
+        self.assertEqual(FileExtraction.objects.count(), 1)
+
+    def test_corrupt_stored_manifests_fail_closed(self) -> None:
+        """Revalidate historical or bypassed JSON without exposing previews or records."""
+        for value in [{}, *self.invalid_manifests()]:
+            with self.subTest(value=value):
+                job = self.completed_job()
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "UPDATE bloomerp_file_extraction SET manifest = %s WHERE id = %s",
+                        [
+                            json.dumps(value),
+                            job._meta.pk.get_db_prep_value(job.pk, connection),
+                        ],
+                    )
+                payload = job.get_results(self.request)
+                self.assertEqual(payload["status"], FileExtraction.Status.FAILED)
+                self.assertEqual(payload["error_code"], "result_unavailable")
+                self.assertEqual(payload["manifest"], {})
+                self.assertNotIn("records", payload)
+                job.refresh_from_db()
+                self.assertEqual(job.status, FileExtraction.Status.FAILED)
+
+    def test_inherited_stamps_and_labels_keep_private_jobs_integrated(self) -> None:
+        """Use standard request stamps and translated labels without enabling auditing."""
+        from django.utils.functional import Promise
+
+        from bloomerp.models.audit.activity_log import ActivityLog
+        from bloomerp.models.base_bloomerp_model import BloomerpModel
+
+        self.assertTrue(issubclass(FileExtraction, BloomerpModel))
+        with patch(
+            "bloomerp.signals.activity_log_signals.current_request",
+            return_value=self.request,
+        ):
+            job = self.create_job()
+        self.assertEqual(job.created_by, self.owner)
+        self.assertEqual(job.updated_by, self.owner)
+        created = job.datetime_created
+        with patch(
+            "bloomerp.signals.activity_log_signals.current_request",
+            return_value=request_for(self.other),
+        ):
+            job.save()
+        job.refresh_from_db()
+        self.assertEqual(job.created_by, self.owner)
+        self.assertEqual(job.updated_by, self.other)
+        self.assertEqual(job.datetime_created, created)
+        self.assertGreaterEqual(job.datetime_updated, created)
+        self.assertFalse(ActivityLog.objects.filter(object_id=str(job.pk)).exists())
+        for field in FileExtraction._meta.fields:
+            with self.subTest(field=field.name):
+                self.assertIsInstance(field.verbose_name, Promise)
+        for label in FileExtraction.Status.labels:
+            self.assertIsInstance(label, Promise)
+        self.assertIsInstance(FileExtraction._meta.verbose_name, Promise)
+        self.assertIsInstance(FileExtraction._meta.verbose_name_plural, Promise)
+
+    def test_framework_permission_definitions_do_not_grant_extraction_access(
+        self,
+    ) -> None:
+        """Keep internal jobs outside generic discovery and ordinary users' grants."""
+        from bloomerp.permissions.manager import (
+            UserPolicyManager,
+            ensure_model_permissions,
+        )
+        from bloomerp.router import router
+        from bloomerp.services.search_services import SearchManager
+        from bloomerp.views.api.generic.base import get_auto_api_models
+
+        job = self.completed_job()
+        manager = UserPolicyManager(self.other)
+        ensure_model_permissions(FileExtraction)
+        self.assertFalse(manager.has_global_permission(FileExtraction, "view"))
+        self.assertFalse(
+            manager.get_accessible_queryset(FileExtraction, "view").exists()
+        )
+        with self.assertRaises(NotFound):
+            FileExtraction.authorized(request_for(self.other), job.pk)
+        self.assertNotIn(FileExtraction, get_auto_api_models())
+        self.assertFalse(SearchManager.is_searchable(FileExtraction))
+        for route_type in ("model", "detail", "api_model", "api_detail"):
+            self.assertFalse(
+                any(
+                    route.model is FileExtraction
+                    for route in router.get_routes_by_type(route_type)
+                )
+            )
 
     def completed_job(self) -> FileExtraction:
         """Create a completed job and remember the private object-storage key."""
@@ -589,9 +786,14 @@ class TestFileExtractionModel(BloomerpModelTestCase):
                     for index in range(16)
                 ],
             },
+            "warnings": ["🙂" * 255] * 4,
+            "truncation_reasons": ["🙂" * 255] * 12,
         }
         job.result.name = job.store_result(document)
         job.manifest = api.compact_manifest(document)
+        manifest_bytes = len(json.dumps(job.manifest, ensure_ascii=True).encode())
+        self.assertGreater(manifest_bytes, 6144)
+        self.assertLessEqual(manifest_bytes, MAX_MANIFEST_BYTES)
         job.status = FileExtraction.Status.SUCCEEDED
         job.save()
         cursor = None
@@ -656,7 +858,8 @@ class TestFileExtractionModel(BloomerpModelTestCase):
         for stale in (queued, running):
             with self.subTest(status=stale.status):
                 FileExtraction.objects.filter(pk=stale.pk).update(
-                    status=FileExtraction.Status.SUCCEEDED, updated_at=timezone.now()
+                    status=FileExtraction.Status.SUCCEEDED,
+                    datetime_updated=timezone.now(),
                 )
                 stale.refresh_lifecycle()
                 stale.refresh_from_db()

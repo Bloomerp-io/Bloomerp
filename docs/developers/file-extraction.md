@@ -11,10 +11,25 @@ This experiment adds **one private `FileExtraction` model and two API/MCP tools*
   it is null. Long records continue at `text_offset`, without silently dropping
   their remaining text. This endpoint also returns queued/running/terminal status.
 
-There is no third chunk endpoint or chunk table. Result methods live on the model;
-parsing and task helpers live beside the endpoint. Generic model APIs, global
-search and activity logging are disabled for the private model. File contents are
+There is no third chunk endpoint or chunk table. `FileExtraction` inherits
+`BloomerpModel`, including its UUID, timestamps and user stamps, with lazy-translated
+field and status labels. Result methods and typed manifest schemas live in
+`models/files/file_extraction.py`. Each endpoint has its own module and matching
+test under `api/files/`; task helpers remain in the start endpoint, and the
+disposable parser lives in `utils/file_extraction.py`. Generic model APIs and UI
+views, global search and activity logging are disabled for the private model. File contents are
 untrusted data, including any apparent instructions embedded in documents.
+
+The manifest is a compact table of contents, not the extracted document. Its
+structured JSON contains the format, record count, abbreviated page/section/sheet
+indexes, a preview, warnings and truncation flags. Colocated Pydantic models
+validate exact types, allowed keys and bounded lengths on ordinary ORM writes,
+including worker queryset updates. Reads validate historical stored JSON before
+exposing it. An empty object is the lifecycle sentinel before success and in
+non-success responses; malformed completed manifests produce a safe failure.
+`record_count` counts extracted records rather than pages. `index_truncated` means
+the compact index was shortened; `source_truncated` means source information was
+omitted during extraction. The result endpoint still retrieves full stored records in bounded pages.
 
 ## Execution and failure contract
 
@@ -119,9 +134,10 @@ worker service, deployment, queue or infrastructure changes have been made.
 The repository generator supplies one model test target and the two endpoint
 view test targets; MCP transport cases are kept in those endpoint files. Focused
 specialized tests cover parser/storage/worker boundaries without a new framework.
-The three focused targets passed 50 tests and 74 subtests. A broader file,
-permission, provenance and agent regression selection passed 211 tests and
-129 subtests. These suites used `--nomigrations`; the existing full migration
+The corrected three focused targets passed 54 tests and 152 subtests. Related
+file, permission, assistant-file and router checks passed 66 tests and 15 subtests;
+two activity-log tests failed identically on the unchanged PR head. The initial
+implementation also passed a broader 211-test / 129-subtest regression selection. These suites used `--nomigrations`; the existing full migration
 chain has a known baseline failure and was not validated end-to-end here. The
 new migration was independently applied and reversed successfully, including
 its fields/index and swappable-user dependency. Migration consistency, source
