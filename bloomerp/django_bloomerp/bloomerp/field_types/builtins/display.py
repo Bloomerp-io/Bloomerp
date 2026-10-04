@@ -1,9 +1,10 @@
 from __future__ import annotations
-from bloomerp.field_types.display_options import FieldDisplayOption
+from bloomerp.field_types.display_options import FieldDisplayOption, LABEL_OPTION
 from bloomerp.form_fields.behavior_field import BehaviorField
 from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.widgets.ordered_field_select_widget import OrderedFieldSelectWidget
+from django import forms
 from django.db import models
 from typing import Any, TYPE_CHECKING
 
@@ -131,11 +132,20 @@ def build_behavior_catalog_entry(
     return entry
 
 
+def behavior_option_field(application_field: "ApplicationField") -> forms.Field:
+    """Build the behavior editor with its source and target field catalog."""
+    return BehaviorField(**get_behavior_form_field_kwargs(application_field))
+
+
+def standard_display_options(application_field: "ApplicationField") -> tuple[FieldDisplayOption, ...]:
+    """Offer the common label and behavior settings for ordinary fields."""
+    return (LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION)
+
+
 BEHAVIORS_DISPLAY_OPTION = FieldDisplayOption(
     id="behaviors",
     label="Behaviors",
-    form_field_cls=BehaviorField,
+    form_factory=behavior_option_field,
     required=False,
     help_text="Define what this form should do when the field changes.",
-    get_form_field_kwargs=get_behavior_form_field_kwargs,
 )

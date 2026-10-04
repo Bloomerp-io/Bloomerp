@@ -1,6 +1,5 @@
 from bloomerp.field_types.utils.form_field_factories import form
 from django import forms
-from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.field_types.lookups import NUMERIC_LOOKUPS
 from bloomerp.field_types.construction import (
     COMMON_FIELD_OPTIONS,
@@ -13,7 +12,7 @@ from bloomerp.field_types.registry import (
     FieldTypeDefinition,
     FieldTypeRegistry,
 )
-from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
+from bloomerp.field_types.builtins.display import standard_display_options
 
 AUTO_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -22,7 +21,7 @@ AUTO_FIELD = FieldTypeDefinition(
     model_field_cls=models.AutoField,
     label="Auto Field",
     lookups=tuple(NUMERIC_LOOKUPS),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 BIG_AUTO_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -31,7 +30,7 @@ BIG_AUTO_FIELD = FieldTypeDefinition(
     model_field_cls=models.BigAutoField,
     label="Big Auto Field",
     lookups=tuple(NUMERIC_LOOKUPS),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 SMALL_AUTO_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -40,7 +39,7 @@ SMALL_AUTO_FIELD = FieldTypeDefinition(
     model_field_cls=models.SmallAutoField,
     label="Small Auto Field",
     lookups=tuple(NUMERIC_LOOKUPS),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 INTEGER_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -50,7 +49,7 @@ INTEGER_FIELD = FieldTypeDefinition(
     label="Integer Field",
     lookups=tuple(NUMERIC_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 FLOAT_FIELD = FieldTypeDefinition(
     form_factory=form(forms.FloatField),
@@ -60,7 +59,7 @@ FLOAT_FIELD = FieldTypeDefinition(
     label="Float Field",
     lookups=tuple(NUMERIC_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 DECIMAL_FIELD = FieldTypeDefinition(
     form_factory=form(forms.DecimalField),
@@ -77,7 +76,7 @@ DECIMAL_FIELD = FieldTypeDefinition(
             DECIMAL_PLACES_FIELD_OPTION,
         ),
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -87,7 +86,7 @@ POSITIVE_INTEGER_FIELD = FieldTypeDefinition(
     label="Positive Integer Field",
     lookups=tuple(NUMERIC_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 POSITIVE_SMALL_INTEGER_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -97,7 +96,7 @@ POSITIVE_SMALL_INTEGER_FIELD = FieldTypeDefinition(
     label="Positive Small Integer Field",
     lookups=tuple(NUMERIC_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 BIG_INTEGER_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -107,7 +106,7 @@ BIG_INTEGER_FIELD = FieldTypeDefinition(
     label="Big Integer Field",
     lookups=tuple(NUMERIC_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 SMALL_INTEGER_FIELD = FieldTypeDefinition(
     form_factory=form(forms.IntegerField),
@@ -117,7 +116,7 @@ SMALL_INTEGER_FIELD = FieldTypeDefinition(
     label="Small Integer Field",
     lookups=tuple(NUMERIC_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 
