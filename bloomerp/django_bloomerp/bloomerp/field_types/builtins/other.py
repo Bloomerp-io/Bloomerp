@@ -16,7 +16,7 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast, Concat, Substr
 
-from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
+from bloomerp.field_types.builtins.display import standard_display_options
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
     COMMON_FIELD_OPTIONS,
@@ -27,7 +27,6 @@ from bloomerp.field_types.construction import (
     UPLOAD_TO_FIELD_OPTION,
     FieldConstructionOption,
 )
-from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.field_types.lookups import TEXT_LOOKUPS
 from bloomerp.field_types.registry import (
     FieldConstruction,
@@ -60,7 +59,7 @@ PROPERTY = FieldTypeDefinition(
     label="Property",
     lookups=(),
     construction=FieldConstruction(defaults={}, options=(PROPERTY_EXPRESSION,)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 FILE_FIELD = FieldTypeDefinition(
@@ -81,7 +80,7 @@ FILE_FIELD = FieldTypeDefinition(
     render_value=lambda field, obj: (
         f"<a class='text-primary' href='{(getattr(obj, field.field).url if getattr(obj, field.field) else None)}'>{getattr(obj, field.field)}</a>"
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 IMAGE_FIELD = FieldTypeDefinition(
@@ -99,7 +98,7 @@ IMAGE_FIELD = FieldTypeDefinition(
             HELP_TEXT_FIELD_OPTION,
         ),
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 UUID_FIELD = FieldTypeDefinition(
@@ -109,7 +108,7 @@ UUID_FIELD = FieldTypeDefinition(
     label="UUID Field",
     lookups=(lookups.EQUALS, lookups.VALUES_IN, lookups.IS_NULL),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 BINARY_FIELD = FieldTypeDefinition(
@@ -118,7 +117,7 @@ BINARY_FIELD = FieldTypeDefinition(
     model_field_cls=models.BinaryField,
     label="Binary Field",
     lookups=(),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 JSON_FIELD = FieldTypeDefinition(
@@ -143,7 +142,7 @@ JSON_FIELD = FieldTypeDefinition(
         ),
     ),
     widget_factory=widget(CodeEditorWidget, attrs={}, language="json"),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 ARRAY_FIELD = FieldTypeDefinition(
@@ -151,7 +150,7 @@ ARRAY_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-list-ol",
     label="Array Field",
     lookups=(lookups.CONTAINS, lookups.IS_NULL),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 HSTORE_FIELD = FieldTypeDefinition(
@@ -159,7 +158,7 @@ HSTORE_FIELD = FieldTypeDefinition(
     icon="fa-solid fa-box-archive",
     label="HStore Field",
     lookups=(),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 STATUS_FIELD = FieldTypeDefinition(
@@ -168,7 +167,7 @@ STATUS_FIELD = FieldTypeDefinition(
     label="Status Field",
     model_field_cls=StatusField,
     lookups=tuple(TEXT_LOOKUPS),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 
@@ -271,7 +270,7 @@ BLOOMERP_FILE_FIELD = FieldTypeDefinition(
             ),
         ),
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 
