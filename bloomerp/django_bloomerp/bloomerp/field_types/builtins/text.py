@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import FieldDoesNotExist
 from bloomerp.field_types.display_options import FieldDisplayOption
 from bloomerp.form_fields.choice_colors_field import ChoiceColorsField
 from bloomerp.widgets.colored_choices_widget import ColoredChoicesWidget
@@ -96,7 +97,13 @@ def choice_widget(context: FieldContext) -> forms.Widget:
         return InputSelectWidget(attrs=attrs)
     attrs.pop("colored_choices", None)
     attrs.pop("colors", None)
-    if not any(str(key) == "" for key, _label in choices):
+    allows_blank = False
+    if context.application_field is not None:
+        try:
+            allows_blank = context.application_field._get_model_field().blank
+        except FieldDoesNotExist:
+            pass
+    if allows_blank and not any(str(key) == "" for key, _label in choices):
         choices = [("", "---------"), *choices]
     return ColoredChoicesWidget(
         attrs=attrs,
