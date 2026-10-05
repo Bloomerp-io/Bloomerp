@@ -295,8 +295,16 @@ to give their creator automatic use access.
 An agent-use grant enables the existing private socket lifecycle for non-staff
 users, including owned conversation history and transcript reads. Revoking an
 agent grant blocks further sends, attempts and tool dispatch while owners may
-still read their existing transcripts. Conversation and message models retain
-their private configuration with generated APIs disabled.
+still read their existing transcripts.
+
+`AIConversation` and `AIMessage` declare authenticated owner-scoped `view` grants
+in their model API settings. `/api/ai_conversations/` and `/api/ai_messages/`,
+including their detail routes, expose safe conversation metadata and user/assistant
+message content. System messages are excluded from the default message grant.
+These settings grant no create, update, delete or bulk-write access. Existing
+administrative and explicitly assigned policy access follows the shared permission
+framework. Conversation creation, sending messages and triggering runs continue
+through the existing socket/controller flow.
 
 The chat picker saves a conversation's next-run choice. Users may switch models
 within a conversation, including during an active run. Each new run snapshots

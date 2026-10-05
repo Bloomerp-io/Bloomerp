@@ -125,14 +125,16 @@ class AgentModelFixtures:
         return AIArtifact.objects.create(**self.chart_args(**overrides))
 
     def model_is_internal(self, instance: models.Model) -> bool:
-        """Check successful scenario records stay outside the generated API catalog."""
+        """Expose only transcript models with authenticated view-only API grants."""
         from bloomerp.views.api.generic.base import get_auto_api_models
 
         config = type(instance).bloomerp_config
+        exposes_transcript = type(instance) in {AIConversation, AIMessage}
         return (
             config.is_internal
-            and type(instance) not in get_auto_api_models()
-            and not config.should_enable_api_auto_generation()
+            and (type(instance) in get_auto_api_models()) == exposes_transcript
+            and config.should_enable_api_auto_generation() == exposes_transcript
+            and not config.has_anonymous_api_access()
             and not config.string_search_settings.allow_global_search
         )
 
