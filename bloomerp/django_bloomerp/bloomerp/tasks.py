@@ -11,9 +11,11 @@ from bloomerp.celery.tasks.bulk_upload_task import process_bulk_upload_submissio
 from bloomerp.celery.tasks.inbox_source_task import execute_inbox_source_task
 from bloomerp.celery.tasks.workflow_task import run_scheduled_workflow
 from bloomerp.utils.async_utils import run_serialized_async_job
+from bloomerp.views.api.files.start_file_extraction import execute_file_extraction
 
 __all__ = [
     "execute_agent_run",
+    "execute_file_extraction",
     "execute_inbox_source_task",
     "process_bulk_upload_submission",
     "run_scheduled_workflow",
