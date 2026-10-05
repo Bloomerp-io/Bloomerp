@@ -15,7 +15,8 @@ class BaseViewPreference(BasePreference):
         abstract = True
 
     bloomerp_config = BloomerpModelConfig(
-        is_internal=True
+        is_internal=True,
+        api_settings=BasePreference.bloomerp_config.api_settings.model_copy(deep=True),
     )
     content_type = models.ForeignKey(
         ContentType,
