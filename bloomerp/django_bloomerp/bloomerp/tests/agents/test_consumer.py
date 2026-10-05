@@ -25,8 +25,11 @@ from bloomerp.config.definition import BloomerpConfig
 class AgentConsumerTests(SimpleTestCase):
     """Exercise real socket routing while replacing only controller operations."""
 
+    async def authorize_connection(self) -> None:
+        """Keep protocol-only fixtures independent of the persisted-identity integration tests."""
+
     async def connect_browser(self) -> WebsocketCommunicator:
-        """Connect an authenticated tab and consume its initial acknowledgement."""
+        """Connect with isolated authorization; database identity is tested end-to-end separately."""
         self.tab_id = uuid4()
         self.user = SimpleNamespace(pk=1, is_authenticated=True)
         app = URLRouter([path("ws/agents/<uuid:tab_id>/", AgentConsumer.as_asgi())])
@@ -36,7 +39,11 @@ class AgentConsumerTests(SimpleTestCase):
             headers=[(b"host", b"erp.test"), (b"origin", b"https://erp.test")],
         )
         browser.scope["user"] = self.user
-        connected, _ = await browser.connect()
+        with patch(
+            "bloomerp.channels.agents.agent_consumer.database_sync_to_async",
+            return_value=self.authorize_connection,
+        ):
+            connected, _ = await browser.connect()
         self.assertTrue(connected)
         self.assertEqual(
             (await browser.receive_json_from())["type"], "connection.ready"

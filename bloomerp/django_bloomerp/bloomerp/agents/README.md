@@ -280,12 +280,31 @@ Configuration changes still require administrative row and field change grants.
 `AIAgentAccessManager` in `agents/access.py` grants use to active authenticated
 creators (`created_by`), explicitly listed users, members of listed groups, and
 superusers. `AIAgentAccess` records attach through the agent's `access` relation.
+Each record also has `all_staff_users` and `all_authenticated_users`, both false
+by default. These are additive grants alongside explicit users/groups. The staff
+flag covers active staff accounts; the authenticated flag covers every active
+signed-in account, including non-staff users. Neither grants anonymous access.
+Account activity, staff status and grants are read live, including tool dispatch.
 The chat picker and new-run acceptance use these grants, with disabled or
 unconfigured agents excluded. Credential resolution rechecks use access on every
 attempt, so revoked users cannot resume using provider secrets. Agent use grants
 expose only safe picker metadata; they do not grant configuration, credential,
 or access-management permissions. Set `created_by` when creating agents via ORM
 to give their creator automatic use access.
+
+An agent-use grant enables the existing private socket lifecycle for non-staff
+users, including owned conversation history and transcript reads. Revoking an
+agent grant blocks further sends, attempts and tool dispatch while owners may
+still read their existing transcripts.
+
+`AIConversation` and `AIMessage` declare authenticated owner-scoped `view` grants
+in their model API settings. `/api/ai_conversations/` and `/api/ai_messages/`,
+including their detail routes, expose safe conversation metadata and user/assistant
+message content. System messages are excluded from the default message grant.
+These settings grant no create, update, delete or bulk-write access. Existing
+administrative and explicitly assigned policy access follows the shared permission
+framework. Conversation creation, sending messages and triggering runs continue
+through the existing socket/controller flow.
 
 The chat picker saves a conversation's next-run choice. Users may switch models
 within a conversation, including during an active run. Each new run snapshots

@@ -284,7 +284,9 @@ class AgentController:
             "instance_origin"
         ) or self.instance_settings().mcp_origin
         return AgentMcpClient(
-            run.initiated_by_id, origin, agent_id=run.config_snapshot.get("model_record_id")
+            run.initiated_by_id,
+            origin,
+            agent_id=run.config_snapshot.get("model_record_id"),
         )
 
     def authorize(self) -> None:
@@ -478,6 +480,8 @@ class AgentController:
             else:
                 conversation = AIConversation.objects.create(
                     owner=self.user,
+                    created_by=self.user,
+                    updated_by=self.user,
                     title=next(
                         (
                             block.text.strip()
@@ -711,7 +715,9 @@ class AgentController:
                 usage=RunUsage.model_validate(attempt.usage),
                 error=AgentError(
                     code="execution_failed",
-                    message=str(error) if isinstance(error, MCPUnavailableError) else "The agent could not complete this response.",
+                    message=str(error)
+                    if isinstance(error, MCPUnavailableError)
+                    else "The agent could not complete this response.",
                     retryable=True,
                     details={
                         "exception_type": type(error).__name__,
