@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load bloomerp %}
 
 <div
@@ -19,28 +20,32 @@
                 class="min-w-0 flex-1 truncate text-left text-sm font-medium text-gray-800"
                 data-select-preference="{{ preference.id }}"
             >
-                {{ preference.effective_preference.name }}
+                {% if preference.effective_preference.name == "Default" %}
+                    {% translate "Default" %}
+                {% else %}
+                    {{ preference.effective_preference.name }}
+                {% endif %}
             </button>
 
             {% if preference.selected and preference.user_id == request.user.id %}
-                <span class="text-xs font-medium text-primary-700">Selected</span>
+                <span class="text-xs font-medium text-primary-700">{% translate "Selected" %}</span>
             {% endif %}
             
             {% if can_manage %}
-                <button type="button" class="btn btn-ghost btn-xs" data-rename-preference="{{ preference.id }}" aria-label="Rename preference">
+                <button type="button" class="btn btn-ghost btn-xs" data-rename-preference="{{ preference.id }}" aria-label="{% translate "Rename preference" %}">
                     <i class="fa fa-pen"></i>
                 </button>
-                <button type="button" class="btn btn-ghost btn-xs" data-share-preference="{{ preference.id }}" aria-label="Share preference">
+                <button type="button" class="btn btn-ghost btn-xs" data-share-preference="{{ preference.id }}" aria-label="{% translate "Share preference" %}">
                     <i class="fa fa-share-nodes"></i>
                 </button>
-                <button type="button" class="btn btn-ghost btn-xs text-danger" data-delete-preference="{{ preference.id }}" aria-label="Delete preference">
+                <button type="button" class="btn btn-ghost btn-xs text-danger" data-delete-preference="{{ preference.id }}" aria-label="{% translate "Delete preference" %}">
                     <i class="fa fa-trash"></i>
                 </button>
             {% endif %}
         </div>
     {% empty %}
         <div class="px-4 py-3 text-sm text-gray-500">
-            No preferences available yet.
+            {% translate "No preferences available yet." %}
         </div>
     {% endfor %}
 </div>
@@ -48,7 +53,7 @@
 
 <div class="border-t border-gray-200 px-4 py-3">
     <div class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-        New {{ model_verbose_name }}
+        {% blocktrans %}New {{ model_verbose_name }}{% endblocktrans %}
     </div>
 
     <form 
@@ -65,12 +70,12 @@
             type="text"
             name="name"
             class="input input-sm w-full"
-            placeholder="Preference name"
+            placeholder="{% translate "Preference name" %}" aria-label="{% translate "Preference name" %}"
             maxlength="255"
             value=""
         >
         <button type="submit" class="btn btn-primary btn-sm shrink-0">
-            Save
+            {% translate "Save" %}
         </button>
     </form>
 </div>

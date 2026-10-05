@@ -1,5 +1,5 @@
 from __future__ import annotations
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _
 
 import re
 import uuid
@@ -326,11 +326,12 @@ class UserDetailViewTabsPreference(BasePreference):
                 children_by_parent[item.parent_id].append(item)
 
         def render_tab(item: UserDetailViewTabItem) -> dict[str, Any]:
+            """Resolve a tab's current URL and built-in presentation label."""
             href = self.resolve_tab_url(item.url or "", object_pk)
             parsed = urlsplit(href)
             return {
                 "id": str(item.id),
-                "name": item.name,
+                "name": self.localized_item_name(item),
                 "url": item.url,
                 "href": href,
                 "is_external": bool(parsed.scheme and parsed.netloc),
@@ -343,7 +344,7 @@ class UserDetailViewTabsPreference(BasePreference):
                 rendered.append(
                     {
                         "id": str(item.id),
-                        "name": item.name,
+                        "name": self.localized_item_name(item),
                         "is_folder": True,
                         "tabs": [
                             render_tab(child)
@@ -354,6 +355,19 @@ class UserDetailViewTabsPreference(BasePreference):
             else:
                 rendered.append({**render_tab(item), "is_folder": False})
         return rendered
+
+    def localized_item_name(self, item: UserDetailViewTabItem) -> str:
+        """Translate recognized generated names while retaining custom tab names."""
+        if not self.initial_default and self.name != "Default":
+            return item.name
+        if item.is_folder and item.name == RELATIONSHIPS_FOLDER_NAME:
+            return gettext("Relationships")
+        if item.name in {"Overview", "Details"} and item.url and "{pk}" in item.url:
+            model = self.content_type.model_class() if self.content_type_id else None
+            for option in self.get_detail_route_options(model):
+                if option["url"] == item.url and option["priority"] == 0:
+                    return gettext("Overview") if item.name == "Overview" else gettext("Details")
+        return item.name
 
     def sync_items(self, payload: Any) -> None:
         """Replace this preference's tree with a validated client snapshot."""

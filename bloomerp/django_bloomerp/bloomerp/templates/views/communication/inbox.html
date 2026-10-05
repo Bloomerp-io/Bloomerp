@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load crispy_forms_tags %}
 
 {% if inbox %}
@@ -56,14 +57,14 @@
                 {% endfor %}
 
                 {% if can_manage_inbox %}
-                    <c-ui.dropdown.item text="Add folder" icon="fa fa-plus" id="add-folder-btn" />
+                    <c-ui.dropdown.item text="{% translate "Add folder" %}" icon="fa fa-plus" id="add-folder-btn" />
                 {% endif %}
                 <c-ui.dropdown.divider />
                 
                 <c-ui.dropdown.submenu 
                     id="" 
                     class="" icon="" 
-                    text="Select Inbox" 
+                    text="{% translate "Select Inbox" %}"
                     width="w-72"
                     >
                     <div
@@ -75,7 +76,7 @@
                         hx-push-url="false"
                     >
                         <div class="px-4 py-3 text-sm text-gray-500">
-                            Loading preferences...
+                            {% translate "Loading preferences..." %}
                         </div>
                     </div>
                 </c-ui.dropdown.submenu>
@@ -124,7 +125,7 @@
                             {{ action.name }}
                         </button>
                     {% empty %}
-                        <c-ui.dropdown.item text="No actions" disabled=True />
+                        <c-ui.dropdown.item text="{% translate "No actions" %}" disabled=True />
                     {% endfor %}
                         
                 </c-ui.dropdown.body>
@@ -148,7 +149,7 @@
                             {{ filter.name }}
                         </button>
                     {% empty %}
-                        <c-ui.dropdown.item text="No filters" disabled=True />
+                        <c-ui.dropdown.item text="{% translate "No filters" %}" disabled=True />
                     {% endfor %}
                 </c-ui.dropdown.body>
             </div>
@@ -160,7 +161,7 @@
                 <i class="fa fa-search text-sm"></i>
                 <input
                     class="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-gray-900 placeholder:text-gray-500 focus:ring-0"
-                    placeholder="Search"
+                    placeholder="{% translate "Search" %}"
                     id="inbox-search-input"
                     >
             </label>
@@ -184,24 +185,23 @@
 </div>
 {% else %}
 
-<c-ui.center_page_element class="" icon="fa fa-envelope" title="Create Inbox"
-    text="Create an inbox or select one that has been shared with you.">
+<c-ui.center_page_element class="" icon="fa fa-envelope" title="{% translate "Create Inbox" %}"
+    text="{% translate "Create an inbox or select one that has been shared with you." %}">
     <div id="create-inbox-panel" class="flex flex-col items-center gap-4">
 
         <c-features.preferences.select_preference_button
             model="Inbox"
-            selected_preference_name="Select shared inbox"
+            selected_preference_name="{% translate "Select shared inbox" %}"
             trigger_icon_class="fa fa-inbox"
         />
 
         <button class="btn btn-primary" hx-post="{% url 'components_create_inbox' %}" hx-target="this"
-            hx-swap="innerHTML" hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}", "create_default": "true"}'>Create
-            default</button>
+            hx-swap="innerHTML" hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}", "create_default": "true"}'>{% translate "Create default" %}</button>
 
         <button class="btn btn-secondary" type="button" hx-get="{% url 'components_create_inbox' %}"
             hx-target="#create-custom-inbox-modal-body" bloomerp-open-modal="create-custom-inbox-modal"
             hx-swap="innerHTML" hx-animation>
-            Create custom
+            {% translate "Create custom" %}
         </button>
     </div>
 </c-ui.center_page_element>

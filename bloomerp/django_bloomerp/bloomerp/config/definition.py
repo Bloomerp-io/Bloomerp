@@ -102,7 +102,7 @@ class BloomerpI18nLLMSettings(BaseModel):
 
     model: str = "gpt-6-luna"
     provider: str | None = "openai"
-    temperature: float = 0
+    temperature: float | None = None
     batch_size: int = Field(default=30, ge=1, le=100)
 
 

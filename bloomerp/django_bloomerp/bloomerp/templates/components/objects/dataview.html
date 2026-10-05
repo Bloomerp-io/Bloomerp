@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load bloomerp %}
 {% load crispy_forms_tags %}
 
@@ -40,7 +41,7 @@
                         type="text"
                         name="q"
                         value="{{ search_query }}"
-                        placeholder="Search..."
+                        placeholder="{% translate "Search..." %}"
                         class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
                         id="data-view-search-input-{{ content_type_id }}"
                     />
@@ -169,7 +170,7 @@
     
     
     <c-ui.modal id="export-objects-modal" title="Export"/>
-    <c-ui.modal id="bulk-actions-modal" title="Bulk actions"/>
+    <c-ui.modal id="bulk-actions-modal" title="{% translate "Bulk actions" %}"/>
 
 </div>
 {% endif %}

@@ -1,3 +1,4 @@
+import { t as _ } from "@/utils/i18n";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { getComponent } from "../BaseComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
@@ -331,6 +332,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     }
 
+    /** Show localized feedback when the last card leaves a column. */
     private ensureEmptyPlaceholder(dropzone: HTMLElement | null): void {
         if (!dropzone) return;
 
@@ -339,7 +341,7 @@ export class KanbanBoard extends BaseDataViewComponent {
 
         const placeholder = document.createElement('div');
         placeholder.className = 'text-center py-4 text-gray-400 text-sm';
-        placeholder.textContent = 'No items';
+        placeholder.textContent = _('No items');
         dropzone.appendChild(placeholder);
     }
 

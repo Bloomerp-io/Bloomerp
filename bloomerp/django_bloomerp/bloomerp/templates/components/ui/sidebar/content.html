@@ -1,3 +1,4 @@
+{% load i18n %}
 {% with root_items=sidebar.item_tree %}
 <div
     id="sidebar-content"
@@ -23,7 +24,7 @@
             <c-app.sidebar.item :sidebar="sidebar" :item="item" :can_manage="can_manage" />
         {% empty %}
         <li class="px-2 py-3 text-sm text-gray-500">
-            Drop a link here or create your first item.
+            {% translate "Drop a link here or create your first item." %}
         </li>
         {% endfor %}
 
