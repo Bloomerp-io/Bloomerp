@@ -1,4 +1,5 @@
 from django.test import SimpleTestCase
+from jsonschema import Draft202012Validator
 
 from bloomerp.router import router
 from bloomerp.views.api import mutations  # noqa: F401
@@ -26,6 +27,15 @@ class McpRouteRegistrationTests(SimpleTestCase):
         )
 
         self.assertIn("model_label", mutation.get_input_schema()["required"])
+        data_schema = mutation.get_input_schema()["properties"]["data"]
+        self.assertEqual(data_schema["type"], "object")
+        data_validator = Draft202012Validator(data_schema)
+        self.assertTrue(
+            data_validator.is_valid(
+                {"name": "Label", "optional": None, "nested": {"items": [1, True]}}
+            )
+        )
+        self.assertFalse(data_validator.is_valid('{"name": "Label"}'))
         catalog = routes["api_assistant_mutation_catalog"].mcp
         self.assertIn("model_label", catalog.get_input_schema()["properties"])
         self.assertNotIn("resource", catalog.get_input_schema()["properties"])
