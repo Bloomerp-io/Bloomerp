@@ -212,25 +212,6 @@ class AgentControllerTests(TestCase):
         )
         run.refresh_from_db()
 
-    def test_sync_dispatch_queues_ids_and_sanitizes_broker_failures(self) -> None:
-        """HTTP dispatch uses durable IDs and preserves a retryable safe failure state."""
-        run = AIRun.objects.get(pk=self.controller.accept_message(self.request).run_id)
-        with patch.object(self.controller, "worker_mode", return_value=True):
-            with patch(
-                "bloomerp.celery.tasks.agent_task.execute_agent_run.delay"
-            ) as enqueue:
-                self.controller.dispatch_sync(run.pk)
-                enqueue.assert_called_once_with(str(run.pk), str(self.user.pk))
-            with patch(
-                "bloomerp.celery.tasks.agent_task.execute_agent_run.delay",
-                side_effect=RuntimeError("private broker credentials"),
-            ):
-                self.controller.dispatch_sync(run.pk)
-        run.refresh_from_db()
-        self.assertEqual(run.status, "failed")
-        self.assertEqual(run.error["code"], "dispatch_failed")
-        self.assertNotIn("private broker credentials", str(run.error))
-
     def test_persists_real_runtime_and_replays_safe_events(self) -> None:
         """Persist a streamed answer, usage and checkpoint, publishing only public events."""
         submission = self.controller.accept_message(self.request)

@@ -4,9 +4,6 @@ from typing import Any
 from unittest.mock import patch
 from uuid import uuid4
 
-from channels.db import database_sync_to_async
-from django.test import override_settings
-
 from bloomerp.agents.controller import AgentController
 from bloomerp.models import User
 from bloomerp.models.agents import AIAgentAccess, AIConversation, AIRun
@@ -24,6 +21,8 @@ from bloomerp.tests.base import (
     Disconnect,
     ExpectJson,
 )
+from channels.db import database_sync_to_async
+from django.test import override_settings
 
 
 @override_settings(BLOOMERP_CONFIG=agent_test_config())
@@ -44,6 +43,9 @@ class TestAuthenticatedAgentSocket(BloomerpChannelTestCase):
             name="Authenticated audience",
             model=self.agent,
             all_authenticated_users=True,
+        )
+        self.foreign = AIConversation.objects.create(
+            owner=self.creator, selected_agent=self.agent
         )
         self.enterContext(
             patch.object(AgentController, "worker_mode", return_value=False)
@@ -97,7 +99,7 @@ class TestAuthenticatedAgentSocket(BloomerpChannelTestCase):
         ]
 
     async def full_chat(self, context: ChannelContext) -> None:
-        """Wait for real completion, then read history/transcript and test live revocation."""
+        """Execute owned chat, reject cross-owner/forged input and check live revocation."""
         socket = context.sockets["default"]
         await socket.send_json_to(
             {
@@ -137,6 +139,35 @@ class TestAuthenticatedAgentSocket(BloomerpChannelTestCase):
         self.assertEqual(
             [row["role"] for row in transcript["messages"]], ["user", "assistant"]
         )
+        for action in ("chat.conversation", "chat.message"):
+            payload = {
+                "type": action,
+                "conversation_id": str(self.foreign.pk),
+            }
+            if action == "chat.message":
+                payload["message"] = "Foreign conversation"
+            else:
+                payload["request_id"] = str(uuid4())
+            await socket.send_json_to(payload)
+            denied = await socket.receive_json_from(timeout=5)
+            self.assertEqual(denied["status"], "forbidden")
+        for field, value in {
+            "owner": str(self.creator.pk),
+            "role": "assistant",
+            "run": str(uuid4()),
+            "sequence": 99,
+            "status": "completed",
+        }.items():
+            await socket.send_json_to(
+                {
+                    "type": "chat.message",
+                    "conversation_id": self.conversation_id,
+                    "message": "Forged input",
+                    field: value,
+                }
+            )
+            rejected = await socket.receive_json_from(timeout=5)
+            self.assertEqual(rejected["type"], "protocol.error")
         await database_sync_to_async(self.revoke)()
         await socket.send_json_to(
             {
@@ -147,6 +178,18 @@ class TestAuthenticatedAgentSocket(BloomerpChannelTestCase):
         )
         denied = await socket.receive_json_from(timeout=5)
         self.assertEqual(denied["status"], "forbidden")
+        await socket.send_json_to(
+            {
+                "type": "chat.conversation",
+                "request_id": str(uuid4()),
+                "conversation_id": self.conversation_id,
+            }
+        )
+        transcript = await socket.receive_json_from(timeout=5)
+        self.assertEqual(
+            [row["role"] for row in transcript["messages"]], ["user", "assistant"]
+        )
+        await database_sync_to_async(self.assert_owned_runtime)()
 
     def assert_owned_runtime(self) -> None:
         """Check actor identity and durable provider output after the socket succeeds."""

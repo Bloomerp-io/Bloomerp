@@ -165,12 +165,7 @@ class ApiAccessResolver:
         ) or self.permission_manager.has_row_level_access(model, permission_str)
 
     def get_queryset(self, model: type[Model], action: str | None = None) -> QuerySet:
-        """Compile API grants while preserving the private transcript owner boundary."""
         queryset = model.objects.all()
-        if model._meta.label_lower in {"bloomerp.aiconversation", "bloomerp.aimessage"}:
-            from bloomerp.agents.api import scope_agent_api_queryset
-
-            queryset = scope_agent_api_queryset(queryset, self.request.user, action)
         if getattr(self.permission_manager.user, "is_superuser", False):
             return queryset
         permission = self.get_permission_action_name(action)
@@ -292,12 +287,6 @@ class ApiAccessResolver:
         model: type[Model],
         action: str | None = None,
     ) -> bool:
-        """Advertise model operations without bypassing private transcript contracts."""
-        if (
-            model._meta.label_lower in {"bloomerp.aiconversation", "bloomerp.aimessage"}
-            and action not in {None, "list", "retrieve", "read", "create"}
-        ):
-            return False
         if getattr(self.permission_manager.user, "is_superuser", False):
             return True
         if self.has_internal_access(model, action):
@@ -422,12 +411,10 @@ def apply_queryset_nesting(
         queryset = queryset.prefetch_related(*sorted(prefetch_related_paths))
     return queryset
 
-def generate_serializer(model: type[Model]) -> type[serializers.ModelSerializer]:
-    """Generate a serializer, retaining the private transcript write boundary."""
-    if model._meta.label_lower in {"bloomerp.aiconversation", "bloomerp.aimessage"}:
-        from bloomerp.agents.api import agent_api_serializer
-
-        return agent_api_serializer(model._meta.label_lower)
+def generate_serializer(model:Model) -> type[serializers.ModelSerializer]:
+    '''
+    Dynamically generate a serializer class for a given model.
+    '''
 
     # Dynamically create a Meta class
     meta_class = type('Meta', (object,), {

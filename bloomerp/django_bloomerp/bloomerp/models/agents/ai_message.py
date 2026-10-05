@@ -5,54 +5,12 @@ from typing import Any, ClassVar
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from bloomerp.filters.definition import FilterCondition
-from bloomerp.lookups import builtins as lookups
-from bloomerp.models.definition import ApiAccessSettings, ApiSettings
-from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
-
 from .base import AgentModel
 from .fields import AgentJSONField
 
 
 class AIMessage(AgentModel):
     """Store one ordered transcript entry, optionally produced by a run."""
-
-    bloomerp_config = AgentModel.bloomerp_config.model_copy(
-        deep=True,
-        update={
-            "api_settings": ApiSettings(
-                enable_auto_generation=True,
-                access=ApiAccessSettings(
-                    authenticated=[
-                        AccessRule(
-                            row_permissions=[
-                                RowPolicyRuleContent(
-                                    permissions=["view", "add"],
-                                    conditions=[
-                                        FilterCondition(
-                                            field_path="conversation__owner__pk",
-                                            lookup_id=lookups.EQUALS.id,
-                                            value="$user",
-                                        )
-                                    ],
-                                )
-                            ],
-                            field_permissions={
-                                "id": ["view", "add"],
-                                "conversation": ["view", "add"],
-                                "content_blocks": ["view", "add"],
-                                "sequence": ["view"],
-                                "role": ["view"],
-                                "status": ["view"],
-                                "run": ["view"],
-                                "datetime_created": ["view"],
-                            },
-                        )
-                    ],
-                ),
-            )
-        },
-    )
 
     class Meta(AgentModel.Meta):
         db_table = "bloomerp_ai_message"

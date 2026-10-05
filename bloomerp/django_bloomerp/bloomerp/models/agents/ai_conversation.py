@@ -13,10 +13,6 @@ from django.utils.translation import gettext_lazy as _
 
 from bloomerp.agents.definition import MessageContent, RunUsage
 from bloomerp.agents.runtime import AgentRuntimeMessage
-from bloomerp.filters.definition import FilterCondition
-from bloomerp.lookups import builtins as lookups
-from bloomerp.models.definition import ApiAccessSettings, ApiSettings
-from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
 
 from .base import AgentModel
 
@@ -31,41 +27,6 @@ if TYPE_CHECKING:
 
 class AIConversation(AgentModel):
     """Own a private transcript and its durable executions and artifacts."""
-
-    bloomerp_config = AgentModel.bloomerp_config.model_copy(
-        deep=True,
-        update={
-            "api_settings": ApiSettings(
-                enable_auto_generation=True,
-                access=ApiAccessSettings(
-                    authenticated=[
-                        AccessRule(
-                            row_permissions=[
-                                RowPolicyRuleContent(
-                                    permissions=["view", "add"],
-                                    conditions=[
-                                        FilterCondition(
-                                            field_path="owner__pk",
-                                            lookup_id=lookups.EQUALS.id,
-                                            value="$user",
-                                        )
-                                    ],
-                                )
-                            ],
-                            field_permissions={
-                                "id": ["view", "add"],
-                                "title": ["view", "add"],
-                                "selected_agent": ["view", "add"],
-                                "status": ["view"],
-                                "datetime_created": ["view"],
-                                "datetime_updated": ["view"],
-                            },
-                        )
-                    ],
-                ),
-            )
-        },
-    )
 
     class Meta(AgentModel.Meta):
         db_table = "bloomerp_ai_conversation"
@@ -345,8 +306,6 @@ class AIConversation(AgentModel):
                 content_blocks=payload,
                 run=run,
                 status=status,
-                created_by=conversation.owner,
-                updated_by=conversation.owner,
             )
 
     def create_run(

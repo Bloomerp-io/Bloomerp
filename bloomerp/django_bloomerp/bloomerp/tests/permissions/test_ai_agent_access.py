@@ -1,15 +1,14 @@
 """Exercise explicit agent-use authorization at the manager and controller boundaries."""
 
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser, Group
-from django.core.exceptions import PermissionDenied
-from django.test import TestCase, override_settings
-
 from bloomerp.agents.access import AIAgentAccessManager
 from bloomerp.agents.controller import AgentController
 from bloomerp.models.agents import AIAgent, AIAgentAccess
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.tests.agents.test_controller import agent_test_config
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser, Group
+from django.core.exceptions import PermissionDenied
+from django.test import TestCase, override_settings
 
 
 @override_settings(BLOOMERP_CONFIG=agent_test_config())

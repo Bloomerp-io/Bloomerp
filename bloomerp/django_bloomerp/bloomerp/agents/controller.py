@@ -562,35 +562,6 @@ class AgentController:
         _live_tasks.add(task)
         task.add_done_callback(self.task_finished)
 
-    def dispatch_sync(self, run_id: UUID) -> None:
-        """Dispatch committed HTTP/MCP submissions without a short-lived background loop.
-
-        Production uses the configured Celery worker. Without an external broker,
-        the development fallback completes the attempt within the request.
-        """
-        run = self.load_run(run_id)
-        if run.status != "queued":
-            return
-        if self.worker_mode():
-            from bloomerp.celery.tasks.agent_task import execute_agent_run
-
-            try:
-                execute_agent_run.delay(str(run_id), str(self.user.pk))
-            except Exception:  # noqa: BLE001 - broker errors may contain credentials
-                event = run.fail_queued(
-                    AgentError(
-                        code="dispatch_failed",
-                        message="The agent could not be scheduled.",
-                        retryable=True,
-                    )
-                )
-                if event:
-                    async_to_sync(self.publish)(event)
-        else:
-            async_to_sync(self.run_attempt)(
-                run_id, execution_mode="inline", executor_id=f"http:{uuid4()}"
-            )
-
     async def dispatch(self, run_id: UUID) -> None:
         """Dispatch only IDs to workers, or retain a managed task on the application loop."""
         try:
