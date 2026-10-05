@@ -11,10 +11,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Q
-from bloomerp.lookups import builtins as lookups
 
 from bloomerp.models.definition import (
-    ApiAccessSettings,
     ApiSettings,
     BloomerpModelConfig,
     DetailTab,
@@ -22,12 +20,6 @@ from bloomerp.models.definition import (
     DetailTabsConfiguration,
     get_model_config,
     validate_detail_tab_url,
-)
-from bloomerp.permissions.definition import (
-    AccessRule,
-    BloomerpPermission,
-    RowPolicyRuleCondition,
-    RowPolicyRuleContent,
 )
 from bloomerp.models.users.base_preference import BasePreference
 from bloomerp.router import router
@@ -45,37 +37,7 @@ class UserDetailViewTabsPreference(BasePreference):
 
     bloomerp_config = BloomerpModelConfig(
         is_internal=True,
-        api_settings=ApiSettings(
-            enable_auto_generation=True,
-            access=ApiAccessSettings(
-                authenticated=[
-                    AccessRule(
-                        row_permissions=[
-                            RowPolicyRuleContent(
-                                permissions=[
-                                    BloomerpPermission.VIEW,
-                                    BloomerpPermission.CHANGE,
-                                ],
-                                conditions=[
-                                    RowPolicyRuleCondition(
-                                        field="user",
-                                        operator=lookups.EQUALS_USER.id,
-                                        value="$user",
-                                    )
-                                ],
-                            )
-                        ],
-                        field_permissions={
-                            "id": [BloomerpPermission.VIEW],
-                            "name": [
-                                BloomerpPermission.VIEW,
-                                BloomerpPermission.CHANGE,
-                            ],
-                        },
-                    )
-                ]
-            ),
-        ),
+        api_settings=BasePreference.bloomerp_config.api_settings.model_copy(deep=True),
     )
 
     content_type = models.ForeignKey(
