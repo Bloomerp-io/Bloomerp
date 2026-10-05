@@ -1,3 +1,4 @@
+import { t as _ } from "@/utils/i18n";
 import { $createHeadingNode } from "@lexical/rich-text";
 import {
     $createListNode,
@@ -128,27 +129,32 @@ function handleOrderedList(textEditor: BloomerpTextEditor): void {
 
 export let ACTIONS: Record<string, Action> = {
     code_block: {
-        label: "Code Block",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Code Block"); },
         icon: "fa-solid fa-code",
         handler: handleCodeBlock,
     },
     h1: {
-        label: "Heading 1",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Heading 1"); },
         icon: "fa-solid fa-heading",
         handler: (textEditor) => handleHeading(textEditor, "h1")
     },
     h2: {
-        label: "Heading 2",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Heading 2"); },
         icon: "fa-solid fa-heading",
         handler: (textEditor) => handleHeading(textEditor, "h2")
     },
     h3: {
-        label: "Heading 3",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Heading 3"); },
         icon: "fa-solid fa-heading",
         handler: (textEditor) => handleHeading(textEditor, "h3")
     },
     image: {
-        label: "Image",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Image"); },
         icon: "fa-solid fa-image",
         handler: (textEditor) => {
             const editor = getLexicalEditor(textEditor);
@@ -163,22 +169,26 @@ export let ACTIONS: Record<string, Action> = {
         }
     },
     unordered_list: {
-        label: "Bullet List",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Bullet List"); },
         icon: "fa-solid fa-list-ul",
         handler: handleUnorderedList,
     },
     ordered_list: {
-        label: "Numbered List",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Numbered List"); },
         icon: "fa-solid fa-list-ol",
         handler: handleOrderedList,
     },
     checklist: {
-        label: "Checklist",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Checklist"); },
         icon: "fa-solid fa-list-check",
         handler: handleChecklist,
     },
     table: {
-        label: "Table",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Table"); },
         icon: "fa-solid fa-table",
         handler: (textEditor) => {
             const editor = getLexicalEditor(textEditor);
@@ -205,7 +215,8 @@ export let ACTIONS: Record<string, Action> = {
         }
     },
     html: {
-        label: "HTML",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("HTML"); },
         icon: "fa-solid fa-code",
         handler: (textEditor) => {
             const editor = getLexicalEditor(textEditor);

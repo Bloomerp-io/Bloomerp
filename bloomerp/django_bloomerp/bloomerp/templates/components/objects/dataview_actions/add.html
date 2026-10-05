@@ -1,3 +1,4 @@
+{% load i18n %}
 <div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
     <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
         <button
@@ -9,7 +10,7 @@
             data-target="#create-object-modal-body"
         >
             <i class="fa fa-plus"></i>
-            <span>Add</span>
+            <span>{% translate "Add" %}</span>
         </button>
     </c-ui.shortcut_tooltip>
 </div>

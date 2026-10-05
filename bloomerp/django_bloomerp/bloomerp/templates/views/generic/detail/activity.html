@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load bloomerp %}
 
 <div class="mx-auto flex max-w-4xl justify-center xl:h-full xl:overflow-y-auto">
@@ -35,7 +36,7 @@
                                     System
                                 {% endif %}
                                 <span class="px-1 text-gray-300">&bull;</span>
-                                {{ entry.timestamp|timesince }} ago
+                                {% blocktrans with elapsed=entry.timestamp|timesince %}{{ elapsed }} ago{% endblocktrans %}
                             </p>
 
                             {% if entry.action == "CHANGE" and entry.payload %}
@@ -46,14 +47,14 @@
                                 </div>
 
                                 <details class="group mt-3">
-                                    <summary class="cursor-pointer text-sm font-medium text-gray-700 group-open:text-gray-950">View changes</summary>
+                                    <summary class="cursor-pointer text-sm font-medium text-gray-700 group-open:text-gray-950">{% translate "View changes" %}</summary>
                                     <div class="mt-3 overflow-hidden rounded-md border border-gray-200">
                                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                                             <thead class="bg-gray-50">
                                                 <tr>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">Field</th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">Before</th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">After</th>
+                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">{% translate "Field" %}</th>
+                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">{% translate "Before" %}</th>
+                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">{% translate "After" %}</th>
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-gray-100 bg-white">
@@ -70,7 +71,7 @@
                                 </details>
                             {% elif entry.action == "DELETE" and entry.payload %}
                                 <details class="group mt-3">
-                                    <summary class="cursor-pointer text-sm font-medium text-gray-700 group-open:text-gray-950">View deleted data</summary>
+                                    <summary class="cursor-pointer text-sm font-medium text-gray-700 group-open:text-gray-950">{% translate "View deleted data" %}</summary>
                                     <div class="mt-3 overflow-hidden rounded-md border border-gray-200">
                                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                                             <tbody class="divide-y divide-gray-100 bg-white">
@@ -90,6 +91,6 @@
             {% endfor %}
         </ol>
     {% else %}
-        <c-ui.text.muted class="">No activity yet</c-ui.text.muted>
+        <c-ui.text.muted class="">{% translate "No activity yet" %}</c-ui.text.muted>
     {% endif %}
 </div>

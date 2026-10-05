@@ -1,6 +1,7 @@
 import json
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Any
 
 import bleach
 from django import template
@@ -270,9 +271,9 @@ def render_dataview_value(
     user: AbstractBloomerpUser,
     row_index:int=0,
     column_index:int=0,
-    url:str=None,
+    url: str | None = None,
     split_view_enabled: bool = False,
-):
+) -> dict[str, Any]:
     """Renders a data table value
 
     Args:
@@ -296,8 +297,14 @@ def render_dataview_value(
     else:
         value = ""
     
+    data_value = value
+    if can_view and application_field.get_field_type().id in {"CharField", "ChoiceField"}:
+        # Display labels can be localized; filters still need the stored choice key.
+        data_value = getattr(object, application_field.field, None)
+
     return {
         "value": value,
+        "data_value": data_value,
         "object": object,
         "is_field_type": FIELD_TYPE_REGISTRY.template_context(application_field.get_field_type()),
         "application_field_id" : application_field.id,

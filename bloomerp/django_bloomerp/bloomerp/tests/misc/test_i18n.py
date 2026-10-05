@@ -305,18 +305,27 @@ class TestI18nConfiguration(SimpleTestCase):
         self.assertIsInstance(TodoStatus.IN_PROGRESS.label, Promise)
         self.assertEqual(ActivityLog._meta.get_field("source").choices, ActivityLogSource.choices)
 
-    def test_static_layout_titles_remain_pydantic_safe_and_translate_when_resolved(self):
+    def test_static_layout_titles_remain_pydantic_safe_and_translate_when_resolved(self) -> None:
+        """Use case: Resolve static layout titles. Expected result: Translate at rendering time."""
         layout = Todo.bloomerp_config.detail_view_settings.get_default_layout()
 
         self.assertIsInstance(layout.rows[0].title, str)
         self.assertEqual(layout.rows[0].title, "Details")
 
-        content_type = SimpleNamespace(model_class=lambda: Todo)
+        def todo_model() -> type[Todo]:
+            """Return the model behind the simulated content type."""
+            return Todo
+
+        def translate_title(message: str) -> str:
+            """Translate the section title without needing a compiled catalog."""
+            return {"Details": "Detalhes"}.get(message, message)
+
+        content_type = SimpleNamespace(model_class=todo_model)
         with (
-            patch("bloomerp.services.sectioned_layout_services.UserPermissionManager"),
+            patch("bloomerp.services.sectioned_layout_services.UserPolicyManager"),
             patch(
                 "bloomerp.services.sectioned_layout_services.gettext",
-                side_effect=lambda message: {"Details": "Detalhes"}.get(message, message),
+                side_effect=translate_title,
             ),
         ):
             rows = resolve_detail_layout_rows(

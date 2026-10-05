@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
+from django.utils.encoding import force_str
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import FieldDoesNotExist
 from bloomerp.field_types.display_options import FieldDisplayOption
@@ -112,7 +113,21 @@ def choice_widget(context: FieldContext) -> forms.Widget:
     )
 
 
+def render_choice_value(application_field: ApplicationField, instance: models.Model) -> Any:
+    """Display declared choice labels in the active locale, preserving ordinary text."""
+    value = getattr(instance, application_field.field, None)
+    try:
+        field = instance._meta.get_field(application_field.field)
+    except FieldDoesNotExist:
+        return value
+    for key, label in field.flatchoices:
+        if key == value:
+            return force_str(label)
+    return value
+
+
 CHAR_FIELD = FieldTypeDefinition(
+    render_value=render_choice_value,
     form_factory=form(forms.CharField),
     widget_factory=choice_widget,
     id="CharField",
@@ -134,6 +149,7 @@ CODE_FIELD = FieldTypeDefinition(
     display_options=standard_display_options,
 )
 CHOICE_FIELD = FieldTypeDefinition(
+    render_value=render_choice_value,
     id="ChoiceField",
     icon="fa-solid fa-list",
     model_field_cls=models.CharField,

@@ -74,6 +74,7 @@ import { SelectPreference } from './components/SelectPreference';
 import ThemeProvider from './components/theme/ThemeProvider';
 import MarkdownCodeBlock from './components/MarkdownCodeBlock';
 import { loadTranslations } from './utils/i18n';
+import { setupLanguageSwitch } from './utils/languageSwitch';
 import { FileBrowser } from './components/data_view_components/FileBrowser';
 import { initBrowserAgent } from './utils/agent';
 import AgentChat from './components/agent/AgentChat';
@@ -81,6 +82,7 @@ import AgentChat from './components/agent/AgentChat';
 
 Object.assign(window, { showMessage });
 initBrowserAgent();
+setupLanguageSwitch();
 
 // Register components here
 registerComponent('bloomerp:artifact-picker', ArtifactPicker);

@@ -1,3 +1,4 @@
+import { t as _ } from "@/utils/i18n";
 import { getItemNavigationKey } from "@/utils/itemNavigation";
 import renderDataView from "@/utils/dataview";
 import { createModalInstance } from "@/utils/modals";
@@ -387,12 +388,13 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
     }
 
-    private renderResults(objects: Array<{id:number, string_representation:string, detail_url?: string}>) {
+    /** Render localized search feedback while preserving related object names. */
+    private renderResults(objects: Array<{id:number, string_representation:string, detail_url?: string}>): void {
         if (!this.resultsList || !this.dropdown) return;
         this.resultsList.innerHTML = '';
         if (!objects.length) {
             const li = document.createElement('li');
-            li.textContent = 'No results';
+            li.textContent = _('No results');
             li.className = 'px-3 py-2 text-sm text-gray-500';
             li.tabIndex = 0;
             this.resultsList.appendChild(li);
@@ -504,7 +506,7 @@ export default class ForeignFieldWidget extends BaseWidget {
             const removeButton = document.createElement('button');
             removeButton.type = 'button';
             removeButton.className = 'rounded-full px-1 leading-none hover:bg-white/20 focus:outline-none';
-            removeButton.setAttribute('aria-label', `Remove ${label}`);
+            removeButton.setAttribute('aria-label', _('Remove {label}').replace('{label}', label));
             removeButton.textContent = '×';
             removeButton.addEventListener('click', (ev) => {
                 ev.preventDefault();
