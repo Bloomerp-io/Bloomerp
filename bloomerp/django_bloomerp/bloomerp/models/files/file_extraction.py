@@ -216,7 +216,6 @@ class FileExtraction(BloomerpModel):
         """Keep experiment labels and Django permission defaults explicit."""
 
         db_table = "bloomerp_file_extraction"
-        default_permissions = ()
         verbose_name = _("File Extraction")
         verbose_name_plural = _("File Extractions")
         indexes: ClassVar[list[models.Index]] = [
