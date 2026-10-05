@@ -1,3 +1,5 @@
+import type { ContextMenuSubmenu } from "@/utils/contextMenu";
+import { TemplatePicker } from "./utils/templatePicker";
 import { t as _ } from "@/utils/i18n";
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
@@ -58,6 +60,7 @@ import {
 
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
+    private templatePicker: TemplatePicker | null = null;
     private unregister: (() => void) | null = null;
     private commands: Array<Command> = [];
     private actions: Array<Action> = [];
@@ -213,6 +216,8 @@ export class BloomerpTextEditor extends BaseWidget {
     }
 
     public destroy(): void {
+        this.templatePicker?.destroy();
+        this.templatePicker = null;
         if (this.hostClickHandler) {
             this.element?.removeEventListener('click', this.hostClickHandler);
             this.hostClickHandler = null;
@@ -505,6 +510,19 @@ export class BloomerpTextEditor extends BaseWidget {
 
     public getValue(): string {
         return this.toHtml()
+    }
+
+    /** Supply template search to any context-menu entry point. */
+    public getTemplateSubmenu(): ContextMenuSubmenu {
+        this.templatePicker ??= new TemplatePicker(this.element, this.editor!);
+        return this.templatePicker.submenu();
+    }
+
+    /** Open the shared template command while keeping the current insertion range. */
+    public openTemplatePicker(): void {
+        if (!this.editor || !this.element.dataset.templateSearchUrl) return;
+        this.templatePicker ??= new TemplatePicker(this.element, this.editor);
+        this.templatePicker.open();
     }
 
     public insertNode(node: LexicalNode | (() => LexicalNode)): void {

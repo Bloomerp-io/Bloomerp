@@ -17,3 +17,5 @@ enabled = true
 [bloomerp.auth.oauth]
 enabled = true
 
+[bloomerp]
+email_secret_key="123"

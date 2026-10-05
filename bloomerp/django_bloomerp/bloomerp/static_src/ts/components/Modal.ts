@@ -1,5 +1,5 @@
 import htmx from 'htmx.org';
-import BaseComponent from './BaseComponent';
+import BaseComponent, { getComponent } from './BaseComponent';
 import { activateModal, buildModalShell, deactivateModal, getTopModal, MODAL_SIZE_CLASSES } from '../utils/modals';
 
 /** Manage one dialog while shared utilities own its shell and open-modal stack. */
@@ -27,6 +27,9 @@ export class Modal extends BaseComponent {
         this.setSize(this.element.dataset.modalSize || 'md');
         this.setPadding(this.element.dataset.modalPadding || 'p-3');
         if (!this.portalToDocumentBody()) return;
+        for (const control of this.containerElement.querySelectorAll<HTMLElement>('[bloomerp-component="shortcut-tooltip"]')) {
+            getComponent(control);
+        }
         this.lifecycle?.abort();
         this.lifecycle = new AbortController();
         const options = { signal: this.lifecycle.signal };

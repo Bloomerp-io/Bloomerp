@@ -111,7 +111,7 @@
 	</section>
 
 	<!--Side section-->
-	<c-ui.resizable_div id="detail-aside" start_width="22rem" fit_to_main_bottom="true" force_open="{% if highlight_comment_id %}true{% endif %}" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
+	<c-ui.resizable_div id="detail-aside" toggle_shortcut="mod+shift+y" start_width="22rem" fit_to_main_bottom="true" force_open="{% if highlight_comment_id %}true{% endif %}" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
 		<aside class="xl:h-full xl:min-h-0">
 			<div class="relative flex flex-col overflow-hidden border-r border-gray-200 bg-white xl:h-full xl:min-h-0" data-resizable-div-panel>
 				<div class="pointer-events-none absolute left-0 top-0 z-40 h-full w-px bg-gray-200"></div>
@@ -157,6 +157,20 @@
 							{% blocktrans %}Create Todo{% endblocktrans %}
 						</button>
 						{% endif %}
+                        {% if object_email_fields %}
+                        {% translate "Email" as email_action_label %}
+                        <c-ui.dropdown.body :trigger_text="email_action_label" trigger_icon_class="fa fa-envelope" trigger_button_class="btn btn-secondary btn-sm" :fixed="True">
+                            {% for email_field in object_email_fields %}
+                            <button type="button" class="block w-full px-4 py-2 text-left text-sm hover:bg-base"
+                                hx-get="{% url 'components_new_email' %}?content_type_id={{ content_type_id }}&amp;object_id={{ object.pk|urlencode }}&amp;email_field={{ email_field.name|urlencode }}"
+                                hx-target="#detail-email-modal-body" hx-push-url="false"
+                                bloomerp-open-modal="detail-email-modal">
+                                <span class="block truncate" title="{{ email_field.value }}">{{ email_field.value }}</span>
+                                <span class="block text-xs text-gray-500">{{ email_field.label }}</span>
+                            </button>
+                            {% endfor %}
+                        </c-ui.dropdown.body>
+                        {% endif %}
 						{% for action in object_actions %}
 							{% render_object_action action=action object=object request=request content_type_id=content_type_id %}
 						{% endfor %}
@@ -187,3 +201,7 @@
 	id="detail-todo-modal"
 	title="Create todo"
 ></c-ui.modal>
+
+{% if object_email_fields %}
+<c-ui.modal id="detail-email-modal" :title="email_action_label" size="xl"></c-ui.modal>
+{% endif %}

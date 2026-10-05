@@ -21,7 +21,7 @@ from bloomerp.communication.emails.actions import (
     fetch_email_content,
 )
 from bloomerp.communication.utils.permissions import accessible_inbox_items
-from bloomerp.components.communication.emails.new_email import (
+from bloomerp.services.email_composer_requests import (
     _get_attachments,
     _get_form_data,
     _join_recipients,

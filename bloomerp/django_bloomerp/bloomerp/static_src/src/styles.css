@@ -1930,21 +1930,29 @@ html.dark [data-workflow-node-item]:hover {
 
 /* BloomAI's cloudy launcher uses the primary palette without a separate image. */
 .bloomerp-agent-launcher {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
   transition: transform 200ms ease;
+  touch-action: none;
+  user-select: none;
 }
 
-.bloomerp-agent-launcher:hover {
+.bloomerp-agent-launcher.is-dragging {
+  cursor: grabbing;
+  transform: none;
+  transition: none;
+}
+
+.bloomerp-agent-launcher:hover:not(.is-dragging) {
   transform: translateY(-2px) scale(1.04);
 }
 
-.bloomerp-agent-launcher:active {
+.bloomerp-agent-launcher:active:not(.is-dragging) {
   transform: scale(0.96);
 }
 

@@ -1,0 +1,13 @@
+{% load i18n %}
+{% if form.fields %}
+<div data-template-fields class="space-y-3">
+    <h3 class="text-sm font-medium text-gray-500">{% translate "Template variables" %}</h3>
+    {% for field in form %}
+    <div data-template-field="{{ field.name }}">
+        <label class="block text-sm font-medium" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="text-sm text-gray-500">{{ field.help_text }}</p>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

@@ -5,6 +5,12 @@ return type annotations (except implicit self/cls) and a descriptive docstring
 explaining their purpose. Apply this to drafts and examples too. Prefer named,
 typed, documented functions over nontrivial lambdas.
 
+## File structure
+
+### Views, models, components, etc.
+
+Each endpoint & model should have a file on its own.
+
 # Testing requirements
 
 Before writing or modifying any tests, read `docs/developers/testing/index.md`

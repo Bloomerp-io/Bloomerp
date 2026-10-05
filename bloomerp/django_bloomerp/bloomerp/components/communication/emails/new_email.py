@@ -1,211 +1,113 @@
+"""Render and send the shared inbox/object email composer."""
+
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING
+
 from django.contrib.auth.decorators import login_required
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.db import models
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils.translation import gettext as _
-from email.utils import getaddresses
-from typing import TYPE_CHECKING
+from django.views.decorators.http import require_http_methods
 
-from bloomerp.communication.emails.base_adapter import EmailAttachment
 from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
-from bloomerp.communication.utils.permissions import accessible_inbox_folders
+from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.router import router
+from bloomerp.services.email_composer_requests import (
+    _get_attachments, _get_form_data, _join_recipients, _resolve_account,
+    _resolve_draft, _validate_form_data, resolve_inbox_folder,
+)
+from bloomerp.services.email_composer_services import (
+    accessible_email_accounts, email_fields_for_object, render_email_body,
+    resolve_email_object, resolve_email_templates,
+)
 from bloomerp.utils.requests import render_message
 
 if TYPE_CHECKING:
     from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 
 
-# TODO: Refactor some of this logic
-
-def resolve_inbox_folder(request: HttpRequest, inbox_folder_or_id: "InboxFolder | str | None") -> "InboxFolder | None":
-    """
-    Resolves an email InboxFolder that belongs to the requesting user.
-
-    Args:
-        request: The current request.
-        inbox_folder_or_id: An InboxFolder instance, its ID, or None.
-
-    Returns:
-        The resolved InboxFolder when it exists and is accessible.
-    """
-    from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
-
-    if isinstance(inbox_folder_or_id, InboxFolder):
-        return inbox_folder_or_id
-
-    folder_id = inbox_folder_or_id or request.GET.get("folder_id") or request.POST.get("folder_id")
-    if not folder_id:
-        return None
-
-    # TODO: Reusable 
-    return get_object_or_404(
-        accessible_inbox_folders(request.user).filter(type="email"),
-        id=folder_id,
-    )
-
-
-@router.register(
-    path="components/communication/emails/new_email",
-    url_name="components_new_email"
-)
+@router.register(path="components/communication/emails/new_email", url_name="components_new_email")
 @login_required
-def new_email(request: HttpRequest, inbox_folder_or_id: "InboxFolder | str | None" = None) -> HttpResponse:
-    """
-    Renders the reusable email composer for a new outbound email.
+@require_http_methods(["GET", "POST"])
+def new_email(request: HttpRequest, inbox_folder_or_id: InboxFolder | str | None = None) -> HttpResponse:
+    """Render or send the same composer from an inbox or an authorized object."""
+    wants_json = "application/json" in request.headers.get("Accept", "")
+    try:
+        folder = resolve_inbox_folder(request, inbox_folder_or_id)
+        account = _resolve_account(request, folder)
+        data = request.POST if request.method == "POST" else request.GET
+        obj = resolve_email_object(request.user, data)
+        if account is None:
+            raise ValidationError(_("No accessible email account is available. Add an account or update your access."))
+        if request.method == "POST":
+            return _send_new_email(request, folder, account, obj)
+        recipient = ""
+        if obj is not None:
+            fields = email_fields_for_object(request.user, obj)
+            chosen = next((field for field in fields if field["name"] == data.get("email_field")), None)
+            if chosen is None:
+                raise ValidationError(_("Select a readable, populated email field."))
+            recipient = chosen["value"]
+        return _render_email_composer(request, folder, account, obj, {"to": recipient})
+    except (ValidationError, ValueError) as exc:
+        errors = exc.messages if isinstance(exc, ValidationError) else [_("Invalid email request.")]
+        if wants_json:
+            return JsonResponse({"errors": errors}, status=400)
+        return render_message(request, " ".join(errors), "error")
 
-    Args:
-        request: The current HTTP request.
-        inbox_folder_or_id: Optional folder instance or ID, supplied by inbox actions.
 
-    Returns:
-        A rendered email composer snippet.
-    """
-    inbox_folder = resolve_inbox_folder(request, inbox_folder_or_id)
-    if inbox_folder is None:
-        return render_message(request, _("Select an email folder before composing a message."), "warning")
-
-    email_account = inbox_folder.related_object()
-    if email_account is None:
-        return render_message(request, _("This email folder is not connected to an email account."), "error")
-
-    if request.method == "POST":
-        return _send_new_email(request, inbox_folder, email_account)
-
-    return _render_email_composer(
-        request,
-        inbox_folder=inbox_folder,
-        email_account=email_account,
-    )
-
-
-def _send_new_email(request: HttpRequest, inbox_folder: "InboxFolder", email_account) -> HttpResponse:
+def _send_new_email(
+    request: HttpRequest, inbox_folder: InboxFolder | None,
+    email_account: EmailAccount, obj: models.Model | None,
+) -> HttpResponse:
+    """Validate edited content, send once, and discard the owner's draft on success."""
     form_data = _get_form_data(request)
     errors = _validate_form_data(form_data)
-    attachments = _get_attachments(request)
-
     if errors:
-        return _render_email_composer(
-            request,
-            inbox_folder=inbox_folder,
-            email_account=email_account,
-            form_data=form_data,
-            errors=errors,
-        )
-
+        raise ValidationError(errors)
+    templates = resolve_email_templates(request.user, obj, request.POST)
+    draft = _resolve_draft(request)
+    body = render_email_body(request.user, obj, templates, request.POST)
     provider = EMAIL_PROVIDER_REGISTRY.get(email_account.provider)
     if provider is None:
-        return render_message(request, _("This email account has an unsupported provider."), "error")
-
+        raise ValidationError(_("This email account has an unsupported provider."))
     adapter = provider.adapter_class(email_account)
     try:
         adapter.send_email(
-            to=form_data["to"],
-            cc=form_data["cc"],
-            bcc=form_data["bcc"],
-            subject=form_data["subject"],
-            body_html=form_data["body"],
-            attachments=attachments,
-        )
-    except ValidationError as exc:
-        return _render_email_composer(
-            request,
-            inbox_folder=inbox_folder,
-            email_account=email_account,
-            form_data=form_data,
-            errors=exc.messages,
+            to=form_data["to"], cc=form_data["cc"], bcc=form_data["bcc"],
+            subject=form_data["subject"], body_html=body, attachments=_get_attachments(request),
         )
     finally:
         close = getattr(adapter, "close", None)
         if callable(close):
             close()
-
+    if draft is not None:
+        draft.delete()
+    if "application/json" in request.headers.get("Accept", ""):
+        return JsonResponse({"message": _("Email sent successfully.")})
     return render_message(request, _("Email sent successfully."), "success")
 
 
 def _render_email_composer(
-    request: HttpRequest,
-    *,
-    inbox_folder: "InboxFolder",
-    email_account,
-    form_data: dict[str, object] | None = None,
-    errors: list[str] | None = None,
+    request: HttpRequest, inbox_folder: InboxFolder | None,
+    email_account: EmailAccount, obj: models.Model | None,
+    form_data: dict[str, Any],
 ) -> HttpResponse:
-    form_data = form_data or {}
-    ctx = {
-        "mode": "new",
-        "title": _("New email"),
-        "submit_label": _("Send"),
-        "inbox_folder": inbox_folder,
-        "email_account": email_account,
-        "from_email": getattr(email_account, "email_address", ""),
+    """Provide contextual accounts and document templates to the reusable editor."""
+    return render(request, "components/communication/emails/email_editor.html", {
+        "mode": "new", "title": _("New email"), "submit_label": _("Send"),
+        "inbox_folder": inbox_folder, "email_account": email_account,
+        "from_email": email_account.email_address,
+        "email_accounts": accessible_email_accounts(request.user),
+        "email_object": obj,
+        "email_content_type_id": ContentType.objects.get_for_model(obj).pk if obj is not None else "",
         "to": _join_recipients(form_data.get("to", [])),
-        "cc": _join_recipients(form_data.get("cc", [])),
-        "bcc": _join_recipients(form_data.get("bcc", [])),
-        "subject": form_data.get("subject", ""),
-        "body": form_data.get("body", ""),
-        "form_action": reverse("components_new_email"),
-        "send_enabled": True,
-        "errors": errors or [],
-    }
-    
-    return render(
-        request,
-        "components/communication/emails/email_editor.html",
-        ctx,
-    )
-
-
-def _get_form_data(request: HttpRequest) -> dict[str, object]:
-    return {
-        "to": _parse_recipients(request.POST.get("to", "")),
-        "cc": _parse_recipients(request.POST.get("cc", "")),
-        "bcc": _parse_recipients(request.POST.get("bcc", "")),
-        "subject": request.POST.get("subject", "").strip(),
-        "body": request.POST.get("body", "").strip(),
-    }
-
-
-def _validate_form_data(form_data: dict[str, object]) -> list[str]:
-    errors: list[str] = []
-    recipients = form_data["to"]
-    if not isinstance(recipients, list) or not recipients:
-        errors.append(_("Add at least one recipient."))
-
-    for field_name in ("to", "cc", "bcc"):
-        for email_address in form_data[field_name]:
-            try:
-                validate_email(email_address)
-            except ValidationError:
-                errors.append(_("'%(email)s' is not a valid email address.") % {"email": email_address})
-
-    if not form_data["subject"] and not form_data["body"]:
-        errors.append(_("Add a subject or message body before sending."))
-
-    return errors
-
-
-def _parse_recipients(value: str) -> list[str]:
-    normalized = value.replace(";", ",")
-    return [email for _, email in getaddresses([normalized]) if email]
-
-
-def _join_recipients(value: object) -> str:
-    if isinstance(value, list):
-        return ", ".join(str(item) for item in value)
-    return str(value or "")
-
-
-def _get_attachments(request: HttpRequest) -> list[EmailAttachment]:
-    attachments: list[EmailAttachment] = []
-    for uploaded_file in request.FILES.getlist("attachments"):
-        attachments.append(
-            EmailAttachment(
-                filename=uploaded_file.name,
-                content=uploaded_file.read(),
-                content_type=uploaded_file.content_type or "application/octet-stream",
-            )
-        )
-    return attachments
+        "subject": form_data.get("subject", ""), "body": form_data.get("body", ""),
+        "form_action": reverse("components_new_email"), "send_enabled": True,
+        "enhanced_composer": True,
+    })

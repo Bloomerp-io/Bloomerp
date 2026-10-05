@@ -1,3 +1,11 @@
+{% comment %}
+Rich-text field with formatting tools and a searchable Template command, also available
+as /template. Templates are filtered by user access, without content-type restrictions.
+Selection inserts an editable copy at the cursor or replaces selected text.
+The bubbling, cancellable bloomerp:template-selected event carries detail.template
+(id, name, body) and detail.insert(body). Specialized editors can preventDefault(),
+prepare their variable context, then call insert to preserve the original selection.
+{% endcomment %}
 {% load bloomerp %}
 {% generate_uuid as editor_uuid %}
 {% with editor_id=editor_uuid|add:"-"|add:name %}
@@ -5,6 +13,7 @@
 <div 
     bloomerp-component="bloomerp-text-editor" 
     class="relative rounded-xl {% if not height %}{% if compact %}min-h-36{% else %}min-h-72{% endif %}{% endif %} {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}"
+    data-template-search-url="{% url 'components_text_editor_templates' %}"
     data-placeholder="{{ placeholder|default:'' }}"
     data-disabled="{{ disabled|yesno:'true,false' }}"
     data-styling="{{ styling|default:'' }}"

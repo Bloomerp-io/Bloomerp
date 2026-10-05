@@ -1,3 +1,4 @@
+import type { ContextMenuSubmenu } from "@/utils/contextMenu";
 import { t as _ } from "@/utils/i18n";
 import { $createHeadingNode } from "@lexical/rich-text";
 import {
@@ -27,6 +28,7 @@ import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
 export type Action = {
     label: string,
     icon: string,
+    submenu?: (textEditor: BloomerpTextEditor) => ContextMenuSubmenu;
     handler: (textEditor: BloomerpTextEditor) => void
 }
 
@@ -127,7 +129,24 @@ function handleOrderedList(textEditor: BloomerpTextEditor): void {
     handleList(textEditor, "number");
 }
 
+/** Open the shared picker after removing a slash-command trigger. */
+function handleTemplate(textEditor: BloomerpTextEditor): void {
+    textEditor.openTemplatePicker();
+}
+
+/** Supply the template child page to the shared context menu. */
+function templateSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu {
+    return textEditor.getTemplateSubmenu();
+}
+
 export let ACTIONS: Record<string, Action> = {
+    template: {
+        /** Resolve the shared template command label. */
+        get label(): string { return _("Template"); },
+        icon: "fa-solid fa-file-lines",
+        handler: handleTemplate,
+        submenu: templateSubmenu,
+    },
     code_block: {
         /** Resolve the command label after the active catalog loads. */
         get label(): string { return _("Code Block"); },

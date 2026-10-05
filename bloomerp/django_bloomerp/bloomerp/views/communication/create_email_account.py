@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -24,6 +26,8 @@ SETTINGS_SESSION_KEY = "settings"
 
 
 class EmailAccountSettingsForm(forms.ModelForm):
+    set_as_default = forms.BooleanField(required=False, label=_("Use as my default email account"))
+
     class Meta:
         model = EmailAccount
         fields = [
@@ -49,7 +53,8 @@ class EmailAccountSettingsForm(forms.ModelForm):
             "oauth_scopes": forms.Textarea(attrs={"rows": 2}),
         }
 
-    def __init__(self, *args, provider: EmailProviderDefinition | str, **kwargs):
+    def __init__(self, *args: Any, provider: EmailProviderDefinition | str, **kwargs: Any) -> None:
+        """Build provider-specific connection fields and the default sender option."""
         super().__init__(*args, **kwargs)
         self.provider = (
             provider
@@ -67,6 +72,7 @@ class EmailAccountSettingsForm(forms.ModelForm):
             field.widget.attrs.setdefault("class", "input w-full")
 
         self.fields["save_sent_emails"].widget.attrs["class"] = "checkbox checkbox-primary"
+        self.fields["set_as_default"].widget.attrs["class"] = "checkbox checkbox-primary"
 
         self.fields["name"].required = False
         self.fields["name"].widget.attrs.setdefault("placeholder", _("Accounting inbox"))
@@ -75,6 +81,7 @@ class EmailAccountSettingsForm(forms.ModelForm):
         self.fields["username"].widget.attrs.setdefault("placeholder", _("Defaults to email address"))
 
     def _apply_provider_fields(self) -> None:
+        """Keep only provider fields plus the independent sender preference."""
         if self.provider is None:
             self.fields.clear()
             return
@@ -86,7 +93,7 @@ class EmailAccountSettingsForm(forms.ModelForm):
                 self.fields[field_name].required = True
 
         for field_name in list(self.fields):
-            if field_name not in allowed_fields:
+            if field_name not in allowed_fields and field_name != "set_as_default":
                 self.fields.pop(field_name)
 
     def clean(self):
@@ -255,6 +262,8 @@ class CreateEmailAccountView(WizardMixin, BaseBloomerpView, TemplateView):
                 step=0,
             )
         
+        settings = dict(settings)
+        set_as_default = settings.pop("set_as_default", False)
         try:
             email_account = EmailAccount(
                 provider=provider.key,
@@ -267,6 +276,9 @@ class CreateEmailAccountView(WizardMixin, BaseBloomerpView, TemplateView):
             email_account.mark_validated(save=False)
             with transaction.atomic():
                 email_account.save()
+                if set_as_default:
+                    self.request.user.default_email_account = email_account
+                    self.request.user.save(update_fields=["default_email_account"])
         except ValidationError as exc:
             return WizardError(
                 message="; ".join(exc.messages),

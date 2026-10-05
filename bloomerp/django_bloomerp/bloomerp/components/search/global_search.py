@@ -26,22 +26,21 @@ Prefixes:
 
 """
 
-import unicodedata
 from typing import Any
 
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import NoReverseMatch, reverse
-from django.utils.encoding import force_str
 
-from bloomerp.modules.definition import ModuleConfig, module_registry
-from bloomerp.permissions.definition import BloomerpPermission
-from bloomerp.permissions.manager import UserPolicyManager
+from bloomerp.modules.definition import module_registry
 from bloomerp.router import router
-from bloomerp.services.search_services import SearchManager
+from bloomerp.services.search_services import (
+    ObjectSearchResult,
+    SearchManager,
+    _normalize_key,
+)
 
 # -------------------------------
 # Helper functions
@@ -64,85 +63,8 @@ def _split_query_and_suffix(value: str) -> tuple[str, str]:
     return value[:split_idx].strip(), value[split_idx:].strip()
 
 
-def _normalize_key(value: str) -> str:
-    """Normalize localized search keys for case-insensitive prefix matching."""
-    normalized = unicodedata.normalize("NFKC", force_str(value or ""))
-    return normalized.strip().casefold().replace("-", "_")
-
-
-def _ensure_module_registry_models() -> None:
-    """Ensure dynamic models are mapped into the registry before scoped search."""
-    try:
-        module_registry._register_models_from_apps()
-    except Exception:  # noqa: BLE001 - preserve the registry refresh fallback
-        module_registry.refresh()
-
-
-def _resolve_module(module_key: str) -> ModuleConfig | None:
-    """Resolve a module by identifier, code or localized name, including prefixes."""
-    _ensure_module_registry_models()
-    normalized = _normalize_key(module_key)
-    module = module_registry.get(normalized)
-    if module:
-        return module
-    exact_matches = []
-    partial_matches = []
-    for item in module_registry.get_all().values():
-        code = _normalize_key(item.code)
-        name = _normalize_key(item.name)
-        localized_name = _normalize_key(item.localized_name)
-        module_id = _normalize_key(item.full_id or item.id)
-        if normalized in {code, name, localized_name, module_id}:
-            exact_matches.append(item)
-        elif any(
-            value.startswith(normalized)
-            for value in (code, name, localized_name, module_id)
-        ):
-            partial_matches.append(item)
-    if exact_matches:
-        return exact_matches[0]
-    if partial_matches:
-        return partial_matches[0]
-    return None
-
-
-def _resolve_models_by_name(
-    model_key: str, permission_manager: UserPolicyManager
-) -> list[type[Model]]:
-    """Resolve localized and partial model names within the user's accessible models."""
-    _ensure_module_registry_models()
-    normalized = _normalize_key(model_key)
-    matched = []
-    for model in permission_manager.get_accessible_models(BloomerpPermission.VIEW):
-        model_name = _normalize_key(model._meta.model_name)
-        verbose_name = _normalize_key(model._meta.verbose_name)
-        verbose_name_plural = _normalize_key(model._meta.verbose_name_plural)
-        if (
-            model_name == normalized
-            or verbose_name == normalized
-            or verbose_name_plural == normalized
-            or model_name.startswith(normalized)
-            or verbose_name.startswith(normalized)
-            or verbose_name_plural.startswith(normalized)
-        ):
-            matched.append(model)
-    return matched
-
-
-def _collect_object_results(
-    request: HttpRequest,
-    models: list[type[Model]],
-    search_value: str,
-    per_model_limit: int,
-    total_limit: int,
-) -> tuple[list[dict[str, Any]], bool]:
-    """Adapt shared search results to the existing grouped template contract."""
-    result = SearchManager(request.user).search_objects(
-        search_value,
-        models=models,
-        per_model_limit=per_model_limit,
-        total_limit=total_limit,
-    )
+def _collect_object_results(result: ObjectSearchResult) -> list[dict[str, Any]]:
+    """Adapt shared search objects to the existing grouped template contract."""
     groups: dict[type[Model], dict[str, Any]] = {}
     for obj in result.items:
         model = type(obj)
@@ -160,7 +82,7 @@ def _collect_object_results(
                 "detail_routes": router.filter(route_type="detail", model=model),
             }
         groups[model]["objects"].append(obj)
-    return list(groups.values()), result.limit_reached
+    return list(groups.values())
 
 
 @router.register(path="components/global_search/", name="components_global_search")
@@ -205,8 +127,6 @@ def global_search(request: HttpRequest) -> HttpResponse:
         "slash_error": None,
         "search_scope": {},
     }
-
-    permission_manager = UserPolicyManager(request.user)
 
     match starts_with:
         case ">":
@@ -266,169 +186,30 @@ def global_search(request: HttpRequest) -> HttpResponse:
 
                 context["route_results"] = matched_routes
 
-        case "@":
-            search_query = trimmed_query[1:].strip()
-            context["search_type"] = "users"
-            context["search_label"] = "Users"
-            context["highlight_query"] = search_query
-            context["query"] = search_query
-
-            if search_query:
-                user_model = get_user_model()
-                result = SearchManager(request.user).search_objects(
-                    search_query,
-                    models=[user_model],
-                    per_model_limit=USER_LIMIT,
-                    total_limit=USER_LIMIT,
-                )
-                context["results_truncated"] = result.limit_reached
+        case _:
+            user_search = trimmed_query.startswith("@")
+            result = SearchManager(request.user).search_objects(
+                trimmed_query,
+                per_model_limit=USER_LIMIT if user_search else PER_MODEL_LIMIT,
+                total_limit=USER_LIMIT if user_search else TOTAL_LIMIT,
+            )
+            context.update(
+                {
+                    "search_type": result.search.search_type,
+                    "search_label": result.search.label,
+                    "highlight_query": result.search.value,
+                    "query": result.search.value,
+                    "search_scope": result.search.scope,
+                    "slash_error": result.search.error,
+                    "results_truncated": result.limit_reached,
+                }
+            )
+            if result.search.search_type == "users":
                 context["user_results"] = [
                     {"user": user, "display": user.get_full_name() or user.username}
                     for user in result.items
                 ]
-
-        case "/":
-            search_query = trimmed_query
-            context["search_type"] = "slash"
-            context["search_label"] = "Module and model"
-            context["highlight_query"] = search_query
-            context["query"] = search_query
-            context["slash_error"] = None
-            context["search_scope"] = {}
-
-            if search_query.startswith("///"):
-                search_value = search_query[3:].strip()
-                models = permission_manager.get_accessible_models(
-                    BloomerpPermission.VIEW
-                )
-                context["search_label"] = "All content"
-                context["highlight_query"] = search_value
-                context["query"] = search_value
-                context["object_results"], truncated = _collect_object_results(
-                    request,
-                    models,
-                    search_value,
-                    PER_MODEL_LIMIT,
-                    TOTAL_LIMIT,
-                )
-                context["results_truncated"] = context["results_truncated"] or truncated
-            elif search_query.startswith("//"):
-                remainder = search_query[2:]
-                model_key, _, search_value = remainder.partition("/")
-                context["search_label"] = "Model search"
-                context["search_scope"] = {"model": model_key}
-                models = _resolve_models_by_name(model_key, permission_manager)
-                context["highlight_query"] = search_value
-                context["query"] = search_value
-                if not models:
-                    context["slash_error"] = "Model not found."
-                else:
-                    context["object_results"], truncated = _collect_object_results(
-                        request,
-                        models,
-                        search_value,
-                        PER_MODEL_LIMIT,
-                        TOTAL_LIMIT,
-                    )
-                    context["results_truncated"] = (
-                        context["results_truncated"] or truncated
-                    )
             else:
-                remainder = search_query[1:]
-                if "//" in remainder:
-                    module_key, _, search_value = remainder.partition("//")
-                    module = _resolve_module(module_key)
-                    context["search_label"] = "Module search"
-                    context["search_scope"] = {"module": module_key}
-                    context["highlight_query"] = search_value
-                    context["query"] = search_value
-                    if not module:
-                        context["slash_error"] = "Module not found."
-                    else:
-                        context["search_scope"] = {"module": module.localized_name}
-                        models = module_registry.get_models_for_module(
-                            module.id, include_descendants=True
-                        )
-                        context["object_results"], truncated = _collect_object_results(
-                            request,
-                            models,
-                            search_value,
-                            PER_MODEL_LIMIT,
-                            TOTAL_LIMIT,
-                        )
-                        context["results_truncated"] = (
-                            context["results_truncated"] or truncated
-                        )
-                else:
-                    parts = [part for part in remainder.split("/") if part]
-                    if len(parts) >= 3:
-                        module_key = parts[0]
-                        model_key = parts[1]
-                        search_value = "/".join(parts[2:]).strip()
-                        module = _resolve_module(module_key)
-                        context["search_label"] = "Module and model"
-                        context["search_scope"] = {
-                            "module": module_key,
-                            "model": model_key,
-                        }
-                        context["highlight_query"] = search_value
-                        context["query"] = search_value
-                        if not module:
-                            context["slash_error"] = "Module not found."
-                        else:
-                            models = _resolve_models_by_name(
-                                model_key, permission_manager
-                            )
-                            models = [
-                                model
-                                for model in models
-                                if model
-                                in module_registry.get_models_for_module(
-                                    module.id, include_descendants=True
-                                )
-                            ]
-                            context["search_scope"] = {
-                                "module": module.localized_name,
-                                "model": model_key,
-                            }
-                            if not models:
-                                context["slash_error"] = "Model not found in module."
-                            else:
-                                context["object_results"], truncated = (
-                                    _collect_object_results(
-                                        request,
-                                        models,
-                                        search_value,
-                                        PER_MODEL_LIMIT,
-                                        TOTAL_LIMIT,
-                                    )
-                                )
-                                context["results_truncated"] = (
-                                    context["results_truncated"] or truncated
-                                )
-                    else:
-                        context["slash_error"] = (
-                            "Use /<module>//<query>, //<model>/<query>, or /<module>/<model>/<query>."
-                        )
-
-        case _:
-            search_query = trimmed_query
-            context["search_type"] = "general"
-            context["search_label"] = "All content"
-            context["highlight_query"] = search_query
-            context["query"] = search_query
-
-            if search_query:
-                models = permission_manager.get_accessible_models(
-                    BloomerpPermission.VIEW
-                )
-                context["object_results"], truncated = _collect_object_results(
-                    request,
-                    models,
-                    search_query,
-                    PER_MODEL_LIMIT,
-                    TOTAL_LIMIT,
-                )
-                context["results_truncated"] = context["results_truncated"] or truncated
+                context["object_results"] = _collect_object_results(result)
 
     return render(request, "components/search/global_search.html", context)
