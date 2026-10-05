@@ -171,9 +171,12 @@ class AssistantMutationRequestSerializer(AssistantModelIdentitySerializer):
         required=False,
         help_text="The target object's primary key. Required for `update` and `delete`.",
     )
-    data = serializers.JSONField(
+    data = serializers.DictField(
         required=False,
-        help_text="An object containing the model fields to create or update.",
+        help_text=(
+            "An object containing the model fields to create or update. "
+            "Pass the object directly, not a JSON-encoded string."
+        ),
     )
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:

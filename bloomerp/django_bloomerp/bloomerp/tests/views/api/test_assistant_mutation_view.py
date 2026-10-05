@@ -9,7 +9,9 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.tests.base import (
     BloomerpAPIViewTestCase,
+    BloomerpMcpViewTestCase,
     ExpectedResult,
+    McpRequestScenario,
     RequestScenario,
 )
 from bloomerp.views.api.mutations import AssistantMutationView, resolve_assistant_model
@@ -254,6 +256,82 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("resource", response.data)
+
+
+class TestAssistantMutationMcpView(BloomerpMcpViewTestCase):
+    """Verify mutation payloads across the actual MCP transport and generated API."""
+
+    view_name = "api_assistant_mutations"
+
+    def get_test_scenarios(self) -> list[McpRequestScenario]:
+        """Persist object payloads and reject JSON strings before dispatching writes."""
+        return [
+            McpRequestScenario(
+                name="Creates a label with an object payload over MCP",
+                user=self.admin_user,
+                arguments={
+                    "model_label": TodoLabel._meta.label,
+                    "operation": "create",
+                    "data": {"name": "MCP label", "color": "#123456"},
+                },
+                expected=ExpectedResult(
+                    response_validators=[self.mcp_is_error(False), self.label_created],
+                ),
+            ),
+            McpRequestScenario(
+                name="Updates a label with an object payload over MCP",
+                user=self.admin_user,
+                prepare=self.prepare_update,
+                expected=ExpectedResult(
+                    response_validators=[self.mcp_is_error(False), self.label_updated],
+                ),
+            ),
+            McpRequestScenario(
+                name="Rejects a JSON-encoded update payload over MCP",
+                user=self.admin_user,
+                prepare=self.prepare_string_update,
+                expected=ExpectedResult(
+                    response_validators=[self.mcp_is_error(), self.label_unchanged],
+                ),
+            ),
+        ]
+
+    def prepare_update(self, scenario: McpRequestScenario) -> None:
+        """Create the target label and supply native object arguments."""
+        self.label = TodoLabel.objects.create(name="Before", color="#123456")
+        scenario.arguments = {
+            "model_label": TodoLabel._meta.label,
+            "operation": "update",
+            "object_id": str(self.label.pk),
+            "data": {"name": "Updated over MCP"},
+        }
+
+    def prepare_string_update(self, scenario: McpRequestScenario) -> None:
+        """Reproduce the JSON string payload sent in the failed Heertech conversation."""
+        self.prepare_update(scenario)
+        scenario.arguments["data"] = '{"name": "Updated over MCP"}'
+
+    def label_created(self, response: HttpResponse) -> bool:
+        """Confirm the tool returned an object that was saved through the generated API."""
+        payload = response.json()["result"]["structuredContent"]
+        return TodoLabel.objects.filter(
+            pk=payload["object"]["id"], name="MCP label", color="#123456"
+        ).exists()
+
+    def label_updated(self, response: HttpResponse) -> bool:
+        """Confirm a partial update persisted and returned the requested label name."""
+        self.label.refresh_from_db()
+        return (
+            self.label.name == "Updated over MCP"
+            and response.json()["result"]["structuredContent"]["object"]["name"]
+            == self.label.name
+        )
+
+    def label_unchanged(self, response: HttpResponse) -> bool:
+        """Confirm schema validation rejected the string without changing the target."""
+        self.label.refresh_from_db()
+        error_text = response.json()["result"]["content"][0]["text"]
+        return self.label.name == "Before" and "object" in error_text
 
 
 class AssistantModelIdentityTests(SimpleTestCase):
