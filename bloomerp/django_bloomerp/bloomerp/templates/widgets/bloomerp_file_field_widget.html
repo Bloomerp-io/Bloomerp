@@ -1,28 +1,15 @@
-<!--
-    Bloomerp File Field Widget
--->
-<div id="{{widget.name}}_view_div" {% if invalid %}class="is-invalid"{% endif %}>
-    <input type="{{ widget.type }}" name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>
-
-    {% if widget.is_initial %}
-        {{ widget.initial_text }}: 
-            <a href="{{ widget.value.url }}">{{ widget.value }}</a>
-        {% if not widget.required %}
-            <input 
-                type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"
-                {% if widget.attrs.disabled %} disabled{% endif %}
-                {% if widget.attrs.checked %} checked{% endif %}
-            >
-            <label for="{{ widget.checkbox_id }}">{{ widget.clear_checkbox_label }}</label>
-        {% endif %}
-    <br>
-    {% endif %}
-    {% if current_file %}
-    <!--In this case the file object already exits-->
-    <input 
-        type="hidden" 
-        value="{{ current_file.pk}}" 
-        name="{{ widget.name }}_current"
-    />
-    {% endif %}
+{% load i18n %}
+<div class="space-y-2">
+    <input type="file" name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>
+    <input type="hidden" name="{{ widget.name }}__present" value="1"{% if widget.attrs.disabled %} disabled{% endif %}>
+    {% for file in current_files %}
+        <label class="flex items-center gap-2">
+            <input type="checkbox" name="{{ widget.name }}__retain" value="{{ file.pk }}" checked{% if widget.attrs.disabled %} disabled{% endif %}>
+            <span>{% translate "Keep" %}</span>
+            <a href="{% url 'components_preview_file' file_id=file.pk %}"
+               hx-get="{% url 'components_preview_file' file_id=file.pk %}"
+               hx-target="#bloomerp-general-use-drawer-body" hx-swap="innerHTML" hx-push-url="false"
+               bloomerp-open-drawer="bloomerp-general-use-drawer" class="link">{{ file.name }}</a>
+        </label>
+    {% endfor %}
 </div>

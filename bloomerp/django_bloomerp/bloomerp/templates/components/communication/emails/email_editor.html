@@ -3,14 +3,20 @@
 <div 
     bloomerp-component="email-editor"
     class="flex h-full min-h-0 flex-col bg-white"
+    data-recipient-search-url="{% url 'components_search_email_address' %}"
     data-from-email="{{ from_email }}"
+    {% if enhanced_composer %}
+    data-send-url="{{ form_action }}"
+    data-template-url="{% url 'components_email_template' %}"
+    data-draft-user-id="{{ request.user.pk }}"
+    {% endif %}
     >
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-5">
         <div class="min-w-0">
             <h2 class="truncate text-base font-semibold text-gray-950">
                 {% translate title %}
             </h2>
-            {% if from_email %}
+            {% if from_email and not enhanced_composer %}
                 <p class="truncate text-sm text-gray-500">
                     {% blocktrans %}From {{ from_email }}{% endblocktrans %}
                 </p>
@@ -20,7 +26,7 @@
 
     <form
         class="flex min-h-0 flex-1 flex-col"
-        {% if form_action %}
+        {% if form_action and not enhanced_composer %}
             hx-post="{{ form_action }}"
             hx-target="#inbox-item-render-target"
             hx-swap="innerHTML"
@@ -35,8 +41,14 @@
         {% if inbox_item %}
             <input type="hidden" name="reply_to_item_id" value="{{ inbox_item.id }}">
         {% endif %}
-        {% if email_account %}
+        {% if email_account and not enhanced_composer %}
             <input type="hidden" name="email_account_id" value="{{ email_account.id }}">
+        {% endif %}
+
+        {% if enhanced_composer %}
+        <input type="hidden" name="draft_id" value="">
+        <input type="hidden" name="content_type_id" value="{{ email_content_type_id }}">
+        <input type="hidden" name="object_id" value="{{ email_object.pk|default:'' }}">
         {% endif %}
 
         {% if errors %}
@@ -48,7 +60,17 @@
         {% endif %}
 
         <div class="shrink-0 divide-y divide-gray-200 border-b border-gray-200 px-5">
-            <label class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-3">
+            {% if enhanced_composer %}
+            <label class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3">
+                <span class="text-sm font-medium text-gray-500">{% translate "From" %}</span>
+                <select name="email_account_id" class="min-w-0 border-0 bg-transparent py-2 pl-0 pr-8 text-sm text-gray-950 focus:ring-0">
+                    {% for account in email_accounts %}
+                    <option value="{{ account.pk }}" {% if account.pk == email_account.pk %}selected{% endif %}>{{ account.email_address }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {% endif %}
+            <div class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-3">
                 <span class="text-sm font-medium text-gray-500">
                     {% blocktrans %}To{% endblocktrans %}
                 </span>
@@ -56,18 +78,20 @@
                     class="min-w-0 border-0 px-0 text-sm text-gray-950 placeholder:text-gray-400 focus:ring-0"
                     type="email"
                     name="to"
+                    data-recipient-input
+                    aria-label="{% translate 'To' %}"
                     value="{{ to }}"
                     placeholder="name@example.com"
                     multiple
                     autocomplete="email"
                 >
                 <div class="flex items-center gap-2 justify-self-end text-sm text-gray-500">
-                    <button type="button" id="show-cc-field">cc</button>
-                    <button type="button" id="show-bcc-field">bcc</button>
+                    <button type="button" data-show-cc>cc</button>
+                    <button type="button" data-show-bcc>bcc</button>
                 </div>
-            </label>
+            </div>
 
-            <label class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 hidden" id="cc-field">
+            <div class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 hidden" data-cc-field>
                 <span class="text-sm font-medium text-gray-500">
                     {% blocktrans %}Cc{% endblocktrans %}
                 </span>
@@ -75,14 +99,16 @@
                     class="min-w-0 border-0 px-0 text-sm text-gray-950 placeholder:text-gray-400 focus:ring-0"
                     type="email"
                     name="cc"
+                    data-recipient-input
+                    aria-label="{% translate 'Cc' %}"
                     value="{{ cc }}"
                     placeholder="name@example.com"
                     multiple
                     autocomplete="email"
                 >
-            </label>
+            </div>
 
-            <label class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 hidden" id="bcc-field">
+            <div class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 hidden" data-bcc-field>
                 <span class="text-sm font-medium text-gray-500">
                     {% blocktrans %}Bcc{% endblocktrans %}
                 </span>
@@ -90,12 +116,14 @@
                     class="min-w-0 border-0 px-0 text-sm text-gray-950 placeholder:text-gray-400 focus:ring-0"
                     type="email"
                     name="bcc"
+                    data-recipient-input
+                    aria-label="{% translate 'Bcc' %}"
                     value="{{ bcc }}"
                     placeholder="name@example.com"
                     multiple
                     autocomplete="email"
                 >
-            </label>
+            </div>
 
             <label class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3">
                 <span class="text-sm font-medium text-gray-500">
@@ -112,6 +140,11 @@
             </label>
         </div>
 
+        {% if enhanced_composer %}
+        <input type="hidden" name="document_template_id" value="">
+        <div data-template-arguments hidden class="shrink-0 border-b border-gray-200 px-5 py-3"></div>
+        {% endif %}
+
         <div class="min-h-0 flex-1 overflow-y-auto p-5">
             <c-ui.inputs.text_editor
                 name="body"
@@ -121,6 +154,12 @@
                 class="min-h-96 bg-white"
             />
 
+            {% if enhanced_composer %}
+            <section data-email-preview hidden class="mt-4 rounded-xl border border-gray-200 p-4">
+                <h3 class="font-medium">{% translate "Email preview" %}</h3>
+                <iframe data-email-preview-frame sandbox="" title="{% translate 'Email preview' %}" class="mt-2 h-64 w-full border-0"></iframe>
+            </section>
+            {% endif %}
             {% if quoted_email %}
                 <div
                     class="mt-6 select-text rounded-xl border border-gray-200 bg-base p-5"
@@ -133,19 +172,27 @@
         </div>
 
         <footer class="flex shrink-0 items-center justify-between border-t border-gray-200 px-5 py-3">
+            <div class="flex min-w-0 items-center gap-2">
             <label class="btn btn-secondary btn-sm">
                 <i class="fa fa-paperclip"></i>
                 <span>{% blocktrans %}Attach{% endblocktrans %}</span>
                 <input class="hidden" type="file" name="attachments" multiple>
             </label>
+            {% if enhanced_composer %}
+            <p data-email-status role="status" aria-live="polite" class="min-w-0 text-xs text-gray-500"></p>
+            {% endif %}
+            </div>
 
             <div class="flex items-center gap-3">
+                {% if enhanced_composer %}
+                <button type="button" data-preview-email class="btn btn-secondary btn-sm">{% translate "Preview" %}</button>
+                {% endif %}
                 <button
                     class="btn btn-primary btn-sm"
                     type="submit"
                     {% if not send_enabled %}disabled{% endif %}
                 >
-                    <i class="fa fa-paper-plane"></i>
+                    <i data-send-icon class="fa fa-paper-plane"></i>
                     <span>{% translate submit_label %}</span>
                 </button>
             </div>

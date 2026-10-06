@@ -1,9 +1,12 @@
 from django.test import SimpleTestCase
+from jsonschema import Draft202012Validator
 
 from bloomerp.router import router
 from bloomerp.views.api import mutations  # noqa: F401
-from bloomerp.views.api.sql import accessible_tables  # noqa: F401
-from bloomerp.views.api.sql import execute  # noqa: F401
+from bloomerp.views.api.sql import (
+    accessible_tables,  # noqa: F401
+    execute,  # noqa: F401
+)
 
 
 class McpRouteRegistrationTests(SimpleTestCase):
@@ -20,8 +23,22 @@ class McpRouteRegistrationTests(SimpleTestCase):
         self.assertTrue(mutation.destructive_hint)
         self.assertEqual(
             sorted(mutation.get_input_schema()["properties"]),
-            ["data", "object_id", "operation", "resource"],
+            ["data", "model_label", "object_id", "operation"],
         )
+
+        self.assertIn("model_label", mutation.get_input_schema()["required"])
+        data_schema = mutation.get_input_schema()["properties"]["data"]
+        self.assertEqual(data_schema["type"], "object")
+        data_validator = Draft202012Validator(data_schema)
+        self.assertTrue(
+            data_validator.is_valid(
+                {"name": "Label", "optional": None, "nested": {"items": [1, True]}}
+            )
+        )
+        self.assertFalse(data_validator.is_valid('{"name": "Label"}'))
+        catalog = routes["api_assistant_mutation_catalog"].mcp
+        self.assertIn("model_label", catalog.get_input_schema()["properties"])
+        self.assertNotIn("resource", catalog.get_input_schema()["properties"])
 
         sql = routes["api_sql_execute"].mcp
         self.assertTrue(sql.read_only_hint)

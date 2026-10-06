@@ -48,7 +48,7 @@
         <!-- End search bar -->
 
         <!-- Inbox -->
-         <c-ui.shortcut_tooltip shortcut="mod+i" action="click" position="right">
+         <c-ui.shortcut_tooltip shortcut="mod+shift+i" action="click" position="right">
             <div class="mt-2">
                 <button 
                     id="inbox-btn" 
@@ -191,7 +191,7 @@
                             {% get_language_info_list for available_languages as languages %}
                             <c-ui.dropdown.submenu text="{{ languages_label }}" icon="bi bi-translate" direction="right">
                                 {% for language in languages %}
-                                    <form action="{% url 'set_language' %}" method="post">
+                                    <form action="{% url 'set_language' %}" method="post" data-language-switch>
                                         {% csrf_token %}
                                         <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                         <input type="hidden" name="language" value="{{ language.code }}">

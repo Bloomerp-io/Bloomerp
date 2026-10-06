@@ -1,323 +1,355 @@
+import { t as _ } from "./i18n";
+
 export type ContextMenuItem = {
-	label: string;
-	/**
-	 * Optional Font Awesome class string, e.g. "fa-solid fa-copy".
-	 */
-	icon?: string;
-	onClick: (context: ContextMenuContext) => void | Promise<void>;
-	disabled?: boolean;
-	
+    label: string;
+    icon?: string;
+    onClick?: (context: ContextMenuContext) => void | Promise<void>;
+    disabled?: boolean;
+    submenu?: ContextMenuSubmenu | (() => ContextMenuSubmenu);
+};
+
+export type ContextMenuSubmenu = {
+    label: string;
+    items?: ContextMenuItem[];
+    search?: {
+        placeholder: string;
+        load: (query: string, signal: AbortSignal) => Promise<ContextMenuItem[]>;
+    };
+    onOpen?: () => void;
 };
 
 export type ContextMenuContext = {
-	trigger: HTMLElement;
-	event: MouseEvent|KeyboardEvent;
-	hide: () => void;
+    trigger: HTMLElement;
+    event: MouseEvent | KeyboardEvent;
+    hide: () => void;
 };
+
+export type ContextMenuShowOptions = { hideOnViewportChange?: boolean };
 
 export type ContextMenuController = {
-	element: HTMLDivElement;
-	show: (event: MouseEvent|KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]) => void;
-	showAt: (position: { x: number; y: number }, trigger: HTMLElement, items: ContextMenuItem[], options?: ContextMenuShowOptions) => void;
-	hide: () => void;
-	destroy: () => void;
+    element: HTMLDivElement;
+    show: (event: MouseEvent | KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]) => void;
+    showAt: (position: { x: number; y: number }, trigger: HTMLElement, items: ContextMenuItem[], options?: ContextMenuShowOptions) => void;
+    showSubmenu: (submenu: ContextMenuSubmenu, trigger: HTMLElement) => void;
+    hide: () => void;
+    destroy: () => void;
 };
 
-export type ContextMenuShowOptions = {
-	hideOnViewportChange?: boolean;
-};
-
-const DEFAULT_MENU_CLASS =
-	'fixed hidden bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[140px]';
+interface MenuPage {
+    items: ContextMenuItem[];
+    submenu?: ContextMenuSubmenu;
+    query: string;
+}
 
 const menuCache = new Map<string, ContextMenuController>();
-
-// Tracks the currently open context menu so we can route keyboard navigation.
 let activeMenu: ContextMenuController | null = null;
-let activeTrigger: HTMLElement | null = null;
-let activeHideOnViewportChange = true;
 
-function getOrCreateMenuElement(id: string): HTMLDivElement {
-	const existing = document.getElementById(id);
-	if (existing) return existing as HTMLDivElement;
+/** Own reusable menu navigation, searchable pages, and cancellable loading. */
+class ContextMenu implements ContextMenuController {
+    public readonly element: HTMLDivElement;
+    private readonly lifecycle = new AbortController();
+    private readonly list = document.createElement("ul");
+    private readonly header = document.createElement("div");
+    private readonly status = document.createElement("p");
+    private pages: MenuPage[] = [];
+    private trigger: HTMLElement | null = null;
+    private position = { x: 0, y: 0 };
+    private index = -1;
+    private searchInput: HTMLInputElement | null = null;
+    private request?: AbortController;
+    private timer?: ReturnType<typeof setTimeout>;
+    private hideOnViewportChange = true;
 
-	const menu = document.createElement('div');
-	menu.id = id;
-	menu.className = DEFAULT_MENU_CLASS;
-	const ul = document.createElement('ul');
-	ul.className = 'py-1';
-	menu.appendChild(ul);
-	document.body.appendChild(menu);
-	return menu;
+    /** Connect one reusable menu to outside clicks and keyboard navigation. */
+    public constructor(private readonly id: string) {
+        this.element = document.createElement("div");
+        this.element.id = id;
+        this.element.className = "fixed hidden bg-white shadow-lg rounded-lg border border-gray-200 z-50 min-w-[140px] max-w-sm";
+        this.element.setAttribute("role", "group");
+        this.list.className = "py-1 max-h-80 overflow-y-auto";
+        this.status.className = "px-3 py-2 text-xs text-gray-500";
+        this.status.setAttribute("role", "status");
+        this.element.append(this.header, this.status, this.list);
+        document.body.append(this.element);
+        this.element.addEventListener("click", this.onClick, { signal: this.lifecycle.signal });
+        this.element.addEventListener("mousedown", this.onMouseDown, { signal: this.lifecycle.signal });
+        document.addEventListener("click", this.onOutsideClick, { signal: this.lifecycle.signal });
+        document.addEventListener("keydown", this.onKeyDown, { capture: true, signal: this.lifecycle.signal });
+        window.addEventListener("scroll", this.onViewportChange, { capture: true, signal: this.lifecycle.signal });
+        window.addEventListener("resize", this.onViewportChange, { signal: this.lifecycle.signal });
+    }
+
+    /** Display a root menu at its triggering pointer or control. */
+    public show(event: MouseEvent | KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]): void {
+        const rect = trigger.getBoundingClientRect();
+        this.showAt({ x: "clientX" in event ? event.clientX : rect.left, y: "clientY" in event ? event.clientY : rect.bottom }, trigger, items);
+    }
+
+    /** Replace the root page while keeping all state local to this menu. */
+    public showAt(position: { x: number; y: number }, trigger: HTMLElement, items: ContextMenuItem[], options: ContextMenuShowOptions = {}): void {
+        // Editor selection changes must not overwrite a submenu while its search has focus.
+        if (activeMenu === this && this.pages.at(-1)?.submenu) return;
+        if (activeMenu && activeMenu !== this) activeMenu.hide();
+        this.trigger = trigger;
+        this.position = position;
+        this.hideOnViewportChange = options.hideOnViewportChange ?? true;
+        this.pages = [{ items, query: "" }];
+        this.renderPage();
+    }
+
+    /** Enter a child page or open a searchable page directly from a toolbar. */
+    public showSubmenu(submenu: ContextMenuSubmenu, trigger: HTMLElement): void {
+        if (activeMenu !== this) {
+            activeMenu?.hide();
+            this.pages = [];
+            const rect = trigger.getBoundingClientRect();
+            this.position = { x: rect.left, y: rect.bottom + 4 };
+            this.trigger = trigger;
+        }
+        submenu.onOpen?.();
+        this.pages.push({ items: submenu.items ?? [], submenu, query: "" });
+        this.renderPage();
+    }
+
+    /** Abort work belonging to the previous page before changing menu state. */
+    private cancelSearch(): void {
+        clearTimeout(this.timer);
+        this.request?.abort();
+    }
+
+    /** Render the current page, optional back control, and reusable search field. */
+    private renderPage(): void {
+        this.cancelSearch();
+        this.header.replaceChildren();
+        this.searchInput = null;
+        const page = this.pages.at(-1)!;
+        this.element.setAttribute("aria-label", page.submenu?.label ?? _("Actions"));
+        if (page.submenu) {
+            const back = document.createElement("button");
+            back.type = "button";
+            back.dataset.menuBack = "true";
+            back.className = "w-full px-3 py-2 text-left text-sm border-b border-gray-200";
+            back.textContent = "‹ " + page.submenu.label;
+            back.setAttribute("aria-label", _("Back"));
+            this.header.append(back);
+        }
+        if (page.submenu?.search) {
+            this.searchInput = document.createElement("input");
+            this.searchInput.type = "search";
+            this.searchInput.className = "input input-sm w-full";
+            this.searchInput.placeholder = page.submenu.search.placeholder;
+            this.searchInput.setAttribute("aria-label", page.submenu.search.placeholder);
+            this.searchInput.value = page.query;
+            this.searchInput.addEventListener("input", this.onSearch);
+            const searchWrapper = document.createElement("div");
+            searchWrapper.className = "p-2";
+            searchWrapper.append(this.searchInput);
+            this.header.append(searchWrapper);
+        }
+        this.element.classList.remove("hidden");
+        activeMenu = this;
+        const modal = this.trigger?.closest<HTMLElement>('[bloomerp-component="modal"]');
+        const zIndex = modal ? Number.parseInt(getComputedStyle(modal).zIndex, 10) : 50;
+        this.element.style.zIndex = String((Number.isFinite(zIndex) ? zIndex : 100) + 1);
+        this.renderItems();
+        this.reposition();
+        if (page.submenu?.search) {
+            void this.load();
+            queueMicrotask(this.focusSearch);
+        }
+    }
+
+    /** Focus search after the invoking editor's handlers have completed. */
+    private focusSearch = (): void => {
+        if (activeMenu === this) this.searchInput?.focus({ preventScroll: true });
+    };
+
+    /** Draw safe text labels and disclose items that lead to a child page. */
+    private renderItems(): void {
+        const page = this.pages.at(-1)!;
+        this.list.replaceChildren();
+        this.index = -1;
+        this.status.textContent = page.items.length ? "" : _("No results.");
+        this.status.hidden = Boolean(page.items.length);
+        for (const [index, item] of page.items.entries()) {
+            const li = document.createElement("li");
+            const button = document.createElement("button");
+            button.type = "button";
+            button.dataset.contextMenuItem = String(index);
+            button.className = "w-full text-left px-3 py-2 text-xs hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1.5";
+            button.disabled = Boolean(item.disabled);
+            if (item.icon) {
+                const icon = document.createElement("i");
+                icon.className = item.icon;
+                icon.setAttribute("aria-hidden", "true");
+                button.append(icon);
+            }
+            button.append(document.createTextNode(item.label));
+            if (item.submenu) {
+                button.setAttribute("aria-haspopup", "true");
+                const arrow = document.createElement("span");
+                arrow.className = "ml-auto";
+                arrow.textContent = "›";
+                arrow.setAttribute("aria-hidden", "true");
+                button.append(arrow);
+            }
+            li.append(button);
+            this.list.append(li);
+        }
+        this.reposition();
+    }
+
+    /** Keep long menus inside the viewport. */
+    private reposition(): void {
+        const rect = this.element.getBoundingClientRect();
+        this.element.style.left = Math.max(8, Math.min(this.position.x, window.innerWidth - rect.width - 8)) + "px";
+        this.element.style.top = Math.max(8, Math.min(this.position.y, window.innerHeight - rect.height - 8)) + "px";
+    }
+
+    /** Clear stale results immediately and debounce search requests. */
+    private onSearch = (): void => {
+        this.cancelSearch();
+        const page = this.pages.at(-1)!;
+        page.query = this.searchInput!.value;
+        page.items = [];
+        this.renderItems();
+        this.status.hidden = false;
+        this.status.textContent = _("Loading…");
+        this.timer = setTimeout(this.load, 180);
+    };
+
+    /** Load the current search, ignoring aborted results from older pages or queries. */
+    private load = async (): Promise<void> => {
+        const page = this.pages.at(-1)!;
+        if (!page.submenu?.search) return;
+        const controller = new AbortController();
+        this.request = controller;
+        this.status.hidden = false;
+        this.status.textContent = _("Loading…");
+        try {
+            const items = await page.submenu.search.load(page.query, controller.signal);
+            if (controller.signal.aborted || this.pages.at(-1) !== page) return;
+            page.items = items;
+            this.renderItems();
+        } catch {
+            if (!controller.signal.aborted) {
+                this.status.hidden = false;
+                this.status.textContent = _("Could not load results. Try searching again.");
+            }
+        }
+    };
+
+    /** Return to the parent page, or dismiss a directly opened submenu. */
+    private back(): void {
+        if (this.pages.length <= 1) {
+            this.hide();
+            this.trigger?.focus();
+            return;
+        }
+        this.pages.pop();
+        this.renderPage();
+    }
+
+    /** Activate leaves only after closing their menu, avoiding child-menu dismissal races. */
+    private activate(index: number, event: MouseEvent | KeyboardEvent): void {
+        const item = this.pages.at(-1)?.items[index];
+        if (!item || item.disabled || !this.trigger) return;
+        if (item.submenu) {
+            this.showSubmenu(typeof item.submenu === "function" ? item.submenu() : item.submenu, this.trigger);
+            return;
+        }
+        const context = { trigger: this.trigger, event, hide: this.hide.bind(this) };
+        this.hide();
+        void item.onClick?.(context);
+    }
+
+    /** Route clicks to back navigation or current-page items. */
+    private onClick = (event: MouseEvent): void => {
+        const target = event.target as HTMLElement;
+        if (target.closest("[data-menu-back]")) this.back();
+        else {
+            const button = target.closest<HTMLElement>("[data-context-menu-item]");
+            if (!button) return;
+            this.activate(Number(button.dataset.contextMenuItem), event);
+        }
+        event.preventDefault();
+        event.stopPropagation();
+    };
+
+    /** Preserve editor selection while allowing a submenu search field to receive focus. */
+    private onMouseDown = (event: MouseEvent): void => {
+        if ((event.target as HTMLElement).closest("button")) event.preventDefault();
+    };
+
+    /** Dismiss only when clicking outside both the menu and its owning trigger. */
+    private onOutsideClick = (event: MouseEvent): void => {
+        if (activeMenu === this && !this.element.contains(event.target as Node) && !this.trigger?.contains(event.target as Node)) this.hide();
+    };
+
+    /** Ignore scrolling inside results while dismissing menus on external viewport changes. */
+    private onViewportChange = (event: Event): void => {
+        if (event.target instanceof Node && this.element.contains(event.target)) return;
+        if (activeMenu !== this) return;
+        if (this.pages.at(-1)?.submenu) this.reposition();
+        else if (this.hideOnViewportChange) this.hide();
+    };
+
+    /** Navigate enabled items and enter or leave submenus with the keyboard. */
+    private onKeyDown = (event: KeyboardEvent): void => {
+        if (activeMenu !== this) return;
+        const searching = event.target === this.searchInput;
+        if (event.key === "Escape" || (event.key === "ArrowLeft" && !searching)) this.back();
+        else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            const buttons = Array.from(this.list.querySelectorAll<HTMLButtonElement>("button"));
+            const direction = event.key === "ArrowDown" ? 1 : -1;
+            let next = this.index < 0 ? (direction > 0 ? 0 : buttons.length - 1) : this.index + direction;
+            while (buttons[next]?.disabled) next += direction;
+            if (buttons[next]) this.index = next;
+            for (const [index, button] of buttons.entries()) {
+                button.classList.toggle("bg-gray-50", index === this.index);
+                if (index === this.index) button.scrollIntoView({ block: "nearest" });
+            }
+        } else if (event.key === "Enter" || (event.key === "ArrowRight" && !searching)) {
+            const index = this.index < 0 ? 0 : this.index;
+            if (event.key === "Enter" || this.pages.at(-1)?.items[index]?.submenu) this.activate(index, event);
+            else return;
+        } else if (event.key === "Tab") {
+            this.hide();
+            return;
+        } else return;
+        event.preventDefault();
+        event.stopPropagation();
+    };
+
+    /** Dismiss every page and cancel asynchronous work. */
+    public hide(): void {
+        this.cancelSearch();
+        this.element.classList.add("hidden");
+        this.element.style.zIndex = "";
+        this.pages = [];
+        if (activeMenu === this) activeMenu = null;
+    }
+
+    /** Remove owned listeners, markup, requests, and the cached controller. */
+    public destroy(): void {
+        this.hide();
+        this.lifecycle.abort();
+        this.element.remove();
+        menuCache.delete(this.id);
+    }
 }
 
-function clearMenu(menu: HTMLDivElement): HTMLUListElement {
-	const ul = (menu.querySelector('ul') ?? document.createElement('ul')) as HTMLUListElement;
-	if (!ul.isConnected) {
-		ul.className = 'py-1';
-		menu.appendChild(ul);
-	}
-	ul.replaceChildren();
-	return ul;
+/** Return an instance-local controller for the named reusable context menu. */
+export function getContextMenu(id = "bloomerp-context-menu"): ContextMenuController {
+    let menu = menuCache.get(id);
+    if (!menu) {
+        menu = new ContextMenu(id);
+        menuCache.set(id, menu);
+    }
+    return menu;
 }
 
-function clampToViewport(x: number, y: number, menu: HTMLDivElement): { x: number; y: number } {
-	const padding = 8;
-	const rect = menu.getBoundingClientRect();
-	const maxX = window.innerWidth - rect.width - padding;
-	const maxY = window.innerHeight - rect.height - padding;
-
-	return {
-		x: Math.max(padding, Math.min(x, maxX)),
-		y: Math.max(padding, Math.min(y, maxY)),
-	};
-}
-
-/** Place menus launched inside a modal immediately above that modal in the stacking order. */
-function syncMenuLayer(menu: HTMLDivElement, trigger: HTMLElement): void {
-	const modal = trigger.closest<HTMLElement>('[bloomerp-component="modal"]');
-	if (!modal) {
-		menu.style.zIndex = '';
-		return;
-	}
-
-	const modalZIndex = Number.parseInt(window.getComputedStyle(modal).zIndex, 10);
-	menu.style.zIndex = String((Number.isFinite(modalZIndex) ? modalZIndex : 100) + 1);
-}
-
-export function getContextMenu(id = 'bloomerp-context-menu'): ContextMenuController {
-	const existing = menuCache.get(id);
-	if (existing) return existing;
-
-	const element = getOrCreateMenuElement(id);
-	const abortController = new AbortController();
-	let activeIndex = -1;
-	let upAtFirstArmed = false;
-
-	/** Hide the menu and reset its modal-specific stacking layer. */
-	const hide = (): void => {
-		element.classList.add('hidden');
-		element.style.zIndex = '';
-		activeIndex = -1;
-		upAtFirstArmed = false;
-		if (activeMenu === controller) activeMenu = null;
-		if (activeMenu === null) activeTrigger = null;
-		activeHideOnViewportChange = true;
-	};
-
-	const isVisible = (): boolean => !element.classList.contains('hidden');
-
-	const getButtons = (): HTMLButtonElement[] =>
-		Array.from(element.querySelectorAll<HTMLButtonElement>('button[data-context-menu-item]'));
-
-	const setActiveIndex = (index: number): void => {
-		const buttons = getButtons();
-		if (buttons.length === 0) {
-			activeIndex = -1;
-			upAtFirstArmed = false;
-			return;
-		}
-
-		const clamp = (i: number): number => Math.max(0, Math.min(i, buttons.length - 1));
-		activeIndex = clamp(index);
-		upAtFirstArmed = false;
-
-		for (let i = 0; i < buttons.length; i++) {
-			const btn = buttons[i];
-			if (!btn) continue;
-			if (i === activeIndex) {
-				btn.classList.add('bg-gray-50');
-				btn.scrollIntoView({ block: 'nearest' });
-			} else {
-				btn.classList.remove('bg-gray-50');
-			}
-		}
-	};
-
-	const moveActive = (delta: number): void => {
-		const buttons = getButtons();
-		if (buttons.length === 0) return;
-
-		let next = activeIndex;
-		if (next < 0) next = 0;
-		next += delta;
-		setActiveIndex(next);
-	};
-
-	// Hide on any click outside
-	document.addEventListener(
-		'click',
-		(event: MouseEvent) => {
-			if (element.classList.contains('hidden')) return;
-			if (element.contains(event.target as Node)) return;
-			if (activeTrigger?.contains(event.target as Node)) return;
-			hide();
-		},
-		{ signal: abortController.signal }
-	);
-
-	// Hide on escape
-	document.addEventListener(
-		'keydown',
-		(event: KeyboardEvent) => {
-			if (!isVisible()) return;
-			if (activeMenu !== controller) return;
-
-			// Keyboard behavior requested:
-			// - ArrowDown navigates the menu
-			// - ArrowUp hides the menu
-			if (event.key === 'ArrowDown') {
-				event.preventDefault();
-				event.stopPropagation();
-				upAtFirstArmed = false;
-				moveActive(1);
-				return;
-			}
-
-			if (event.key === 'ArrowUp') {
-				event.preventDefault();
-				event.stopPropagation();
-
-				// Only hide if we're already at the first item and the user presses
-				// ArrowUp again.
-				if (activeIndex <= 0) {
-					if (upAtFirstArmed) {
-						hide();
-						return;
-					}
-					upAtFirstArmed = true;
-					setActiveIndex(0);
-					return;
-				}
-
-				moveActive(-1);
-				return;
-			}
-
-			// Activate selected item
-			if (event.key === 'Enter') {
-				event.preventDefault();
-				event.stopPropagation();
-
-				const buttons = getButtons();
-				const btn = buttons[activeIndex] ?? buttons[0] ?? null;
-				btn?.click();
-				return;
-			}
-
-			if (event.key !== 'Escape') return;
-			event.preventDefault();
-			event.stopPropagation();
-			hide();
-		},
-		{ signal: abortController.signal, capture: true }
-	);
-
-	// Hide on scroll/resize to avoid "floating" menu
-	window.addEventListener('scroll', () => {
-		if (activeHideOnViewportChange) hide();
-	}, { signal: abortController.signal, capture: true });
-	window.addEventListener('resize', () => {
-		if (activeHideOnViewportChange) hide();
-	}, { signal: abortController.signal });
-
-	/** Display menu items at a viewport point and layer them over their triggering modal. */
-	const showAt = (
-		position: { x: number; y: number },
-		trigger: HTMLElement,
-		items: ContextMenuItem[],
-		options: ContextMenuShowOptions = {},
-	): void => {
-		syncMenuLayer(element, trigger);
-		// Populate
-		const ul = clearMenu(element);
-
-		const context: ContextMenuContext = {
-			trigger,
-			event: new MouseEvent('click', {
-				clientX: position.x,
-				clientY: position.y,
-				bubbles: true,
-				cancelable: true,
-				view: window,
-			}),
-			hide,
-		};
-
-		for (const item of items) {
-			const li = document.createElement('li');
-			const btn = document.createElement('button');
-			btn.type = 'button';
-			btn.setAttribute('data-context-menu-item', 'true');
-	btn.className =
-		'w-full text-left px-2 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5';
-
-			if (item.icon) {
-				const icon = document.createElement('i');
-				icon.className = item.icon;
-				icon.classList.add('text-primary');
-				icon.setAttribute('aria-hidden', 'true');
-				btn.appendChild(icon);
-			}
-
-			btn.appendChild(document.createTextNode(item.label));
-			if (item.disabled) btn.disabled = true;
-
-			btn.addEventListener('mousedown', (e) => {
-				e.preventDefault();
-			}, { signal: abortController.signal });
-
-			btn.addEventListener(
-				'click',
-				async (e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					await item.onClick(context);
-					hide();
-				},
-				{ signal: abortController.signal }
-			);
-
-			li.appendChild(btn);
-			ul.appendChild(li);
-		}
-
-		// Show and position
-		element.classList.remove('hidden');
-		activeTrigger = trigger;
-		activeHideOnViewportChange = options.hideOnViewportChange ?? true;
-
-		// First place at cursor, then clamp based on measured size.
-		element.style.left = `${position.x}px`;
-		element.style.top = `${position.y}px`;
-
-		const clamped = clampToViewport(position.x, position.y, element);
-		element.style.left = `${clamped.x}px`;
-		element.style.top = `${clamped.y}px`;
-
-		activeMenu = controller;
-		upAtFirstArmed = false;
-		setActiveIndex(0);
-	};
-
-	const show = (event: MouseEvent | KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]): void => {
-		const rect = trigger.getBoundingClientRect();
-		const x = 'clientX' in event && typeof event.clientX === 'number' ? event.clientX : rect.left;
-		const y = 'clientY' in event && typeof event.clientY === 'number' ? event.clientY : rect.bottom;
-		showAt({ x, y }, trigger, items);
-	};
-
-	const destroy = (): void => {
-		abortController.abort();
-		menuCache.delete(id);
-		if (element.parentElement) element.parentElement.removeChild(element);
-	};
-
-	const controller: ContextMenuController = { element, show, showAt, hide, destroy };
-	menuCache.set(id, controller);
-	return controller;
-}
-
+/** Expose the open controller for integrations that intentionally navigate its pages. */
 export function getActiveContextMenu(): ContextMenuController | null {
-	return activeMenu;
+    return activeMenu;
 }

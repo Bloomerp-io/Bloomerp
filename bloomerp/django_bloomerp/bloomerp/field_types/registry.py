@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Callable, TYPE_CHECKING, Any
 from bloomerp.field_types.display_options import FieldDisplayOption
 from bloomerp.field_types.construction import FieldConstructionOption
@@ -29,6 +29,8 @@ FormFactory = Callable[[FieldContext, forms.Field | None], forms.Field | None]
 
 ValueRenderer = Callable[["ApplicationField", models.Model], Any]
 
+BatchValueLoader = Callable[[Sequence[models.Model], Sequence["ApplicationField"]], None]
+
 
 @dataclass(frozen=True, kw_only=True)
 class FieldConstruction:
@@ -52,6 +54,7 @@ class FieldTypeDefinition:
     model_field_cls: type[models.Field] | None = None
     construction: FieldConstruction | None = None
 
+    batch_value_loader: BatchValueLoader | None = None
     widget_factory: WidgetFactory | None = None
     form_factory: FormFactory | None = None
     render_value: ValueRenderer = lambda application_field, instance: getattr(
@@ -59,7 +62,9 @@ class FieldTypeDefinition:
     )
 
     lookups: tuple[LookupDefinition, ...] = ()
-    display_options: tuple[FieldDisplayOption, ...] = ()
+    display_options: (
+        Callable[["ApplicationField"], tuple[FieldDisplayOption, ...]] | None
+    ) = None
     
     
     @property
@@ -80,15 +85,23 @@ class FieldTypeDefinition:
         """
         return self.model_field_cls is not None
 
+    def get_display_options(
+        self, application_field: "ApplicationField"
+    ) -> tuple[FieldDisplayOption, ...]:
+        """Resolve settings against the current application field metadata."""
+        if self.display_options is None:
+            return ()
+        return tuple(self.display_options(application_field))
+
     def get_lookup_by_id(self, lookup_id: str) -> LookupDefinition | None:
         for lookup in self.lookups:
             if lookup.id == lookup_id:
                 return lookup
         return None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Freeze lookup sequences without evaluating field-dependent factories."""
         object.__setattr__(self, "lookups", tuple(self.lookups))
-        object.__setattr__(self, "display_options", tuple(self.display_options))
 
 
 class FieldTypeRegistry(BaseRegistry[FieldTypeDefinition]):

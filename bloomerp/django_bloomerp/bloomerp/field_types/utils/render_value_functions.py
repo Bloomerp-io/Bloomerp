@@ -4,14 +4,35 @@ if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
 
 from bloomerp.utils.labels import safe_object_label
+from bloomerp.utils.navigation import supports_main_content_navigation
 
 from django.db.models import Model
+from django.forms.utils import flatatt
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.text import Truncator
 
 
 MAX_RELATED_OBJECT_LABEL_LENGTH = 60
+
+
+def _related_object_url(obj: Model) -> str:
+    """Return an object's detail URL or a harmless anchor when unavailable."""
+    get_absolute_url = getattr(obj, "get_absolute_url", None)
+    return get_absolute_url() if callable(get_absolute_url) else "#"
+
+
+def _render_related_link(url: str, label: str, css_class: str) -> str:
+    """Render a related link with HTMX only for supported application views."""
+    attributes = {"href": url, "class": css_class}
+    if supports_main_content_navigation(url):
+        attributes.update({
+            "hx-get": url,
+            "hx-target": "#main-content",
+            "hx-swap": "innerHTML",
+            "hx-push-url": "true",
+        })
+    return format_html("<a{}>{}</a>", flatatt(attributes), label)
 
 
 def render_m2m_dataview_value(application_field: "ApplicationField", object: Model) -> str:
@@ -31,13 +52,13 @@ def render_m2m_dataview_value(application_field: "ApplicationField", object: Mod
 
     for obj in related_objects:
         # Get the URL for the related object (assuming it has a get_absolute_url method)
-        url = getattr(obj, "get_absolute_url", lambda: "#")()
+        url = _related_object_url(obj)
         name = Truncator(safe_object_label(obj)).chars(MAX_RELATED_OBJECT_LABEL_LENGTH)
         badges.append(
-            format_html(
-                '<a href="{}" class="badge badge-primary badge-xs hover:underline">{}</a>',
+            _render_related_link(
                 url,
                 name,
+                "badge badge-primary badge-xs hover:underline",
             )
         )
 
@@ -51,10 +72,10 @@ def render_m2m_dataview_value(application_field: "ApplicationField", object: Mod
             addendum_url = "#"
 
         badges.append(
-            format_html(
-                '<a href="{}" class="badge badge-primary badge-xs">+{} more</a>',
+            _render_related_link(
                 addendum_url,
-                related_count - 3,
+                f"+{related_count - 3} more",
+                "badge badge-primary badge-xs",
             )
         )
 
@@ -74,9 +95,9 @@ def render_foreign_key_dataview_value(application_field: "ApplicationField", obj
         return ""
 
     # Render the related object as a link to its detail page (assuming it has a get_absolute_url method)
-    url = getattr(related_object, "get_absolute_url", lambda: "#")()
+    url = _related_object_url(related_object)
     name = Truncator(safe_object_label(related_object)).chars(MAX_RELATED_OBJECT_LABEL_LENGTH)
-    return format_html('<a href="{}" class="text-primary hover:underline">{}</a>', url, name)
+    return _render_related_link(url, name, "text-primary hover:underline")
 
 
 def render_generic_relation_value(application_field: "ApplicationField", object: Model) -> str:

@@ -52,6 +52,8 @@ The generator chooses among:
 - `BloomerpAPIViewTestCase` for application API routes
 - `BloomerpAPIModelViewTestCase` for model API routes
 - `BloomerpAPIDetailViewTestCase` for detail API routes
+- `BloomerpMcpViewTestCase` for MCP-only tools and resource readers, using
+  [MCP request scenarios](mcp-view-test-case.md)
 
 Model and detail bases require a `model`. Module bases require a registered
 module object or ID. Generated files fill these values when discovery can

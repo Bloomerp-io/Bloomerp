@@ -12,6 +12,9 @@ Otherwise:
 - Loads from built static files
 - Files should be built with: npm run build:js
 
+The production entry is resolved from manifest.json and uses the same hashed
+URL as lazy imports, preventing an older cached entry from starting another app.
+
 The built Vite entry also emits a sibling CSS asset (`main.css`) for package
 styles imported from TypeScript, including Drawflow's base interaction styles.
 {% endcomment %}
@@ -21,9 +24,10 @@ styles imported from TypeScript, including Drawflow's base interaction styles.
 </script>
 
 {% if DEBUG and BLOOMERP_VITE_DEV_SERVER_URL %}
+        <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/@vite/client"></script>
         <script type="module" src="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/ts/main.ts"></script>
 {% else %}
         <!-- Production mode: Built bundle -->
-        {% bloomerp_asset_version as asset_version %}
-        <script type="module" src="{% static 'bloomerp/js/dist/main.js' %}?v={{ asset_version|urlencode }}"></script>
+        {% bloomerp_vite_entry as entry_path %}
+        <script type="module" src="{% static entry_path %}"></script>
 {% endif %}

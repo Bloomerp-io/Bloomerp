@@ -13,7 +13,9 @@
             {% endif %}
         </details>
     {% else %}
-        <a href="{{ link.url }}" class="flex items-center gap-2 rounded-xl px-2 py-1 text-primary hover:bg-base hover:underline">
+        <a href="{{ link.url }}"
+           {% if link.is_internal %}hx-get="{{ link.url }}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"{% endif %}
+           class="flex items-center gap-2 rounded-xl px-2 py-1 text-primary hover:bg-base hover:underline">
             {% if link.icon %}<i class="{{ link.icon }}" aria-hidden="true"></i>{% endif %}
             <span class="text-sm">{{ link.name }}</span>
         </a>

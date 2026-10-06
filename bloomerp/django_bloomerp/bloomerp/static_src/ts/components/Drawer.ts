@@ -31,7 +31,7 @@ export class Drawer extends BaseComponent {
     private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
     private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
-    private triggerHandlers: Array<{ element: Element; handler: EventListener }> = [];
+    private triggerHandlers: Array<{ element: EventTarget; handler: EventListener }> = [];
 
     public initialize(): void {
         if (!this.element) {
@@ -82,28 +82,27 @@ export class Drawer extends BaseComponent {
         this.side = sideAttribute === 'left' ? 'left' : 'right';
     }
 
+    /** Handle drawer triggers, including buttons inserted by later HTMX swaps. */
     private setupTriggerButtons(): void {
         if (!this.element) return;
 
         this.clearTriggerHandlers();
 
-        const openTriggers = document.querySelectorAll(
-            `[${OPEN_DRAWER_ATTRIBUTE}="${this.element.id}"]`
-        );
-        openTriggers.forEach((trigger) => {
-            const handler = () => this.open();
-            trigger.addEventListener('click', handler);
-            this.triggerHandlers.push({ element: trigger, handler });
-        });
-
-        const closeTriggers = document.querySelectorAll(
-            `[${CLOSE_DRAWER_ATTRIBUTE}="${this.element.id}"]`
-        );
-        closeTriggers.forEach((trigger) => {
-            const handler = () => this.close();
-            trigger.addEventListener('click', handler);
-            this.triggerHandlers.push({ element: trigger, handler });
-        });
+        const drawer = this;
+        /** Route clicks from a trigger or its children to this drawer instance. */
+        function handleDrawerTrigger(event: Event): void {
+            if (!(event.target instanceof Element)) return;
+            const trigger = event.target.closest(
+                `[${OPEN_DRAWER_ATTRIBUTE}], [${CLOSE_DRAWER_ATTRIBUTE}]`
+            );
+            if (trigger?.getAttribute(OPEN_DRAWER_ATTRIBUTE) === drawer.drawerId) {
+                drawer.open();
+            } else if (trigger?.getAttribute(CLOSE_DRAWER_ATTRIBUTE) === drawer.drawerId) {
+                drawer.close();
+            }
+        }
+        document.addEventListener('click', handleDrawerTrigger);
+        this.triggerHandlers.push({ element: document, handler: handleDrawerTrigger });
     }
 
     private clearTriggerHandlers(): void {

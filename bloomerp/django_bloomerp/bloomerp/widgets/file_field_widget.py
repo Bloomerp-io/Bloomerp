@@ -1,98 +1,102 @@
-from django.forms.widgets import Widget, ClearableFileInput
-from bloomerp.models.files import File
+from __future__ import annotations
 
-class BloomerpFileFieldWidget(Widget):
-    template_name = 'widgets/bloomerp_file_field_widget.html'
-    file_input = None
+from typing import Any
+from uuid import UUID
 
-    def __init__(self, attrs=None):
-        self.file_input = ClearableFileInput(attrs=attrs)
+from django.db.models import Model
+from django.forms.widgets import FileInput
+
+
+class BloomerpFileFieldWidget(FileInput):
+    """Extract uploads and retained IDs without mutating files during rendering."""
+
+    template_name = "widgets/bloomerp_file_field_widget.html"
+
+    def __init__(
+        self, attrs: dict[str, Any] | None = None, *, multiple: bool = False
+    ) -> None:
+        """Configure a normal HTML file input for single or multiple uploads."""
+        self.allow_multiple_selected = multiple
+        self.parent: Model | None = None
+        self.model_field: Any = None
         super().__init__(attrs)
 
-    def get_context(self, name, value, attrs):
-        # Set default attributes if they are not provided
-        if attrs is None:
-            attrs = {}
+    def bind_parent(self, parent: Model, model_field: Any) -> None:
+        """Scope existing-file display to the owning parent and model field."""
+        self.parent = parent
+        self.model_field = model_field
 
-        # Check if it was marked as invalid, in that case delete the file
-        if attrs.get('aria-invalid', 'false') == 'true':
-            invalid = True
-            File.objects.filter(pk=value).delete()
-            value = None
-        else:
-            invalid = False
-        
-        # Add your custom attributes, like 'class' for Bootstrap form control
-        attrs.setdefault('class', 'form-control')
+    def get_context(
+        self, name: str, value: Any, attrs: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """Render only current field-owned files and the plain upload input."""
+        from django.contrib.contenttypes.models import ContentType
 
-        # Set value for the file field if it exists
-        # This will be used to display the file name in the template
-        if value:
-            file_obj = File.objects.get(pk=value)
-            value = file_obj.file
+        from bloomerp.models.files.file import File
 
-        # Use ClearableFileInput's get_context but with modified attrs
-        context = self.file_input.get_context(name, value, attrs)
-
-        if invalid:
-            context['invalid'] = True
-
-        if value:
-            context['current_file'] = file_obj
-
+        context = super().get_context(name, None, attrs)
+        context["current_files"] = []
+        if (
+            self.parent is not None
+            and not self.parent._state.adding
+            and self.model_field is not None
+        ):
+            ids = value.get("retained", []) if isinstance(value, dict) else value
+            if ids:
+                ids = ids if isinstance(ids, (list, tuple)) else [ids]
+                try:
+                    ids = [str(UUID(str(getattr(pk, "pk", pk)))) for pk in ids]
+                except (ValueError, TypeError, AttributeError):
+                    ids = []
+                context["current_files"] = File.objects.filter(
+                    pk__in=ids,
+                    field_reference__application_field__content_type=ContentType.objects.get_for_model(
+                        self.parent
+                    ),
+                    field_reference__object_id=str(self.parent.pk),
+                    field_reference__application_field__field=self.model_field.name,
+                )
         return context
 
-    def value_from_datadict(self, data, files, name):
-        file = self.file_input.value_from_datadict(data, files, name)
-
-        # Check if there already is a current file instance
-        current_file = data.get(name + '_current', None)
-    
-        # If the file is cleared, the file instance will be False, so we should return None
-        if file is False:
-            return None
-
-        # If no file is provided, the value_from_datadict method will return None
-        # However, we need to check if there is a current file instance
-        if file is None and not current_file:
-            # Case when there is no current file and no new file
-            return None
-        elif file is None and current_file:
-            # Case when there is a current file but no new file
-            return current_file
-        elif file is not None and not current_file:
-            # Create or update the file instance
-            file_obj = File(
-                file=file,
-                name=file.name,
-                persisted=False
+    def value_from_datadict(self, data: Any, files: Any, name: str) -> dict[str, Any]:
+        """Return uploads and checked retention controls without saving any files."""
+        uploads = (
+            files.getlist(name) if hasattr(files, "getlist") else files.get(name, [])
+        )
+        if not isinstance(uploads, (list, tuple)):
+            uploads = [uploads] if uploads else []
+        retained = (
+            data.getlist(f"{name}__retain")
+            if hasattr(data, "getlist")
+            else data.get(f"{name}__retain", [])
+        )
+        if not isinstance(retained, (list, tuple)):
+            retained = [retained] if retained else []
+        # Partial model forms fill omitted fields using their ordinary field key.
+        if (
+            f"{name}__present" not in data
+            and f"{name}__retain" not in data
+            and not uploads
+        ):
+            retained = (
+                data.getlist(name) if hasattr(data, "getlist") else data.get(name, [])
             )
-            # Temporarily save the file in memory
-            file_obj.save()
-            return file_obj.pk
-        else:
-            # Case when there is a current file and a new file
-            # Update the current file instance
-            file_obj = File.objects.get(pk=current_file)
-            file_obj.file = file
-            file_obj.name = file.name
-            file_obj.save()
-            return file_obj.pk
-        
-    def format_value(self, value):
-        return self.file_input.format_value(value)
+            if not isinstance(retained, (list, tuple)):
+                retained = [retained] if retained else []
+        # Uploading a replacement to a single-file editor drops its old file.
+        if uploads and not self.allow_multiple_selected:
+            retained = []
+        return {"uploads": list(uploads), "retained": list(retained)}
 
-    def clear_checkbox_name(self, name):
-        return self.file_input.clear_checkbox_name(name)
+    def value_omitted_from_data(self, data: Any, files: Any, name: str) -> bool:
+        """Recognize an explicit empty editor independently from omitted PATCH data."""
+        return (
+            name not in files
+            and name not in data
+            and f"{name}__present" not in data
+            and f"{name}__retain" not in data
+        )
 
-    def clear_checkbox_id(self, name):
-        return self.file_input.clear_checkbox_id(name)
-
-    def is_initial(self, value):
-        return self.file_input.is_initial(value)
-
-    def value_omitted_from_data(self, data, files, name):
-        return self.file_input.value_omitted_from_data(data, files, name)
-
-    def use_required_attribute(self, initial):
-        return self.file_input.use_required_attribute(initial)
+    def use_required_attribute(self, initial: Any) -> bool:
+        """Validate combined retained/new files on the server rather than the upload input."""
+        return False

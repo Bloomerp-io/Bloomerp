@@ -3,3 +3,211 @@ code: CRM
 name: Customer Relationship Management
 description: Manage your customer relationships effectively. 
 icon: fa-users
+tiles:
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: crm:new-leads
+    name: New leads
+    description: Leads waiting for first contact.
+    icon: fa-solid fa-user-plus
+    query: |
+      SELECT lead.id, account.account_name
+      FROM crm_sales_lead lead
+      LEFT JOIN crm_core_crm_account account ON account.id = lead.account_id
+      WHERE lead.status = 'new'
+    fields:
+      value:
+        - name: id
+          opts: {aggregator: COUNT, formatter: INTEGER}
+    filters:
+      - {field: account_name, type: text, shared_key: account}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: crm:open-opportunities
+    name: Open opportunities
+    description: Active sales opportunities.
+    icon: fa-solid fa-handshake
+    query: |
+      SELECT opportunity.id, account.account_name, opportunity.expected_close_date
+      FROM crm_sales_opportunity opportunity
+      INNER JOIN crm_core_crm_account account ON account.id = opportunity.account_id
+      WHERE opportunity.status = 'open'
+    fields:
+      value:
+        - name: id
+          opts: {aggregator: COUNT, formatter: INTEGER}
+    filters:
+      - {field: account_name, type: text, shared_key: account}
+      - {field: expected_close_date, type: date, shared_key: close_date}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: crm:pipeline-value
+    name: Pipeline value
+    description: Total value of open opportunities.
+    icon: fa-solid fa-coins
+    query: |
+      SELECT opportunity.amount, account.account_name, opportunity.expected_close_date
+      FROM crm_sales_opportunity opportunity
+      INNER JOIN crm_core_crm_account account ON account.id = opportunity.account_id
+      WHERE opportunity.status = 'open'
+    fields:
+      value:
+        - name: amount
+          opts: {aggregator: SUM, formatter: DOUBLE_US}
+    filters:
+      - {field: account_name, type: text, shared_key: account}
+      - {field: expected_close_date, type: date, shared_key: close_date}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: crm:upcoming-activities
+    name: Upcoming activities
+    description: Unfinished activities due today or later.
+    icon: fa-solid fa-calendar-day
+    query: |
+      SELECT activity.id, activity.due_date, account.account_name
+      FROM crm_sales_activity activity
+      LEFT JOIN crm_core_crm_account account ON account.id = activity.account_id
+      WHERE activity.completed = FALSE AND activity.due_date >= CURRENT_DATE
+    fields:
+      value:
+        - name: id
+          opts: {aggregator: COUNT, formatter: INTEGER}
+    filters:
+      - {field: account_name, type: text, shared_key: account}
+      - {field: due_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: TWO_DIM_CHART
+    id: crm:pipeline-by-stage
+    name: Pipeline by stage
+    description: Open opportunity value grouped by sales stage.
+    icon: fa-solid fa-chart-column
+    query: |
+      SELECT stage.stage_name, opportunity.amount,
+             account.account_name, opportunity.expected_close_date
+      FROM crm_sales_opportunity opportunity
+      INNER JOIN crm_sales_opportunity_stage stage ON stage.id = opportunity.stage_id
+      INNER JOIN crm_core_crm_account account ON account.id = opportunity.account_id
+      WHERE opportunity.status = 'open'
+    fields:
+      x_axis:
+        - {name: stage_name}
+      y_axis:
+        - name: amount
+          opts: {label: Pipeline value, color: '#4f46e5'}
+    opts: {chart_type: bar, show_legend: false}
+    filters:
+      - {field: account_name, type: text, shared_key: account}
+      - {field: expected_close_date, type: date, shared_key: close_date}
+  - tile_type: ANALYTICS_TILE
+    type: PIE_CHART
+    id: crm:leads-by-source
+    name: Leads by source
+    description: Where current leads originated.
+    icon: fa-solid fa-chart-pie
+    query: |
+      SELECT CASE lead.lead_source
+               WHEN 'web' THEN 'Web'
+               WHEN 'email' THEN 'Email'
+               WHEN 'phone' THEN 'Phone'
+               WHEN 'referral' THEN 'Referral'
+               WHEN 'event' THEN 'Event'
+               WHEN 'partner' THEN 'Partner'
+               ELSE 'Other'
+             END AS source_label,
+             1 AS lead_count, account.account_name
+      FROM crm_sales_lead lead
+      LEFT JOIN crm_core_crm_account account ON account.id = lead.account_id
+    fields:
+      labels:
+        - {name: source_label}
+      values:
+        - name: lead_count
+          opts: {label: Leads, formatter: INTEGER}
+    opts: {show_legend: true, legend_position: right}
+    filters:
+      - {field: account_name, type: text, shared_key: account}
+  - tile_type: ANALYTICS_TILE
+    type: TABLE
+    id: crm:next-activities
+    name: Next activities
+    description: Upcoming customer follow ups ordered by due date.
+    icon: fa-solid fa-list-check
+    query: |
+      SELECT activity.subject, activity.activity_type, activity.due_date,
+             account.account_name
+      FROM crm_sales_activity activity
+      LEFT JOIN crm_core_crm_account account ON account.id = activity.account_id
+      WHERE activity.completed = FALSE AND activity.due_date >= CURRENT_DATE
+      ORDER BY activity.due_date ASC
+    fields:
+      columns:
+        - {name: subject, opts: {label: Activity}}
+        - {name: activity_type, opts: {label: Type}}
+        - {name: due_date, opts: {label: Due date}}
+        - {name: account_name, opts: {label: Account}}
+    opts: {page_size: 10}
+    filters:
+      - {field: account_name, type: text, shared_key: account}
+      - {field: due_date, type: date}
+  - type: LINKS_TILE
+    id: crm:sales-shortcuts
+    name: Sales pipeline
+    description: Work with leads and opportunities.
+    icon: fa-solid fa-chart-line
+    links:
+      - name: View leads
+        url_name: leads_model
+        is_internal: true
+      - name: View opportunities
+        url_name: opportunities_model
+        is_internal: true
+  - type: LINKS_TILE
+    id: crm:relationship-shortcuts
+    name: Customer relationships
+    description: Find accounts and contacts.
+    icon: fa-solid fa-address-book
+    links:
+      - name: View accounts
+        url_name: crm_accounts_model
+        is_internal: true
+      - name: View contacts
+        url_name: contacts_model
+        is_internal: true
+  - type: LINKS_TILE
+    id: crm:activity-shortcuts
+    name: Activities
+    description: Review customer interactions and follow ups.
+    icon: fa-solid fa-calendar-check
+    links:
+      - name: View activities
+        url_name: activities_model
+        is_internal: true
+      - name: Add activity
+        url_name: activities_add
+        is_internal: true
+workspaces:
+  - name: CRM overview
+    is_default: true
+    rows:
+      - title: Quick access
+        columns: 3
+        items:
+          - id: crm:sales-shortcuts
+          - id: crm:relationship-shortcuts
+          - id: crm:activity-shortcuts
+      - title: At a glance
+        columns: 4
+        items:
+          - id: crm:new-leads
+          - id: crm:open-opportunities
+          - id: crm:pipeline-value
+          - id: crm:upcoming-activities
+      - title: Sales picture
+        columns: 2
+        items:
+          - id: crm:pipeline-by-stage
+          - id: crm:leads-by-source
+      - title: Follow ups
+        columns: 1
+        items:
+          - id: crm:next-activities

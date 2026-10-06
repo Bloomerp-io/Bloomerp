@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-19 14:13+0000\n"
+"POT-Creation-Date: 2026-10-04 22:13+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -19,27 +19,266 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.16.0\n"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:358
+#: static_src/ts/components/filters/SavedFilters.ts:193
+msgid "A filter name is required."
+msgstr "Se requiere un nombre de filtro."
+
+#: static_src/ts/components/PermissionsTable.ts:393
+msgid "A row policy rule requires exactly one condition group."
+msgstr "Una regla de política de filas requiere exactamente un grupo de condiciones."
+
+#: static_src/ts/components/filters/FilterContainer.ts:103
+#: static_src/ts/components/filters/FilterContainer.ts:167
+#: static_src/ts/components/filters/RenderedFilters.ts:85
+#: static_src/ts/components/filters/RenderedFilters.ts:136
+msgid "AND"
+msgstr "Y"
+
+#: static_src/ts/components/filters/FilterContainer.ts:122
+msgid "Add condition"
+msgstr "Añadir condición"
+
+#: static_src/ts/components/filters/SavedFilters.ts:69
+msgid "Add filter"
+msgstr "Añadir filtro"
+
+#: static_src/ts/components/filters/FilterContainer.ts:73
+#: static_src/ts/components/filters/FilterContainer.ts:78
+msgid "Add group"
+msgstr "Añadir grupo"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:350
 msgid "Add row below"
 msgstr "Añadir fila debajo"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:359
+#: static_src/ts/components/PermissionsTable.ts:440
+msgid "All objects"
+msgstr "Todos los objetos"
+
+#: static_src/ts/components/filters/RenderedFilters.ts:92
+#: static_src/ts/components/filters/RenderedFilters.ts:135
+msgid "All rows"
+msgstr "Todas las filas"
+
+#: static_src/ts/components/filters/FilterContainer.ts:69
+msgid "Apply"
+msgstr "Aplicar"
+
+#: static_src/ts/components/filters/FilterContainer.ts:74
+msgid "Clear"
+msgstr "Limpiar"
+
+#: static_src/ts/utils/modals.ts:44
+msgid "Close"
+msgstr "Cerrar"
+
+#: static_src/ts/components/filters/FilterContainer.ts:106
+#: static_src/ts/components/filters/FilterContainer.ts:155
+msgid "Collapse group"
+msgstr "Contraer grupo"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:175
+#: static_src/ts/components/filters/widget.ts:26
+msgid "Complete every filter condition before applying."
+msgstr "Completa todas las condiciones del filtro antes de aplicarlo."
+
+#: static_src/ts/components/filters/FilterContainer.ts:165
+msgid "Condition group"
+msgstr "Grupo de condiciones"
+
+#: static_src/ts/components/filters/api.ts:24
+msgid "Could not load filter options. Please try again."
+msgstr "No se pudieron cargar las opciones del filtro. Inténtalo de nuevo."
+
+#: static_src/ts/components/filters/FilterContainer.ts:91
+msgid "Could not restore the initial filters."
+msgstr "No se pudieron restaurar los filtros iniciales."
+
+#: static_src/ts/components/filters/FilterContainer.ts:175
+msgid "Could not restore the initial filters. Clear them to start again."
+msgstr "No se pudieron restaurar los filtros iniciales. Bórralos para empezar de nuevo."
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:351
 msgid "Drag row"
 msgstr "Arrastrar fila"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:360
+#: static_src/ts/components/filters/RenderedFilter.ts:95
+msgid "Edit"
+msgstr "Editar"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:94
+msgid "Enter a single field key."
+msgstr "Introduce una única clave de campo."
+
+#: static_src/ts/components/filters/FilterContainer.ts:155
+msgid "Expand group"
+msgstr "Expandir grupo"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:64
+msgid "Field"
+msgstr "Campo"
+
+#: static_src/ts/components/filters/RenderedFilter.ts:86
+msgid "Filter actions"
+msgstr "Acciones del filtro"
+
+#: static_src/ts/components/filters/api.ts:12
+msgid "Filter endpoint is missing."
+msgstr "Falta el endpoint del filtro."
+
+#: static_src/ts/components/filters/SavedFilters.ts:86
+#: static_src/ts/components/filters/SavedFilters.ts:87
+msgid "Filter name"
+msgstr "Nombre del filtro"
+
+#: static_src/ts/components/filters/FilterContainer.ts:85
+msgid "Filter scope is missing."
+msgstr "Falta el ámbito del filtro."
+
+#: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
+msgid "Invalid row policy"
+msgstr "Política de filas no válida"
+
+#: static_src/ts/components/filters/SavedFilters.ts:152
+msgid "Loading saved filters…"
+msgstr "Cargando filtros guardados…"
+
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:193
+msgid "Loading…"
+msgstr "Cargando…"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:122
+msgid "Lookup"
+msgstr "Buscar"
+
+#: static_src/ts/components/filters/FilterContainer.ts:102
+msgid "Match conditions"
+msgstr "Coincidir con las condiciones"
+
+#: static_src/ts/components/filters/SavedFilters.ts:127
+msgid "No matching filters."
+msgstr "No hay filtros coincidentes."
+
+#: static_src/ts/components/PermissionsTable.ts:440
+msgid "No objects"
+msgstr "No hay objetos"
+
+#: static_src/ts/components/filters/RenderedFilters.ts:92
+#: static_src/ts/components/filters/RenderedFilters.ts:135
+msgid "No rows"
+msgstr "No hay filas"
+
+#: static_src/ts/components/filters/SavedFilters.ts:127
+msgid "No saved filters yet."
+msgstr "Aún no hay filtros guardados."
+
+#: static_src/ts/components/filters/FilterContainer.ts:103
+msgid "OR"
+msgstr "O"
+
+#: static_src/ts/components/PermissionsTable.ts:388
+msgid "Permission required"
+msgstr "Permiso obligatorio"
+
+#: static_src/ts/components/filters/widget.ts:36
+msgid "Please check the filter value."
+msgstr "Comprueba el valor del filtro."
+
+#: static_src/ts/components/PermissionsTable.ts:388
+msgid "Please select at least one permission for the row policy."
+msgstr "Selecciona al menos un permiso para la política de filas."
+
+#: static_src/ts/components/filters/RenderedFilter.ts:94
+msgid "Remove"
+msgstr "Quitar"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:23
+msgid "Remove condition"
+msgstr "Quitar condición"
+
+#: static_src/ts/components/filters/FilterContainer.ts:122
+msgid "Remove group"
+msgstr "Quitar grupo"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:352
 msgid "Remove row"
 msgstr "Eliminar fila"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:357
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:349
 msgid "Row title"
 msgstr "Título de la fila"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:522
+#: static_src/ts/components/filters/SavedFilters.ts:89
+#: static_src/ts/components/filters/SavedFilters.ts:90
+#: static_src/ts/components/filters/SavedFilters.ts:91
+msgid "Save filter"
+msgstr "Guardar filtro"
+
+#: static_src/ts/components/filters/SavedFilters.ts:59
+msgid "Saved filters"
+msgstr "Filtros guardados"
+
+#: static_src/ts/components/filters/SavedFilters.ts:64
+msgid "Search filters…"
+msgstr "Buscar filtros…"
+
+#: static_src/ts/components/filters/SavedFilters.ts:65
+msgid "Search saved filters"
+msgstr "Buscar filtros guardados"
+
+#: static_src/ts/components/filters/SavedFilters.ts:11
+msgid "Select"
+msgstr "Seleccionar"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:65
+msgid "Select field"
+msgstr "Seleccionar campo"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:93
+msgid "Select key"
+msgstr "Seleccionar clave"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:124
+msgid "Select lookup"
+msgstr "Seleccionar operador de búsqueda"
+
+#: static_src/ts/components/filters/RenderedFilter.ts:96
+msgid "Set default"
+msgstr "Establecer como predeterminado"
+
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:526
 msgid "Show All Fields"
 msgstr "Mostrar todos los campos"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:521
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:525
 msgid "Show Required Only"
 msgstr "Mostrar solo los obligatorios"
+
+#: static_src/ts/components/PermissionsTable.ts:339
+msgid "The filter editor is not ready."
+msgstr "El editor de filtros no está listo."
+
+#: static_src/ts/components/filters/ConditionEditor.ts:112
+msgid "The saved filter field is unavailable."
+msgstr "El campo del filtro guardado no está disponible."
+
+#: static_src/ts/components/filters/ConditionEditor.ts:168
+msgid "The saved filter lookup could not be restored."
+msgstr "No se pudo restaurar el operador de búsqueda del filtro guardado."
+
+#: static_src/ts/components/filters/FilterContainer.ts:183
+msgid "This editor accepts one condition group per rule."
+msgstr "Este editor acepta un grupo de condiciones por regla."
+
+#: static_src/ts/utils/modals.ts:43
+msgid "Toggle fullscreen"
+msgstr "Activar o desactivar pantalla completa"
+
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:200
+msgid "Unable to load this form. Close the dialog and try again."
+msgstr "No se pudo cargar este formulario. Cierra el cuadro de diálogo e inténtalo de nuevo."
+
+#: static_src/ts/components/workspaces/WorkspaceContainer.ts:252
+msgid "Unable to load tile."
+msgstr "No se pudo cargar el mosaico."
 

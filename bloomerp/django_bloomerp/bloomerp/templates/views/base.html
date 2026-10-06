@@ -9,7 +9,8 @@
 	</head>
 
 	
-	<body class="bg-base text-gray-900 dark:bg-zinc-950 dark:text-zinc-100" id="bloomerpBody" x-data>
+	<body class="bg-base text-gray-900 dark:bg-zinc-950 dark:text-zinc-100" id="bloomerpBody" x-data
+		{% if request.user.is_authenticated %}data-bloomerp-agent="enabled"{% endif %}>
 		{% block body %}
 
 		<!-- Sidebar -->
@@ -34,10 +35,10 @@
 		<!--Modals-->
 		<c-ui.modal id="create-object-modal" title="Create object" size="xl"/>
 		<c-ui.modal id="todo-modal" title="Todo's" size="lg"></c-ui.modal>
-		<c-ui.modal id="advanced-query-modal" title="Advanced query"/>
+		<c-ui.modal id="advanced-query-modal" title="{% translate 'Advanced query' %}"/>
 		
 		<!--Global Search-->
-		<c-ui.modal id="global-search-modal" title="Search">
+		<c-ui.modal id="global-search-modal" title="{% translate 'Search' %}">
 			<div>
 				<div class="relative mb-2">
 					<span
@@ -59,10 +60,21 @@
 			<c-icons.lines_horizontal size="24"/>
 		</button>
 
+		<c-features.agent.body />
+
 		<!--Messages -->
 		<c-ui.modal id="bloomerp-general-use-modal"/>
 
 		<div id="object-actions-target"></div>
+
+		<c-ui.drawer id="bloomerp-general-use-drawer" size="xl">
+			<div class="flex h-full min-h-0 flex-col">
+				<div class="flex shrink-0 justify-end border-b border-gray-200 p-3">
+					<button type="button" class="btn btn-secondary btn-sm" bloomerp-close-drawer="bloomerp-general-use-drawer">{% translate "Close" %}</button>
+				</div>
+				<div id="bloomerp-general-use-drawer-body" class="min-h-0 flex-1 overflow-auto"></div>
+			</div>
+		</c-ui.drawer>
 
 		{% block scripts %}
 		

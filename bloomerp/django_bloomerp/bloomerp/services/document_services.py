@@ -389,7 +389,7 @@ class DocumentTemplateService:
             QuerySet[File]: _description_
         """
         qs = File.objects.filter(
-            meta__document_template_id=str(self.document_template.id),
+            meta__document_template__id=str(self.document_template.id),
         )
         if instance:
             qs = qs.filter(
@@ -420,10 +420,11 @@ class DocumentTemplateService:
             filename = f"{filename}.pdf"
 
         content_type = ContentType.objects.get_for_model(instance) if instance is not None else None
-        meta = {
-            "document_template_id": str(self.document_template.id),
-            "document_template_name": self.document_template.name,
-        }
+        from bloomerp.models.files.file import FileMetadata, DocumentTemplateFileMetadata
+
+        meta = FileMetadata(document_template=DocumentTemplateFileMetadata(
+            id=self.document_template.id, name=self.document_template.name,
+        ))
 
         file_object = File(
             name=filename,

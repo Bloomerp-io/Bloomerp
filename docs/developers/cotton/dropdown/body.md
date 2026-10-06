@@ -13,7 +13,6 @@ Bloomerp dropdown component.
 | --- | --- | --- |
 | `slot` | - | everything inside of the component |
 | `trigger_text` | - | text to display on the dropdown button (default: "Options") |
-| `trigger_icon` | - | HTML for a custom icon to display instead of text (default: None) |
 | `trigger_icon_class` | - | CSS classes for a Font Awesome or other icon element rendered before the trigger text |
 | `trigger_button_class` | - | use btn-based trigger styling instead of the default inline trigger styling |
 | `trigger_class` | - | additional CSS classes for the trigger button |

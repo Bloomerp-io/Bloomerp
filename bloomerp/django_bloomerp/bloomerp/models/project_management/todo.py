@@ -138,17 +138,6 @@ class Todo(BloomerpModel):
             )
         ],
         detail_view_settings=DetailViewSettings(
-            tab_configurations=[
-                DetailTabsConfiguration(
-                    name="Default",
-                    tabs=[
-                        DetailTab(
-                            name="Overview",
-                            url_name="todos_detail_overview",
-                        )
-                    ],
-                )
-            ],
             layouts=[
                 FieldLayout(
                     name="Default",
@@ -236,7 +225,7 @@ class Todo(BloomerpModel):
                     ]
                 },
                 opts={
-                    "advanced_formatting_value" : """<a href='{% url 'todos_model' %}?status__values_in=backlog,scoped,in_progress,in_review'>{{ var_open_count }}</a>"""
+                    "advanced_formatting_value" : """<a href="{% url 'todos_model' %}?status__values_in=backlog,scoped,in_progress,in_review" hx-get="{% url 'todos_model' %}?status__values_in=backlog,scoped,in_progress,in_review" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true">{{ var_open_count }}</a>"""
                 }
             ),
             AnalyticsTileConfig(
@@ -381,7 +370,6 @@ class Todo(BloomerpModel):
     )
 
     avatar = None
-    allow_global_search = False # Do not allow string search for todos (we dont want to-do's to be searchable in the search bar)
 
     assigned_to = UserField(
         on_delete=models.CASCADE, 

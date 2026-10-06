@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-19 14:13+0000\n"
+"POT-Creation-Date: 2026-10-05 10:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -19,27 +19,371 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.16.0\n"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:358
+#: static_src/ts/components/filters/SavedFilters.ts:193
+msgid "A filter name is required."
+msgstr "Een filternaam is vereist."
+
+#: static_src/ts/components/PermissionsTable.ts:393
+msgid "A row policy rule requires exactly one condition group."
+msgstr "Een rijbeleidsregel vereist precies één voorwaardengroep."
+
+#: static_src/ts/components/filters/FilterContainer.ts:103
+#: static_src/ts/components/filters/FilterContainer.ts:167
+#: static_src/ts/components/filters/RenderedFilters.ts:85
+#: static_src/ts/components/filters/RenderedFilters.ts:136
+msgid "AND"
+msgstr "EN"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:268
+msgid "Actions"
+msgstr ""
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:269
+msgid "Add action"
+msgstr ""
+
+#: static_src/ts/components/filters/FilterContainer.ts:122
+msgid "Add condition"
+msgstr "Voorwaarde toevoegen"
+
+#: static_src/ts/components/filters/SavedFilters.ts:69
+msgid "Add filter"
+msgstr "Filter toevoegen"
+
+#: static_src/ts/components/filters/FilterContainer.ts:73
+#: static_src/ts/components/filters/FilterContainer.ts:78
+msgid "Add group"
+msgstr "Groep toevoegen"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:350
 msgid "Add row below"
 msgstr "Rij hieronder toevoegen"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:359
+#: static_src/ts/components/PermissionsTable.ts:440
+msgid "All objects"
+msgstr "Alle objecten"
+
+#: static_src/ts/components/filters/RenderedFilters.ts:92
+#: static_src/ts/components/filters/RenderedFilters.ts:135
+msgid "All rows"
+msgstr "Alle rijen"
+
+#: static_src/ts/components/filters/FilterContainer.ts:69
+msgid "Apply"
+msgstr "Toepassen"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:241
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:242
+msgid "Behavior name"
+msgstr ""
+
+#: static_src/ts/components/text_editor/actions.ts:173
+msgid "Bullet List"
+msgstr "Opsomming"
+
+#: static_src/ts/components/text_editor/actions.ts:185
+msgid "Checklist"
+msgstr "Checklist"
+
+#: static_src/ts/components/filters/FilterContainer.ts:74
+msgid "Clear"
+msgstr "Wissen"
+
+#: static_src/ts/utils/modals.ts:44
+msgid "Close"
+msgstr "Sluiten"
+
+#: static_src/ts/components/text_editor/actions.ts:133
+msgid "Code Block"
+msgstr "Codeblok"
+
+#: static_src/ts/components/filters/FilterContainer.ts:106
+#: static_src/ts/components/filters/FilterContainer.ts:155
+msgid "Collapse group"
+msgstr "Groep inklappen"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:175
+#: static_src/ts/components/filters/widget.ts:26
+msgid "Complete every filter condition before applying."
+msgstr "Vul alle filtervoorwaarden in voordat u ze toepast."
+
+#: static_src/ts/components/filters/FilterContainer.ts:165
+msgid "Condition group"
+msgstr "Voorwaardengroep"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:263
+msgid "Conditions"
+msgstr ""
+
+#: static_src/ts/components/filters/api.ts:24
+msgid "Could not load filter options. Please try again."
+msgstr "Filteropties laden is niet gelukt. Probeer het opnieuw."
+
+#: static_src/ts/components/filters/FilterContainer.ts:91
+msgid "Could not restore the initial filters."
+msgstr "De oorspronkelijke filters herstellen is niet gelukt."
+
+#: static_src/ts/components/filters/FilterContainer.ts:175
+msgid "Could not restore the initial filters. Clear them to start again."
+msgstr "De oorspronkelijke filters herstellen is niet gelukt. Wis ze om opnieuw te beginnen."
+
+#: static_src/ts/components/SelectPreference.ts:73
+msgid "Delete {preference}"
+msgstr "{preference} verwijderen"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:351
 msgid "Drag row"
 msgstr "Rij verslepen"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:360
+#: static_src/ts/components/filters/RenderedFilter.ts:95
+msgid "Edit"
+msgstr "Bewerken"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:94
+msgid "Enter a single field key."
+msgstr "Voer één veldsleutel in."
+
+#: static_src/ts/components/filters/FilterContainer.ts:155
+msgid "Expand group"
+msgstr "Groep uitklappen"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:64
+msgid "Field"
+msgstr "Veld"
+
+#: static_src/ts/components/filters/RenderedFilter.ts:86
+msgid "Filter actions"
+msgstr "Filteracties"
+
+#: static_src/ts/components/filters/api.ts:12
+msgid "Filter endpoint is missing."
+msgstr "Filterendpoint ontbreekt."
+
+#: static_src/ts/components/filters/SavedFilters.ts:86
+#: static_src/ts/components/filters/SavedFilters.ts:87
+msgid "Filter name"
+msgstr "Filternaam"
+
+#: static_src/ts/components/filters/FilterContainer.ts:85
+msgid "Filter scope is missing."
+msgstr "Filterscope ontbreekt."
+
+#: static_src/ts/components/text_editor/actions.ts:219
+msgid "HTML"
+msgstr "HTML"
+
+#: static_src/ts/components/text_editor/actions.ts:139
+msgid "Heading 1"
+msgstr "Kop 1"
+
+#: static_src/ts/components/text_editor/actions.ts:145
+msgid "Heading 2"
+msgstr "Kop 2"
+
+#: static_src/ts/components/text_editor/actions.ts:151
+msgid "Heading 3"
+msgstr "Kop 3"
+
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:308
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:309
+msgid "Hide formatting toolbar"
+msgstr "Opmaakwerkbalk verbergen"
+
+#: static_src/ts/components/text_editor/actions.ts:157
+msgid "Image"
+msgstr "Afbeelding"
+
+#: static_src/ts/components/PermissionsTable.ts:354
+#: static_src/ts/components/PermissionsTable.ts:405
+msgid "Invalid row policy"
+msgstr "Ongeldig rijbeleid"
+
+#: static_src/ts/components/filters/SavedFilters.ts:152
+msgid "Loading saved filters…"
+msgstr "Opgeslagen filters laden…"
+
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:194
+msgid "Loading…"
+msgstr "Laden…"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:122
+msgid "Lookup"
+msgstr "Opzoeken"
+
+#: static_src/ts/components/filters/FilterContainer.ts:102
+msgid "Match conditions"
+msgstr "Voorwaarden overeen laten komen"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:98
+msgid "Move action down"
+msgstr ""
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:97
+msgid "Move action up"
+msgstr ""
+
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:344
+msgid "No items"
+msgstr "Geen items"
+
+#: static_src/ts/components/filters/SavedFilters.ts:127
+msgid "No matching filters."
+msgstr "Geen overeenkomende filters."
+
+#: static_src/ts/components/PermissionsTable.ts:440
+msgid "No objects"
+msgstr "Geen objecten"
+
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:397
+msgid "No results"
+msgstr "Geen resultaten"
+
+#: static_src/ts/components/filters/RenderedFilters.ts:92
+#: static_src/ts/components/filters/RenderedFilters.ts:135
+msgid "No rows"
+msgstr "Geen rijen"
+
+#: static_src/ts/components/filters/SavedFilters.ts:127
+msgid "No saved filters yet."
+msgstr "Nog geen opgeslagen filters."
+
+#: static_src/ts/components/text_editor/actions.ts:179
+msgid "Numbered List"
+msgstr "Genummerde lijst"
+
+#: static_src/ts/components/filters/FilterContainer.ts:103
+msgid "OR"
+msgstr "OF"
+
+#: static_src/ts/components/PermissionsTable.ts:388
+msgid "Permission required"
+msgstr "Machtiging vereist"
+
+#: static_src/ts/components/filters/widget.ts:36
+msgid "Please check the filter value."
+msgstr "Controleer de filterwaarde."
+
+#: static_src/ts/components/PermissionsTable.ts:388
+msgid "Please select at least one permission for the row policy."
+msgstr "Selecteer ten minste één machtiging voor het rijbeleid."
+
+#: static_src/ts/components/SelectPreference.ts:36
+#: static_src/ts/components/SelectPreference.ts:73
+msgid "Preference"
+msgstr "Voorkeur"
+
+#: static_src/ts/components/filters/RenderedFilter.ts:94
+msgid "Remove"
+msgstr "Verwijderen"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:99
+msgid "Remove action"
+msgstr ""
+
+#: static_src/ts/components/filters/ConditionEditor.ts:23
+msgid "Remove condition"
+msgstr "Voorwaarde verwijderen"
+
+#: static_src/ts/components/filters/FilterContainer.ts:122
+msgid "Remove group"
+msgstr "Groep verwijderen"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:352
 msgid "Remove row"
 msgstr "Rij verwijderen"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:357
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:509
+msgid "Remove {label}"
+msgstr "{label} verwijderen"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:349
 msgid "Row title"
 msgstr "Rijtitel"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:522
+#: static_src/ts/components/filters/SavedFilters.ts:89
+#: static_src/ts/components/filters/SavedFilters.ts:90
+#: static_src/ts/components/filters/SavedFilters.ts:91
+msgid "Save filter"
+msgstr "Filter opslaan"
+
+#: static_src/ts/components/filters/SavedFilters.ts:59
+msgid "Saved filters"
+msgstr "Opgeslagen filters"
+
+#: static_src/ts/components/filters/SavedFilters.ts:64
+msgid "Search filters…"
+msgstr "Filters zoeken…"
+
+#: static_src/ts/components/filters/SavedFilters.ts:65
+msgid "Search saved filters"
+msgstr "Opgeslagen filters zoeken"
+
+#: static_src/ts/components/filters/SavedFilters.ts:11
+msgid "Select"
+msgstr "Selecteren"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:65
+msgid "Select field"
+msgstr "Veld selecteren"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:93
+msgid "Select key"
+msgstr "Sleutel selecteren"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:124
+msgid "Select lookup"
+msgstr "Zoektype selecteren"
+
+#: static_src/ts/components/filters/RenderedFilter.ts:96
+msgid "Set default"
+msgstr "Als standaard instellen"
+
+#: static_src/ts/components/SelectPreference.ts:36
+msgid "Share {preference}"
+msgstr "{preference} delen"
+
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:526
 msgid "Show All Fields"
 msgstr "Alle velden weergeven"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:521
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:525
 msgid "Show Required Only"
 msgstr "Alleen verplichte velden weergeven"
+
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:329
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:330
+msgid "Show formatting toolbar"
+msgstr "Opmaakwerkbalk tonen"
+
+#: static_src/ts/components/text_editor/actions.ts:191
+msgid "Table"
+msgstr "Tabel"
+
+#: static_src/ts/components/PermissionsTable.ts:339
+msgid "The filter editor is not ready."
+msgstr "De filtereditor is niet gereed."
+
+#: static_src/ts/components/filters/ConditionEditor.ts:112
+msgid "The saved filter field is unavailable."
+msgstr "Het veld van het opgeslagen filter is niet beschikbaar."
+
+#: static_src/ts/components/filters/ConditionEditor.ts:168
+msgid "The saved filter lookup could not be restored."
+msgstr "De zoekopdracht van het opgeslagen filter kon niet worden hersteld."
+
+#: static_src/ts/components/filters/FilterContainer.ts:183
+msgid "This editor accepts one condition group per rule."
+msgstr "Deze editor accepteert één voorwaardengroep per regel."
+
+#: static_src/ts/utils/modals.ts:43
+msgid "Toggle fullscreen"
+msgstr "Volledig scherm in-/uitschakelen"
+
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:201
+msgid "Unable to load this form. Close the dialog and try again."
+msgstr "Dit formulier kan niet worden geladen. Sluit het dialoogvenster en probeer het opnieuw."
+
+#: static_src/ts/components/workspaces/WorkspaceContainer.ts:252
+msgid "Unable to load tile."
+msgstr "Tegel kan niet worden geladen."
 

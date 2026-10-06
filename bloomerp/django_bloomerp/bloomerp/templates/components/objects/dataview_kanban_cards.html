@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load bloomerp %}
 
 {% for object in group.items %}
@@ -44,7 +45,7 @@
 {% empty %}
     {% if not group.page_obj or group.page_obj.number == 1 %}
     <div class="text-center py-4 text-gray-400 text-sm">
-        No items
+        {% translate "No items" %}
     </div>
     {% endif %}
 {% endfor %}
@@ -58,6 +59,6 @@
     hx-target="this"
     hx-swap="outerHTML"
 >
-    Loading more...
+    {% translate "Loading more..." %}
 </div>
 {% endif %}

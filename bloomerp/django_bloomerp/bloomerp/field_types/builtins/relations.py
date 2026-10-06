@@ -9,6 +9,7 @@ from django.db.models.fields.reverse_related import ManyToManyRel
 from django.forms.models import ModelChoiceField, ModelMultipleChoiceField
 
 from bloomerp.field_types.builtins.display import (
+    standard_display_options,
     BEHAVIORS_DISPLAY_OPTION,
     get_related_model_field_choices,
 )
@@ -175,7 +176,7 @@ FOREIGN_KEY = FieldTypeDefinition(
     widget_factory=relation_widget(),
     form_factory=form(forms.ModelChoiceField, virtual=False),
     render_value=render_foreign_key_dataview_value,
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 ONE_TO_ONE_FIELD = FieldTypeDefinition(
@@ -192,8 +193,9 @@ ONE_TO_ONE_FIELD = FieldTypeDefinition(
             UNIQUE_FIELD_OPTION,
         ),
     ),
+    widget_factory=relation_widget(),
     render_value=render_foreign_key_dataview_value,
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 MANY_TO_MANY_FIELD = FieldTypeDefinition(
@@ -221,8 +223,54 @@ MANY_TO_MANY_FIELD = FieldTypeDefinition(
     widget_factory=relation_widget(multiple=True),
     form_factory=many_to_many_form,
     render_value=render_m2m_dataview_value,
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
+
+
+def inline_fields_option(application_field: "ApplicationField") -> forms.Field:
+    """Build the ordered editor from editable fields of the related model."""
+    return OrderedMultipleChoiceField(**get_related_model_field_choices(application_field))
+
+
+def totals_option(application_field: "ApplicationField") -> forms.Field:
+    """Create a toggle for inline numeric totals."""
+    return forms.BooleanField()
+
+
+def page_size_option(application_field: "ApplicationField") -> forms.Field:
+    """Limit inline pagination to a practical positive page size."""
+    return forms.IntegerField(min_value=1, max_value=100)
+
+
+def inline_display_options(
+    application_field: "ApplicationField",
+) -> tuple[FieldDisplayOption, ...]:
+    """Offer relation-specific settings alongside label and behavior settings."""
+    return (
+        LABEL_OPTION,
+        FieldDisplayOption(
+            id="inline_fields",
+            label="Inline fields",
+            form_factory=inline_fields_option,
+            help_text="Choose which related fields appear as editable columns.",
+        ),
+        FieldDisplayOption(
+            id="show_totals",
+            label="Show totals",
+            form_factory=totals_option,
+            default=False,
+            help_text="Show totals beneath numeric inline columns.",
+        ),
+        FieldDisplayOption(
+            id="page_size",
+            label="Page size",
+            form_factory=page_size_option,
+            default=10,
+            help_text="Choose how many related rows appear on each page.",
+        ),
+        BEHAVIORS_DISPLAY_OPTION,
+    )
+
 
 ONE_TO_MANY_FIELD = FieldTypeDefinition(
     id="OneToManyField",
@@ -231,37 +279,7 @@ ONE_TO_MANY_FIELD = FieldTypeDefinition(
     lookups=tuple(ONE_TO_MANY_LOOKUPS),
     widget_factory=inline_widget,
     form_factory=form(OneToManyField, virtual=True),
-    display_options=(
-        LABEL_OPTION,
-        *[
-            FieldDisplayOption(
-                id="inline_fields",
-                label="Inline fields",
-                form_field_cls=OrderedMultipleChoiceField,
-                required=False,
-                help_text="Choose which related fields appear as editable columns.",
-                get_form_field_kwargs=get_related_model_field_choices,
-            ),
-            FieldDisplayOption(
-                id="show_totals",
-                label="Show totals",
-                form_field_cls=forms.BooleanField,
-                required=False,
-                default=False,
-                help_text="Show totals beneath numeric inline columns.",
-            ),
-            FieldDisplayOption(
-                id="page_size",
-                label="Page size",
-                form_field_cls=forms.IntegerField,
-                required=False,
-                default=10,
-                help_text="Choose how many related rows appear on each page.",
-                form_field_kwargs={"min_value": 1, "max_value": 100},
-            ),
-        ],
-        BEHAVIORS_DISPLAY_OPTION,
-    ),
+    display_options=inline_display_options,
 )
 
 USER_FIELD = FieldTypeDefinition(
@@ -290,7 +308,7 @@ USER_FIELD = FieldTypeDefinition(
         ),
     ),
     widget_factory=relation_widget(),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 ONE_TO_ONE_USER_FIELD = FieldTypeDefinition(
@@ -312,7 +330,7 @@ ONE_TO_ONE_USER_FIELD = FieldTypeDefinition(
         ),
     ),
     widget_factory=relation_widget(),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 GENERIC_RELATION = FieldTypeDefinition(
@@ -321,7 +339,7 @@ GENERIC_RELATION = FieldTypeDefinition(
     label="Generic Relation",
     lookups=(),
     render_value=render_m2m_dataview_value,
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 GENERIC_FOREIGN_KEY = FieldTypeDefinition(
@@ -331,7 +349,7 @@ GENERIC_FOREIGN_KEY = FieldTypeDefinition(
     lookups=(),
     form_factory=form(forms.Field, virtual=True, disabled=True),
     render_value=render_foreign_key_dataview_value,
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 FILES_RELATION_FIELD = FieldTypeDefinition(
@@ -342,7 +360,7 @@ FILES_RELATION_FIELD = FieldTypeDefinition(
     widget_factory=widget(ObjectFilesWidget, attrs={}),
     form_factory=form(FilesRelationField, virtual=True),
     render_value=render_m2m_dataview_value,
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 

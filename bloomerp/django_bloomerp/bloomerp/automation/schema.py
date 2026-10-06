@@ -98,7 +98,8 @@ class WorkflowValueField:
         return f"{{{{ {self.template_token_path} }}}}"
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        """Serialize field structure and declared guidance for editors and generic references."""
+        result = {
             "path": self.path,
             "label": self.label,
             "value_type": self.value_type.value,
@@ -106,6 +107,10 @@ class WorkflowValueField:
             "optional": self.optional,
             "children": [child.to_dict() for child in self.children],
         }
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
 
 
 @dataclass

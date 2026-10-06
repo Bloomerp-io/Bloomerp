@@ -2,14 +2,14 @@
 The global search component is a powerful tool that allows users to quickly navigate
 to different parts of the application as well as search for specific content.
 
-It works by analyzing the different search prefixes and then performing 
+It works by analyzing the different search prefixes and then performing
 the appropriate search based on the prefix used.
 
 Prefixes:
 - No prefix: General search. This allows users to search for content across the application.
 
-- ">":  Search for routes. This allows users to quickly navigate to different parts of the application by typing the name 
-        of the route they want to go to. If the user adds ? at the end of a query (e.g. ">dashboard?first_name=david"), the search will include those query parameters in the search results. 
+- ">":  Search for routes. This allows users to quickly navigate to different parts of the application by typing the name
+        of the route they want to go to. If the user adds ? at the end of a query (e.g. ">dashboard?first_name=david"), the search will include those query parameters in the search results.
         The same applies for # to include fragments in the search results (e.g. ">dashboard#section1").
 
 - "@":  Search for users. This allows users to quickly find other users in the system by typing their name or username.
@@ -23,37 +23,32 @@ Prefixes:
             - /<module_code>/<model_name>/<string_query>: Search for all content related to a specific
             - ///: Same as general search
         Note: ? can be used for filtering the search results based on query parameters (e.g. "/sales/customer/<string_query>?first_name=david")
-        
+
 """
 
-from django.shortcuts import render
-from django.http import HttpRequest, HttpResponse
+from typing import Any
+
 from django.contrib.auth.decorators import login_required
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.auth import get_user_model
-from django.urls import reverse
-from django.urls import NoReverseMatch
-from django.utils.encoding import force_str
-import unicodedata
+from django.db.models import Model
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import render
+from django.urls import NoReverseMatch, reverse
 
-
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import BloomerpModelConfig
-from bloomerp.permissions.definition import BloomerpPermission
-from bloomerp.router import router
 from bloomerp.modules.definition import module_registry
-from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
-from bloomerp.services.object_services import string_search_on_queryset
-
-from django.contrib.auth.models import Permission
-from django.contrib.admin.models import LogEntry
-from django.contrib.sessions.models import Session
+from bloomerp.router import router
+from bloomerp.services.search_services import (
+    ObjectSearchResult,
+    SearchManager,
+    _normalize_key,
+)
 
 # -------------------------------
 # Helper functions
 # -------------------------------
 
+
 def _split_query_and_suffix(value: str) -> tuple[str, str]:
+    """Separate route search text from optional URL parameters and fragments."""
     value = value.strip()
     if not value:
         return "", ""
@@ -67,195 +62,41 @@ def _split_query_and_suffix(value: str) -> tuple[str, str]:
     split_idx = min(candidates)
     return value[:split_idx].strip(), value[split_idx:].strip()
 
-def _normalize_key(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", force_str(value or ""))
-    return normalized.strip().casefold().replace("-", "_")
 
-def _ensure_module_registry_models() -> None:
-    # Ensure dynamic models are mapped into the registry for search.
-    try:
-        module_registry._register_models_from_apps()
-    except Exception:
-        module_registry.refresh()
-
-def _resolve_module(module_key: str):
-    _ensure_module_registry_models()
-    normalized = _normalize_key(module_key)
-    module = module_registry.get(normalized)
-    if module:
-        return module
-    exact_matches = []
-    partial_matches = []
-    for item in module_registry.get_all().values():
-        code = _normalize_key(item.code)
-        name = _normalize_key(item.name)
-        localized_name = _normalize_key(item.localized_name)
-        module_id = _normalize_key(item.full_id or item.id)
-        if normalized in {code, name, localized_name, module_id}:
-            exact_matches.append(item)
-        elif any(
-            value.startswith(normalized)
-            for value in (code, name, localized_name, module_id)
-        ):
-            partial_matches.append(item)
-    if exact_matches:
-        return exact_matches[0]
-    if partial_matches:
-        return partial_matches[0]
-    return None
-
-def _resolve_models_by_name(model_key: str) -> list:
-    _ensure_module_registry_models()
-    normalized = _normalize_key(model_key)
-    matched = []
-    for module in module_registry.get_all().values():
-        for model in module_registry.get_models_for_module(module.id):
-            model_name = _normalize_key(model._meta.model_name)
-            verbose_name = _normalize_key(model._meta.verbose_name)
-            verbose_name_plural = _normalize_key(model._meta.verbose_name_plural)
-            if (
-                model_name == normalized
-                or verbose_name == normalized
-                or verbose_name_plural == normalized
-                or model_name.startswith(normalized)
-                or verbose_name.startswith(normalized)
-                or verbose_name_plural.startswith(normalized)
-            ):
-                matched.append(model)
-    return matched
-
-def _ignore_model(model) -> bool:
-    """Determines whether a model should be ignored in the search results."""
-    internal_models = [
-        ContentType,
-        ApplicationField,
-        Permission,
-        LogEntry,
-        Session
-    ]
-
-    if not model or model in internal_models:
-        return True
-    if getattr(model._meta, "swapped", None):
-        return True
-    
-    if hasattr(model, "bloomerp_config") and isinstance(getattr(model, "bloomerp_config"), BloomerpModelConfig):
-        config : BloomerpModelConfig = getattr(model, "bloomerp_config")
-        if config.is_internal or not config.string_search_settings.allow_global_search:
-            return True
-
-    return False
-
-def _collect_object_results(
-    request: HttpRequest,
-    permission_manager: UserPolicyManager,
-    models: list,
-    search_value: str,
-    per_model_limit: int,
-    total_limit: int,
-) -> tuple[list, bool]:
-    """Collects the results for objects in a way that is accesible to the template
-
-    Args:
-        request (HttpRequest): the request object
-        permission_manager (UserPolicyManager): the permissions manager
-        models (list): the list of models
-        search_value (str): the search value
-        per_model_limit (int): limit per model
-        total_limit (int): total limit
-
-    Returns:
-        tuple[list, bool]: a tuple containing the list of results and a boolean indicating if the results were truncated
-    """
-    results = []
-    total_results = 0
-    truncated = False
-
-    if not search_value:
-        return results, truncated
-
-    for model in models:
-        if _ignore_model(model):
-            continue
-        
-        # Get the objects
-        base_qs = permission_manager.get_queryset(model, BloomerpPermission.VIEW)
-
-        remaining_slots = total_limit - total_results
-        if remaining_slots <= 0:
-            truncated = True
-            break
-
-        matching_objects = list(
-            string_search_on_queryset(base_qs, search_value)[: per_model_limit + 1]
-        )
-        if not matching_objects:
-            continue
-
-        if len(matching_objects) > per_model_limit:
-            truncated = True
-            matching_objects = matching_objects[:per_model_limit]
-
-        if len(matching_objects) > remaining_slots:
-            truncated = True
-            matching_objects = matching_objects[:remaining_slots]
-
-        module = module_registry.get_module_for_model(model)
-        results.append(
-            {
+def _collect_object_results(result: ObjectSearchResult) -> list[dict[str, Any]]:
+    """Adapt shared search objects to the existing grouped template contract."""
+    groups: dict[type[Model], dict[str, Any]] = {}
+    for obj in result.items:
+        model = type(obj)
+        if model not in groups:
+            module = module_registry.get_module_for_model(model)
+            groups[model] = {
                 "model_label": model._meta.verbose_name_plural.title(),
-                "module_labels": [item.localized_name for item in module_registry.get_lineage(module.full_id or module.id)] if module else [],
-                "objects": matching_objects, 
-                "detail_routes" : router.filter(
-                    route_type="detail",
-                    model=model,
-                )
+                "module_labels": [
+                    item.localized_name
+                    for item in module_registry.get_lineage(module.full_id or module.id)
+                ]
+                if module
+                else [],
+                "objects": [],
+                "detail_routes": router.filter(route_type="detail", model=model),
             }
-        )
-
-        total_results += len(matching_objects)
-        if total_results >= total_limit:
-            truncated = True
-            break
-
-    return results, truncated
-
-# TODO: Refactor
-def _get_accessible_models(
-    request: HttpRequest,
-    permission_manager: UserPolicyManager,
-) -> list:
-    content_types = list(request.user.accessible_content_types)
-    row_policy_ct_ids = permission_manager.get_row_policies().values_list(
-        "content_type_id", flat=True
-    ).distinct()
-    if row_policy_ct_ids:
-        content_types.extend(ContentType.objects.filter(id__in=row_policy_ct_ids))
-
-    # De-duplicate while preserving order
-    seen_ids = set()
-    unique_content_types = []
-    for ct in content_types:
-        if ct.id in seen_ids:
-            continue
-        seen_ids.add(ct.id)
-        unique_content_types.append(ct)
-
-    return [content_type.model_class() for content_type in unique_content_types]
+        groups[model]["objects"].append(obj)
+    return list(groups.values())
 
 
-@router.register(path='components/global_search/', name='components_global_search')
+@router.register(path="components/global_search/", name="components_global_search")
 @login_required
 def global_search(request: HttpRequest) -> HttpResponse:
     """
     Component that is used for global search.
-    
+
     Args:
         request (HttpRequest): the request object
 
     GET parameters:
         q (str): the search query entered by the user. This is expected to include a
-    
+
     Returns:
         HttpResponse: the response object containing the rendered global search results
     """
@@ -271,7 +112,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
     TOTAL_LIMIT = 20
     ROUTE_LIMIT = 12
     USER_LIMIT = 8
-    
+
     context = {
         "query": trimmed_query,
         "search_type": "general",
@@ -287,8 +128,6 @@ def global_search(request: HttpRequest) -> HttpResponse:
         "search_scope": {},
     }
 
-    permission_manager = UserPolicyManager(request.user)
-
     match starts_with:
         case ">":
             search_query = trimmed_query[1:].strip()
@@ -303,7 +142,7 @@ def global_search(request: HttpRequest) -> HttpResponse:
                 for route in router.get_routes():
                     if not route.searchable:
                         continue
-                    
+
                     # We don't want to include routes that require arguments in the global search, as they cannot be directly navigated to without additional input. This is because the global search is designed for quick navigation, and including routes with required arguments could lead to confusion or dead ends in the search results.
                     if route.nr_of_args() > 0:
                         continue
@@ -314,7 +153,9 @@ def global_search(request: HttpRequest) -> HttpResponse:
                     route_search_text = " ".join(
                         [route_name, route_desc, route.url_name or "", route_path]
                     )
-                    if _normalize_key(base_query) not in _normalize_key(route_search_text):
+                    if _normalize_key(base_query) not in _normalize_key(
+                        route_search_text
+                    ):
                         continue
 
                     route_url = None
@@ -333,7 +174,9 @@ def global_search(request: HttpRequest) -> HttpResponse:
                             "path": route_path,
                             "description": route_desc,
                             "url": route_url,
-                            "module": route.module.localized_name if route.module else None,
+                            "module": route.module.localized_name
+                            if route.module
+                            else None,
                         }
                     )
 
@@ -343,165 +186,30 @@ def global_search(request: HttpRequest) -> HttpResponse:
 
                 context["route_results"] = matched_routes
 
-        case "@":
-            search_query = trimmed_query[1:].strip()
-            context["search_type"] = "users"
-            context["search_label"] = "Users"
-            context["highlight_query"] = search_query
-            context["query"] = search_query
-
-            if search_query:
-                user_model = get_user_model()
-                model_name = user_model._meta.model_name
-                permission_name = f"{user_model._meta.app_label}.view_{model_name}"
-                if permission_manager.has_global_permission(user_model, create_permission_str(user_model, "view")):
-                    content_type = ContentType.objects.get_for_model(user_model)
-                    row_policies_exist = permission_manager.get_row_policies().filter(
-                        content_type=content_type
-                    ).exists()
-
-                    if row_policies_exist:
-                        base_qs = permission_manager.get_queryset(user_model, f"view_{model_name}")
-                    else:
-                        base_qs = user_model.objects.all()
-
-                    results = list(string_search_on_queryset(base_qs, search_query)[: USER_LIMIT + 1])
-                    if len(results) > USER_LIMIT:
-                        context["results_truncated"] = True
-                        results = results[:USER_LIMIT]
-
-                    context["user_results"] = [
-                        {
-                            "user": user,
-                            "display": user.get_full_name() or user.username,
-                        }
-                        for user in results
-                    ]
-
-        case "/":
-            search_query = trimmed_query
-            context["search_type"] = "slash"
-            context["search_label"] = "Module and model"
-            context["highlight_query"] = search_query
-            context["query"] = search_query
-            context["slash_error"] = None
-            context["search_scope"] = {}
-
-            if search_query.startswith("///"):
-                search_value = search_query[3:].strip()
-                models = permission_manager.get_accessible_models_and_fields()
-                context["search_label"] = "All content"
-                context["highlight_query"] = search_value
-                context["query"] = search_value
-                context["object_results"], truncated = _collect_object_results(
-                    request,
-                    permission_manager,
-                    models,
-                    search_value,
-                    PER_MODEL_LIMIT,
-                    TOTAL_LIMIT,
-                )
-                context["results_truncated"] = context["results_truncated"] or truncated
-            elif search_query.startswith("//"):
-                remainder = search_query[2:]
-                model_key, _, search_value = remainder.partition("/")
-                context["search_label"] = "Model search"
-                context["search_scope"] = {"model": model_key}
-                models = _resolve_models_by_name(model_key)
-                context["highlight_query"] = search_value
-                context["query"] = search_value
-                if not models:
-                    context["slash_error"] = "Model not found."
-                else:
-                    context["object_results"], truncated = _collect_object_results(
-                        request,
-                        permission_manager,
-                        models,
-                        search_value,
-                        PER_MODEL_LIMIT,
-                        TOTAL_LIMIT,
-                    )
-                    context["results_truncated"] = context["results_truncated"] or truncated
-            else:
-                remainder = search_query[1:]
-                if "//" in remainder:
-                    module_key, _, search_value = remainder.partition("//")
-                    module = _resolve_module(module_key)
-                    context["search_label"] = "Module search"
-                    context["search_scope"] = {"module": module_key}
-                    context["highlight_query"] = search_value
-                    context["query"] = search_value
-                    if not module:
-                        context["slash_error"] = "Module not found."
-                    else:
-                        context["search_scope"] = {"module": module.localized_name}
-                        models = module_registry.get_models_for_module(module.id, include_descendants=True)
-                        context["object_results"], truncated = _collect_object_results(
-                            request,
-                            permission_manager,
-                            models,
-                            search_value,
-                            PER_MODEL_LIMIT,
-                            TOTAL_LIMIT,
-                        )
-                        context["results_truncated"] = context["results_truncated"] or truncated
-                else:
-                    parts = [part for part in remainder.split("/") if part]
-                    if len(parts) >= 3:
-                        module_key = parts[0]
-                        model_key = parts[1]
-                        search_value = "/".join(parts[2:]).strip()
-                        module = _resolve_module(module_key)
-                        context["search_label"] = "Module and model"
-                        context["search_scope"] = {"module": module_key, "model": model_key}
-                        context["highlight_query"] = search_value
-                        context["query"] = search_value
-                        if not module:
-                            context["slash_error"] = "Module not found."
-                        else:
-                            models = _resolve_models_by_name(model_key)
-                            models = [
-                                model
-                                for model in models
-                                if model in module_registry.get_models_for_module(module.id, include_descendants=True)
-                            ]
-                            context["search_scope"] = {
-                                "module": module.localized_name,
-                                "model": model_key,
-                            }
-                            if not models:
-                                context["slash_error"] = "Model not found in module."
-                            else:
-                                context["object_results"], truncated = _collect_object_results(
-                                    request,
-                                    permission_manager,
-                                    models,
-                                    search_value,
-                                    PER_MODEL_LIMIT,
-                                    TOTAL_LIMIT,
-                                )
-                                context["results_truncated"] = context["results_truncated"] or truncated
-                    else:
-                        context["slash_error"] = "Use /<module>//<query>, //<model>/<query>, or /<module>/<model>/<query>."
-
         case _:
-            search_query = trimmed_query
-            context["search_type"] = "general"
-            context["search_label"] = "All content"
-            context["highlight_query"] = search_query
-            context["query"] = search_query
-
-            if search_query:
-                models = _get_accessible_models(request, permission_manager)
-                context["object_results"], truncated = _collect_object_results(
-                    request,
-                    permission_manager,
-                    models,
-                    search_query,
-                    PER_MODEL_LIMIT,
-                    TOTAL_LIMIT,
-                )
-                context["results_truncated"] = context["results_truncated"] or truncated
-                
+            user_search = trimmed_query.startswith("@")
+            result = SearchManager(request.user).search_objects(
+                trimmed_query,
+                per_model_limit=USER_LIMIT if user_search else PER_MODEL_LIMIT,
+                total_limit=USER_LIMIT if user_search else TOTAL_LIMIT,
+            )
+            context.update(
+                {
+                    "search_type": result.search.search_type,
+                    "search_label": result.search.label,
+                    "highlight_query": result.search.value,
+                    "query": result.search.value,
+                    "search_scope": result.search.scope,
+                    "slash_error": result.search.error,
+                    "results_truncated": result.limit_reached,
+                }
+            )
+            if result.search.search_type == "users":
+                context["user_results"] = [
+                    {"user": user, "display": user.get_full_name() or user.username}
+                    for user in result.items
+                ]
+            else:
+                context["object_results"] = _collect_object_results(result)
 
     return render(request, "components/search/global_search.html", context)

@@ -167,7 +167,7 @@ def _render_application_field(request: HttpRequest, content_type: ContentType) -
                 kwargs={"application_field_id": application_field.pk},
             )
             + f"?layout_object_content_type_id={content_type.pk}&layout_object_id={request.GET.get('layout_object_id')}"
-            if layout_item is not None and application_field.get_field_type().display_options
+            if layout_item is not None and application_field.get_field_type().get_display_options(application_field)
             else None
         ),
     )

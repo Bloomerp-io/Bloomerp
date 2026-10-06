@@ -1899,3 +1899,120 @@ pre[data-text-editor-code-block] {
 html.dark [data-workflow-node-item]:hover {
   background-color: var(--color-zinc-700) !important;
 }
+
+/* Staggered dots indicate the wait before BloomAI starts streaming text. */
+.bloomerp-agent-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+}
+
+.bloomerp-agent-thinking > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: bloomerp-agent-thinking-wave 1.2s ease-in-out infinite;
+}
+
+.bloomerp-agent-thinking > span:nth-child(2) { animation-delay: 150ms; }
+.bloomerp-agent-thinking > span:nth-child(3) { animation-delay: 300ms; }
+
+@keyframes bloomerp-agent-thinking-wave {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloomerp-agent-thinking > span { animation: none; }
+}
+
+/* BloomAI's cloudy launcher uses the primary palette without a separate image. */
+.bloomerp-agent-launcher {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 200ms ease;
+  touch-action: none;
+  user-select: none;
+}
+
+.bloomerp-agent-launcher.is-dragging {
+  cursor: grabbing;
+  transform: none;
+  transition: none;
+}
+
+.bloomerp-agent-launcher:hover:not(.is-dragging) {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.bloomerp-agent-launcher:active:not(.is-dragging) {
+  transform: scale(0.96);
+}
+
+.bloomerp-agent-orb {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 21% 65%, #93a2fb 0%, transparent 48%),
+    linear-gradient(145deg, var(--color-primary-500) 12%, #697cf8 54%, #bfdbfe 100%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 28%),
+    0 6px 20px rgb(65 84 241 / 20%);
+}
+
+.bloomerp-agent-orb::before,
+.bloomerp-agent-orb::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.bloomerp-agent-orb::before {
+  background:
+    radial-gradient(ellipse at 68% 62%, rgb(255 255 255 / 85%) 0%, transparent 23%),
+    radial-gradient(ellipse at 48% 76%, rgb(244 244 253 / 85%) 0%, transparent 26%),
+    radial-gradient(ellipse at 72% 38%, rgb(219 234 254 / 70%) 0%, transparent 18%),
+    radial-gradient(ellipse at 34% 54%, rgb(219 234 254 / 55%) 0%, transparent 20%);
+  filter: blur(4px);
+  animation: bloomerp-agent-cloud-drift 18s ease-in-out infinite;
+}
+
+.bloomerp-agent-orb::after {
+  background:
+    linear-gradient(130deg, transparent 37%, rgb(255 255 255 / 35%) 48%, transparent 57%),
+    radial-gradient(ellipse at 70% 76%, rgb(255 255 255 / 90%) 0%, rgb(219 234 254 / 65%) 18%, transparent 43%);
+  filter: blur(3px);
+  animation: bloomerp-agent-cloud-wisp 24s ease-in-out infinite;
+}
+
+@keyframes bloomerp-agent-cloud-drift {
+  0%, 100% { transform: translate(-8%, 5%) rotate(-20deg); }
+  50% { transform: translate(8%, -6%) rotate(10deg); }
+}
+
+@keyframes bloomerp-agent-cloud-wisp {
+  0%, 100% { transform: translate(6%, -5%) rotate(8deg); }
+  50% { transform: translate(-7%, 6%) rotate(-12deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloomerp-agent-launcher { transition: none; }
+  .bloomerp-agent-launcher:hover,
+  .bloomerp-agent-launcher:active { transform: none; }
+  .bloomerp-agent-orb::before,
+  .bloomerp-agent-orb::after { animation: none; }
+}

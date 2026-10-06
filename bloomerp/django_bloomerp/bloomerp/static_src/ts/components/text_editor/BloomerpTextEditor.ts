@@ -1,3 +1,6 @@
+import type { ContextMenuSubmenu } from "@/utils/contextMenu";
+import { TemplatePicker } from "./utils/templatePicker";
+import { t as _ } from "@/utils/i18n";
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
 import { CodeBlockNode } from "./nodes/CodeBlockNode";
@@ -57,6 +60,7 @@ import {
 
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
+    private templatePicker: TemplatePicker | null = null;
     private unregister: (() => void) | null = null;
     private commands: Array<Command> = [];
     private actions: Array<Action> = [];
@@ -212,6 +216,8 @@ export class BloomerpTextEditor extends BaseWidget {
     }
 
     public destroy(): void {
+        this.templatePicker?.destroy();
+        this.templatePicker = null;
         if (this.hostClickHandler) {
             this.element?.removeEventListener('click', this.hostClickHandler);
             this.hostClickHandler = null;
@@ -297,15 +303,16 @@ export class BloomerpTextEditor extends BaseWidget {
         this.setToolbarHidden(this.toolbarHidden, false);
     }
 
+    /** Create the localized control for collapsing the formatting toolbar. */
     private createToolbarToggleButton(): void {
         if (!this.actionsToolbar) return;
 
         const toggleButton = document.createElement('button');
         toggleButton.type = 'button';
         toggleButton.className = 'btn btn-secondary btn-sm shrink-0';
-        toggleButton.setAttribute('aria-label', 'Hide formatting toolbar');
-        toggleButton.title = 'Hide formatting toolbar';
-        toggleButton.innerHTML = '<i class="fa-solid fa-eye-slash" aria-hidden="true"></i><span class="sr-only">Hide formatting toolbar</span>';
+        toggleButton.setAttribute('aria-label', _('Hide formatting toolbar'));
+        toggleButton.title = _('Hide formatting toolbar');
+        toggleButton.innerHTML = '<i class="fa-solid fa-eye-slash" aria-hidden="true"></i>';
         toggleButton.addEventListener('mousedown', (event) => {
             event.preventDefault();
         });
@@ -317,16 +324,17 @@ export class BloomerpTextEditor extends BaseWidget {
         this.toolbarToggleButton = toggleButton;
     }
 
+    /** Create the localized control for revealing the formatting toolbar. */
     private createToolbarRevealButton(): void {
         if (this.toolbarRevealButton || !this.element) return;
 
         const revealButton = document.createElement('button');
         revealButton.type = 'button';
         revealButton.className = 'btn btn-secondary btn-sm';
-        revealButton.setAttribute('aria-label', 'Show formatting toolbar');
-        revealButton.title = 'Show formatting toolbar';
+        revealButton.setAttribute('aria-label', _('Show formatting toolbar'));
+        revealButton.title = _('Show formatting toolbar');
         revealButton.dataset.textEditorToolbarReveal = 'true';
-        revealButton.innerHTML = '<i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span class="sr-only">Show formatting toolbar</span>';
+        revealButton.innerHTML = '<i class="fa-solid fa-ellipsis" aria-hidden="true"></i>';
         revealButton.addEventListener('click', () => {
             this.setToolbarHidden(false, true);
         });
@@ -502,6 +510,19 @@ export class BloomerpTextEditor extends BaseWidget {
 
     public getValue(): string {
         return this.toHtml()
+    }
+
+    /** Supply template search to any context-menu entry point. */
+    public getTemplateSubmenu(): ContextMenuSubmenu {
+        this.templatePicker ??= new TemplatePicker(this.element, this.editor!);
+        return this.templatePicker.submenu();
+    }
+
+    /** Open the shared template command while keeping the current insertion range. */
+    public openTemplatePicker(): void {
+        if (!this.editor || !this.element.dataset.templateSearchUrl) return;
+        this.templatePicker ??= new TemplatePicker(this.element, this.editor);
+        this.templatePicker.open();
     }
 
     public insertNode(node: LexicalNode | (() => LexicalNode)): void {

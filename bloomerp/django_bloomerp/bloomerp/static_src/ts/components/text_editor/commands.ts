@@ -273,7 +273,7 @@ export let COMMANDS: Record<string, Command> = {
                 launchContextMenu(
                     editor,
                     contextMenu,
-                    ["h1", "h2", "h3", "code_block", "image", "unordered_list", "ordered_list", "checklist", "table"].concat(
+                    ["template", "h1", "h2", "h3", "code_block", "image", "unordered_list", "ordered_list", "checklist", "table"].concat(
                         this.slashExtraActions
                     ),
                     currentWord.slice(1),
