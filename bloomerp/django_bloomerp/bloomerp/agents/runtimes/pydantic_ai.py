@@ -281,17 +281,23 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
         results = []
         for item in state.pending:
             outcome = item.outcome
-            assert outcome is not None
-            content = (
-                _model_tool_result(outcome.result)
-                if outcome.status == "completed"
-                else {
-                    "error": outcome.error.model_dump(mode="json")
-                    if outcome.error
-                    else {},
-                    "status": outcome.status,
+            if item.validation_error is not None:
+                content = {
+                    "error": item.validation_error.model_dump(mode="json"),
+                    "status": "failed",
                 }
-            )
+            else:
+                assert outcome is not None
+                content = (
+                    _model_tool_result(outcome.result)
+                    if outcome.status == "completed"
+                    else {
+                        "error": outcome.error.model_dump(mode="json")
+                        if outcome.error
+                        else {},
+                        "status": outcome.status,
+                    }
+                )
             results.append(
                 ToolReturnPart(
                     item.proposal.tool_identifier,
