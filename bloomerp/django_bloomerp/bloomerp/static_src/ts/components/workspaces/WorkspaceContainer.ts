@@ -44,6 +44,19 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         });
     }
 
+    /** Let embedded data views own read-mode clicks instead of refocusing their tile. */
+    protected override onClick(event: MouseEvent): void {
+        const target = event.target as HTMLElement | null;
+        if (!this.editMode && target?.closest(`[${componentIdentifier}="dataview-container"]`)) {
+            const tile = target.closest<HTMLElement>(this.getItemSelector());
+            if (tile) {
+                this.focusedItemIndex = Number.parseInt(tile.dataset.itemIndex ?? "0", 10);
+            }
+            return;
+        }
+        super.onClick(event);
+    }
+
     protected override shouldApplyFocusedItemClass(): boolean {
         return true;
     }
