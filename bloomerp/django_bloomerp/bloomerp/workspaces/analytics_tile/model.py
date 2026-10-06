@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Self, Optional, Type
+from typing import TYPE_CHECKING, Callable, Literal, Self, Optional, Type
 
 from django.forms import BooleanField, CharField, ChoiceField, Field, Form
 from django.http import QueryDict
 from django.utils.translation import gettext_lazy as _
 from enum import Enum
-from pydantic import BaseModel, Field as PydanticField, field_validator
+from pydantic import BaseModel, Field as PydanticField, GetJsonSchemaHandler, field_validator
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from bloomerp.services.sql_services import DatabaseTable
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
@@ -51,6 +53,7 @@ class FieldDefinition:
     opts: list[OptionDefinition] = field(default_factory=list)
     allow_multiple: bool = True
     restrict_to:Optional[list[TileFieldType]] = None # Only these types of fields are eligible for this type of field definition
+    min_items: int = 0
 
 @dataclass
 class AnalyticsTileTypeDefinition:
@@ -62,7 +65,7 @@ class AnalyticsTileTypeDefinition:
     icon: str = ""  # Font awesome icon
     render_cls: type[BaseTileRenderer] | None = None
     fields: list[FieldDefinition] = field(default_factory=list)
-    opts: list[FieldDefinition] = field(default_factory=list)
+    opts: list[OptionDefinition] = field(default_factory=list)
 
 
 LABEL_OPTION = OptionDefinition(
@@ -202,7 +205,7 @@ LEGEND_POSITION_OPTION = OptionDefinition(
 AGGREGATOR_OPTION = OptionDefinition(
     "aggregator",
     "Aggregator",
-    "How to aggregate the value",
+    "How to aggregate the query column across returned rows. Defaults to FIRST when omitted. For an already aggregated SQL result, use FIRST rather than COUNT to display its value.",
     ChoiceField,
     {},
     choices_provider=get_aggregator_choices,
@@ -219,7 +222,7 @@ FILTER_FIELD = FieldDefinition(
 ADVANCED_FORMATTER_OPTION = OptionDefinition(
     "advanced_formatting",
     _("Advanced formatting"),
-    _("HTML based formatting. The value is injected as {{ value }}, the pre-formatted value as {{ pre_formatted_value }}."),
+    _("Django template for this table cell's HTML. Use this option to create clickable links; returning an ID column alone does not create links. {{ value }} contains the cell value after its formatter is applied, before prefix and suffix are added. Every query column is available as {{ var_column_alias }}, with the alias lowercased and spaces replaced by underscores, including columns not displayed in the table. For example, return a department_url column containing a verified department detail URL and use <a href=\"{{ var_department_url }}\">{{ value }}</a>. No pre_formatted_value variable is provided."),
     field_cls=forms.CharField,
     field_args={
         "widget" : CodeEditorWidget(language="html", launch_from_button=True)
@@ -247,9 +250,10 @@ class AnalyticsTileType(Enum):
         fields=[
             FieldDefinition(
                 key="x_axis",
+                min_items=1,
                 label=_("X-Axis"),
                 icon="fa-solid fa-arrow-right",
-                description=_("The field to be used for the X-axis of the chart."),
+                description=_("The query column used to group the chart's X-axis categories."),
                 allow_multiple=False,
                 opts=[
                     LABEL_OPTION
@@ -257,9 +261,10 @@ class AnalyticsTileType(Enum):
             ),
             FieldDefinition(
                 key="y_axis",
+                min_items=1,
                 label=_("Y-Axis"),
                 icon="fa-solid fa-arrow-up",
-                description=_("The field to be used for the Y-axis of the chart."),
+                description=_("Numeric query columns used as chart series. Each column is summed within each X-axis category."),
                 restrict_to=[TileFieldType.NUMERIC],
                 opts=[
                     LABEL_OPTION,
@@ -287,6 +292,7 @@ class AnalyticsTileType(Enum):
         fields=[
             FieldDefinition(
                 "columns",
+                min_items=1,
                 label=_("Columns"),
                 icon="",
                 description=_("The columns of the table"),
@@ -314,6 +320,7 @@ class AnalyticsTileType(Enum):
         fields=[
             FieldDefinition(
                 key="value",
+                min_items=1,
                 label=_("Value"),
                 icon="fa fa-hashtag",
                 description=_("The primary value"),
@@ -344,26 +351,26 @@ class AnalyticsTileType(Enum):
         render_cls=AnalyticsKpiRenderer
     )
 
-    THREE_DIM_CHART = AnalyticsTileTypeDefinition(
-        key="THREE_DIM_CHART",
-        name=str(_("3D Chart")),
-        description=str(_("Visualizes data from a custom query in a three-dimensional chart format, providing users with an immersive and interactive way to explore complex datasets, identify relationships, and gain deeper insights through a multi-dimensional graphical representation.")),
-        icon="fa-cubes",
-    )
+    # THREE_DIM_CHART = AnalyticsTileTypeDefinition(
+    #     key="THREE_DIM_CHART",
+    #     name=str(_("3D Chart")),
+    #     description=str(_("Visualizes data from a custom query in a three-dimensional chart format, providing users with an immersive and interactive way to explore complex datasets, identify relationships, and gain deeper insights through a multi-dimensional graphical representation.")),
+    #     icon="fa-cubes",
+    # )
 
-    PIVOT_TABLE = AnalyticsTileTypeDefinition(
-        key="PIVOT_TABLE",
-        name=str(_("Pivot Table")),
-        description=str(_("Displays data from a custom query in a pivot table format, allowing users to dynamically summarize, analyze, and explore large datasets by rearranging and aggregating data across multiple dimensions for enhanced insights and decision-making.")),
-        icon="fa-th",
-    )
+    # PIVOT_TABLE = AnalyticsTileTypeDefinition(
+    #     key="PIVOT_TABLE",
+    #     name=str(_("Pivot Table")),
+    #     description=str(_("Displays data from a custom query in a pivot table format, allowing users to dynamically summarize, analyze, and explore large datasets by rearranging and aggregating data across multiple dimensions for enhanced insights and decision-making.")),
+    #     icon="fa-th",
+    # )
 
-    MAP = AnalyticsTileTypeDefinition(
-        key="MAP",
-        name=str(_("Map")),
-        description=str(_("Visualizes geospatial data from a custom query on an interactive map, enabling users to identify spatial patterns, trends, and insights by plotting data points, regions, or heatmaps based on geographic locations for enhanced analysis and decision-making.")),
-        icon="fa-map-marked-alt",
-    )
+    # MAP = AnalyticsTileTypeDefinition(
+    #     key="MAP",
+    #     name=str(_("Map")),
+    #     description=str(_("Visualizes geospatial data from a custom query on an interactive map, enabling users to identify spatial patterns, trends, and insights by plotting data points, regions, or heatmaps based on geographic locations for enhanced analysis and decision-making.")),
+    #     icon="fa-map-marked-alt",
+    # )
 
     PIE_CHART = AnalyticsTileTypeDefinition(
         key="PIE_CHART",
@@ -373,9 +380,10 @@ class AnalyticsTileType(Enum):
         fields=[
             FieldDefinition(
                 key="labels",
+                min_items=1,
                 label=_("Labels"),
                 icon="fa-solid fa-tag",
-                description=_("The field used for the pie slice labels."),
+                description=_("The query column used to group and label pie slices."),
                 allow_multiple=False,
                 opts=[
                     LABEL_OPTION,
@@ -383,9 +391,10 @@ class AnalyticsTileType(Enum):
             ),
             FieldDefinition(
                 key="values",
+                min_items=1,
                 label=_("Values"),
                 icon="fa-solid fa-chart-pie",
-                description=_("The numeric field used for the pie slice values."),
+                description=_("The numeric query column used for slice values. Values are summed within each label category."),
                 allow_multiple=False,
                 restrict_to=[TileFieldType.NUMERIC],
                 opts=[
@@ -410,10 +419,15 @@ class AnalyticsTileType(Enum):
                 return item.value
         raise ValueError(f"Unsupported analytics tile type: {key}")
 
+AnalyticsFilterType = Literal["text", "numeric", "bool", "date", "datetime"]
+
+
 class AnalyticsTileFilter(BaseModel):
-    field:str
-    type:str 
-    shared_key:Optional[str] = None
+    """Expose a query-result column to the interactive workspace filter system."""
+
+    field: str = PydanticField(description="Exact column name or alias returned by query, including columns not selected for display. One filter registration per column. Use a result alias, not a source table column or a Django lookup such as department__exact.")
+    type: AnalyticsFilterType = PydanticField(description="Primitive type of this query-result column, used to select filter controls and lookups. This is the column's data type, not an operator or analytics subtype.")
+    shared_key: Optional[str] = PydanticField(default=None, description="Optional workspace filter identity for matching this column to differently named columns on other tiles. Use the same nonempty key without ':' and compatible types on participating tiles. Omitted or null falls back to filter_shared_keys[field], or the column name when no mapping exists. To keep this column tile-specific, set filter_shared_keys[field] to null.")
 
     @field_validator("shared_key")
     @classmethod
@@ -434,11 +448,21 @@ class FieldConfig(BaseModel):
 class AnalyticsTileConfig(BaseTileConfig):
     """Session-backed configuration for an analytics tile being built."""
 
-    query: str
-    type: str  # Must be one of the supported types
-    fields: dict[str, list[FieldConfig]] = PydanticField(default_factory=dict)
-    opts: dict = PydanticField(default_factory=dict)
-    filters: list[AnalyticsTileFilter] = PydanticField(default_factory=list)
+    query: str = PydanticField(description="Read-only SQL query supplying the tile's data. Selected field names must match columns or aliases returned by this query.")
+    type: str = PydanticField(description="Analytics subtype key. Select the matching oneOf branch for its field slots and options.")
+    fields: dict[str, list[FieldConfig]] = PydanticField(default_factory=dict, description="Selected query columns grouped by the chosen subtype's field slots.")
+    opts: dict = PydanticField(default_factory=dict, description="Tile-level display options for the chosen analytics subtype.")
+    filters: list[AnalyticsTileFilter] = PydanticField(default_factory=list, description="Columns available to interactive tile/workspace filters, as a list of {field, type, shared_key?} registrations. These are not active conditions: do not put lookup/operator/value here or use fields.filter. Conditions are supplied by the filter UI at request time and applied to the SQL result via SELECT * FROM (query) ... WHERE ..., after SQL aggregation. For a permanent restriction or filtering rows before COUNT/GROUP BY, put the predicate in query's WHERE clause. An empty list exposes no interactive filter columns.", examples=[[{"field": "department", "type": "text"}]])
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Describe complete analytics configurations using the live subtype definitions."""
+        from bloomerp.workspaces.analytics_tile.schema import analytics_config_schema
+
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        return analytics_config_schema(schema, [item.value for item in AnalyticsTileType])
 
     def get_filter_shared_key(self, name):
         configured = next((item for item in self.filters if item.field == name), None)
@@ -666,7 +690,7 @@ class RemoveFieldHandler(TileOperationHandler):
 class AddFilterOperation(BaseModel):
     """Payload for adding a filter to the analytics tile."""
     field:str
-    type:str
+    type: AnalyticsFilterType
     
 class AddFilterHandler(TileOperationHandler):
     """Adds a filter to the analytics tile."""
