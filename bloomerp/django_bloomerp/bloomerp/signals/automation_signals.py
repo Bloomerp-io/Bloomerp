@@ -10,9 +10,11 @@ from django.db import transaction
 from django.db.utils import OperationalError, ProgrammingError
 from django.db.models.signals import post_delete, post_save
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
+from bloomerp.middleware import current_request
 from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.automation.workflow_node import WorkflowNode
 from bloomerp.automation.run import run_workflow
+from bloomerp.utils.realtime import ToastPayload, send_toast_message, send_user_message
 
 _SIGNALS_INITIALIZED = False
 _WORKFLOW_NODE_SIGNALS_CONNECTED = False
@@ -61,7 +63,20 @@ def _create_handler(event: str, triggers: list[WorkflowNode]):
 
 		trigger_data = _build_trigger_data(event, sender, instance, **kwargs)
 		for trigger in triggers:
-			run_workflow(trigger.workflow, trigger_data)
+			try:
+				run_workflow(trigger.workflow, trigger_data)
+			except:
+				request = current_request()
+				user = request.user
+				if user and user.is_authenticated:
+					send_toast_message(
+						user.id,
+						ToastPayload(
+							message_type="danger",
+							message=f"Workflow '{trigger.workflow}' failed."
+						)
+					)
+					
 
 	return _handler
 
