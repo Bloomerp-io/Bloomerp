@@ -174,6 +174,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "content_type_id": state.content_type.id,
                 "fields": state.render_fields,
                 "avatar_field": state.avatar_field,
+                "object_actions": state.object_actions,
                 "group": group,
                 "preference": state.preference,
                 "kanban_page_querystring": cls.build_page_querystring(

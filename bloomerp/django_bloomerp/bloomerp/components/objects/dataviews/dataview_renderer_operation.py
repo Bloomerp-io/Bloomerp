@@ -1,6 +1,7 @@
 from bloomerp.components.objects.dataviews.dataview import (
     DATAVIEW_OPERATION_CONTEXT_PARAM,
     _build_dataview_state,
+    _get_actions,
     _valid_dataview_operation_context,
 )
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
@@ -56,6 +57,7 @@ def dataview_action(
     )
     if isinstance(state, HttpResponse):
         return state
+    state.object_actions = _get_actions(state.model)
     state.operation_context_token = request.GET.get(
         DATAVIEW_OPERATION_CONTEXT_PARAM
     )
