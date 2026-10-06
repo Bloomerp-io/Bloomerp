@@ -43,6 +43,7 @@ export class DataViewContainer extends BaseComponent {
     private selectedObjectIds: Set<string> = new Set();
     private createObjectModalLoaded: boolean = false;
 
+    /** Bind data-view controls without stealing focus when loaded inside a workspace tile. */
     public initialize(): void {
         this.element?.addEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
         this.baseUrl = this.element?.dataset.baseUrl;
@@ -63,8 +64,9 @@ export class DataViewContainer extends BaseComponent {
         // Setup target
         this.setDataviewTarget();
 
-        // Focus on search input
-        this.focusSearchInput();
+        if (!this.element?.closest(`[${componentIdentifier}="workspace-tile"]`)) {
+            this.focusSearchInput();
+        }
 
         
         this.setupKeydownListeners();
