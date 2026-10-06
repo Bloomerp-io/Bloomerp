@@ -1,12 +1,14 @@
 """Setup signals for automations."""
 
 import json
+import logging
 from collections import defaultdict
-from typing import Iterable
+from typing import Any, Callable, Iterable
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.db.models import Model
 from django.db.utils import OperationalError, ProgrammingError
 from django.db.models.signals import post_delete, post_save
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
@@ -14,7 +16,9 @@ from bloomerp.middleware import current_request
 from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.automation.workflow_node import WorkflowNode
 from bloomerp.automation.run import run_workflow
-from bloomerp.utils.realtime import ToastPayload, send_toast_message, send_user_message
+from bloomerp.utils.realtime import ToastPayload, send_toast_message
+
+logger = logging.getLogger(__name__)
 
 _SIGNALS_INITIALIZED = False
 _WORKFLOW_NODE_SIGNALS_CONNECTED = False
@@ -53,8 +57,10 @@ def _build_trigger_data(event: str, sender, instance, **kwargs) -> dict:
 	}
 
 
-def _create_handler(event: str, triggers: list[WorkflowNode]):
-	def _handler(sender, instance, **kwargs):
+def _create_handler(event: str, triggers: list[WorkflowNode]) -> Callable[..., None]:
+	"""Build a signal receiver that isolates workflow failures from object operations."""
+	def _handler(sender: type[Model], instance: Model, **kwargs: Any) -> None:
+		"""Run matching workflows and notify the requesting user when execution fails."""
 		created = kwargs.get("created")
 		if event == "create" and created is False:
 			return
@@ -65,18 +71,21 @@ def _create_handler(event: str, triggers: list[WorkflowNode]):
 		for trigger in triggers:
 			try:
 				run_workflow(trigger.workflow, trigger_data)
-			except:
-				request = current_request()
-				user = request.user
-				if user and user.is_authenticated:
-					send_toast_message(
-						user.id,
-						ToastPayload(
-							message_type="danger",
-							message=f"Workflow '{trigger.workflow}' failed."
+			except Exception:
+				logger.exception("Workflow %s failed during the %s signal.", trigger.workflow_id, event)
+				try:
+					request = current_request()
+					user = getattr(request, "user", None)
+					if user is not None and user.is_authenticated:
+						send_toast_message(
+							user.id,
+							ToastPayload(
+								message_type="danger",
+								message=f"Workflow '{trigger.workflow}' failed."
+							)
 						)
-					)
-					
+				except Exception:
+					logger.exception("Could not notify the user about failed workflow %s.", trigger.workflow_id)
 
 	return _handler
 
