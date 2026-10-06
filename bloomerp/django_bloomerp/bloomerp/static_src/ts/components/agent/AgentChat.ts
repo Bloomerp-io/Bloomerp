@@ -1,4 +1,5 @@
 import htmx from 'htmx.org';
+import AgentLauncher from './AgentLauncher';
 import ArtifactPicker, { type ArtifactChoice } from './ArtifactPicker';
 import BaseComponent, { getComponent } from '../BaseComponent';
 import BloomerpAgent, { getBrowserAgent, type ConversationApprovalRules } from '../../utils/agent';
@@ -74,6 +75,8 @@ export default class AgentChat extends BaseComponent {
         this.input = this.element.querySelector('[data-agent-input]');
         this.messages = this.element.querySelector('[data-agent-messages]');
         const signal = this.lifecycle.signal;
+        const launcher = this.element.querySelector<HTMLButtonElement>('[data-agent-action="open"]');
+        if (launcher) new AgentLauncher(launcher, `bloomerp_agent_launcher_${this.element.dataset.agentUser}`, signal);
         this.element.addEventListener('click', this.onClick, { signal });
         this.element.addEventListener('submit', this.onSubmit, { signal });
         this.element.addEventListener('agent:attachments-changed', this.onAttachments, { signal });

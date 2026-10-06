@@ -77,6 +77,16 @@ class AbstractBloomerpUser(
     class Meta:
         abstract = True
     
+    default_email_account = models.ForeignKey(
+        "bloomerp.EmailAccount",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="default_for_users",
+        verbose_name=_("Default Email Account"),
+        help_text=_("Preferred sender when composing outside an inbox."),
+    )
+
     date_view_preference = models.CharField(
         max_length=20,
         default=DateViewPreference.DAY_MONTH_YEAR,

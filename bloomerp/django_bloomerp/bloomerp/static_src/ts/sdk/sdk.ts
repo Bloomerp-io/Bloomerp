@@ -250,8 +250,9 @@ export class BloomerpHttpClient {
     }
   }
 
+  /** Set JSON headers for serialized payloads; let browsers encode multipart bodies. */
   private shouldSetJsonContentType(body: BodyInit | null | undefined, headers: Headers): boolean {
-    return body !== undefined && body !== null && !headers.has("Content-Type");
+    return typeof body === "string" && !headers.has("Content-Type");
   }
 
   private getAuthorizationHeader(): string | null {
@@ -472,51 +473,48 @@ export class ModelApi<TModel, TId extends string | number, TCreate, TUpdate, TQu
   }
 }
 
-export const bloomerpAuthStrategyTypes = ["session"] as const;
+export const bloomerpAuthStrategyTypes = ["session", "apiKey"] as const;
 
 export interface AIConversation {
-  args: unknown;
-  auto_named: boolean;
-  conversation_history: unknown;
-  conversation_type: string;
+  approval_rules: unknown;
   created_by: number | null;
   datetime_created: string;
   datetime_updated: string;
   id: string;
+  owner: number;
+  selected_agent: string | null;
+  status: string;
   title: string;
   updated_by: number | null;
-  user: number;
 }
 
 export type AIConversationId = string;
-export type AIConversationFieldName = "args" | "auto_named" | "conversation_history" | "conversation_type" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "title" | "updated_by" | "user";
+export type AIConversationFieldName = "approval_rules" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "owner" | "selected_agent" | "status" | "title" | "updated_by";
 
 export interface AIConversationCreate {
-  args?: unknown;
-  auto_named?: boolean;
-  conversation_history?: unknown;
-  conversation_type?: string;
+  approval_rules?: unknown;
   created_by?: number | null;
+  owner: number;
+  selected_agent?: string | null;
+  status?: string;
   title?: string;
   updated_by?: number | null;
-  user: number;
 }
 
 export type AIConversationUpdate = Partial<AIConversationCreate>;
 export type AIConversationQuery = Partial<Record<AIConversationFieldName | `${AIConversationFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
 export const aiConversationsFields: Record<AIConversationFieldName, BloomerpFieldMetadata> = {
-  "args": {"name": "args", "title": "Args", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
-  "auto_named": {"name": "auto_named", "title": "Auto Named", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
-  "conversation_history": {"name": "conversation_history", "title": "Conversation History", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
-  "conversation_type": {"name": "conversation_type", "title": "Conversation Type", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "sql", "label": "SQL"}, {"value": "document_template", "label": "Document Template Generator"}, {"value": "tiny_mce_content", "label": "TinyMCE Content Generator"}, {"value": "bloom_ai", "label": "Bloom AI"}, {"value": "code", "label": "Code Generator"}, {"value": "object_bloom_ai", "label": "Object Bloom AI"}]},
+  "approval_rules": {"name": "approval_rules", "title": "Tool Approval Rules", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "owner": {"name": "owner", "title": "Owner", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "selected_agent": {"name": "selected_agent", "title": "Selected Agent", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "AIAgent", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "open", "label": "Open"}, {"value": "archived", "label": "Archived"}]},
   "title": {"name": "title", "title": "Title", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
 
 export const aiConversationsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
@@ -525,6 +523,63 @@ export const aiConversationsPublicAccess: BloomerpModelPublicAccessMetadata = {"
 export class AIConversationApi extends ModelApi<AIConversation, AIConversationId, AIConversationCreate, AIConversationUpdate, AIConversationQuery, AIConversationFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/ai_conversations/");
+  }
+}
+
+export interface AIMessage {
+  content_blocks: unknown;
+  conversation: string;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  id: string;
+  role: string;
+  run: string | null;
+  schema_version: number;
+  sequence: number;
+  status: string;
+  updated_by: number | null;
+}
+
+export type AIMessageId = string;
+export type AIMessageFieldName = "content_blocks" | "conversation" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "role" | "run" | "schema_version" | "sequence" | "status" | "updated_by";
+
+export interface AIMessageCreate {
+  content_blocks?: unknown;
+  conversation: string;
+  created_by?: number | null;
+  role: string;
+  run?: string | null;
+  schema_version?: number;
+  sequence: number;
+  status?: string;
+  updated_by?: number | null;
+}
+
+export type AIMessageUpdate = Partial<AIMessageCreate>;
+export type AIMessageQuery = Partial<Record<AIMessageFieldName | `${AIMessageFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const aiMessagesFields: Record<AIMessageFieldName, BloomerpFieldMetadata> = {
+  "content_blocks": {"name": "content_blocks", "title": "Content Blocks", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "conversation": {"name": "conversation", "title": "Conversation", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "AIConversation", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "role": {"name": "role", "title": "Role", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "user", "label": "User"}, {"value": "assistant", "label": "Assistant"}, {"value": "system", "label": "System"}]},
+  "run": {"name": "run", "title": "Run", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "AIRun", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "schema_version": {"name": "schema_version", "title": "Schema Version", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": [{"value": 1, "label": "Version 1"}]},
+  "sequence": {"name": "sequence", "title": "Sequence", "fieldType": "BigIntegerField", "dbFieldType": "bigint unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "streaming", "label": "Streaming"}, {"value": "completed", "label": "Completed"}, {"value": "interrupted", "label": "Interrupted"}]},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const aiMessagesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const aiMessagesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class AIMessageApi extends ModelApi<AIMessage, AIMessageId, AIMessageCreate, AIMessageUpdate, AIMessageQuery, AIMessageFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/ai_messages/");
   }
 }
 
@@ -880,6 +935,60 @@ export const documentTemplateStylingsPublicAccess: BloomerpModelPublicAccessMeta
 export class DocumentTemplateStylingApi extends ModelApi<DocumentTemplateStyling, DocumentTemplateStylingId, DocumentTemplateStylingCreate, DocumentTemplateStylingUpdate, DocumentTemplateStylingQuery, DocumentTemplateStylingFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/document_template_stylings/");
+  }
+}
+
+export interface EmailDraft {
+  avatar: string | null;
+  content_type: number | null;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  email_account: string | null;
+  id: string;
+  object_id: string;
+  payload: unknown;
+  updated_by: number | null;
+  user: number;
+}
+
+export type EmailDraftId = string;
+export type EmailDraftFieldName = "avatar" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "email_account" | "id" | "object_id" | "payload" | "updated_by" | "user";
+
+export interface EmailDraftCreate {
+  avatar?: string | null;
+  content_type?: number | null;
+  created_by?: number | null;
+  email_account?: string | null;
+  object_id?: string;
+  payload?: unknown;
+  updated_by?: number | null;
+  user: number;
+}
+
+export type EmailDraftUpdate = Partial<EmailDraftCreate>;
+export type EmailDraftQuery = Partial<Record<EmailDraftFieldName | `${EmailDraftFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const emailDraftsFields: Record<EmailDraftFieldName, BloomerpFieldMetadata> = {
+  "avatar": {"name": "avatar", "title": "Avatar", "fieldType": "ImageField", "dbFieldType": "varchar(100)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "email_account": {"name": "email_account", "title": "Email Account", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "EmailAccount", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_id": {"name": "object_id", "title": "Object Id", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "payload": {"name": "payload", "title": "Payload", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+} as const;
+
+export const emailDraftsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const emailDraftsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class EmailDraftApi extends ModelApi<EmailDraft, EmailDraftId, EmailDraftCreate, EmailDraftUpdate, EmailDraftQuery, EmailDraftFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/email_drafts/");
   }
 }
 
@@ -1374,6 +1483,103 @@ export const initiativesPublicAccess: BloomerpModelPublicAccessMetadata = {"list
 export class InitiativeApi extends ModelApi<Initiative, InitiativeId, InitiativeCreate, InitiativeUpdate, InitiativeQuery, InitiativeFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/initiatives/");
+  }
+}
+
+export interface OAuthAccessToken {
+  client_id: string;
+  expires_at: string;
+  id: number;
+  resource: string;
+  revoked_at: string;
+  scope: string;
+  token_hash: string;
+  user: number;
+}
+
+export type OAuthAccessTokenId = number;
+export type OAuthAccessTokenFieldName = "client_id" | "expires_at" | "id" | "resource" | "revoked_at" | "scope" | "token_hash" | "user";
+
+export interface OAuthAccessTokenCreate {
+  client_id: string;
+  expires_at: string;
+  resource: string;
+  revoked_at?: string;
+  scope: string;
+  token_hash: string;
+  user: number;
+}
+
+export type OAuthAccessTokenUpdate = Partial<OAuthAccessTokenCreate>;
+export type OAuthAccessTokenQuery = Partial<Record<OAuthAccessTokenFieldName | `${OAuthAccessTokenFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const oAuthAccessTokensFields: Record<OAuthAccessTokenFieldName, BloomerpFieldMetadata> = {
+  "client_id": {"name": "client_id", "title": "Client Id", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "expires_at": {"name": "expires_at", "title": "Expires At", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "BigAutoField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "resource": {"name": "resource", "title": "Resource", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "revoked_at": {"name": "revoked_at", "title": "Revoked At", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "scope": {"name": "scope", "title": "Scope", "fieldType": "CharField", "dbFieldType": "varchar(200)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "token_hash": {"name": "token_hash", "title": "Token Hash", "fieldType": "CharField", "dbFieldType": "varchar(64)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+} as const;
+
+export const oAuthAccessTokensCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const oAuthAccessTokensPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class OAuthAccessTokenApi extends ModelApi<OAuthAccessToken, OAuthAccessTokenId, OAuthAccessTokenCreate, OAuthAccessTokenUpdate, OAuthAccessTokenQuery, OAuthAccessTokenFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/o_auth_access_tokens/");
+  }
+}
+
+export interface OAuthAuthorizationCode {
+  client_id: string;
+  code_challenge: string;
+  code_hash: string;
+  expires_at: string;
+  id: number;
+  redirect_uri: string;
+  resource: string;
+  scope: string;
+  user: number;
+}
+
+export type OAuthAuthorizationCodeId = number;
+export type OAuthAuthorizationCodeFieldName = "client_id" | "code_challenge" | "code_hash" | "expires_at" | "id" | "redirect_uri" | "resource" | "scope" | "user";
+
+export interface OAuthAuthorizationCodeCreate {
+  client_id: string;
+  code_challenge: string;
+  code_hash: string;
+  expires_at: string;
+  redirect_uri: string;
+  resource: string;
+  scope: string;
+  user: number;
+}
+
+export type OAuthAuthorizationCodeUpdate = Partial<OAuthAuthorizationCodeCreate>;
+export type OAuthAuthorizationCodeQuery = Partial<Record<OAuthAuthorizationCodeFieldName | `${OAuthAuthorizationCodeFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const oAuthAuthorizationCodesFields: Record<OAuthAuthorizationCodeFieldName, BloomerpFieldMetadata> = {
+  "client_id": {"name": "client_id", "title": "Client Id", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "code_challenge": {"name": "code_challenge", "title": "Code Challenge", "fieldType": "CharField", "dbFieldType": "varchar(128)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "code_hash": {"name": "code_hash", "title": "Code Hash", "fieldType": "CharField", "dbFieldType": "varchar(64)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "expires_at": {"name": "expires_at", "title": "Expires At", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "BigAutoField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "redirect_uri": {"name": "redirect_uri", "title": "Redirect Uri", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "resource": {"name": "resource", "title": "Resource", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "scope": {"name": "scope", "title": "Scope", "fieldType": "CharField", "dbFieldType": "varchar(200)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+} as const;
+
+export const oAuthAuthorizationCodesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const oAuthAuthorizationCodesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class OAuthAuthorizationCodeApi extends ModelApi<OAuthAuthorizationCode, OAuthAuthorizationCodeId, OAuthAuthorizationCodeCreate, OAuthAuthorizationCodeUpdate, OAuthAuthorizationCodeQuery, OAuthAuthorizationCodeFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/o_auth_authorization_codes/");
   }
 }
 
@@ -1903,6 +2109,7 @@ export interface User {
   date_joined: string;
   date_view_preference: string;
   datetime_view_preference: string;
+  default_email_account: string | null;
   detail_sidebar_view_preference: string;
   email: string;
   first_name: string;
@@ -1919,13 +2126,14 @@ export interface User {
 }
 
 export type UserId = number;
-export type UserFieldName = "avatar" | "date_joined" | "date_view_preference" | "datetime_view_preference" | "detail_sidebar_view_preference" | "email" | "first_name" | "groups" | "id" | "is_active" | "is_staff" | "is_superuser" | "last_login" | "last_name" | "password" | "user_permissions" | "username";
+export type UserFieldName = "avatar" | "date_joined" | "date_view_preference" | "datetime_view_preference" | "default_email_account" | "detail_sidebar_view_preference" | "email" | "first_name" | "groups" | "id" | "is_active" | "is_staff" | "is_superuser" | "last_login" | "last_name" | "password" | "user_permissions" | "username";
 
 export interface UserCreate {
   avatar?: string | null;
   date_joined?: string;
   date_view_preference?: string;
   datetime_view_preference?: string;
+  default_email_account?: string | null;
   detail_sidebar_view_preference?: string;
   email?: string;
   first_name?: string;
@@ -1948,6 +2156,7 @@ export const usersFields: Record<UserFieldName, BloomerpFieldMetadata> = {
   "date_joined": {"name": "date_joined", "title": "date joined", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "date_view_preference": {"name": "date_view_preference", "title": "Date View Preference", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "d-m-Y", "label": "Day-Month-Year (15-08-2000)"}, {"value": "m-d-Y", "label": "Month-Day-Year (08-15-2000)"}, {"value": "Y-m-d", "label": "Year-Month-Day (2000-08-15)"}]},
   "datetime_view_preference": {"name": "datetime_view_preference", "title": "Datetime View Preference", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "d-m-Y H:i", "label": "Day-Month-Year Hour:Minute (15-08-2000 12:30)"}, {"value": "m-d-Y H:i", "label": "Month-Day-Year Hour:Minute (08-15-2000 12:30)"}, {"value": "Y-m-d H:i", "label": "Year-Month-Day Hour:Minute (2000-08-15 12:30)"}]},
+  "default_email_account": {"name": "default_email_account", "title": "Default Email Account", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "EmailAccount", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "detail_sidebar_view_preference": {"name": "detail_sidebar_view_preference", "title": "Detail Sidebar View Preference", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "activity", "label": "Activity"}, {"value": "comments", "label": "Comments"}]},
   "email": {"name": "email", "title": "email address", "fieldType": "EmailField", "dbFieldType": "varchar(254)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "first_name": {"name": "first_name", "title": "first name", "fieldType": "CharField", "dbFieldType": "varchar(150)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
@@ -2487,6 +2696,12 @@ export class BloomerpSdk {
         publicAccess: aiConversationsPublicAccess,
         fields: aiConversationsFields,
       },
+      aiMessages: {
+        endpoint: "/api/ai_messages/",
+        capabilities: aiMessagesCapabilities,
+        publicAccess: aiMessagesPublicAccess,
+        fields: aiMessagesFields,
+      },
       activityLogs: {
         endpoint: "/api/activity_logs/",
         capabilities: activityLogsCapabilities,
@@ -2528,6 +2743,12 @@ export class BloomerpSdk {
         capabilities: documentTemplateStylingsCapabilities,
         publicAccess: documentTemplateStylingsPublicAccess,
         fields: documentTemplateStylingsFields,
+      },
+      emailDrafts: {
+        endpoint: "/api/email_drafts/",
+        capabilities: emailDraftsCapabilities,
+        publicAccess: emailDraftsPublicAccess,
+        fields: emailDraftsFields,
       },
       accessControlFieldPolicies: {
         endpoint: "/api/access_control_field_policies/",
@@ -2582,6 +2803,18 @@ export class BloomerpSdk {
         capabilities: initiativesCapabilities,
         publicAccess: initiativesPublicAccess,
         fields: initiativesFields,
+      },
+      oAuthAccessTokens: {
+        endpoint: "/api/o_auth_access_tokens/",
+        capabilities: oAuthAccessTokensCapabilities,
+        publicAccess: oAuthAccessTokensPublicAccess,
+        fields: oAuthAccessTokensFields,
+      },
+      oAuthAuthorizationCodes: {
+        endpoint: "/api/o_auth_authorization_codes/",
+        capabilities: oAuthAuthorizationCodesCapabilities,
+        publicAccess: oAuthAuthorizationCodesPublicAccess,
+        fields: oAuthAuthorizationCodesFields,
       },
       accessControlPolicies: {
         endpoint: "/api/access_control_policies/",
@@ -2718,6 +2951,7 @@ export class BloomerpSdk {
     },
   } as const;
   public readonly aiConversations: AIConversationApi;
+  public readonly aiMessages: AIMessageApi;
   public readonly activityLogs: ActivityLogApi;
   public readonly applicationFields: ApplicationFieldApi;
   public readonly bookmarks: BookmarkApi;
@@ -2725,6 +2959,7 @@ export class BloomerpSdk {
   public readonly documentTemplates: DocumentTemplateApi;
   public readonly documentTemplateHeaders: DocumentTemplateHeaderApi;
   public readonly documentTemplateStylings: DocumentTemplateStylingApi;
+  public readonly emailDrafts: EmailDraftApi;
   public readonly accessControlFieldPolicies: FieldPolicyApi;
   public readonly files: FileApi;
   public readonly fileFolders: FileFolderApi;
@@ -2734,6 +2969,8 @@ export class BloomerpSdk {
   public readonly inboxFolders: InboxFolderApi;
   public readonly inboxItems: InboxItemApi;
   public readonly initiatives: InitiativeApi;
+  public readonly oAuthAccessTokens: OAuthAccessTokenApi;
+  public readonly oAuthAuthorizationCodes: OAuthAuthorizationCodeApi;
   public readonly accessControlPolicies: PolicyApi;
   public readonly accessControlRowPolicies: RowPolicyApi;
   public readonly accessControlRowPolicyRules: RowPolicyRuleApi;
@@ -2761,6 +2998,7 @@ export class BloomerpSdk {
     this.client = new BloomerpHttpClient(config);
     this.auth = new AuthApi(this.client);
     this.aiConversations = new AIConversationApi(this.client);
+    this.aiMessages = new AIMessageApi(this.client);
     this.activityLogs = new ActivityLogApi(this.client);
     this.applicationFields = new ApplicationFieldApi(this.client);
     this.bookmarks = new BookmarkApi(this.client);
@@ -2768,6 +3006,7 @@ export class BloomerpSdk {
     this.documentTemplates = new DocumentTemplateApi(this.client);
     this.documentTemplateHeaders = new DocumentTemplateHeaderApi(this.client);
     this.documentTemplateStylings = new DocumentTemplateStylingApi(this.client);
+    this.emailDrafts = new EmailDraftApi(this.client);
     this.accessControlFieldPolicies = new FieldPolicyApi(this.client);
     this.files = new FileApi(this.client);
     this.fileFolders = new FileFolderApi(this.client);
@@ -2777,6 +3016,8 @@ export class BloomerpSdk {
     this.inboxFolders = new InboxFolderApi(this.client);
     this.inboxItems = new InboxItemApi(this.client);
     this.initiatives = new InitiativeApi(this.client);
+    this.oAuthAccessTokens = new OAuthAccessTokenApi(this.client);
+    this.oAuthAuthorizationCodes = new OAuthAuthorizationCodeApi(this.client);
     this.accessControlPolicies = new PolicyApi(this.client);
     this.accessControlRowPolicies = new RowPolicyApi(this.client);
     this.accessControlRowPolicyRules = new RowPolicyRuleApi(this.client);

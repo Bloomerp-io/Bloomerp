@@ -124,7 +124,10 @@ export function matchesShortcut(shortcut: ShortcutDefinition, event: KeyboardEve
     );
 }
 
+/** Normalize space and shifted comma consistently across keyboard layouts. */
 export function normalizeKeyboardEventKey(event: KeyboardEvent): string {
+    if (event.code === "Space" || event.key === " ") return "space";
+    if (event.code === "Comma" && event.shiftKey) return ",";
     return normalizeShortcutKey(event.key);
 }
 

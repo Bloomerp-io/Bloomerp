@@ -1,6 +1,6 @@
-import { ContextMenuController, getContextMenu } from "@/utils/contextMenu";
+import { ContextMenuController, getContextMenu, type ContextMenuItem } from "@/utils/contextMenu";
 import { $getSelection, $isRangeSelection, $isTextNode, LexicalEditor } from "lexical";
-import { ACTIONS } from "../actions";
+import { ACTIONS, type Action } from "../actions";
 import { componentIdentifier, getComponent } from "@/components/BaseComponent";
 import type { BloomerpTextEditor } from "../BloomerpTextEditor";
 
@@ -114,13 +114,14 @@ function getTextEditorComponent(editor: LexicalEditor): BloomerpTextEditor | nul
     return getComponent(componentElement) as BloomerpTextEditor | null;
 }
 
+/** Show filtered editor actions with reusable child-menu providers at the current selection. */
 export function launchContextMenu(
     editor:LexicalEditor, 
     contextMenu:ContextMenuController,
     insertKeys?:Array<string>,
     query?:string,
     anchor:'caret'|'selection' = 'caret',
-) {
+): void {
     const root = editor.getRootElement()
     if (!root) {
         return;
@@ -143,9 +144,10 @@ export function launchContextMenu(
 
             return insert.label.toLowerCase().includes(normalizedQuery);
         })
-        .map((insert) => ({
+        .map((insert: Action): ContextMenuItem => ({
             label: insert.label,
             icon: insert.icon,
+            submenu: insert.submenu?.bind(null, textEditor),
             onClick: () => {
                 insert.handler(textEditor);
             },

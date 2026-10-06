@@ -4,6 +4,7 @@ from typing import Any
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.users.user import User
+from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
@@ -33,7 +34,7 @@ from django.db.models import QuerySet
 )
 class BloomerpProfileView(ApplicationFieldLayoutFormMixin, BaseBloomerpDetailView, UpdateView):
     template_name = 'views/users/profile.html'
-    fields = ['first_name', 'last_name', 'date_view_preference', 'datetime_view_preference']
+    fields = ['first_name', 'last_name', 'date_view_preference', 'datetime_view_preference', 'default_email_account']
     success_url = reverse_lazy('users_my_profile_overview')
     apply_permissions = False
 
@@ -91,6 +92,11 @@ class BloomerpProfileView(ApplicationFieldLayoutFormMixin, BaseBloomerpDetailVie
                 title="Display preferences",
                 items=items_for("date_view_preference", "datetime_view_preference"),
             ),
+            LayoutRow(
+                columns=1,
+                title="Email",
+                items=items_for("default_email_account"),
+            ),
         ])
 
     def get_layout(self) -> FieldLayout:
@@ -103,7 +109,19 @@ class BloomerpProfileView(ApplicationFieldLayoutFormMixin, BaseBloomerpDetailVie
         if cached_form is None:
             cached_form = UpdateView.get_form(self, form_class)
             self._layout_form = self.apply_layout_widget_config(cached_form)
+            from django import forms
+            from bloomerp.services.email_composer_services import accessible_email_accounts
+
+            account_field = self._layout_form.fields["default_email_account"]
+            account_field.queryset = accessible_email_accounts(self.request.user)
+            account_field.label_from_instance = self.email_account_label
+            account_field.widget = forms.Select(attrs={"class": "input w-full"})
         return self._layout_form
+
+    @staticmethod
+    def email_account_label(account: EmailAccount) -> str:
+        """Label permitted senders using their readable address only."""
+        return account.email_address
 
     def get_form_kwargs(self) -> dict[str, Any]:
         """Ensure submitted changes update the signed-in user."""

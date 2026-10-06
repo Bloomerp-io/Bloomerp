@@ -204,6 +204,7 @@ class TestGlobalSearchComponent(BloomerpComponentTestCase):
         )
 
     def _prepare_localized_module_search(self, _scenario: RequestScenario) -> None:
+        """Provide localized module metadata through the shared search registry."""
         module = ModuleConfig(
             id="users",
             code="users",
@@ -211,7 +212,7 @@ class TestGlobalSearchComponent(BloomerpComponentTestCase):
             owner_app_label="bloomerp",
         )
         self._start_patch(
-            "bloomerp.components.search.global_search._ensure_module_registry_models"
+            "bloomerp.services.search_services._ensure_module_registry_models"
         )
         self._start_patch(
             "bloomerp.components.search.global_search.module_registry.get",

@@ -41,6 +41,7 @@ class TestCreateEmailAccountView(BloomerpModelViewTestCase):
             self.creation_scenario(
                 "SMTP and IMAP are verified before the account is saved"
             ),
+            self.default_sender_scenario(),
             self.creation_scenario(
                 "SMTP authentication failure keeps the settings and creates no account",
                 self.reject_smtp_credentials,
@@ -193,3 +194,15 @@ class TestCreateEmailAccountView(BloomerpModelViewTestCase):
             and is_encrypted_email_secret(account.password)
             and account.get_password_secret() == "app-password"
         )
+
+    def default_sender_scenario(self) -> RequestScenario:
+        """Select a default sender only after successful connection validation."""
+        scenario = self.creation_scenario("New account can become the current user's default sender")
+        scenario.data["set_as_default"] = "on"
+        scenario.expected.response_validators = [self.imap_account_is_secure, self.default_sender_saved]
+        return scenario
+
+    def default_sender_saved(self, _response: HttpResponse) -> bool:
+        """Check the wizard recorded the created account on the requesting user."""
+        self.admin_user.refresh_from_db()
+        return self.admin_user.default_email_account_id == EmailAccount.objects.get(email_address="support@example.com").pk
