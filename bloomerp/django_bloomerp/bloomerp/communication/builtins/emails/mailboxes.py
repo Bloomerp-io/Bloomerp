@@ -50,7 +50,14 @@ def default_mailbox_mapping(names: list[str]) -> dict[str, dict[str, Any]]:
         ),
         None,
     )
-    sent = sent or next((name for name in names if "sent" in name.casefold()), None)
+    sent = sent or next(
+        (
+            name
+            for name in names
+            if name.casefold() in {"[gmail]/sent mail", "[google mail]/sent mail"}
+        ),
+        None,
+    )
     return {
         name: MailboxSettings(
             label=name, main_folder=name == main, sent_folder=name == sent
@@ -77,11 +84,21 @@ def validate_mailboxes(value: Any) -> None:
 
 
 def merge_mailboxes(names: list[str], existing: Any) -> dict[str, dict[str, Any]]:
-    """Refresh discovered folders while preserving labels, colors and chosen roles."""
+    """Preserve surviving mailbox settings and restore defaults for disappeared role holders."""
     previous = normalize_mailboxes(existing)
     defaults = default_mailbox_mapping(names)
+    merged = {
+        name: dict(previous.get(name, settings)) for name, settings in defaults.items()
+    }
     for role in ("main_folder", "sent_folder"):
-        if any(settings[role] for settings in previous.values()):
-            for settings in defaults.values():
-                settings[role] = False
-    return {name: previous.get(name, settings) for name, settings in defaults.items()}
+        previous_role_names = {
+            name for name, settings in previous.items() if settings[role]
+        }
+        surviving_role_names = previous_role_names.intersection(defaults)
+        if surviving_role_names:
+            for name, settings in merged.items():
+                settings[role] = name in surviving_role_names
+        elif previous_role_names:
+            for name, settings in merged.items():
+                settings[role] = defaults[name][role]
+    return merged
