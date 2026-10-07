@@ -107,6 +107,7 @@ class EmailProvider(BaseTypeDefinition):
             "smtp_host",
             "smtp_port",
             "smtp_security",
+            "smtp_envelope_sender",
             "save_sent_emails",
         ],
         required_fields=[

@@ -170,8 +170,8 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         message["Subject"] = subject
         message["Date"] = formatdate(localtime=True)
         message["Message-ID"] = message_id
-        if reply_to:
-            message["Reply-To"] = reply_to
+        if reply_to or self.email_account.smtp_envelope_sender:
+            message["Reply-To"] = reply_to or self.email_account.email_address
         if in_reply_to:
             message["In-Reply-To"] = in_reply_to
         if references:
@@ -194,7 +194,11 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         recipients = [*to, *cc, *bcc]
         try:
             with self._connect_smtp() as smtp:
-                smtp.send_message(message, from_addr=self.email_account.email_address, to_addrs=recipients)
+                smtp.send_message(
+                    message,
+                    from_addr=self._smtp_envelope_sender(),
+                    to_addrs=recipients,
+                )
         except socket.gaierror as exc:
             raise ValidationError(
                 f"Unable to resolve SMTP host '{self.email_account.smtp_host}'. "
@@ -236,7 +240,7 @@ class ImapSmtpAdapter(BaseEmailAdapter):
             return adapter.list_mailboxes()
 
     def validate_smtp_connection(self) -> None:
-        """Verify SMTP connectivity and authentication without sending an email."""
+        """Verify authentication and envelope sender acceptance without sending mail."""
         if not self.email_account.smtp_host or not self.email_account.smtp_port:
             raise ValidationError("SMTP host and port are required.")
         try:
@@ -244,6 +248,20 @@ class ImapSmtpAdapter(BaseEmailAdapter):
                 status, _ = smtp.noop()
                 if status != 250:
                     raise ValidationError("SMTP connection check failed. Check the outgoing server settings.")
+                smtp.ehlo_or_helo_if_needed()
+                sender = self._smtp_envelope_sender()
+                try:
+                    status, _ = smtp.mail(sender)
+                finally:
+                    reset_status, _ = smtp.rset()
+                if status != 250:
+                    raise ValidationError(
+                        f"SMTP envelope sender '{sender}' was rejected (SMTP {status}). "
+                        "Check that this address is authorized for the SMTP login. "
+                        "For aliases, your provider may require the primary mailbox address."
+                    )
+                if reset_status != 250:
+                    raise ValidationError("SMTP connection reset failed. Check the outgoing server settings.")
         except smtplib.SMTPAuthenticationError as exc:
             raise ValidationError("SMTP authentication failed. Check the username and password or app password.") from exc
         except socket.gaierror as exc:
@@ -263,6 +281,10 @@ class ImapSmtpAdapter(BaseEmailAdapter):
                 f"Unable to connect to SMTP host '{self.email_account.smtp_host}' "
                 f"on port {self.email_account.smtp_port}."
             ) from exc
+
+    def _smtp_envelope_sender(self) -> str:
+        """Resolve the explicit SMTP envelope sender or preserve the visible sender default."""
+        return self.email_account.smtp_envelope_sender or self.email_account.email_address
 
     def _save_sent_copy(self, message: EmailMessage) -> None:
         """Append the complete SMTP message to the account's Sent mailbox as read."""

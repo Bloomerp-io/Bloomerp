@@ -76,6 +76,7 @@ class EmailAccount(BloomerpModel):
                         LayoutItem(id="smtp_host"),
                         LayoutItem(id="smtp_port"),
                         LayoutItem(id="smtp_security"),
+                        LayoutItem(id="smtp_envelope_sender"),
                         LayoutItem(id="save_sent_emails"),
                         LayoutItem(id="last_validated_at"),
                     ]
@@ -162,6 +163,17 @@ class EmailAccount(BloomerpModel):
         choices=SecurityMode.choices,
         default=SecurityMode.STARTTLS,
         verbose_name=_("SMTP Security"),
+    )
+    smtp_envelope_sender = models.EmailField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("SMTP envelope sender"),
+        help_text=_(
+            "Leave blank to use the email address. For aliases, enter the primary "
+            "mailbox address if your provider requires it. Replies still go to the "
+            "visible sender unless a reply address is specified."
+        ),
     )
     save_sent_emails = models.BooleanField(
         default=False,
