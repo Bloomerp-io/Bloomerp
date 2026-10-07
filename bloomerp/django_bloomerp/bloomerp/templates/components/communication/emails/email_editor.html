@@ -13,7 +13,7 @@
     >
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-5">
         <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold text-gray-950">
+            <h2 class="truncate text-base font-semibold text-gray-950 dark:text-zinc-100">
                 {% translate title %}
             </h2>
             {% if from_email and not enhanced_composer %}
@@ -63,9 +63,9 @@
             {% if enhanced_composer %}
             <label class="grid min-h-12 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3">
                 <span class="text-sm font-medium text-gray-500">{% translate "From" %}</span>
-                <select name="email_account_id" class="min-w-0 border-0 bg-transparent py-2 pl-0 pr-8 text-sm text-gray-950 focus:ring-0">
+                <select name="email_account_id" class="min-w-0 border-0 bg-transparent py-2 pl-0 pr-8 text-sm text-gray-950 dark:text-zinc-100 focus:ring-0">
                     {% for account in email_accounts %}
-                    <option value="{{ account.pk }}" {% if account.pk == email_account.pk %}selected{% endif %}>{{ account.email_address }}</option>
+                    <option class="dark:bg-zinc-900 dark:text-zinc-100" value="{{ account.pk }}" {% if account.pk == email_account.pk %}selected{% endif %}>{{ account.email_address }}</option>
                     {% endfor %}
                 </select>
             </label>
@@ -75,7 +75,7 @@
                     {% blocktrans %}To{% endblocktrans %}
                 </span>
                 <input
-                    class="min-w-0 border-0 px-0 text-sm text-gray-950 placeholder:text-gray-400 focus:ring-0"
+                    class="min-w-0 border-0 px-0 text-sm text-gray-950 dark:text-zinc-100 placeholder:text-gray-400 focus:ring-0"
                     type="email"
                     name="to"
                     data-recipient-input
@@ -96,7 +96,7 @@
                     {% blocktrans %}Cc{% endblocktrans %}
                 </span>
                 <input
-                    class="min-w-0 border-0 px-0 text-sm text-gray-950 placeholder:text-gray-400 focus:ring-0"
+                    class="min-w-0 border-0 px-0 text-sm text-gray-950 dark:text-zinc-100 placeholder:text-gray-400 focus:ring-0"
                     type="email"
                     name="cc"
                     data-recipient-input
@@ -113,7 +113,7 @@
                     {% blocktrans %}Bcc{% endblocktrans %}
                 </span>
                 <input
-                    class="min-w-0 border-0 px-0 text-sm text-gray-950 placeholder:text-gray-400 focus:ring-0"
+                    class="min-w-0 border-0 px-0 text-sm text-gray-950 dark:text-zinc-100 placeholder:text-gray-400 focus:ring-0"
                     type="email"
                     name="bcc"
                     data-recipient-input
@@ -130,7 +130,7 @@
                     {% blocktrans %}Subject{% endblocktrans %}
                 </span>
                 <input
-                    class="min-w-0 border-0 px-0 text-sm font-medium text-gray-950 placeholder:text-gray-400 focus:ring-0"
+                    class="min-w-0 border-0 px-0 text-sm font-medium text-gray-950 dark:text-zinc-100 placeholder:text-gray-400 focus:ring-0"
                     type="text"
                     name="subject"
                     value="{{ subject }}"

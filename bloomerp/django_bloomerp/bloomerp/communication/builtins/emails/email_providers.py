@@ -4,8 +4,8 @@ from typing import Any, Type
 
 from django.template.loader import render_to_string
 
-from bloomerp.communication.emails.base_adapter import BaseEmailAdapter
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.builtins.emails.base_adapter import BaseEmailAdapter
+from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 from bloomerp.utils.base_type_definition import BaseTypeDefinition
 
 class EmailSyncMode(Enum):

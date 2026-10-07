@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
-from bloomerp.communication.emails.providers.imap_smtp import (
+from bloomerp.communication.builtins.emails.providers.imap_smtp import (
     ACCOUNT_VALIDATION_TIMEOUT_SECONDS,
     SMTP_TIMEOUT_SECONDS,
     ImapSmtpAdapter,
@@ -35,7 +35,7 @@ class EmailConnectionValidationTests(SimpleTestCase):
             self.adapter, "_connect_smtp", return_value=self.smtp
         )
         self.imap_patch = patch(
-            "bloomerp.communication.emails.providers.imap_smtp.imaplib.IMAP4_SSL",
+            "bloomerp.communication.builtins.emails.providers.imap_smtp.imaplib.IMAP4_SSL",
             return_value=self.imap,
         )
         self.smtp_connect = self.smtp_patch.start()
@@ -71,7 +71,7 @@ class EmailConnectionValidationTests(SimpleTestCase):
         self.smtp_patch.stop()
         with (
             patch(
-                "bloomerp.communication.emails.providers.imap_smtp.smtplib.SMTP",
+                "bloomerp.communication.builtins.emails.providers.imap_smtp.smtplib.SMTP",
                 return_value=self.smtp,
             ) as smtp_constructor,
             patch.object(

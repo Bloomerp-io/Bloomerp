@@ -9,6 +9,7 @@ export class InboxItem extends BaseComponent {
     private clickHandler: ((event: Event) => void) | null = null;
     private actionClickHandler: ((event: Event) => void) | null = null;
 
+    /** Attach preview activation or detail actions according to the rendered mode. */
     public initialize(): void {
         if (!this.element) return;
 
@@ -18,7 +19,7 @@ export class InboxItem extends BaseComponent {
         }
 
         this.renderTarget = this.getRenderTarget();
-        this.clickHandler = (event: Event) => {
+        this.clickHandler = (event: Event): void => {
             event.preventDefault();
             this.render();
         };
@@ -37,6 +38,7 @@ export class InboxItem extends BaseComponent {
         this.actionClickHandler = null;
     }
 
+    /** Reveal the detail panel and load this message into its preview target. */
     public render(): void {
         if (!this.element) return;
 
@@ -44,6 +46,8 @@ export class InboxItem extends BaseComponent {
         const target = this.renderTarget || this.getRenderTarget();
         if (!url || !target) return;
 
+        const panel = target.closest<HTMLElement>('[bloomerp-component="resizable-div"]');
+        if (panel) panel.hidden = false;
         insertSkeleton(target);
 
         htmx.ajax('get', url, { target });
@@ -66,10 +70,18 @@ export class InboxItem extends BaseComponent {
         return document.querySelector(targetSelector);
     }
 
+    /** Delegate the close button and available actions within the message detail. */
     private setupInboxActionListener(): void {
         if (!this.element) return;
 
-        this.actionClickHandler = (event: Event) => {
+        this.actionClickHandler = (event: Event): void => {
+            const close = (event.target as HTMLElement | null)?.closest('[data-inbox-close]');
+            if (close && this.element?.contains(close)) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.closeDetail();
+                return;
+            }
             const trigger = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-inbox-action]');
             if (!trigger || !this.element?.contains(trigger)) return;
             if (trigger.dataset.inboxActionLevel !== 'item') return;
@@ -80,6 +92,18 @@ export class InboxItem extends BaseComponent {
         };
 
         this.element.addEventListener('click', this.actionClickHandler);
+    }
+
+    /** Clear and hide the preview, returning keyboard focus to the message in the list. */
+    private closeDetail(): void {
+        const target = this.getRenderTarget();
+        if (!target) return;
+        const itemId = this.getDataAttribute('inboxItemId');
+        const row = document.getElementById(`inbox-item-${itemId}`)?.querySelector<HTMLElement>('[data-inbox-row-button]');
+        const panel = target.closest<HTMLElement>('[bloomerp-component="resizable-div"]');
+        htmx.swap(target, '', { swapStyle: 'innerHTML', swapDelay: 0, settleDelay: 0 });
+        if (panel) panel.hidden = true;
+        row?.focus();
     }
 
     private executeInboxAction(trigger: HTMLElement): void {

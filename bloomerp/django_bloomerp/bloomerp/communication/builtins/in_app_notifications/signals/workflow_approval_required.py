@@ -39,7 +39,7 @@ def predicate(*, instance:WorkflowRunStep, created: bool, raw: bool = False, **k
     return created and instance.action_id == "HUMAN_IN_THE_LOOP"
 
 def handle(folders, *, instance, **kwargs):
-    from bloomerp.communication.system_messages.base import SystemMessage
+    from bloomerp.communication.builtins.in_app_notifications.base import SystemMessage
     deliveries = []
     
     run = instance.workflow_run

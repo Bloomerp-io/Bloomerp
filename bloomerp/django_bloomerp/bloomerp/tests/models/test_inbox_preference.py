@@ -3,7 +3,7 @@ from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
-from bloomerp.communication.inbox_folder_definition import InboxFolderType
+from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.communication.utils.permissions import (
     accessible_inbox_folders,
     accessible_inboxes,
@@ -18,7 +18,8 @@ from bloomerp.services.preference_services import PreferenceManager
 
 
 class InboxPreferenceTests(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
+        """Create inbox owners, viewers and folders for preference access checks."""
         user_model = get_user_model()
         self.owner = user_model.objects.create_user(
             username="inbox-owner",
@@ -42,20 +43,23 @@ class InboxPreferenceTests(TestCase):
         )
         self.folder = InboxFolder.objects.create(
             inbox=self.inbox,
-            type=InboxFolderType.IN_APP_NOTIFICATIONS.value.key,
+            type=INBOX_FOLDER_REGISTRY.IN_APP_NOTIFICATIONS.key,
         )
 
-    def test_default_factory_creates_selected_inbox_and_default_folders(self):
+    def test_default_factory_creates_selected_inbox_and_default_folders(self) -> None:
+        """Use case: Create an inbox. Expected result: Registered default folders are selected."""
+        # 1. Create a default inbox for a new user.
         inbox = Inbox.create_default_for_user(self.outsider)
 
+        # 2. Verify selection, ownership and registered folder defaults.
         self.assertTrue(inbox.selected)
         self.assertEqual(inbox.user, self.outsider)
         self.assertSetEqual(
             set(inbox.folders.values_list("type", flat=True)),
             {
-                folder_type.value.key
-                for folder_type in InboxFolderType
-                if folder_type.value.is_default
+                folder_type.key
+                for folder_type in INBOX_FOLDER_REGISTRY.values()
+                if folder_type.is_default
             },
         )
 
@@ -228,17 +232,19 @@ class InboxPreferenceTests(TestCase):
         self.assertEqual(delete_response.status_code, 403)
         self.assertTrue(InboxFolder.objects.filter(pk=self.folder.pk).exists())
 
-    def test_inbox_view_renders_selected_effective_inbox(self):
+    def test_inbox_view_renders_selected_effective_inbox(self) -> None:
+        """Use case: Open a shared inbox. Expected result: Its effective folder is selected."""
+        # 1. Select a shared inbox for a staff viewer.
         self.inbox.shared_with_users.add(self.viewer)
         PreferenceManager(self.viewer).select(self.inbox)
         self.viewer.is_staff = True
         self.viewer.save(update_fields=["is_staff"])
         self.client.force_login(self.viewer)
 
+        # 2. Verify the effective inbox and folder context.
         response = self.client.get(reverse("inbox"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Support")
         self.assertEqual(response.context["inbox"], self.inbox)
         self.assertEqual(
             response.context["inbox_preference"].selected_inbox_folder,

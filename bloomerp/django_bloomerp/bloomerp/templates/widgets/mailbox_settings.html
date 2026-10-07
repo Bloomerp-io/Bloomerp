@@ -1,0 +1,23 @@
+{% load i18n %}
+<div bloomerp-component="mailbox-settings" class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+    {% for subwidget in widget.subwidgets %}
+        {% if forloop.counter0 == 0 %}
+            <label for="{{ subwidget.attrs.id }}" class="min-w-0 flex-1 basis-40">
+                <span class="sr-only">{% translate "Label" %}</span>
+                {% include subwidget.template_name with widget=subwidget %}
+            </label>
+        {% elif forloop.counter0 == 1 or forloop.counter0 == 2 %}
+            <label for="{{ subwidget.attrs.id }}" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-gray-600">
+                {% include subwidget.template_name with widget=subwidget %}
+                <span>{% if forloop.counter0 == 1 %}{% translate "Sent folder" %}{% else %}{% translate "Main folder" %}{% endif %}</span>
+            </label>
+        {% else %}
+            <div class="inline-flex shrink-0 items-center gap-1">
+                {% include subwidget.template_name with widget=subwidget %}
+                <label for="{{ subwidget.attrs.id }}_picker" class="sr-only">{% translate "Icon color" %}</label>
+                <input type="color" id="{{ subwidget.attrs.id }}_picker" data-mailbox-color-picker value="{{ subwidget.value|default:'#4154f1' }}" class="size-8 cursor-pointer rounded-md border border-gray-200 bg-transparent p-0.5" title="{% translate 'Icon color' %}">
+                <button type="button" data-mailbox-color-clear class="inline-flex size-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label="{% translate 'Clear icon color' %}" title="{% translate 'Clear icon color' %}"><i class="fa fa-times" aria-hidden="true"></i></button>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>

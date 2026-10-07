@@ -8,15 +8,16 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
 
-from bloomerp.communication.emails.base_adapter import BloomerpEmail, EmailAttachment
-from bloomerp.communication.emails.email_providers import EmailProviderDefinition
-from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.mailboxes import merge_mailboxes, normalize_mailboxes
+from bloomerp.communication.builtins.emails.base_adapter import BloomerpEmail, EmailAttachment
+from bloomerp.communication.builtins.emails.email_providers import EmailProviderDefinition
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 
 if TYPE_CHECKING:
     from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
-    from bloomerp.communication.emails.base_adapter import BaseEmailAdapter
+    from bloomerp.communication.builtins.emails.base_adapter import BaseEmailAdapter
 
 DEEP_QUERY_LIMIT = 50
 DEFAULT_MAILBOX = "INBOX"
@@ -225,6 +226,8 @@ def _query_local_email_items(
     filters: dict[str, str] | None,
     folder: "InboxFolder",
 ) -> QuerySet["InboxItem"]:
+    """Apply mailbox, search and shared predicates before deciding whether to fetch emails."""
+    from bloomerp.communication.common.queries import apply_inbox_filters
     from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
@@ -258,7 +261,9 @@ def _query_local_email_items(
 
         queryset = queryset.filter(is_read=parse_bool_parameter(is_read_filter))
 
-    return queryset.distinct().order_by("-datetime_received", "-datetime_created")
+    return apply_inbox_filters(queryset, filters).distinct().order_by(
+        "-datetime_received", "-datetime_created"
+    )
 
 
 def _upsert_email_inbox_item_result(
@@ -331,7 +336,13 @@ def query_emails(
     Returns:
         QuerySet[InboxItem]: Matching email inbox items.
     """
-    filters = filters or {}
+    filters = dict(filters or {})
+    if "mailbox" not in filters:
+        account = folder.related_object()
+        mapping = normalize_mailboxes(account.mailboxes) if account else {}
+        main = next((name for name, settings in mapping.items() if settings["main_folder"]), None)
+        if main:
+            filters["mailbox"] = main
     mailbox = filters.get("mailbox") or DEFAULT_MAILBOX
     
     local_queryset = _query_local_email_items(filters, folder)
@@ -379,8 +390,9 @@ def get_mailboxes_for_account(email_account: EmailAccount) -> list[str]:
 
 
 def refresh_mailboxes_for_account(email_account: EmailAccount, *, save: bool = True) -> list[str]:
+    """Refresh server folder names without discarding user mailbox configuration."""
     mailboxes = get_mailboxes_for_account(email_account)
-    email_account.mailboxes = mailboxes
+    email_account.mailboxes = merge_mailboxes(mailboxes, email_account.mailboxes)
     if save:
         email_account.save(update_fields=["mailboxes", "datetime_updated"])
     return mailboxes

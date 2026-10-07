@@ -49,9 +49,9 @@ class SystemMessageDefinition:
 
 
 # Import concrete implementations only after the base contract is defined.
-from bloomerp.communication.system_messages.general import GeneralSystemMessage  # noqa: E402
-from bloomerp.communication.system_messages.workflow import WorkflowSystemMessage  # noqa: E402
-from bloomerp.communication.system_messages.form_submission import FormSubmissionMessage
+from bloomerp.communication.builtins.in_app_notifications.general import GeneralSystemMessage  # noqa: E402
+from bloomerp.communication.builtins.in_app_notifications.workflow import WorkflowSystemMessage  # noqa: E402
+from bloomerp.communication.builtins.in_app_notifications.form_submission import FormSubmissionMessage
 
 
 class SystemMessage(BaseTypeDefinition):

@@ -1,0 +1,17 @@
+{% load i18n %}
+<div {% if widget.attrs.id %}id="{{ widget.attrs.id }}"{% endif %} bloomerp-component="mapping-widget" class="w-full overflow-hidden rounded-xl border border-gray-200" data-mapping-name="{{ widget.name }}">
+    <input type="hidden" name="{{ widget.name }}__present" value="1">
+    <div class="hidden grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-500 sm:grid">
+        <span>{% translate "Provider mailbox" %}</span>
+        <span>{% translate "Display label and settings" %}</span>
+    </div>
+    <div data-mapping-rows class="divide-y divide-gray-200">
+        {% for row in widget.rows %}
+            <div data-mapping-row class="grid items-center gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] sm:gap-4">
+                <input type="hidden" name="{{ widget.name }}__rows" value="{{ row.index }}">
+                <div data-mapping-key class="min-w-0">{{ row.left }}</div>
+                <div data-mapping-value class="min-w-0">{{ row.right }}</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>

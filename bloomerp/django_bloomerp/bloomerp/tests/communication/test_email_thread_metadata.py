@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 from django.test import SimpleTestCase
 
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 
 
 class ImapEmailThreadMetadataTests(SimpleTestCase):

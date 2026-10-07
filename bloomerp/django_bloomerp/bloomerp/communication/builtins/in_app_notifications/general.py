@@ -1,7 +1,7 @@
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 
-from bloomerp.communication.system_messages.base import (
+from bloomerp.communication.builtins.in_app_notifications.base import (
     BaseSystemMessageType,
     SystemMessageItemData,
 )

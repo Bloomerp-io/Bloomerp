@@ -20,10 +20,10 @@ from typing import Self
 
 from django.core.exceptions import ValidationError
 
-from bloomerp.communication.emails.base_adapter import BloomerpEmail
-from bloomerp.communication.emails.base_adapter import BaseEmailAdapter
-from bloomerp.communication.emails.base_adapter import EmailAttachment
-from bloomerp.communication.emails.base_adapter import EmailAttachmentMetadata
+from bloomerp.communication.builtins.emails.base_adapter import BloomerpEmail
+from bloomerp.communication.builtins.emails.base_adapter import BaseEmailAdapter
+from bloomerp.communication.builtins.emails.base_adapter import EmailAttachment
+from bloomerp.communication.builtins.emails.base_adapter import EmailAttachmentMetadata
 
 if TYPE_CHECKING:
     from bloomerp.models.communication.email_account import EmailAccount
@@ -303,7 +303,12 @@ class ImapSmtpAdapter(BaseEmailAdapter):
                 raise ValidationError("The email was sent, but its Sent copy could not be saved.")
 
     def _sent_mailbox(self) -> str:
-        """Find a selectable Sent folder by its special-use flag or common name."""
+        """Use the configured Sent folder, falling back to server flags and common names."""
+        from bloomerp.communication.builtins.emails.mailboxes import normalize_mailboxes
+
+        for name, settings in normalize_mailboxes(self.email_account.mailboxes).items():
+            if settings["sent_folder"]:
+                return name
         status, data = self.connect().list()
         if status != "OK" or not data:
             raise ValidationError("Unable to discover the Sent folder.")

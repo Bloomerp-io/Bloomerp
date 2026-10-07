@@ -8,8 +8,30 @@
 </div>
 {% endif %}
 
-{% for item in items %}
-<c-features.communication.inbox_item :item="item"/>
+{% for group in groups %}
+<div data-inbox-group-id="{{ group.key }}">
+    {% if group.related_items %}
+        <details class="group/conversation border-b border-gray-200" data-inbox-conversation>
+            <summary data-inbox-selection-row tabindex="-1" class="flex cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden">
+                <span class="flex shrink-0 items-center gap-1 pl-2 text-xs text-gray-500" title="{% blocktrans count counter=group.related_items|length %}{{ counter }} related message{% plural %}{{ counter }} related messages{% endblocktrans %}">
+                    <i class="fa fa-chevron-right transition-transform group-open/conversation:rotate-90" aria-hidden="true"></i>
+                    <span aria-hidden="true">{{ group.related_items|length }}</span>
+                    <span class="sr-only">{% blocktrans count counter=group.related_items|length %}{{ counter }} related message{% plural %}{{ counter }} related messages{% endblocktrans %}</span>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <c-features.communication.inbox_item :item="group.item"/>
+                </div>
+            </summary>
+            <div class="ml-5 border-l border-gray-200">
+                {% for related in group.related_items %}
+                    <div data-inbox-selection-row class="border-t border-gray-200"><c-features.communication.inbox_item :item="related"/></div>
+                {% endfor %}
+            </div>
+        </details>
+    {% else %}
+        <div data-inbox-selection-row class="border-b border-gray-200"><c-features.communication.inbox_item :item="group.item"/></div>
+    {% endif %}
+</div>
 
 {% empty %}
 {% if not page_obj or page_obj.number == 1 %}

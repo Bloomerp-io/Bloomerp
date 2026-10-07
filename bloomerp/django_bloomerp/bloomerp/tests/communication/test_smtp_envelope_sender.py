@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.views.communication.create_email_account import EmailAccountSettingsForm
 

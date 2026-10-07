@@ -1,6 +1,6 @@
 """Registry for BloomERP email providers."""
 
-from bloomerp.communication.emails.email_providers import (
+from bloomerp.communication.builtins.emails.email_providers import (
     EmailProvider,
     EmailProviderDefinition,
 )
