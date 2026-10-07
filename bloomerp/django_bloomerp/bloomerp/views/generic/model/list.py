@@ -1,5 +1,3 @@
-from typing import Any
-
 from django.db.models import Model
 from django.views.generic import TemplateView
 
@@ -13,7 +11,7 @@ from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 
 @router.register(
     path="/",
-    name="{model} List",
+    name="{model_plural}",
     url_name="model",
     description="List of records for {model} model",
     route_type="model",
@@ -32,14 +30,3 @@ class BloomerpListView(BaseBloomerpView, BloomerpModelContextMixin, TemplateView
             self.model,
             BloomerpPermission.VIEW
         )
-
-    def get_context_data(self, **kwargs: Any) -> dict:
-        """Use the model's plural name for this list page's visible labels."""
-        context = super().get_context_data(**kwargs)
-        title = self.model._meta.verbose_name_plural.capitalize()
-        context["title"] = title
-        context["route_title"] = title
-        breadcrumbs = context.get("breadcrumbs", [])
-        if breadcrumbs and breadcrumbs[-1].get("active"):
-            breadcrumbs[-1]["text"] = title
-        return context

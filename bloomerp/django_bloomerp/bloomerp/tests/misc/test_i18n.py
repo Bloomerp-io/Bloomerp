@@ -11,6 +11,7 @@ from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils.functional import Promise
 from django.utils.translation import override
+from django.views.generic import TemplateView
 
 from bloomerp.config.definition import (
     BloomerpAppI18nSettings,
@@ -110,6 +111,29 @@ class TestI18nConfiguration(SimpleTestCase):
                 "/misc/workspaces/create/",
             )
 
+    def test_plural_route_metadata_preserves_identity_across_languages(self) -> None:
+        """Format plural route names and descriptions without changing route identity."""
+        registry = BloomerpRouteRegistry()
+        with override("en"):
+            registry.register(
+                path="/",
+                name="{model_plural}",
+                description="Browse {model_plural}",
+                url_name="model",
+                route_type="model",
+                models=[Workspace],
+            )(TemplateView)
+
+        route = registry.routes[0]
+        self.assertEqual(route.name, "Workspaces")
+        self.assertEqual(route.description, "Browse Workspaces")
+        for language, label in (("en", "Workspaces"), ("nl", "Werkruimten")):
+            with self.subTest(language=language), override(language):
+                self.assertEqual(route.localized_name, label)
+                self.assertEqual(route.localized_description, f"Browse {label}")
+                self.assertEqual(route.url_name, "workspaces_model")
+                self.assertEqual(route.path, "/misc/workspaces/")
+
     def test_command_calculates_translation_targets_per_app(self):
         english_app = SimpleNamespace(
             label="bloomerp",
@@ -137,8 +161,11 @@ class TestI18nConfiguration(SimpleTestCase):
         self.assertEqual(normalize_language_code("pt_BR"), "pt-br")
         self.assertEqual(catalog_locale("pt-br"), "pt_BR")
 
-    def test_route_localization_translates_template_before_model_formatting(self):
-        model = SimpleNamespace(_meta=SimpleNamespace(verbose_name="Cliente"))
+    def test_route_localization_translates_template_before_model_formatting(self) -> None:
+        """Translate the route template before substituting model metadata."""
+        model = SimpleNamespace(
+            _meta=SimpleNamespace(verbose_name="Cliente", verbose_name_plural="Clientes")
+        )
         route = BloomerpRoute(
             path="/clientes/",
             route_type=RouteType.MODEL,
@@ -159,8 +186,11 @@ class TestI18nConfiguration(SimpleTestCase):
         ):
             self.assertEqual(route.localized_name, "Lista de Cliente")
 
-    def test_route_localization_formats_related_model_metadata_at_runtime(self):
-        model = SimpleNamespace(_meta=SimpleNamespace(verbose_name="Account"))
+    def test_route_localization_formats_related_model_metadata_at_runtime(self) -> None:
+        """Preserve related-model substitutions alongside model metadata."""
+        model = SimpleNamespace(
+            _meta=SimpleNamespace(verbose_name="Account", verbose_name_plural="Accounts")
+        )
         route = BloomerpRoute(
             path="accounts/<int:pk>/contacts/",
             route_type=RouteType.DETAIL,

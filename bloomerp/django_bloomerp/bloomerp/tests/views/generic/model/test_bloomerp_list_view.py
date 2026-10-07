@@ -29,21 +29,21 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
                 name="Full page shows the model plural",
                 model=self.CustomerModel,
                 user=self.admin_user,
-                expected=ExpectedResult(response_validators=self.has_title("Customers")),
+                expected=ExpectedResult(response_validators=self.has_title("customers")),
             ),
             ModelRequestScenario(
                 name="HTMX navigation shows the model plural",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 headers={"HX-Request": "true", "HX-Target": "main-content"},
-                expected=ExpectedResult(response_validators=self.has_title("Customers")),
+                expected=ExpectedResult(response_validators=self.has_title("customers")),
             ),
             ModelRequestScenario(
                 name="History restoration shows the model plural",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 headers={"HX-Request": "true", "HX-History-Restore-Request": "true"},
-                expected=ExpectedResult(response_validators=self.has_title("Customers")),
+                expected=ExpectedResult(response_validators=self.has_title("customers")),
             ),
             ModelRequestScenario(
                 name="Custom lazy plural is used without adding a suffix",
@@ -57,7 +57,7 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
                 name="Multiword plural keeps existing capitalization conventions",
                 model=TodoLabel,
                 user=self.admin_user,
-                expected=ExpectedResult(response_validators=self.has_title("Todo labels")),
+                expected=ExpectedResult(response_validators=self.has_title("Todo Labels")),
             ),
             ModelRequestScenario(
                 name="Lazy plural is translated in the request language",
@@ -80,15 +80,17 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
         ]
 
     def has_title(self, title: str) -> Callable[[HttpResponse], bool]:
-        """Check the actual breadcrumb, context labels and unchanged route URL."""
+        """Check the rendered breadcrumb uses the route label and original URL."""
         def validate(response: HttpResponse) -> bool:
             """Validate the visible active label and this request's list context."""
             context = response.context
+            route = self.get_route(model=context["model"])
             active = BeautifulSoup(response.content, "html.parser").select_one(
                 'nav[aria-label="Breadcrumb"] a[aria-current="page"]'
             )
             return (
-                context["title"] == title
+                route.name_message == "{model_plural}"
+                and route.localized_name == title
                 and context["route_title"] == title
                 and active is not None
                 and active.get_text(strip=True) == title.title()
