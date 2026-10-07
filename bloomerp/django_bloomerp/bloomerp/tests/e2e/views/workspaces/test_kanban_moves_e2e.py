@@ -227,6 +227,69 @@ class TestKanbanMovesE2E(BloomerpE2ETestCase):
         """Delay the save until the source intersection loader has fetched its next page."""
         self.held_moves.append(route)
 
+    def expect_pending_animation(self) -> None:
+        """Check that only the saving card spins and reduced motion retains a static indicator."""
+        card = self.target_card()
+        expect(card).to_have_attribute("aria-busy", "true")
+        expect(self.board().locator('[aria-busy="true"]')).to_have_count(1)
+        self.assertEqual(
+            card.evaluate("element => getComputedStyle(element, '::after').animationName"),
+            "kanban-card-saving",
+        )
+        self.page.emulate_media(reduced_motion="reduce")
+        self.assertEqual(
+            card.evaluate("element => getComputedStyle(element, '::after').animationName"),
+            "none",
+        )
+        self.assertEqual(
+            card.evaluate("element => getComputedStyle(element, '::after').content"),
+            '""',
+        )
+        self.page.emulate_media(reduced_motion="no-preference")
+
+    def expect_finished_animation(self) -> None:
+        """Verify pending accessibility and visual state disappear once the save finishes."""
+        card = self.target_card()
+        expect(card).not_to_have_attribute("data-kanban-moving", "true")
+        expect(card).not_to_have_attribute("aria-busy", "true")
+        self.assertEqual(
+            card.evaluate("element => getComputedStyle(element, '::after').content"),
+            "none",
+        )
+
+    def check_loading_animation(self) -> None:
+        """Hold cross-lane and same-lane saves, then reject a move and verify indicator cleanup."""
+        self.held_moves = []
+        self.page.route("**/renderer-operation/move/**", self.hold_move)
+        self.board().focus()
+        self.page.keyboard.press("ArrowDown")
+        for _ in range(15):
+            self.page.keyboard.press("ArrowDown")
+        for same_lane, rejected in [(False, False), (True, False), (False, True)]:
+            direction = "Alt+ArrowLeft" if same_lane or rejected else "Alt+ArrowRight"
+            self.page.keyboard.press(direction)
+            if same_lane:
+                self.page.keyboard.press("ArrowRight")
+                self.page.keyboard.press("ArrowDown")
+            expect(self.target_card()).not_to_have_attribute("aria-busy", "true")
+            with self.page.expect_request("**/renderer-operation/move/**"):
+                self.page.keyboard.press("Enter")
+            self.expect_pending_animation()
+            self.assertEqual(len(self.held_moves), 1)
+            with self.expect_response_for(
+                self.board().get_attribute("data-kanban-move-url"), method="POST"
+            ):
+                route = self.held_moves.pop()
+                if rejected:
+                    self.deny_move(route)
+                else:
+                    route.continue_()
+            self.expect_finished_animation()
+        self.page.unroute("**/renderer-operation/move/**", self.hold_move)
+        self.target_customer.refresh_from_db()
+        self.assertEqual(self.target_customer.age, 31)
+        self.assertEqual(self.board_reload_requests, [])
+
     def load_during_move_and_check_sort(self) -> None:
         """Load the source before a save commits, then preserve order without a board reload."""
         self.page.route("**/renderer-operation/move/**", self.hold_move)
@@ -345,6 +408,21 @@ class TestKanbanMovesE2E(BloomerpE2ETestCase):
         """Declare saved moves, same-lane edits, further expansion and rejected saves."""
         self.create_fixtures()
         return [
+            E2ERequestScenario(
+                name="Only the saving card animates until success or rollback",
+                cleanup=self.reset_target_card,
+                user=self.admin_user,
+                url=self.workspace.get_absolute_url(),
+                actions=[
+                    E2EAction(
+                        name="Expand the source lane", execute=self.load_expanded_source
+                    ),
+                    E2EAction(
+                        name="Delay saves and check their loading state",
+                        execute=self.check_loading_animation,
+                    ),
+                ],
+            ),
             E2ERequestScenario(
                 name="Expanded boards keep state through keyboard moves and category changes",
                 user=self.admin_user,

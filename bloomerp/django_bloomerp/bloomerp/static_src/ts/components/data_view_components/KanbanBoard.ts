@@ -336,6 +336,7 @@ export class KanbanBoard extends BaseDataViewComponent {
             this.pendingSourceIds.set(originDropzone, pending);
         }
         card.dataset.kanbanMoving = 'true';
+        card.setAttribute('aria-busy', 'true');
         if (!sameLane) {
             this.removeEmptyPlaceholder(destinationDropzone);
             destinationDropzone.insertBefore(card, destinationDropzone.querySelector('[data-kanban-column-loader], .kanban-destinations'));
@@ -357,6 +358,7 @@ export class KanbanBoard extends BaseDataViewComponent {
             this.updateCounts();
         }
         delete card.dataset.kanbanMoving;
+        card.removeAttribute('aria-busy');
         if (response !== null && card.isConnected) {
             this.updateCard(card, response.card_html);
             if (response.ordered_ids) this.orderCards(destinationDropzone, response.ordered_ids);

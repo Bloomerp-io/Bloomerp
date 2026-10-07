@@ -5,8 +5,10 @@ from unittest.mock import patch
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db import connection
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
+from django.test.utils import CaptureQueriesContext
 
 from bloomerp.models import (
     ApplicationField,
@@ -188,6 +190,21 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
             str(self.cards[index].pk) for index in [0, 3, 4]
         ]
 
+    def capture_move_queries(self, scenario: RequestScenario) -> None:
+        """Record request queries to guard against counting every board row during a save."""
+        self.move_queries = self.enterContext(CaptureQueriesContext(connection))
+
+    def validate_move_without_board_count(self, response: HttpResponse) -> bool:
+        """Verify saving a single card never requests the full filtered board total."""
+        table = self.CustomerModel._meta.db_table
+        counts = [
+            query["sql"]
+            for query in self.move_queries
+            if "COUNT(" in query["sql"].upper() and table in query["sql"]
+        ]
+        self.assertEqual(counts, [])
+        return self.validate_ascending_order(response)
+
     def prepare_descending_order(self, scenario: RequestScenario) -> None:
         """Use descending names to verify ordering follows the saved preference."""
         self.preference.refresh_from_db()
@@ -236,6 +253,7 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
                 name="An incoming card receives ascending destination order",
                 method="POST",
                 user=self.admin_user,
+                prepare=self.capture_move_queries,
                 view_kwargs=self.route_kwargs("move"),
                 data={
                     "object_id": self.cards[0].pk,
@@ -243,7 +261,7 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
                     "kanban_loaded_ids": f"{self.cards[3].pk},{self.cards[4].pk}",
                 },
                 expected=ExpectedResult(
-                    response_validators=self.validate_ascending_order
+                    response_validators=self.validate_move_without_board_count
                 ),
             ),
             RequestScenario(

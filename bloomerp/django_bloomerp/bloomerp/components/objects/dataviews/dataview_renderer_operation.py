@@ -53,6 +53,8 @@ def dataview_action(
         request,
         content_type_id,
         preference=preference,
+        # A card save renders one object and orders only loaded destination IDs.
+        calculate_count=not (preference.view_type == "kanban" and action == "move"),
     )
     if isinstance(state, HttpResponse):
         return state
