@@ -2,21 +2,23 @@
 
 import datetime
 from datetime import timedelta
+from typing import Any
 
 from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 
-from bloomerp.communication.emails.actions import (
+from bloomerp.communication.builtins.emails.actions import (
     DEFAULT_MAILBOX,
     _resolve_email_adapter_for_account,
     _upsert_email_inbox_item_result,
 )
-from bloomerp.communication.emails.email_providers import (
+from bloomerp.communication.builtins.emails.email_providers import (
     EmailProviderDefinition,
     EmailSyncMode,
 )
-from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.mailboxes import normalize_mailboxes
 from bloomerp.communication.inbox_sources import (
     InboxSourceDelivery,
     InboxSourceExecutionResult,
@@ -68,9 +70,9 @@ def handle_email_account_sync(
     to_date: datetime.date | datetime.datetime | None = None,
     limit: int = DEFAULT_SYNC_LIMIT,
     mailboxes: list[str] | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> InboxSourceExecutionResult:
-    """Synchronize one account and return its delivery outcome."""
+    """Synchronize one account and deliver new messages outside its configured Sent mailbox."""
     email_account = EmailAccount.objects.get(pk=email_account_id)
     now = timezone.now()
     lock_acquired = (
@@ -105,6 +107,11 @@ def handle_email_account_sync(
                 metrics={"email_account_id": str(email_account.pk)},
             )
         else:
+            mailbox_mapping = normalize_mailboxes(email_account.mailboxes or {})
+            sent_mailboxes = {
+                mailbox for mailbox, settings in mailbox_mapping.items()
+                if settings["sent_folder"]
+            }
             selected_mailboxes = [mailbox for mailbox in (mailboxes or []) if mailbox]
             if not selected_mailboxes:
                 selected_mailboxes = [
@@ -131,14 +138,20 @@ def handle_email_account_sync(
             deliveries = []
             for folder in folders:
                 created_items = []
+                sent_item_ids = set()
                 with transaction.atomic():
                     for email in emails:
                         inbox_item, created = _upsert_email_inbox_item_result(
                             email,
                             folder,
                         )
+                        if email.mailbox in sent_mailboxes:
+                            sent_item_ids.add(inbox_item.pk)
                         if created:
                             created_items.append(inbox_item)
+                created_items = [
+                    item for item in created_items if item.pk not in sent_item_ids
+                ]
                 if created_items:
                     deliveries.append(
                         InboxSourceDelivery(

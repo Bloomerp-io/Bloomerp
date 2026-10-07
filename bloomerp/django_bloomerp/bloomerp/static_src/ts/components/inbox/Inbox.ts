@@ -6,13 +6,17 @@ import { insertSkeleton } from "@/utils/animations";
 import { getCsrfToken } from "@/utils/cookies";
 
 export class Inbox extends BaseComponent {
+    private selectedItemId: string | null = null;
     private searchInput: HTMLInputElement | null = null;
     private searchInputHandler: (() => void) | null = null;
     private searchDebounceTimer: number | null = null;
     private inboxActionClickHandler: ((event: Event) => void) | null = null;
     private subfolderClickHandler: ((event: Event) => void) | null = null;
+    private activeMailboxFilters = new Map<string, string>();
+    private keyboardController: AbortController | null = null;
     private filterClickHandler: ((event: Event) => void) | null = null;
 
+    /** Load the inbox and attach its local interaction handlers. */
     public initialize(): void {
         if (!this.element) return;
 
@@ -26,10 +30,105 @@ export class Inbox extends BaseComponent {
         this.setupFilterListener();
         this.setupSearchInputListener();
         this.setupInboxActionListener();
+        this.setupKeyboardNavigation();
+        this.searchInput?.focus();
         
     }
 
-    private queryInbox(query?:Map<string, string>, folderId?: string) {
+    /** Navigate visible message rows without fetching a preview until activation. */
+    private setupKeyboardNavigation(): void {
+        this.keyboardController?.abort();
+        this.keyboardController = new AbortController();
+        this.element?.addEventListener('keydown', this.handleListKeydown, {
+            signal: this.keyboardController.signal,
+        });
+        this.element?.addEventListener('focusin', this.handleRowFocus, {
+            signal: this.keyboardController.signal,
+        });
+        this.element?.addEventListener('toggle', this.handleConversationToggle, {
+            capture: true,
+            signal: this.keyboardController.signal,
+        });
+    }
+
+    /** Keep the root message's expanded state accessible after pointer or keyboard toggles. */
+    private handleConversationToggle = (event: Event): void => {
+        const conversation = event.target;
+        if (!(conversation instanceof HTMLDetailsElement) || !conversation.hasAttribute('data-inbox-conversation')) return;
+        conversation.querySelector('[data-inbox-row-button]')?.setAttribute('aria-expanded', String(conversation.open));
+    };
+
+    /** Move focus with arrows/Home/End; Enter opens a message and Space toggles its conversation. */
+    private handleListKeydown = (event: KeyboardEvent): void => {
+        const target = event.target as HTMLElement | null;
+        const row = target?.closest<HTMLElement>('[data-inbox-row-button]');
+        const fromSearch = target === this.searchInput;
+        if (!row && !fromSearch) return;
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        if (row && event.key === ' ') {
+            event.preventDefault();
+            const conversation = row.closest<HTMLDetailsElement>('[data-inbox-conversation]');
+            if (!event.repeat && conversation?.querySelector('summary')?.contains(row)) {
+                conversation.open = !conversation.open;
+            }
+            return;
+        }
+        const rows = Array.from(this.element?.querySelectorAll<HTMLElement>('#inbox-items [data-inbox-row-button]') || [])
+            .filter(this.isVisibleRow);
+        if (!rows.length) return;
+        const index = row ? rows.indexOf(row) : -1;
+        let next = index;
+        if (event.key === 'ArrowDown') next = Math.min(index + 1, rows.length - 1);
+        else if (event.key === 'ArrowUp' && row) next = Math.max(index - 1, 0);
+        else if (event.key === 'Home' && row) next = 0;
+        else if (event.key === 'End' && row) next = rows.length - 1;
+        else return;
+        event.preventDefault();
+        rows[next]?.focus();
+    };
+
+    /** Exclude message bodies hidden by a collapsed conversation, even when they retain layout boxes. */
+    private isVisibleRow(element: HTMLElement): boolean {
+        const conversation = element.closest<HTMLDetailsElement>('[data-inbox-conversation]');
+        if (conversation && !conversation.open && !conversation.querySelector('summary')?.contains(element)) {
+            return false;
+        }
+        return element.getClientRects().length > 0;
+    }
+
+    /** Track the focused message so selection survives read-status fragment replacements. */
+    private handleRowFocus = (event: FocusEvent): void => {
+        const row = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-inbox-row-button]');
+        if (!row) return;
+        this.selectedItemId = row.closest<HTMLElement>('[data-inbox-item-id]')?.dataset.inboxItemId || null;
+        this.updateRowSelection();
+    };
+
+    /** Highlight the complete selected row, including the conversation toggle. */
+    private updateRowSelection(): void {
+        for (const row of this.element?.querySelectorAll<HTMLElement>('[data-inbox-selection-row]') || []) {
+            const item = row.querySelector<HTMLElement>('[data-inbox-item-id]');
+            row.toggleAttribute('data-inbox-selected', !!this.selectedItemId && item?.dataset.inboxItemId === this.selectedItemId);
+        }
+    }
+
+    /** Avoid repeating expanded conversations when their anchors cross pagination boundaries. */
+    public override onAfterSwap(): void {
+        this.updateRowSelection();
+        const seen = new Set<string>();
+        for (const group of this.element?.querySelectorAll<HTMLElement>('[data-inbox-group-id]') || []) {
+            const key = group.dataset.inboxGroupId || '';
+            if (seen.has(key)) group.remove();
+            else seen.add(key);
+        }
+        for (const conversation of this.element?.querySelectorAll<HTMLDetailsElement>('[data-inbox-conversation]') || []) {
+            conversation.querySelector('[data-inbox-row-button]')?.setAttribute('aria-expanded', String(conversation.open));
+        }
+    }
+
+    /** Query the current account while retaining an explicitly selected mailbox. */
+    private queryInbox(query?: Map<string, string>, folderId?: string): void {
+        query = new Map([...this.activeMailboxFilters, ...(query || new Map<string, string>())]);
         folderId = folderId || this.getDataAttribute('inboxFolderId') || '';
         if (!folderId) return;
         const target = this.element?.querySelector('#inbox-items');
@@ -150,10 +249,11 @@ export class Inbox extends BaseComponent {
         this.element.addEventListener('click', this.filterClickHandler);
     }
 
-    private setupSubfolderFilterListener() {
+    /** Keep subsequent searches scoped to the explicitly selected account and mailbox. */
+    private setupSubfolderFilterListener(): void {
         if (!this.element) return;
 
-        this.subfolderClickHandler = (event: Event) => {
+        this.subfolderClickHandler = (event: Event): void => {
             const trigger = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-inbox-subfolder]');
             if (!trigger || !this.element?.contains(trigger)) return;
 
@@ -166,7 +266,10 @@ export class Inbox extends BaseComponent {
                 filters = {};
             }
 
-            this.queryInbox(new Map(Object.entries(filters)), trigger.dataset.inboxSubfolderFolderId);
+            this.activeMailboxFilters = new Map(Object.entries(filters));
+            const folderId = trigger.dataset.inboxSubfolderFolderId;
+            if (folderId && this.element) this.element.dataset.inboxFolderId = folderId;
+            this.queryInbox(this.activeMailboxFilters, folderId);
         };
 
         this.element.addEventListener('click', this.subfolderClickHandler);
@@ -283,7 +386,10 @@ export class Inbox extends BaseComponent {
     }
 
 
+    /** Release listeners and timers owned by this inbox instance. */
     public destroy(): void {
+        this.keyboardController?.abort();
+        this.keyboardController = null;
         if (this.element && this.inboxActionClickHandler) {
             this.element.removeEventListener('click', this.inboxActionClickHandler);
         }

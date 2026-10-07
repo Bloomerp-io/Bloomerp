@@ -1,6 +1,6 @@
 from django.db.models import Q
 
-from bloomerp.communication.system_messages.base import SystemMessage
+from bloomerp.communication.builtins.in_app_notifications.base import SystemMessage
 
 
 def resolve_system_message_folders(

@@ -12,7 +12,7 @@ from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 
-from bloomerp.communication.emails.base_adapter import EmailAttachment
+from bloomerp.communication.builtins.emails.base_adapter import EmailAttachment
 from bloomerp.communication.utils.permissions import accessible_inbox_folders
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.email_draft import EmailDraft

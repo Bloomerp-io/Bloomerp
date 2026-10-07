@@ -4,7 +4,8 @@ from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
-from bloomerp.communication.utils.permissions import accessible_inbox_folders
+from bloomerp.communication.utils.permissions import accessible_inbox_folders, accessible_inbox_items
+from bloomerp.communication.definition import InboxItemGroup
 from bloomerp.router import router
 
 INBOX_PAGE_SIZE = 100
@@ -29,9 +30,11 @@ def render_inbox_folder(request: HttpRequest, folder_id: str) -> HttpResponse:
     error_message = None
     page_obj = None
 
+    query_params = request.GET.dict()
+    query_params.pop("page", None)
     try:
         paginator = Paginator(
-            inbox_folder.query_items(request.GET),
+            inbox_folder.query_items(query_params),
             INBOX_PAGE_SIZE,
         )
         page_obj = paginator.get_page(request.GET.get("page", 1))
@@ -43,11 +46,18 @@ def render_inbox_folder(request: HttpRequest, folder_id: str) -> HttpResponse:
     pagination_params = request.GET.copy()
     pagination_params.pop("page", None)
 
+    items = list(items)
+    grouping = inbox_folder.inbox_folder_type().on_group
+    groups = grouping(items, accessible_inbox_items(request.user)) if grouping else [
+        InboxItemGroup(item=item, related_items=[], key=str(item.pk)) for item in items
+    ]
+
     return render(
         request,
         "components/communication/render_inbox_folder_items.html",
         {
             "items": items,
+            "groups": groups,
             "inbox_folder": inbox_folder,
             "error_message": error_message,
             "page_obj": page_obj,

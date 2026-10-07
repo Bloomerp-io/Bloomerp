@@ -7,9 +7,9 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase, TestCase
 
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
-from bloomerp.communication.inbox_folder_definition import InboxFolderType
-from bloomerp.communication.emails.sync import handle_email_account_sync
+from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
+from bloomerp.communication.builtins.emails.sync import handle_email_account_sync
 from bloomerp.components.communication.emails.sync_emails import SyncEmailsForm
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
@@ -83,7 +83,8 @@ class ImapMailboxDiscoveryTests(SimpleTestCase):
 
 
 class EmailSyncSourceTests(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
+        """Create a connected email folder for synchronization tests."""
         user = get_user_model().objects.create_user(
             username="email-filter-user",
             email="email-filter-user@example.com",
@@ -98,12 +99,12 @@ class EmailSyncSourceTests(TestCase):
         )
         self.folder = InboxFolder.objects.create(
             inbox=inbox,
-            type=InboxFolderType.EMAIL.value.key,
+            type=INBOX_FOLDER_REGISTRY.EMAIL.key,
             related_object_id=str(self.email_account.pk),
         )
 
     @patch(
-        "bloomerp.communication.emails.sync._resolve_email_adapter_for_account"
+        "bloomerp.communication.builtins.emails.sync._resolve_email_adapter_for_account"
     )
     def test_account_sync_forwards_action_filters(
         self,

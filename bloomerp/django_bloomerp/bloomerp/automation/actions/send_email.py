@@ -2,8 +2,8 @@ import html
 import re
 from typing import Any
 
-from bloomerp.communication.emails.email_providers import EmailProviderDefinition
-from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.email_providers import EmailProviderDefinition
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget

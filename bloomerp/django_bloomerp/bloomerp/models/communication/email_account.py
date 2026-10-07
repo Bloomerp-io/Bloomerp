@@ -1,3 +1,7 @@
+from typing import Any
+
+from bloomerp.communication.builtins.emails.mailboxes import normalize_mailboxes, validate_mailboxes
+
 from django.utils.translation import gettext_lazy as _, gettext_noop
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -5,8 +9,8 @@ from django.utils import timezone
 
 from bloomerp.communication.utils.crypto import encrypt_email_secret
 from bloomerp.communication.utils.crypto import decrypt_email_secret
-from bloomerp.communication.emails.email_providers import EmailSyncMode
-from bloomerp.communication.emails.registry import (
+from bloomerp.communication.builtins.emails.email_providers import EmailSyncMode
+from bloomerp.communication.builtins.emails.registry import (
     EMAIL_PROVIDER_REGISTRY,
     email_provider_choices,
 )
@@ -290,14 +294,17 @@ class EmailAccount(BloomerpModel):
         verbose_name=_("Validation Error"),
     )
     mailboxes = models.JSONField(
-        default=list,
+        default=dict,
+        validators=[validate_mailboxes],
         blank=True,
-        help_text="Cached list of folders/mailboxes for this account.",
+        help_text="Provider mailbox names mapped to labels, roles and optional icon colors.",
         verbose_name=_("Mailboxes"),
     )
     
     
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Normalize mailbox settings and encrypt secrets before persisting the account."""
+        self.mailboxes = normalize_mailboxes(self.mailboxes)
         if not self.name:
             self.name = self.email_address
         if not self.username:
@@ -359,8 +366,10 @@ class EmailAccount(BloomerpModel):
     def get_refresh_token_secret(self) -> str:
         return self.get_secret("refresh_token")
 
-    def clean(self):
+    def clean(self) -> None:
+        """Validate provider requirements and mailbox roles."""
         super().clean()
+        self.mailboxes = normalize_mailboxes(self.mailboxes)
         provider = EMAIL_PROVIDER_REGISTRY.get(self.provider)
         if provider is None:
             raise ValidationError({"provider": "Select a valid email provider."})

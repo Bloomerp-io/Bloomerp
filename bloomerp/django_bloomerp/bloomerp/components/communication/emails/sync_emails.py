@@ -6,7 +6,7 @@ from django.http import HttpRequest
 from django.http import HttpResponse
 from typing import TYPE_CHECKING
 from bloomerp.celery.utils import is_celery_available
-from bloomerp.communication.emails.actions import refresh_mailboxes_for_account
+from bloomerp.communication.builtins.emails.actions import refresh_mailboxes_for_account
 from bloomerp.communication.inbox_sources import publish_event
 from bloomerp.communication.utils.permissions import accessible_inbox_folders
 from bloomerp.router import router

@@ -8,7 +8,7 @@
         hx-swap-oob="true"
     {% endif %}
 >
-    <button class="w-full border-b border-gray-200 p-2 text-left hover:bg-gray-50">
+    <button id="inbox-item-button-{{ item.id }}" type="button" data-inbox-row-button aria-keyshortcuts="Enter Space" class="w-full p-2 text-left hover:bg-gray-50 focus-visible:outline-none">
         <div class="flex items-center gap-4">
             <span class="mt-0.5 inline-flex size-5 items-center justify-center rounded-md bg-primary-500 text-[0.7rem] text-white">
                 <i class="{{ item.icon }}"></i>

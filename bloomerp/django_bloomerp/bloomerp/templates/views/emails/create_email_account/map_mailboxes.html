@@ -1,0 +1,5 @@
+{% load i18n crispy_forms_tags %}
+<div class="space-y-4">
+    <p class="text-sm text-gray-600">{% translate "Mailbox names on the left come from your provider. Labels and colors only change their appearance in Bloomerp. Choose at most one main folder and one Sent folder." %}</p>
+    {{ form|crispy }}
+</div>

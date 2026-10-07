@@ -7,7 +7,7 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 from bloomerp.models import DocumentTemplate, EmailAccount, EmailDraft, User
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder

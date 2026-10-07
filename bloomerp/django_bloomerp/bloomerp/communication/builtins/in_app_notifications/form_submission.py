@@ -1,4 +1,4 @@
-from bloomerp.communication.system_messages.base import BaseSystemMessageType, SystemMessageItemData
+from bloomerp.communication.builtins.in_app_notifications.base import BaseSystemMessageType, SystemMessageItemData
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.db.models import Q
@@ -80,7 +80,7 @@ def handle_form_submission(folders, *, instance, **kwargs):
     Returns:
         _type_: _description_
     """
-    from bloomerp.communication.system_messages.base import SystemMessage
+    from bloomerp.communication.builtins.in_app_notifications.base import SystemMessage
 
     deliveries = []
 

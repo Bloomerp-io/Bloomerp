@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.formats import date_format
 
-from bloomerp.communication.system_messages.base import (
+from bloomerp.communication.builtins.in_app_notifications.base import (
     BaseSystemMessageType,
     SystemMessageItemData,
 )
@@ -260,7 +260,7 @@ def handle_workflow_result(
     completed_at=None,
     **kwargs,
 ):
-    from bloomerp.communication.system_messages.base import SystemMessage
+    from bloomerp.communication.builtins.in_app_notifications.base import SystemMessage
     from bloomerp.communication.inbox_sources import (
         InboxSourceDelivery,
         InboxSourceExecutionResult,

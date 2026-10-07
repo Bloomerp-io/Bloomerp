@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
-from bloomerp.communication.emails.providers.imap_smtp import (
+from bloomerp.communication.builtins.emails.providers.imap_smtp import (
     SMTP_TIMEOUT_SECONDS,
     ImapSmtpAdapter,
 )
@@ -25,7 +25,7 @@ class SmtpTimeoutTests(SimpleTestCase):
             email_address="sender@example.com",
             get_password_secret=Mock(return_value=""),
         )
-        with patch("bloomerp.communication.emails.providers.imap_smtp.smtplib.SMTP_SSL") as smtp_class:
+        with patch("bloomerp.communication.builtins.emails.providers.imap_smtp.smtplib.SMTP_SSL") as smtp_class:
             ImapSmtpAdapter(account)._connect_smtp()
 
         smtp_class.assert_called_once_with("smtp.example.com", 465, timeout=SMTP_TIMEOUT_SECONDS)
@@ -40,21 +40,24 @@ class SmtpTimeoutTests(SimpleTestCase):
             email_address="sender@example.com",
             get_password_secret=Mock(return_value=""),
         )
-        with patch("bloomerp.communication.emails.providers.imap_smtp.smtplib.SMTP") as smtp_class:
+        with patch("bloomerp.communication.builtins.emails.providers.imap_smtp.smtplib.SMTP") as smtp_class:
             ImapSmtpAdapter(account)._connect_smtp()
 
         smtp_class.assert_called_once_with("smtp.example.com", 587, timeout=SMTP_TIMEOUT_SECONDS)
         smtp_class.return_value.starttls.assert_called_once_with()
 
     def test_timed_out_send_is_reported_as_validation_error(self) -> None:
-        """Return an actionable form error when the SMTP server stalls."""
+        """Use case: SMTP stalls. Expected result: Return an actionable validation error."""
+        # 1. Configure the account stub with its current outgoing fields.
         account = SimpleNamespace(
             smtp_host="smtp.example.com",
             smtp_port=465,
             smtp_security="ssl_tls",
             email_address="sender@example.com",
+            smtp_envelope_sender="",
         )
         adapter = ImapSmtpAdapter(account)
+        # 2. Simulate a timeout and verify the provider error is translated.
         with (
             patch.object(adapter, "_connect_smtp", side_effect=TimeoutError("timed out")),
             self.assertRaisesMessage(ValidationError, "SMTP server 'smtp.example.com' timed out"),
@@ -71,7 +74,7 @@ class SmtpTimeoutTests(SimpleTestCase):
             email_address="sender@example.com",
             get_password_secret=Mock(return_value="bad password"),
         )
-        with patch("bloomerp.communication.emails.providers.imap_smtp.smtplib.SMTP_SSL") as smtp_class:
+        with patch("bloomerp.communication.builtins.emails.providers.imap_smtp.smtplib.SMTP_SSL") as smtp_class:
             smtp_class.return_value.login.side_effect = TimeoutError("timed out")
             with self.assertRaises(TimeoutError):
                 ImapSmtpAdapter(account)._connect_smtp()

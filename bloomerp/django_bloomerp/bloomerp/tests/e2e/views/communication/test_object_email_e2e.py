@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.contrib.contenttypes.models import ContentType
 from playwright.sync_api import Route, expect
 
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 from bloomerp.models import DocumentTemplate, EmailAccount, EmailDraft, User
 from bloomerp.tests.base import BloomerpE2ETestCase, E2EAction, E2ERequestScenario
 

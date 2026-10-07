@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 
-from bloomerp.communication.inbox_folder_definition import InboxActionDefinition
+from bloomerp.communication.definition import InboxActionDefinition
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.models.communication.inbox.inbox_item import InboxItem
 from bloomerp.communication.utils.permissions import (

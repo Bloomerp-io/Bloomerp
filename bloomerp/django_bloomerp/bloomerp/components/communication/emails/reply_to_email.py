@@ -16,7 +16,7 @@ from django.utils import formats, timezone
 from django.utils.html import strip_tags
 from django.utils.translation import gettext as _
 
-from bloomerp.communication.emails.actions import (
+from bloomerp.communication.builtins.emails.actions import (
     _resolve_email_adapter_for_account,
     fetch_email_content,
 )
@@ -31,6 +31,7 @@ from bloomerp.router import router
 from bloomerp.utils.requests import render_message
 
 if TYPE_CHECKING:
+    from bloomerp.models.communication.email_account import EmailAccount
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
 
@@ -415,7 +416,7 @@ def _reply_references(
 def _store_sent_reply(
     *,
     inbox_item: "InboxItem",
-    email_account,
+    email_account: "EmailAccount",
     sent_message_id: str,
     form_data: dict[str, object],
     body_html: str,
@@ -425,6 +426,9 @@ def _store_sent_reply(
     """Store a sent reply and link it to the original BloomERP conversation."""
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
+    from bloomerp.communication.builtins.emails.mailboxes import normalize_mailboxes
+
+    sent_mailbox = next((name for name, settings in normalize_mailboxes(email_account.mailboxes).items() if settings["sent_folder"]), "")
     original_metadata = dict(inbox_item.raw_meta_data or {})
     conversation_id = str(original_metadata.get("conversation_id") or inbox_item.pk)
     original_metadata["conversation_id"] = conversation_id
@@ -445,6 +449,7 @@ def _store_sent_reply(
                 "snippet": strip_tags(str(form_data["body"]))[:500],
                 "raw_meta_data": {
                     "provider": "smtp",
+                    "mailbox": sent_mailbox,
                     "message_id": sent_message_id,
                     "email_account_id": str(email_account.pk),
                     "to": form_data["to"],

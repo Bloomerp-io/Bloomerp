@@ -4,7 +4,7 @@ from typing import Type
 from django.db import models
 from django.db.models import Q
 from django.http import HttpRequest
-from bloomerp.communication.inbox_folder_definition import InboxItemTypeDefinition
+from bloomerp.communication.definition import InboxItemTypeDefinition
 from bloomerp.communication.registry import (
     INBOX_FOLDER_REGISTRY,
     inbox_item_type_choices,
