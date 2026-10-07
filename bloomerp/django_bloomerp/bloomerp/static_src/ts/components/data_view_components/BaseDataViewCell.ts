@@ -124,6 +124,14 @@ export abstract class BaseDataViewCell extends BaseComponent {
         return this.detailUrl;
     }
 
+    /** Refresh cached navigation and object metadata after updating a cell's contents. */
+    public override onAfterSwap(): void {
+        if (!this.element) return;
+        this.detailUrl = this.element.dataset.detailUrl ?? '';
+        this.objectString = this.element.dataset.objectString ?? null;
+        this.objectId = this.element.dataset.objectId ?? null;
+    }
+
     protected performDefaultClick(target?: string | HTMLElement): void {
         if (this.detailUrl) {
             const resolvedTarget = target ?? this.resolveDefaultTarget();

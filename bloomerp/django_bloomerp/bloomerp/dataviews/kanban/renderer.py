@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist, ValidationError
 from django.db.models import Count, ForeignKey, OneToOneField, Q, QuerySet
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 
 from bloomerp.permissions.definition import BloomerpPermission
@@ -27,7 +28,7 @@ KANBAN_MAX_RELATED_COLUMNS = 50
 
 class KanbanDataviewRenderer(BaseDataviewRenderer):
     template_name = "cotton/features/dataviews/kanban.html"
-    reserved_query_params = {"kanban_page", "kanban_column"}
+    reserved_query_params = {"kanban_page", "kanban_column", "kanban_loaded_ids"}
 
     def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
         """Build paginated lanes and their configured drop targets and colours."""
@@ -83,7 +84,9 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             "kanban_groups": kanban_groups,
             "kanban_too_many_groups": kanban_too_many_groups,
             "group_by_field": group_by_field,
-            "kanban_page_querystring": self.build_page_querystring(self.state.request),
+            "kanban_page_querystring": self.build_page_querystring(
+                self.state.request, self.state.operation_context_token
+            ),
             "component_args" : {
                 "data-group-by-field-id": group_by_field.id if group_by_field else "",
                 "data-group-by-field" : group_by_field.field if group_by_field else "",
@@ -120,11 +123,12 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     @classmethod
     def build_page_querystring(
         cls,
-        request,
+        request: HttpRequest,
         operation_context_token: str | None = None,
     ) -> str:
+        """Keep filters and operation authorization without lane pagination parameters."""
         querydict = request.GET.copy()
-        for key in ("page", "kanban_page", "kanban_column"):
+        for key in {"page"} | cls.reserved_query_params:
             querydict.pop(key, None)
         if operation_context_token:
             querydict["_dataview_operation_context"] = operation_context_token
@@ -156,6 +160,17 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if not column_value:
             return HttpResponse("Missing kanban column.", status=400)
 
+        loaded_ids = None
+        pagination_data = request.POST if request.method == "POST" else request.GET
+        if "kanban_loaded_ids" in pagination_data:
+            try:
+                loaded_ids = [
+                    state.model._meta.pk.to_python(value)
+                    for value in pagination_data["kanban_loaded_ids"].split(",") if value
+                ]
+            except (TypeError, ValueError, ValidationError):
+                return HttpResponse("Invalid loaded card IDs.", status=400)
+
         group = cls.build_column_group(
             state.queryset, group_by_field, column_value,
             preference=state.preference,
@@ -163,6 +178,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             user=request.user,
             page_size=getattr(state.options, "page_size", 25),
             page_number=request.GET.get("kanban_page", 1),
+            loaded_ids=loaded_ids,
         )
         if group is None:
             return HttpResponse("Kanban column not found.", status=404)
@@ -176,6 +192,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "avatar_field": state.avatar_field,
                 "group": group,
                 "preference": state.preference,
+                "kanban_append": True,
                 "kanban_page_querystring": cls.build_page_querystring(
                     request,
                     state.operation_context_token,
@@ -236,7 +253,29 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
 
         setattr(obj, group_by_field.field, value)
         obj.save(update_fields=[group_by_field.field])
-        return JsonResponse({"status": "ok"})
+        # Re-evaluate filters and row-sensitive field annotations after the move.
+        visible_object = state.queryset.filter(pk=obj.pk).first()
+        card_html = ""
+        if visible_object is not None:
+            from bloomerp.components.objects.dataviews.dataview import _get_actions
+            from bloomerp.field_types.utils.value_loading import prepare_field_values
+
+            cls._prepare_card_colour(visible_object, group_by_field, state.options)
+            prepare_field_values([visible_object], state.render_fields)
+            card_html = render_to_string(
+                "components/objects/kanban_card.html",
+                {
+                    "object": visible_object,
+                    "content_type_id": state.content_type_id,
+                    "fields": state.render_fields,
+                    "avatar_field": state.avatar_field,
+                    "preference": state.preference,
+                    "object_actions": _get_actions(state.model),
+                    "row_index": request.POST.get("row_index", "0"),
+                },
+                request=request,
+            )
+        return JsonResponse({"status": "ok", "card_html": card_html})
 
     @classmethod
     def build_column_group(
@@ -249,6 +288,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         page_number: int | str = 1,
         options: KanbanDataView | None = None,
         user: AbstractBloomerpUser | None = None,
+        loaded_ids: list[Any] | None = None,
     ) -> dict[str, Any] | None:
         """Resolve and paginate only the requested ordinary or custom lane."""
         custom_groupings = getattr(options, "custom_groupings", {})
@@ -297,7 +337,9 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if group is None:
             return None
         return cls._materialize_lane(
-            queryset, group_by_field, group, preference, page_size, page_number, options
+            queryset, group_by_field, group, preference, page_size,
+            1 if loaded_ids is not None else page_number, options,
+            loaded_ids=loaded_ids,
         )
 
     @classmethod
@@ -476,11 +518,14 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         page_size: int | None,
         page_number: int | str,
         options: KanbanDataView | None,
+        loaded_ids: list[Any] | None = None,
     ) -> dict[str, Any]:
         """Paginate one final lane and attach its header and destination presentation."""
         items = cls._lane_queryset(
             queryset, group_by_field, metadata["member_values"], preference
         )
+        if loaded_ids is not None:
+            items = items.exclude(pk__in=loaded_ids)
         group = cls._build_group(
             metadata["value"],
             metadata["label"],
@@ -499,20 +544,31 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         group["destination_value"] = group["destinations"][0]["value"]
         for destination in group["destinations"]:
             destination["colour"] = colours.get(destination["value"], group["colour"])
-        model_field = cls._get_model_field(queryset, group_by_field.field)
         for item in group["items"]:
-            raw_value = (
-                getattr(item, model_field.attname)
-                if model_field
-                else getattr(item, group_by_field.field)
-            )
-            item.kanban_header_colour = colours.get(
-                cls._format_column_value(raw_value), group["colour"]
-            )
-            item.kanban_header_foreground = cls._header_foreground(
-                item.kanban_header_colour
-            )
+            cls._prepare_card_colour(item, group_by_field, options)
         return group
+
+    @classmethod
+    def _prepare_card_colour(
+        cls,
+        obj: Any,
+        group_by_field: ApplicationField,
+        options: KanbanDataView | None,
+    ) -> None:
+        """Apply the same concrete-category and custom-lane colours to every card render."""
+        try:
+            model_field = obj._meta.get_field(group_by_field.field)
+            attribute = model_field.attname
+        except FieldDoesNotExist:
+            attribute = group_by_field.field
+        value = cls._format_column_value(getattr(obj, attribute))
+        custom_groups = getattr(options, "custom_groupings", {})
+        lane_key = next(
+            (name for name, values in custom_groups.items() if value in values), value
+        )
+        colours = getattr(options, "lane_colouring", {})
+        obj.kanban_header_colour = colours.get(value, colours.get(lane_key))
+        obj.kanban_header_foreground = cls._header_foreground(obj.kanban_header_colour)
 
     @staticmethod
     def _header_foreground(colour: str | None) -> str:
