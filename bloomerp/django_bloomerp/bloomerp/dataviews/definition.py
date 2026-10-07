@@ -95,6 +95,11 @@ class BaseDataviewRenderer:
         return set(cls.reserved_query_params)
 
     @classmethod
+    def action_requires_count(cls, action: str) -> bool:
+        """Declare whether an operation needs the total filtered row count."""
+        return True
+
+    @classmethod
     def apply_sorting(cls, queryset, _request, _data_view_fields, _options: object | None = None):
         return queryset, {}
 
