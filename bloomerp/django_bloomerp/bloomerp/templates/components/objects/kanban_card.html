@@ -1,0 +1,43 @@
+{% load bloomerp %}
+
+<div
+    class="kanban-card bg-white rounded-xl border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+    draggable="true"
+    data-kanban-row-index="{{ row_index }}"
+    data-object-id="{{ object.pk }}"
+    data-detail-url="{{ object.get_absolute_url }}"
+    data-object-string="{{ object }}"
+    bloomerp-component="kanban-card"
+>
+    <div class="kanban-card-header mb-2 flex items-center gap-2 -mx-3 -mt-3 rounded-t-xl p-3" {% if object.kanban_header_colour %}style="background-color: {{ object.kanban_header_colour }}; color: {{ object.kanban_header_foreground }}"{% endif %}>
+        {% if avatar_field %}
+            <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover shrink-0" />
+        {% endif %}
+        <div class="min-w-0 flex-1 font-medium text-sm truncate" title="{{ object }}">
+            {{ object }}
+        </div>
+        <c-features.dataviews.checkbox 
+            object_id="{{ object.pk }}"
+            content_type_id="{{ content_type_id }}"
+            />
+    </div>
+
+    <div class="space-y-1">
+        {% for field in fields %}
+        <div class="flex items-center text-xs text-gray-600">
+            <span class="text-gray-400 mr-1 truncate w-20">{{ field.title }}:</span>
+            <span class="truncate flex-1">
+                {% render_dataview_value object=object application_field=field user=request.user row_index=row_index column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+            </span>
+        </div>
+        {% endfor %}
+
+        {% if object_actions %}
+            <div class="flex gap-2 flex-wrap">
+                {% for action in object_actions %}
+                    {% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>

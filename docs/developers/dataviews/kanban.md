@@ -46,6 +46,24 @@ Card headers use the original category's configured colour, falling back to
 the custom lane colour. Header text automatically uses contrasting black or
 white. Category sections show a tint of the same colour during movement.
 
+Moving a card saves its category and returns the shared `kanban_card.html`
+fragment. Only that card's contents are updated; its component, keyboard focus,
+selection, and already loaded lanes remain in place. Failed saves restore the
+card to its previous position and restore lane counts. A card that no longer
+matches the active filters or view permissions is removed after saving.
+When sorting is configured, the save and loader responses include the database
+order of loaded card IDs. The browser repositions existing card roots without
+another request or lane render. Ordering adds one query restricted to those IDs;
+views without a configured sort skip that query. Equal sort values use the
+primary key as a stable tie break.
+
+Lane loaders POST the IDs of cards already displayed in that lane and request
+the next batch of unseen cards. Cards still saving are included in their source
+lane's exclusions to prevent stale duplicates. This keeps pagination correct
+after moves without discarding expanded lanes. The IDs travel in the request body so large
+expanded lanes do not exceed URL length limits. Legacy page-number GET requests
+remain supported, and embedded-view authorization is carried into loader URLs.
+
 The display options field chips list visible fields in their displayed order,
 followed by hidden accessible fields. Drag a visible chip's handle to reorder
 the card fields. The order is saved for the current view type; other views keep

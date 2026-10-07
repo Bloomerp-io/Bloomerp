@@ -7,6 +7,13 @@ import type { ContextMenuItem } from "../../utils/contextMenu";
 import { getCsrfToken } from "../../utils/cookies";
 import showMessage from "../../utils/messages";
 import { MessageType } from "../UiMessage";
+import htmx from "htmx.org";
+
+interface KanbanMoveResponse {
+    status: string;
+    card_html: string;
+    ordered_ids?: string[];
+}
 
 
 export class KanbanCard extends BaseDataViewCell {
@@ -24,6 +31,7 @@ export class KanbanBoard extends BaseDataViewComponent {
     private keyboardMoveCard: HTMLElement | null = null;
     private keyboardMoveTarget: HTMLElement | null = null;
     private readonly onMoveKeyDown = this.handleMoveKeyDown.bind(this);
+    private readonly pendingSourceIds = new Map<HTMLElement, Set<string>>();
 
     /** Initialize card navigation, drag targets and keyboard category selection. */
     public initialize(): void {
@@ -117,6 +125,8 @@ export class KanbanBoard extends BaseDataViewComponent {
         this.element.addEventListener('keydown', this.onMoveKeyDown, { capture: true, signal: abortController.signal });
         this.element.addEventListener('dragstart', this.onDragStart, { signal: abortController.signal });
         this.element.addEventListener('dragend', this.onDragEnd, { signal: abortController.signal });
+        this.element.addEventListener('htmx:configRequest', this.configureColumnRequest, { signal: abortController.signal });
+        this.element.addEventListener('htmx:afterSwap', this.orderLoadedColumn, { signal: abortController.signal });
 
         const dropzones = Array.from(
             this.element.querySelectorAll<HTMLElement>('[data-kanban-dropzone]')
@@ -129,6 +139,50 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     }
 
+    /** Load unseen cards rather than fixed page offsets that become stale after moves. */
+    private configureColumnRequest = (event: Event): void => {
+        const detail = (event as CustomEvent).detail;
+        const loader = detail?.elt as HTMLElement | undefined;
+        if (!loader?.hasAttribute('data-kanban-column-loader')) return;
+        const dropzone = loader.closest('.kanban-column-body');
+        const cards = dropzone?.querySelectorAll<HTMLElement>(`[${componentIdentifier}="kanban-card"]`);
+        const objectIds = new Set<string>(dropzone ? this.pendingSourceIds.get(dropzone as HTMLElement) : []);
+        for (const card of cards ?? []) {
+            if (card.dataset.objectId) objectIds.add(card.dataset.objectId);
+        }
+        detail.parameters.kanban_loaded_ids = Array.from(objectIds).join(',');
+        const csrfToken = getCsrfToken();
+        if (csrfToken) detail.headers['X-CSRFToken'] = csrfToken;
+    };
+
+    /** Apply the server's visible-card order after a lane page has been appended. */
+    private orderLoadedColumn = (): void => {
+        for (const marker of this.element.querySelectorAll<HTMLTemplateElement>('[data-kanban-card-order]')) {
+            const dropzone = marker.closest<HTMLElement>('.kanban-column-body');
+            const ids = JSON.parse(marker.content.querySelector('script')?.textContent ?? '[]') as string[];
+            marker.remove();
+            if (dropzone) this.orderCards(dropzone, ids);
+        }
+    };
+
+    /** Reposition existing card roots without rendering or requesting the lane again. */
+    private orderCards(dropzone: HTMLElement, orderedIds: string[]): void {
+        if (!orderedIds.length) return;
+        const cards = new Map<string, HTMLElement>();
+        for (const card of dropzone.querySelectorAll<HTMLElement>(`[${componentIdentifier}="kanban-card"]`)) {
+            if (card.dataset.objectId) cards.set(card.dataset.objectId, card);
+        }
+        const scrollTop = dropzone.scrollTop;
+        let anchor: HTMLElement | null = dropzone.querySelector('[data-kanban-column-loader], .kanban-destinations');
+        for (const id of [...orderedIds].reverse()) {
+            const card = cards.get(id);
+            if (!card) continue;
+            if (card.nextElementSibling !== anchor) dropzone.insertBefore(card, anchor);
+            anchor = card;
+        }
+        dropzone.scrollTop = scrollTop;
+    }
+
     /** Keep the source card available while revealing category sections after drag starts. */
     private onDragStart = (event: DragEvent): void => {
         const eventTarget = event.target as HTMLElement | null;
@@ -138,6 +192,10 @@ export class KanbanBoard extends BaseDataViewComponent {
         this.activeDragCard = target;
         this.activeDragSource = target.closest('[data-kanban-dropzone]') as HTMLElement | null;
         this.activeDragSourceValue = this.activeDragSource?.dataset.columnValue ?? null;
+
+        this.currentCell?.unhighlight();
+        this.currentCell = getComponent(target) as KanbanCard | null;
+        this.currentCell?.highlight();
 
         this.cancelKeyboardMove();
         target.classList.add('dragging');
@@ -271,16 +329,27 @@ export class KanbanBoard extends BaseDataViewComponent {
         if (destinationValue === undefined) return;
         const sameLane = originDropzone === destinationDropzone;
         const nextSibling = card.nextSibling;
+        const objectId = card.dataset.objectId;
+        if (objectId) {
+            const pending = this.pendingSourceIds.get(originDropzone) ?? new Set<string>();
+            pending.add(objectId);
+            this.pendingSourceIds.set(originDropzone, pending);
+        }
         card.dataset.kanbanMoving = 'true';
         if (!sameLane) {
             this.removeEmptyPlaceholder(destinationDropzone);
-            destinationDropzone.appendChild(card);
+            destinationDropzone.insertBefore(card, destinationDropzone.querySelector('[data-kanban-column-loader], .kanban-destinations'));
             this.ensureEmptyPlaceholder(originDropzone);
             this.adjustColumnTotals(originDropzone, destinationDropzone);
             this.updateCounts();
         }
-        const updateSucceeded = await this.persistMove(card, destinationValue);
-        if (!updateSucceeded && !sameLane) {
+        const response = await this.persistMove(card, destinationValue);
+        if (objectId) {
+            const pending = this.pendingSourceIds.get(originDropzone);
+            pending?.delete(objectId);
+            if (!pending?.size) this.pendingSourceIds.delete(originDropzone);
+        }
+        if (response === null && !sameLane) {
             this.removeEmptyPlaceholder(originDropzone);
             originDropzone.insertBefore(card, nextSibling?.parentNode === originDropzone ? nextSibling : null);
             this.ensureEmptyPlaceholder(destinationDropzone);
@@ -288,21 +357,31 @@ export class KanbanBoard extends BaseDataViewComponent {
             this.updateCounts();
         }
         delete card.dataset.kanbanMoving;
-        if (updateSucceeded) this.dataViewContainer?.refresh();
+        if (response !== null && card.isConnected) {
+            this.updateCard(card, response.card_html);
+            if (response.ordered_ids) this.orderCards(destinationDropzone, response.ordered_ids);
+        }
     }
 
-    private async persistMove(card: HTMLElement, destinationValue: string): Promise<boolean> {
-        if (!this.element) return false;
+    /** Save one move and return its authoritative card fragment without reloading lanes. */
+    private async persistMove(card: HTMLElement, destinationValue: string): Promise<KanbanMoveResponse | null> {
+        if (!this.element) return null;
 
         const moveUrl = this.element.dataset.kanbanMoveUrl;
         const objectId = card.dataset.objectId;
 
-        if (!moveUrl || !objectId) return false;
+        if (!moveUrl || !objectId) return null;
 
         const csrfToken = getCsrfToken();
+        const loadedIds: string[] = [];
+        for (const loadedCard of card.closest('.kanban-column-body')?.querySelectorAll<HTMLElement>(`[${componentIdentifier}="kanban-card"]`) ?? []) {
+            if (loadedCard.dataset.objectId) loadedIds.push(loadedCard.dataset.objectId);
+        }
         const body = new URLSearchParams({
             object_id: objectId,
             group_value: destinationValue,
+            row_index: card.dataset.kanbanRowIndex ?? '0',
+            kanban_loaded_ids: loadedIds.join(','),
         });
 
         try {
@@ -313,23 +392,51 @@ export class KanbanBoard extends BaseDataViewComponent {
                     ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
                 },
                 body,
+                signal: this.ensureAbortController().signal,
             });
 
             if (!response.ok) {
                 if (response.status === 403) {
-                    showMessage('You do not have permission to move this card.', MessageType.ERROR);
+                    showMessage(_('You do not have permission to move this card.'), MessageType.ERROR);
                 } else {
-                    showMessage('Unable to move card. Please try again.', MessageType.ERROR);
+                    showMessage(_('Unable to move card. Please try again.'), MessageType.ERROR);
                 }
                 console.error('Failed to move kanban card', await response.text());
-                return false;
+                return null;
             }
-            return true;
+            return await response.json() as KanbanMoveResponse;
         } catch (error) {
-            showMessage('Unable to move card. Please try again.', MessageType.ERROR);
+            if (!card.isConnected) return null;
+            showMessage(_('Unable to move card. Please try again.'), MessageType.ERROR);
             console.error('Failed to move kanban card', error);
-            return false;
+            return null;
         }
+    }
+
+    /** Refresh only a card's contents while preserving its component, selection and focus. */
+    private updateCard(card: HTMLElement, html: string): void {
+        if (!html.trim()) {
+            const dropzone = card.closest<HTMLElement>('.kanban-column-body');
+            const cell = getComponent(card);
+            if (cell instanceof BaseDataViewCell) this.removeCellFromSelection(cell);
+            cell?.destroy();
+            htmx.swap(card, '', { swapStyle: 'delete', swapDelay: 0, settleDelay: 0 });
+            this.incrementColumnTotal(dropzone?.closest('.kanban-column'), -1);
+            this.ensureEmptyPlaceholder(dropzone);
+            this.updateCounts();
+            return;
+        }
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        const updated = template.content.querySelector<HTMLElement>(`[${componentIdentifier}="kanban-card"]`);
+        if (!updated) return;
+        const checked = card.querySelector<HTMLInputElement>('[data-bulk-checkbox]')?.checked ?? false;
+        card.dataset.objectString = updated.dataset.objectString ?? '';
+        card.dataset.detailUrl = updated.dataset.detailUrl ?? '';
+        htmx.swap(card, updated.innerHTML, { swapStyle: 'innerHTML', swapDelay: 0, settleDelay: 0 });
+        const checkbox = card.querySelector<HTMLInputElement>('[data-bulk-checkbox]');
+        if (checkbox) checkbox.checked = checked;
+        getComponent(card)?.onAfterSwap();
     }
 
     /** Show localized feedback when the last card leaves a column. */
