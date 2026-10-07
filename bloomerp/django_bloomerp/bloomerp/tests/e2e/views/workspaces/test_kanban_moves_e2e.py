@@ -205,6 +205,8 @@ class TestKanbanMovesE2E(BloomerpE2ETestCase):
                 expected_count
             )
             expect(lane.locator("[data-kanban-column-loader]")).to_have_count(0)
+            labels = lane.locator(".kanban-card-header").all_text_contents()
+            self.assertEqual(labels, sorted(labels))
         ids = (
             self.board()
             .locator('[bloomerp-component="kanban-card"]')
@@ -212,6 +214,54 @@ class TestKanbanMovesE2E(BloomerpE2ETestCase):
         )
         self.assertEqual(len(ids), 38)
         self.assertEqual(len(set(ids)), 38)
+        self.assertEqual(self.board_reload_requests, [])
+
+    def prepare_first_sorted_card(self) -> None:
+        """Restore the source and give the moved card a name preceding both lanes."""
+        self.target_customer.age = 20
+        self.target_customer.first_name = "A incoming"
+        self.target_customer.save(update_fields=["age", "first_name"])
+        self.held_moves: list[Route] = []
+
+    def hold_move(self, route: Route) -> None:
+        """Delay the save until the source intersection loader has fetched its next page."""
+        self.held_moves.append(route)
+
+    def load_during_move_and_check_sort(self) -> None:
+        """Load the source before a save commits, then preserve order without a board reload."""
+        self.page.route("**/renderer-operation/move/**", self.hold_move)
+        self.board().focus()
+        self.page.keyboard.press("ArrowDown")
+        self.page.keyboard.press("Alt+ArrowRight")
+        self.page.keyboard.press("Enter")
+        expect(self.target_card()).to_have_attribute("data-kanban-moving", "true")
+        loader = self.lane("Young").locator("[data-kanban-column-loader]")
+        with self.expect_column_response(loader) as response_info:
+            loader.scroll_into_view_if_needed()
+        response = response_info.value
+        self.assertEqual(response.status, 200)
+        submitted_ids = parse_qs(response.request.post_data)["kanban_loaded_ids"][
+            0
+        ].split(",")
+        self.assertIn(str(self.target_customer.pk), submitted_ids)
+        self.assertNotIn(f'data-object-id="{self.target_customer.pk}"', response.text())
+        expect(
+            self.lane("Young").locator('[bloomerp-component="kanban-card"]')
+        ).to_have_count(23)
+        self.target_customer.refresh_from_db()
+        self.assertEqual(self.target_customer.age, 20)
+        self.assertEqual(len(self.held_moves), 1)
+        with self.expect_response_for(
+            self.board().get_attribute("data-kanban-move-url"), method="POST"
+        ):
+            self.held_moves[0].continue_()
+        self.page.unroute("**/renderer-operation/move/**", self.hold_move)
+        expect(self.target_card()).not_to_have_attribute("data-kanban-moving", "true")
+        expect(
+            self.lane("Older").locator('[bloomerp-component="kanban-card"]').first
+        ).to_have_attribute("data-object-id", str(self.target_customer.pk))
+        self.assertTrue(self.card_handle.evaluate("element => element.isConnected"))
+        self.assertTrue(self.board_handle.evaluate("element => element.isConnected"))
         self.assertEqual(self.board_reload_requests, [])
 
     def reset_target_card(self) -> None:
@@ -345,6 +395,25 @@ class TestKanbanMovesE2E(BloomerpE2ETestCase):
                     E2EAction(
                         name="Drag the expanded card to another lane",
                         execute=self.drag_expanded_card,
+                    ),
+                ],
+            ),
+            E2ERequestScenario(
+                name="Source pagination during a pending move avoids duplicates and destination stays sorted",
+                prepare=self.prepare_first_sorted_card,
+                user=self.admin_user,
+                url=self.workspace.get_absolute_url(),
+                actions=[
+                    E2EAction(
+                        name="Expand the source lane", execute=self.load_expanded_source
+                    ),
+                    E2EAction(
+                        name="Load while the move is pending",
+                        execute=self.load_during_move_and_check_sort,
+                    ),
+                    E2EAction(
+                        name="Verify both fully loaded lanes stay sorted",
+                        execute=self.finish_loading_lanes,
                     ),
                 ],
             ),

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist, ValidationError
-from django.db.models import Count, ForeignKey, OneToOneField, Q, QuerySet
+from django.db.models import Count, ForeignKey, Model, OneToOneField, Q, QuerySet
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -166,10 +166,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         pagination_data = request.POST if request.method == "POST" else request.GET
         if "kanban_loaded_ids" in pagination_data:
             try:
-                loaded_ids = [
-                    state.model._meta.pk.to_python(value)
-                    for value in pagination_data["kanban_loaded_ids"].split(",") if value
-                ]
+                loaded_ids = cls._parse_card_ids(state.model, pagination_data["kanban_loaded_ids"])
             except (TypeError, ValueError, ValidationError):
                 return HttpResponse("Invalid loaded card IDs.", status=400)
 
@@ -185,6 +182,12 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if group is None:
             return HttpResponse("Kanban column not found.", status=404)
 
+        card_order = None
+        if loaded_ids is not None:
+            card_order = cls._loaded_card_order(
+                state.queryset, group_by_field, group["member_values"],
+                state.preference, [*loaded_ids, *(obj.pk for obj in group["items"])],
+            )
         return render(
             request,
             "components/objects/dataview_kanban_cards.html",
@@ -196,6 +199,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "preference": state.preference,
                 "object_actions": _get_actions(state.model),
                 "kanban_append": True,
+                "kanban_card_order": card_order,
                 "kanban_page_querystring": cls.build_page_querystring(
                     request,
                     state.operation_context_token,
@@ -203,9 +207,32 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             },
         )
 
+    @staticmethod
+    def _parse_card_ids(model: type[Model], raw_ids: str) -> list[Any]:
+        """Validate displayed-card exclusions using the model's primary-key field."""
+        return [model._meta.pk.to_python(value) for value in raw_ids.split(",") if value]
+
+    @classmethod
+    def _loaded_card_order(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        values: list[Any],
+        preference: UserListViewPreference | None,
+        loaded_ids: list[Any],
+    ) -> list[str]:
+        """Fetch loaded IDs for a configured sort, without rendering or loading a lane."""
+        sort_options = (preference.options or {}).get("kanban", {}) if preference else {}
+        if not sort_options.get("sort_field") or not loaded_ids:
+            return []
+        items = cls._lane_queryset(
+            queryset, group_by_field, values, preference
+        ).filter(pk__in=loaded_ids)
+        return [str(pk) for pk in items.values_list("pk", flat=True)]
+
     @classmethod
     def _move_card(cls, request: HttpRequest, state: DataviewState) -> HttpResponse:
-        """Persist a concrete lane value after existing object and field checks."""
+        """Save an authorized category and return its card and loaded destination order."""
         if request.method != "POST":
             return HttpResponse("Method not allowed", status=405)
 
@@ -213,6 +240,13 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         group_value = request.POST.get("group_value")
         if not object_id:
             return HttpResponse("Missing required fields", status=400)
+
+        loaded_ids = None
+        if "kanban_loaded_ids" in request.POST:
+            try:
+                loaded_ids = cls._parse_card_ids(state.model, request.POST["kanban_loaded_ids"])
+            except (TypeError, ValueError, ValidationError):
+                return HttpResponse("Invalid loaded card IDs.", status=400)
 
         group_by_field = cls.get_group_by_field(state.fields, state.options)
         if not group_by_field:
@@ -278,7 +312,31 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 },
                 request=request,
             )
-        return JsonResponse({"status": "ok", "card_html": card_html})
+        result: dict[str, Any] = {"status": "ok", "card_html": card_html}
+        if loaded_ids is not None:
+            concrete_value = getattr(obj, model_field.attname)
+            values = [concrete_value]
+            for members in getattr(state.options, "custom_groupings", {}).values():
+                if cls._format_column_value(concrete_value) in members:
+                    value_field = (
+                        model_field.target_field
+                        if isinstance(model_field, (ForeignKey, OneToOneField))
+                        else model_field
+                    )
+                    for value in members:
+                        try:
+                            values.append(
+                                None if value == KANBAN_EMPTY_COLUMN_VALUE
+                                else value_field.to_python(value)
+                            )
+                        except (TypeError, ValueError, ValidationError):
+                            continue
+                    break
+            result["ordered_ids"] = cls._loaded_card_order(
+                state.queryset, group_by_field, values, state.preference,
+                [*loaded_ids, obj.pk],
+            )
+        return JsonResponse(result)
 
     @classmethod
     def build_column_group(
@@ -490,7 +548,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         values: list[Any],
         preference: UserListViewPreference | None,
     ) -> QuerySet:
-        """Filter concrete lane members and apply the saved Kanban sorting once."""
+        """Filter lane members and apply saved sorting with a stable primary-key tie break."""
         model_field = cls._get_model_field(queryset, group_by_field.field)
         lane_filter = Q(pk__in=[])
         for value in values:
@@ -507,7 +565,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if sort_field:
             items = items.order_by(
                 ("-" if sort_options.get("sort_direction") == "desc" else "")
-                + sort_field
+                + sort_field,
+                "pk",
             )
         return items
 

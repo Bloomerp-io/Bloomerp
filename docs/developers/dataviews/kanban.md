@@ -51,10 +51,16 @@ fragment. Only that card's contents are updated; its component, keyboard focus,
 selection, and already loaded lanes remain in place. Failed saves restore the
 card to its previous position and restore lane counts. A card that no longer
 matches the active filters or view permissions is removed after saving.
+When sorting is configured, the save and loader responses include the database
+order of loaded card IDs. The browser repositions existing card roots without
+another request or lane render. Ordering adds one query restricted to those IDs;
+views without a configured sort skip that query. Equal sort values use the
+primary key as a stable tie break.
 
 Lane loaders POST the IDs of cards already displayed in that lane and request
-the next batch of unseen cards. This keeps pagination correct after moves
-without discarding expanded lanes. The IDs travel in the request body so large
+the next batch of unseen cards. Cards still saving are included in their source
+lane's exclusions to prevent stale duplicates. This keeps pagination correct
+after moves without discarding expanded lanes. The IDs travel in the request body so large
 expanded lanes do not exceed URL length limits. Legacy page-number GET requests
 remain supported, and embedded-view authorization is carried into loader URLs.
 

@@ -13,6 +13,10 @@
     {% endif %}
 {% endfor %}
 
+{% if kanban_card_order is not None %}
+<template data-kanban-card-order>{{ kanban_card_order|json_script }}</template>
+{% endif %}
+
 {% if group.has_next_page %}
 <div
     class="py-3 text-center text-xs text-gray-400"

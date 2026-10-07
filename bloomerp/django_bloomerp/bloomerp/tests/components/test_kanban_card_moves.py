@@ -1,3 +1,4 @@
+import json
 from typing import Any
 from unittest.mock import patch
 
@@ -181,6 +182,47 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
             self.assertIn("available_action", buttons[0]["hx-post"])
         return "Hidden action" not in response.content.decode()
 
+    def validate_ascending_order(self, response: HttpResponse) -> bool:
+        """Place an alphabetically first incoming card before the loaded destination cards."""
+        return response.json()["ordered_ids"] == [
+            str(self.cards[index].pk) for index in [0, 3, 4]
+        ]
+
+    def prepare_descending_order(self, scenario: RequestScenario) -> None:
+        """Use descending names to verify ordering follows the saved preference."""
+        self.preference.refresh_from_db()
+        self.preference.options["kanban"]["sort_direction"] = "desc"
+        self.preference.save(update_fields=["options"])
+
+    def validate_descending_order(self, response: HttpResponse) -> bool:
+        """Place the same incoming card after the descending destination cards."""
+        return response.json()["ordered_ids"] == [
+            str(self.cards[index].pk) for index in [4, 3, 0]
+        ]
+
+    def prepare_category_order(self, scenario: RequestScenario) -> None:
+        """Sort by the grouping value to exercise same-lane category changes."""
+        self.preference.refresh_from_db()
+        self.preference.options["kanban"]["sort_field"] = "age"
+        self.preference.save(update_fields=["options"])
+
+    def validate_category_order(self, response: HttpResponse) -> bool:
+        """Keep unchanged tied cards stable before a card whose sort value increased."""
+        self.assertEqual(
+            response.json()["ordered_ids"],
+            [*sorted(str(card.pk) for card in self.cards[1:3]), str(self.cards[0].pk)],
+        )
+        return True
+
+    def validate_page_order(self, response: HttpResponse) -> bool:
+        """Order incoming and newly loaded cards together without re-rendering existing cards."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        order = json.loads(
+            soup.select_one("template[data-kanban-card-order] script").string
+        )
+        self.assertEqual(order, [str(self.cards[index].pk) for index in [0, 3, 4]])
+        return f'data-object-id="{self.cards[0].pk}"' not in response.content.decode()
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Declare authoritative card rendering, access, validation and post-move loading cases."""
         self.create_fixtures()
@@ -190,6 +232,51 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
             "row_index": "7",
         }
         return [
+            RequestScenario(
+                name="An incoming card receives ascending destination order",
+                method="POST",
+                user=self.admin_user,
+                view_kwargs=self.route_kwargs("move"),
+                data={
+                    "object_id": self.cards[0].pk,
+                    "group_value": "30",
+                    "kanban_loaded_ids": f"{self.cards[3].pk},{self.cards[4].pk}",
+                },
+                expected=ExpectedResult(
+                    response_validators=self.validate_ascending_order
+                ),
+            ),
+            RequestScenario(
+                name="An incoming card receives descending destination order",
+                method="POST",
+                user=self.admin_user,
+                prepare=self.prepare_descending_order,
+                view_kwargs=self.route_kwargs("move"),
+                data={
+                    "object_id": self.cards[0].pk,
+                    "group_value": "30",
+                    "kanban_loaded_ids": f"{self.cards[3].pk},{self.cards[4].pk}",
+                },
+                expected=ExpectedResult(
+                    response_validators=self.validate_descending_order
+                ),
+            ),
+            RequestScenario(
+                name="A category change reorders cards inside a custom lane",
+                method="POST",
+                user=self.admin_user,
+                prepare=self.prepare_category_order,
+                view_kwargs=self.route_kwargs("move"),
+                data={
+                    **move_data,
+                    "kanban_loaded_ids": ",".join(
+                        str(card.pk) for card in self.cards[:3]
+                    ),
+                },
+                expected=ExpectedResult(
+                    response_validators=self.validate_category_order
+                ),
+            ),
             RequestScenario(
                 name="Newly loaded cards retain available object action buttons",
                 method="POST",
@@ -270,6 +357,7 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
                 prepare=self.prepare_incoming_move,
                 expected=ExpectedResult(
                     response_validators=[
+                        self.validate_page_order,
                         self.contains_text(f'data-object-id="{self.cards[4].pk}"'),
                         self.does_not_contain_text(
                             f'data-object-id="{self.cards[0].pk}"'
