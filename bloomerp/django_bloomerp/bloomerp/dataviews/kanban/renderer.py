@@ -149,6 +149,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if action != "column":
             return super().handle_action(action, request, state)
 
+        from bloomerp.components.objects.dataviews.dataview import _get_actions
+
         group_by_field = cls.get_group_by_field(
             state.fields,
             state.options,
@@ -192,6 +194,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "avatar_field": state.avatar_field,
                 "group": group,
                 "preference": state.preference,
+                "object_actions": _get_actions(state.model),
                 "kanban_append": True,
                 "kanban_page_querystring": cls.build_page_querystring(
                     request,

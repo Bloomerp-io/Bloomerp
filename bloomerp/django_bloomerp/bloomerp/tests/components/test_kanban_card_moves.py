@@ -1,9 +1,11 @@
 from typing import Any
+from unittest.mock import patch
 
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from django.http import HttpResponse
+from django.db.models import Model
+from django.http import HttpRequest, HttpResponse
 
 from bloomerp.models import (
     ApplicationField,
@@ -12,6 +14,7 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
 )
+from bloomerp.models.definition import BloomerpModelConfig, ObjectAction
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
@@ -130,6 +133,54 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
         scenario.query_params = {"kanban_column": "__group__:Older", "kanban_page": 2}
         scenario.data = {"kanban_loaded_ids": f"{self.cards[0].pk},{self.cards[3].pk}"}
 
+    @staticmethod
+    def empty_action(request: HttpRequest, object: Model) -> HttpResponse | None:
+        """Provide a harmless action callable for inspecting loaded card buttons."""
+        return None
+
+    @staticmethod
+    def hide_action(request: HttpRequest, object: Model) -> bool:
+        """Represent an action that is unavailable for the current card."""
+        return False
+
+    def prepare_card_actions(self, scenario: RequestScenario) -> None:
+        """Configure visible and unavailable actions before loading unseen cards."""
+        config = BloomerpModelConfig(
+            object_actions=[
+                ObjectAction(
+                    id="available_action",
+                    label="Available action",
+                    execution_func=self.empty_action,
+                ),
+                ObjectAction(
+                    id="hidden_action",
+                    label="Hidden action",
+                    execution_func=self.empty_action,
+                    should_render_func=self.hide_action,
+                ),
+            ]
+        )
+        self.enterContext(
+            patch.object(self.CustomerModel, "bloomerp_config", config, create=True)
+        )
+
+    def validate_loaded_card_actions(self, response: HttpResponse) -> bool:
+        """Verify each newly loaded card includes only its available action button."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        cards = soup.select('[bloomerp-component="kanban-card"]')
+        self.assertEqual(len(cards), 2)
+        self.assertEqual(
+            {card["data-object-id"] for card in cards},
+            {str(self.cards[1].pk), str(self.cards[2].pk)},
+        )
+        for card in cards:
+            buttons = card.select("button[hx-post]")
+            self.assertEqual(len(buttons), 1)
+            self.assertEqual(buttons[0].get_text(strip=True), "Available action")
+            self.assertIn(card["data-object-id"], buttons[0]["hx-post"])
+            self.assertIn("available_action", buttons[0]["hx-post"])
+        return "Hidden action" not in response.content.decode()
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Declare authoritative card rendering, access, validation and post-move loading cases."""
         self.create_fixtures()
@@ -139,6 +190,18 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
             "row_index": "7",
         }
         return [
+            RequestScenario(
+                name="Newly loaded cards retain available object action buttons",
+                method="POST",
+                user=self.admin_user,
+                view_kwargs=self.route_kwargs("column"),
+                query_params={"kanban_column": "__group__:Young", "kanban_page": 2},
+                data={"kanban_loaded_ids": str(self.cards[0].pk)},
+                prepare=self.prepare_card_actions,
+                expected=ExpectedResult(
+                    response_validators=self.validate_loaded_card_actions
+                ),
+            ),
             RequestScenario(
                 name="A same-lane category move returns only the refreshed coloured card",
                 method="POST",
