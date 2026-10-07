@@ -49,21 +49,20 @@ def dataview_action(
     else:
         raise Http404
 
+    definition = DATAVIEW_REGISTRY.get(preference.view_type)
+    if definition is None:
+        return HttpResponse("Invalid view type", status=400)
+
     state = _build_dataview_state(
         request,
         content_type_id,
         preference=preference,
-        # A card save renders one object and orders only loaded destination IDs.
-        calculate_count=not (preference.view_type == "kanban" and action == "move"),
+        calculate_count=definition.renderer_cls.action_requires_count(action),
     )
     if isinstance(state, HttpResponse):
         return state
     state.operation_context_token = request.GET.get(
         DATAVIEW_OPERATION_CONTEXT_PARAM
     )
-
-    definition = DATAVIEW_REGISTRY.get(state.preference.view_type)
-    if definition is None:
-        return HttpResponse("Invalid view type", status=400)
 
     return definition.renderer_cls.handle_action(action, request, state)

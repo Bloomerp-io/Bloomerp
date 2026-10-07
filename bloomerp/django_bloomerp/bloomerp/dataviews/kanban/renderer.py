@@ -30,6 +30,11 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     template_name = "cotton/features/dataviews/kanban.html"
     reserved_query_params = {"kanban_page", "kanban_column", "kanban_loaded_ids"}
 
+    @classmethod
+    def action_requires_count(cls, action: str) -> bool:
+        """Skip the board total when saving and rendering a single moved card."""
+        return action != "move"
+
     def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
         """Build paginated lanes and their configured drop targets and colours."""
         context = super().get_context_data(pagination)
