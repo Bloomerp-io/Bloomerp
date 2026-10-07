@@ -27,6 +27,8 @@ class EmailConnectionValidationTests(SimpleTestCase):
         self.smtp = MagicMock()
         self.smtp.__enter__.return_value = self.smtp
         self.smtp.noop.return_value = (250, b"OK")
+        self.smtp.mail.return_value = (250, b"OK")
+        self.smtp.rset.return_value = (250, b"OK")
         self.imap = MagicMock()
         self.imap.list.return_value = ("OK", [b'() "/" "INBOX"', b'() "/" "Sent"'])
         self.smtp_patch = patch.object(
@@ -84,7 +86,48 @@ class EmailConnectionValidationTests(SimpleTestCase):
         self.smtp.starttls.assert_called_once_with()
         self.smtp.login.assert_called_once_with("support@example.com", "app-password")
         self.smtp.noop.assert_called_once_with()
+        self.smtp.mail.assert_called_once_with("support@example.com")
+        self.smtp.rset.assert_called_once_with()
         self.smtp.send_message.assert_not_called()
+
+    def test_alias_validation_checks_primary_envelope_without_delivery(self) -> None:
+        """Validate the configured alias envelope without recipients or message submission."""
+        self.account.smtp_envelope_sender = "primary@example.com"
+        self.adapter.validate_connection()
+        self.smtp.mail.assert_called_once_with("primary@example.com")
+        self.smtp.rset.assert_called_once_with()
+        self.smtp.rcpt.assert_not_called()
+        self.smtp.data.assert_not_called()
+        self.smtp.send_message.assert_not_called()
+
+    def test_sender_rejection_is_actionable_redacted_and_skips_imap(self) -> None:
+        """Reject unauthorized envelope senders and reset without exposing server text."""
+        self.smtp.mail.return_value = (553, b"Sensitive provider diagnostic")
+        with self.assertRaises(ValidationError) as raised:
+            self.adapter.validate_connection()
+        self.assertIn("support@example.com", str(raised.exception))
+        self.assertIn("SMTP 553", str(raised.exception))
+        self.assertIn("primary mailbox", str(raised.exception))
+        self.assertNotIn("Sensitive provider diagnostic", str(raised.exception))
+        self.smtp.rset.assert_called_once_with()
+        self.smtp.__exit__.assert_called_once()
+        self.imap_constructor.assert_not_called()
+        self.smtp.send_message.assert_not_called()
+
+    def test_sender_probe_exception_still_resets_connection(self) -> None:
+        """Reset a failed sender probe and report a connection error without delivery."""
+        self.smtp.mail.side_effect = smtplib.SMTPException("Sensitive diagnostic")
+        with self.assertRaisesMessage(ValidationError, "SMTP connection check failed"):
+            self.adapter.validate_connection()
+        self.smtp.rset.assert_called_once_with()
+        self.imap_constructor.assert_not_called()
+
+    def test_failed_reset_prevents_successful_validation(self) -> None:
+        """Do not accept validation when the sender probe cannot be reset."""
+        self.smtp.rset.return_value = (421, b"Unavailable")
+        with self.assertRaisesMessage(ValidationError, "SMTP connection reset failed"):
+            self.adapter.validate_connection()
+        self.imap_constructor.assert_not_called()
 
     def test_smtp_connection_errors_are_actionable_and_skip_imap(self) -> None:
         """Use case: SMTP rejects account setup. Expected result: Specific errors and no IMAP check."""

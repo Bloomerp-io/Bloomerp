@@ -42,6 +42,7 @@ class TestCreateEmailAccountView(BloomerpModelViewTestCase):
                 "SMTP and IMAP are verified before the account is saved"
             ),
             self.default_sender_scenario(),
+            self.alias_envelope_scenario(),
             self.creation_scenario(
                 "SMTP authentication failure keeps the settings and creates no account",
                 self.reject_smtp_credentials,
@@ -194,6 +195,19 @@ class TestCreateEmailAccountView(BloomerpModelViewTestCase):
             and is_encrypted_email_secret(account.password)
             and account.get_password_secret() == "app-password"
         )
+
+    def alias_envelope_scenario(self) -> RequestScenario:
+        """Create an alias through the wizard with a separately configured primary sender."""
+        scenario = self.creation_scenario("Wizard saves an alias's primary SMTP envelope")
+        scenario.data["smtp_envelope_sender"] = "primary@example.com"
+        scenario.expected.response_validators = [self.imap_account_is_secure, self.alias_envelope_saved]
+        return scenario
+
+    def alias_envelope_saved(self, _response: HttpResponse) -> bool:
+        """Verify validation received the envelope and the wizard persisted it."""
+        account = EmailAccount.objects.get(email_address="support@example.com")
+        validated = self.connection_check.call_args.args[0].email_account
+        return account.smtp_envelope_sender == validated.smtp_envelope_sender == "primary@example.com"
 
     def default_sender_scenario(self) -> RequestScenario:
         """Select a default sender only after successful connection validation."""

@@ -14,8 +14,21 @@ class TestEmailAccountModel(BloomerpModelTestCase):
     model = EmailAccount
 
     def get_test_scenarios(self) -> list[ModelScenario[EmailAccount]]:
-        """Verify provider validation and persistence of optional Sent-copy saving."""
+        """Verify provider validation and persistence of optional outgoing settings."""
         return [
+            ModelScenario(
+                name="Envelope sender defaults blank and can be configured",
+                create_args={
+                    "email_address": "alias@example.com",
+                    "imap_host": "imap.example.com",
+                    "imap_port": 993,
+                    "smtp_host": "smtp.example.com",
+                    "smtp_port": 587,
+                },
+                create_validators=self.envelope_sender_is_blank,
+                update_args={"smtp_envelope_sender": "primary@example.com"},
+                update_validators=self.envelope_sender_is_primary,
+            ),
             ModelScenario(
                 name="Sent-copy saving defaults off and can be enabled",
                 create_args={
@@ -45,6 +58,16 @@ class TestEmailAccountModel(BloomerpModelTestCase):
                 ],
             )
         ]
+
+    @staticmethod
+    def envelope_sender_is_blank(account: EmailAccount) -> bool:
+        """Check backwards-compatible empty envelope configuration after persistence."""
+        return account.smtp_envelope_sender == ""
+
+    @staticmethod
+    def envelope_sender_is_primary(account: EmailAccount) -> bool:
+        """Check that the explicit primary envelope persists without changing the alias."""
+        return account.smtp_envelope_sender == "primary@example.com" and account.email_address == "alias@example.com"
 
     @staticmethod
     def validate_incomplete_imap_account():
