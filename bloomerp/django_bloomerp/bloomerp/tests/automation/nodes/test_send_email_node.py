@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
 from bloomerp.automation.actions.send_email import SendEmailExecutor, SendEmailForm
-from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,

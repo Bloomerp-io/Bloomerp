@@ -38,6 +38,8 @@ RESERVED_BULK_QUERY_KEYS = {
     "page",
     "q",
     "selection",
+    # HTMX includes the bulk action form's current field value on GET requests.
+    "value",
     "_component_id",
 }
 

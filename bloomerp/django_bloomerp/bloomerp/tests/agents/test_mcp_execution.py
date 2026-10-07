@@ -264,6 +264,62 @@ class McpExecutionTests(BloomerpChannelTestCase):
         self.execute(run)
         self.assertEqual(EFFECTS, [7])
 
+    def test_validation_recovery_preserves_approval_and_persisted_run(self) -> None:
+        """Correct invalid arguments in one run, then require approval for the valid effect."""
+
+        async def correcting_stream(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+            """Retry with valid arguments only after receiving a recoverable tool error."""
+            returns = [
+                part
+                for message in messages
+                for part in message.parts
+                if isinstance(part, ToolReturnPart)
+            ]
+            if not returns:
+                yield {
+                    0: DeltaToolCall(
+                        name="fixture_effect",
+                        json_args='{"value":"invalid"}',
+                        tool_call_id="invalid-call",
+                    )
+                }
+            elif len(returns) == 1:
+                self.assertEqual(
+                    returns[0].content["error"]["code"], "tool_validation_error"
+                )
+                yield {
+                    0: DeltaToolCall(
+                        name="fixture_effect",
+                        json_args='{"value":7}',
+                        tool_call_id="valid-call",
+                    )
+                }
+            else:
+                yield "Corrected action handled."
+
+        with patch(
+            "bloomerp.tests.agents.test_mcp_execution.tool_model",
+            return_value=FunctionModel(stream_function=correcting_stream),
+        ):
+            run = self.new_run()
+            self.execute(run)
+            self.assertEqual(run.status, "waiting", run.error)
+            self.assertEqual(EFFECTS, [])
+            tool = run.tool_calls.get()
+            self.assertEqual(tool.provider_call_id, "valid-call")
+            self.assertEqual(tool.arguments, {"value": 7})
+            approval = AIApproval.objects.get(tool_call__run=run)
+            async_to_sync(self.controller.decide_approval)(
+                AgentApprovalDecision(approval_id=approval.pk, decision="approved")
+            )
+            self.execute(run)
+        self.assertEqual(run.status, "completed", run.error)
+        self.assertEqual(EFFECTS, [7])
+        self.assertEqual(run.tool_calls.count(), 1)
+        self.assertFalse(run.events.filter(event_type="run.failed").exists())
+
     def test_rejection_is_returned_to_model_without_execution(self) -> None:
         """Resolve a refusal as a tool outcome so the assistant can explain it."""
         run = self.new_run()

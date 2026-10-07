@@ -29,7 +29,11 @@ can map SDK failures before delegating portable failures to the base.
 
 The adapter loop calls `_save` before effects and `_dispatch` for pending calls.
 `_dispatch` resolves approvals and then invokes `_apply_tool_results` to translate
-the completed batch into framework history. `_run` must release owned resources
+the completed batch into framework history. Pending proposals with a
+`validation_error` were rejected before coordinator dispatch: adapters must return
+that safe error to the model so it can correct its arguments. These attempts count
+against the tool budget and are checkpointed, but do not create persisted tool calls
+or approval requests. `_run` must release owned resources
 before returning its terminal event. The base publishes that event and manages
 the producer's lifetime. The PydanticAI checkpoint format remains version one;
 this extraction does not require checkpoint or database migration.

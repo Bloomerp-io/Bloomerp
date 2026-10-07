@@ -106,6 +106,7 @@ def _build_dataview_state(
     *,
     base_queryset: QuerySet | None = None,
     additional_reserved_query_keys: set[str] | None = None,
+    calculate_count: bool = True,
 ) -> DataviewState | HttpResponse:
     """Builds the dataview query state
 
@@ -113,6 +114,7 @@ def _build_dataview_state(
         request (HttpRequest): the request object
         content_type_id (int): the content type id
         preference: An explicit available preference, or the user's selected preference.
+        calculate_count: Calculate the filtered total when the renderer needs it.
 
     Returns:
         DataviewState | HttpResponse: The prepared state or an error response.
@@ -191,7 +193,7 @@ def _build_dataview_state(
         dataview_options,
     )
 
-    count = queryset.count()
+    count = queryset.count() if calculate_count else 0
     queryset = manager.annotate_field_permissions(
         queryset,
         dataview_render_fields + ([avatar_field] if avatar_field else []),

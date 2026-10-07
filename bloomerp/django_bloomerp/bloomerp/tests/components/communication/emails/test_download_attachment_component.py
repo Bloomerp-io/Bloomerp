@@ -3,16 +3,16 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 
-from bloomerp.communication.emails.actions import (
+from bloomerp.communication.builtins.emails.actions import (
     _upsert_email_inbox_item_result,
     render_email,
 )
-from bloomerp.communication.emails.base_adapter import (
+from bloomerp.communication.builtins.emails.base_adapter import (
     BloomerpEmail,
     EmailAttachment,
     EmailAttachmentMetadata,
 )
-from bloomerp.communication.inbox_folder_definition import InboxFolderType
+from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
@@ -26,7 +26,8 @@ from bloomerp.tests.base import (
 
 
 class EmailAttachmentFixtureMixin:
-    def setUp(self):
+    def setUp(self) -> None:
+        """Create accessible and unrelated attachment-bearing email fixtures."""
         super().setUp()
         self.user = get_user_model().objects.create_user(
             username="attachment-owner",
@@ -44,12 +45,12 @@ class EmailAttachmentFixtureMixin:
         )
         self.folder = InboxFolder.objects.create(
             inbox=inbox,
-            type=InboxFolderType.EMAIL.value.key,
+            type=INBOX_FOLDER_REGISTRY.EMAIL.key,
             related_object_id=str(self.email_account.pk),
         )
         self.item = InboxItem.objects.create(
             folder=self.folder,
-            item_type=InboxFolderType.EMAIL.value.item_type.key,
+            item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
             related_item_id="message-42",
             title="Contract",
             raw_meta_data={
@@ -175,7 +176,7 @@ class TestEmailAttachmentPresentation(
         )
 
     @patch(
-        "bloomerp.communication.emails.actions._resolve_email_adapter_for_account"
+        "bloomerp.communication.builtins.emails.actions._resolve_email_adapter_for_account"
     )
     def test_render_email_uses_stored_attachment_metadata(self, resolve_adapter):
         resolve_adapter.return_value.fetch_email_content.return_value = (

@@ -4,9 +4,10 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
+from django.http import HttpResponse
 
-from bloomerp.communication.emails.actions import _resolve_email_access, delete_email
-from bloomerp.communication.inbox_folder_definition import InboxFolderType
+from bloomerp.communication.builtins.emails.actions import _resolve_email_access, delete_email
+from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.components.communication.execute_inbox_action import _get_item_action
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
@@ -21,7 +22,8 @@ from bloomerp.tests.base import (
 
 
 class EmailReplyFixtureMixin:
-    def setUp(self):
+    def setUp(self) -> None:
+        """Create users and email fixtures for reply permission and rendering checks."""
         super().setUp()
         self.user = get_user_model().objects.create_user(
             username="email-reply-owner",
@@ -32,15 +34,16 @@ class EmailReplyFixtureMixin:
         self.email_account = EmailAccount.objects.create(
             name="Support",
             email_address="support@example.com",
+            mailboxes={"Outgoing archive": {"label": "Sent", "sent_folder": True}},
         )
         self.folder = InboxFolder.objects.create(
             inbox=self.inbox,
-            type=InboxFolderType.EMAIL.value.key,
+            type=INBOX_FOLDER_REGISTRY.EMAIL.key,
             related_object_id=str(self.email_account.pk),
         )
         self.item = InboxItem.objects.create(
             folder=self.folder,
-            item_type=InboxFolderType.EMAIL.value.item_type.key,
+            item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
             related_item_id="<original@example.com>",
             actor="Alice Example <alice@example.com>",
             datetime_received=timezone.now(),
@@ -62,7 +65,7 @@ class EmailReplyFixtureMixin:
         )
         self.sent_item = InboxItem.objects.create(
             folder=self.folder,
-            item_type=InboxFolderType.EMAIL.value.item_type.key,
+            item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
             related_item_id="<sent@example.com>",
             actor=self.email_account.email_address,
             is_read=True,
@@ -239,7 +242,8 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
         self.item.title = "rE: Quarterly report"
         self.item.save(update_fields=["title"])
 
-    def _reply_was_sent_and_stored(self, _response) -> bool:
+    def _reply_was_sent_and_stored(self, _response: HttpResponse) -> bool:
+        """Verify the sent reply retains threading, attachments and its configured Sent role."""
         send_kwargs = self.adapter.send_email.call_args.kwargs
         sent_item = InboxItem.objects.get(related_item_id="<reply@example.com>")
         original = InboxItem.objects.get(pk=self.item.pk)
@@ -257,6 +261,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                 sent_item.raw_meta_data["conversation_id"]
                 == original.raw_meta_data["conversation_id"],
                 sent_item.raw_meta_data["parent_item_id"] == str(original.pk),
+                sent_item.raw_meta_data["mailbox"] == "Outgoing archive",
             )
         )
 

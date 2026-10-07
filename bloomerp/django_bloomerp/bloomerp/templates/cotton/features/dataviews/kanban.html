@@ -94,6 +94,34 @@ TODO: This and dataview_kanban_cards need to be merged
     transform: rotate(3deg);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
+
+/* Animate only the card whose save is pending, without changing its layout. */
+.kanban-card[data-kanban-moving="true"] {
+    position: relative;
+    cursor: progress;
+}
+.kanban-card[data-kanban-moving="true"]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: -0.75rem;
+    border: 3px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 0 4px white;
+    pointer-events: none;
+    animation: kanban-card-saving 0.8s linear infinite;
+}
+@keyframes kanban-card-saving {
+    to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .kanban-card[data-kanban-moving="true"]::after { animation: none; }
+}
 </style>
 
 <style>

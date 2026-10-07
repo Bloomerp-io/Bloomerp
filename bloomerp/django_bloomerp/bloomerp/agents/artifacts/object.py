@@ -30,10 +30,26 @@ class ObjectArtifactPayload(AIArtifactPayload):
 
 
 def describe_object(payload: ObjectArtifactPayload) -> AIArtifactDescription:
-    """Describe the reference without fetching content or asserting target access."""
+    """Describe configured API availability without fetching content or granting access."""
+    from bloomerp.views.api.mutations import resolve_assistant_model
+
+    if resolve_assistant_model(payload.model_label) is None:
+        availability = (
+            "Generated API retrieval and mutations are unavailable for this model. "
+            "Do not use api_assistant_object_retrieve or api_assistant_mutations "
+            "for this reference; use another authorized tool if available."
+        )
+    else:
+        availability = (
+            "Generated API retrieval and mutations are available for this model. "
+            "Use api_assistant_object_retrieve to read current permitted fields. "
+            "Check api_assistant_mutation_catalog for authorized operations and "
+            "writable fields before using api_assistant_mutations. "
+            "API availability does not grant user, row, or field permissions."
+        )
     return AIArtifactDescription(
         title=f"{payload.object_name} | {payload.model_label}",
-        summary=f"Reference to a record with id '{payload.object_id}'; read its current permitted fields through an available tool.",
+        summary=f"Reference to a record with id '{payload.object_id}'. {availability}",
     )
 
 

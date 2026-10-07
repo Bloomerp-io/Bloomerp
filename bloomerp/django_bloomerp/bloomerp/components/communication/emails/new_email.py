@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods
 
-from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.router import router
 from bloomerp.services.email_composer_requests import (

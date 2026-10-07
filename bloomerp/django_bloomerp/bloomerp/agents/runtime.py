@@ -24,6 +24,7 @@ from typing import Annotated, Literal, Protocol, Self, runtime_checkable
 from urllib.parse import urlsplit
 from uuid import UUID
 
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 from jsonschema.validators import validator_for
 from pydantic import (
     AwareDatetime,
@@ -524,10 +525,20 @@ class AgentRuntimeBudgetExceeded(Exception):
 
 
 class AgentRuntimePendingToolProposal(AgentRuntimePayload):
-    """Retain an immutable proposal and its last durable coordinator outcome."""
+    """Retain a proposal and its coordinator outcome or pre-dispatch validation error."""
 
     proposal: AgentRuntimeToolProposal
     outcome: AgentRuntimeToolOutcome | None = None
+    validation_error: AgentError | None = None
+
+    @model_validator(mode="after")
+    def validate_result(self) -> Self:
+        """Keep pre-dispatch validation failures separate from executed tool outcomes."""
+        if self.outcome is not None and self.validation_error is not None:
+            raise ValueError(
+                "A proposal cannot have both an outcome and a validation error"
+            )
+        return self
 
 
 class AgentRuntimeState(AgentRuntimePayload):
@@ -662,7 +673,7 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
 
     @abstractmethod
     def _apply_tool_results(self, state: StateT) -> None:
-        """Append all resolved pending outcomes to the framework's model history."""
+        """Append pending outcomes and validation errors to the framework's history."""
         ...
 
     @abstractmethod
@@ -873,6 +884,37 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
             )
         )
 
+    @staticmethod
+    def _tool_validation_error(error: JsonSchemaValidationError) -> AgentError:
+        """Describe a schema failure without echoing argument values or exception text."""
+        details: dict[str, JsonValue] = {
+            "validator": str(error.validator)[:100],
+            "argument_path": [
+                str(part)[:100] for part in list(error.absolute_path)[:20]
+            ],
+            "schema_path": [
+                str(part)[:100] for part in list(error.absolute_schema_path)[:20]
+            ],
+        }
+        if isinstance(error.schema, dict):
+            properties = error.schema.get("properties")
+            if isinstance(properties, dict):
+                details["allowed_fields"] = [
+                    str(name)[:100] for name in list(properties)[:20]
+                ]
+            required = error.schema.get("required")
+            if isinstance(required, list):
+                details["required_fields"] = [str(name)[:100] for name in required[:20]]
+            expected_type = error.schema.get("type")
+            if isinstance(expected_type, str):
+                details["expected_type"] = expected_type[:100]
+        return AgentError(
+            code="tool_validation_error",
+            message="Invalid tool arguments. Correct the call to match the tool's input schema and try again. The tool was not executed.",
+            retryable=True,
+            details=details,
+        )
+
     async def _dispatch(
         self,
         attempt: AgentRuntimeAttempt,
@@ -884,15 +926,14 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
         catalog = {tool.identifier: tool for tool in request.tools}
         for item in state.pending:
             old = item.outcome
-            if old is not None and old.status != "waiting":
+            if item.validation_error is not None or (
+                old is not None and old.status != "waiting"
+            ):
                 continue
             proposal = item.proposal
             tool = catalog.get(proposal.tool_identifier)
             if tool is None or tool.version != proposal.tool_version:
                 raise ValueError("A pending tool is unavailable or has changed version")
-            validator_for(tool.input_schema)(tool.input_schema).validate(
-                proposal.arguments
-            )
             if old is None:
                 limit = request.budgets.max_tool_calls
                 if (
@@ -901,8 +942,19 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
                 ):
                     raise AgentRuntimeBudgetExceeded("Tool call budget exhausted")
                 attempt.tool_calls += 1
+                try:
+                    validator_for(tool.input_schema)(tool.input_schema).validate(
+                        proposal.arguments
+                    )
+                except JsonSchemaValidationError as error:
+                    item.validation_error = self._tool_validation_error(error)
+                    await self._save(attempt, state)
+                    continue
                 outcome = await coordinator.call(proposal)
             else:
+                validator_for(tool.input_schema)(tool.input_schema).validate(
+                    proposal.arguments
+                )
                 outcome = await coordinator.resolve(old.tool_call_id)
             if outcome.provider_call_id != proposal.provider_call_id or (
                 old is not None and outcome.tool_call_id != old.tool_call_id

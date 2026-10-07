@@ -1,6 +1,13 @@
 import json
+from typing import Any
+from django.urls import reverse
+from bloomerp.communication.definition import InboxFolderTypeFilterDefinition
+from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
+from bloomerp.views.communication.create_email_account import EmailAccountSettingsForm
 
-from bloomerp.communication.inbox_folder_definition import INBOX_ITEM_RENDER_TARGET, INBOX_ITEMS_TARGET, INBOX_MESSAGE_TARGET
+from bloomerp.communication.definition import INBOX_ITEM_RENDER_TARGET, INBOX_ITEMS_TARGET, INBOX_MESSAGE_TARGET
 from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.user_inbox_preference import UserInboxPreference
@@ -19,7 +26,8 @@ class InboxView(BaseBloomerpView, TemplateView):
     htmx_include_addendum_padding = False
     template_name = "views/communication/inbox.html"
     
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Present accessible inbox folders and their configured mailbox labels."""
         ctx = super().get_context_data(**kwargs)
         preference_manager = PreferenceManager(self.request.user)
         inbox = preference_manager.get_or_create_selected(
@@ -69,24 +77,31 @@ class InboxView(BaseBloomerpView, TemplateView):
         
         return ctx
 
-    def get_subfolder_filter_options(self, folder):
+
+    def get_subfolder_filter_options(self, folder: InboxFolder) -> list[dict[str, object]]:
+        """Serialize mailbox choices for this folder."""
         return [
             self._serialize_filter_option(filter_definition)
             for filter_definition in folder.inbox_folder_type().resolve_filters(folder)
             if filter_definition.is_subfolder
         ]
 
-    def _serialize_filter_option(self, filter_definition) -> dict[str, object]:
-        """Serialize one inbox filter for safe use in a data attribute."""
+    def _serialize_filter_option(
+        self, filter_definition: InboxFolderTypeFilterDefinition,
+    ) -> dict[str, object]:
+        """Encode shared predicates and query controls for the inbox preset data attribute."""
+        query_params = dict(filter_definition.query_params)
+        if filter_definition.filters:
+            query_params["filter"] = json.dumps([
+                group.model_dump() for group in filter_definition.filters
+            ])
         return {
             "key": filter_definition.key,
             "name": filter_definition.name,
-            "filters_json": json.dumps(
-                filter_definition.filters or {},
-                separators=(",", ":"),
-            ),
+            "color": filter_definition.color,
+            "filters_json": json.dumps(query_params, separators=(",", ":")),
         }
-    
+
     def get_inbox_preference(
         self,
         inbox: Inbox | None,

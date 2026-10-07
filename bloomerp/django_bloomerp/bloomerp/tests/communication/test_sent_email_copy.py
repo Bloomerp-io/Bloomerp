@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
-from bloomerp.communication.emails.base_adapter import EmailAttachment
-from bloomerp.communication.emails.providers.imap_smtp import (
+from bloomerp.communication.builtins.emails.base_adapter import EmailAttachment
+from bloomerp.communication.builtins.emails.providers.imap_smtp import (
     SENT_COPY_TIMEOUT_SECONDS,
     ImapSmtpAdapter,
 )
@@ -37,7 +37,7 @@ class SentEmailCopyTests(SimpleTestCase):
             self.adapter, "_connect_smtp", return_value=self.smtp
         )
         self.imap_patch = patch(
-            "bloomerp.communication.emails.providers.imap_smtp.imaplib.IMAP4_SSL",
+            "bloomerp.communication.builtins.emails.providers.imap_smtp.imaplib.IMAP4_SSL",
             return_value=self.imap,
         )
         self.smtp_patch.start()
@@ -129,7 +129,7 @@ class SentEmailCopyTests(SimpleTestCase):
                 self.imap.append.side_effect = failure
                 # 2. Preserve the successful SMTP result and report the copy failure.
                 with self.assertLogs(
-                    "bloomerp.communication.emails.providers.imap_smtp", level="WARNING"
+                    "bloomerp.communication.builtins.emails.providers.imap_smtp", level="WARNING"
                 ) as logs:
                     message_id = self.send_message()
                 self.assertTrue(message_id.startswith("<"))
@@ -144,7 +144,7 @@ class SentEmailCopyTests(SimpleTestCase):
         self.imap_constructor.side_effect = OSError("Offline")
         # 2. Report the copy failure while retaining the successful send result.
         with self.assertLogs(
-            "bloomerp.communication.emails.providers.imap_smtp", level="WARNING"
+            "bloomerp.communication.builtins.emails.providers.imap_smtp", level="WARNING"
         ):
             message_id = self.send_message()
         self.assertTrue(message_id.startswith("<"))
@@ -155,7 +155,7 @@ class SentEmailCopyTests(SimpleTestCase):
         """Use case: Save over SSL, STARTTLS, or plain IMAP. Expected result: Bounded socket waits."""
         # 1. Exercise every supported security mode with fake connections.
         with patch(
-            "bloomerp.communication.emails.providers.imap_smtp.imaplib.IMAP4",
+            "bloomerp.communication.builtins.emails.providers.imap_smtp.imaplib.IMAP4",
             return_value=self.imap,
         ) as plain_constructor:
             for security in ("ssl_tls", "starttls", "none"):
@@ -200,7 +200,7 @@ class SentEmailCopyTests(SimpleTestCase):
                 try:
                     # 2. Preserve the accepted SMTP send and emit a copy warning.
                     with self.assertLogs(
-                        "bloomerp.communication.emails.providers.imap_smtp",
+                        "bloomerp.communication.builtins.emails.providers.imap_smtp",
                         level="WARNING",
                     ):
                         message_id = self.send_message()
@@ -226,7 +226,7 @@ class SentEmailCopyTests(SimpleTestCase):
         )
         # 2. Do not create an arbitrary folder or store the email in INBOX.
         with self.assertLogs(
-            "bloomerp.communication.emails.providers.imap_smtp", level="WARNING"
+            "bloomerp.communication.builtins.emails.providers.imap_smtp", level="WARNING"
         ):
             self.send_message()
         self.imap.append.assert_not_called()

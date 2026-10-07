@@ -3,7 +3,7 @@ from typing import Type
 
 from django.db import models
 from django.db.models import Q
-from bloomerp.communication.inbox_folder_definition import InboxFolderTypeDefinition
+from bloomerp.communication.definition import InboxFolderTypeDefinition
 from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY, inbox_folder_choices
 from bloomerp.models import BloomerpModel
 from bloomerp.models.communication.inbox.inbox_item import InboxItem
@@ -79,22 +79,13 @@ class InboxFolder(BloomerpModel):
             raise ValueError(f"Unsupported inbox folder type: {self.type}")
         return folder_type
     
-    def query_items(self, query_params: dict) -> QuerySet[InboxItem]:
-        """
-        Queries the items in the folder based on the provided query parameters.
-        """
-        deep_search = (
-            parse_bool_parameter(query_params.get("deep_query"))
-            or parse_bool_parameter(query_params.get("deep_search"))
-        )
-        
-        folder_type = self.inbox_folder_type()
-        return folder_type.on_query(
-            query_params,
-            self,
-            deep_search
-        )
-        
+    def query_items(self, query_params: dict[str, str]) -> QuerySet[InboxItem]:
+        """Dispatch predicate and provider controls to the selected folder query handler."""
+        query_params = dict(query_params)
+        deep_query = parse_bool_parameter(query_params.pop("deep_query", None))
+        deep_search = parse_bool_parameter(query_params.pop("deep_search", None))
+        return self.inbox_folder_type().on_query(query_params, self, deep_query or deep_search)
+
     def __str__(self) -> str:
         """
         Returns a string representation of the folder.

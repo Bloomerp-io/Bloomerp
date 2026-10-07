@@ -1,4 +1,4 @@
-from bloomerp.communication.inbox_folder_definition import InboxFolderTypeDefinition
+from bloomerp.communication.definition import InboxFolderTypeDefinition
 from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder

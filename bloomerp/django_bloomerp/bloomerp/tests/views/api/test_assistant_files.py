@@ -9,6 +9,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.test import override_settings
+from django.urls import path
+from drf_spectacular.generators import SchemaGenerator
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -18,10 +20,8 @@ from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleCon
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.router import router
 from bloomerp.tests.base import BloomerpAPIViewTestCase, ExpectedResult, RequestScenario
-from bloomerp.views.api.assistant_files import (
-    AssistantFileLinkView,
-    AssistantFileUploadView,
-)
+from bloomerp.views.mcp.link_file import AssistantFileLinkView
+from bloomerp.views.api.files.upload_file import AssistantFileUploadView
 
 
 class TestAssistantFiles(BloomerpAPIViewTestCase):
@@ -315,3 +315,37 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
         self.assertFalse(upload.read_only_hint)
         self.assertTrue(link.destructive_hint)
         self.assertTrue(link.idempotent_hint)
+
+    def test_file_api_metadata_and_openapi_expose_identifiers(self) -> None:
+        """Expose inherited destination IDs and file IDs through OPTIONS and OpenAPI."""
+        views = [AssistantFileUploadView, AssistantFileLinkView]
+        for view in views:
+            with self.subTest(view=view.__name__):
+                request = APIRequestFactory().options("/")
+                force_authenticate(request, user=self.admin_user)
+                response = view.as_view()(request)
+                self.assertEqual(response.status_code, 200)
+                fields = response.data["actions"]["POST"]
+                self.assertIn("object_id", fields)
+                self.assertIn("model_label", fields)
+                if view is AssistantFileLinkView:
+                    self.assertIn("file_id", fields)
+                    self.assertTrue(fields["file_id"]["required"])
+
+        schema = SchemaGenerator(patterns=[
+            path("files/upload/", AssistantFileUploadView.as_view()),
+            path("files/link/", AssistantFileLinkView.as_view()),
+        ]).get_schema(request=None, public=True)
+        components = schema["components"]["schemas"]
+        for endpoint, status in [("upload", "201"), ("link", "200")]:
+            with self.subTest(endpoint=endpoint):
+                operation = schema["paths"][f"/files/{endpoint}/"]["post"]
+                request_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+                input_fields = components[request_ref.rsplit("/", 1)[-1]]["properties"]
+                self.assertIn("object_id", input_fields)
+                if endpoint == "link":
+                    self.assertIn("file_id", input_fields)
+                response_ref = operation["responses"][status]["content"]["application/json"]["schema"]["$ref"]
+                output_fields = components[response_ref.rsplit("/", 1)[-1]]["properties"]
+                self.assertIn("file_id", output_fields)
+                self.assertIn("object_id", output_fields)

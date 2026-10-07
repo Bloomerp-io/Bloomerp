@@ -1,5 +1,5 @@
 from importlib import import_module
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from django.apps import apps
@@ -9,9 +9,9 @@ from django.utils import timezone
 from django_celery_beat.models import PeriodicTask
 
 from bloomerp.celery.tasks.inbox_source_task import execute_inbox_source_task
-from bloomerp.communication.emails.actions import query_emails, render_email
-from bloomerp.communication.emails.base_adapter import BloomerpEmail
-from bloomerp.communication.inbox_folder_definition import InboxFolderType
+from bloomerp.communication.builtins.emails.actions import query_emails, render_email
+from bloomerp.communication.builtins.emails.base_adapter import BloomerpEmail
+from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.communication.inbox_sources import (
     InboxEventSource,
     InboxJobSource,
@@ -28,7 +28,7 @@ from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
 
 class InboxSourceRegistryTests(TestCase):
-    def test_default_sources_are_discoverable_and_resolve_callables(self):
+    def test_default_sources_are_discoverable_and_resolve_callables(self) -> None:
         """
         Use case: The application loads its built-in inbox sources.
         Expected result: Registered sources expose resolved handlers and resolvers.
@@ -38,7 +38,7 @@ class InboxSourceRegistryTests(TestCase):
         account_event = InboxSourceRegistry.get_by_key("email.sync.account")
 
         # 2. Verify their contracts and source types.
-        self.assertEqual(job.folder_type, InboxFolderType.EMAIL.value.key)
+        self.assertEqual(job.folder_type, INBOX_FOLDER_REGISTRY.EMAIL.key)
         self.assertIsInstance(job.source, InboxJobSource)
         self.assertTrue(callable(job.source.resolve_folder_qs_resolver()))
         self.assertTrue(callable(job.source.resolve_handler()))
@@ -65,7 +65,8 @@ class InboxSourceRegistryTests(TestCase):
 
 
 class EmailInboxSourceTests(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
+        """Create inbox sources and users for notification and email synchronization."""
         self.user = get_user_model().objects.create_user(
             username="email-source-user",
             email="email-source-user@example.com",
@@ -80,12 +81,12 @@ class EmailInboxSourceTests(TestCase):
         )
         self.folder = InboxFolder.objects.create(
             inbox=self.inbox,
-            type=InboxFolderType.EMAIL.value.key,
+            type=INBOX_FOLDER_REGISTRY.EMAIL.key,
             related_object_id=str(self.email_account.id),
         )
         self.notification_folder = InboxFolder.objects.create(
             inbox=self.inbox,
-            type=InboxFolderType.IN_APP_NOTIFICATIONS.value.key,
+            type=INBOX_FOLDER_REGISTRY.IN_APP_NOTIFICATIONS.key,
         )
 
     def _provider_email(
@@ -169,7 +170,7 @@ class EmailInboxSourceTests(TestCase):
 
     @patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
     @patch(
-        "bloomerp.communication.emails.sync._resolve_email_adapter_for_account"
+        "bloomerp.communication.builtins.emails.sync._resolve_email_adapter_for_account"
     )
     def test_account_source_creates_and_delivers_only_new_items(
         self,
@@ -201,8 +202,70 @@ class EmailInboxSourceTests(TestCase):
         send_user_inbox_message.assert_called_once()
 
     @patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
+    @patch("bloomerp.communication.builtins.emails.sync._resolve_email_adapter_for_account")
+    def test_sent_mailbox_sync_persists_without_notifications(
+        self, resolve_adapter: MagicMock, send_user_inbox_message: MagicMock,
+    ) -> None:
+        """Sync a custom-named Sent mailbox without broadcasting its newly stored email."""
+        self.email_account.mailboxes = {
+            "Outgoing": {"label": "Sent", "sent_folder": True},
+        }
+        self.email_account.save(update_fields=["mailboxes"])
+        resolve_adapter.return_value.sync_emails.return_value = [
+            self._provider_email(mailbox="Outgoing"),
+        ]
+
+        result = execute_registered_source(
+            "email.sync.account", email_account_id=str(self.email_account.pk),
+        )
+
+        self.assertEqual(result.deliveries, ())
+        self.assertEqual(result.metrics["fetched_messages"], 1)
+        self.assertEqual(InboxItem.objects.filter(folder=self.folder).count(), 1)
+        send_user_inbox_message.assert_not_called()
+
+    @patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
+    @patch("bloomerp.communication.builtins.emails.sync._resolve_email_adapter_for_account")
+    def test_sent_alias_is_silent_regardless_of_sync_order(
+        self, resolve_adapter: MagicMock, send_user_inbox_message: MagicMock,
+    ) -> None:
+        """Notify an incoming email while suppressing another message also found in Sent."""
+        self.email_account.mailboxes = {
+            "INBOX": {"label": "Inbox", "main_folder": True},
+            "Outgoing": {"label": "Sent", "sent_folder": True},
+        }
+        self.email_account.save(update_fields=["mailboxes"])
+        incoming = self._provider_email(
+            provider_message_id="incoming", message_id="<incoming@example.com>",
+        )
+        shared_inbox = self._provider_email(
+            provider_message_id="inbox-copy", message_id="<outbound@example.com>",
+        )
+        shared_sent = self._provider_email(
+            provider_message_id="sent-copy", mailbox="Outgoing", message_id="<outbound@example.com>",
+        )
+        for mailboxes in (["INBOX", "Outgoing"], ["Outgoing", "INBOX"]):
+            with self.subTest(mailboxes=mailboxes):
+                InboxItem.objects.filter(folder=self.folder).delete()
+                send_user_inbox_message.reset_mock()
+                resolve_adapter.return_value.sync_emails.side_effect = [
+                    [incoming, shared_inbox] if mailbox == "INBOX" else [shared_sent]
+                    for mailbox in mailboxes
+                ]
+                result = execute_registered_source(
+                    "email.sync.account", email_account_id=str(self.email_account.pk),
+                    mailboxes=mailboxes,
+                )
+                self.assertEqual(result.item_count, 1)
+                self.assertEqual(result.deliveries[0].items[0].related_item_id, incoming.message_id)
+                self.assertEqual(InboxItem.objects.filter(folder=self.folder).count(), 2)
+                shared_item = InboxItem.objects.get(folder=self.folder, related_item_id=shared_sent.message_id)
+                self.assertEqual(set(shared_item.raw_meta_data["locations"]), {"INBOX", "Outgoing"})
+                send_user_inbox_message.assert_called_once()
+
+    @patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
     @patch(
-        "bloomerp.communication.emails.sync._resolve_email_adapter_for_account"
+        "bloomerp.communication.builtins.emails.sync._resolve_email_adapter_for_account"
     )
     def test_same_message_in_multiple_mailboxes_has_one_inbox_item(
         self,
@@ -277,7 +340,7 @@ class EmailInboxSourceTests(TestCase):
 
         # 4. Verify content retrieval uses the preferred INBOX UID.
         with patch(
-            "bloomerp.communication.emails.actions."
+            "bloomerp.communication.builtins.emails.actions."
             "_resolve_email_adapter_for_account"
         ) as resolve_render_adapter:
             resolve_render_adapter.return_value.fetch_email_content.return_value = (
@@ -289,7 +352,7 @@ class EmailInboxSourceTests(TestCase):
                 mailbox="INBOX",
             )
 
-    def test_email_migration_consolidates_existing_message_id_duplicates(self):
+    def test_email_migration_consolidates_existing_message_id_duplicates(self) -> None:
         """
         Use case: Existing rows use mailbox-specific UIDs for one Message-ID.
         Expected result: Migration keeps one item and merges both JSON locations.
@@ -302,7 +365,7 @@ class EmailInboxSourceTests(TestCase):
         ):
             InboxItem.objects.create(
                 folder=self.folder,
-                item_type=InboxFolderType.EMAIL.value.item_type.key,
+                item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
                 related_item_id=provider_message_id,
                 title="Legacy duplicate",
                 raw_meta_data={
@@ -334,7 +397,7 @@ class EmailInboxSourceTests(TestCase):
             },
         )
 
-    @patch("bloomerp.communication.emails.sync.publish_event")
+    @patch("bloomerp.communication.builtins.emails.sync.publish_event")
     def test_dispatch_source_queues_each_due_account(self, publish):
         """
         Use case: The scheduled email dispatch source runs for a due account.
@@ -358,7 +421,7 @@ class EmailInboxSourceTests(TestCase):
 
     @patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
     @patch(
-        "bloomerp.communication.emails.sync._resolve_email_adapter_for_account"
+        "bloomerp.communication.builtins.emails.sync._resolve_email_adapter_for_account"
     )
     def test_account_task_executes_registered_inbox_source(
         self,

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import httpx
+from pydantic import JsonValue
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
@@ -399,22 +401,169 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
                 coordinator=self.coordinator,
             )
 
-    async def test_invalid_tool_arguments_never_reach_coordinator(self) -> None:
-        """Validate provider-generated arguments against the discovered JSON schema."""
+    async def test_invalid_tool_arguments_recover_without_execution(self) -> None:
+        """Return safe validation details, then execute only the corrected model call."""
+        cases = (
+            (
+                {"tab_id": ""},
+                {},
+                {"type": "object", "properties": {}, "additionalProperties": False},
+                "additionalProperties",
+            ),
+            (
+                {"refresh": "false"},
+                {},
+                {"type": "object", "properties": {}, "additionalProperties": False},
+                "additionalProperties",
+            ),
+            (
+                {"key": {"private": "never-echo-this-value"}},
+                {"key": "answer"},
+                self.request.tools[0].input_schema,
+                "type",
+            ),
+            ({}, {"key": "answer"}, self.request.tools[0].input_schema, "required"),
+        )
+        for invalid, valid, schema, validator in cases:
+            with self.subTest(arguments=invalid):
+                self.coordinator.calls.clear()
+                request = self.request.model_copy(
+                    update={
+                        "attempt_id": uuid4(),
+                        "tools": (
+                            self.request.tools[0].model_copy(
+                                update={"input_schema": schema}
+                            ),
+                        ),
+                    }
+                )
+
+                async def correcting_model(
+                    messages: list[ModelMessage],
+                    info: AgentInfo,
+                    invalid: dict[str, JsonValue] = invalid,
+                    valid: dict[str, JsonValue] = valid,
+                    validator: str = validator,
+                ) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+                    """Correct the invalid proposal after inspecting its tool-level failure."""
+                    returns = [
+                        part
+                        for message in messages
+                        for part in message.parts
+                        if isinstance(part, ToolReturnPart)
+                    ]
+                    if not returns:
+                        yield {
+                            0: DeltaToolCall(
+                                name="lookup",
+                                json_args=json.dumps(invalid),
+                                tool_call_id="invalid-call",
+                            )
+                        }
+                    elif len(returns) == 1:
+                        error = returns[0].content["error"]
+                        self.assertEqual(returns[0].tool_call_id, "invalid-call")
+                        self.assertEqual(error["code"], "tool_validation_error")
+                        self.assertTrue(error["retryable"])
+                        self.assertEqual(error["details"]["validator"], validator)
+                        self.assertNotIn("never-echo-this-value", json.dumps(error))
+                        self.assertEqual(self.coordinator.calls, [])
+                        yield {
+                            0: DeltaToolCall(
+                                name="lookup",
+                                json_args=json.dumps(valid),
+                                tool_call_id="call-1",
+                            )
+                        }
+                    else:
+                        yield "Corrected and completed."
+
+                self.model_stream = correcting_model
+                events = await self.collect(request)
+                self.assertEqual(events[-1].kind, "run.completed", events[-1])
+                self.assertEqual(
+                    [call.arguments for call in self.coordinator.calls], [valid]
+                )
+                self.assertEqual(events[-1].usage.tool_calls, 2)
+                self.assertEqual(
+                    len([event for event in events if event.kind == "tool.outcome"]), 1
+                )
+
+    async def test_invalid_calls_count_toward_tool_budget(self) -> None:
+        """Bound repeated invalid proposals even when none reaches the coordinator."""
 
         async def invalid_model(
             messages: list[ModelMessage], info: AgentInfo
         ) -> AsyncIterator[dict[int, DeltaToolCall]]:
-            """Request an invalid numeric value where the tool requires a string."""
+            """Keep proposing a new invalid call to exercise the shared attempt budget."""
             yield {
                 0: DeltaToolCall(
-                    name="lookup", json_args='{"key":123}', tool_call_id="call-1"
+                    name="lookup",
+                    json_args='{"key":123}',
+                    tool_call_id=f"invalid-{len(messages)}",
                 )
             }
 
         self.model_stream = invalid_model
-        events = await self.collect(self.request)
+        request = AgentRuntimeRunRequest.model_validate(
+            self.request.model_dump() | {"budgets": {"max_tool_calls": 2}}
+        )
+        events = await self.collect(request)
         self.assertEqual(events[-1].kind, "run.failed")
+        self.assertEqual(events[-1].error.code, "budget_exceeded")
+        self.assertEqual(events[-1].usage.tool_calls, 2)
+        self.assertEqual(self.coordinator.calls, [])
+
+    async def test_validation_checkpoint_resumes_without_execution(self) -> None:
+        """Replay a checkpointed validation result without counting or dispatching it again."""
+
+        async def recovering_model(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+            """Finish once the restored validation failure is returned to the model."""
+            returns = [
+                part
+                for message in messages
+                for part in message.parts
+                if isinstance(part, ToolReturnPart)
+            ]
+            if returns:
+                self.assertEqual(
+                    returns[-1].content["error"]["code"], "tool_validation_error"
+                )
+                yield "Invalid arguments handled."
+            else:
+                yield {
+                    0: DeltaToolCall(
+                        name="lookup",
+                        json_args='{"key":123}',
+                        tool_call_id="invalid-call",
+                    )
+                }
+
+        self.model_stream = recovering_model
+        stream = self.runtime.execute(
+            self.request,
+            credentials=AgentRuntimeCredentials(),
+            coordinator=self.coordinator,
+        )
+        checkpoint = None
+        try:
+            async for event in stream:
+                if event.kind == "checkpoint.created" and any(
+                    item.get("validation_error")
+                    for item in event.checkpoint.state["pending"]
+                ):
+                    checkpoint = AgentRuntimeCheckpoint.model_validate_json(
+                        event.checkpoint.model_dump_json()
+                    )
+                    break
+        finally:
+            await stream.aclose()
+        self.assertIsNotNone(checkpoint)
+        events = await self.collect(self.resumed(checkpoint))
+        self.assertEqual(events[-1].kind, "run.completed", events[-1])
+        self.assertEqual(events[-1].usage.tool_calls, 0)
         self.assertEqual(self.coordinator.calls, [])
 
     async def test_provider_failure_is_sanitized_and_closes_client(self) -> None:
