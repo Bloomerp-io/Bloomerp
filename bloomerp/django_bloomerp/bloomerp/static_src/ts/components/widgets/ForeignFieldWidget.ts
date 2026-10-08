@@ -322,12 +322,15 @@ export default class ForeignFieldWidget extends BaseWidget {
         return arr;
     }
 
-    private highlightItem(items: HTMLElement[], index: number) {
+    /** Keep keyboard selection distinct from the dropdown surface in either theme. */
+    private highlightItem(items: HTMLElement[], index: number): void {
         // remove existing highlights
-        items.forEach((it) => it.classList.remove('bg-gray-100'));
+        for (const item of items) {
+            item.classList.remove('not-dark:bg-gray-100', 'dark:bg-zinc-700');
+        }
         const el = items[index];
         if (!el) return;
-        el.classList.add('bg-gray-100');
+        el.classList.add('not-dark:bg-gray-100', 'dark:bg-zinc-700');
         // ensure visible
         if (typeof (el as any).scrollIntoView === 'function') {
             (el as HTMLElement).scrollIntoView({ block: 'nearest' });

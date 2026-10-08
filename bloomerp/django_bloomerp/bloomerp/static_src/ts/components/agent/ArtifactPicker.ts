@@ -128,11 +128,11 @@ export default class ArtifactPicker extends BaseComponent {
         const options = this.options();
         options.forEach(this.unhighlight);
         const active = options[this.index];
-        if (active) { active.classList.add('bg-base'); active.setAttribute('aria-selected', 'true'); active.scrollIntoView({block: 'nearest'}); }
+        if (active) { active.classList.add('not-dark:bg-base', 'dark:bg-zinc-700'); active.setAttribute('aria-selected', 'true'); active.scrollIntoView({block: 'nearest'}); }
     }
 
     /** Clear one option's visual keyboard-selection state. */
-    private unhighlight(button: HTMLButtonElement): void { button.classList.remove('bg-base'); button.setAttribute('aria-selected', 'false'); }
+    private unhighlight(button: HTMLButtonElement): void { button.classList.remove('not-dark:bg-base', 'dark:bg-zinc-700'); button.setAttribute('aria-selected', 'false'); }
 
     /** Read currently visible menu options in keyboard order. */
     private options(): HTMLButtonElement[] { return [...this.list?.querySelectorAll<HTMLButtonElement>('[data-artifact-option]') ?? []]; }
