@@ -450,3 +450,37 @@ class TestKanbanCustomGroups(BaseBloomerpTestCaseWithModels):
         self.assertNotIn("Card 0", html)
         self.assertNotIn("Card 3", html)
         self.assertIn("background-color: #123456", html)
+
+    def test_unmapped_lanes_can_be_hidden_from_board_and_loader(self) -> None:
+        """
+        Use case: A board displays only configured custom lanes.
+        Expected result: Unmapped lanes disappear while mapped counts and loading still work.
+        """
+        # 1. Create mapped and unmapped values with the default visibility option.
+        self.create_cards()
+        field = ApplicationField.get_by_field(self.CustomerModel, "age")
+        queryset = self.CustomerModel.objects.all()
+        options = KanbanDataView(custom_groupings={"Young": ["20", "30"]})
+        groups = KanbanDataviewRenderer.build_groups(queryset, field, options=options)
+        self.assertEqual([group["label"] for group in groups], ["Young", "40"])
+        # 2. Hide unmapped lanes without affecting the combined custom lane.
+        options.show_unmapped_lanes = False
+        groups = KanbanDataviewRenderer.build_groups(queryset, field, options=options)
+        self.assertEqual([group["label"] for group in groups], ["Young"])
+        self.assertEqual(groups[0]["count"], 3)
+        self.assertEqual(len(groups[0]["items"]), 3)
+        self.assertIsNone(
+            KanbanDataviewRenderer.build_column_group(
+                queryset, field, "40", options=options
+            )
+        )
+        mapped = KanbanDataviewRenderer.build_column_group(
+            queryset, field, "__group__:Young", options=options
+        )
+        self.assertIsNotNone(mapped)
+        self.assertEqual(mapped["count"], 3)
+        # 3. With no custom mappings, disabling unmapped lanes leaves no lanes.
+        options.custom_groupings = {}
+        self.assertEqual(
+            KanbanDataviewRenderer.build_groups(queryset, field, options=options), []
+        )
