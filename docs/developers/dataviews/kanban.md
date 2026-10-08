@@ -17,7 +17,10 @@ view = KanbanDataView(
 ```
 
 Each field value may belong to only one custom lane. Unmapped values retain
-individual lanes. Empty choice destinations remain available; related-object
+individual lanes by default (`show_unmapped_lanes=True`). Set
+`show_unmapped_lanes=False`, or uncheck **Show unmapped lanes** in display
+options, to show only custom lanes. Without custom mappings, this produces an
+empty board. Empty choice destinations remain available; related-object
 destinations use the existing permission and `limit_choices_to` filters.
 Related-object and numeric values are represented by their string values.
 `__none__` represents an unassigned value when that lane exists.
