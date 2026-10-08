@@ -15,7 +15,7 @@
     "build:tailwind": "cross-env NODE_ENV=production tailwindcss --postcss -i ./src/styles.css -o ../static/bloomerp/css/dist/styles.css --minify",
     "build:js": "tsc && vite build",
     "test:sdk": "node --experimental-transform-types --test ts/sdk/sdk.test.ts",
-    "test:theme": "node --experimental-strip-types --test ts/components/theme/theme.test.ts",
+    "test:theme": "node --experimental-strip-types --test ts/components/theme/theme.test.ts ts/components/theme/neutralHighlights.test.ts",
     "test:agent": "node --experimental-strip-types --experimental-test-module-mocks --test ts/utils/agent.test.ts ts/utils/agentEditorState.test.ts",
     "test:agent-markdown": "node --experimental-strip-types --test ts/utils/agentMarkdown.test.ts",
     "test:agent-progress": "node --experimental-strip-types --test ts/utils/agentProgress.test.ts",
