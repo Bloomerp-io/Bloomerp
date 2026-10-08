@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from tokenize import String
 
 from django.db import connection, models
@@ -514,9 +515,25 @@ class Todo(BloomerpModel):
 
         return super().clean()
 
-    def save(self, *args, **kwargs):
-        self.full_clean()  # This will call the clean method and raise a ValidationError if there are any validation errors
-        super().save(*args, **kwargs)
+    def save(
+        self,
+        force_insert: bool | tuple[type[models.Model], ...] = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
+        """Persist the completion date alongside explicitly saved status changes."""
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if "status" in update_fields:
+                update_fields.add("datetime_completed")
+        self.full_clean()
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
 
     
     @property
