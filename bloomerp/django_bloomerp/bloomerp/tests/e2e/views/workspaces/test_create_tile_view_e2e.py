@@ -29,10 +29,14 @@ class TestCreateTileViewE2E(BloomerpE2ETestCase):
         ]
 
     def exercise_keyboard_shortcuts(self) -> None:
-        """Verify keyboard shortcuts invoke the wizard's next, back, and reset controls."""
+        """Verify shared shortcut tooltips activate next, back, and reset controls."""
         root = self.page.locator('#wizard-root')
         self.page.locator('[bloomerp-component="selectable-cards"] [data-value]').first.click()
 
+        root.get_by_role("button", name="Continue").hover()
+        expect(root.locator('[data-shortcut="mod+s"] [data-shortcut-tooltip]')).to_have_css(
+            "visibility", "visible",
+        )
         root.get_by_role("button", name="Continue").focus()
         self.page.keyboard.press("ControlOrMeta+s")
         expect(root).to_have_attribute("data-wizard-step-index", "1")
@@ -42,8 +46,12 @@ class TestCreateTileViewE2E(BloomerpE2ETestCase):
         expect(root).to_have_attribute("data-wizard-step-index", "0")
         expect(root.get_by_role("button", name="Reset")).to_be_visible()
 
+        expect(root.locator('[data-shortcut="mod+,"]')).to_have_attribute(
+            "data-component-initialized", "true",
+        )
         root.get_by_role("button", name="Reset").focus()
-        self.page.keyboard.press("ControlOrMeta+,")
+        with self.expect_response_for("/create-tile/", method="GET"):
+            self.page.keyboard.press("ControlOrMeta+,")
         expect(root).to_have_attribute("data-wizard-step-index", "0")
         expect(root.get_by_role("button", name="Reset")).to_be_hidden()
         expect(root.locator('[name="tile_type"]')).to_have_value("")
