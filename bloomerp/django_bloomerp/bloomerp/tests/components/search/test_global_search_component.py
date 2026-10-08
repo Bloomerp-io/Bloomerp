@@ -3,6 +3,8 @@ from unittest.mock import patch
 from bs4 import BeautifulSoup
 from django.contrib.admin.models import ADDITION, LogEntry
 from django.contrib.auth.models import Permission
+from django.http import HttpResponse
+from django.urls import reverse
 
 from bloomerp.models import (
     ApplicationField,
@@ -20,6 +22,7 @@ from bloomerp.tests.base import (
     ExpectedResult,
     RequestScenario,
 )
+from bloomerp.utils.models import get_list_view_url
 
 
 class TestGlobalSearchComponent(BloomerpComponentTestCase):
@@ -29,7 +32,14 @@ class TestGlobalSearchComponent(BloomerpComponentTestCase):
     view_name = "components_global_search"
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Cover searchable routes, localized metadata and permission-scoped records."""
         return [
+            RequestScenario(
+                name="model list route search shows the plural name",
+                user=self.admin_user,
+                query_params={"q": ">customers"},
+                expected=ExpectedResult(response_validators=self._list_route_has_plural_name),
+            ),
             RequestScenario(
                 name="returns a successful response",
                 user=self.admin_user,
@@ -177,6 +187,14 @@ class TestGlobalSearchComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(response_validators=self._matching_customer_is_present),
             ),
         ]
+
+    def _list_route_has_plural_name(self, response: HttpResponse) -> bool:
+        """Verify the list search result uses its plural label and stable URL."""
+        url = reverse(get_list_view_url(self.CustomerModel))
+        result = BeautifulSoup(response.content, "html.parser").select_one(
+            f'a[data-global-search-item][hx-get="{url}"] > span'
+        )
+        return result is not None and result.get_text(strip=True) == "customers"
 
     def _prepare_localized_route_search(self, _scenario: RequestScenario) -> None:
         route = BloomerpRoute(

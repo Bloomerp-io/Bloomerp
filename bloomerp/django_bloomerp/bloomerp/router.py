@@ -39,6 +39,7 @@ def _generate_description(
         format_values = {}
         if model:
             format_values["model"] = model._meta.verbose_name
+            format_values["model_plural"] = model._meta.verbose_name_plural
         if module:
             format_values["module"] = module.name if getattr(module, "name", None) else module.id
         format_values.update(message_format_values or {})
@@ -100,6 +101,7 @@ def _generate_name(
         format_values = {}
         if model:
             format_values["model"] = model._meta.verbose_name
+            format_values["model_plural"] = model._meta.verbose_name_plural
         if module:
             format_values["module"] = module.name if getattr(module, "name", None) else module.id
         format_values.update(message_format_values or {})
@@ -208,6 +210,7 @@ class BloomerpRoute:
         return f"{owner}:route:{field}"
 
     def _localized_message(self, message: Optional[str], field: str) -> str:
+        """Translate route metadata and format model labels in the active language."""
         if not message:
             return ""
         translated = message
@@ -220,6 +223,7 @@ class BloomerpRoute:
         values = {}
         if self.model is not None:
             values["model"] = force_str(self.model._meta.verbose_name)
+            values["model_plural"] = force_str(self.model._meta.verbose_name_plural)
         if self.module is not None:
             values["module"] = force_str(
                 self.module.localized_name
