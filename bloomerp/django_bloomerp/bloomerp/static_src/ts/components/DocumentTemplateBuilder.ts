@@ -768,6 +768,10 @@ export class DocumentTemplateBuilder extends BaseComponent {
         const sdk = getSdk();
         const requestSequence = ++this.stylingRequestSequence;
         const normalizedStyleIds = this.normalizeStyleIds(styleIds);
+        // Keep a paper baseline while styles load, including foreground-only CSS.
+        this.pageContainer.dataset.documentStyling = String(
+            normalizedStyleIds.length > 0 || customStyling.trim().length > 0
+        );
 
         Promise.all(
             normalizedStyleIds.map((styleId) => sdk.documentTemplateStylings.retrieve(styleId))
@@ -783,11 +787,13 @@ export class DocumentTemplateBuilder extends BaseComponent {
                     .filter(Boolean)
                     .join('\n\n')
 
+                this.pageContainer.dataset.documentStyling = String(styling.length > 0);
                 this.editor.setStyling(styling)
             })
             .catch((error) => {
                 console.error('Error applying document template styling:', error)
                 if (requestSequence === this.stylingRequestSequence) {
+                    this.pageContainer.dataset.documentStyling = String(customStyling.trim().length > 0);
                     this.editor.setStyling(customStyling)
                 }
             })
