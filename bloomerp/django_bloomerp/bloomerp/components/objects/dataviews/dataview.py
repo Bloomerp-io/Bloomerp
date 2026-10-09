@@ -5,10 +5,13 @@ from django.core import signing
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.filters.manager import ModelFilterManager
+from bloomerp.filters.compiler import compile_condition
+from bloomerp.filters.definition import Filters
 from bloomerp.filters.parser import parse_filters
+from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
 from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
@@ -23,7 +26,7 @@ from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.router import router
-from django.http import HttpRequest
+from django.http import HttpRequest, QueryDict
 from django.http import HttpResponse
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.object_services import string_search_on_queryset
@@ -51,6 +54,54 @@ SHELL_RESERVED_QUERY_KEYS = {
 DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
 DATAVIEW_OPERATION_CONTEXT_SALT = "bloomerp.dataview.renderer-operation"
 DATAVIEW_OPERATION_CONTEXT_MAX_AGE = 60 * 60 * 24
+
+
+def _parse_dataview_filters(
+    args: QueryDict, model: type[Model], manager: UserPolicyManager,
+) -> Filters:
+    """Discard invalid dataview inputs while preserving valid groups and values.
+
+    Parse repeated parameters separately so one malformed input cannot discard
+    another. Drop groups emptied by invalid conditions, but preserve explicitly
+    empty groups and their connector semantics. Shared filter and permission
+    compilers remain strict outside this interactive boundary.
+    """
+    filters: Filters = []
+    resolver = FilterFieldResolver.for_model(model)
+    for key, values in args.lists():
+        for value in values:
+            parameter = QueryDict(mutable=True)
+            parameter[key] = value
+            try:
+                groups = parse_filters(parameter, model=model)
+            except ValidationError:
+                continue
+            for group in groups:
+                conditions = []
+                for condition in group.conditions:
+                    try:
+                        field, target = resolver.resolve(condition.field_path)
+                        resolve_lookup(field, target, condition.lookup_id)
+                    except ValidationError:
+                        continue
+                    conditions.append(condition)
+                if conditions or not group.conditions:
+                    filters.append(group.model_copy(update={"conditions": conditions}))
+    # Authorize known dependencies before value cleaning, which can query
+    # related records. Invalid values must not bypass field access checks.
+    manager.validate_filters(model, filters)
+    valid_filters: Filters = []
+    for group in filters:
+        conditions = []
+        for condition in group.conditions:
+            try:
+                compile_condition(condition, model=model)
+            except ValidationError:
+                continue
+            conditions.append(condition)
+        if conditions or not group.conditions:
+            valid_filters.append(group.model_copy(update={"conditions": conditions}))
+    return valid_filters
 
 
 def _sign_dataview_operation_context(
@@ -171,9 +222,7 @@ def _build_dataview_state(
             filter_querydict.pop(key, None)
     filter_querydict = preference.apply_default_filters(filter_querydict)
     
-    filters = parse_filters(filter_querydict, model=Model)
-    
-    manager.validate_filters(Model, filters)
+    filters = _parse_dataview_filters(filter_querydict, Model, manager)
     
     filter_manager = ModelFilterManager(Model)
     queryset = filter_manager.apply(
