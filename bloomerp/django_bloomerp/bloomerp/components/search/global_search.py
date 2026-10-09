@@ -26,6 +26,8 @@ Prefixes:
 
 """
 
+import re
+from operator import itemgetter
 from typing import Any
 
 from django.contrib.auth.decorators import login_required
@@ -61,6 +63,38 @@ def _split_query_and_suffix(value: str) -> tuple[str, str]:
 
     split_idx = min(candidates)
     return value[:split_idx].strip(), value[split_idx:].strip()
+
+
+def _route_search_score(
+    query: str,
+    query_tokens: set[str],
+    name: str,
+    description: str,
+    url_name: str,
+    path: str,
+) -> tuple[int, int, float] | None:
+    """Rank route fields with weighted Dice similarity, prioritizing exact names.
+
+    Token overlap supports word-order-independent action queries. Names carry
+    four times the description weight; identifiers and paths are fallback hints.
+    Substring matching preserves partial queries without fuzzy-search overhead.
+    """
+    fields = [_normalize_key(value) for value in (name, description, url_name, path)]
+    field_tokens = [set(re.findall(r"[^\W_]+", value)) for value in fields]
+    if query not in " ".join(fields) and (
+        not query_tokens or not query_tokens.issubset(set().union(*field_tokens))
+    ):
+        return None
+
+    score = 0.0
+    for tokens, weight in zip(field_tokens, (4.0, 1.0, 0.5, 0.5)):
+        denominator = len(query_tokens) + len(tokens)
+        if denominator:
+            score += weight * 2 * len(query_tokens & tokens) / denominator
+    name_match = query in fields[0] or (
+        bool(query_tokens) and query_tokens.issubset(field_tokens[0])
+    )
+    return int(query == fields[0]), int(name_match), score
 
 
 def _collect_object_results(result: ObjectSearchResult) -> list[dict[str, Any]]:
@@ -139,6 +173,8 @@ def global_search(request: HttpRequest) -> HttpResponse:
 
             if base_query:
                 matched_routes = []
+                normalized_query = _normalize_key(base_query)
+                query_tokens = set(re.findall(r"[^\W_]+", normalized_query))
                 for route in router.get_routes():
                     if not route.searchable:
                         continue
@@ -150,41 +186,43 @@ def global_search(request: HttpRequest) -> HttpResponse:
                     route_name = route.localized_name
                     route_desc = route.localized_description
                     route_path = route.path or ""
-                    route_search_text = " ".join(
-                        [route_name, route_desc, route.url_name or "", route_path]
+                    score = _route_search_score(
+                        normalized_query,
+                        query_tokens,
+                        route_name,
+                        route_desc,
+                        route.url_name or "",
+                        route_path,
                     )
-                    if _normalize_key(base_query) not in _normalize_key(
-                        route_search_text
-                    ):
+                    if score is None:
                         continue
 
+                    matched_routes.append(
+                        (
+                            score,
+                            route,
+                            {
+                                "name": route_name,
+                                "path": route_path,
+                                "description": route_desc,
+                                "module": route.module.localized_name
+                                if route.module
+                                else None,
+                            },
+                        )
+                    )
+
+                matched_routes.sort(key=itemgetter(0), reverse=True)
+                context["results_truncated"] = len(matched_routes) > ROUTE_LIMIT
+                for _score, route, result in matched_routes[:ROUTE_LIMIT]:
                     route_url = None
-                    if "<" not in route_path and ">" not in route_path:
+                    if "<" not in result["path"] and ">" not in result["path"]:
                         try:
                             route_url = reverse(route.url_name)
                         except NoReverseMatch:
-                            route_url = None
-
-                    if route_url and suffix:
-                        route_url = f"{route_url}{suffix}"
-
-                    matched_routes.append(
-                        {
-                            "name": route_name,
-                            "path": route_path,
-                            "description": route_desc,
-                            "url": route_url,
-                            "module": route.module.localized_name
-                            if route.module
-                            else None,
-                        }
-                    )
-
-                    if len(matched_routes) >= ROUTE_LIMIT:
-                        context["results_truncated"] = True
-                        break
-
-                context["route_results"] = matched_routes
+                            pass
+                    result["url"] = f"{route_url}{suffix}" if route_url else None
+                    context["route_results"].append(result)
 
         case _:
             user_search = trimmed_query.startswith("@")
