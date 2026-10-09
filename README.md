@@ -1,210 +1,214 @@
 # Bloomerp
 
-Bloomerp is an open-source Business Management Software framework that lets you create fully functional business management applications just by defining your Django database models.
+Bloomerp is an open-source Django framework for building business management
+applications from database models. It provides model-driven CRUD pages, data
+views, workspaces, generated APIs, workflow automation, and an AI assistant,
+with room for custom Django logic and frontend components.
 
-It's out-of-the-box functionality gives you the ability to create advanced apps in minutes whilst maintaining the ability to add custom functionality without too much effort.
+The backend uses Django and Django REST Framework. The interface combines
+HTMX, Django Cotton, Tailwind CSS, and TypeScript bundled with Vite. Django
+Channels supports live updates, and Celery supports background work.
 
-At its core, it leverages the popular Python framework Django and HTMX to provide robust and fast applications.
+## Features
 
-## Key features
+- **Model-driven applications**: Create, view, edit, and delete records, with
+  configurable detail layouts, tabs, object actions, and activity logging.
+- **Data views and search**: Filter and search records, use table, kanban, and
+  calendar views, and find accessible data through global search.
+- **Permissions**: Policies control model, row, and field access across the UI
+  and generated APIs.
+- **Workspaces**: Build dashboards with analytics, links, text, and Excalidraw
+  canvas tiles, backed by reusable tile definitions and SQL queries.
+- **Imports and APIs**: Bulk-import records and generate REST endpoints and
+  Python, JavaScript, or TypeScript SDKs from model definitions.
+- **Files and collaboration**: Organize files in folders, attach them to records,
+  and use comments, mentions, and communication channels.
+- **Documents**: Create document templates and generate documents from model data.
+- **Workflow automation**: Build workflows from registered trigger, action, and
+  flow nodes, with branching, execution logs, and extensible executors.
+- **BloomAI**: Configure agents and providers for streaming conversations,
+  tool use, approval requests, and file or module attachments. AI features
+  require instance configuration and provider credentials.
+- **Model Context Protocol (MCP)**: Expose registered tools and reference
+  resources through an instance's `/mcp` endpoint under the caller's identity.
+- **Project CLI**: Scaffold and synchronize Django projects and reusable apps,
+  and build, link, and deploy projects through Bloomerp.io.
 
-Bloomerp comes packed with a variety of features:
+These capabilities are implemented in this repository. Availability in an
+application depends on its configuration, enabled integrations, and user access.
 
-- **Intuitive CRUD Views**: With integrated access control provided by Django.
-- **Advanced List Views**: Offering powerful filtering capabilities and different view options (table, kanban, calendar, etc.).
-- **Search Functionality**: A global, permission-aware search bar that allows you to search across all your data, giving you access to various parts of the application with immense speed.
-- **Advanced permission system**: Granular yet intuitive control over who can see and do what within your application, by leveraging an RBAC system that goes beyond Django's or even Guardian's capabilities.
-- **Customizable Workspaces**: Create intuitive workspaces that contain a variety of different tiles
-    - **Analytics Tiles**: Display key metrics and insights from your data.
-    - **Link Tiles**: Quick access to important views or external resources.
-    - **Text Tiles**: For important notes or instructions.
-    - **Canvas Tiles**: A flexible space where you can use Excalidraw to create diagrams, flowcharts, and more.
-- **Bulk Uploads**: For efficiently importing data into models.
-- **REST APIs**: Automatically generated permission-aware APIs for all your models, with the ability to customize public access and user access that go beyond the already impresive permission system provided by Bloomerp.
-- **SDK Support**: Generate SDKs based on your model structure. Support for Python, JavaScript, and Typescript.
-- **File System UI**: An intuitive interface including folder structures.
-- **Commenting System**: Allows you to comment on specific objects.
+## Getting started
 
-## Getting Started
+### Install and create a project
 
-### Install Bloomerp
+Use Python 3.12 or 3.13 for generated projects. Start in an empty working
+directory and install Bloomerp in a virtual environment:
 
-Download Bloomerp via pip
-
-```sh
+```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install bloomerp
+bloomerp project init mycrm --app sales --no-input
+cd mycrm
+pip install -e .
 ```
 
-or via uv (if you haven't tried uv yet, you're missing out!)
+The activation command above is for macOS/Linux; on Windows, activate with
+`.venv\Scripts\Activate.ps1` in PowerShell. If you use `uv`, install Bloomerp
+with `uv add bloomerp` and invoke the CLI with `uv run bloomerp`.
 
-```sh
-uv add bloomerp
-```
+`project init` creates a Django project, a `.bloomerp/project.bloomerp.toml`
+manifest, and the `apps.sales` application. The generated settings include
+Bloomerp's user model, middleware, and URL configuration. Local development
+uses SQLite by default.
 
-Bloomerp has a dependency on Django and other libraries that will be automatically installed when you install Bloomerp.
+### Define a model
 
-### Setting up the project
-
-Once you have Bloomerp installed, you can create a new project by running the command below. Note that you can also add Bloomerp to an existing Django project, but this requires you to do some manual tweaking with the settings, etc. So for the sake of simplicity, we'll start with a fresh project and will be using Bloomerp's cli tool to generate the necessary files and folders.
-
-For this tutorial, let's create a small CRM application to manage customers, products, and orders.
-
-```sh
-bloomerp startproject mycrm
-```
-
-### Create Your Models
-
-Let's define some basic models for our sales application: `Customer`, `Product`, and `Order`.
+Create `apps/sales/models/customer.py`:
 
 ```python
 from django.db import models
+
 from bloomerp.models import BloomerpModel
-from bloomerp.models.fields import BloomerpFileField
-from django.utils import timezone
-from bloomerp.models.definition import (
-    BloomerpModelConfig,
-    ApiSettings
-)
-from bloomerp.field_types import Lookup
+from bloomerp.models.definition import BloomerpModelConfig, StringSearchSettings
+
 
 class Customer(BloomerpModel):
-    bloomerp_config = BloomerpModelConfig() # No particular configuration needed for this model
-
-    name = models.CharField(max_length=255)
-    email = models.EmailField()
-    phone = models.CharField(max_length=15)
-    address = models.TextField()
-
-
-class Product(BloomerpModel):
-
-    # We wanna set up the API settings so that the e-commerce frontend can easily retrieve product information without needing to log in. We also want to make sure that only active products are retrieved via the API, so we add a filter for that.
+    """Store customer contact details for the sales application."""
 
     bloomerp_config = BloomerpModelConfig(
-        api_settings=ApiSettings(
-            enable_auto_generation=True,  # Automatically generate API endpoints for this model
-            public_access=[
-                PublicAccessRule(
-                    row_actions=['list', 'retrieve'] # Allow public to list and retrieve products
-                    field_actions={
-                        "name": ["list", "retrieve"],
-                        "description": ["list", "retrieve"],
-                        "image": ["list", "retrieve"],
-                        "price": ["list", "retrieve"],
-                    },
-                    filters=[
-                        ApiFilter(
-                            ApiFilterRule(
-                                field="active",
-                                operator=Lookup.EQUALS.value.id,
-                                value=True
-                            )
-                        )
-                    ]
-                )
-            ]
-        )
+        string_search_settings=StringSearchSettings(
+            string_search_fields=["name", "email"],
+        ),
     )
 
     name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    image = BloomerpFileField(allowed_extensions=['.jpg', '.jpeg', '.png'])
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    active = models.BooleanField(default=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=30, blank=True)
 
-    
-
-class Order(BloomerpModel):
-    STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('processing', 'Processing'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
-    )
-    date = models.DateField(default=timezone.now)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.IntegerField()
-    status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='pending')
+    def __str__(self) -> str:
+        """Return the customer name for record labels."""
+        return self.name
 ```
 
-**Notes:**
+Import it in `apps/sales/models/__init__.py` so Django discovers it:
 
-1. **Inherit from `BloomerpModel`**: This ensures compatibility with Bloomerp's features.
-
-
-Make migrations for your new models:
-
-```sh
-python manage.py makemigrations sales
-python manage.py migrate sales
-```
-
-Add the endpoints in your `urls.py` file.
 ```python
-# urls.py
-from django.urls import path, include
-
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("", include("bloomerp.urls")),  # Include Bloomerp's URLs
-]
+from .customer import Customer
 ```
 
+Create the schema and register the application's field metadata:
 
-Every time you update your models, run:
-
-```sh
+```bash
+python manage.py makemigrations sales
+python manage.py migrate
 python manage.py save_application_fields
-```
-
-Create a superuser to log in:
-
-```sh
 python manage.py createsuperuser
-```
-
-Start the server:
-
-```sh
 python manage.py runserver
 ```
 
-## Found Errors? 🛑
+Open `http://127.0.0.1:8000/` and sign in with the superuser account. Run
+`makemigrations`, `migrate`, and `save_application_fields` again when changing
+model fields. Configure policies before granting other users access.
 
-If you encounter any bugs or issues, please let us know:
+### Configure and extend the application
 
-- **Open an Issue**: Report it on our GitHub issues page with details about the problem.
-- **Contact Us**: Reach out directly via email or our community channels.
+- Manage project declarations in `.bloomerp/project.bloomerp.toml` and dependencies
+  in `pyproject.toml`.
+- Put shared custom settings in `config/settings/common.py`, and local or
+  production overrides in `config/settings/local.py` or
+  `config/settings/production.py`.
+- Add custom URLs in `config/project_urls.py` and websocket routes in
+  `config/project_channels.py`.
+- Use `BloomerpModelConfig` to configure model views, layouts, search, actions,
+  activity logging, and API generation.
+- Run `bloomerp project sync` to synchronize project scaffolding after upgrading
+  Bloomerp or changing app declarations. Keep custom settings in project-owned
+  files; files under `config/settings/generated/` are managed by the CLI.
 
-Your feedback helps us improve Bloomerp for everyone!
+Generated API access is configured through `ApiSettings.access` and
+`ApiAccessSettings`, using unified `AccessRule` row and field grants for
+anonymous or authenticated callers. API nesting controls response expansion;
+permissions still govern access to related records and fields.
 
-## Roadmap 🧭
+Background workflows and live features need their corresponding workers and
+services in production. Configure production database, broker, channel layer,
+file storage, and secrets for your deployment rather than relying on the local
+SQLite and in-memory defaults.
 
-We're currently at **version 1.0.0**, and we have big plans for the future. Here's what's coming up:
+## Documentation
 
-- **Reintroduction of BloomAI**: The previous AI assistant feature will be reintroduced with enhanced capabilities, including better natural language understanding and more powerful automation features.
-- **Workflow Automation**: We're planning to add a workflow automation engine that will allow users to create custom workflows and automate repetitive tasks across their applications.
-- **More Tile Types**: We will be adding more types of tiles for the customizable workspaces, such as calendar tiles, task list tiles, and more.
-- **More**: We have a lot of other features in the pipeline, and we're always open to suggestions from the community on what to prioritize next.
+The repository contains guides for extending the framework:
 
+- [Router, views, components, and MCP tools](docs/developers/router/index.md)
+- [Data views](docs/developers/dataviews/index.md)
+- [Fields and lookups](docs/developers/fields/index.md)
+- [Workspace tiles](docs/developers/workspaces/index.md)
+- [Workflow nodes](docs/developers/automation/index.md)
+- [MCP tools and resources](docs/developers/mcp/index.md)
+- [BloomAI runtime and provider configuration](bloomerp/django_bloomerp/bloomerp/agents/README.md)
+- [Django Cotton components](docs/developers/cotton/index.md)
+- [Frontend development](bloomerp/django_bloomerp/bloomerp/static_src/README.md)
+- [Testing and scenario frameworks](docs/developers/testing/index.md)
 
-Stay tuned for updates, and feel free to contribute to any of these upcoming features!
+## Working on the framework
 
-## Want to Contribute? 🤝
+The Python package and development Django project live in
+`bloomerp/django_bloomerp/`. Frontend source lives in its
+`bloomerp/static_src/` directory; developer and user documentation lives in `docs/`.
 
-Each time I've referred to 'we' throughout this document, I'm actually only refering to myself (gotta stay professional). However I would love your help in making Bloomerp a **WE** project in the future 😉 ! Whether it's fixing bugs, adding new features, or improving documentation, your contributions are more than welcome.
+Install the repository's Python dependencies from the package directory:
 
-- **Fork the Repository**: Start by forking the Bloomerp repository on GitHub.
-- **Create a Branch**: Make a new branch for your feature or bug fix.
-- **Submit a Pull Request**: When you're ready, submit a pull request for review.
+```bash
+cd bloomerp/django_bloomerp
+uv sync
+```
 
-Feel free to open issues for feature requests or discussions.
+Use the project's local settings for development. To initialize a local database
+and start Django, run the same `migrate`, `save_application_fields`,
+`createsuperuser`, and `runserver` commands above with `uv run`.
 
+For frontend changes, use Node.js 22 (the version used by the package publishing
+workflow) and npm:
+
+```bash
+cd bloomerp/static_src
+npm install
+npm run dev
+```
+
+Run the Django server in a separate terminal. `npm run build` produces the
+production assets, and `npm run type-check` checks TypeScript without emitting
+bundles. Published packages include compiled assets, so application developers
+only need this toolchain when changing frontend source.
+
+Read the [testing guide](docs/developers/testing/index.md) before adding tests.
+Choose the narrowest layer that owns the behavior and use its established base
+test case and scenario framework. From `bloomerp/django_bloomerp/`, run a focused
+suite with:
+
+```bash
+uv run python manage.py test <test_module>
+```
+
+Replace `<test_module>` with the dotted path of the relevant test module. See
+the [end-to-end guide](docs/developers/testing/e2e-test-case.md) for browser test
+setup and execution.
+
+## Contributing
+
+Bug reports, feature requests, documentation improvements, and pull requests
+are welcome. Open an issue with reproduction steps for a bug, or describe the
+use case for a proposed feature. For a code change, create a branch, keep the
+scope focused, and include the relevant verification results in your PR.
+
+Project coding and testing conventions are recorded in [AGENTS.md](AGENTS.md).
 
 ## License
-By contributing to this project, you agree that your contributions will be licensed under the AGPL v3 and may be used in commercially licensed versions of this software.
 
-This project is licensed under the [GNU Affero General Public License v3](LICENSE.txt).
+Bloomerp is licensed under the [GNU Affero General Public License v3](LICENSE.txt).
+By contributing, you agree that your contributions will be licensed under the
+AGPL v3 and may be used in commercially licensed versions of this software.
 
-For commercial licensing options, please contact [bloomer.david@outlook.com](mailto:bloomer.david@outlook.com).
+For commercial licensing options, contact
+[bloomer.david@outlook.com](mailto:bloomer.david@outlook.com).
