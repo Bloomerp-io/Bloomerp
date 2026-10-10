@@ -87,6 +87,15 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
     def get_can_change(self):
         return PreferenceManager(self.get_user()).can_manage(self.get_layout_object())
 
+    def get_can_manage_attachments(self) -> bool:
+        """Allow attachments for record creators or users who may change this record."""
+        manager = UserPolicyManager(self.get_user())
+        if self.is_create_layout():
+            return manager.has_global_permission(self.model, BloomerpPermission.ADD)
+        return manager.has_access_to_object(
+            self.get_form_instance(), BloomerpPermission.CHANGE
+        )
+
     def get_layout_container_extra_attrs(self) -> dict[str, object]:
         attrs = super().get_layout_container_extra_attrs()
         if self.layout_mode == "detail":
@@ -480,6 +489,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         context["content_type_id"] = self.layout_content_type.pk
         context["model_name"] = self.model._meta.verbose_name
         context["model_key"] = self.model._meta.model_name
+        context["can_manage_attachments"] = self.get_can_manage_attachments()
         if self.request.method.upper() != "POST":
             context["layout_non_field_errors"] = [
                 *context.get("layout_non_field_errors", []),

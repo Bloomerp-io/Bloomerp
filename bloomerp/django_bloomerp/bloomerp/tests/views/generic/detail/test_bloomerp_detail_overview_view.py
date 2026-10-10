@@ -5,6 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.urls import reverse
 
+from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
     ApplicationField,
@@ -26,6 +27,8 @@ from bloomerp.models.users.user import DetailSidebarViewPreference
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleContent
+from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base.request_test_case_mixin import (
     ExpectedResult,
     ModelRequestScenario,
@@ -58,6 +61,30 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         return [
             *self.get_attachment_scenarios(),
             ModelRequestScenario(
+                name="Record editors can attach using an inherited layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.prepare_editor_shared_layout,
+                expected=ExpectedResult(response_validators=self.shared_attachment_controls),
+            ),
+            ModelRequestScenario(
+                name="View-only users cannot attach even when they own the layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.grant_names_only,
+                expected=ExpectedResult(response_validators=self.no_attachment_controls),
+            ),
+            ModelRequestScenario(
+                name="Change permission for other records does not enable attachments",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.grant_other_record_change,
+                expected=ExpectedResult(response_validators=self.no_attachment_controls),
+            ),
+            ModelRequestScenario(
                 name="Object overview requires global view permission",
                 description="UC: A row policy matches but global view access is absent.\nExpected Result: The detail page returns 403.",
                 model=self.CustomerModel,
@@ -85,8 +112,8 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 expected=ExpectedResult(response_validators=self.age_is_disabled),
             ),
             ModelRequestScenario(
-                name="Generated layouts omit system fields but keep files editable",
-                description="UC: An administrator opens an object using the generated default layout.\nExpected Result: Internal system fields are omitted while files stay visible and enabled.",
+                name="Generated detail layouts omit header attachment fields and enable Attach",
+                description="UC: An administrator opens a generated detail layout.\nExpected Result: System and header attachment fields are omitted while Attach is enabled.",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 view_kwargs=customer_kwargs,
@@ -233,6 +260,70 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             ),
         ]
 
+    def prepare_editor_shared_layout(self, scenario: ModelRequestScenario) -> None:
+        """Give a record editor a shared layout that they cannot edit."""
+        self.grant_first_name_change(scenario)
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        source = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            name="Shared editor layout",
+            initial_default=True,
+            layout={"rows": [{"columns": 1, "items": [
+                {"id": self.fields_by_name["first_name"].pk}
+            ]}]},
+        )
+        source.shared_with_users.add(self.normal_user)
+
+    def grant_other_record_change(self, scenario: ModelRequestScenario) -> None:
+        """Allow viewing this record while change access matches only other records."""
+        PolicyManager.create_policy(
+            self.CustomerModel,
+            access_rule=AccessRule(
+                row_permissions=[
+                    RowPolicyRuleContent(
+                        connector="AND", conditions=[], permissions=[BloomerpPermission.VIEW]
+                    ),
+                    RowPolicyRuleContent(
+                        connector="AND",
+                        conditions=[FilterCondition(field_path="age", lookup_id="equals", value=99)],
+                        permissions=[BloomerpPermission.CHANGE],
+                    ),
+                ],
+                field_permissions={
+                    "first_name": [BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+                },
+            ),
+        ).assign_user(self.normal_user)
+
+    def shared_attachment_controls(self, response: HttpResponse) -> bool:
+        """Check record editors get attachment controls independently of layout ownership."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        host = soup.find(attrs={"bloomerp-component": "reference-attachments"})
+        return (
+            not response.context["can_change"]
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
+            and soup.find(attrs={"name": "object_references"}) is not None
+            and host is not None
+            and host.get("data-can-change") == "true"
+        )
+
+    def no_attachment_controls(self, response: HttpResponse) -> bool:
+        """Check layout ownership cannot grant attachment edits on a read-only record."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        host = soup.find(attrs={"bloomerp-component": "reference-attachments"})
+        return (
+            response.context["can_change"]
+            and not response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is None
+            and soup.find(attrs={"name": "object_references"}) is None
+            and host is not None
+            and host.get("data-can-change") == "false"
+        )
+
     def get_endpoint(self, view_name, kwargs, setup=None):
         if view_name == "detail_layout_available_fields":
             preference_type = ContentType.objects.get_for_model(UserObjectLayoutPreference)
@@ -309,13 +400,15 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         field = soup.find(attrs={"name": "age"})
         return field is not None and field.has_attr("disabled")
 
-    def system_fields_have_correct_state(self, response):
+    def system_fields_have_correct_state(self, response: HttpResponse) -> bool:
+        """Check generated detail layouts offer attachments through the header controls."""
         items = {str(item.id): item for row in response.context["layout"].rows for item in row.items}
-        system_names = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments"}
+        system_names = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments", "files", "avatar"}
+        soup = BeautifulSoup(response.content, "html.parser")
         return (
             all(str(self.fields_by_name[name].pk) not in items for name in system_names)
-            and items[str(self.fields_by_name["files"].pk)].is_visible
-            and "disabled" not in items[str(self.fields_by_name["files"].pk)].content
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
         )
 
     def configure_layout_with_deleted_field(

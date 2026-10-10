@@ -399,7 +399,7 @@ class TestEditorReferences(e2e_test_cases.BloomerpE2ETestCase):
         host = self.page.locator(
             '[bloomerp-component="bloomerp-text-editor"][data-name="content"]'
         )
-        editor = host.locator("[contenteditable]")
+        editor = host.locator('[contenteditable]:not([contenteditable="false"])')
         editor.fill("Image reference")
         host.get_by_role("button", name="Show formatting toolbar").click()
         host.get_by_role("button", name="Image", exact=True).click()
@@ -413,9 +413,14 @@ class TestEditorReferences(e2e_test_cases.BloomerpE2ETestCase):
             {"name": "reference.png", "mimeType": "image/png", "buffer": image}
         )
         expect(editor.locator('img[src*="files/serve"]')).to_be_visible()
-        expect(self.page.locator("[data-reference-chips]")).to_contain_text(
+        expect(self.page.locator("[data-reference-files-trigger]")).to_have_text("Files (1)")
+        self.page.locator("[data-reference-files-trigger]").click()
+        expect(self.page.locator("[data-reference-file-list]")).to_contain_text(
             "reference.png"
         )
+        self.page.keyboard.press("Escape")
+        editor.click()
+        editor.press("ControlOrMeta+End")
         # Typing must continue in an editable paragraph after the image.
         self.page.keyboard.type("Text after the image")
         expect(editor.locator("figure + p")).to_have_text("Text after the image")
