@@ -124,7 +124,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 heading: {
                     h1: !this.overrideDefaultStyling ? 'text-4xl font-bold mb-2' : '',
                     h2: !this.overrideDefaultStyling ? 'text-2xl font-bold mb-1' : '',
-                    h3: !this.overrideDefaultStyling ? 'text-2xl font-bold' : '',
+                    h3: !this.overrideDefaultStyling ? 'text-xl font-bold' : '',
                 },
                 list: {
                     ul: !this.overrideDefaultStyling ? 'list-disc list-inside pl-4' : '',
