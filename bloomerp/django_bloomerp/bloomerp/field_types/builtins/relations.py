@@ -9,9 +9,9 @@ from django.db.models.fields.reverse_related import ManyToManyRel
 from django.forms.models import ModelChoiceField, ModelMultipleChoiceField
 
 from bloomerp.field_types.builtins.display import (
-    standard_display_options,
     BEHAVIORS_DISPLAY_OPTION,
     get_related_model_field_choices,
+    standard_display_options,
 )
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
@@ -33,6 +33,7 @@ from bloomerp.field_types.registry import (
     FieldTypeDefinition,
     FieldTypeRegistry,
 )
+from bloomerp.field_types.utils.file_values import render_object_files_value
 from bloomerp.field_types.utils.form_field_factories import form
 from bloomerp.field_types.utils.render_value_functions import (
     render_foreign_key_dataview_value,
@@ -359,7 +360,7 @@ FILES_RELATION_FIELD = FieldTypeDefinition(
     lookups=(),
     widget_factory=widget(ObjectFilesWidget, attrs={}),
     form_factory=form(FilesRelationField, virtual=True),
-    render_value=render_m2m_dataview_value,
+    render_value=render_object_files_value,
     display_options=standard_display_options,
 )
 

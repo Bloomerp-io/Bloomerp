@@ -9,6 +9,8 @@ Parameters:
 - layout (json): the layout object
 - layout_object_id (str/int): the object id of the layout
 - init_edit (bool): whether to initialize editing
+- header_margin_class (str): toolbar bottom spacing (default: mb-4)
+- below_header_margin_class (str): secondary header bottom spacing (default: mb-4)
 
 Slots:
 - default: layout items
@@ -81,7 +83,7 @@ Slots:
     {% if not no_header == True %}
     <!--Header Section-->    
     <div 
-        class="flex flex-wrap items-center justify-between mb-4 gap-4"
+        class="flex flex-wrap items-center justify-between {{ header_margin_class|default:'mb-4' }} gap-4"
         data-layout-header-section
     >   
         <!--Right Section-->
@@ -138,7 +140,7 @@ Slots:
     <!--End Header Section-->
 
     {% if bellow_header %}
-    <div class="mb-4" data-layout-header-section-2>
+    <div class="{{ below_header_margin_class|default:'mb-4' }}" data-layout-header-section-2>
         {{ bellow_header }}
     </div>
     {% endif %}

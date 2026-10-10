@@ -462,6 +462,20 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Exercise single/multiple uploads and individual/all removals through detail POSTs."""
         return [
             ModelRequestScenario(
+                name="Generic uploads survive the simultaneous reference payload",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_generic_upload,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=lambda response: self.customer.files.filter(
+                        file__name="manual.txt", application_field__isnull=True,
+                        occurrence_id__isnull=True,
+                    ).count() == 1,
+                ),
+            ),
+            ModelRequestScenario(
                 name="Add one field attachment",
                 model=self.CustomerModel,
                 user=self.admin_user,
@@ -564,7 +578,7 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
 
     def seed_attachments(self) -> None:
         """Create two owned attachments and remember their IDs and storage names."""
-        from bloomerp.models.files.file import File
+        from bloomerp.models.files.file_node import FileNode
 
         self.attachment_field.on_save(
             self.customer,
@@ -576,7 +590,7 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         )
         self.original_attachment_ids = [str(file.pk) for file in self.customer.picture]
         self.original_files = list(
-            File.objects.filter(pk__in=self.original_attachment_ids)
+            FileNode.objects.filter(pk__in=self.original_attachment_ids)
         )
 
     def prepare_remove_one(self, scenario: ModelRequestScenario) -> None:
@@ -607,7 +621,6 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
 
     def attachment_count_is(self, count: int) -> bool:
         """Check IDs, object ownership, field metadata, and persisted storage."""
-        from bloomerp.models.files.file import File
 
         self.customer.refresh_from_db()
         files = list(self.customer.picture)
@@ -615,11 +628,11 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             len(files) == count
             and len(self.customer.picture) == count
             and all(
-                file.field_reference.application_field.content_type_id == self.content_type.pk
-                and file.field_reference.object_id == str(self.customer.pk)
-                and file.field_reference.application_field.field == "picture"
-                and file.persisted
-                and file.file.storage.exists(file.file.name)
+                file.references.filter(
+                    content_type_id=self.content_type.pk, object_id=str(self.customer.pk),
+                    application_field__field="picture", occurrence_id__isnull=True,
+                ).exists()
+                and file.content.storage.exists(file.content.name)
                 for file in files
             )
         )
@@ -633,8 +646,8 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         return self.attachment_count_is(2)
 
     def one_attachment_removed(self, _response: HttpResponse) -> bool:
-        """Check removal deletes only the deselected record and its stored bytes."""
-        from bloomerp.models.files.file import File
+        """Check removal unlinks only the deselected file and preserves its bytes."""
+        from bloomerp.models.files.file_node import FileNode
 
         removed_id = self.original_attachment_ids[1]
         removed = next(
@@ -642,19 +655,20 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         )
         return (
             self.attachment_count_is(1)
-            and not File.objects.filter(pk=removed_id).exists()
-            and not removed.file.storage.exists(removed.file.name)
+            and FileNode.objects.filter(pk=removed_id).exists()
+            and not removed.references.exists()
+            and removed.content.storage.exists(removed.content.name)
         )
 
     def all_attachments_removed(self, _response: HttpResponse) -> bool:
-        """Check clearing the field removes all owned records and their bytes."""
-        from bloomerp.models.files.file import File
+        """Check clearing the field removes all usages while preserving nodes and bytes."""
+        from bloomerp.models.files.file_node import FileNode
 
         return (
             self.attachment_count_is(0)
-            and not File.objects.filter(pk__in=self.original_attachment_ids).exists()
+            and FileNode.objects.filter(pk__in=self.original_attachment_ids).count() == 2
             and all(
-                not file.file.storage.exists(file.file.name)
+                file.content.storage.exists(file.content.name) and not file.references.exists()
                 for file in self.original_files
             )
         )
@@ -668,10 +682,27 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
 
     def foreign_attachment_is_safe(self, response: HttpResponse) -> bool:
         """Check a forged retained ID cannot attach or delete another object's file."""
-        from bloomerp.models.files.file import File
+        from bloomerp.models.files.file_node import FileNode
 
         return (
             self.attachment_count_is(0)
-            and File.objects.filter(pk__in=[file.pk for file in self.other_customer.picture]).count() == 1
+            and FileNode.objects.filter(pk__in=[file.pk for file in self.other_customer.picture]).count() == 1
             and "Attachments do not belong" in response.content.decode()
+        )
+
+    def prepare_generic_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a generic files upload alongside the manual chip state."""
+        scenario.view_kwargs = {"pk": self.customer.pk}
+        scenario.data = {
+            "files": SimpleUploadedFile("manual.txt", b"manual"),
+            "object_references": '{"fields": {}, "manual": []}',
+        }
+        UserObjectLayoutPreference.objects.filter(
+            user=self.admin_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user, content_type=self.content_type, selected=True,
+            layout=FieldLayout(rows=[LayoutRow(columns=1, items=[
+                LayoutItem(id=self.fields_by_name["files"].pk)
+            ])]).model_dump(mode="json"),
         )

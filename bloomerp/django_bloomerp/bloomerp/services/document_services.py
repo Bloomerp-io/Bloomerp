@@ -1,12 +1,15 @@
 import inspect
 import re
-from dataclasses import asdict, dataclass, field as dataclass_field
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
+from dataclasses import field as dataclass_field
 from enum import Enum
 from typing import Any, Optional
 
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
+from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.template import engines
 from django.utils import timezone
@@ -16,7 +19,8 @@ from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.forms.document_templates import DocumentTemplateForm
 from bloomerp.models import AbstractBloomerpUser, ApplicationField, DocumentTemplate
 from bloomerp.models.document_templates.document_template import FreeVariableConfig
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_node import FileNode
+from bloomerp.models.files.file_reference import FileReference
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.utils.pdf import generate_pdf
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
@@ -382,61 +386,59 @@ class DocumentTemplateService:
         generated_form_class = type("DocumentTemplateGeneratedForm", (DocumentTemplateForm,), form_attrs)
         return generated_form_class
 
-    def get_files(self, instance: Optional[Model] = None) -> QuerySet[File]:
-        """Returns a queryset of all the saved files from this document template.
-
-        Returns:
-            QuerySet[File]: _description_
-        """
-        qs = File.objects.filter(
-            meta__document_template__id=str(self.document_template.id),
+    def get_files(self, instance: Model | None = None) -> QuerySet[FileNode]:
+        """Find generated nodes through template and optional object references."""
+        qs = FileNode.objects.filter(
+            references__content_type=ContentType.objects.get_for_model(self.document_template),
+            references__object_id=str(self.document_template.pk),
+            kind="FILE",
         )
-        if instance:
+        if instance is not None:
+            # A separate join matches the object's reference independently of the template.
             qs = qs.filter(
-                object_id=str(instance.pk),
-                content_type=ContentType.objects.get_for_model(instance),
+                references__content_type=ContentType.objects.get_for_model(instance),
+                references__object_id=str(instance.pk),
             )
-
-        return qs
+        return qs.distinct()
 
     def create_file(
         self,
-        file_bytes:bytes,
-        instance:Optional[Model] = None,
-        filename:Optional[str] = None
-        ) -> File:
-        """Creates a file from the given bytes and associates it with the given instance and this document template.
+        file_bytes: bytes,
+        objects: Iterable[Model] | None = None,
+        filename: str | None = None,
+    ) -> FileNode:
+        """Store one PDF and reference its template and every supplied source object.
 
-        Args:
-            file_bytes (bytes): The file bytes to save
-            instance (Optional[Model], optional): An optional instance to link it to. Defaults to None.
-            filename (Optional[str], optional): An optional filename, will generate a default filename if not given. Defaults to None.
-
-        Returns:
-            File: The file object
+        Repeated objects produce a single record reference. A failed reference
+        rolls back the database writes and removes the newly stored bytes.
         """
-        filename = filename or self.generate_default_filename(instance)
+        objects = list(objects) if objects is not None else []
+        filename = filename or self.generate_default_filename(objects[0] if objects else None)
         if not filename.lower().endswith(".pdf"):
             filename = f"{filename}.pdf"
-
-        content_type = ContentType.objects.get_for_model(instance) if instance is not None else None
-        from bloomerp.models.files.file import FileMetadata, DocumentTemplateFileMetadata
-
-        meta = FileMetadata(document_template=DocumentTemplateFileMetadata(
-            id=self.document_template.id, name=self.document_template.name,
-        ))
-
-        file_object = File(
+        file_object = FileNode(
             name=filename,
-            content_type=content_type,
-            object_id=str(instance.pk) if instance is not None else None,
-            folder=self.document_template.save_to_folder,
-            persisted=True,
-            meta=meta,
+            kind="FILE",
+            content=ContentFile(file_bytes, name=filename),
             created_by=self.user,
             updated_by=self.user,
         )
-        file_object.file.save(filename, ContentFile(file_bytes), save=True)
+        try:
+            with transaction.atomic():
+                file_object.save()
+                for obj in [self.document_template, *objects]:
+                    FileReference.objects.get_or_create(
+                        file=file_object,
+                        content_type=ContentType.objects.get_for_model(obj),
+                        object_id=str(obj.pk),
+                        application_field=None,
+                        occurrence_id=None,
+                        defaults={"created_by": self.user, "updated_by": self.user},
+                    )
+        except Exception:
+            if file_object.content and file_object.content._committed:
+                file_object.content.delete(save=False)
+            raise
         return file_object
 
     def generate_default_filename(self, instance: Optional[Model] = None) -> str:

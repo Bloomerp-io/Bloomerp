@@ -1,15 +1,16 @@
 import base64
 
+from django.contrib.auth.decorators import login_required
+from django.contrib.contenttypes.models import ContentType
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render
+
+from bloomerp.models.document_templates import DocumentTemplate
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from django.shortcuts import render
-from django.http import HttpResponse, HttpRequest
-from bloomerp.models.document_templates import DocumentTemplate
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.decorators import login_required
 from bloomerp.services.document_services import DocumentTemplateService
-from django.contrib.contenttypes.models import ContentType
+
 
 @router.register(
     path='components/document_templates/generate/<str:id>/', 
@@ -95,7 +96,7 @@ def generate_document_template(
                 if form.cleaned_data.get("persist"):
                     generated_file = service.create_file(
                         pdf_bytes,
-                        instance=getattr(form, "instance", None),
+                        objects=form.objects,
                     )
                 
                 # Add extra context

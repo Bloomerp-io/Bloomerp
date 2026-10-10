@@ -7,18 +7,27 @@ import mimetypes
 import re
 from collections.abc import AsyncIterator, Iterable, Iterator, Sequence
 from io import StringIO
+from pathlib import PurePath
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.core.handlers.asgi import ASGIRequest
-from django.http import FileResponse, HttpRequest, HttpResponse, StreamingHttpResponse
+from django.http import (
+    FileResponse,
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    StreamingHttpResponse,
+)
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 
 from bloomerp.router import router
 
 if TYPE_CHECKING:
-    from bloomerp.models.files.file import File
+    from bloomerp.models.files.file_node import FileNode
+
 
 MAX_PREVIEW_ROWS = 200
 MAX_PREVIEW_COLUMNS = 50
@@ -26,9 +35,15 @@ MAX_PREVIEW_CELL_CHARACTERS = 2_000
 MAX_TEXT_BYTES = 256 * 1024
 
 
-def _media_chunks(file: File, start: int, length: int) -> Iterator[bytes]:
+def _file_extension(file: FileNode) -> str:
+    """Read the original content extension from metadata, falling back to its key."""
+    extension = file.metadata.extension
+    return extension.lower() if extension is not None else PurePath(file.content.name).suffix.lstrip(".").lower()
+
+
+def _media_chunks(file: FileNode, start: int, length: int) -> Iterator[bytes]:
     """Stream only the requested byte range and close storage after playback."""
-    with file.file.open("rb") as source:
+    with file.content.open("rb") as source:
         source.seek(start)
         while length > 0:
             chunk = source.read(min(length, 64 * 1024))
@@ -39,7 +54,7 @@ def _media_chunks(file: File, start: int, length: int) -> Iterator[bytes]:
 
 
 async def _async_media_chunks(
-    file: File, start: int, length: int
+    file: FileNode, start: int, length: int
 ) -> AsyncIterator[bytes]:
     """Read bounded chunks off-thread so ASGI never buffers a synchronous file iterator."""
     chunks = _media_chunks(file, start, length)
@@ -51,11 +66,12 @@ async def _async_media_chunks(
 
 
 def _media_response(
-    request: HttpRequest, file: File
+    request: HttpRequest, file: FileNode
 ) -> HttpResponse | StreamingHttpResponse:
     """Stream authorized media under WSGI or ASGI, supporting PDF and player byte ranges."""
-    size = file.file.size
-    content_type = mimetypes.guess_type(file.file.name)[0] or "application/octet-stream"
+    metadata = file.metadata
+    size = metadata.size if metadata.size is not None else file.content.size
+    content_type = metadata.mime_type or mimetypes.guess_type(file.content.name)[0] or "application/octet-stream"
     requested_range = request.headers.get("Range")
     if requested_range:
         match = re.fullmatch(r"bytes=(\d*)-(\d*)", requested_range)
@@ -88,10 +104,10 @@ def _media_response(
         )
         response["Content-Length"] = str(size)
     else:
-        response = FileResponse(file.file.open("rb"), content_type=content_type)
+        response = FileResponse(file.content.open("rb"), content_type=content_type)
     response["Accept-Ranges"] = "bytes"
     response["X-Content-Type-Options"] = "nosniff"
-    if file.file_extension.lower() == "pdf":
+    if _file_extension(file) == "pdf":
         response["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
@@ -136,9 +152,9 @@ def _sheet_preview(
     )
 
 
-def _text_preview(file: File) -> tuple[str, bool]:
+def _text_preview(file: FileNode) -> tuple[str, bool]:
     """Read bounded UTF-8 or BOM-marked UTF-16 text without cutting a character."""
-    with file.file.open("rb") as source:
+    with file.content.open("rb") as source:
         data = source.read(MAX_TEXT_BYTES + 1)
     truncated = len(data) > MAX_TEXT_BYTES
     encoding = (
@@ -156,14 +172,19 @@ def _text_preview(file: File) -> tuple[str, bool]:
 )
 @login_required
 def preview_file(
-    request: HttpRequest, file_id: str | File
+    request: HttpRequest, file_id: str | FileNode
 ) -> HttpResponse | StreamingHttpResponse:
     """Render authorized, escaped previews for documents, sheets, images, and media."""
-    from bloomerp.models.files.file import File
-    from bloomerp.services.file_permission_services import user_can_view_file
+    from bloomerp.files.access import FileAccessManager
+    from bloomerp.models.files.file_node import FileNode
 
-    file = file_id if isinstance(file_id, File) else get_object_or_404(File, id=file_id)
-    if not user_can_view_file(request, file):
+    try:
+        file = file_id if isinstance(file_id, FileNode) else get_object_or_404(FileNode, id=file_id)
+    except (ValidationError, ValueError) as error:
+        raise Http404("Invalid file identifier") from error
+    if file.kind != FileNode.FileNodeKind.FILE or not file.content:
+        raise Http404("Only file nodes can be previewed")
+    if not FileAccessManager(request.user).can_read_file_node(file):
         return HttpResponse(status=403)
 
     preview_url = reverse("components_preview_file", kwargs={"file_id": file.pk})
@@ -176,9 +197,9 @@ def preview_file(
     }
     if request.GET.get("download") == "1":
         return FileResponse(
-            file.file.open("rb"), as_attachment=True, filename=file.name
+            file.content.open("rb"), as_attachment=True, filename=file.name
         )
-    extension = file.file_extension.lower()
+    extension = _file_extension(file)
     if extension == "pdf":
         context["kind"] = "pdf"
     elif extension in {

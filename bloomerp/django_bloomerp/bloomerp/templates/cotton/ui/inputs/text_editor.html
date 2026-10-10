@@ -13,6 +13,10 @@ prepare their variable context, then call insert to preserve the original select
 <div 
     bloomerp-component="bloomerp-text-editor" 
     class="relative rounded-xl {% if not height %}{% if compact %}min-h-36{% else %}min-h-72{% endif %}{% endif %} {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}"
+    data-reference-search-url="{% url 'components_objects_references' %}"
+    data-reference-upload-url="{% url 'api_assistant_file_upload' %}"
+    data-reference-serve-url="{% url 'api_files_serve' %}"
+    data-application-field-id="{{ application_field_id|default:'' }}"
     data-template-search-url="{% url 'components_text_editor_templates' %}"
     data-placeholder="{{ placeholder|default:'' }}"
     data-disabled="{{ disabled|yesno:'true,false' }}"

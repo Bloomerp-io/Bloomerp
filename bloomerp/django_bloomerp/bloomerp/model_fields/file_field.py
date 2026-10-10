@@ -172,23 +172,28 @@ class BloomerpFileField(models.Field):
         using: str = "default",
         **kwargs: Any,
     ) -> None:
-        """Delete owned files through their references after parent deletion."""
+        """Remove this field's usages while retaining reusable file nodes and bytes."""
         from django.contrib.contenttypes.models import ContentType
 
-        from bloomerp.models import FileFieldReference
+        from bloomerp.models import FileReference
 
-        FileFieldReference.objects.using(using).filter(
-            application_field__content_type=ContentType.objects.get_for_model(sender),
+        FileReference.objects.using(using).filter(
+            content_type=ContentType.objects.db_manager(using).get_for_model(sender),
             application_field__field=self.name,
             object_id=str(instance.pk),
         ).delete()
 
     def on_save(
-        self, parent: models.Model, retained: list[str], uploads: list[UploadedFile]
+        self,
+        parent: models.Model,
+        retained: list[str],
+        uploads: list[UploadedFile],
+        *,
+        user: Any = None,
     ) -> None:
         """Synchronize references and uploaded files after the validated parent saves."""
-        from bloomerp.models import File, FileFieldReference
-        from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
+        from bloomerp.models.files.file_node import FileNode
+        from bloomerp.models.files.file_reference import FileReference
 
         if parent._state.adding:
             raise ValueError("Save the parent before its attachments.")
@@ -196,40 +201,46 @@ class BloomerpFileField(models.Field):
         form_field.bind_parent(parent)
         validated = form_field.clean({"retained": retained, "uploads": uploads})
         application_field = self.get_application_field(parent)
-        with transaction.atomic():
-            # Serialize edits on the parent even when this field has no references yet.
-            parent.__class__._base_manager.select_for_update().get(pk=parent.pk)
-            owned = FileFieldReference.objects.filter(
-                application_field=application_field,
-                object_id=str(parent.pk),
-            )
-            existing_ids = {
-                str(pk) for pk in owned.values_list("file_id", flat=True)
-            }
-            if set(validated.retained) - existing_ids:
-                raise ValidationError(
-                    "Attachments do not belong to this object and field."
-                )
-            folder = (
-                ensure_folder_hierarchy_for_object(parent)
-                if validated.uploads
-                else None
-            )
-            for upload in validated.uploads:
-                file = File.objects.create(
-                    file=upload,
-                    name=upload.name,
-                    persisted=True,
-                    folder=folder,
-                    created_by=getattr(parent, "updated_by", None),
-                    updated_by=getattr(parent, "updated_by", None),
-                )
-                FileFieldReference.objects.create(
-                    file=file,
+        actor = user or getattr(parent, "updated_by", None)
+        created: list[FileNode] = []
+        try:
+            with transaction.atomic():
+                # Serialize edits on the parent even when it has no references yet.
+                parent.__class__._base_manager.select_for_update().get(pk=parent.pk)
+                owned = FileReference.objects.filter(
+                    content_type_id=application_field.content_type_id,
                     application_field=application_field,
                     object_id=str(parent.pk),
+                    occurrence_id__isnull=True,
                 )
-            owned.filter(file_id__in=existing_ids).exclude(
-                file_id__in=validated.retained
-            ).delete()
+                existing_ids = {
+                    str(pk) for pk in owned.values_list("file_id", flat=True)
+                }
+                if set(validated.retained) - existing_ids:
+                    raise ValidationError(
+                        "Attachments do not belong to this object and field."
+                    )
+                for upload in validated.uploads:
+                    file = FileNode(
+                        content=upload,
+                        name=upload.name,
+                        kind="FILE",
+                        created_by=actor,
+                        updated_by=actor,
+                    )
+                    created.append(file)
+                    file.save()
+                    FileReference.objects.create(
+                        file=file,
+                        content_object=parent,
+                        application_field=application_field,
+                    )
+                owned.filter(file_id__in=existing_ids).exclude(
+                    file_id__in=validated.retained
+                ).delete()
+        except Exception:
+            for file in created:
+                if file.content and file.content._committed:
+                    file.content.delete(save=False)
+            raise
         parent.__dict__.pop("_prefetched_objects_cache", None)

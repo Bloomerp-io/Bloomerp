@@ -1,4 +1,7 @@
 import type { ContextMenuSubmenu } from "@/utils/contextMenu";
+import { ReferencePicker } from "./utils/referencePicker";
+import { ReferenceNode, type ReferenceTarget } from "./nodes/ReferenceNode";
+import { FileImageNode } from "./nodes/FileImageNode";
 import { TemplatePicker } from "./utils/templatePicker";
 import { t as _ } from "@/utils/i18n";
 import { Command, COMMANDS, registerCommands } from "./commands";
@@ -13,6 +16,8 @@ import {
     $isBlockElementNode,
     $createParagraphNode,
     $getRoot,
+    $isElementNode,
+    PASTE_COMMAND,
     $getNearestNodeFromDOMNode,
     $getSelection,
     $insertNodes,
@@ -60,6 +65,7 @@ import {
 
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
+    private referencePicker: ReferencePicker | null = null;
     private templatePicker: TemplatePicker | null = null;
     private unregister: (() => void) | null = null;
     private commands: Array<Command> = [];
@@ -146,6 +152,8 @@ export class BloomerpTextEditor extends BaseWidget {
                 TableRowNode,
                 TableCellNode,
                 ImageNode,
+                ReferenceNode,
+                FileImageNode,
                 CodeBlockNode,
                 HtmlNode,
             ],
@@ -178,9 +186,11 @@ export class BloomerpTextEditor extends BaseWidget {
         this.setValue(this.hiddenInput?.value ?? '', false);
         this.updateNestedListMarkers(editorRef);
 
+        this.referencePicker = new ReferencePicker(this.element, this.editor);
         const historyState = createEmptyHistoryState();
 
         this.unregister = mergeRegister(
+            this.editor.registerCommand(PASTE_COMMAND, this.pasteReferences.bind(this), COMMAND_PRIORITY_LOW),
             registerRichText(this.editor),
             registerHistory(this.editor, historyState, 300),
             registerTableBehavior(this.editor, this.element),
@@ -215,7 +225,10 @@ export class BloomerpTextEditor extends BaseWidget {
         });
     }
 
+    /** Release editor menus, subscriptions, and Lexical resources. */
     public destroy(): void {
+        this.referencePicker?.destroy();
+        this.referencePicker = null;
         this.templatePicker?.destroy();
         this.templatePicker = null;
         if (this.hostClickHandler) {
@@ -245,6 +258,61 @@ export class BloomerpTextEditor extends BaseWidget {
         this.toolbarToggleButton = null;
         this.toolbarRevealButton?.remove();
         this.toolbarRevealButton = null;
+    }
+
+    /** Open mention, object, or stored-image selection for this editor. */
+    public openReferencePicker(kind: "user" | "object" | "file"): void {
+        if (!this.editor || this.element.dataset.disabled === "true") return;
+        this.referencePicker ??= new ReferencePicker(this.element, this.editor);
+        this.referencePicker.open(kind);
+    }
+
+    /** Supply searchable reference actions to the existing slash menu. */
+    public getReferenceSubmenu(kind: "user" | "object" | "file"): ContextMenuSubmenu {
+        this.referencePicker ??= new ReferencePicker(this.element, this.editor!);
+        return this.referencePicker.submenu(kind);
+    }
+
+    /** Expose reference occurrences directly from the editor's current node state. */
+    public getReferences(): ReferenceTarget[] {
+        const references: ReferenceTarget[] = [];
+        /** Collect reference tokens and stored media through nested editor blocks. */
+        function collectReferences(node: LexicalNode): void {
+            if (node instanceof ReferenceNode || node instanceof FileImageNode) references.push(node.getReference());
+            else if ($isElementNode(node)) for (const child of node.getChildren()) collectReferences(child);
+        }
+        /** Read committed editor state without mutating content or selection. */
+        function collectFromRoot(): void { collectReferences($getRoot()); }
+        this.editor?.getEditorState().read(collectFromRoot);
+        return references;
+    }
+
+    /** Remove only the reference represented by one occurrence chip. */
+    public removeReferenceOccurrence(occurrenceId: string): void {
+        if (!this.editor || this.element.dataset.disabled === "true") return;
+        /** Visit editor nodes and remove the matching atomic reference. */
+        function removeOccurrence(node: LexicalNode): void {
+            if ((node instanceof ReferenceNode || node instanceof FileImageNode) && node.getReference().occurrence_id === occurrenceId) {
+                node.remove();
+            } else if ($isElementNode(node)) {
+                for (const child of node.getChildren()) removeOccurrence(child);
+            }
+        }
+        /** Apply the removal within a single undoable editor update. */
+        function removeFromRoot(): void { removeOccurrence($getRoot()); }
+        this.editor.update(removeFromRoot, { discrete: true });
+    }
+
+    /** Assign new occurrence identities to copied references while preserving undo identities. */
+    private pasteReferences(event: ClipboardEvent | InputEvent | KeyboardEvent): boolean {
+        if (!(event instanceof ClipboardEvent) || !this.editor) return false;
+        const html = event.clipboardData?.getData("text/html") ?? "";
+        if (!html.includes("data-reference-kind")) return false;
+        event.preventDefault();
+        const document = new DOMParser().parseFromString(html, "text/html");
+        for (const element of document.querySelectorAll<HTMLElement>("[data-reference-kind]")) element.dataset.occurrenceId = crypto.randomUUID();
+        $insertNodes($generateNodesFromDOM(this.editor, document));
+        return true;
     }
 
     /**
@@ -367,14 +435,17 @@ export class BloomerpTextEditor extends BaseWidget {
         }));
     }
     
+    /** Synchronize saved HTML and notify only this editor’s owning form. */
     public override onChange(): void {
         if (this.hiddenInput) {
             this.hiddenInput.value = this.getValue();
         }
 
         super.onChange();
+        this.element.dispatchEvent(new CustomEvent("bloomerp:references-changed", { bubbles: true }));
     }
 
+    /** Restore editor HTML and refresh occurrence chips after initialization or form undo. */
     public setValue(value: unknown, emitChange: boolean = false): void {
         const editor = this.editor;
         if (!editor) {
@@ -412,6 +483,7 @@ export class BloomerpTextEditor extends BaseWidget {
         if (this.hiddenInput) {
             this.hiddenInput.value = this.getValue();
         }
+        this.element.dispatchEvent(new CustomEvent("bloomerp:references-changed", { bubbles: true }));
     }
 
     /** Hide markers on list wrappers and make checklist items keyboard reachable. */

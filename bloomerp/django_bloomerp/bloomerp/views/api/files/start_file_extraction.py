@@ -31,10 +31,10 @@ from rest_framework.response import Response
 
 from bloomerp.mcp.definition import McpTool
 from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.files.file_extraction import MAX_RESULT_BYTES, FileExtraction
 from bloomerp.router import router
-from bloomerp.services.file_permission_services import user_can_view_file
+from bloomerp.files.access import FileAccessManager
 from bloomerp.views.api.base import BaseBloomerpApiView
 
 MAX_FILE_BYTES = 20 * 1024 * 1024
@@ -183,26 +183,21 @@ class StartFileExtractionView(BaseBloomerpApiView):
         """Check live file access before validation, admission or worker publication."""
         serializer = StartFileExtractionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        source = File.objects.filter(
-            pk=serializer.validated_data["file_id"], persisted=True
+        source = FileNode.objects.filter(
+            pk=serializer.validated_data["file_id"], kind="FILE"
         ).first()
         if (
             not request.user.is_active
             or source is None
-            or not source.file
-            or not user_can_view_file(request, source)
+            or not source.content
+            or not FileAccessManager(request.user).can_read_file_node(source)
         ):
             raise NotFound("File unavailable")
-        extension = Path(source.file.name).suffix.lower().lstrip(".")
+        extension = Path(source.content.name).suffix.lower().lstrip(".")
         if extension not in SUPPORTED_EXTENSIONS:
             raise serializers.ValidationError({"error_code": "unsupported_format"})
-        try:
-            size = source.file.size
-        except Exception:  # noqa: BLE001 - storage/broker implementations have provider-specific errors
-            raise serializers.ValidationError(
-                {"error_code": "source_unavailable"}
-            ) from None
-        if not 0 < size <= MAX_FILE_BYTES:
+        size = source.meta.get("size")
+        if size is None or not 0 < size <= MAX_FILE_BYTES:
             raise serializers.ValidationError({"error_code": "file_size_limit"})
         require_background_provider(extension)
         FileExtraction.cleanup_expired()
@@ -283,9 +278,9 @@ def compact_manifest(document: dict[str, Any]) -> dict[str, Any]:
     return manifest
 
 
-def run_parser(source: File, directory: str) -> dict[str, Any]:
+def run_parser(source: FileNode, directory: str) -> dict[str, Any]:
     """Stage bounded storage bytes and run an isolated-lifetime, time-limited parser child."""
-    extension = Path(source.file.name).suffix.lower().lstrip(".")
+    extension = Path(source.content.name).suffix.lower().lstrip(".")
     require_background_provider(extension)
     input_path, output_path = (
         Path(directory) / f"input.{extension}",
@@ -293,7 +288,7 @@ def run_parser(source: File, directory: str) -> dict[str, Any]:
     )
     total = 0
     with (
-        source.file.storage.open(source.file.name, "rb") as incoming,
+        source.content.storage.open(source.content.name, "rb") as incoming,
         input_path.open("wb") as outgoing,
     ):
         while chunk := incoming.read(65536):

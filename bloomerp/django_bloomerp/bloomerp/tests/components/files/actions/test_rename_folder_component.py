@@ -8,7 +8,7 @@ from bloomerp.tests.base import (
 
 
 class TestRenameFolderComponent(BloomerpComponentTestCase):
-    """Tests function `rename_folder` from `bloomerp/components/files/actions/rename.py`."""
+    """Tests function `rename_folder` from `bloomerp/components/files/actions/rename_folder.py`."""
 
     view_name = "components_files_rename_folder"
 

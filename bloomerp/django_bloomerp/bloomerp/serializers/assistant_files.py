@@ -11,11 +11,10 @@ from rest_framework import serializers
 
 
 class FileDestinationSerializer(serializers.Serializer):
-    """Accept portable object identities and optional folder placement."""
+    """Accept an optional, complete object identity."""
 
     model_label = serializers.CharField(required=False, max_length=255)
     object_id = serializers.CharField(required=False, max_length=36)
-    folder_id = serializers.IntegerField(required=False, min_value=1)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Require complete object identities before any upload or database mutation."""
@@ -35,6 +34,10 @@ class UploadFileSerializer(FileDestinationSerializer):
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Validate byte size and filename before decoding or persisting an upload."""
+        if "folder_id" in self.initial_data:
+            raise serializers.ValidationError(
+                {"folder_id": "Folder placement is no longer supported for uploads"}
+            )
         attrs = super().validate(attrs)
         if ("file" in attrs) == ("content_base64" in attrs):
             raise serializers.ValidationError("Provide either file or content_base64")
@@ -73,6 +76,25 @@ class LinkFileSerializer(FileDestinationSerializer):
     """Identify an already uploaded file without resending its bytes."""
 
     file_id = serializers.UUIDField()
+    model_label = serializers.CharField(max_length=255)
+    object_id = serializers.CharField(max_length=100)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """Reject physical placement and require an object reference destination."""
+        if "folder_id" in self.initial_data:
+            raise serializers.ValidationError(
+                {"folder_id": "Provide an object destination"}
+            )
+        return super().validate(attrs)
+
+
+class UploadedFilePlacementSerializer(serializers.Serializer):
+    """Return the new node identity and its optional object reference destination."""
+
+    file_id = serializers.UUIDField()
+    name = serializers.CharField()
+    model_label = serializers.CharField(allow_null=True)
+    object_id = serializers.CharField(allow_null=True)
 
 
 class FilePlacementSerializer(serializers.Serializer):
@@ -82,4 +104,3 @@ class FilePlacementSerializer(serializers.Serializer):
     name = serializers.CharField(allow_null=True)
     model_label = serializers.CharField(allow_null=True)
     object_id = serializers.CharField(allow_null=True)
-    folder_id = serializers.IntegerField(allow_null=True)

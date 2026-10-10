@@ -1,3 +1,4 @@
+from bloomerp.permissions.definition import BloomerpPermission
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
 
@@ -11,7 +12,7 @@ from django.urls import reverse
 
 from bloomerp.models import FileFolder
 from bloomerp.router import router
-from bloomerp.services.file_permission_services import has_linked_file_permission
+from bloomerp.files.access import FileAccessManager
 from bloomerp.services.file_services import (
     coerce_file_scope_value,
     ensure_folder_hierarchy_for_object,
@@ -117,8 +118,12 @@ def can_create_folder(request: HttpRequest) -> bool:
 
     scope = _resolve_folder_creation_scope(request)
     if scope.linked_object is not None:
-        return has_linked_file_permission(request, scope.linked_object, "add")
-    return request.user.has_perm("bloomerp.add_filefolder")
+        return FileAccessManager(request.user).has_access_to_linked_object(
+            scope.linked_object, BloomerpPermission.ADD
+        )
+    return FileAccessManager(request.user).has_access_to_folder(
+        None, BloomerpPermission.ADD
+    )
 
 
 def _render_create_folder_form(

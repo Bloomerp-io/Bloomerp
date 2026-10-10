@@ -69,7 +69,7 @@ class AIArtifact(AgentModel):
         related_name="revisions",
     )
     file = models.ForeignKey(
-        "bloomerp.File",
+        "bloomerp.FileNode",
         on_delete=models.RESTRICT,
         null=True,
         blank=True,
@@ -108,7 +108,7 @@ class AIArtifact(AgentModel):
         ):
             raise ValidationError(
                 {
-                    "file": "File artifacts require a File reference; legacy non-file artifacts cannot have one."
+                    "file": "File artifacts require a FileNode reference; legacy non-file artifacts cannot have one."
                 }
             )
         if self.created_by_message_id:

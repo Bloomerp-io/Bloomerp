@@ -1,3 +1,4 @@
+import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
 import ArtifactPicker from './components/agent/ArtifactPicker';
 import ColoredChoices from './components/ColoredChoices';
 import MappingWidget from './components/MappingWidget';
@@ -206,3 +207,5 @@ loadTranslations()
         initMessagesWebsocket();
         SetupAnimationListener();
     });
+
+registerComponent("reference-attachments", ReferenceAttachments);

@@ -10,10 +10,13 @@ import {
     type NodeKey,
 } from "lexical";
 
-import { $createImageNode, ImageNode } from "../nodes/ImageNode";
+import { uploadReferenceFile } from "./referencePicker";
+import { $createFileImageNode, FileImageNode } from "../nodes/FileImageNode";
+import { $createImageNode, $insertImageNode, ImageNode } from "../nodes/ImageNode";
 
 type ImageBehaviorState = {
     fileInput: HTMLInputElement | null;
+    lifecycle: AbortController;
     pendingImageTargetKey: NodeKey | null;
     selectedImageNodeKey: NodeKey | null;
     resizeState: { nodeKey: NodeKey; startX: number; startWidth: number } | null;
@@ -27,9 +30,11 @@ type ImageBehaviorState = {
 
 const imageBehaviorStates = new WeakMap<LexicalEditor, ImageBehaviorState>();
 
+/** Connect image selection, resizing, and stored upload replacement to one editor. */
 export function registerImageBehavior(editor: LexicalEditor, host: HTMLElement): () => void {
     const state = {
         fileInput: null,
+        lifecycle: new AbortController(),
         pendingImageTargetKey: null,
         selectedImageNodeKey: null,
         resizeState: null,
@@ -50,7 +55,9 @@ export function registerImageBehavior(editor: LexicalEditor, host: HTMLElement):
     rootElement?.addEventListener("keydown", state.handleKeyDown);
     imageBehaviorStates.set(editor, state);
 
-    return () => {
+    /** Release uploads and image interaction listeners owned by this editor. */
+    function cleanupImageBehavior(): void {
+        state.lifecycle.abort();
         rootElement?.removeEventListener("click", state.handleClick);
         rootElement?.removeEventListener("mousedown", state.handleMouseDown);
         rootElement?.removeEventListener("keydown", state.handleKeyDown);
@@ -59,7 +66,8 @@ export function registerImageBehavior(editor: LexicalEditor, host: HTMLElement):
         state.fileInput?.remove();
         state.fileInput = null;
         imageBehaviorStates.delete(editor);
-    };
+    }
+    return cleanupImageBehavior;
 }
 
 export function promptImageUpload(editor: LexicalEditor): void {
@@ -187,33 +195,40 @@ function setSelectedImageNodeKey(
         });
 }
 
+/** Create a stored-image replacement input that never embeds uploaded bytes. */
 function ensureImageInput(editor: LexicalEditor, host: HTMLElement, state: ImageBehaviorState): void {
     if (state.fileInput) return;
-
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = "image/png,image/jpeg,image/gif,image/webp,image/avif";
     input.className = "hidden";
-    input.addEventListener("change", () => {
+    /** Upload the selection before replacing the exact image node. */
+    async function uploadSelectedImage(): Promise<void> {
         const file = input.files?.[0];
         if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = reader.result;
-            if (typeof result === "string") {
-                if (state.pendingImageTargetKey) {
-                    replaceImage(editor, state, state.pendingImageTargetKey, result, file.name || "Image");
+        const key = state.pendingImageTargetKey;
+        try {
+            const reference = await uploadReferenceFile(host, file, state.lifecycle.signal);
+            const src = `${host.dataset.referenceServeUrl}?file_id=${encodeURIComponent(reference.target_id)}`;
+            /** Retain the occurrence while replacing the stored image target. */
+            function replaceStoredImage(): void {
+                const previous = key ? $getNodeByKey(key) : null;
+                if (previous instanceof ImageNode) {
+                    const occurrence_id = previous instanceof FileImageNode ? previous.getReference().occurrence_id : undefined;
+                    previous.replace($createFileImageNode({ ...reference, occurrence_id }, src, previous.__width));
                 } else {
-                    insertImage(editor, state, result, file.name || "Image");
+                    $insertImageNode($createFileImageNode(reference, src));
                 }
             }
+            editor.update(replaceStoredImage);
+        } catch (error) {
+            if (!state.lifecycle.signal.aborted) window.alert(String(error));
+        } finally {
             state.pendingImageTargetKey = null;
             input.value = "";
-        };
-        reader.readAsDataURL(file);
-    });
-
+        }
+    }
+    input.addEventListener("change", uploadSelectedImage, { signal: state.lifecycle.signal });
     host.appendChild(input);
     state.fileInput = input;
 }

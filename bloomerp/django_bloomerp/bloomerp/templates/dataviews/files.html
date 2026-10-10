@@ -1,88 +1,76 @@
 {% load bloomerp i18n %}
-
-<div
-    bloomerp-component="file-browser"
-    data-content-type-id="{{ content_type_id }}"
-    data-current-folder-id="{{ current_folder.pk|default:'' }}"
-    data-scope-content-type-id="{{ scope_content_type_id|default:'' }}"
-    data-scope-object-id="{{ scope_object_id|default:'' }}"
-    data-upload-url="{{ upload_url }}"
-    data-move-url="{{ move_url }}"
-    >
-    <div class="rounded-xl border border-b-0 border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0">
-        <table class="table-auto table-hover table w-full border-collapse outline-none">
+<div bloomerp-component="file-browser" data-folder-type="{{ folder_type }}"
+     data-content-type-id="{{ content_type_id }}"
+     data-upload-url="{{ upload_url }}" data-upload-model-label="{{ upload_model_label }}"
+     data-upload-object-id="{{ upload_object_id }}">
+    <div class="rounded-xl border border-gray-200 overflow-hidden bg-white">
+        <table class="table-auto table-hover table w-full border-collapse">
             <thead>
                 <tr>
-                    <th>{% trans "Name" %}</th>
-                    <th>{% trans "Object" %}</th>
-                    <th>{% trans "File Size" %}</th>
-                    <th>{% trans "Uploaded At" %}</th>
-                    <th>{% trans "Actions" %}</th>
+                    <td colspan="5" class="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                        <div class="flex flex-wrap items-center justify-between gap-3" data-file-browser-header>
+                            <nav aria-label="{% trans 'File folders' %}" class="flex min-w-0 flex-wrap items-center gap-1 text-sm" data-file-browser-navigation>
+                                <i class="fa fa-folder-open mr-1 text-gray-400" aria-hidden="true"></i>
+                                {% for crumb in breadcrumbs %}
+                                    {% if not forloop.first %}<i class="fa fa-chevron-right px-1 text-xs text-gray-400" aria-hidden="true"></i>{% endif %}
+                                    {% if forloop.last %}
+                                        <span class="shrink-0 font-medium text-gray-900" aria-current="page">{{ crumb.name }}</span>
+                                    {% else %}
+                                        <button type="button" class="shrink-0 rounded px-1 py-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-primary"
+                                                data-browser-path="{{ crumb.path|default:'' }}"
+                                                data-browser-folder="{{ crumb.folder_id|default:'' }}">{{ crumb.name }}</button>
+                                    {% endif %}
+                                {% endfor %}
+                            </nav>
+                            <div class="flex items-center gap-2" data-file-browser-actions>
+                                <select data-folder-type-select class="select select-sm rounded-xl border-gray-200 bg-white" aria-label="{% trans 'Folder type' %}">
+                                    <option value="virtual" {% if folder_type == 'virtual' %}selected{% endif %}>{% trans "Virtual folders" %}</option>
+                                    <option value="physical" {% if folder_type == 'physical' %}selected{% endif %}>{% trans "Physical folders" %}</option>
+                                </select>
+                                {% if can_upload %}
+                                    <label class="btn btn-sm btn-primary cursor-pointer">
+                                        <i class="fa fa-upload" aria-hidden="true"></i>{% trans "Upload" %}
+                                        <input type="file" multiple class="sr-only" data-file-browser-upload-input aria-label="{% trans 'Upload files' %}">
+                                    </label>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
                 </tr>
-            </thead>
+                <tr>
+                <th>{% trans "Name" %}</th><th>{% trans "Objects" %}</th>
+                <th>{% trans "File Size" %}</th><th>{% trans "Uploaded At" %}</th><th>{% trans "Actions" %}</th>
+            </tr></thead>
             <tbody>
                 {% for folder in folders %}
-                <tr
-                    class="cursor-pointer hover:bg-base-200"
-                    data-folder-id="{{ folder.pk }}"
-                    data-folder-dropzone="{{ folder.pk }}"
-                    data-folder-content-type-id="{{ folder.content_type_id|default:'' }}"
-                    data-folder-object-id="{{ folder.object_id|default:'' }}"
-                    data-item-type="folder"
-                    draggable="true"
-                >
-                    <td>
-                        <i class="fa fa-folder text-xl mr-2"></i>
-                        {{ folder.name }}</td>
-                    <td>{{ folder.content_object|default:"" }}</td>
-                    <td></td>
-                    <td></td>
-                    <td data-no-folder-click>
-                        {% for action in folder_actions %}
-                            {% render_object_action action=action object=folder request=request content_type_id=folder_content_type_id %}
-                        {% endfor %}
-                    </td>
-                </tr>
+                    <tr><td colspan="5">
+                        <button type="button" class="flex items-center gap-2 w-full text-left"
+                                data-browser-path="{{ folder.path|default:'' }}"
+                                data-browser-folder="{{ folder.folder_id|default:'' }}">
+                            <i class="fa fa-folder" aria-hidden="true"></i>{{ folder.name }}
+                        </button>
+                    </td></tr>
                 {% endfor %}
                 {% for file in files %}
-                <tr
-                    data-file-id="{{ file.pk }}"
-                    data-item-type="file"
-                    draggable="true"
-                >
-                    <td>
-                        <i class="fa {{file.icon_class}} text-xl mr-2"></i>
-                        {{ file.name }}</td>
-                    <td data-no-file-drag>
-                        {% if file.linked_object_url %}
-                        <a href="{{ file.linked_object_url }}" hx-get="{{ file.linked_object_url }}"
-                           hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}" hx-swap="innerHTML" hx-push-url="true"
-                           data-preview-object-id="{{ file.linked_object_id }}" data-preview-content-type-id="{{ file.linked_content_type_id }}"
-                           class="link">
-                            {{ file.linked_object }}{% if file.linked_field_label %} ({{ file.linked_field_label }}){% endif %}
-                        </a>
-                        {% else %}{{ file.linked_object|default:"" }}{% endif %}
-                    </td>
-                    <td>{{ file.size_str }}</td>
-                    <td>{{ file.datetime_created }}</td>
-                    <td data-no-file-drag>
-                        {% for action in file_actions %}
+                    <tr data-file-id="{{ file.pk }}">
+                        <td><i class="fa fa-file mr-2" aria-hidden="true"></i>{{ file.name }}</td>
+                        <td>{% for owner in file.browser_owners %}
+                            {% if not forloop.first %}, {% endif %}
+                            {% if owner.url %}<a href="{{ owner.url }}" hx-get="{{ owner.url }}"
+                                hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}" hx-swap="innerHTML" hx-push-url="true"
+                                data-preview-object-id="{{ owner.object_id }}" data-preview-content-type-id="{{ owner.content_type_id }}"
+                                class="link">{{ owner.label }}{% if owner.field_label %} ({{ owner.field_label }}){% endif %}</a>
+                            {% else %}{{ owner.label }}{% endif %}
+                        {% endfor %}</td>
+                        <td>{% if file.meta.size != None %}{{ file.meta.size|filesizeformat }}{% else %}—{% endif %}</td>
+                        <td>{{ file.datetime_created }}</td>
+                        <td>{% for action in file_actions %}
                             {% render_object_action action=action object=file request=request content_type_id=file_content_type_id %}
-                        {% endfor %}
-                    </td>
-                </tr>
+                        {% endfor %}</td>
+                    </tr>
                 {% endfor %}
                 {% if not folders and not files %}
-                <tr
-                    class="hover:bg-base-200"
-                    data-empty-folder-dropzone
-                    data-folder-dropzone="{{ current_folder.pk|default:'' }}"
-                >
-                    <td colspan="5" class="py-8 text-center text-base-content/60">
-                        <i class="fa fa-upload mr-2"></i>
-                        {% trans "Drop files here" %}
-                    </td>
-                </tr>
+                    <tr><td colspan="5" class="py-8 text-center text-base-content/60">{% trans "No files found" %}</td></tr>
                 {% endif %}
             </tbody>
         </table>

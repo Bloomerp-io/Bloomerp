@@ -30,7 +30,7 @@ from bloomerp.forms.bulk_upload_form import (
 )
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
-from bloomerp.models.files import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.utils.model_io import BloomerpModelIO
@@ -198,20 +198,19 @@ class BulkCrudService:
 
         self.delete_draft_file(previous_file_id)
 
-        from bloomerp.models.files.file import BulkUploadFileMetadata, FileMetadata
+        from bloomerp.files.definition import BulkUploadFileMetadata, FileNodeMetaData
 
-        draft_file = File(
-            file=uploaded_file,
+        draft_file = FileNode(
+            content=uploaded_file,
             name=getattr(uploaded_file, "name", None) or "bulk-upload",
-            content_type=self.content_type,
-            persisted=False,
+            kind="FILE",
             created_by=self.user,
             updated_by=self.user,
-            meta=FileMetadata(bulk_upload=BulkUploadFileMetadata(
+            meta=FileNodeMetaData(bulk_upload=BulkUploadFileMetadata(
                 content_type_id=self.content_type.pk,
                 model_label=self.model._meta.label_lower,
                 original_filename=getattr(uploaded_file, "name", "") or "",
-            )),
+            )).model_dump(mode="json", exclude_none=True),
         )
         draft_file.save()
 
@@ -228,11 +227,15 @@ class BulkCrudService:
             original_filename=str(getattr(uploaded_file, "name", "") or draft_file.name or ""),
         )
 
-    def get_draft_file(self, file_id: str | None) -> File | None:
-        """Get the draft file for a given file ID."""
+    def get_draft_file(self, file_id: str | None) -> FileNode | None:
+        """Resolve an import source only within its uploader and destination model scope."""
         if not file_id:
             return None
-        return File.objects.filter(pk=file_id, meta__bulk_upload__isnull=False).first()
+        return FileNode.objects.filter(
+            pk=file_id, kind="FILE", created_by=self.user,
+            meta__bulk_upload__content_type_id=self.content_type.pk,
+            meta__bulk_upload__model_label=self.model._meta.label_lower,
+        ).first()
 
     def delete_draft_file(self, file_id: str | None) -> None:
         """Delete the draft file for a given file ID."""
@@ -240,20 +243,20 @@ class BulkCrudService:
         if draft_file is not None:
             draft_file.delete()
 
-    def load_dataframe(self, file_id: str | File) -> pd.DataFrame:
+    def load_dataframe(self, file_id: str | FileNode) -> pd.DataFrame:
         """Load the uploaded file into a pandas DataFrame."""
-        draft_file = file_id if isinstance(file_id, File) else self.get_draft_file(file_id)
-        if draft_file is None or not getattr(draft_file, "file", None):
+        draft_file = self.get_draft_file(file_id.pk if isinstance(file_id, FileNode) else file_id)
+        if draft_file is None or not getattr(draft_file, "content", None):
             raise ValidationError("The uploaded draft file could not be found.")
 
-        draft_file.file.open("rb")
+        draft_file.content.open("rb")
         try:
-            filename = (draft_file.file.name or draft_file.name or "").lower()
+            filename = (draft_file.content.name or draft_file.name or "").lower()
             try:
                 if filename.endswith(".csv"):
-                    dataframe = pd.read_csv(TextIOWrapper(draft_file.file.file, encoding="utf-8"))
+                    dataframe = pd.read_csv(TextIOWrapper(draft_file.content.file, encoding="utf-8"))
                 elif filename.endswith((".xlsx", ".xls")):
-                    dataframe = pd.read_excel(draft_file.file.file)
+                    dataframe = pd.read_excel(draft_file.content.file)
                 else:
                     raise ValidationError("Unsupported file type. Only CSV and Excel files are allowed.")
             except pd.errors.EmptyDataError:
@@ -261,15 +264,15 @@ class BulkCrudService:
             except pd.errors.ParserError:
                 raise ValidationError("The uploaded file could not be parsed. Check the file format and try again.")
         finally:
-            draft_file.file.close()
+            draft_file.content.close()
 
         return self._normalize_dataframe_headers(dataframe)
 
-    def get_source_rows(self, file_id: str | File) -> tuple[list[dict[str, Any]], list[str]]:
+    def get_source_rows(self, file_id: str | FileNode) -> tuple[list[dict[str, Any]], list[str]]:
         """Get the source rows from the uploaded file.
 
         Args:
-            file_id: The ID of the uploaded file or a File instance.
+            file_id: The ID of the uploaded file or a FileNode instance.
 
         Returns:
             tuple[list[dict[str, Any]], list[str]]: The source rows and selected fields.

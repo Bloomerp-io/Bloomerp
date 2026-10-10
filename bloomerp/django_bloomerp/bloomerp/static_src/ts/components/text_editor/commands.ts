@@ -251,38 +251,28 @@ function enterListMode(editor: LexicalEditor, trigger: string, listType: ListTyp
     return true;
 }
 
+/** Launch the existing slash menu with searchable reference actions. */
+function handleSlashTrigger(this: BloomerpTextEditor, _event?: KeyboardEvent): boolean {
+    const component = this;
+    /** Read command text after Lexical applies the current keyboard input. */
+    function openSlashAfterInput(): void {
+        const editor = component.editor;
+        if (!editor) return;
+        const currentWord = getCurrentWord(editor);
+        const menu = getContextMenu(COMMAND_CONTEXT_MENU_ID);
+        if (!currentWord.startsWith("/")) {
+            if (!currentWord.startsWith("@")) menu.hide();
+            return;
+        }
+        getContextMenu(RANGE_CONTEXT_MENU_ID).hide();
+        launchContextMenu(editor, menu, ["template", "h1", "h2", "h3", "code_block", "image", "unordered_list", "ordered_list", "checklist", "table", "mention", "object_reference"].concat(component.slashExtraActions), currentWord.slice(1));
+    }
+    requestAnimationFrame(openSlashAfterInput);
+    return false;
+}
+
 export let COMMANDS: Record<string, Command> = {
-    slash: {
-        command: KEY_DOWN_COMMAND,
-        handler: function () {
-            requestAnimationFrame(() => {
-                const editor = this.editor;
-                if (!editor) {return}
-
-                const currentWord = getCurrentWord(editor);
-                const contextMenu = getContextMenu(COMMAND_CONTEXT_MENU_ID);
-
-                if (currentWord[0] !== "/") {
-                    if (currentWord[0] !== "@") {
-                        contextMenu.hide();
-                    }
-                    return;
-                }
-
-                getContextMenu(RANGE_CONTEXT_MENU_ID).hide();
-                launchContextMenu(
-                    editor,
-                    contextMenu,
-                    ["template", "h1", "h2", "h3", "code_block", "image", "unordered_list", "ordered_list", "checklist", "table"].concat(
-                        this.slashExtraActions
-                    ),
-                    currentWord.slice(1),
-                );
-            });
-
-            return false;
-        },
-    },
+    slash: { command: KEY_DOWN_COMMAND, handler: handleSlashTrigger },
     range: {
         command: SELECTION_CHANGE_COMMAND,
         handler: function () {
@@ -317,35 +307,6 @@ export let COMMANDS: Record<string, Command> = {
             });
 
             return false
-        },
-    },
-    at: {
-        command: KEY_DOWN_COMMAND,
-        handler: function () {
-            requestAnimationFrame(() => {
-                const editor = this.editor;
-                if (!editor) {return}
-
-                const currentWord = getCurrentWord(editor);
-                const contextMenu = getContextMenu(COMMAND_CONTEXT_MENU_ID);
-
-                if (currentWord[0] !== "@") {
-                    if (currentWord[0] !== "/") {
-                        contextMenu.hide();
-                    }
-                    return;
-                }
-
-                getContextMenu(RANGE_CONTEXT_MENU_ID).hide();
-                launchContextMenu(
-                    editor,
-                    contextMenu,
-                    ["h1", "h2", "h3", "ordered_list", "unordered_list", "checklist"],
-                    currentWord.slice(1),
-                );
-            });
-
-            return false;
         },
     },
     numberEntersUnorderdList: {

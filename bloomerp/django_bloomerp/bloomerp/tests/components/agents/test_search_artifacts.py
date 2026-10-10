@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.test import override_settings
 
-from bloomerp.models import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.modules.definition import ModuleConfig
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
@@ -28,8 +28,8 @@ class TestSearchArtifacts(BloomerpComponentTestCase):
             username="attachment-search-owner", is_superuser=True
         )
         other = get_user_model().objects.create_user(username="attachment-search-other")
-        File.objects.create(
-            name="private-invoice.pdf", file="test/invoice.pdf", persisted=True
+        FileNode.objects.create(
+            name="private-invoice.pdf", content=SimpleUploadedFile("invoice.pdf", b"private"), kind="FILE"
         )
         modules = {
             "finance": ModuleConfig(
@@ -48,7 +48,7 @@ class TestSearchArtifacts(BloomerpComponentTestCase):
         self.enterContext(
             patch(
                 "bloomerp.modules.definition.module_registry.get_models_for_module",
-                return_value=[File],
+                return_value=[FileNode],
             )
         )
         return [
@@ -220,5 +220,5 @@ class TestUploadArtifact(BloomerpComponentTestCase):
         return (
             response.json()["title"] == "invoice.pdf"
             and bool(response.json()["token"])
-            and File.objects.filter(name="invoice.pdf", persisted=True).exists()
+            and FileNode.objects.filter(name="invoice.pdf", kind="FILE").exists()
         )

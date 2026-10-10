@@ -1,6 +1,3 @@
-from django.contrib.contenttypes.models import ContentType
-from django.core.files.uploadedfile import SimpleUploadedFile
-
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.document_templates.document_template_header import (
     DocumentTemplateHeader,
@@ -8,6 +5,8 @@ from bloomerp.models.document_templates.document_template_header import (
 from bloomerp.services.bulk_services import BulkCrudService
 from bloomerp.services.document_services import DocumentTemplateService
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
+from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 
 class TestFileProvenance(BaseBloomerpTestCaseWithModels):
@@ -16,7 +15,7 @@ class TestFileProvenance(BaseBloomerpTestCaseWithModels):
     def test_generated_documents_use_typed_provenance(self) -> None:
         """
         Use case: A document template creates a PDF for an object.
-        Expected result: Provenance validates and template file lookup finds the created file.
+        Expected result: Template references and file lookup find the created node.
         """
         # 1. Create a real document template and target object.
         customer = self.create_customer("Document", "Owner", 30)
@@ -30,11 +29,14 @@ class TestFileProvenance(BaseBloomerpTestCaseWithModels):
         service = DocumentTemplateService(template, self.admin_user)
         # 2. Persist a generated document through the production service.
         file = service.create_file(
-            b"%PDF-test", instance=customer, filename="contract.pdf"
+            b"%PDF-test", objects=[customer], filename="contract.pdf"
         )
-        # 3. Verify validated metadata and the nested provenance query.
-        self.assertEqual(file.metadata.document_template.id, template.pk)
-        self.assertEqual(file.metadata.document_template.name, "Contract")
+        # 3. Verify the template reference and cached content metadata.
+        self.assertTrue(file.references.filter(
+            content_type=ContentType.objects.get_for_model(template),
+            object_id=str(template.pk),
+        ).exists())
+        self.assertEqual(file.metadata.size, len(b"%PDF-test"))
         self.assertEqual(list(service.get_files(customer)), [file])
 
     def test_bulk_draft_uses_typed_provenance(self) -> None:
@@ -107,11 +109,10 @@ class TestFileProvenance(BaseBloomerpTestCaseWithModels):
         template = DocumentTemplate.objects.create(
             name="Contract", template_header=header
         )
-        file = DocumentTemplateService(template, self.admin_user).create_file(
-            b"%PDF-source",
-            instance=customer,
-            filename="contract.pdf",
-        )
+        with patch(
+            "bloomerp.utils.document_templates.generate_pdf", return_value=b"%PDF-source"
+        ):
+            file = DocumentController(user=self.admin_user).create_document(template, customer)
         # 2. Sign through the production lifecycle while isolating the PDF engine.
         with patch("bloomerp.utils.document_templates.PdfHandler") as handler:
             handler.return_value.sign_pdf.return_value = b"%PDF-signed"

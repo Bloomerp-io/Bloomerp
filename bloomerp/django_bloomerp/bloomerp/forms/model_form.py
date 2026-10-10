@@ -8,7 +8,6 @@ from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.utils.datastructures import MultiValueDict
-from django.db import models
 
 from bloomerp.form_fields.bloomerp_file_field import BloomerpFileFormField
 from bloomerp.form_fields.one_to_many_field import (
@@ -17,7 +16,6 @@ from bloomerp.form_fields.one_to_many_field import (
 )
 from bloomerp.form_fields.structured_value import StructuredFormValue, serialize_form_value
 from bloomerp.models import ApplicationField
-
 
 AUTO_MANAGED_MODEL_FORM_FIELD_NAMES = frozenset(
     {
@@ -82,7 +80,8 @@ class BloomerpModelForm(forms.ModelForm):
     bloomerp_non_model_field_names: frozenset[str] = frozenset()
     bloomerp_read_only_field_names: frozenset[str] = frozenset()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize state for ordinary and structured model-field persistence."""
         self._structured_values_saved = False
         self._deserialized_data: dict[str, Any] | None = None
         super().__init__(*args, **kwargs)
@@ -209,6 +208,7 @@ class BloomerpModelForm(forms.ModelForm):
             self.cleaned_data.update(detached_values)
 
     def save_structured_fields(self) -> None:
+        """Persist validated structured values once after the parent saves."""
         if self._structured_values_saved:
             return
         if self.instance.pk is None:
@@ -217,6 +217,7 @@ class BloomerpModelForm(forms.ModelForm):
         for value in self.cleaned_data.values():
             if isinstance(value, StructuredFormValue):
                 value.save(self.instance)
+
         self._structured_values_saved = True
 
     def save_o2m(self) -> None:

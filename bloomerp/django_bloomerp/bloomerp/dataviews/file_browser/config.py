@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Any, Literal
 
 from django import forms
 from django.contrib.contenttypes.models import ContentType
@@ -19,16 +19,13 @@ from bloomerp.dataviews.definition import BaseDataview, DataviewState
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 
-if TYPE_CHECKING:
-    from bloomerp.models.files.file_folder import FileFolder
-
 
 def _is_file_model(model: type[Model] | None) -> bool:
-    """Identify the File model without importing it back into its own config."""
+    """Identify the FileNode model without importing it back into its own config."""
     return bool(
         model is not None
         and model._meta.app_label == "bloomerp"
-        and model._meta.model_name == "file"
+        and model._meta.model_name == "filenode"
     )
 
 
@@ -41,8 +38,10 @@ def _resolve_content_type(state: DataviewState) -> ContentType | None:
         )
 
     for group in state.filters or []:
+        if group.connector != "AND":
+            continue
         for condition in group.conditions:
-            if condition.field_path not in {"content_type", "content_type_id"}:
+            if condition.field_path not in {"references__content_type", "references__content_type_id"}:
                 continue
             if condition.lookup_id != "equals":
                 continue
@@ -62,8 +61,10 @@ def _resolve_object(state: DataviewState) -> Model | None:
 
     object_id = None
     for group in state.filters or []:
+        if group.connector != "AND":
+            continue
         for condition in group.conditions:
-            if condition.field_path != "object_id":
+            if condition.field_path != "references__object_id":
                 continue
             if condition.lookup_id != "equals":
                 continue
@@ -79,22 +80,6 @@ def _resolve_object(state: DataviewState) -> Model | None:
         return model._base_manager.filter(pk=object_id).first()
     except (TypeError, ValueError, OverflowError, ValidationError):
         return None
-
-def _resolve_folder(state: DataviewState) -> FileFolder | None:
-    """Resolve the current folder from the File Browser query parameters."""
-    folder_id = state.request.GET.get("folder_id")
-    if not folder_id:
-        return None
-
-    from bloomerp.models.files.file_folder import FileFolder
-
-    try:
-        folder = FileFolder.objects.filter(pk=folder_id).first()
-    except (TypeError, ValueError, OverflowError, ValidationError):
-        return None
-    return folder
-
-
 
 def _get_related_fields(model: type[Model]) -> list[str]:
     """Return object-bearing relations reachable from the host model."""
@@ -124,8 +109,9 @@ class RelatedFieldsChoiceField(forms.MultipleChoiceField):
         *,
         content_type_id: int,
         existing: dict[int, list[str]],
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
+        """Build choices for the current host while retaining other model settings."""
         self.content_type_id = content_type_id
         self.existing = {
             int(key): list(value)
@@ -133,7 +119,8 @@ class RelatedFieldsChoiceField(forms.MultipleChoiceField):
         }
         super().__init__(**kwargs)
 
-    def clean(self, value):
+    def clean(self, value: Any) -> dict[int, list[str]]:
+        """Merge validated selections into the existing per-model mapping."""
         selected_fields = super().clean(value)
         related_fields = dict(self.existing)
         related_fields[self.content_type_id] = selected_fields
@@ -145,14 +132,16 @@ class PreservedRelatedFieldsField(forms.Field):
 
     widget = forms.HiddenInput
 
-    def __init__(self, *, existing: dict[int, list[str]], **kwargs):
+    def __init__(self, *, existing: dict[int, list[str]], **kwargs: Any) -> None:
+        """Keep unavailable host configuration hidden and unchanged."""
         self.existing = {
             int(key): list(value)
             for key, value in existing.items()
         }
         super().__init__(required=False, **kwargs)
 
-    def clean(self, _value):
+    def clean(self, _value: Any) -> dict[int, list[str]]:
+        """Return the original mapping without accepting hidden input changes."""
         return dict(self.existing)
 
 
@@ -160,9 +149,15 @@ class FileBrowserDataview(BaseDataview):
     view_type: Literal["file_browser"] = "file_browser"
     split_view_enabled: bool = True
     related_fields: dict[int, list[str]] = Field(default_factory=dict)
+    folder_type:Literal['virtual', 'physical'] = 'virtual'
 
     @classmethod
     def form_factory(cls, state: DataviewState) -> type[forms.Form]:
+        """Configure virtual/physical browsing and optional related-object fields."""
+        folder_type_field = forms.ChoiceField(
+            choices=[("virtual", _("Virtual")), ("physical", _("Physical"))],
+            label=_("Folder type"), initial="virtual",
+        )
         existing = getattr(state.options, "related_fields", {}) or {}
         host_content_type = _resolve_content_type(state)
         host_model = (
@@ -174,7 +169,7 @@ class FileBrowserDataview(BaseDataview):
             return type(
                 "FileBrowserDataviewOptionsForm",
                 (forms.Form,),
-                {"related_fields": PreservedRelatedFieldsField(existing=existing)},
+                {"related_fields": PreservedRelatedFieldsField(existing=existing), "folder_type": folder_type_field},
             )
 
         permission_manager = UserPolicyManager(state.request.user)
@@ -185,7 +180,7 @@ class FileBrowserDataview(BaseDataview):
             return type(
                 "FileBrowserDataviewOptionsForm",
                 (forms.Form,),
-                {"related_fields": PreservedRelatedFieldsField(existing=existing)},
+                {"related_fields": PreservedRelatedFieldsField(existing=existing), "folder_type": folder_type_field},
             )
 
         choices = []
@@ -222,8 +217,10 @@ class FileBrowserDataview(BaseDataview):
 
         class FileBrowserDataviewOptionsForm(forms.Form):
             related_fields = related_fields_field
+            folder_type = folder_type_field
 
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                """Present the selected host's relation names in the options form."""
                 initial = dict(kwargs.get("initial") or {})
                 configured = initial.get("related_fields", existing) or {}
                 initial["related_fields"] = configured.get(

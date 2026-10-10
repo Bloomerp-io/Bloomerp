@@ -2,7 +2,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.template.loader import render_to_string
 
 from bloomerp.forms.model_form import bloomerp_modelform_factory
-from bloomerp.models import File
+from bloomerp.models import FileNode, FileReference
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 
 
@@ -28,10 +28,10 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
             files={"picture": SimpleUploadedFile("file.pdf", b"pdf")},
         )
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(File.objects.count(), 0)
+        self.assertEqual(FileNode.objects.count(), 0)
         # 2. Save the parent without creating pending uploads.
         parent = form.save(commit=False)
-        self.assertEqual(File.objects.count(), 0)
+        self.assertEqual(FileNode.objects.count(), 0)
         parent.save()
         # 3. Persist structured files once, with the new parent's real ID.
         form.save_structured_fields()
@@ -39,7 +39,7 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         parent.refresh_from_db()
         self.assertEqual(len(parent.picture), 1)
         self.assertEqual(
-            File.objects.get(pk=parent.picture[0].pk).field_reference.object_id,
+            FileNode.objects.get(pk=parent.picture[0].pk).references.get().object_id,
             str(parent.pk),
         )
         self.assertEqual(
@@ -47,42 +47,69 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
             [str(file.pk) for file in parent.picture],
         )
 
-    def test_removal_only_deletes_owning_field_files(self) -> None:
+    def test_removal_only_unlinks_owning_field(self) -> None:
         """
-        Use case: Clearing a field deletes its files and bytes while preserving generic uploads.
+        Use case: Clearing a field unlinks its usage while preserving stored bytes and generic uploads.
         Expected result: The reference-backed lifecycle maintains this contract.
         """
         customer = self.create_customer("Direct", "Save", 30)
         field = self.CustomerModel._meta.get_field("picture")
         field.on_save(customer, [], [SimpleUploadedFile("field.pdf", b"pdf")])
         attachment = customer.picture[0]
-        generic = File.objects.create(
-            file=SimpleUploadedFile("generic.pdf", b"pdf"),
-            persisted=True,
-            content_object=customer,
+        generic = FileNode.objects.create(
+            content=SimpleUploadedFile("generic.pdf", b"pdf"),
+            kind="FILE",
         )
+        FileReference.objects.create(file=generic, content_object=customer)
         customer.save(update_fields=["first_name"])
-        self.assertTrue(File.objects.filter(pk=attachment.pk).exists())
+        self.assertTrue(FileNode.objects.filter(pk=attachment.pk).exists())
         field.on_save(customer, [], [])
-        self.assertFalse(File.objects.filter(pk=attachment.pk).exists())
-        self.assertFalse(attachment.file.storage.exists(attachment.file.name))
-        self.assertTrue(File.objects.filter(pk=generic.pk).exists())
+        self.assertTrue(FileNode.objects.filter(pk=attachment.pk).exists())
+        self.assertFalse(attachment.references.exists())
+        self.assertTrue(attachment.content.storage.exists(attachment.content.name))
+        self.assertTrue(FileNode.objects.filter(pk=generic.pk).exists())
 
     def test_file_browser_links_to_field_with_htmx_and_preview(self) -> None:
         """
         Use case: The file browser displays an attachment belonging to a named field.
         Expected result: Object navigation includes the field fragment, HTMX target, and preview IDs.
         """
-        from bs4 import BeautifulSoup
+        from types import SimpleNamespace
 
-        # 1. Create an attachment linked to a detail object's picture field.
+        from bs4 import BeautifulSoup
+        from django.test import RequestFactory
+
+        from bloomerp.dataviews.file_browser.renderer import FileBrowserRenderer
+        from bloomerp.models import ApplicationField
+        from bloomerp.models.files.file_node import FileNode
+        from bloomerp.models.files.file_reference import FileReference
+
         customer = self.create_customer("Linked", "Customer", 30)
-        field = self.CustomerModel._meta.get_field("picture")
-        field.on_save(customer, [], [SimpleUploadedFile("field.pdf", b"pdf")])
-        file = File.objects.get(pk=customer.picture[0].pk)
-        # 2. Render the actual file browser markup.
+        file = FileNode.objects.create(
+            name="field.pdf",
+            kind="FILE",
+            content=SimpleUploadedFile("field.pdf", b"pdf"),
+        )
+        FileReference.objects.create(
+            file=file,
+            content_object=customer,
+            application_field=ApplicationField.get_by_field(
+                self.CustomerModel, "picture"
+            ),
+        )
+        request = RequestFactory().get("/")
+        request.user = self.admin_user
+        renderer = FileBrowserRenderer(
+            SimpleNamespace(
+                request=request,
+                model=FileNode,
+                options=None,
+                queryset=FileNode.objects.filter(pk=file.pk),
+            )
+        )
+        files, _entries = renderer._visible_entries()
         html = render_to_string(
-            "dataviews/files.html", {"files": [file], "file_actions": []}
+            "dataviews/files.html", {"files": files, "file_actions": []}
         )
         link = BeautifulSoup(html, "html.parser").select_one(
             "a[data-preview-object-id]"
@@ -122,51 +149,41 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         customer.refresh_from_db()
         self.assertEqual(customer.first_name, "Updated")
         self.assertEqual(customer.picture, original_ids)
-        self.assertTrue(File.objects.filter(pk=original_ids[0].pk).exists())
+        self.assertTrue(FileNode.objects.filter(pk=original_ids[0].pk).exists())
 
-    def test_file_deletion_clears_the_owning_field_reference(self) -> None:
-        """
-        Use case: A field attachment is deleted using a file-browser action.
-        Expected result: The parent field contains no stale ID after deletion.
-        """
-        # 1. Create a field attachment.
+    def test_referenced_file_cannot_be_deleted(self) -> None:
+        """Protect stored content while a field reference still uses it."""
+        from django.db.models.deletion import ProtectedError
+
         customer = self.create_customer("File", "Deletion", 30)
         self.CustomerModel._meta.get_field("picture").on_save(
             customer, [], [SimpleUploadedFile("delete.pdf", b"pdf")]
         )
-        # 2. Delete its File record through the model lifecycle used by browser actions.
-        File.objects.get(pk=customer.picture[0].pk).delete()
-        # 3. Check the owning field no longer refers to the deleted record.
+        with self.assertRaises(ProtectedError):
+            customer.picture[0].delete()
         customer.refresh_from_db()
-        self.assertEqual(customer.picture, [])
+        self.assertEqual(len(customer.picture), 1)
 
-    def test_moving_attachment_detaches_its_original_field(self) -> None:
-        """
-        Use case: A field attachment is moved to a different object's files.
-        Expected result: The old field is cleared and the moved file has generic provenance.
-        """
-        # 1. Create the source attachment and target object.
+    def test_shared_attachment_survives_field_removal(self) -> None:
+        """Removing a field usage retains the same node on another object's files."""
         source = self.create_customer("Source", "Customer", 30)
         target = self.create_customer("Target", "Customer", 30)
-        self.CustomerModel._meta.get_field("picture").on_save(
-            source, [], [SimpleUploadedFile("move.pdf", b"pdf")]
-        )
-        file = File.objects.get(pk=source.picture[0].pk)
-        # 2. Reassign the attachment through the existing move API.
-        File.move_files_to_object(target, [file])
-        # 3. Verify source references and destination metadata remain consistent.
+        field = self.CustomerModel._meta.get_field("picture")
+        field.on_save(source, [], [SimpleUploadedFile("shared.pdf", b"pdf")])
+        file = source.picture[0]
+        reference = FileReference.objects.create(file=file, content_object=target)
+        field.on_save(source, [], [])
         source.refresh_from_db()
-        file.refresh_from_db()
         self.assertEqual(source.picture, [])
-        self.assertFalse(hasattr(file, "field_reference"))
-        self.assertEqual(file.object_id, str(target.pk))
+        self.assertEqual(list(target.files.all()), [reference])
+        self.assertTrue(file.content.storage.exists(file.content.name))
 
-    def test_parent_deletion_cleans_references_and_storage(self) -> None:
+    def test_parent_deletion_cleans_references_and_preserves_storage(self) -> None:
         """
-        Use case: Deleting a parent removes every owned reference, file record, and stored byte.
+        Use case: Deleting a parent removes its references while preserving file nodes and bytes.
         Expected result: The reference-backed lifecycle maintains this contract.
         """
-        from bloomerp.models import FileFieldReference
+        from bloomerp.models import FileReference
 
         customer = self.create_customer("Owner", "Delete", 30)
         self.CustomerModel._meta.get_field("picture").on_save(
@@ -176,16 +193,18 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         )
         file = customer.picture[0]
         customer.delete()
-        self.assertFalse(FileFieldReference.objects.filter(file_id=file.pk).exists())
-        self.assertFalse(File.objects.filter(pk=file.pk).exists())
-        self.assertFalse(file.file.storage.exists(file.file.name))
+        self.assertFalse(FileReference.objects.filter(file_id=file.pk).exists())
+        self.assertTrue(FileNode.objects.filter(pk=file.pk).exists())
+        self.assertTrue(file.content.storage.exists(file.content.name))
 
-    def test_application_field_deletion_cleans_references_and_storage(self) -> None:
+    def test_application_field_deletion_cleans_references_and_preserves_storage(
+        self,
+    ) -> None:
         """
-        Use case: Discarding an application field cascades its references and owned files.
+        Use case: Discarding an application field cascades its references while preserving nodes.
         Expected result: The reference-backed lifecycle maintains this contract.
         """
-        from bloomerp.models import ApplicationField, FileFieldReference
+        from bloomerp.models import ApplicationField, FileReference
 
         customer = self.create_customer("Field", "Delete", 30)
         self.CustomerModel._meta.get_field("picture").on_save(
@@ -195,9 +214,9 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         )
         file = customer.picture[0]
         ApplicationField.get_by_field(self.CustomerModel, "picture").delete()
-        self.assertFalse(FileFieldReference.objects.filter(file_id=file.pk).exists())
-        self.assertFalse(File.objects.filter(pk=file.pk).exists())
-        self.assertFalse(file.file.storage.exists(file.file.name))
+        self.assertFalse(FileReference.objects.filter(file_id=file.pk).exists())
+        self.assertTrue(FileNode.objects.filter(pk=file.pk).exists())
+        self.assertTrue(file.content.storage.exists(file.content.name))
 
     def test_virtual_field_has_no_parent_database_column(self) -> None:
         """
@@ -243,28 +262,22 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
                     ),
                 )
 
-    def test_one_file_cannot_have_two_owners(self) -> None:
-        """
-        Use case: The database enforces one field reference per file across all objects.
-        Expected result: The reference-backed lifecycle maintains this contract.
-        """
-        from django.db import IntegrityError, transaction
-
-        from bloomerp.models import FileFieldReference
-
-        customer = self.create_customer("Unique", "Owner", 30)
+    def test_one_file_can_have_multiple_field_usages(self) -> None:
+        """Sharing a node across objects creates separate field-scoped references."""
+        customer = self.create_customer("First", "Owner", 30)
+        other = self.create_customer("Second", "Owner", 31)
         self.CustomerModel._meta.get_field("picture").on_save(
-            customer,
-            [],
-            [SimpleUploadedFile("unique.pdf", b"pdf")],
+            customer, [], [SimpleUploadedFile("shared.pdf", b"pdf")]
         )
-        reference = customer.picture[0].field_reference
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            FileFieldReference.objects.create(
-                file_id=reference.file_id,
-                application_field=reference.application_field,
-                object_id=str(customer.pk),
-            )
+        file = customer.picture[0]
+        reference = file.references.get()
+        FileReference.objects.create(
+            file=file,
+            content_object=other,
+            application_field=reference.application_field,
+        )
+        self.assertEqual(other.picture, [file])
+        self.assertEqual(file.references.count(), 2)
 
     def test_hidden_field_values_are_not_loaded(self) -> None:
         """
@@ -330,54 +343,45 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
             self.assertEqual(len(objects[0].documents), 1)
 
     def test_scoped_file_browser_includes_field_owned_files(self) -> None:
-        """
-        Use case: An object's file browser uses historical generic-file scope filters.
-        Expected result: It also includes files owned through the new reference table.
-        """
+        """A host collection includes nodes referenced through an attachment field."""
         from types import SimpleNamespace
-        from unittest.mock import patch
 
         from django.contrib.contenttypes.models import ContentType
         from django.test import RequestFactory
 
         from bloomerp.dataviews.file_browser.renderer import FileBrowserRenderer
+        from bloomerp.models import ApplicationField
+        from bloomerp.models.files.file_node import FileNode
+        from bloomerp.models.files.file_reference import FileReference
 
-        # 1. Create a field file excluded by the old generic owner columns.
         customer = self.create_customer("Scoped", "Browser", 30)
-        self.CustomerModel._meta.get_field("picture").on_save(
-            customer,
-            [],
-            [SimpleUploadedFile("scoped.pdf", b"pdf")],
+        file = FileNode.objects.create(
+            name="scoped.pdf",
+            kind="FILE",
+            content=SimpleUploadedFile("scoped.pdf", b"pdf"),
         )
-        file = customer.picture[0]
+        FileReference.objects.create(
+            file=file,
+            content_object=customer,
+            application_field=ApplicationField.get_by_field(
+                self.CustomerModel, "picture"
+            ),
+        )
         request = RequestFactory().get("/")
         request.user = self.admin_user
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
         state = SimpleNamespace(
             request=request,
-            model=File,
+            model=self.CustomerModel,
             options=None,
-            queryset=File.objects.filter(
-                content_type=content_type, object_id=str(customer.pk)
-            ),
+            queryset=self.CustomerModel.objects.filter(pk=customer.pk),
+            content_type=content_type,
+            content_type_id=content_type.pk,
+            query=None,
         )
-        # 2. Resolve the same host scope the detail file tab supplies.
-        renderer = FileBrowserRenderer(state)
-        with (
-            patch(
-                "bloomerp.dataviews.file_browser.renderer._resolve_content_type",
-                return_value=content_type,
-            ),
-            patch(
-                "bloomerp.dataviews.file_browser.renderer._resolve_object",
-                return_value=customer,
-            ),
-        ):
-            _folder, _folders, files = renderer._get_file_model_items(file.folder)
-        # 3. Check canonical ownership is included and the owner was batch-loaded.
+        files, _entries = FileBrowserRenderer(state)._visible_entries()
         self.assertEqual([item.pk for item in files], [file.pk])
-        with self.assertNumQueries(0):
-            self.assertEqual(files[0].linked_object.pk, customer.pk)
+        self.assertEqual(files[0].browser_owners[0]["object_id"], str(customer.pk))
 
     def test_required_virtual_upload_validates_before_persistence(self) -> None:
         """
@@ -386,7 +390,9 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         """
         # 1. Configure a required field on an existing object without an attachment.
         customer = self.create_customer("Required", "Upload", 30)
-        self.CustomerModel._meta.get_field("picture").blank = False
+        field = self.CustomerModel._meta.get_field("picture")
+        self.addCleanup(setattr, field, "blank", field.blank)
+        field.blank = False
         form_class = bloomerp_modelform_factory(self.CustomerModel, fields=["picture"])
         form = form_class(
             data={"picture__present": "1"},
@@ -395,7 +401,7 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         )
         # 2. Validate the pending structured value before Django saves the parent.
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(File.objects.count(), 0)
+        self.assertEqual(FileNode.objects.count(), 0)
         form.save()
         self.assertEqual(len(customer.picture), 1)
         # 3. Required validation still rejects explicitly clearing the field.
@@ -403,19 +409,125 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         self.assertFalse(empty.is_valid())
         self.assertIn("picture", empty.errors)
 
-    def test_reference_model_is_internal(self) -> None:
-        """
-        Use case: The framework discovers the shared file reference model.
-        Expected result: It is internal, has no generated API, and produces no separate audit events.
-        """
-        from bloomerp.models import FileFieldReference
-        from bloomerp.models.definition import BloomerpModelConfig
-        from bloomerp.services.activity_log_services import ActivityLogManager
+    def test_files_relation_targets_shared_references(self) -> None:
+        """The generic files relation uses references without adding a parent column."""
+        field = self.CustomerModel._meta.get_field("files")
+        self.assertIs(field.related_model, FileReference)
+        self.assertIn(field, self.CustomerModel._meta.private_fields)
 
-        # 1. Validate the model's internal configuration.
-        config = FileFieldReference.bloomerp_config
-        self.assertIsInstance(config, BloomerpModelConfig)
-        self.assertTrue(config.is_internal)
-        # 2. Verify API generation and auditing consume the configured settings.
-        self.assertFalse(config.should_enable_api_auto_generation())
-        self.assertFalse(ActivityLogManager.should_record_change(FileFieldReference))
+    def test_generic_files_uploads_are_deferred_and_idempotent(self) -> None:
+        """Generic files create nodes and manual references only after saving the parent."""
+        from bloomerp.form_fields.files_relation_field import FilesRelationField
+
+        customer = self.create_customer("Generic", "Uploads", 30)
+        value = FilesRelationField().clean(
+            [SimpleUploadedFile("manual.txt", b"manual")]
+        )
+        self.assertEqual(FileNode.objects.count(), 0)
+        value.save(customer, user=self.admin_user)
+        value.save(customer, user=self.admin_user)
+        reference = customer.files.get()
+        self.assertIsNone(reference.application_field_id)
+        self.assertIsNone(reference.occurrence_id)
+        self.assertIsNone(reference.file.parent_id)
+        self.assertEqual(reference.file.metadata.size, 6)
+        self.assertEqual(reference.file.created_by_id, self.admin_user.pk)
+        self.assertEqual(FileNode.objects.count(), 1)
+        customer.delete()
+        self.assertFalse(FileReference.objects.filter(pk=reference.pk).exists())
+        self.assertTrue(FileNode.objects.filter(pk=reference.file_id).exists())
+
+    def test_generic_files_display_excludes_named_field_references(self) -> None:
+        """The generic files widget and collection value never expose a named field's files."""
+        from bloomerp.field_types.utils.file_values import render_object_files_value
+        from bloomerp.models import ApplicationField
+        from bloomerp.widgets.object_files_widget import ObjectFilesWidget
+
+        customer = self.create_customer("Scoped", "Display", 30)
+        self.CustomerModel._meta.get_field("picture").on_save(
+            customer, [], [SimpleUploadedFile("private.pdf", b"private")]
+        )
+        node = FileNode.objects.create(
+            kind="FILE", content=SimpleUploadedFile("manual.txt", b"manual")
+        )
+        reference = FileReference.objects.create(file=node, content_object=customer)
+        widget = ObjectFilesWidget()
+        self.assertEqual(widget.format_value(customer.files), [node])
+        self.assertEqual(widget.format_value(list(customer.files.all())), [node])
+        rendered = render_object_files_value(
+            ApplicationField.get_by_field(self.CustomerModel, "files"), customer
+        )
+        self.assertIn("manual.txt", rendered)
+        self.assertNotIn("private.pdf", rendered)
+        reference.delete()
+        customer.refresh_from_db()
+        self.assertEqual(len(customer.picture), 1)
+
+    def test_legacy_deletion_preserves_migrated_storage(self) -> None:
+        """Legacy cleanup cannot remove a storage key still used by a migrated node."""
+        from bloomerp.models import File
+
+        legacy = File.objects.create(file=SimpleUploadedFile("legacy.txt", b"legacy"))
+        node = FileNode.objects.create(
+            pk=legacy.pk, kind="FILE", content=legacy.file.name
+        )
+        legacy.delete()
+        self.assertTrue(node.content.storage.exists(node.content.name))
+
+    def test_reviewed_submission_references_original_upload(self) -> None:
+        """Persisting a public submission shares its node with the resulting object."""
+        from unittest.mock import patch
+
+        from django.contrib.contenttypes.models import ContentType
+
+        from bloomerp.form_fields.files_relation_field import FilesCleanedData
+        from bloomerp.models.forms.form import Form
+        from bloomerp.models.forms.form_submission import FormSubmission
+        from bloomerp.services.form_services import FormManager
+
+        form = Form.objects.create(
+            name="Public attachments",
+            content_type=ContentType.objects.get_for_model(self.CustomerModel),
+        )
+        submission = FormSubmission.objects.create(
+            form=form,
+            data={"first_name": "Submitted", "last_name": "Customer", "age": 30},
+        )
+        FilesCleanedData(
+            files=[SimpleUploadedFile("submitted.txt", b"submission")]
+        ).save(submission)
+        node = submission.files.get().file
+        manager = FormManager(form)
+        form_class = bloomerp_modelform_factory(
+            self.CustomerModel, fields=["first_name", "last_name", "age"]
+        )
+        with patch.object(manager, "layout_form_cls", return_value=form_class):
+            manager.persist_form_submission(submission)
+            manager.persist_form_submission(submission)
+        target = self.CustomerModel.objects.get(first_name="Submitted")
+        self.assertEqual(target.files.get().file_id, node.pk)
+        self.assertEqual(submission.files.get().file_id, node.pk)
+        self.assertEqual(node.references.count(), 2)
+        self.assertEqual(FileNode.objects.count(), 1)
+
+    def test_failed_reference_creation_cleans_new_upload_bytes(self) -> None:
+        """A failed reference insert rolls back the node and deletes only its new bytes."""
+        from unittest.mock import patch
+
+        from django.core.exceptions import ValidationError
+        from django.core.files.storage import InMemoryStorage
+
+        customer = self.create_customer("Failed", "Upload", 30)
+        storage = InMemoryStorage()
+        with (
+            patch.object(FileNode._meta.get_field("content"), "storage", storage),
+            patch.object(
+                FileReference.objects, "create", side_effect=ValidationError("Rejected")
+            ),
+            self.assertRaises(ValidationError),
+        ):
+            self.CustomerModel._meta.get_field("picture").on_save(
+                customer, [], [SimpleUploadedFile("failed.txt", b"failed")]
+            )
+        self.assertEqual(FileNode.objects.count(), 0)
+        self.assertEqual(storage.listdir("bloomerp/files")[1], [])

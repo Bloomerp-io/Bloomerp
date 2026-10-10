@@ -1,0 +1,19 @@
+{% load i18n %}
+<div data-reference-search-panel="{{ kind }}">
+    <div class="px-3 py-2">
+        <input type="search" class="input input-sm w-full" data-reference-search="{{ kind }}"
+               aria-label="{% translate 'Search attachments' %}" placeholder="{% translate 'Search…' %}"
+               x-effect="if (open) $nextTick(() => $el.focus())" @keydown.enter.prevent>
+    </div>
+    <div class="max-h-64 overflow-y-auto">
+        {% if kind == 'file' %}
+            <button type="button" role="menuitem" class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100" data-reference-upload>
+                <i class="fa-solid fa-upload mr-2" aria-hidden="true"></i>{% translate 'Upload file' %}
+            </button>
+        {% endif %}
+        <div data-reference-results="{{ kind }}"></div>
+    </div>
+    {% if kind == 'label' %}
+        <button type="button" role="menuitem" class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100" data-reference-create-label hidden>{% translate 'Create label' %}</button>
+    {% endif %}
+</div>
