@@ -9,7 +9,7 @@ class ObjectFilesWidget(forms.Widget):
     template_name = "widgets/object_files_widget.html"
 
     def format_value(self, value: Any) -> list[Any]:
-        """Resolve manual references without exposing files belonging to other fields."""
+        """Resolve manual references and omit uploads that have no saved-file preview."""
         from bloomerp.models import FileReference
 
         if value is None:
@@ -22,11 +22,16 @@ class ObjectFilesWidget(forms.Widget):
             )
         elif not isinstance(value, (list, tuple)):
             return []
-        return [
-            item.file if isinstance(item, FileReference) else item
-            for item in value
-            if not isinstance(item, FileReference) or item.application_field_id is None
-        ]
+        current_files: list[Any] = []
+        for item in value:
+            if isinstance(item, FileReference):
+                if item.application_field_id is not None:
+                    continue
+                item = item.file
+            # Bound invalid forms contain UploadedFile values without node IDs.
+            if getattr(item, "pk", None):
+                current_files.append(item)
+        return current_files
 
     def get_context(
         self, name: str, value: Any, attrs: dict[str, Any] | None

@@ -58,8 +58,8 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
                 expected=ExpectedResult(response_validators=self.input_equals("first_name", "XYZ")),
             ),
             ModelRequestScenario(
-                name="Generated create layout omits system fields and keeps files enabled",
-                description="UC: An administrator opens a generated create form.\nExpected Result: Internal system fields are omitted while files remain editable.",
+                name="Generated create layout omits header attachment fields and enables Attach",
+                description="UC: An administrator opens a generated create form.\nExpected Result: System and header attachment fields are omitted while Attach is enabled.",
                 model=customer, user=self.admin_user,
                 expected=ExpectedResult(response_validators=self.generated_create_field_state),
             ),
@@ -67,7 +67,14 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
                 name="Shared initial create layout is materialized and selected",
                 description="UC: A shared layout is marked as the user's initial default.\nExpected Result: It renders through a selected live reference without a local duplicate.",
                 model=customer, user=self.admin_user, prepare=self.prepare_shared_layout,
-                expected=ExpectedResult(response_validators=[self.contains_text("Shared create layout"), self.shared_layout_reference_selected]),
+                expected=ExpectedResult(response_validators=[self.contains_text("Shared create layout"), self.shared_layout_reference_selected, self.shared_attachment_controls]),
+            ),
+            ModelRequestScenario(
+                name="Record creators can attach using an inherited layout",
+                model=customer,
+                user=self.normal_user,
+                prepare=self.prepare_creator_shared_layout,
+                expected=ExpectedResult(response_validators=self.shared_attachment_controls),
             ),
             ModelRequestScenario(
                 name="One-to-many values survive a validation error",
@@ -318,10 +325,16 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
     def grant_no_row_policy(self, _scenario):
         self.grant_policy(["first_name", "last_name", "age"], [])
 
-    def generated_create_field_state(self, response):
+    def generated_create_field_state(self, response: HttpResponse) -> bool:
+        """Check generated forms omit header fields while offering attachment controls."""
         items = {str(item.id): item for row in response.context["layout"].rows for item in row.items}
-        system = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments"}
-        return all(str(self.fields_by_name[name].pk) not in items for name in system) and items[str(self.fields_by_name["files"].pk)].is_visible and "disabled" not in items[str(self.fields_by_name["files"].pk)].content
+        system = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments", "files", "avatar"}
+        soup = BeautifulSoup(response.content, "html.parser")
+        return (
+            all(str(self.fields_by_name[name].pk) not in items for name in system)
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
+        )
 
     def prepare_shared_layout(self, _scenario):
         self.shared_layout = UserObjectLayoutPreference.objects.create(user=self.normal_user, content_type=self.content_type, name="Shared initial create", initial_default=True, layout={"rows": [{"title": "Shared create layout", "columns": 1, "items": [{"id": self.fields_by_name["first_name"].pk, "colspan": 1}]}]})
@@ -332,6 +345,37 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
     def shared_layout_reference_selected(self, _response):
         reference = UserObjectLayoutPreference.objects.get(user=self.admin_user, content_type=self.content_type)
         return reference.source_object == self.shared_layout and reference.selected and not UserObjectLayoutPreference.objects.filter(user=self.admin_user, content_type=self.content_type, source_object__isnull=True).exists()
+
+    def prepare_creator_shared_layout(self, scenario: ModelRequestScenario) -> None:
+        """Give a regular record creator an inherited layout they cannot manage."""
+        self.grant_basic_create_policy(scenario)
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        source = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            name="Shared creator layout",
+            initial_default=True,
+            layout={"rows": [{"columns": 1, "items": [
+                {"id": self.fields_by_name[name].pk}
+                for name in ("first_name", "last_name", "age")
+            ]}]},
+        )
+        source.shared_with_users.add(self.normal_user)
+
+    def shared_attachment_controls(self, response: HttpResponse) -> bool:
+        """Check record creation enables attachments without enabling layout editing."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        host = soup.find(attrs={"bloomerp-component": "reference-attachments"})
+        return (
+            not response.context["can_change"]
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
+            and soup.find(attrs={"name": "object_references"}) is not None
+            and host is not None
+            and host.get("data-can-change") == "true"
+        )
 
     def save_controls_render(self, response):
         html = response.content.decode()

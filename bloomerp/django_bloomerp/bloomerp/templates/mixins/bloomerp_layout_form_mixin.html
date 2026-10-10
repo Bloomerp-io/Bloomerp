@@ -56,7 +56,7 @@
     >   
         <!--Buttons left-->
         <c-slot name="buttons_left">
-            {% if can_change %}
+            {% if can_manage_attachments %}
             <c-ui.shortcut_tooltip shortcut="mod+alt+t" action="click" position="bottom" text="Attach" target="[name='reference-attach']">
             <c-ui.dropdown.body trigger_icon_class="fa-solid fa-paperclip" trigger_class="gap-2" trigger_text="Attach" trigger_button_name="reference-attach" trigger_button_class="btn-secondary" size="sm" position="left" fixed="True">
                 <div data-reference-avatar hidden><c-ui.dropdown.item text="Avatar" icon="fa-solid fa-user-circle" /></div>
@@ -203,12 +203,12 @@
 
         <c-slot name="bellow_header">
             <div bloomerp-component="reference-attachments" {% if not object_reference_state %}hidden{% endif %}
-                 data-can-change="{{ can_change|yesno:'true,false' }}"
+                 data-can-change="{{ can_manage_attachments|yesno:'true,false' }}"
                  data-reference-search-url="{% url 'components_objects_references' %}"
                  data-reference-upload-url="{% url 'api_assistant_file_upload' %}"
                  data-reference-labels-url="{% url 'components_text_editor_labels' %}">
                 {{ object_reference_state|json_script }}
-                {% if can_change %}<input type="hidden" name="object_references" value="{}">{% endif %}
+                {% if can_manage_attachments %}<input type="hidden" name="object_references" value="{}">{% endif %}
                 <div class="flex flex-wrap gap-2" data-reference-chips></div>
             </div>
         </c-slot>
