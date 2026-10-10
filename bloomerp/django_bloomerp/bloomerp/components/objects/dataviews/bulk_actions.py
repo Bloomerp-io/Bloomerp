@@ -60,12 +60,13 @@ class BulkActionForm(forms.Form):
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         fields: list[ApplicationField],
         field_selector_url: str,
         selected_field: ApplicationField | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
+        """Build the field selector without sending value controls as GET filters."""
         super().__init__(*args, **kwargs)
         self.fields["application_field_id"].choices = [
             (str(field.id), field.title)
@@ -76,7 +77,7 @@ class BulkActionForm(forms.Form):
                 "class": "select select-bordered w-full",
                 "hx-get": field_selector_url,
                 "hx-target": "#bulk-action-field-value",
-                "hx-include": "closest form",
+                "hx-include": "this",
                 "hx-swap": "innerHTML",
             }
         )
@@ -118,7 +119,11 @@ def _editable_fields(
     return editable_fields
 
 
-def _filter_querydict(request: HttpRequest, preference: UserListViewPreference) -> QueryDict:
+def _filter_querydict(
+    request: HttpRequest,
+    preference: UserListViewPreference,
+    model: type[models.Model],
+) -> QueryDict:
     """Exclude bulk form controls while preserving actual dataview filters."""
     querydict = request.GET.copy()
     reserved_keys = set(RESERVED_BULK_QUERY_KEYS)
@@ -129,8 +134,15 @@ def _filter_querydict(request: HttpRequest, preference: UserListViewPreference) 
     for key in reserved_keys:
         querydict.pop(key, None)
     for key in list(querydict.keys()):
-        if key.startswith("_arg_") or re.fullmatch(r"value_\d+", key):
+        if key.startswith("_arg_"):
             querydict.pop(key, None)
+        elif re.fullmatch(r"value_\d+", key):
+            # Legacy selector requests include widget controls. A real model
+            # field takes precedence: discarding its filter broadens the action.
+            try:
+                model._meta.get_field(key)
+            except FieldDoesNotExist:
+                querydict.pop(key, None)
     return preference.apply_default_filters(querydict)
 
 
@@ -184,7 +196,7 @@ def _build_bulk_action_state(
     if query:
         queryset = string_search_on_queryset(queryset, query)
 
-    filter_querydict = _filter_querydict(request, preference)
+    filter_querydict = _filter_querydict(request, preference, model)
     queryset = ModelFilterManager(model).filter(filter_querydict, queryset=queryset)
 
     object_ids = request.GET.getlist("object_ids")

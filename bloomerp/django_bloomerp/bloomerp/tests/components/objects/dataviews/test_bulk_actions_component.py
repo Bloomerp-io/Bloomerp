@@ -135,6 +135,7 @@ class TestBulkAddressUpdates(BloomerpComponentTestCase):
                 "name": models.CharField(max_length=100),
                 "address": AddressField(blank=True, null=True),
                 "value_amount": models.IntegerField(default=0),
+                "value_0": models.IntegerField(default=0),
             }},
             use_bloomerp_base=True,
         )["BulkAddressComponentRecord"]
@@ -145,7 +146,7 @@ class TestBulkAddressUpdates(BloomerpComponentTestCase):
         from bloomerp.models import ApplicationField
 
         self.original = {"street_1": "Old street", "country": "BE"}
-        self.selected = self.AddressModel.objects.create(name="Selected", address=self.original, value_amount=1)
+        self.selected = self.AddressModel.objects.create(name="Selected", address=self.original, value_amount=1, value_0=1)
         self.unselected = self.AddressModel.objects.create(name="Unselected", address=self.original)
         field = ApplicationField.get_by_field(self.AddressModel, "address")
         common = {
@@ -175,6 +176,39 @@ class TestBulkAddressUpdates(BloomerpComponentTestCase):
                     ["New street", "Unit 2", "94105", "San Francisco", "California", "US"],
                 ))},
                 expected=ExpectedResult(response_validators=self._address_updated),
+            ),
+            RequestScenario(
+                name="render only rows matching a numeric value field filter",
+                **{**common, "method": "GET", "query_params": {"value_0": "1"}},
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("Delete 1 object(s)"),
+                    self.does_not_contain_text("Delete 2 object(s)"),
+                    self.contains_text('hx-include="this"'),
+                ]),
+            ),
+            RequestScenario(
+                name="retain numeric value field filters during bulk updates",
+                **{**common, "query_params": {"value_0": "1"}},
+                data={**data, **dict(zip(
+                    [f"value_{index}" for index in range(6)],
+                    ["New street", "Unit 2", "94105", "San Francisco", "California", "US"],
+                ))},
+                expected=ExpectedResult(response_validators=self._address_updated),
+            ),
+            RequestScenario(
+                name="retain numeric value field filters during bulk deletion",
+                **{**common, "query_params": {"value_0": "1"}},
+                data={"action": "bulk_delete"},
+                expected=ExpectedResult(response_validators=self._filtered_record_deleted),
+            ),
+            RequestScenario(
+                name="intersect selected ids with numeric field filters",
+                **{**common, "query_params": {
+                    "value_0": "1", "selection": "selected",
+                    "object_ids": str(self.unselected.pk),
+                }},
+                data={"action": "bulk_delete"},
+                expected=ExpectedResult(status_code=400, response_validators=self._both_records_preserved),
             ),
             RequestScenario(
                 name="clear optional address with empty components",
@@ -267,3 +301,16 @@ class TestBulkAddressUpdates(BloomerpComponentTestCase):
             and self.selected.address["street_1"] == "Old street"
             and "queued" in response.content.decode()
         )
+
+    def _filtered_record_deleted(self, _response: HttpResponse) -> bool:
+        """Ensure all-filtered deletion affects only the matching numeric-field row."""
+        return (
+            not self.AddressModel.objects.filter(pk=self.selected.pk).exists()
+            and self.AddressModel.objects.filter(pk=self.unselected.pk).exists()
+        )
+
+    def _both_records_preserved(self, _response: HttpResponse) -> bool:
+        """Ensure an empty intersection never deletes either selected or matching rows."""
+        return self.AddressModel.objects.filter(
+            pk__in=[self.selected.pk, self.unselected.pk],
+        ).count() == 2
