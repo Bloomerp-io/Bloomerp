@@ -27,6 +27,7 @@ AUTO_MANAGED_MODEL_FORM_FIELD_NAMES = frozenset(
         "updated_by",
         "comments",
         "files",
+        "object_labels",
     }
 )
 

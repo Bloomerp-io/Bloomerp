@@ -378,9 +378,7 @@ def create_default_layout(
     *,
     layout: FieldLayout | None = None,
 ) -> FieldLayout:
-    """
-    Creates a default field layout based on the given model.
-    """
+    """Resolve configured layouts or generate details without header attachment fields."""
     content_type = ContentType.objects.get_for_model(model)
     if application_fields is None:
         application_fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
@@ -437,7 +435,10 @@ def create_default_layout(
                 "created_by",
                 "datetime_created",
                 "datetime_updated",
-                "comments"
+                "comments",
+                "files",
+                "avatar",
+                "labels",
             ]
         ]
         return FieldLayout(

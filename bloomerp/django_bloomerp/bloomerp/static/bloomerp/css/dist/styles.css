@@ -1538,9 +1538,6 @@
   .gap-x-4 {
     column-gap: calc(var(--spacing) * 4);
   }
-  .gap-x-6 {
-    column-gap: calc(var(--spacing) * 6);
-  }
   .space-x-2 {
     :where(& > :not(:last-child)) {
       --tw-space-x-reverse: 0;
@@ -1567,9 +1564,6 @@
   }
   .gap-y-2 {
     row-gap: calc(var(--spacing) * 2);
-  }
-  .gap-y-3 {
-    row-gap: calc(var(--spacing) * 3);
   }
   .divide-x {
     :where(& > :not(:last-child)) {
@@ -4305,7 +4299,10 @@
     background-color: var(--color-zinc-900);
   }
   .dark .bg-gray-100 {
-    background-color: var(--color-zinc-800);
+    background-color: var(--color-zinc-700);
+  }
+  .dark .bg-base[aria-selected="true"] {
+    background-color: var(--color-zinc-700);
   }
   .dark .bg-gray-200 {
     background-color: var(--color-zinc-700);
@@ -4328,11 +4325,8 @@
   .bg-yellow-200 {
     background-color: var(--color-yellow-600);
   }
-  .dark .hover\:bg-gray-50:hover {
-    background-color: var(--color-zinc-800);
-  }
-  .dark .hover\:bg-gray-100:hover {
-    background-color: var(--color-zinc-800);
+  .dark .hover\:bg-base:hover, .dark .hover\:bg-gray-50:hover, .dark .hover\:bg-gray-100:hover {
+    background-color: var(--color-zinc-700);
   }
   .dark .hover\:bg-gray-200:hover {
     background-color: var(--color-zinc-700);
