@@ -164,7 +164,9 @@
   .dark .bg-white { background-color: var(--color-zinc-800); }
   .dark .bg-white\/95 { background-color: var(--color-zinc-800); }
   .dark .bg-gray-50 { background-color: var(--color-zinc-900); }
-  .dark .bg-gray-100 { background-color: var(--color-zinc-800); }
+  /* Neutral selection and hover must contrast with zinc-800 menu surfaces. */
+  .dark .bg-gray-100 { background-color: var(--color-zinc-700); }
+  .dark .bg-base[aria-selected="true"] { background-color: var(--color-zinc-700); }
   .dark .bg-gray-200 { background-color: var(--color-zinc-700); }
 
   .dark .bg-primary-50 { background-color: var(--color-primary-950); }
@@ -176,8 +178,9 @@
 
   .bg-yellow-200 { background-color: var(--color-yellow-600); }
 
-  .dark .hover\:bg-gray-50:hover { background-color: var(--color-zinc-800); }
-  .dark .hover\:bg-gray-100:hover { background-color: var(--color-zinc-800); }
+  .dark .hover\:bg-base:hover,
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-gray-100:hover { background-color: var(--color-zinc-700); }
   .dark .hover\:bg-gray-200:hover { background-color: var(--color-zinc-700); }
   .dark .text-gray-900 { color: var(--color-zinc-100); }
   .dark .text-gray-800 { color: var(--color-zinc-200); }

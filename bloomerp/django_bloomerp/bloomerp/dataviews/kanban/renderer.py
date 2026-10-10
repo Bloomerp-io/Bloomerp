@@ -395,7 +395,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             related_queryset,
         )
         metadata = cls.merge_lane_metadata(
-            metadata, custom_groupings, getattr(options, "custom_group_order", [])
+            metadata, custom_groupings, getattr(options, "custom_group_order", []),
+            getattr(options, "show_unmapped_lanes", True),
         )
         group = next(
             (item for item in metadata if item["request_value"] == column_value), None
@@ -475,8 +476,9 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         groups: list[dict[str, Any]],
         custom_groupings: dict[str, list[str]],
         custom_group_order: list[str] | None = None,
+        show_unmapped_lanes: bool = True,
     ) -> list[dict[str, Any]]:
-        """Merge eligible member descriptions and counts without loading cards."""
+        """Merge eligible members and optionally retain unmapped lanes without loading cards."""
         by_value = {group["request_value"]: group for group in groups}
         consumed: set[str] = set()
         merged = []
@@ -507,9 +509,10 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                     ],
                 }
             )
-        merged.extend(
-            group for group in groups if group["request_value"] not in consumed
-        )
+        if show_unmapped_lanes:
+            merged.extend(
+                group for group in groups if group["request_value"] not in consumed
+            )
         return merged
 
     @classmethod
@@ -531,6 +534,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         metadata = cls.merge_lane_metadata(
             metadata, getattr(options, "custom_groupings", {}),
             getattr(options, "custom_group_order", []),
+            getattr(options, "show_unmapped_lanes", True),
         )
         return [
             cls._materialize_lane(

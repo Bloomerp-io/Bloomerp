@@ -53,6 +53,7 @@ class KanbanDataView(BaseDataview):
     group_by_field: str | None = None
     custom_groupings: dict[str, list[str]] = Field(default_factory=dict)
     custom_group_order: list[str] = Field(default_factory=list)
+    show_unmapped_lanes: bool = True
     lane_colouring: dict[str, str] = Field(default_factory=dict)
     page_size: Literal[10, 25, 50, 100] = 25
     sort_field: str | None = None
@@ -127,13 +128,14 @@ class KanbanDataView(BaseDataview):
                     required=False,
                     label=_("Custom groups"),
                     help_text=_(
-                        "Name each lane and select its values. Unmapped values keep their own lanes."
+                        "Name each lane and select its values. Show unmapped lanes to keep other values visible."
                     ),
                 )
             coloured_groups = KanbanDataviewRenderer.merge_lane_metadata(
                 groups,
                 getattr(state.options, "custom_groupings", {}),
                 getattr(state.options, "custom_group_order", []),
+                getattr(state.options, "show_unmapped_lanes", True),
             )
             choices = [
                 (group.get("colour_key", group["request_value"]), group["label"])
@@ -161,6 +163,13 @@ class KanbanDataView(BaseDataview):
             )
         application_fields = state.accessible_fields
         field_options = {
+            "show_unmapped_lanes": (
+                forms.BooleanField,
+                {
+                    "label": _("Show unmapped lanes"),
+                    "help_text": _("Show individual lanes for values outside custom groups."),
+                },
+            ),
             "group_by_field": (
                 forms.TypedChoiceField,
                 {
