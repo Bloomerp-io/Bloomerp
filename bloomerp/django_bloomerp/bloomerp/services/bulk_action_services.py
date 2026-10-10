@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, transaction
-from django.forms import modelform_factory
+from django.forms import MultiWidget, modelform_factory
 
 from bloomerp.models import ApplicationField
 from bloomerp.permissions.definition import BloomerpPermission
@@ -32,6 +32,7 @@ class BulkActionService:
         object_ids: list[str],
         value: Any,
     ) -> int:
+        """Update permitted rows using model forms, including multipart widgets."""
         if not self.permission_manager.has_global_permission(
             self.model,
             BloomerpPermission.BULK_CHANGE,
@@ -53,11 +54,22 @@ class BulkActionService:
             raise ValidationError("Invalid field")
 
         form_cls = modelform_factory(self.model, fields=[field_name])
+        form_data = {field_name: value}
+        model_form_field = form_cls.base_fields[field_name]
+        widget = model_form_field.widget
+        if isinstance(widget, MultiWidget):
+            # ModelForm reads multipart inputs through the widget, not the root key.
+            # Clean first so invalid mappings/JSON cannot silently become empty.
+            parts = widget.decompress(model_form_field.clean(value))
+            form_data = {
+                f"{field_name}{suffix}": part
+                for suffix, part in zip(widget.widgets_names, parts)
+            }
         updated_count = 0
         
         # TODO: Change to bulk change
         for obj in queryset:
-            form = form_cls(data={field_name: value}, instance=obj)
+            form = form_cls(data=form_data, instance=obj)
             if not form.is_valid():
                 raise ValidationError(form.errors)
             form.save()
