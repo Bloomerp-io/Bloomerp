@@ -1,3 +1,4 @@
+import htmx from "htmx.org";
 import BaseComponent, { getComponent } from "../BaseComponent";
 import { BloomerpTextEditor } from "../text_editor/BloomerpTextEditor";
 import type { ReferenceTarget } from "../text_editor/nodes/ReferenceNode";
@@ -91,7 +92,10 @@ export default class ReferenceAttachments extends BaseComponent {
     /** Route attachment controls and chip removal within the owning form. */
     private onClick = (event: MouseEvent): void => {
         const target = event.target as HTMLElement;
-        if (target.closest("form") !== this.form || !this.canChange) return;
+        if (target.closest("form") !== this.form) return;
+        const preview = target.closest<HTMLElement>("[data-reference-file-preview]");
+        if (preview) this.closeDropdown(preview);
+        if (!this.canChange) return;
         if (target.closest("[data-reference-avatar]")) this.uploadAvatar();
         if (target.closest("[data-reference-upload]")) { this.closeDropdown(target); this.upload(); }
         if (target.closest("[data-reference-create-label]")) {
@@ -243,7 +247,7 @@ export default class ReferenceAttachments extends BaseComponent {
         }
         this.form?.dispatchEvent(new CustomEvent("bloomerp:attachments-changed", { bubbles: true, detail: { dirty: this.isDirty(), undo: previous ? undoAttachments : undefined } }));
     }
-    /** Render occurrence chips and collapse their header section when empty. */
+    /** Render reference chips and one compact dropdown for all attached files. */
     private render(): void {
         this.element.hidden = this.entries.length === 0;
         const section = this.element.closest<HTMLElement>("[data-layout-header-section-2]");
@@ -253,6 +257,7 @@ export default class ReferenceAttachments extends BaseComponent {
         this.clearPreviews();
         chips.replaceChildren();
         for (const [index, entry] of this.entries.entries()) {
+            if (entry.kind === "file") continue;
             const chip = document.createElement("span");
             chip.className = "badge badge-secondary gap-2";
             const label = document.createElement(entry.kind === "object" && entry.url ? "a" : "span");
@@ -274,16 +279,60 @@ export default class ReferenceAttachments extends BaseComponent {
             label.append(document.createTextNode(entry.label));
             chip.append(label);
             chip.title = entry.field_id ? `${t("Field reference")} ${entry.field_id}` : t("Attachment");
-            const host = this.form?.querySelector<HTMLElement>(`[bloomerp-component="bloomerp-text-editor"][data-application-field-id="${entry.field_id}"]`);
-            if (this.canChange && (!entry.field_id || (host && host.dataset.disabled !== "true"))) {
-                const button = document.createElement("button");
-                button.type = "button"; button.textContent = "×";
-                button.dataset.referenceRemove = String(index);
-                button.setAttribute("aria-label", `${t("Remove")} ${entry.label}`);
-                chip.append(button);
-            }
+            const remove = this.createRemovalButton(entry, index);
+            if (remove) chip.append(remove);
             chips.append(chip);
         }
+        this.renderFiles();
+    }
+    /** Build a removal control only when this record and reference field are editable. */
+    private createRemovalButton(entry: ReferenceTarget, index: number): HTMLButtonElement | null {
+        const host = this.form?.querySelector<HTMLElement>(`[bloomerp-component="bloomerp-text-editor"][data-application-field-id="${entry.field_id}"]`);
+        if (!this.canChange || (entry.field_id && (!host || host.dataset.disabled === "true"))) return null;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "×";
+        button.dataset.referenceRemove = String(index);
+        button.setAttribute("aria-label", `${t("Remove")} ${entry.label}`);
+        return button;
+    }
+    /** Populate the persistent shared dropdown with preview links and per-file removal. */
+    private renderFiles(): void {
+        const group = this.element.querySelector<HTMLElement>("[data-reference-files-group]");
+        const list = group?.querySelector<HTMLElement>("[data-reference-file-list]");
+        const count = group?.querySelector<HTMLElement>("[data-reference-files-count]");
+        if (!group || !list || !count) return;
+        list.replaceChildren();
+        let total = 0;
+        for (const [index, entry] of this.entries.entries()) {
+            if (entry.kind !== "file") continue;
+            total += 1;
+            const row = document.createElement("div");
+            row.className = "flex items-center gap-2 px-3 py-2 text-sm";
+            const link = document.createElement("a");
+            link.className = "link min-w-0 flex-1 truncate";
+            link.textContent = entry.label;
+            link.title = entry.label;
+            link.setAttribute("role", "menuitem");
+            link.href = this.element.dataset.referencePreviewUrl!.replace("__file_id__", encodeURIComponent(entry.target_id));
+            link.setAttribute("hx-get", link.getAttribute("href")!);
+            link.setAttribute("hx-target", "#bloomerp-general-use-drawer-body");
+            link.setAttribute("hx-swap", "innerHTML");
+            link.setAttribute("hx-push-url", "false");
+            link.setAttribute("bloomerp-open-drawer", "bloomerp-general-use-drawer");
+            link.dataset.referenceFilePreview = "";
+            row.append(link);
+            const remove = this.createRemovalButton(entry, index);
+            if (remove) {
+                remove.className = "btn btn-sm btn-ghost shrink-0";
+                row.append(remove);
+            }
+            list.append(row);
+        }
+        count.textContent = `${t("Files")} (${total})`;
+        group.hidden = total === 0;
+        if (!total) group.querySelector('[bloomerp-component="dropdown-keyboard"]')?.dispatchEvent(new CustomEvent("dropdown-dismiss"));
+        htmx.process(list);
     }
     /** Reuse the existing avatar field and its ordinary form validation. */
     private uploadAvatar = (): void => { this.form?.querySelector<HTMLInputElement>('input[type="file"][name="avatar"]:not(:disabled)')?.click(); };
