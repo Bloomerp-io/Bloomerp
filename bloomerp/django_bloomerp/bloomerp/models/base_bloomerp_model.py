@@ -1,6 +1,7 @@
 from django.utils.translation import gettext_lazy as _
 
 from django.db import models
+from bloomerp.model_fields.labels_field import BloomerpLabelsField
 from django.contrib.contenttypes.fields import GenericRelation
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from bloomerp.models.mixins.avatar_model_mixin import AvatarModelMixin
@@ -21,8 +22,9 @@ class BloomerpModel(
         abstract = True
         default_permissions = BloomerpPermission.to_tuple()
     
-    files = GenericRelation("bloomerp.File")
+    files = GenericRelation("bloomerp.FileReference")
     comments = GenericRelation("bloomerp.Comment")
+    object_labels = BloomerpLabelsField(verbose_name=_("Object labels"))
 
 
 

@@ -26,7 +26,7 @@ class FileFieldCleanedData(StructuredFormValue):
     def save(self, parent: Model, *, user: Any = None) -> None:
         """Persist attachments exactly once through their owning model field."""
         if not self._saved:
-            self.model_field.on_save(parent, self.retained, self.uploads)
+            self.model_field.on_save(parent, self.retained, self.uploads, user=user)
             self.retained = [
                 str(file.pk) for file in getattr(parent, self.model_field.name)
             ]
@@ -88,7 +88,7 @@ class BloomerpFileFormField(forms.Field):
 
         from django.contrib.contenttypes.models import ContentType
 
-        from bloomerp.models.files.file import File
+        from bloomerp.models.files.file_node import FileNode
 
         if isinstance(value, FileFieldCleanedData):
             return value
@@ -98,7 +98,7 @@ class BloomerpFileFormField(forms.Field):
         else:
             values = value if isinstance(value, (list, tuple)) else [value]
             raw_ids = [
-                item.pk if isinstance(item, File) else item
+                item.pk if isinstance(item, FileNode) else item
                 for item in values
                 if item and not isinstance(item, UploadedFile)
             ]
@@ -135,13 +135,12 @@ class BloomerpFileFormField(forms.Field):
                 raise ValidationError(
                     _("Attachments do not belong to this object and field.")
                 )
-            owned = File.objects.filter(
+            owned = FileNode.objects.filter(
                 pk__in=retained,
-                field_reference__application_field__content_type=ContentType.objects.get_for_model(
-                    self.parent
-                ),
-                field_reference__object_id=str(self.parent.pk),
-                field_reference__application_field__field=self.model_field.name,
+                references__occurrence_id__isnull=True,
+                references__content_type=ContentType.objects.get_for_model(self.parent),
+                references__object_id=str(self.parent.pk),
+                references__application_field__field=self.model_field.name,
             )
             if owned.count() != len(retained):
                 raise ValidationError(

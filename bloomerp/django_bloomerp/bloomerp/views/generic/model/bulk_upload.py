@@ -8,7 +8,7 @@ from django.views.generic import TemplateView
 from django_htmx.http import HttpResponseClientRedirect
 
 from bloomerp.forms.bulk_upload_form import BulkUploadWizardUploadForm
-from bloomerp.models.files import File
+from bloomerp.models.files import File, FileNode, FileReference
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
@@ -216,7 +216,7 @@ def ctx_confirm_step(request: HttpRequest, view:"BloomerpBulkUploadView", orches
     url_name="bulk_upload",
     description="Bulk upload objects from {model}",
     route_type="model",
-    exclude_models=[File],
+    exclude_models=[File, FileNode, FileReference],
 )
 class BloomerpBulkUploadView(WizardMixin, BaseBloomerpView, TemplateView):
     model = None

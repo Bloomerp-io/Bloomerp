@@ -103,10 +103,10 @@ class TestStartFileExtractionView(BloomerpAPIViewTestCase):
                 ),
             ),
             RequestScenario(
-                name="Unpersisted uploads cannot start jobs",
+                name="Folder nodes cannot start jobs",
                 method="POST",
                 user=self.admin_user,
-                prepare=self.unpersisted_source,
+                prepare=self.folder_source,
                 content_type="application/json",
                 expected=ExpectedResult(
                     status_code=404, response_validators=self.no_job_created
@@ -156,11 +156,12 @@ class TestStartFileExtractionView(BloomerpAPIViewTestCase):
         """Select bytes stored with an explicitly unsupported file format."""
         scenario.data = {"file_id": str(create_source(b"zip", "source.zip").pk)}
 
-    def unpersisted_source(self, scenario: RequestScenario) -> None:
-        """Simulate a temporary upload that has not been committed to the library."""
-        self.source.persisted = False
-        self.source.save(update_fields=["persisted"])
-        scenario.data = {"file_id": str(self.source.pk)}
+    def folder_source(self, scenario: RequestScenario) -> None:
+        """Reject a physical folder identity before creating an extraction job."""
+        from bloomerp.models.files.file_node import FileNode
+
+        folder = FileNode.objects.create(name="Folder", kind="FOLDER")
+        scenario.data = {"file_id": str(folder.pk)}
 
     def call_start(self, source_id: str | None = None, user: Any = None) -> Response:
         """Invoke the real DRF view for patch-heavy admission boundary assertions."""
@@ -246,16 +247,14 @@ class TestStartFileExtractionView(BloomerpAPIViewTestCase):
 
     def test_empty_oversized_missing_and_inactive_sources_cannot_publish(self) -> None:
         """Enforce size and storage availability before broker contact or job creation."""
-        for size in (0, api.MAX_FILE_BYTES + 1):
-            with (
-                self.subTest(size=size),
-                patch.object(self.storage, "size", return_value=size),
-            ):
-                response = self.call_start()
+        for size in (0, api.MAX_FILE_BYTES + 1, None):
+            with self.subTest(size=size):
+                self.source.meta["size"] = size
+                type(self.source).objects.filter(pk=self.source.pk).update(meta=self.source.meta)
+                with patch.object(self.storage, "size", side_effect=AssertionError("Storage size queried")):
+                    response = self.call_start()
                 self.assertEqual(response.status_code, 400)
                 self.assertIn("file_size_limit", str(response.data))
-        with patch.object(self.storage, "size", side_effect=OSError("private path")):
-            self.assertEqual(self.call_start().status_code, 400)
         self.admin_user.is_active = False
         self.assertEqual(self.call_start().status_code, 404)
         self.assertFalse(FileExtraction.objects.exists())

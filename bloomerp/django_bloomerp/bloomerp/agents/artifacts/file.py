@@ -37,23 +37,23 @@ def describe_file(payload: FileArtifactPayload) -> AIArtifactDescription:
         summary=(
             f"Attached file {payload.file_id} ({payload.media_type}); "
             "use api_assistant_file_link with this file_id to attach it to an object "
-            "or folder without uploading it again. Use a file-reading tool to inspect its contents."
+            "without uploading it again. Use a file-reading tool to inspect its contents."
         ),
     )
 
 
 def authorize_file(payload: FileArtifactPayload, request: HttpRequest) -> None:
     """Use existing linked-object and file-library permissions at every read boundary."""
-    from bloomerp.models import File
-    from bloomerp.services.file_permission_services import user_can_view_file
+    from bloomerp.files.access import FileAccessManager
+    from bloomerp.models.files.file_node import FileNode
 
-    file = File.objects.filter(pk=payload.file_id).first()
-    if file is None or not user_can_view_file(request, file):
+    file = FileNode.objects.filter(pk=payload.file_id).first()
+    if file is None or not FileAccessManager(request.user).can_read_file_node(file):
         raise PermissionDenied("File unavailable")
 
 
 def file_reference(payload: FileArtifactPayload) -> UUID:
-    """Connect selected metadata to the existing relational File reference."""
+    """Connect selected metadata to the existing relational FileNode reference."""
     return payload.file_id
 
 
@@ -61,10 +61,10 @@ def search_files(
     request: HttpRequest, search: AIArtifactSearchRequest
 ) -> AIArtifactSearchPage[FileArtifactPayload]:
     """Scan a bounded file page, filtering inaccessible files before returning metadata."""
-    from bloomerp.models import File
-    from bloomerp.services.file_permission_services import user_can_view_file
+    from bloomerp.files.access import FileAccessManager
+    from bloomerp.models.files.file_node import FileNode
 
-    query = File.objects.filter(persisted=True).order_by("pk")
+    query = FileNode.objects.filter(kind="FILE").order_by("pk")
     if search.query:
         query = query.filter(name__icontains=search.query)
     if search.cursor:
@@ -74,13 +74,12 @@ def search_files(
     cursor = None
     for index, file in enumerate(rows[:200]):
         cursor = str(file.pk)
-        if user_can_view_file(request, file):
+        if FileAccessManager(request.user).can_read_file_node(file):
             items.append(
                 FileArtifactPayload(
                     file_id=file.pk,
-                    name=file.name or Path(file.file.name).name,
-                    media_type=mimetypes.guess_type(file.file.name)[0]
-                    or "application/octet-stream",
+                    name=file.name or Path(file.content.name).name,
+                    media_type=file.meta.get("mime_type") or "application/octet-stream",
                 )
             )
         if len(items) == search.limit:
@@ -92,27 +91,20 @@ def search_files(
 
 def upload_file(request: HttpRequest, file: UploadedFile) -> FileArtifactPayload:
     """Store one size-limited upload using normal file-library creation permissions."""
-    from bloomerp.models import File
-    from bloomerp.permissions.manager import UserPolicyManager
+    from bloomerp.services.assistant_file_services import upload_assistant_file
 
-    manager = UserPolicyManager(request.user)
-    if not manager.has_global_permission(
-        File, "add_file"
-    ) or not manager.has_global_permission(File, "view_file"):
-        raise PermissionDenied("File upload requires add and view file permissions")
     limit = getattr(settings, "BLOOMERP_AGENT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024)
     if not file.size or file.size > limit:
         raise ValueError(f"File must be between 1 and {limit} bytes")
     name = Path(file.name).name
     if len(name) > 100:
         raise ValueError("Filename must contain at most 100 characters")
-    record = File.objects.create(
-        file=file,
-        name=name,
-        persisted=True,
-        created_by=request.user,
-        updated_by=request.user,
-    )
+    from rest_framework.exceptions import PermissionDenied as ApiPermissionDenied
+
+    try:
+        record = upload_assistant_file(request, file)
+    except ApiPermissionDenied as error:
+        raise PermissionDenied(str(error.detail)) from error
     return FileArtifactPayload(
         file_id=record.pk,
         name=name,

@@ -2,6 +2,7 @@
 
 import base64
 from typing import Any
+from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth.models import Group, Permission
@@ -15,13 +16,14 @@ from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from bloomerp.filters.definition import FilterCondition
-from bloomerp.models import File, FileFolder
+from bloomerp.models.files.file_node import FileNode
+from bloomerp.models.files.file_reference import FileReference
 from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.router import router
 from bloomerp.tests.base import BloomerpAPIViewTestCase, ExpectedResult, RequestScenario
-from bloomerp.views.mcp.link_file import AssistantFileLinkView
 from bloomerp.views.api.files.upload_file import AssistantFileUploadView
+from bloomerp.views.mcp.link_file import AssistantFileLinkView
 
 
 class TestAssistantFiles(BloomerpAPIViewTestCase):
@@ -35,8 +37,8 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
         self.customer = self.create_customer("Lisa", "Larsen", 30)
         self.other = self.create_customer("Other", "Person", 31)
         self.content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        self.file = File.objects.create(
-            file=SimpleUploadedFile("existing.txt", b"original bytes"), persisted=True
+        self.file = FileNode.objects.create(
+            content=SimpleUploadedFile("existing.txt", b"original bytes"), kind="FILE"
         )
         self.destination = {
             "model_label": self.CustomerModel._meta.label,
@@ -46,14 +48,16 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
     def uploaded_library_file(self, response: HttpResponse) -> bool:
         """Verify a routed upload persists one file with the expected bytes."""
         payload = response.json()
-        uploaded = File.objects.exclude(pk=self.file.pk).get()
-        self.assertEqual(uploaded.file.read(), b"hello")
+        uploaded = FileNode.objects.get(pk=payload["file_id"])
+        self.assertEqual(uploaded.content.read(), b"hello")
         self.assertIn(str(uploaded.pk), str(payload))
         return True
 
     def denied_upload_preserves_library(self, response: HttpResponse) -> bool:
         """Verify denied or malformed uploads leave the existing library intact."""
-        self.assertEqual(File.objects.count(), 1)
+        self.assertEqual(FileNode.objects.count(), 1)
+        self.assertEqual(FileNode.objects.count(), 1)
+        self.assertFalse(FileReference.objects.exists())
         return True
 
     def get_test_scenarios(self) -> list[RequestScenario]:
@@ -69,6 +73,67 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
                     status_code=201, response_validators=self.uploaded_library_file
                 ),
             ),
+            RequestScenario(
+                name="Upload creates a reference when the object identity is supplied",
+                method="POST",
+                user=self.admin_user,
+                content_type="application/json",
+                data={**self.upload_data(), **self.destination},
+                expected=ExpectedResult(
+                    status_code=201,
+                    response_validators=[
+                        lambda response: FileReference.objects.filter(
+                            file_id=response.json()["file_id"],
+                            content_type=self.content_type,
+                            object_id=str(self.customer.pk),
+                            application_field=None,
+                        ).count() == 1,
+                        lambda response: response.json()["object_id"] == str(self.customer.pk),
+                        lambda response: "folder_id" not in response.json(),
+                        lambda response: FileNode.objects.get(
+                            pk=response.json()["file_id"]
+                        ).parent_id is None,
+                    ],
+                ),
+            ),
+            RequestScenario(
+                name="Unreferenced upload creates a node without a reference",
+                method="POST",
+                user=self.admin_user,
+                content_type="application/json",
+                data=self.upload_data(),
+                expected=ExpectedResult(
+                    status_code=201,
+                    response_validators=[
+                        lambda response: not FileReference.objects.exists(),
+                        lambda response: response.json()["object_id"] is None,
+                        lambda response: FileNode.objects.get(
+                            pk=response.json()["file_id"]
+                        ).created_by_id == self.admin_user.pk,
+                    ],
+                ),
+            ),
+            *[
+                RequestScenario(
+                    name=f"Upload rejects {name}",
+                    method="POST",
+                    user=self.admin_user,
+                    content_type="application/json",
+                    data={**self.upload_data(), **destination},
+                    expected=ExpectedResult(
+                        status_code=400,
+                        response_validators=lambda response: (
+                            FileNode.objects.count() == 1
+                            and not FileReference.objects.exists()
+                        ),
+                    ),
+                )
+                for name, destination in [
+                    ("folder placement", {"folder_id": 1}),
+                    ("model without object", {"model_label": self.CustomerModel._meta.label}),
+                    ("object without model", {"object_id": str(self.customer.pk)}),
+                ]
+            ],
             RequestScenario(
                 name="Anonymous upload is denied",
                 method="POST",
@@ -129,7 +194,7 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
             ],
         )
         if group:
-            team = Group.objects.create(name="File team")
+            team = Group.objects.create(name="FileNode team")
             team.user_set.add(self.normal_user)
             policy.groups.add(team)
         else:
@@ -139,9 +204,9 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
         """Upload real bytes and return compact IDs for library and direct object placement."""
         response = self.call(self.upload_data(), upload=True, user=self.admin_user)
         self.assertEqual(response.status_code, 201, response.data)
-        uploaded = File.objects.get(pk=response.data["file_id"])
-        self.assertEqual(uploaded.file.read(), b"hello")
-        self.assertIsNone(uploaded.object_id)
+        uploaded = FileNode.objects.get(pk=response.data["file_id"])
+        self.assertEqual(uploaded.content.read(), b"hello")
+        self.assertFalse(uploaded.references.exists())
         response = self.call(
             {
                 **self.destination,
@@ -152,60 +217,59 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
             user=self.admin_user,
         )
         self.assertEqual(response.status_code, 201, response.data)
-        uploaded = File.objects.get(pk=response.data["file_id"])
-        self.assertEqual(uploaded.object_id, str(self.customer.pk))
-        self.assertEqual(uploaded.folder.object_id, str(self.customer.pk))
+        uploaded = FileNode.objects.get(pk=response.data["file_id"])
+        self.assertEqual(uploaded.references.get().object_id, str(self.customer.pk))
+        self.assertIsNone(uploaded.parent_id)
+        self.assertEqual(uploaded.content.read(), b"object bytes")
+
+    def test_reference_failure_rolls_back_node_and_removes_uploaded_bytes(self) -> None:
+        """Remove both the node and stored bytes when its requested reference cannot save."""
+        storage = FileNode._meta.get_field("content").storage
+        with (
+            patch.object(
+                FileReference.objects, "create", side_effect=RuntimeError("Reference failed")
+            ),
+            patch.object(storage, "delete", wraps=storage.delete) as delete,
+            self.assertRaisesRegex(RuntimeError, "Reference failed"),
+        ):
+            self.call(
+                {**self.upload_data(), **self.destination},
+                upload=True,
+                user=self.admin_user,
+            )
+        self.assertEqual(FileNode.objects.count(), 1)
+        self.assertFalse(FileReference.objects.exists())
+        delete.assert_called_once()
+        self.assertFalse(storage.exists(delete.call_args.args[0]))
 
     def test_link_existing_file_and_repeat_without_copying(self) -> None:
         """Attach a chat upload to an object idempotently, retaining the stored bytes."""
-        path = self.file.file.name
-        count = File.objects.count()
+        path = self.file.content.name
+        count = FileNode.objects.count()
         for _ in range(2):
             response = self.call(
                 {"file_id": str(self.file.pk), **self.destination}, user=self.admin_user
             )
             self.assertEqual(response.status_code, 200, response.data)
         self.file.refresh_from_db()
-        self.assertEqual(self.file.file.name, path)
-        self.assertEqual(File.objects.count(), count)
-        self.assertTrue(self.customer.files.filter(pk=self.file.pk).exists())
+        self.assertEqual(self.file.content.name, path)
+        self.assertEqual(FileNode.objects.count(), count)
+        self.assertTrue(self.customer.files.filter(file_id=self.file.pk).exists())
 
-    def test_folder_scope_and_relocation(self) -> None:
-        """Infer a destination object from its folder and reject mismatched explicit identities."""
-        folder = FileFolder.objects.create(
-            name="Documents",
-            content_type=self.content_type,
-            object_id=str(self.customer.pk),
-        )
-        response = self.call(
-            {"file_id": str(self.file.pk), "folder_id": folder.pk}, user=self.admin_user
-        )
+    def test_link_preserves_other_references_and_rejects_folder_placement(self) -> None:
+        """Add a second object usage while retaining the first and rejecting old folder input."""
+        FileReference.objects.create(file=self.file, content_object=self.other)
+        response = self.call({"file_id": str(self.file.pk), **self.destination}, user=self.admin_user)
         self.assertEqual(response.status_code, 200, response.data)
-        self.file.refresh_from_db()
-        self.assertEqual(self.file.object_id, str(self.customer.pk))
-        response = self.call(
-            {
-                "file_id": str(self.file.pk),
-                "folder_id": folder.pk,
-                **self.destination,
-                "object_id": str(self.other.pk),
-            },
-            user=self.admin_user,
-        )
+        self.assertEqual(response.data["object_id"], str(self.customer.pk))
+        self.assertEqual(self.file.references.count(), 2)
+        response = self.call({"file_id": str(self.file.pk), **self.destination, "folder_id": 1}, user=self.admin_user)
         self.assertEqual(response.status_code, 400)
-        library = FileFolder.objects.create(name="Library")
-        response = self.call(
-            {"file_id": str(self.file.pk), "folder_id": library.pk},
-            user=self.admin_user,
-        )
-        self.assertEqual(response.status_code, 200, response.data)
-        self.file.refresh_from_db()
-        self.assertIsNone(self.file.object_id)
-        self.assertEqual(self.file.folder_id, library.pk)
+        self.assertEqual(self.file.references.count(), 2)
 
     def test_invalid_uploads_do_not_create_records(self) -> None:
         """Reject malformed bytes, oversized files, incomplete destinations and missing objects."""
-        count = File.objects.count()
+        count = FileNode.objects.count()
         for data in [
             {**self.upload_data(), "content_base64": "invalid!"},
             {**self.upload_data(), "filename": "../escape.txt"},
@@ -230,7 +294,8 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
             ).status_code,
             404,
         )
-        self.assertEqual(File.objects.count(), count)
+        self.assertEqual(FileNode.objects.count(), count)
+        self.assertEqual(FileNode.objects.count(), 1)
 
     def test_source_and_destination_permissions_are_both_required(self) -> None:
         """Reject anonymous/no-policy callers and prevent a destination grant from authorizing a source."""
@@ -247,8 +312,8 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
         self.assertEqual(self.call(data, user=self.normal_user).status_code, 403)
         self.normal_user.user_permissions.add(
             *Permission.objects.filter(
-                content_type=ContentType.objects.get_for_model(File),
-                codename__in=["view_file", "change_file"],
+                content_type=ContentType.objects.get_for_model(FileNode),
+                codename__in=["view_filenode", "change_filenode"],
             )
         )
         self.normal_user = type(self.normal_user).objects.get(pk=self.normal_user.pk)
@@ -259,7 +324,7 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.file.refresh_from_db()
-        self.assertEqual(self.file.object_id, str(self.customer.pk))
+        self.assertTrue(self.file.references.filter(object_id=str(self.customer.pk)).exists())
 
     def test_group_policy_allows_direct_object_upload(self) -> None:
         """Use a group-based row/field grant without requiring unrelated library upload access."""
@@ -290,17 +355,18 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(self.customer.files.exists())
 
-    def test_field_owned_file_cannot_be_reassigned(self) -> None:
-        """Keep the canonical file reference and its owning form field intact."""
+    def test_field_owned_file_can_gain_an_additional_reference(self) -> None:
+        """Link an existing attachment without removing its field reference."""
         self.CustomerModel._meta.get_field("picture").on_save(
             self.customer, [], [SimpleUploadedFile("picture.txt", b"picture")]
         )
-        file = File.objects.get(pk=self.customer.picture[0].pk)
+        file = FileNode.objects.get(pk=self.customer.picture[0].pk)
         response = self.call(
             {"file_id": str(file.pk), **self.destination}, user=self.admin_user
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIsNotNone(file.field_reference)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(file.references.count(), 2)
+        self.assertTrue(file.references.filter(application_field__isnull=False).exists())
 
     def test_mcp_tools_expose_file_ids_and_portable_destinations(self) -> None:
         """Register both actions with truthful mutation and idempotency annotations."""
@@ -311,9 +377,10 @@ class TestAssistantFiles(BloomerpAPIViewTestCase):
             upload.get_input_schema()["required"], ["filename", "content_base64"]
         )
         self.assertNotIn("file", upload.get_input_schema()["properties"])
+        self.assertNotIn("folder_id", upload.get_input_schema()["properties"])
         self.assertIn("model_label", link.get_input_schema()["properties"])
         self.assertFalse(upload.read_only_hint)
-        self.assertTrue(link.destructive_hint)
+        self.assertFalse(link.destructive_hint)
         self.assertTrue(link.idempotent_hint)
 
     def test_file_api_metadata_and_openapi_expose_identifiers(self) -> None:

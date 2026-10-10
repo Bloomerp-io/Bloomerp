@@ -10,8 +10,14 @@ from rest_framework.response import Response
 from bloomerp.mcp.definition import McpTool
 from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
-from bloomerp.serializers.assistant_files import FilePlacementSerializer, LinkFileSerializer
-from bloomerp.services.assistant_file_services import describe_file_placement, link_assistant_file
+from bloomerp.serializers.assistant_files import (
+    FilePlacementSerializer,
+    LinkFileSerializer,
+)
+from bloomerp.services.assistant_file_services import (
+    describe_file_placement,
+    link_assistant_file,
+)
 from bloomerp.views.api.base import BaseBloomerpApiView
 
 
@@ -24,21 +30,19 @@ from bloomerp.views.api.base import BaseBloomerpApiView
         title="Link an existing file",
         description=(
             "Attach an already uploaded file using its file_id (including a chat file artifact). "
-            "Provide model_label and object_id to attach it to that object's files, folder_id "
-            "to place it in a folder, or both for an object subfolder. A scoped folder supplies "
-            "the object identity. This replaces the file's previous object/folder placement; "
-            "it does not copy bytes. Files owned by dedicated fields cannot be reassigned."
+            "Provide model_label and object_id to add a reference to that object's files. "
+            "Existing references and stored bytes are preserved. Repeating a link is idempotent."
         ),
         input_schema=serializer_input_schema(LinkFileSerializer),
         output_schema=serializer_output_schema(FilePlacementSerializer),
         read_only_hint=False,
-        destructive_hint=True,
+        destructive_hint=False,
         idempotent_hint=True,
         open_world_hint=False,
     ),
 )
 class AssistantFileLinkView(BaseBloomerpApiView):
-    """Relocate a generic file without requiring internal content-type IDs."""
+    """Reference an existing file without requiring internal content-type IDs."""
 
     serializer_class = LinkFileSerializer
     permission_classes = (IsAuthenticated,)
@@ -50,7 +54,7 @@ class AssistantFileLinkView(BaseBloomerpApiView):
         responses={200: FilePlacementSerializer},
     )
     def post(self, request: Request) -> Response:
-        """Check source and target permissions and atomically update the existing file."""
+        """Check source and target permissions and atomically add an object reference."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         file = link_assistant_file(request, **serializer.validated_data)

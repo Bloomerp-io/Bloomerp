@@ -10,8 +10,14 @@ from rest_framework.response import Response
 from bloomerp.mcp.definition import McpTool
 from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
-from bloomerp.serializers.assistant_files import FilePlacementSerializer, UploadFileSerializer
-from bloomerp.services.assistant_file_services import describe_file_placement, upload_assistant_file
+from bloomerp.serializers.assistant_files import (
+    UploadedFilePlacementSerializer,
+    UploadFileSerializer,
+)
+from bloomerp.services.assistant_file_services import (
+    describe_uploaded_file,
+    upload_assistant_file,
+)
 from bloomerp.views.api.base import BaseBloomerpApiView
 
 
@@ -32,13 +38,11 @@ def upload_input_schema() -> dict[str, Any]:
         title="Upload a file",
         description=(
             "Upload new file bytes using filename and content_base64. Optionally attach "
-            "to an object with model_label and object_id, or place in folder_id. "
-            "A scoped folder supplies its object identity; explicit object and folder must match. "
-            "For a file already uploaded or attached to this chat, use api_assistant_file_link "
-            "with its file_id instead of uploading again."
+            "to an object with model_label and object_id, creating a file reference. "
+            "Omit the object identity to upload without a reference."
         ),
         input_schema=upload_input_schema,
-        output_schema=serializer_output_schema(FilePlacementSerializer),
+        output_schema=serializer_output_schema(UploadedFilePlacementSerializer),
         read_only_hint=False,
         destructive_hint=False,
         idempotent_hint=False,
@@ -46,7 +50,7 @@ def upload_input_schema() -> dict[str, Any]:
     ),
 )
 class AssistantFileUploadView(BaseBloomerpApiView):
-    """Upload to the file library or directly to an authorized object/folder."""
+    """Create a file node and optionally reference an authorized object."""
 
     serializer_class = UploadFileSerializer
     permission_classes = (IsAuthenticated,)
@@ -55,7 +59,7 @@ class AssistantFileUploadView(BaseBloomerpApiView):
     @extend_schema(
         tags=["Assistant"],
         request=UploadFileSerializer,
-        responses={201: FilePlacementSerializer},
+        responses={201: UploadedFilePlacementSerializer},
     )
     def post(self, request: Request) -> Response:
         """Validate JSON or multipart content and return the created file's placement."""
@@ -63,7 +67,7 @@ class AssistantFileUploadView(BaseBloomerpApiView):
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
         file = upload_assistant_file(request, data.pop("file"), **data)
-        return Response(describe_file_placement(file), status=201)
+        return Response(describe_uploaded_file(file), status=201)
 
     def get_serializer(self, *args: Any, **kwargs: Any) -> UploadFileSerializer:
         """Expose upload fields to request validation, DRF metadata and schema discovery."""

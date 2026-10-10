@@ -32,6 +32,22 @@ class TestSearchManager(BaseBloomerpTestCaseWithModels):
         self.assertEqual(len(exact.items), 2)
         self.assertFalse(exact.limit_reached)
 
+    def test_excluded_models_override_inclusion_and_prefixes(self) -> None:
+        """Excluded models never return results, even when explicitly selected by a prefix."""
+        self.create_customer("ExcludedSearch", "One", 20)
+        manager = SearchManager(self.admin_user)
+        for query in ("ExcludedSearch", "//customer/ExcludedSearch"):
+            with self.subTest(query=query):
+                result = manager.search_objects(
+                    query,
+                    models=[self.CustomerModel],
+                    exclude_models=[self.CustomerModel],
+                )
+                self.assertEqual(result.items, [])
+        self.assertEqual(
+            len(manager.search_objects("ExcludedSearch", exclude_models=[]).items), 1
+        )
+
     def test_explicit_scope_cannot_grant_access(self) -> None:
         """Caller-supplied model restrictions must never widen a user's permissions."""
         self.create_customer("UniqueSearch", "One", 20)

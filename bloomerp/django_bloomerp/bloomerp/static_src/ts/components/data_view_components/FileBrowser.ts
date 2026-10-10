@@ -5,227 +5,110 @@ import { getCsrfToken } from "@/utils/cookies";
 import { MessageType } from "../UiMessage";
 import showMessage from "@/utils/messages";
 
-
-
+/** Browse physical nodes or reference-derived folders without creating folders. */
 export class FileBrowser extends BaseDataViewComponent {
     protected cellClass = BaseDataViewCell;
-
     private previewCleanups: Array<() => void> = [];
 
-    /** Bind folder actions, file uploads, drag-and-drop, and object previews. */
+    /** Delegate navigation and upload events through the component lifecycle. */
     public override initialize(): void {
         super.initialize();
         if (!this.element) return;
-
-        this.element.addEventListener("click", this.onFolderClick, {
-            signal: this.ensureAbortController().signal,
-        });
-        this.bindUploadInput();
-        this.bindDragAndDrop();
+        const signal = this.ensureAbortController().signal;
+        this.element.addEventListener("click", this.onNavigation, { signal });
+        this.element.addEventListener("change", this.onChange, { signal });
         this.bindObjectPreviews();
     }
 
-    /** Refresh previews after HTMX replaces the browser's rows. */
-    public override onAfterSwap(): void {
-        this.bindObjectPreviews();
-    }
+    /** Rebind object previews after row replacement. */
+    public override onAfterSwap(): void { this.bindObjectPreviews(); }
 
-    /** Release tooltip listeners when the browser is removed. */
+    /** Release previews together with component event listeners. */
     public override destroy(): void {
         this.clearObjectPreviews();
         super.destroy();
     }
 
-    /** Dispose all previews before rebinding to the current rows. */
+    /** Remove tooltip listeners from the previous rendered rows. */
     private clearObjectPreviews(): void {
         for (const cleanup of this.previewCleanups) cleanup();
         this.previewCleanups = [];
     }
 
-    /** Reuse object preview tooltips for field-aware object navigation links. */
+    /** Attach object-preview tooltips only to authorized owner links. */
     private bindObjectPreviews(): void {
         this.clearObjectPreviews();
-        if (!this.element) return;
-        for (const link of this.element.querySelectorAll<HTMLElement>("[data-preview-object-id]")) {
-            const objectId = link.dataset.previewObjectId;
-            const contentTypeId = link.dataset.previewContentTypeId;
-            if (objectId && contentTypeId) {
-                this.previewCleanups.push(attachObjectPreviewTooltip({ element: link, objectId, contentTypeId }));
-            }
+        for (const element of this.element?.querySelectorAll<HTMLElement>("[data-preview-object-id]") ?? []) {
+            const objectId = element.dataset.previewObjectId;
+            const contentTypeId = element.dataset.previewContentTypeId;
+            if (objectId && contentTypeId) this.previewCleanups.push(attachObjectPreviewTooltip({ element, objectId, contentTypeId }));
         }
     }
 
-    private bindUploadInput(): void {
-        const input = this.dataViewContainer?.element?.querySelector<HTMLInputElement>(
-            "[data-file-browser-upload-input]",
-        );
-        if (!input) return;
-
-        input.onchange = async () => {
-            if (!input.files?.length) return;
-            await this.uploadFiles(
-                input.files,
-                this.element?.dataset.currentFolderId || null,
-                this.element?.dataset.scopeContentTypeId || null,
-                this.element?.dataset.scopeObjectId || null,
-            );
-            input.value = "";
-        };
-    }
-
-    private onFolderClick = (event: MouseEvent): void => {
+    /** Preserve filters while navigating, clearing tokens from the other folder mode. */
+    private onNavigation = (event: MouseEvent): void => {
         if (!(event.target instanceof Element)) return;
-
-        const folder = event.target.closest<HTMLElement>("[data-folder-id]");
-        if (!folder || !this.element?.contains(folder)) return;
-        if (event.target.closest("[data-no-folder-click]")) return;
-
-        const folderId = folder.dataset.folderId;
-        if (!folderId) return;
-
+        const button = event.target.closest<HTMLElement>("[data-browser-path]");
+        if (!button || !this.element?.contains(button)) return;
         event.preventDefault();
-        this.dataViewContainer?.filter({ folder_id: folderId });
-    };
-
-    private bindDragAndDrop(): void {
-        if (!this.element) return;
-        const signal = this.ensureAbortController().signal;
-
-        this.element.addEventListener("dragstart", this.onDragStart, { signal });
-        this.element.addEventListener("dragover", this.onDragOver, { signal });
-        this.element.addEventListener("dragleave", this.onDragLeave, { signal });
-        this.element.addEventListener("drop", this.onDrop, { signal });
-    }
-
-    private onDragStart = (event: DragEvent): void => {
-        if (!(event.target instanceof Element) || !event.dataTransfer) return;
-        if (event.target.closest("[data-no-file-drag], [data-no-folder-click]")) {
-            event.preventDefault();
-            return;
-        }
-
-        const folder = event.target.closest<HTMLElement>('[data-item-type="folder"]');
-        if (folder?.dataset.folderId) {
-            event.dataTransfer.setData("application/x-bloomerp-folder-id", folder.dataset.folderId);
-            event.dataTransfer.effectAllowed = "move";
-            return;
-        }
-
-        const file = event.target.closest<HTMLElement>('[data-item-type="file"]');
-        if (file?.dataset.fileId) {
-            event.dataTransfer.setData("application/x-bloomerp-file-id", file.dataset.fileId);
-            event.dataTransfer.effectAllowed = "move";
-        }
-    };
-
-    private onDragOver = (event: DragEvent): void => {
-        event.preventDefault();
-        const folder = this.getFolderDropzone(event.target);
-        if (!folder) return;
-        if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = event.dataTransfer.files.length ? "copy" : "move";
-        }
-        folder.classList.add("ring-2", "ring-primary/30");
-    };
-
-    private onDragLeave = (event: DragEvent): void => {
-        const folder = this.getFolderDropzone(event.target);
-        if (!folder) return;
-        if (event.relatedTarget instanceof Node && folder.contains(event.relatedTarget)) return;
-        folder.classList.remove("ring-2", "ring-primary/30");
-    };
-
-    private onDrop = (event: DragEvent): void => {
-        event.preventDefault();
-        const folder = this.getFolderDropzone(event.target);
-        folder?.classList.remove("ring-2", "ring-primary/30");
-
-        const targetFolderId = folder?.dataset.folderDropzone || null;
-        if (event.dataTransfer?.files.length) {
-            void this.uploadFiles(
-                event.dataTransfer.files,
-                targetFolderId ?? this.element?.dataset.currentFolderId ?? null,
-                folder?.dataset.folderContentTypeId || this.element?.dataset.scopeContentTypeId || null,
-                folder?.dataset.folderObjectId || this.element?.dataset.scopeObjectId || null,
-            );
-            return;
-        }
-
-        if (!folder || !event.dataTransfer) return;
-
-        const fileId = event.dataTransfer.getData("application/x-bloomerp-file-id");
-        if (fileId) {
-            void this.moveItem("file", fileId, targetFolderId || "");
-            return;
-        }
-
-        const folderId = event.dataTransfer.getData("application/x-bloomerp-folder-id");
-        if (folderId && folderId !== targetFolderId) {
-            void this.moveItem("folder", folderId, targetFolderId || "");
-        }
-    };
-
-    private getFolderDropzone(target: EventTarget | null): HTMLElement | null {
-        if (!(target instanceof Element)) return null;
-        return target.closest<HTMLElement>("[data-folder-dropzone]");
-    }
-
-    private async moveItem(itemType: "file" | "folder", id: string, targetFolderId: string): Promise<void> {
-        const formData = new FormData();
-        formData.set("item_type", itemType);
-        formData.set(`${itemType}_id`, id);
-        formData.set("target_folder_id", targetFolderId);
-        await this.submitAction(this.element?.dataset.moveUrl, formData, "Item moved");
-    }
-
-    private async uploadFiles(
-        files: FileList,
-        folderId: string | null,
-        contentTypeId: string | null,
-        objectId: string | null,
-    ): Promise<void> {
-        const formData = new FormData();
-        Array.from(files).forEach((file) => formData.append("files", file));
-        if (folderId) formData.set("folder_id", folderId);
-        if (contentTypeId) formData.set("content_type_id", contentTypeId);
-        if (objectId) formData.set("object_id", objectId);
-        await this.submitAction(this.element?.dataset.uploadUrl, formData, "Files uploaded");
-    }
-
-    private async submitAction(url: string | undefined, formData: FormData, successMessage: string): Promise<void> {
-        if (!url) return;
-        const csrfToken = getCsrfToken();
-        const response = await fetch(url, {
-            method: "POST",
-            body: formData,
-            credentials: "same-origin",
-            headers: {
-                "X-Requested-With": "XMLHttpRequest",
-                ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
-            },
+        const mode = this.element.dataset.folderType ?? "virtual";
+        this.dataViewContainer?.filter({
+            folder_type: mode,
+            virtual_path: mode === "virtual" ? button.dataset.browserPath : null,
+            folder_id: mode === "physical" ? button.dataset.browserFolder : null,
         });
-        if (!response.ok) {
-            showMessage("The file action could not be completed", MessageType.ERROR);
-            return;
+    };
+
+    /** Reset navigation on mode changes or upload the chosen files to the current object. */
+    private onChange = (event: Event): void => {
+        const target = event.target;
+        if (target instanceof HTMLSelectElement && target.matches("[data-folder-type-select]")) {
+            this.dataViewContainer?.filter({ folder_type: target.value, folder_id: null, virtual_path: null });
+        } else if (target instanceof HTMLInputElement && target.matches("[data-file-browser-upload-input]")) {
+            void this.uploadFiles(target);
         }
-        showMessage(successMessage, MessageType.SUCCESS);
-        this.dataViewContainer?.refresh();
+    };
+
+    /** Upload each file through the node API, retaining any successful files on partial failure. */
+    private async uploadFiles(input: HTMLInputElement): Promise<void> {
+        const files = Array.from(input.files ?? []);
+        const url = this.element?.dataset.uploadUrl;
+        if (!url || !files.length) return;
+        const signal = this.ensureAbortController().signal;
+        input.disabled = true;
+        try {
+            for (const file of files) {
+                const data = new FormData();
+                data.set("file", file);
+                const modelLabel = this.element?.dataset.uploadModelLabel;
+                const objectId = this.element?.dataset.uploadObjectId;
+                if (modelLabel && objectId) {
+                    data.set("model_label", modelLabel);
+                    data.set("object_id", objectId);
+                }
+                const response = await fetch(url, {
+                    method: "POST", body: data, credentials: "same-origin", signal,
+                    headers: { "X-CSRFToken": getCsrfToken() ?? "" },
+                });
+                if (!response.ok) throw new Error(`Could not upload ${file.name}`);
+                await response.json();
+            }
+            showMessage("Files uploaded", MessageType.SUCCESS);
+        } catch (error) {
+            if (!signal.aborted) showMessage(error instanceof Error ? error.message : "Upload failed", MessageType.ERROR);
+        } finally {
+            input.value = "";
+            input.disabled = false;
+            if (!signal.aborted) this.dataViewContainer?.refresh();
+        }
     }
 
-    moveCellUp(): BaseDataViewCell {
-        return this.currentCell as BaseDataViewCell;
-    }
-
-    moveCellDown(): BaseDataViewCell {
-        return this.currentCell as BaseDataViewCell;
-    }
-
-    moveCellLeft(): BaseDataViewCell {
-        return this.currentCell as BaseDataViewCell;
-    }
-
-    moveCellRight(): BaseDataViewCell {
-        return this.currentCell as BaseDataViewCell;
-    }
-
+    /** Keep navigation on the selected browser cell. */
+    moveCellUp(): BaseDataViewCell { return this.currentCell as BaseDataViewCell; }
+    /** Keep navigation on the selected browser cell. */
+    moveCellDown(): BaseDataViewCell { return this.currentCell as BaseDataViewCell; }
+    /** Keep navigation on the selected browser cell. */
+    moveCellLeft(): BaseDataViewCell { return this.currentCell as BaseDataViewCell; }
+    /** Keep navigation on the selected browser cell. */
+    moveCellRight(): BaseDataViewCell { return this.currentCell as BaseDataViewCell; }
 }

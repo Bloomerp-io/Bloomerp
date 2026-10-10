@@ -139,6 +139,19 @@ function templateSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu {
     return textEditor.getTemplateSubmenu();
 }
 
+/** Open the stored-file picker for image insertion. */
+function handleStoredImage(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("file"); }
+/** Supply image search and upload to the slash menu. */
+function storedImageSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("file"); }
+/** Open the user mention picker. */
+function handleMention(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("user"); }
+/** Supply user search to the slash menu. */
+function mentionSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("user"); }
+/** Open readable object reference selection. */
+function handleObjectReference(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("object"); }
+/** Supply readable object search to the slash menu. */
+function objectReferenceSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("object"); }
+
 export let ACTIONS: Record<string, Action> = {
     template: {
         /** Resolve the shared template command label. */
@@ -175,17 +188,18 @@ export let ACTIONS: Record<string, Action> = {
         /** Resolve the command label after the active catalog loads. */
         get label(): string { return _("Image"); },
         icon: "fa-solid fa-image",
-        handler: (textEditor) => {
-            const editor = getLexicalEditor(textEditor);
-            if (!editor) {
-                return;
-            }
-
-            editor.update(() => {
-                removeTriggerWord()
-            });
-            promptImageUpload(editor);
-        }
+        handler: handleStoredImage,
+        submenu: storedImageSubmenu,
+    },
+    mention: {
+        /** Resolve the mention action label. */
+        get label(): string { return _("Mention"); },
+        icon: "fa-solid fa-at", handler: handleMention, submenu: mentionSubmenu,
+    },
+    object_reference: {
+        /** Resolve the object reference action label. */
+        get label(): string { return _("Object"); },
+        icon: "fa-solid fa-link", handler: handleObjectReference, submenu: objectReferenceSubmenu,
     },
     unordered_list: {
         /** Resolve the command label after the active catalog loads. */

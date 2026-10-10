@@ -79,7 +79,7 @@ class TestAiartifactModel(AgentModelFixtures, BloomerpModelTestCase):
                     ),
                     expected_exceptions=[
                         ExpectedModelException(
-                            "create", ValidationError, "File reference"
+                            "create", ValidationError, "FileNode reference"
                         )
                     ],
                 ),

@@ -459,6 +459,9 @@
   .left-full {
     left: 100%;
   }
+  .isolate {
+    isolation: isolate;
+  }
   .z-0 {
     z-index: 0;
   }
@@ -3076,11 +3079,6 @@
       color: var(--color-gray-400);
     }
   }
-  .placeholder\:text-gray-500 {
-    &::placeholder {
-      color: var(--color-gray-500);
-    }
-  }
   .before\:absolute {
     &::before {
       content: var(--tw-content);
@@ -3429,6 +3427,13 @@
       }
     }
   }
+  .hover\:text-gray-900 {
+    &:hover {
+      @media (hover: hover) {
+        color: var(--color-gray-900);
+      }
+    }
+  }
   .hover\:text-primary {
     &:hover {
       @media (hover: hover) {
@@ -3517,9 +3522,29 @@
       border-color: var(--color-primary-500);
     }
   }
+  .focus\:bg-gray-100 {
+    &:focus {
+      background-color: var(--color-gray-100);
+    }
+  }
+  .focus\:bg-red-50 {
+    &:focus {
+      background-color: var(--color-red-50);
+    }
+  }
   .focus\:bg-white {
     &:focus {
       background-color: var(--color-white);
+    }
+  }
+  .focus\:text-primary-800 {
+    &:focus {
+      color: var(--color-primary-800);
+    }
+  }
+  .focus\:text-red-900 {
+    &:focus {
+      color: var(--color-red-900);
     }
   }
   .focus\:underline {
@@ -4274,7 +4299,10 @@
     background-color: var(--color-zinc-900);
   }
   .dark .bg-gray-100 {
-    background-color: var(--color-zinc-800);
+    background-color: var(--color-zinc-700);
+  }
+  .dark .bg-base[aria-selected="true"] {
+    background-color: var(--color-zinc-700);
   }
   .dark .bg-gray-200 {
     background-color: var(--color-zinc-700);
@@ -4297,11 +4325,8 @@
   .bg-yellow-200 {
     background-color: var(--color-yellow-600);
   }
-  .dark .hover\:bg-gray-50:hover {
-    background-color: var(--color-zinc-800);
-  }
-  .dark .hover\:bg-gray-100:hover {
-    background-color: var(--color-zinc-800);
+  .dark .hover\:bg-base:hover, .dark .hover\:bg-gray-50:hover, .dark .hover\:bg-gray-100:hover {
+    background-color: var(--color-zinc-700);
   }
   .dark .hover\:bg-gray-200:hover {
     background-color: var(--color-zinc-700);

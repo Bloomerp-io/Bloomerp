@@ -214,15 +214,17 @@ class SearchManager:
         query: str,
         *,
         models: Iterable[type[Model]] | None = None,
+        exclude_models: Iterable[type[Model]] | None = None,
         per_model_limit: int = 5,
         total_limit: int = 40,
+        allow_empty: bool = False,
     ) -> ObjectSearchResult:
-        """Search authorized rows using shared prefixes intersected with caller model restrictions."""
+        """Search authorized rows within caller scopes, always omitting explicitly excluded models."""
         if per_model_limit < 1 or total_limit < 1:
             raise ValueError("Search limits must be positive")
         parsed = self.parse_query(query)
         query = parsed.value
-        if not query or parsed.error:
+        if (not query and not allow_empty) or parsed.error:
             return ObjectSearchResult(items=[], limit_reached=False, search=parsed)
         accessible = self.permission_manager.get_accessible_models(
             BloomerpPermission.VIEW
@@ -236,6 +238,10 @@ class SearchManager:
             candidates = dict.fromkeys(
                 model for model in caller_candidates if model in candidates
             )
+        excluded = set(exclude_models or ())
+        candidates = dict.fromkeys(
+            model for model in candidates if model not in excluded
+        )
         items: list[Model] = []
         truncated = False
         for model in candidates:

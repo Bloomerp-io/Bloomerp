@@ -205,7 +205,7 @@ def file_field_is_null_q_factory(
     application_field: ApplicationField, field_path: str, expression: str, value: Any
 ) -> CompiledLookup:
     """Match empty or populated file fields using their scoped reference existence."""
-    from bloomerp.models import FileFieldReference
+    from bloomerp.models import FileReference
 
     prefix, _separator, _name = field_path.rpartition("__")
     owner_path = f"{prefix}__pk" if prefix else "pk"
@@ -214,9 +214,11 @@ def file_field_is_null_q_factory(
         owner_id = CanonicalUUIDText(owner_id)
     else:
         owner_id = Cast(owner_id, output_field=CharField())
-    references = FileFieldReference.objects.filter(
+    references = FileReference.objects.filter(
         application_field_id=application_field.pk,
         object_id=owner_id,
+        content_type_id=application_field.content_type_id,
+        occurrence_id__isnull=True,
     )
     exists = Exists(references)
     return CompiledLookup(predicate=Q(~exists if is_truthy(value) else exists))

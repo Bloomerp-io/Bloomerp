@@ -12,7 +12,7 @@ from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.lookups.builtins.is_null import IS_NULL
 from bloomerp.lookups.definition import FilterFieldContext
 from bloomerp.model_fields.file_field import BloomerpFileField
-from bloomerp.models import ApplicationField, File
+from bloomerp.models import ApplicationField, FileNode, FileReference
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from bloomerp.tests.utils.dynamic_models import create_test_models
 
@@ -47,9 +47,10 @@ class TestFileFieldIsNullLookup(BaseBloomerpTestCaseWithModels):
                 SimpleUploadedFile("two.pdf", b"two"),
             ],
         )
-        File.objects.create(
-            file=SimpleUploadedFile("generic.pdf", b"pdf"), content_object=generic_owner
+        node = FileNode.objects.create(
+            content=SimpleUploadedFile("generic.pdf", b"pdf"), kind="FILE"
         )
+        FileReference.objects.create(file=node, content_object=generic_owner)
         # 2. True matches empty fields; false matches populated fields exactly once.
         self.assertCountEqual(self.matching_objects(True), [empty, generic_owner])
         self.assertEqual(self.matching_objects(False), [populated])

@@ -32,7 +32,7 @@ class BloomerpFileFieldWidget(FileInput):
         """Render only current field-owned files and the plain upload input."""
         from django.contrib.contenttypes.models import ContentType
 
-        from bloomerp.models.files.file import File
+        from bloomerp.models.files.file_node import FileNode
 
         context = super().get_context(name, None, attrs)
         context["current_files"] = []
@@ -48,13 +48,14 @@ class BloomerpFileFieldWidget(FileInput):
                     ids = [str(UUID(str(getattr(pk, "pk", pk)))) for pk in ids]
                 except (ValueError, TypeError, AttributeError):
                     ids = []
-                context["current_files"] = File.objects.filter(
+                context["current_files"] = FileNode.objects.filter(
                     pk__in=ids,
-                    field_reference__application_field__content_type=ContentType.objects.get_for_model(
+                    references__occurrence_id__isnull=True,
+                    references__content_type=ContentType.objects.get_for_model(
                         self.parent
                     ),
-                    field_reference__object_id=str(self.parent.pk),
-                    field_reference__application_field__field=self.model_field.name,
+                    references__object_id=str(self.parent.pk),
+                    references__application_field__field=self.model_field.name,
                 )
         return context
 

@@ -1,11 +1,12 @@
-from email.policy import default
+from typing import Any
 
 from django import forms
 
 class BloomerpTextEditorWidget(forms.Textarea):
     template_name = 'cotton/ui/inputs/text_editor.html'
 
-    def get_context(self, name, value, attrs):
+    def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
+        """Pass editor identity, permissions, and layout styling to the widget template."""
         attrs = attrs or {}
         attrs.setdefault('id', 'id_%s' % name)
         context = super().get_context(name, value, attrs)
@@ -14,6 +15,7 @@ class BloomerpTextEditorWidget(forms.Textarea):
         new_context = {**widget_context.get('attrs', {})}
         new_context.update({
             'name': widget_context.get('name'),
+            'application_field_id': widget_context.get('attrs', {}).get('data-application-field-id', ''),
             'value': widget_context.get('value'),
             'disabled': widget_context.get('attrs', {}).get('disabled', False),
             'include_toolbar' : True,

@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Any, Type
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.db import models
-from regex import B
+from django.db import models, transaction
+from django.http import HttpRequest, HttpResponse
 
+from bloomerp.form_fields.files_relation_field import FilesCleanedData
 from bloomerp.forms.model_form import (
     BloomerpModelForm,
     bloomerp_modelform_factory,
@@ -13,9 +14,13 @@ from bloomerp.forms.model_form import (
 )
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import FieldLayout
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
+from bloomerp.services.crud_reference_services import prepare_reference_submission
+from bloomerp.services.object_reference_services import Reference, reconcile_references
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.sectioned_layout_services import create_default_layout
 from bloomerp.views.mixins.application_field_layout_form_mixin import (
@@ -256,11 +261,20 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         return self.object
 
     def get_form(self) -> BloomerpModelForm:
+        """Bind the layout form to submitted model fields."""
         cached_form = getattr(self, "_layout_form", None)
         if cached_form is not None:
             return cached_form
 
         application_fields = list(self.get_form_application_fields())
+        avatar_field = ApplicationField.get_by_field(self.model, "avatar")
+        if avatar_field is not None and avatar_field not in application_fields:
+            model_field = self.model._meta.get_field("avatar")
+            if isinstance(model_field, models.ImageField) and (
+                not self.apply_permissions
+                or avatar_field.pk in self.get_accessible_application_field_ids(self.get_change_permission_str())
+            ):
+                application_fields.append(avatar_field)
         form_class = bloomerp_modelform_factory(
             self.model,
             [field.field for field in application_fields],
@@ -291,6 +305,9 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
             instance=instance,
             initial=initial,
         )
+
+        for application_field in application_fields:
+            form.fields[application_field.field].widget.attrs["data-application-field-id"] = application_field.pk
 
         if self.apply_permissions:
             change_permission = self.get_change_permission_str()
@@ -404,9 +421,25 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
 
         return not form.errors
 
-    def form_valid(self, form: BloomerpModelForm):
+    def form_valid(self, form: BloomerpModelForm) -> HttpResponse:
+        """Save the object and its validated CRUD reference payload in one transaction."""
+        operation = "add" if form.instance._state.adding else "change"
         try:
-            self.object = form.save()
+            with transaction.atomic():
+                self.object = form.save()
+                submission = getattr(self, "_reference_submission", None)
+                if submission is not None:
+                    manual = submission.manual
+                    uploads = form.cleaned_data.get("files")
+                    if manual is not None and isinstance(uploads, FilesCleanedData):
+                        manual = [
+                            *manual,
+                            *(Reference("file", identity) for identity in uploads.saved_file_ids),
+                        ]
+                    reconcile_references(
+                        self.object, submission.fields, manual, self.request,
+                        source_operation=operation,
+                    )
         except ValidationError as exc:
             for message in exc.messages:
                 form.add_error(None, message)
@@ -423,14 +456,25 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
     def get_success_response(self, form: BloomerpModelForm):
         return super().form_valid(form)
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """Validate model fields and the independent CRUD reference payload before saving."""
         self.object = self.get_form_instance()
         form = self.get_form()
-        if form.is_valid() and self.validate_form_permissions(form):
+        valid = form.is_valid()
+        self._reference_submission = None
+        try:
+            self._reference_submission = prepare_reference_submission(
+                request, form.instance,
+                {name for name, field in form.fields.items() if not field.disabled},
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        if valid and not form.errors and self.validate_form_permissions(form):
             return self.form_valid(form)
         return self.form_invalid(form)
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Supply layout and visible reference state for the current CRUD form."""
         context = super().get_context_data(**kwargs)
         context["layout_preference_object"] = self.get_layout_object()
         context["content_type_id"] = self.layout_content_type.pk
@@ -441,6 +485,20 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
                 *context.get("layout_non_field_errors", []),
                 *self.get_create_access_errors(),
             ]
+        from bloomerp.services.object_reference_services import (
+            manual_reference_state,
+            object_reference_state,
+        )
+        context["object_reference_state"] = object_reference_state(self.request, self.get_form_instance())
+        form = getattr(self, "_layout_form", None)
+        context["attachment_avatar_hidden"] = bool(
+            form is not None and "avatar" in form.fields and not form.fields["avatar"].disabled
+            and not self.get_application_fields().filter(field="avatar").exists()
+        )
+        submission = getattr(self, "_reference_submission", None)
+        if form is not None and form.is_bound and submission is not None and submission.manual is not None:
+            inline_state = [entry for entry in context["object_reference_state"] if entry.get("field_id")]
+            context["object_reference_state"] = inline_state + manual_reference_state(self.request, self.get_form_instance(), submission.manual)
         context["layout_is_create"] = self.is_create_layout()
         context["layout_mode"] = self.layout_mode
         context["form_hx_target"] = self.get_form_hx_target()

@@ -168,7 +168,7 @@ export function launchContextMenu(
                 },
                 root,
                 items,
-                { hideOnViewportChange: anchor !== 'selection' },
+                { hideOnViewportChange: anchor !== 'selection', anchorRect: rect },
             );
         });
 }

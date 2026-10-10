@@ -13,7 +13,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate
 
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.files.file_extraction import FileExtraction
 from bloomerp.tests.base import (
     BloomerpAPIViewTestCase,
@@ -172,7 +172,7 @@ class TestFileExtractionResultView(BloomerpAPIViewTestCase):
 
     def delete_source(self, scenario: RequestScenario) -> None:
         """Remove the backing library record inside the scenario's rollback boundary."""
-        File.objects.filter(pk=self.source.pk).delete()
+        FileNode.objects.filter(pk=self.source.pk).delete()
 
     def expire_result(self, scenario: RequestScenario) -> None:
         """Move retention expiry into the past immediately before reading."""
@@ -199,13 +199,13 @@ class TestFileExtractionResultView(BloomerpAPIViewTestCase):
         return FileExtractionResultView.as_view()(request)
 
     def test_source_permission_revocation_blocks_every_subsequent_read(self) -> None:
-        """An existing owner's result is denied after the real File permission is revoked."""
+        """An existing owner's result is denied after the real FileNode permission is revoked."""
         self.job.requested_by = self.normal_user
         self.job.save(update_fields=["requested_by"])
         permission = Permission.objects.get(
             content_type__app_label="bloomerp",
-            content_type__model="file",
-            codename="view_file",
+            content_type__model="filenode",
+            codename="view_filenode",
         )
         self.normal_user.user_permissions.add(permission)
         self.assertEqual(self.call_result(self.normal_user).status_code, 200)

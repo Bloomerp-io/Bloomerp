@@ -177,7 +177,7 @@ class FileExtraction(BloomerpModel):
         CANCELLED = "cancelled", _("Cancelled")
 
     source_file = models.ForeignKey(
-        "bloomerp.File",
+        "bloomerp.FileNode",
         null=True,
         on_delete=models.SET_NULL,
         verbose_name=_("Source File"),
@@ -227,7 +227,7 @@ class FileExtraction(BloomerpModel):
     @classmethod
     def authorized(cls, request: HttpRequest, job_id: Any) -> FileExtraction:
         """Resolve only the current owner's job and recheck live source permissions."""
-        from bloomerp.services.file_permission_services import user_can_view_file
+        from bloomerp.files.access import FileAccessManager
 
         if not request.user.is_authenticated or not request.user.is_active:
             raise NotFound("Extraction unavailable")
@@ -236,9 +236,9 @@ class FileExtraction(BloomerpModel):
             .filter(pk=job_id, requested_by=request.user)
             .first()
         )
-        if job is None or job.source_file is None or not job.source_file.persisted:
+        if job is None or job.source_file is None:
             raise NotFound("Extraction unavailable")
-        if not user_can_view_file(request, job.source_file):
+        if not FileAccessManager(request.user).can_read_file_node(job.source_file):
             raise NotFound("Extraction unavailable")
         job.refresh_lifecycle()
         return job

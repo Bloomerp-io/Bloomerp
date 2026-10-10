@@ -13,6 +13,8 @@ Parameters:
 
 <div
     class="relative"
+    bloomerp-component="dropdown-keyboard"
+    data-dropdown-submenu
     x-data="{
         open: false,
         openDirection: '{{ direction|default:"auto" }}' === 'left' ? 'left' : 'right',
@@ -64,6 +66,7 @@ Parameters:
         }
     }"
     @dropdown-close="open = false"
+    @dropdown-dismiss="open = false"
     @dropdown-close.window="open = false"
     @{{ event_name|default:'dropdown-submenu-open' }}.window="if ($event.detail !== submenuId) open = false"
 >
@@ -79,11 +82,12 @@ Parameters:
             {% if disabled %}
                 opacity-50 cursor-not-allowed text-gray-400
             {% else %}
-                text-gray-700 hover:bg-gray-100 hover:text-primary-800 hover:cursor-pointer
+                text-gray-700 hover:bg-gray-100 hover:text-primary-800 focus:bg-gray-100 focus:text-primary-800 focus:outline-none hover:cursor-pointer
             {% endif %}
             {{ class }}
         "
         aria-haspopup="true"
+        role="menuitem"
         :aria-expanded="open.toString()"
         {% if disabled %}disabled{% endif %}
     >
@@ -98,6 +102,7 @@ Parameters:
 
     <div
         x-ref="menu"
+        data-dropdown-panel
         x-show="open"
         x-cloak
         x-transition:enter="transition ease-out duration-100"
@@ -114,6 +119,7 @@ Parameters:
         :class="openDirection === 'left' ? 'origin-top-right' : 'origin-top-left'"
         :style="{ left: `${panelLeft}px`, top: `${panelTop}px` }"
         role="menu"
+        :aria-hidden="(!open).toString()"
         aria-orientation="vertical"
         style="display: none;"
     >

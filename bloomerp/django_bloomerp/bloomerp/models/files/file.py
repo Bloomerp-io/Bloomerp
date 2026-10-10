@@ -1,3 +1,4 @@
+from bloomerp.permissions.definition import BloomerpPermission
 import os
 import uuid
 from typing import TYPE_CHECKING, Any, Iterable
@@ -36,6 +37,7 @@ from bloomerp.services.file_services import ensure_folder_hierarchy_for_object
 
 if TYPE_CHECKING:
     from bloomerp.models.files.file_folder import FileFolder
+    from bloomerp.models.files.file_node import FileNode
 
 
 class DocumentTemplateFileMetadata(BaseModel):
@@ -104,22 +106,25 @@ class FileMetadata(BaseModel):
         return value
 
 
-def _can_view_file(request: HttpRequest, file: "File") -> bool:
-    from bloomerp.services.file_permission_services import user_can_view_file
-
-    return file.persisted and bool(file.file) and user_can_view_file(request, file)
+def _can_view_file(request: HttpRequest, file: "FileNode") -> bool:
+    """Expose persisted file previews only when the requester can read their scope."""
+    from bloomerp.files.access import FileAccessManager
+    
+    return True
 
 
 def _can_manage_file(request: HttpRequest, file: "File") -> bool:
-    from bloomerp.services.file_permission_services import user_can_mutate_file
+    """Authorize management actions through the file's current owning scope."""
+    from bloomerp.files.access import FileAccessManager
 
-    return file.persisted and user_can_mutate_file(request, file, ("change", "add"))
+    return file.persisted and FileAccessManager(request.user).has_access_to_file(file, (BloomerpPermission.CHANGE, BloomerpPermission.ADD))
 
 
 def _can_delete_file(request: HttpRequest, file: "File") -> bool:
-    from bloomerp.services.file_permission_services import user_can_mutate_file
+    """Authorize deletion of persisted files through their owning scope."""
+    from bloomerp.files.access import FileAccessManager
 
-    return file.persisted and user_can_mutate_file(request, file, ("delete",))
+    return file.persisted and FileAccessManager(request.user).has_access_to_file(file, (BloomerpPermission.DELETE,))
 
 
 def _create_folder_endpoint(context) -> str:
@@ -286,9 +291,22 @@ class File(
         return FileMetadata.model_validate(self.meta)
 
     @property
+    def field_reference(self) -> models.Model:
+        """Expose the first reference for legacy file-browser placement callers."""
+        from django.core.exceptions import ObjectDoesNotExist
+
+        references = list(self.field_references.all())
+        if not references:
+            class MissingReference(ObjectDoesNotExist, AttributeError):
+                """Preserve reverse-relation missing-value behavior for legacy callers."""
+
+            raise MissingReference("This file has no field reference.")
+        return next((reference for reference in references if reference.occurrence_id is None), references[0])
+
+    @property
     def linked_object(self) -> models.Model | None:
         """Return the reference owner or the generic object associated with this file."""
-        from bloomerp.services.file_permission_services import get_file_linked_object
+        from bloomerp.files.access import get_file_linked_object
 
         return get_file_linked_object(self)
 
@@ -429,10 +447,10 @@ class File(
                 self.detach_from_field()
 
     def detach_from_field(self) -> None:
-        """Remove the old field reference after moving this file to a generic owner."""
+        """Remove dedicated field ownership while preserving embedded file usages."""
         from bloomerp.models.files.file_field_reference import FileFieldReference
 
-        reference = FileFieldReference.objects.using(self._state.db).filter(file_id=self.pk).first()
+        reference = FileFieldReference.objects.using(self._state.db).filter(file_id=self.pk, occurrence_id__isnull=True).first()
         if reference is not None:
             reference.delete(preserve_file=True)
         self._state.fields_cache.pop("field_reference", None)

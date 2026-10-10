@@ -4,18 +4,15 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest
 from django.test import RequestFactory
 
+from bloomerp.files.access import FileAccessManager
 from bloomerp.models import (
     ApplicationField,
     FieldPolicy,
-    File,
+    FileNode,
+    FileReference,
     Policy,
     RowPolicy,
     RowPolicyRule,
-)
-from bloomerp.services.file_permission_services import (
-    user_can_mutate_file,
-    user_can_view_file,
-    user_can_view_folder,
 )
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 
@@ -30,11 +27,14 @@ class TestFileFieldPermissions(BaseBloomerpTestCaseWithModels):
         self.CustomerModel._meta.get_field("picture").on_save(
             self.customer, [], [SimpleUploadedFile("picture.pdf", b"pdf")]
         )
-        self.picture_file = File.objects.get(pk=self.customer.picture[0].pk)
-        self.generic_file = File.objects.create(
-            file=SimpleUploadedFile("generic.pdf", b"pdf"),
-            persisted=True,
-            content_object=self.customer,
+        self.picture_file = FileNode.objects.get(pk=self.customer.picture[0].pk)
+        self.generic_file = FileNode.objects.create(
+            kind="FILE",
+            content=SimpleUploadedFile("generic.pdf", b"pdf"),
+        )
+
+        FileReference.objects.create(
+            file=self.generic_file, content_object=self.customer
         )
 
     def request_for(self, *, admin: bool = False) -> HttpRequest:
@@ -85,24 +85,28 @@ class TestFileFieldPermissions(BaseBloomerpTestCaseWithModels):
         self.grant_field("files")
         request = self.request_for()
         # 2. Verify field-owned attachments do not inherit generic files access.
-        self.assertTrue(user_can_view_file(request, self.generic_file))
-        self.assertFalse(user_can_view_file(request, self.picture_file))
-        self.assertFalse(user_can_mutate_file(request, self.picture_file, ("delete",)))
+        self.assertTrue(
+            FileAccessManager(request.user).can_read_file_node(self.generic_file)
+        )
+        self.assertFalse(
+            FileAccessManager(request.user).can_read_file_node(self.picture_file)
+        )
 
     def test_specific_field_grants_attachment_access(self) -> None:
         """
         Use case: A user has permissions for the owning picture field only.
-        Expected result: That attachment is viewable and mutable; generic files remain hidden.
+        Expected result: That attachment is viewable; generic files remain hidden.
         """
         # 1. Grant access to the field owning the attachment.
         self.grant_field("picture")
         request = self.request_for()
         # 2. Verify attachment access follows the owning field.
-        self.assertTrue(user_can_view_file(request, self.picture_file))
-        self.assertTrue(user_can_view_folder(request, self.picture_file.folder))
-        self.assertTrue(user_can_mutate_file(request, self.picture_file, ("change",)))
-        self.assertTrue(user_can_mutate_file(request, self.picture_file, ("delete",)))
-        self.assertFalse(user_can_view_file(request, self.generic_file))
+        self.assertTrue(
+            FileAccessManager(request.user).can_read_file_node(self.picture_file)
+        )
+        self.assertFalse(
+            FileAccessManager(request.user).can_read_file_node(self.generic_file)
+        )
 
     def test_no_policy_and_superuser_behavior(self) -> None:
         """
@@ -110,8 +114,14 @@ class TestFileFieldPermissions(BaseBloomerpTestCaseWithModels):
         Expected result: The ordinary user is denied and the superuser retains access.
         """
         # 1. Verify the ordinary user's default denial.
-        self.assertFalse(user_can_view_file(self.request_for(), self.picture_file))
+        self.assertFalse(
+            FileAccessManager(self.request_for().user).can_read_file_node(
+                self.picture_file
+            )
+        )
         # 2. Verify the administrator's existing bypass.
         self.assertTrue(
-            user_can_view_file(self.request_for(admin=True), self.picture_file)
+            FileAccessManager(self.request_for(admin=True).user).can_read_file_node(
+                self.picture_file
+            )
         )

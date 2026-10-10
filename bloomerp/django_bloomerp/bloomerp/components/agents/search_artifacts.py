@@ -125,14 +125,14 @@ def upload_artifact(request: HttpRequest) -> HttpResponse:
 @require_GET
 def download_file(request: HttpRequest, file_id: UUID) -> HttpResponse:
     """Serve authorized attachments with download disposition and no shared caching."""
-    from bloomerp.models import File
-    from bloomerp.services.file_permission_services import user_can_view_file
+    from bloomerp.files.access import FileAccessManager
+    from bloomerp.models.files.file_node import FileNode
 
-    file = get_object_or_404(File, pk=file_id)
-    if not user_can_view_file(request, file):
+    file = get_object_or_404(FileNode, pk=file_id, kind="FILE")
+    if not FileAccessManager(request.user).can_read_file_node(file):
         raise PermissionDenied("File unavailable")
     response = FileResponse(
-        file.file.open("rb"), as_attachment=True, filename=file.name
+        file.content.open("rb"), as_attachment=True, filename=file.name
     )
     response["Cache-Control"] = "no-store"
     response["X-Content-Type-Options"] = "nosniff"

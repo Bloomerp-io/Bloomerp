@@ -14,6 +14,7 @@ from bloomerp.models.mixins.avatar_model_mixin import AvatarModelMixin
 
 USER_CONFIG = BloomerpModelConfig(
     module="users",
+    icon="fa fa-user",
     detail_view_settings=DetailViewSettings(
         layouts=[FieldLayout(
             rows=[

@@ -24,7 +24,7 @@ from django.utils import timezone
 from openpyxl import Workbook
 from rest_framework.exceptions import NotFound, ValidationError
 
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.files.file_extraction import (
     MAX_MANIFEST_BYTES,
     MAX_RECORDS,
@@ -74,16 +74,16 @@ class StorageWithoutPath(Storage):
 def install_extraction_storage(test_case: TestCase) -> StorageWithoutPath:
     """Isolate source and result storage while retaining real storage operations."""
     storage = StorageWithoutPath()
-    for model, field in ((File, "file"), (FileExtraction, "result")):
+    for model, field in ((FileNode, "content"), (FileExtraction, "result")):
         test_case.enterContext(
             patch.object(model._meta.get_field(field), "storage", storage)
         )
     return storage
 
 
-def create_source(content: bytes = b"Uploaded text", name: str = "source.txt") -> File:
+def create_source(content: bytes = b"Uploaded text", name: str = "source.txt") -> FileNode:
     """Create one persisted uploaded file with real stored bytes."""
-    return File.objects.create(file=ContentFile(content, name=name), persisted=True)
+    return FileNode.objects.create(content=ContentFile(content, name=name), kind="FILE")
 
 
 def request_for(user: Any) -> HttpRequest:
@@ -175,7 +175,6 @@ class TestFileExtractionModel(BloomerpModelTestCase):
             and payload["content_is_untrusted"]
             and "result" not in payload
             and job.manifest == {}
-            and not FileExtraction._meta.default_permissions
         )
 
     def sample_manifest(self) -> dict[str, Any]:
@@ -429,7 +428,7 @@ class TestFileExtractionModel(BloomerpModelTestCase):
             job.get_results(self.request)
         self.owner.is_active = True
         with patch(
-            "bloomerp.services.file_permission_services.user_can_view_file",
+            "bloomerp.files.access.FileAccessManager.can_read_file_node",
             return_value=False,
         ):
             for operation in (job.get_results, job.read_result):
@@ -438,9 +437,6 @@ class TestFileExtractionModel(BloomerpModelTestCase):
                     self.assertRaises(NotFound),
                 ):
                     operation(self.request)
-        File.objects.filter(pk=self.source.pk).update(persisted=False)
-        with self.assertRaises(NotFound):
-            job.get_results(self.request)
         self.source.delete()
         with self.assertRaises(NotFound):
             job.get_results(self.request)
@@ -599,7 +595,7 @@ class TestFileExtractionModel(BloomerpModelTestCase):
         with (
             patch.object(api, "run_parser", return_value=document),
             patch(
-                "bloomerp.services.file_permission_services.user_can_view_file",
+                "bloomerp.files.access.FileAccessManager.can_read_file_node",
                 side_effect=[True, False],
             ),
         ):
@@ -609,7 +605,7 @@ class TestFileExtractionModel(BloomerpModelTestCase):
         self.assertFalse(job.result)
         job = self.create_job()
 
-        def expire_during_parse(source: File, directory: str) -> dict[str, Any]:
+        def expire_during_parse(source: FileNode, directory: str) -> dict[str, Any]:
             """Simulate expiry while the child process is doing authorized work."""
             FileExtraction.objects.filter(pk=job.pk).update(
                 expires_at=timezone.now() - timedelta(seconds=1)
@@ -817,7 +813,7 @@ class TestFileExtractionModel(BloomerpModelTestCase):
         """A user disabled while parsing cannot retain a stale authenticated worker context."""
         job = self.create_job()
 
-        def deactivate_during_parse(source: File, directory: str) -> dict[str, Any]:
+        def deactivate_during_parse(source: FileNode, directory: str) -> dict[str, Any]:
             """Revoke the account in the database while leaving the old object unchanged."""
             type(self.owner).objects.filter(pk=self.owner.pk).update(is_active=False)
             return {

@@ -8,7 +8,7 @@ from bloomerp.tests.base import (
 
 
 class TestDeleteFolderComponent(BloomerpComponentTestCase):
-    """Tests function `delete_folder` from `bloomerp/components/files/actions/delete.py`."""
+    """Tests function `delete_folder` from `bloomerp/components/files/actions/delete_folder.py`."""
 
     view_name = "components_files_delete_folder"
 

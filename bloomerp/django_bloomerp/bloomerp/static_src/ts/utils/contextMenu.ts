@@ -3,6 +3,7 @@ import { t as _ } from "./i18n";
 export type ContextMenuItem = {
     label: string;
     icon?: string;
+    group?: string;
     onClick?: (context: ContextMenuContext) => void | Promise<void>;
     disabled?: boolean;
     submenu?: ContextMenuSubmenu | (() => ContextMenuSubmenu);
@@ -24,13 +25,14 @@ export type ContextMenuContext = {
     hide: () => void;
 };
 
-export type ContextMenuShowOptions = { hideOnViewportChange?: boolean };
+export type ContextMenuShowOptions = { hideOnViewportChange?: boolean; anchorRect?: DOMRect };
 
 export type ContextMenuController = {
     element: HTMLDivElement;
     show: (event: MouseEvent | KeyboardEvent, trigger: HTMLElement, items: ContextMenuItem[]) => void;
     showAt: (position: { x: number; y: number }, trigger: HTMLElement, items: ContextMenuItem[], options?: ContextMenuShowOptions) => void;
-    showSubmenu: (submenu: ContextMenuSubmenu, trigger: HTMLElement) => void;
+    showSubmenu: (submenu: ContextMenuSubmenu, trigger: HTMLElement, position?: { x: number; y: number }) => void;
+    setLoading: (loading: boolean) => void;
     hide: () => void;
     destroy: () => void;
 };
@@ -55,10 +57,13 @@ class ContextMenu implements ContextMenuController {
     private trigger: HTMLElement | null = null;
     private position = { x: 0, y: 0 };
     private index = -1;
+    private loading = false;
     private searchInput: HTMLInputElement | null = null;
     private request?: AbortController;
     private timer?: ReturnType<typeof setTimeout>;
     private hideOnViewportChange = true;
+    private anchorRect: DOMRect | undefined;
+    private anchorAbove = false;
 
     /** Connect one reusable menu to outside clicks and keyboard navigation. */
     public constructor(private readonly id: string) {
@@ -92,20 +97,45 @@ class ContextMenu implements ContextMenuController {
         if (activeMenu && activeMenu !== this) activeMenu.hide();
         this.trigger = trigger;
         this.position = position;
+        this.anchorRect = options.anchorRect;
+        this.anchorAbove = false;
         this.hideOnViewportChange = options.hideOnViewportChange ?? true;
+        this.loading = false;
+        this.element.removeAttribute("aria-busy");
         this.pages = [{ items, query: "" }];
         this.renderPage();
     }
 
-    /** Enter a child page or open a searchable page directly from a toolbar. */
-    public showSubmenu(submenu: ContextMenuSubmenu, trigger: HTMLElement): void {
+    /** Keep results visible but inactive while an external search refreshes them. */
+    public setLoading(loading: boolean): void {
+        this.loading = loading;
+        this.element.setAttribute("aria-busy", String(loading));
+        this.status.replaceChildren();
+        if (loading) {
+            const spinner = document.createElement("i");
+            spinner.className = "fa-solid fa-spinner animate-spin mr-2 motion-reduce:animate-none";
+            spinner.setAttribute("aria-hidden", "true");
+            this.status.append(spinner, document.createTextNode(_("Searching…")));
+        }
+        this.status.hidden = !loading;
+        const items = this.pages.at(-1)?.items ?? [];
+        for (const button of this.list.querySelectorAll<HTMLButtonElement>("[data-context-menu-item]")) {
+            button.disabled = loading || Boolean(items[Number(button.dataset.contextMenuItem)]?.disabled);
+        }
+    }
+
+    /** Open a searchable page at an optional caret position or its trigger control. */
+    public showSubmenu(submenu: ContextMenuSubmenu, trigger: HTMLElement, position?: { x: number; y: number }): void {
         if (activeMenu !== this) {
             activeMenu?.hide();
             this.pages = [];
+            this.anchorRect = undefined;
+            this.anchorAbove = false;
             const rect = trigger.getBoundingClientRect();
             this.position = { x: rect.left, y: rect.bottom + 4 };
             this.trigger = trigger;
         }
+        if (position) this.position = position;
         submenu.onOpen?.();
         this.pages.push({ items: submenu.items ?? [], submenu, query: "" });
         this.renderPage();
@@ -171,7 +201,16 @@ class ContextMenu implements ContextMenuController {
         this.index = -1;
         this.status.textContent = page.items.length ? "" : _("No results.");
         this.status.hidden = Boolean(page.items.length);
+        let previousGroup: string | undefined;
         for (const [index, item] of page.items.entries()) {
+            if (item.group && item.group !== previousGroup) {
+                const heading = document.createElement("li");
+                heading.className = "border-t border-gray-200 px-3 py-2 text-xs font-semibold text-gray-500";
+                heading.textContent = item.group;
+                heading.setAttribute("role", "presentation");
+                this.list.append(heading);
+            }
+            previousGroup = item.group;
             const li = document.createElement("li");
             const button = document.createElement("button");
             button.type = "button";
@@ -199,11 +238,16 @@ class ContextMenu implements ContextMenuController {
         this.reposition();
     }
 
-    /** Keep long menus inside the viewport. */
+    /** Place anchored menus above the caret when there is insufficient room below. */
     private reposition(): void {
         const rect = this.element.getBoundingClientRect();
         this.element.style.left = Math.max(8, Math.min(this.position.x, window.innerWidth - rect.width - 8)) + "px";
-        this.element.style.top = Math.max(8, Math.min(this.position.y, window.innerHeight - rect.height - 8)) + "px";
+        const anchor = this.anchorRect;
+        this.anchorAbove = Boolean(anchor) && (this.anchorAbove || this.position.y + rect.height > window.innerHeight - 8);
+        const top = anchor && this.anchorAbove
+            ? anchor.top - rect.height - 8
+            : this.position.y;
+        this.element.style.top = Math.max(8, Math.min(top, window.innerHeight - rect.height - 8)) + "px";
     }
 
     /** Clear stale results immediately and debounce search requests. */
@@ -253,7 +297,7 @@ class ContextMenu implements ContextMenuController {
     /** Activate leaves only after closing their menu, avoiding child-menu dismissal races. */
     private activate(index: number, event: MouseEvent | KeyboardEvent): void {
         const item = this.pages.at(-1)?.items[index];
-        if (!item || item.disabled || !this.trigger) return;
+        if (!item || item.disabled || this.loading || !this.trigger) return;
         if (item.submenu) {
             this.showSubmenu(typeof item.submenu === "function" ? item.submenu() : item.submenu, this.trigger);
             return;

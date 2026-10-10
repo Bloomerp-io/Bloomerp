@@ -153,7 +153,7 @@ class ApprovalRequirement(AgentPayload):
 
 
 class FileArtifactPayload(AgentPayload):
-    """Describe a binary artifact whose content lives in the existing File model."""
+    """Describe a binary artifact whose content lives in the FileNode model."""
 
     kind: Literal["file"] = "file"
     title: str = ""
