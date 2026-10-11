@@ -121,3 +121,16 @@ class TestLabelsFieldLookup(BaseBloomerpTestCaseWithModels):
             list(self.CustomerModel.objects.filter(predicates[0] & predicates[1])),
             [self.both],
         )
+
+    def test_renderer_uses_saved_colors_and_escapes_names(self) -> None:
+        """Render colored labels with legible text while escaping user-supplied names."""
+        from bloomerp.field_types.builtins.labels import render_labels
+
+        self.red.name = "<script>red</script>"
+        self.red.color = "#facc15"
+        self.red.save()
+        field = ApplicationField.get_by_field(self.CustomerModel, "object_labels")
+        rendered = render_labels(field, self.one)
+        self.assertIn("background-color: #facc15; color: #111827", rendered)
+        self.assertIn("&lt;script&gt;red&lt;/script&gt;", rendered)
+        self.assertNotIn("<script>", rendered)

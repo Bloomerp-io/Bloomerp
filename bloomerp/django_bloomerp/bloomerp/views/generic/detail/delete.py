@@ -9,7 +9,7 @@ from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 
-from bloomerp.models.files import File
+from bloomerp.models.files import FileNode
 from bloomerp.models.workspaces import SqlQuery, Tile
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
     url_name="delete",
     description="Delete an object from {model}",
     route_type="detail",
-    exclude_models=[File, Tile, SqlQuery, User],
+    exclude_models=[FileNode, Tile, SqlQuery, User],
 )
 class BloomerpDeleteView(BaseBloomerpDetailView):
     template_name = "views/generic/detail/delete.html"

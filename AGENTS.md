@@ -22,4 +22,6 @@ whenever they support the behavior being tested. Do not default to ad-hoc test
 methods or copy an older test without checking the documentation first.
 
 
+## Permissions
 
+On permissions, we make the assumption that if a user has access to a particular object, he/she also has access to the __str__ representation, regardless of the field permissions.

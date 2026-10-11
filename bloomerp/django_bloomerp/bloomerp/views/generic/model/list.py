@@ -1,7 +1,7 @@
 from django.db.models import Model
 from django.views.generic import TemplateView
 
-from bloomerp.models.files import File
+from bloomerp.models.files import FileNode
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
@@ -15,7 +15,7 @@ from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
     url_name="model",
     description="List of records for {model} model",
     route_type="model",
-    exclude_models=[File],
+    exclude_models=[FileNode],
 )
 class BloomerpListView(BaseBloomerpView, BloomerpModelContextMixin, TemplateView):
     model: Model = None

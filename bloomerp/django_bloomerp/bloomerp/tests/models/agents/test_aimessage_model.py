@@ -10,7 +10,7 @@ from django.test import override_settings
 from bloomerp.agents.artifacts.file import FILE_ARTIFACT, FileArtifactPayload
 from bloomerp.agents.artifacts.selection import selection_item
 from bloomerp.agents.controller import AgentChatRequest, AgentController
-from bloomerp.models import File
+from bloomerp.models import FileNode
 from bloomerp.models.agents import AIMessage
 from bloomerp.tests.agents.test_controller import agent_test_config
 from bloomerp.tests.base import (
@@ -152,8 +152,8 @@ class TestAimessageModel(AgentModelFixtures, BloomerpModelTestCase):
         """Create an authorized source and signed selection for the fixture owner."""
         self.user.is_superuser = True
         self.user.save()
-        source = File.objects.create(
-            name="invoice.pdf", file="test/invoice.pdf", persisted=True
+        source = FileNode.objects.create(
+            name="invoice.pdf", kind="FILE", content="test/invoice.pdf", meta={"size": 1}
         )
         request = HttpRequest()
         request.user = self.user

@@ -1,17 +1,14 @@
-# File Reference
+# File references
 
-`BloomerpFileField` is a virtual Django field backed by `FileFieldReference`.
-It adds no column to the parent table and uses a plain file input. Reading
-`object.field_name` returns a list of `File` records, including for single-file
-fields (zero or one record).
+`BloomerpFileField` is a virtual Django field backed by `FileReference` and
+`FileNode`. It adds no column to the parent table. Reading `object.field_name`
+returns a list of file nodes, including for single-file fields (zero or one node).
 
-Each reference contains a unique `file_id`, an `object_id` supporting integer
-and UUID primary keys, and an `application_field_id`. The application field's
-content type identifies the parent model. An index on
-`(application_field_id, object_id)` supports field reads and collection pages.
-One file has one owning reference. Field-owned files leave `File.content_type`
-and `File.object_id` empty; those columns remain available for generic object
-uploads and generated documents. Files use the owner's object folder.
+A file node owns immutable stored content and cached metadata. A reference stores
+its `file_id`, parent `content_type_id` and `object_id`, and optional
+`application_field_id`. An editor image additionally has an `occurrence_id`.
+The index on `(content_type_id, object_id, application_field_id)` supports
+field reads. Multiple records and fields can share the same file node.
 
 | Option | Default | Behavior |
 | --- | --- | --- |
@@ -22,54 +19,47 @@ uploads and generated documents. Files use the owner's object folder.
 | `blank` | `True` | Allow an empty attachment field. |
 
 The widget and validation never write files. `BloomerpModelForm.save()` saves
-the parent and then its structured attachment values in a database transaction.
+the parent and its structured attachment values in a database transaction.
 With `save(commit=False)`, save the parent first and call
-`save_structured_fields()`. Uploading a replacement into a single-file field
-removes its old attachment. Multiple-file editors provide **Keep** controls;
-uncheck a control to remove that file when saving.
+`save_structured_fields()`.
 
 For programmatic edits, call the model field's
-`on_save(parent, retained_ids, uploaded_files)` after saving the parent. This
-validates upload limits and reference ownership, serializes edits on the parent,
-stores new files, and deletes removed references and files. Direct assignment
-is unsupported. Unrelated model saves leave the references intact.
+`on_save(parent, retained_ids, uploaded_files)` after saving the parent. It
+validates limits and reference ownership, serializes edits on the parent,
+stores new file nodes, and removes discarded references. Replacing an attachment
+does not delete its file node or bytes. Direct assignment is unsupported.
 
-Deleting a parent, application field, or reference deletes its owned files and
-stored bytes. Deleting a `File` cascades its reference. Moving a field-owned
-file to another object's generic files removes its former reference while
-preserving the moved file. Like other generic relations, `object_id` has no
-SQL foreign key to the parent; parent cleanup runs through Django's deletion
-signals. Raw SQL deletion bypasses that lifecycle.
+Deleting a parent, application field, or reference removes its references while
+preserving shared file nodes. Referenced nodes cannot be deleted. Deleting an
+unused node schedules storage cleanup after commit; the key remains if another
+node uses it. Rollback discards the cleanup callback. Raw SQL deletion bypasses
+the Django lifecycle.
 
-The field registry exposes `batch_value_loader`. Dataviews call only the generic
-`prepare_field_values(objects, fields)` hook. The file type loads the displayed
-fields in one reference query joined to `File`, caches records on each parent,
-and renders escaped file links without additional field-value queries. Fields
-hidden by row-level field-access annotations do not populate the display cache.
-Direct reads outside that preparation load the requested field lazily.
+The field registry's `batch_value_loader` joins references to file nodes and
+caches field values on displayed parent objects. Row-level field visibility
+controls which fields enter that cache. Direct reads load the field lazily.
+`is_null` lookups use scoped `EXISTS` subqueries, so multiple attachments do not
+duplicate parent rows and generic object attachments do not affect field lookups.
 
-The field reuses the existing `IS_NULL` lookup and Boolean editor through a
-`BoundLookup`. `is_null=true` matches objects with no references for that field;
-`is_null=false` matches objects with at least one reference. The query adapter
-uses a scoped `EXISTS` subquery, so multiple files do not duplicate parent rows
-and generic object uploads do not affect the result. SQL filtering compiles
-virtual fields through the same query adapter, and Python evaluation checks
-whether the file collection is empty.
+`FileAccessManager.get_queryset(queryset)` filters readable file nodes before
+pagination. A referenced file requires one readable owner field; an embedded
+comment attachment follows its parent's `comments` field. Unreferenced uploads
+require their uploader or global library view access. Bulk-import sources remain
+private wizard state. Mutations require access to every affected reference.
 
-The file browser explicitly joins references, application fields, and content
-types, then loads parent objects once per model. Its links include the field
-label, use HTMX navigation to `#field_name`, and reuse object preview tooltips.
-Visibility and actions follow the owning field's permissions; generic uploads
-use the `files` field. The detail frame focuses the target input after navigation.
+File-browser virtual folders derive from references. Physical folders are
+`FileNode` records with `kind="FOLDER"`; moving a node changes its physical
+`parent`, not its references. Generated legacy object-folder hierarchies and
+legacy folder-management endpoints are retired.
 
-`File.metadata` returns the Pydantic model declared in
-`bloomerp.models.files.file`. Document-template provenance uses
-`metadata.document_template` (`id`, `name`); bulk-import drafts use
-`metadata.bulk_upload` (`content_type_id`, `model_label`, `original_filename`).
-PDF signature provenance uses `metadata.signature` (`signed`, `user_id`,
-`signed_file_id`) and preserves the document template on source and signed files.
-`File.save()` and `full_clean()` validate metadata. Migration
-`0077_file_field_references` creates the shared table and converts historical
-flat provenance into this nested structure, with a reverse conversion.
-Adding an Employee resume declaration therefore requires no parent-table
-migration or per-field relation table.
+`FileNode.metadata` returns `FileNodeMetaData` from `bloomerp.files.definition`.
+It includes size, MIME type, extension, original filename, bulk-import identity,
+and optional document-template and PDF-signature provenance. Generated PDFs
+reference their template and source records. Signing creates a separate node
+and records its identity on the original node.
+
+Migration `0086_file_nodes_and_object_references` copies legacy files and usages
+without copying bytes or the old generated folder hierarchy. Migration
+`0087_retire_legacy_file_models` verifies the storage-key cutover and removes
+`File`, `FileFolder`, `FileFieldReference`, and template folder destinations.
+Historical model definitions remain in migration state only.

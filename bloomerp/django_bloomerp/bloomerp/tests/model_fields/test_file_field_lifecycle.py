@@ -463,17 +463,6 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         customer.refresh_from_db()
         self.assertEqual(len(customer.picture), 1)
 
-    def test_legacy_deletion_preserves_migrated_storage(self) -> None:
-        """Legacy cleanup cannot remove a storage key still used by a migrated node."""
-        from bloomerp.models import File
-
-        legacy = File.objects.create(file=SimpleUploadedFile("legacy.txt", b"legacy"))
-        node = FileNode.objects.create(
-            pk=legacy.pk, kind="FILE", content=legacy.file.name
-        )
-        legacy.delete()
-        self.assertTrue(node.content.storage.exists(node.content.name))
-
     def test_reviewed_submission_references_original_upload(self) -> None:
         """Persisting a public submission shares its node with the resulting object."""
         from unittest.mock import patch

@@ -1,5 +1,7 @@
 """Declarative request contracts for readable reference target search."""
 
+from django.http import HttpResponse
+
 from bloomerp.models import FileNode, Label
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.tests.base import (
@@ -29,6 +31,13 @@ class TestReferenceSearch(BloomerpComponentTestCase):
         self.admin_user.last_name = "Administrator"
         self.admin_user.save(update_fields=["is_staff", "first_name", "last_name"])
         return [
+            RequestScenario(
+                name="File picker filters before limiting results",
+                user=self.normal_user,
+                query_params={"kind": "file", "q": "BatchPicker"},
+                prepare=self.prepare_file_picker_batch,
+                expected=ExpectedResult(response_validators=self.has_twenty_readable_files),
+            ),
             RequestScenario(
                 name="Requires login", expected=ExpectedResult(status_code=302)
             ),
@@ -116,3 +125,21 @@ class TestReferenceSearch(BloomerpComponentTestCase):
                 expected=ExpectedResult(status_code=400),
             ),
         ]
+
+    def prepare_file_picker_batch(self, scenario: RequestScenario) -> None:
+        """Put more than one hundred private uploads ahead of twenty-five readable uploads."""
+        for index in range(101):
+            FileNode.objects.create(
+                name=f"BatchPicker-A-{index:03}", kind="FILE", content="private.txt",
+                created_by=self.admin_user, meta={"size": 1},
+            )
+        for index in range(25):
+            FileNode.objects.create(
+                name=f"BatchPicker-Z-{index:03}", kind="FILE", content="readable.txt",
+                created_by=self.normal_user, meta={"size": 1},
+            )
+
+    def has_twenty_readable_files(self, response: HttpResponse) -> bool:
+        """Require a full bounded page containing only readable upload labels."""
+        items = response.json()["items"]
+        return len(items) == 20 and all(item["label"].startswith("BatchPicker-Z-") for item in items)

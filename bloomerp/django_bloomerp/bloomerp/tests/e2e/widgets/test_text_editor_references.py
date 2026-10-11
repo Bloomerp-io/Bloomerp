@@ -30,6 +30,9 @@ class TestEditorReferences(e2e_test_cases.BloomerpE2ETestCase):
     """Exercise real Lexical nodes and HTMX form state in the CRUD view."""
 
     auto_create_customers = False
+    browser_context_options: dict[str, list[str]] = {
+        "permissions": ["clipboard-read", "clipboard-write"],
+    }
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
         """Insert repeated mentions, remove one occurrence, and persist a shared label."""
@@ -129,7 +132,7 @@ class TestEditorReferences(e2e_test_cases.BloomerpE2ETestCase):
         expect(button.locator(".fa-paperclip")).to_have_count(1)
         expect(button.locator("svg")).to_have_count(0)
         self.assertTrue(button.get_attribute("aria-keyshortcuts"))
-        self.page.keyboard.press("ControlOrMeta+Alt+T")
+        self.page.keyboard.press("ControlOrMeta+Shift+A")
         expect(button).to_have_attribute("aria-expanded", "true")
         expect(
             self.page.get_by_role("menuitem", name="Labels", exact=True)

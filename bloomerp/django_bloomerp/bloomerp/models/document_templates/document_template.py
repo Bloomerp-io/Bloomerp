@@ -11,18 +11,24 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from django.utils.translation import gettext_lazy as _, gettext_noop
 from bloomerp.models.definition import BloomerpModelConfig, DetailViewSettings
-from bloomerp.models.document_templates.document_template_styling import DocumentTemplateStyling
-from bloomerp.models.document_templates.document_template_header import DocumentTemplateHeader
-from bloomerp.models.files.file_folder import FileFolder
+from bloomerp.models.document_templates.document_template_styling import (
+    DocumentTemplateStyling,
+)
+from bloomerp.models.document_templates.document_template_header import (
+    DocumentTemplateHeader,
+)
+
 
 class PageSize(models.TextChoices):
-    A4 = 'A4', _('A4')
-    LETTER = 'Letter', _('Letter')
-    A3 = 'A3', _('A3')
+    A4 = "A4", _("A4")
+    LETTER = "Letter", _("Letter")
+    A3 = "A3", _("A3")
+
 
 class Orientation(models.TextChoices):
-    PORTRAIT = 'portrait', _('Portrait')
-    LANDSCAPE = 'landscape', _('Landscape')
+    PORTRAIT = "portrait", _("Portrait")
+    LANDSCAPE = "landscape", _("Landscape")
+
 
 class FreeVariableChoice(BaseModel):
     value: str
@@ -70,6 +76,7 @@ th, td {
 
 """
 
+
 class FreeVariableConfig(BaseModel):
     slug: str
     label: str
@@ -94,44 +101,52 @@ class DocumentTemplate(BloomerpModel):
         verbose_name = _("Document Template")
         verbose_name_plural = _("Document Templates")
         managed = True
-        db_table = 'bloomerp_document_template'
+        db_table = "bloomerp_document_template"
 
     bloomerp_config = BloomerpModelConfig(
         detail_view_settings=DetailViewSettings(
-            layouts=[FieldLayout(
-                rows=[
-                    LayoutRow(
-                        columns=2,
-                        title=gettext_noop("Core Details"),
-                        items=[
-                            LayoutItem(id="name"),
-                            LayoutItem(id="include_page_numbers"),
-                            LayoutItem(id="page_orientation"),
-                            LayoutItem(id="page_size"),
-                            LayoutItem(id="page_margin"),
-                        ]
-                    )
-                ]
-            )],
+            layouts=[
+                FieldLayout(
+                    rows=[
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Core Details"),
+                            items=[
+                                LayoutItem(id="name"),
+                                LayoutItem(id="include_page_numbers"),
+                                LayoutItem(id="page_orientation"),
+                                LayoutItem(id="page_size"),
+                                LayoutItem(id="page_margin"),
+                            ],
+                        )
+                    ]
+                )
+            ],
         ),
-        create_redirect_url_func=lambda x: reverse("document_templates_detail_builder", kwargs={"pk": x.pk}),
+        create_redirect_url_func=lambda x: reverse(
+            "document_templates_detail_builder", kwargs={"pk": x.pk}
+        ),
     )
     avatar = None
-    
+
     name = models.CharField(
         max_length=100,
         help_text=_("Name of the document template."),
-        verbose_name=_("Name")) #Name of the document template
+        verbose_name=_("Name"),
+    )  # Name of the document template
     template = TextEditorField(
-        default='Hello world',
+        default="Hello world",
         help_text=_("Content of the template, including the variables."),
         blank=True,
         null=False,
-        verbose_name=_("Template")) # Content of the template, including the variables
+        verbose_name=_("Template"),
+    )  # Content of the template, including the variables
     content_types = models.ManyToManyField(
         ContentType,
         blank=True,
-        help_text=_("Root object types that can be used as variables in the document template."),
+        help_text=_(
+            "Root object types that can be used as variables in the document template."
+        ),
         related_name="document_templates",
         verbose_name=_("Content Types"),
     )
@@ -140,49 +155,45 @@ class DocumentTemplate(BloomerpModel):
         blank=True,
         verbose_name=_("Free Variables"),
     )
-    template_header : DocumentTemplateHeader = models.ForeignKey(
+    template_header: DocumentTemplateHeader = models.ForeignKey(
         "DocumentTemplateHeader",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         help_text=_("Header of the document template."),
         verbose_name=_("Template Header"),
-    ) #Foreign key to the document template header
+    )  # Foreign key to the document template header
     footer = models.TextField(
         help_text=_("Footer content of the document template."),
         blank=True,
         null=True,
         verbose_name=_("Footer"),
-        )
+    )
     page_orientation = models.CharField(
         max_length=10,
-        default='portrait',
+        default="portrait",
         help_text=_("Orientation of the document template."),
         choices=Orientation.choices,
-        verbose_name=_("Page Orientation")) # Orientation of the document template
+        verbose_name=_("Page Orientation"),
+    )  # Orientation of the document template
     page_size = models.CharField(
         max_length=10,
-        default='A4',
+        default="A4",
         help_text=_("Size of the document template."),
         choices=PageSize.choices,
-        verbose_name=_("Page Size"))
+        verbose_name=_("Page Size"),
+    )
     page_margin = models.FloatField(
         default=1.0,
         help_text=_("Margin of the document template in inches."),
-        verbose_name=_("Page Margin")) # Margin of the document template in inches
+        verbose_name=_("Page Margin"),
+    )  # Margin of the document template in inches
     include_page_numbers = models.BooleanField(
         default=True,
         help_text=_("Signifies whether the page numbers are included or not."),
-        verbose_name=_("Include Page Numbers"))
-    save_to_folder = models.ForeignKey(
-        to = FileFolder,
-        null=True,
-        blank=True,
-        help_text=_('Signifies to which folder a file generated from the template needs to be saved upon creation.'),
-        on_delete=models.SET_NULL,
-        verbose_name=_("Save To Folder"),
+        verbose_name=_("Include Page Numbers"),
     )
-    
+
     # STYLING
     style_sets = models.ManyToManyField(
         DocumentTemplateStyling,
@@ -192,13 +203,12 @@ class DocumentTemplate(BloomerpModel):
         verbose_name=_("Style Sets"),
     )
     custom_styling = CodeField(
-        language='css',
+        language="css",
         default=DEFAULT_CSS,
         blank=True,
         help_text=_("Custom CSS styling for the document template."),
         verbose_name=_("Custom Styling"),
     )
-    
 
     def __str__(self):
         return self.name
@@ -211,7 +221,6 @@ class DocumentTemplate(BloomerpModel):
                 for style_set in self.style_sets.all().order_by("name", "pk")
             )
         return "\n\n".join(style.strip() for style in styles if style and style.strip())
-
 
     def get_related_content_types(model):
         related_content_types = [ContentType.objects.get_for_model(model)]
@@ -244,8 +253,14 @@ class DocumentTemplate(BloomerpModel):
             return self.content_types.all().order_by("app_label", "model")
         content_types = getattr(self, "_unsaved_content_types", None)
         if content_types is not None:
-            content_type_ids = [content_type.pk for content_type in content_types if content_type is not None]
-            return ContentType.objects.filter(pk__in=content_type_ids).order_by("app_label", "model")
+            content_type_ids = [
+                content_type.pk
+                for content_type in content_types
+                if content_type is not None
+            ]
+            return ContentType.objects.filter(pk__in=content_type_ids).order_by(
+                "app_label", "model"
+            )
         content_type = getattr(self, "_unsaved_model_variable", None)
         if content_type is not None:
             return ContentType.objects.filter(pk=content_type.pk)
@@ -253,9 +268,9 @@ class DocumentTemplate(BloomerpModel):
 
     @property
     def application_fields(self):
-        '''
+        """
         Returns a queryset of ApplicationField that are related to the content types of the document template.
-        '''
+        """
         content_types = self.get_template_content_types()
         if not content_types.exists():
             return ApplicationField.objects.none()
@@ -280,13 +295,3 @@ class DocumentTemplate(BloomerpModel):
 
     def get_free_variable_slugs(self) -> set[str]:
         return {config.normalized_slug for config in self.get_free_variable_configs()}
-    
-    
-
-    
-    
-
-    
-    
-    
-    

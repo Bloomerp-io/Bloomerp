@@ -5,7 +5,7 @@ from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 
 from bloomerp.components.files.items.preview import preview_file
-from bloomerp.models import File
+from bloomerp.models import FileNode
 from bloomerp.models.definition import ObjectAction
 from bloomerp.templatetags.bloomerp import render_object_action
 from bloomerp.tests.base import (
@@ -22,11 +22,11 @@ class TestActionsExecuteComponent(BloomerpComponentTestCase):
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Verify file previews target the drawer and retain server-side authorization."""
-        file = File.objects.create(
-            file=SimpleUploadedFile("preview.png", b"image"), persisted=True
+        file = FileNode.objects.create(
+            content=SimpleUploadedFile("preview.png", b"image"), kind="FILE"
         )
         kwargs = {
-            "content_type_id": ContentType.objects.get_for_model(File).pk,
+            "content_type_id": ContentType.objects.get_for_model(FileNode).pk,
             "object_id": file.pk,
             "action_id": "view_file",
         }
@@ -87,5 +87,5 @@ class TestActionsExecuteComponent(BloomerpComponentTestCase):
         self.assertIn('title="A &quot;quoted&quot; title"', markup)
         # 3. The file action uses the preview component directly.
         self.assertIs(
-            File.bloomerp_config.object_actions[0].execution_func, preview_file
+            FileNode.bloomerp_config.object_actions[0].execution_func, preview_file
         )

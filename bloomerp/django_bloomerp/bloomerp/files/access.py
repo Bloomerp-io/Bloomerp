@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from django.db import models
-from django.db.models import Model, Q
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Exists, Model, OuterRef, Q, QuerySet, Subquery, Value
+from django.db.models.functions import Cast, Replace
 from django.http import HttpRequest
 
-from bloomerp.models import ApplicationField, File, FileFolder
+from bloomerp.models import ApplicationField
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.compilers.django_q_permission_compiler import (
     DjangoQPermissionCompiler,
@@ -54,42 +56,10 @@ class FileAccessManager:
         self.user: AbstractBloomerpUser = user
 
     def can_read_file_node(self, file: FileNode) -> bool:
-        """Allow reading through an accessible reference or an unreferenced upload scope."""
-        if file.kind != "FILE" or not file.content:
-            return False
-        # Import sources are private wizard state, never reusable library attachments.
-        # BulkCrudService reads them directly with owner and destination-model checks.
-        if file.meta.get("bulk_upload"):
-            return False
-        if self.user.is_superuser:
-            return True
-        request = HttpRequest()
-        request.user = self.user
-        references = list(
-            file.references.select_related("content_type", "application_field")
-        )
-        for reference in references:
-            obj = reference.content_object
-            if obj is None:
-                continue
-            field_name = (
-                reference.application_field.field
-                if reference.application_field
-                else "files"
-            )
-            if obj._meta.model_name == "comment" and reference.application_field:
-                obj = obj.content_object
-                field_name = "comments"
-            if obj is not None and can_read_object_field(request, obj, field_name):
-                return True
-        if references:
-            return False
-        return self.user.is_authenticated and (
-            file.created_by_id == self.user.pk
-            or UserPolicyManager(self.user).has_global_permission(
-                type(file), BloomerpPermission.VIEW
-            )
-        )
+        """Check one persisted file using the same read scope as file collections."""
+        from bloomerp.models.files.file_node import FileNode
+
+        return self.get_queryset(FileNode.objects.filter(pk=file.pk)).exists()
 
     def can_mutate_file_node(
         self, file: FileNode, operation: BloomerpPermission = BloomerpPermission.CHANGE
@@ -131,68 +101,6 @@ class FileAccessManager:
                 return False
         return True
 
-    def has_access_to_file(
-        self,
-        file: File | None,
-        permissions: BloomerpPermission
-        | tuple[BloomerpPermission, ...] = BloomerpPermission.VIEW,
-    ) -> bool:
-        """Authorize any requested operation, preserving draft privacy and shared file bytes."""
-        requested = (
-            (permissions,)
-            if isinstance(permissions, BloomerpPermission)
-            else permissions
-        )
-        if file is None:
-            return any(
-                UserPolicyManager(self.user).has_global_permission(File, permission)
-                for permission in requested
-            )
-        if requested != (BloomerpPermission.VIEW,):
-            return any(
-                self.has_access_to_file(file)
-                if permission == BloomerpPermission.VIEW
-                else self._can_mutate_file(file, permission)
-                for permission in requested
-            )
-        if self.user.is_superuser:
-            return True
-        if not file.persisted:
-            return self.user.is_authenticated and file.created_by_id == self.user.pk
-        request = HttpRequest()
-        request.user = self.user
-        for reference in file.field_references.select_related(
-            "application_field__content_type"
-        ):
-            model = reference.application_field.get_model()
-            obj = (
-                model._base_manager.filter(pk=reference.object_id).first()
-                if model
-                else None
-            )
-            if obj is not None:
-                if model._meta.model_name == "comment":
-                    parent = obj.content_object
-                    if parent is not None and can_read_object_field(
-                        request, parent, "comments"
-                    ):
-                        return True
-                elif can_read_object_field(
-                    request, obj, reference.application_field.field
-                ):
-                    return True
-        if file.content_type_id and file.object_id:
-            model = file.content_type.model_class()
-            obj = (
-                model._base_manager.filter(pk=file.object_id).first() if model else None
-            )
-            return obj is not None and can_read_object_field(request, obj, "files")
-        if file.field_references.exists() or file.content_type_id or file.object_id:
-            return False
-        return UserPolicyManager(self.user).has_global_permission(
-            File, BloomerpPermission.VIEW
-        )
-
     def has_access_to_linked_object(
         self,
         linked_object: Model | None,
@@ -219,115 +127,104 @@ class FileAccessManager:
             .exists()
         )
 
-    def _can_mutate_file(
+    def get_queryset(
         self,
-        file: File,
-        operation: BloomerpPermission,
-    ) -> bool:
-        """Protect embedded file bytes while authorizing ordinary file mutations."""
-        if file.field_references.filter(occurrence_id__isnull=False).exists():
-            return False
-        if self.user.is_superuser:
-            return True
+        queryset: QuerySet[FileNode],
+        related_object: Model | None = None,
+    ) -> QuerySet[FileNode]:
+        """Filter readable file nodes in SQL, compiling grants once per target model.
 
-        linked_object = get_file_linked_object(file)
-        if linked_object is not None:
-            return self.has_access_to_linked_object(
-                linked_object, operation, field_name=file.linked_field_name or "files"
-            )
+        Referenced files require one readable owner field. Unreferenced uploads
+        require their uploader or global library access. This scope is read-only;
+        mutations still require permission on every affected reference.
+        """
+        from bloomerp.models import Comment, FileReference
 
-        if file.linked_content_type_id or file.linked_object_id:
-            return False
-        permission_manager = UserPolicyManager(self.user)
-        return permission_manager.has_global_permission(File, operation)
-
-    def has_access_to_folder(
-        self,
-        folder: FileFolder | None,
-        permission: BloomerpPermission = BloomerpPermission.VIEW,
-    ) -> bool:
-        """Authorize folder operations, including discovery through accessible descendants."""
-        if folder is None:
-            return UserPolicyManager(self.user).has_global_permission(
-                FileFolder, permission
-            )
-        if permission != BloomerpPermission.VIEW:
-            from bloomerp.services.file_services import get_folder_linked_object
-
-            linked_object = get_folder_linked_object(folder)
-            if linked_object is not None:
-                return self.has_access_to_linked_object(linked_object, permission)
-            if folder.content_type_id or folder.object_id:
-                return False
-            return UserPolicyManager(self.user).has_global_permission(
-                FileFolder, permission
-            )
-        if self.user.is_superuser or UserPolicyManager(self.user).has_global_permission(
-            File, BloomerpPermission.VIEW
-        ):
-            return True
-
-        from bloomerp.services.file_services import get_folder_linked_object
-
-        linked_object = get_folder_linked_object(folder)
-        if linked_object is not None and self.has_access_to_linked_object(
-            linked_object, BloomerpPermission.VIEW
-        ):
-            return True
-
-        if any(self.has_access_to_file(file) for file in folder.files.all()):
-            return True
-
-        children = FileFolder.objects.filter(parent=folder).prefetch_related("files")
-        return any(self.has_access_to_folder(child) for child in children)
-
-
-def get_file_linked_object(file: File) -> Model | None:
-    """Resolve the canonical field owner, using the file browser's batched cache."""
-    if "_linked_object" in file.__dict__:
-        return file.__dict__["_linked_object"]
-    reference = getattr(file, "field_reference", None)
-    content_type = (
-        reference.application_field.content_type
-        if reference is not None
-        else file.content_type
-    )
-    object_id = reference.object_id if reference is not None else file.object_id
-    model = content_type.model_class() if content_type is not None else None
-    if model is None or not object_id:
-        return None
-    return model._base_manager.filter(pk=object_id).first()
-
-
-def prepare_file_linked_objects(files: list[File]) -> None:
-    """Batch-load file owners once per model for labels, previews, and access checks."""
-    scopes: dict[type[Model], set[str]] = {}
-    owners: dict[int, tuple[type[Model], str]] = {}
-    for index, file in enumerate(files):
-        reference = getattr(file, "field_reference", None)
-        content_type = (
-            reference.application_field.content_type
-            if reference is not None
-            else file.content_type
+        files = queryset.filter(kind="FILE", content__isnull=False).exclude(content="")
+        files = files.filter(
+            Q(meta__bulk_upload__isnull=True)
+            | Q(meta__bulk_upload=None)
+            | Q(meta__bulk_upload={})
         )
-        object_id = reference.object_id if reference is not None else file.object_id
-        model = content_type.model_class() if content_type is not None else None
-        file.__dict__["_linked_object"] = None
-        if model is not None and object_id:
-            scopes.setdefault(model, set()).add(object_id)
-            owners[index] = (model, object_id)
-    objects: dict[tuple[type[Model], str], Model] = {}
-    for model, ids in scopes.items():
-        for obj in model._base_manager.filter(pk__in=ids):
-            objects[(model, str(obj.pk))] = obj
-    for index, key in owners.items():
-        files[index].__dict__["_linked_object"] = objects.get(key)
+        if related_object is not None:
+            files = files.filter(
+                references__content_type=ContentType.objects.get_for_model(related_object),
+                references__object_id=str(related_object.pk),
+            ).distinct()
+        if self.user.is_superuser:
+            return files
+
+        references = FileReference.objects.filter(file_id__in=files.values("pk"))
+        references = references.annotate(
+            _file_owner_uuid=Replace("object_id", Value("-"), Value(""))
+        )
+        content_types = list(ContentType.objects.filter(
+            pk__in=references.values("content_type_id")
+        ))
+        comment_type = ContentType.objects.get_for_model(Comment)
+        comments = Comment._base_manager.annotate(
+            _file_comment_id=Cast("pk", output_field=models.CharField()),
+            _file_owner_uuid=Replace("object_id", Value("-"), Value("")),
+        ).filter(
+            _file_comment_id__in=references.filter(
+                content_type=comment_type, application_field__isnull=False
+            ).values("object_id")
+        )
+        if any(ct.pk == comment_type.pk for ct in content_types):
+            parent_types = ContentType.objects.filter(pk__in=comments.values("content_type_id"))
+            content_types = list({ct.pk: ct for ct in [*content_types, *parent_types]}.values())
+
+        request = HttpRequest()
+        request.user = self.user
+        resolver = ApiAccessResolver(request)
+        readable_references = Q(pk__in=[])
+        for content_type in content_types:
+            model = content_type.model_class()
+            if model is None:
+                continue
+            compilation = DjangoQPermissionCompiler(
+                resolver.get_applicable_access_rules(model, "retrieve"),
+                user=self.user,
+                model=model,
+            ).compile("view")
+            for row_filter, fields in compilation.field_filters.items():
+                owners = model._base_manager.filter(compilation.row_filter).filter(row_filter)
+                owner_filter = reference_owner_filter(model, owners)
+                field_ids = [field.pk for field in fields]
+                field_names = {field.field for field in fields}
+                field_filter = Q(application_field_id__in=field_ids)
+                if "files" in field_names:
+                    field_filter |= Q(application_field__isnull=True)
+                if model is Comment:
+                    # Field attachments on comments follow the parent's comments field.
+                    field_filter &= Q(application_field__isnull=True)
+                readable_references |= Q(content_type=content_type) & field_filter & owner_filter
+                if "comments" in field_names:
+                    readable_comments = comments.filter(content_type=content_type).filter(owner_filter)
+                    readable_references |= (
+                        Q(content_type=comment_type, application_field__isnull=False)
+                        & reference_owner_filter(Comment, readable_comments)
+                    )
+
+        readable = Q(pk__in=references.filter(readable_references).values("file_id"))
+        if self.user.is_authenticated:
+            unreferenced = ~Exists(FileReference.objects.filter(file_id=OuterRef("pk")))
+            if resolver.permission_manager.has_global_permission(queryset.model, BloomerpPermission.VIEW):
+                readable |= Q(unreferenced)
+            else:
+                readable |= Q(unreferenced) & Q(created_by_id=self.user.pk)
+        return files.filter(readable)
 
 
-def get_linked_object_files_field(
-    linked_object: Model | None,
-) -> ApplicationField | None:
-    """Return the ApplicationField governing a linked object's files relation."""
-    if linked_object is None:
-        return None
-    return ApplicationField.get_by_field(linked_object.__class__, "files")
+def reference_owner_filter(model: type[Model], owners: QuerySet[Model]) -> Q:
+    """Compare generic reference IDs to owner keys in SQL across integer and UUID models."""
+    owner_ids = owners.order_by().annotate(
+        _file_owner_pk=Cast("pk", output_field=models.CharField())
+    )
+    if isinstance(model._meta.pk, models.UUIDField):
+        # SQLite stores UUIDs without hyphens; PostgreSQL casts include them.
+        owner_ids = owner_ids.annotate(
+            _file_owner_pk=Replace("_file_owner_pk", Value("-"), Value(""))
+        )
+        return Q(_file_owner_uuid__in=Subquery(owner_ids.values("_file_owner_pk")))
+    return Q(object_id__in=Subquery(owner_ids.values("_file_owner_pk")))

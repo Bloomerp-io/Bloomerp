@@ -58,13 +58,9 @@ def can_change_label(user: Any, label: Label) -> bool:
     )
 
 
-def reference_display(request: HttpRequest, obj: models.Model) -> str | None:
-    """Return the readable object's representation or a user's full display name."""
+def reference_display(obj: models.Model) -> str | None:
+    """Format an object's label, assuming the caller has already established access."""
     model = type(obj)
-    if not UserPolicyManager(request.user).has_access_to_object(
-        obj, BloomerpPermission.VIEW
-    ):
-        return None
     if model is get_user_model():
         return (obj.get_full_name().strip() or obj.username)[:160]
     return str(obj)[:160] or None
@@ -155,7 +151,9 @@ def validate_reference(
             target = get_user_model().objects.get(
                 pk=reference.target_id, is_active=True, is_staff=True
             )
-            if reference_display(request, target) is None:
+            if not UserPolicyManager(request.user).has_access_to_object(
+                target, BloomerpPermission.VIEW
+            ):
                 raise ValidationError("User unavailable.")
         elif reference.kind == "object":
             content_type = ContentType.objects.get(pk=reference.content_type_id)
@@ -163,7 +161,9 @@ def validate_reference(
             if model is None or not supports_object_references(model):
                 raise ValidationError("Object unavailable.")
             target = model._base_manager.get(pk=reference.target_id)
-            if reference_display(request, target) is None:
+            if not UserPolicyManager(request.user).has_access_to_object(
+                target, BloomerpPermission.VIEW
+            ):
                 raise ValidationError("Object unavailable.")
         elif reference.kind == "file":
             target = FileNode.objects.get(pk=reference.target_id)
@@ -268,7 +268,9 @@ def reconcile_references(
             object_id=str(parent.pk),
             application_field__isnull=True,
         ).select_related("user"):
-            if reference_display(request, record.user) is not None:
+            if UserPolicyManager(request.user).has_access_to_object(
+                record.user, BloomerpPermission.VIEW
+            ):
                 record.delete()
         for record in Tag.objects.filter(
             source_content_type=content_type,
@@ -281,7 +283,9 @@ def reconcile_references(
                 if model
                 else None
             )
-            if target is None or reference_display(request, target) is not None:
+            if target is None or UserPolicyManager(request.user).has_access_to_object(
+                target, BloomerpPermission.VIEW
+            ):
                 record.delete()
         ObjectLabel.objects.filter(
             content_type=content_type, object_id=str(parent.pk)
@@ -361,7 +365,11 @@ def object_reference_state(
             request, parent, record.application_field.field
         ):
             continue
-        label = reference_display(request, record.user)
+        if not UserPolicyManager(request.user).has_access_to_object(
+            record.user, BloomerpPermission.VIEW
+        ):
+            continue
+        label = reference_display(record.user)
         if label:
             append(
                 Reference(
@@ -385,7 +393,11 @@ def object_reference_state(
             if model
             else None
         )
-        label = reference_display(request, target) if target else None
+        if target is None or not UserPolicyManager(request.user).has_access_to_object(
+            target, BloomerpPermission.VIEW
+        ):
+            continue
+        label = reference_display(target)
         if label:
             append(
                 Reference(
@@ -402,6 +414,7 @@ def object_reference_state(
         content_type=content_type, object_id=str(parent.pk)
     ).select_related("label"):
         append(Reference("label", str(record.label_id)), record.label.name)
+        result[-1]["color"] = record.label.color
     for record in FileReference.objects.filter(
         content_type=content_type,
         object_id=str(parent.pk),
@@ -438,20 +451,21 @@ def manual_reference_state(
             validate_reference(request, reference, parent)
             if reference.kind == "user":
                 label = reference_display(
-                    request, get_user_model().objects.get(pk=reference.target_id)
+                    get_user_model().objects.get(pk=reference.target_id)
                 )
             elif reference.kind == "object":
                 model = ContentType.objects.get(
                     pk=reference.content_type_id
                 ).model_class()
                 target = model._base_manager.get(pk=reference.target_id)
-                label = reference_display(request, target)
+                label = reference_display(target)
             elif reference.kind == "file":
                 label = FileNode.objects.get(pk=reference.target_id).name
             else:
                 label = Label.objects.get(pk=reference.target_id).name
             result.append(
                 {
+                    **({"color": Label.objects.get(pk=reference.target_id).color} if reference.kind == "label" else {}),
                     "kind": reference.kind,
                     "target_id": reference.target_id,
                     "content_type_id": reference.content_type_id,

@@ -6,7 +6,7 @@ from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig, ModelViewSettings
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels, BloomerpModelTestCase, ExpectedModelException, ModelScenario
@@ -23,6 +23,7 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
         self.content_type = ContentType.objects.get_for_model(Todo)
 
     def get_test_scenarios(self) -> list[ModelScenario[UserListViewPreference]]:
+        """Cover default views and ownership rules using live application models."""
         return [
             *default_filter_scenarios(self, lambda: {
                 'user': self.owner, 'content_type': self.content_type, 'name': 'List',
@@ -37,7 +38,7 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 create_validators=self.todo_defaults_are_materialized,
             ),
             ModelScenario(
-                name="File defaults materialize the configured browser",
+                name="FileNode defaults materialize the configured browser",
                 description=(
                     "UC: A user opens Files for the first time.\n"
                     "Expected Result: The File Browser preference is created without unsupported-view errors."
@@ -102,19 +103,21 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
             and selected.options["kanban"]["group_by_field"] == "status"
         )
 
-    def create_file_defaults(self):
-        self.scenario_content_type = ContentType.objects.get_for_model(File)
+    def create_file_defaults(self) -> UserListViewPreference:
+        """Materialize the configured file-node browser for the administrator."""
+        self.scenario_content_type = ContentType.objects.get_for_model(FileNode)
         return UserListViewPreference.create_default_for_user(
             self.admin_user,
             content_type_id=self.scenario_content_type.pk,
         )
 
     @staticmethod
-    def file_defaults_are_materialized(selected):
+    def file_defaults_are_materialized(selected: UserListViewPreference) -> bool:
+        """Verify file-node browsing defaults include virtual folder organization."""
         return (
             selected.selected
             and selected.view_type == "file_browser"
-            and selected.options["file_browser"] == {"related_fields": {}}
+            and selected.options["file_browser"] == {"related_fields": {}, "folder_type": "virtual"}
         )
 
     @staticmethod

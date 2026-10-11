@@ -8,7 +8,7 @@ from django.test import SimpleTestCase, override_settings
 from bloomerp.agents.artifacts.object import OBJECT_ARTIFACT, ObjectArtifactPayload
 from bloomerp.agents.definition import AIArtifactDescription
 from bloomerp.config.definition import BloomerpConfig
-from bloomerp.models import File
+from bloomerp.models import FileNode
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.definition import ApiSettings, BloomerpModelConfig
 
@@ -62,7 +62,7 @@ class ObjectArtifactDescriptionTests(SimpleTestCase):
                         )
                     ),
                     patch.object(
-                        File,
+                        FileNode,
                         "bloomerp_config",
                         BloomerpModelConfig(
                             api_settings=ApiSettings(
@@ -71,10 +71,10 @@ class ObjectArtifactDescriptionTests(SimpleTestCase):
                         ),
                     ),
                 ):
-                    description = self.describe_model(File)
+                    description = self.describe_model(FileNode)
                     self.assert_availability(description, enabled=model_enabled)
                     self.assertEqual(
-                        description.title, f"Referenced object | {File._meta.label}"
+                        description.title, f"Referenced object | {FileNode._meta.label}"
                     )
                     self.assertIn("record with id '123'", description.summary)
 
@@ -87,10 +87,10 @@ class ObjectArtifactDescriptionTests(SimpleTestCase):
                     BLOOMERP_CONFIG=BloomerpConfig(auto_generate_api_endpoints=enabled)
                 ),
                 patch.object(
-                    File, "bloomerp_config", BloomerpModelConfig(api_settings=None)
+                    FileNode, "bloomerp_config", BloomerpModelConfig(api_settings=None)
                 ),
             ):
-                self.assert_availability(self.describe_model(File), enabled=enabled)
+                self.assert_availability(self.describe_model(FileNode), enabled=enabled)
 
     def test_email_account_configuration_disables_generated_api_tools(self) -> None:
         """Describe the actual disabled email-account configuration without name rules."""
@@ -108,22 +108,22 @@ class ObjectArtifactDescriptionTests(SimpleTestCase):
             override_settings(
                 BLOOMERP_CONFIG=BloomerpConfig(auto_generate_api_endpoints=False)
             ),
-            patch.object(File, "bloomerp_config", None),
+            patch.object(FileNode, "bloomerp_config", None),
         ):
-            self.assert_availability(self.describe_model(File), enabled=True)
+            self.assert_availability(self.describe_model(FileNode), enabled=True)
 
     def test_abstract_and_proxy_models_remain_unavailable(self) -> None:
         """Respect generated API model restrictions even with explicit generation enabled."""
         with patch.object(
-            File,
+            FileNode,
             "bloomerp_config",
             BloomerpModelConfig(api_settings=ApiSettings(enable_auto_generation=True)),
         ):
             for restriction in ("abstract", "proxy"):
                 with self.subTest(restriction=restriction), patch.object(
-                    File._meta, restriction, True
+                    FileNode._meta, restriction, True
                 ):
-                    self.assert_availability(self.describe_model(File), enabled=False)
+                    self.assert_availability(self.describe_model(FileNode), enabled=False)
 
     def test_unknown_model_has_no_generated_api(self) -> None:
         """Keep stale references descriptive without advertising unavailable tools."""
