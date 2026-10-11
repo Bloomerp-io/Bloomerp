@@ -1,17 +1,19 @@
 import json
+import re
 from dataclasses import dataclass
+from typing import Any
 
 from django import forms
-from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.models import ApplicationField
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import BloomerpPermission
@@ -25,10 +27,8 @@ from bloomerp.services.object_services import string_search_on_queryset
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.utils.async_utils import run_async_or_sync
-from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.utils.requests import render_message
-
 
 RESERVED_BULK_QUERY_KEYS = {
     "action",
@@ -60,12 +60,13 @@ class BulkActionForm(forms.Form):
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         fields: list[ApplicationField],
         field_selector_url: str,
         selected_field: ApplicationField | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
+        """Build the field selector without sending value controls as GET filters."""
         super().__init__(*args, **kwargs)
         self.fields["application_field_id"].choices = [
             (str(field.id), field.title)
@@ -76,7 +77,7 @@ class BulkActionForm(forms.Form):
                 "class": "select select-bordered w-full",
                 "hx-get": field_selector_url,
                 "hx-target": "#bulk-action-field-value",
-                "hx-include": "closest form",
+                "hx-include": "this",
                 "hx-swap": "innerHTML",
             }
         )
@@ -118,7 +119,12 @@ def _editable_fields(
     return editable_fields
 
 
-def _filter_querydict(request: HttpRequest, preference: UserListViewPreference):
+def _filter_querydict(
+    request: HttpRequest,
+    preference: UserListViewPreference,
+    model: type[models.Model],
+) -> QueryDict:
+    """Exclude bulk form controls while preserving actual dataview filters."""
     querydict = request.GET.copy()
     reserved_keys = set(RESERVED_BULK_QUERY_KEYS)
     definition = DATAVIEW_REGISTRY.get(preference.view_type)
@@ -130,13 +136,21 @@ def _filter_querydict(request: HttpRequest, preference: UserListViewPreference):
     for key in list(querydict.keys()):
         if key.startswith("_arg_"):
             querydict.pop(key, None)
+        elif re.fullmatch(r"value_\d+", key):
+            # Legacy selector requests include widget controls. A real model
+            # field takes precedence: discarding its filter broadens the action.
+            try:
+                model._meta.get_field(key)
+            except FieldDoesNotExist:
+                querydict.pop(key, None)
     return preference.apply_default_filters(querydict)
 
 
-def _query_summary(filter_querydict) -> list[tuple[str, list[str]]]:
+def _query_summary(filter_querydict: QueryDict) -> list[tuple[str, list[str]]]:
+    """Describe the active filter values shown in the bulk-action dialog."""
     return [
         (key, filter_querydict.getlist(key))
-        for key in filter_querydict.keys()
+        for key in filter_querydict
     ]
 
 
@@ -182,7 +196,7 @@ def _build_bulk_action_state(
     if query:
         queryset = string_search_on_queryset(queryset, query)
 
-    filter_querydict = _filter_querydict(request, preference)
+    filter_querydict = _filter_querydict(request, preference, model)
     queryset = ModelFilterManager(model).filter(filter_querydict, queryset=queryset)
 
     object_ids = request.GET.getlist("object_ids")
@@ -251,8 +265,9 @@ def _run_bulk_update(
     content_type_id: int,
     application_field: ApplicationField,
     object_ids: list[str],
-    raw_value,
+    raw_value: Any,
 ) -> tuple[str, int]:
+    """Dispatch the widget-extracted value to the permission-checked service."""
     ran_async, result = run_async_or_sync(
         execute_bulk_update,
         content_type_id=content_type_id,
@@ -285,6 +300,7 @@ def _run_bulk_delete(
     url_name="components_bulk_actions",
 )
 def bulk_actions(request: HttpRequest, content_type_id: int) -> HttpResponse:
+    """Render or execute permitted bulk actions for the selected records."""
     if request.method not in {"GET", "POST"}:
         return HttpResponse("Method not allowed", status=405)
 
@@ -349,8 +365,21 @@ def bulk_actions(request: HttpRequest, content_type_id: int) -> HttpResponse:
             if selected_field is None:
                 return HttpResponse("Invalid field", status=400)
 
-            values = request.POST.getlist("value")
-            value = values if len(values) > 1 else request.POST.get("value")
+            form_field = _field_value_form_field(selected_field)
+            value = form_field.widget.value_from_datadict(
+                request.POST, request.FILES, "value",
+            )
+            if isinstance(form_field.widget, forms.MultiWidget):
+                value_form = forms.Form(request.POST, request.FILES)
+                value_form.fields["value"] = form_field
+                if not value_form.is_valid():
+                    response = render(
+                        request,
+                        "components/objects/bulk_action_field.html",
+                        {"field": value_form["value"], "application_field": selected_field},
+                    )
+                    response["HX-Retarget"] = "#bulk-action-field-value"
+                    return response
             status, count = _run_bulk_update(
                 request=request,
                 content_type_id=content_type_id,
@@ -431,25 +460,3 @@ def bulk_actions(request: HttpRequest, content_type_id: int) -> HttpResponse:
             "submit_url": request.get_full_path(),
         },
     )
-
-
-@router.register(
-    path="components/dataview/<int:content_type_id>/bulk_actions/field_selector/",
-    url_name="components_bulk_actions_field_selector",
-)
-def field_selector(request: HttpRequest, content_type_id: int) -> HttpResponse:
-    state = _build_bulk_action_state(
-        request,
-        content_type_id,
-        BloomerpPermission.BULK_CHANGE,
-    )
-    if isinstance(state, HttpResponse):
-        return state
-
-    model, content_type = get_model_and_content_type_or_404(content_type_id)
-    editable_fields = _editable_fields(request, model, content_type)
-    application_field = _get_selected_field(request, content_type, editable_fields)
-    if application_field is None:
-        return HttpResponse("Invalid field", status=400)
-
-    return _render_field_selector(request, application_field)

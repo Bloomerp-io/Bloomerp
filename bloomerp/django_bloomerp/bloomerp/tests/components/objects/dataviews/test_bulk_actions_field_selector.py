@@ -35,7 +35,7 @@ class TestBulkActionsFieldSelector(BloomerpComponentTestCase):
                 name=f"switch field with {description} bulk value",
                 user=self.admin_user,
                 view_kwargs=view_kwargs,
-                query_params={**query_params, "value": value},
+                query_params={**query_params, "value": value, "value_0": "Old street", "value_4": "Brussels", "value_5": "BE"},
                 headers={"HX-Request": "true"},
                 expected=ExpectedResult(
                     response_validators=self.contains_text('name="value"'),
@@ -53,7 +53,7 @@ class TestBulkActionsFieldSelector(BloomerpComponentTestCase):
                 view_name="components_bulk_actions",
                 user=self.admin_user,
                 view_kwargs=view_kwargs,
-                query_params={**query_params, "value": "Replacement"},
+                query_params={**query_params, "value": "Replacement", "value_0": "Old street", "value_5": "BE"},
                 headers={"HX-Request": "true"},
                 expected=ExpectedResult(
                     response_validators=[
