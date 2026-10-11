@@ -1,6 +1,6 @@
 import { $applyNodeReplacement, TextNode, type DOMConversionMap, type DOMConversion, type DOMConversionOutput, type DOMExportOutput, type EditorConfig, type NodeKey, type SerializedTextNode, type Spread } from "lexical";
 
-export type ReferenceTarget = { kind: "user" | "object" | "file" | "label"; target_id: string; content_type_id?: number; label: string; icon?: string; url?: string; model_label?: string; occurrence_id?: string; field_id?: number };
+export type ReferenceTarget = { kind: "user" | "object" | "file" | "label"; target_id: string; content_type_id?: number; label: string; color?: string; icon?: string; url?: string; model_label?: string; occurrence_id?: string; field_id?: number };
 type SerializedReference = Spread<{ reference: ReferenceTarget }, SerializedTextNode>;
 
 /** Read an atomic inline reference from its stable HTML attributes. */

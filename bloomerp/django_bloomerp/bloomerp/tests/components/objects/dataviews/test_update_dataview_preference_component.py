@@ -6,7 +6,7 @@ from django.http import HttpResponse
 
 from bloomerp.dataviews.definition import DataviewState
 from bloomerp.dataviews.kanban.config import KanbanDataView
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import (
@@ -22,10 +22,11 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
     view_name = "components_update_dataview_preference"
     create_foreign_models = True
 
-    def extendedSetup(self):
+    def extendedSetup(self) -> None:
+        """Prepare host and file-node content types for preference updates."""
         self.content_type = ContentType.objects.get_for_model(self.CustomerModel)
         self.view_kwargs = {"content_type_id": self.content_type.pk}
-        self.file_content_type = ContentType.objects.get_for_model(File)
+        self.file_content_type = ContentType.objects.get_for_model(FileNode)
         self.host_content_type = ContentType.objects.get_for_model(self.CountryModel)
         self.host_object = self.CountryModel.objects.first()
 
@@ -251,11 +252,12 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
                 ),
                 data={
                     "dataview_options_view_type": "file_browser",
+                    "folder_type": "virtual",
                     "related_fields": ["customers"],
                 },
                 query_params={
-                    "content_type": self.host_content_type.pk,
-                    "object_id": self.host_object.pk,
+                    "references__content_type": self.host_content_type.pk,
+                    "references__object_id": self.host_object.pk,
                 },
                 headers={"HX-Request": "true"},
                 expected=ExpectedResult(response_validators=[
@@ -266,8 +268,8 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
                         {"content_type_id": self.file_content_type.pk},
                     ),
                     self.contains_text('value="customers" selected'),
-                    self.contains_text(f"content_type={self.host_content_type.pk}"),
-                    self.contains_text(f"object_id={self.host_object.pk}"),
+                    self.contains_text(f"references__content_type={self.host_content_type.pk}"),
+                    self.contains_text(f"references__object_id={self.host_object.pk}"),
                 ]),
             ),
             RequestScenario(
@@ -281,6 +283,7 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
                 ),
                 data={
                     "dataview_options_view_type": "file_browser",
+                    "folder_type": "virtual",
                     "related_fields": ["customers"],
                 },
                 headers={"HX-Request": "true"},

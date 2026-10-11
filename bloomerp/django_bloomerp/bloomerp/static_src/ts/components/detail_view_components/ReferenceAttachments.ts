@@ -18,6 +18,7 @@ export default class ReferenceAttachments extends BaseComponent {
     private initialManual: ReferenceTarget[] = [];
     private input: HTMLInputElement | null = null;
     private canChange = false;
+    private pendingLabelName = "";
     private avatarFiles: File[] = [];
     private readonly referenceFields = new Set<number>();
 
@@ -100,8 +101,11 @@ export default class ReferenceAttachments extends BaseComponent {
         if (target.closest("[data-reference-upload]")) { this.closeDropdown(target); this.upload(); }
         if (target.closest("[data-reference-create-label]")) {
             const input = target.closest("[data-reference-search-panel]")?.querySelector<HTMLInputElement>("[data-reference-search]");
-            if (input?.value.trim()) { this.closeDropdown(target); void this.createLabel(input.value.trim()); }
+            if (input?.value.trim()) this.showLabelColors(input.value.trim());
         }
+        if (target.closest("[data-reference-color-back]")) this.restoreLabelSearch();
+        const color = target.closest<HTMLElement>("[data-reference-color]");
+        if (color?.dataset.referenceColor) void this.createLabel(this.pendingLabelName, color.dataset.referenceColor);
         const remove = target.closest<HTMLElement>("[data-reference-remove]");
         if (remove) { event.preventDefault(); this.remove(Number(remove.dataset.referenceRemove)); }
         if (target.closest("#object-crud-container-reset-button")) {
@@ -120,6 +124,10 @@ export default class ReferenceAttachments extends BaseComponent {
     /** Debounce target searches while retaining the existing dropdown interaction. */
     private onSearchInput = (event: Event): void => {
         const input = event.target;
+        if (input instanceof HTMLInputElement && input.hasAttribute("data-reference-color-search") && input.closest("form") === this.form) {
+            this.renderLabelColors(input.value);
+            return;
+        }
         if (!(input instanceof HTMLInputElement) || !input.dataset.referenceSearch || input.closest("form") !== this.form || !this.canChange) return;
         const kind = input.dataset.referenceSearch;
         clearTimeout(this.timers.get(kind));
@@ -154,7 +162,13 @@ export default class ReferenceAttachments extends BaseComponent {
                 const button = document.createElement("button");
                 button.type = "button";
                 button.setAttribute("role", "menuitem");
-                button.className = "w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100";
+                button.className = "w-full px-4 py-1.5 text-left text-sm text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus:bg-gray-100";
+                if (target.kind === "label") {
+                    const swatch = document.createElement("span");
+                    swatch.className = "inline-block h-3 w-3 rounded-full mr-2";
+                    swatch.style.backgroundColor = this.safeLabelColor(target.color);
+                    button.append(swatch);
+                }
                 if (target.icon) {
                     const icon = document.createElement("i");
                     icon.className = `${target.icon} mr-2`;
@@ -260,6 +274,11 @@ export default class ReferenceAttachments extends BaseComponent {
             if (entry.kind === "file") continue;
             const chip = document.createElement("span");
             chip.className = "badge badge-secondary gap-2";
+            if (entry.kind === "label") {
+                const color = this.safeLabelColor(entry.color);
+                chip.style.backgroundColor = color;
+                chip.style.color = this.labelForeground(color);
+            }
             const label = document.createElement(entry.kind === "object" && entry.url ? "a" : "span");
             label.className = "inline-flex items-center gap-2";
             if (entry.kind === "object") {
@@ -308,7 +327,7 @@ export default class ReferenceAttachments extends BaseComponent {
             if (entry.kind !== "file") continue;
             total += 1;
             const row = document.createElement("div");
-            row.className = "flex items-center gap-2 px-3 py-2 text-sm";
+            row.className = "flex items-center gap-2 px-3 py-1 text-sm transition-colors duration-150 hover:bg-gray-100";
             const link = document.createElement("a");
             link.className = "link min-w-0 flex-1 truncate";
             link.textContent = entry.label;
@@ -348,13 +367,94 @@ export default class ReferenceAttachments extends BaseComponent {
         try { this.add(await uploadReferenceFile(this.element, file, this.lifecycle.signal)); }
         catch (error) { if (!this.lifecycle.signal.aborted) window.alert(String(error)); }
     }
+    /** Limit presentation colors to the same hex contract accepted by the endpoint. */
+    private safeLabelColor(color?: string): string {
+        return color && /^#[0-9a-f]{6}$/i.test(color) ? color : "#64748b";
+    }
+    /** Choose legible text on both light and dark preset backgrounds. */
+    private labelForeground(color: string): string {
+        const value = parseInt(color.slice(1), 16);
+        const brightness = ((value >> 16) * 299 + ((value >> 8) & 255) * 587 + (value & 255) * 114) / 1000;
+        return brightness >= 150 ? "#111827" : "#ffffff";
+    }
+    /** Replace label search with a searchable preset picker before creating anything. */
+    private showLabelColors(name: string): void {
+        const panel = this.form?.querySelector<HTMLElement>("[data-reference-color-panel]");
+        if (!panel) return;
+        this.pendingLabelName = name;
+        const search = panel.parentElement?.querySelector<HTMLElement>("[data-reference-label-search]");
+        if (search) search.hidden = true;
+        panel.hidden = false;
+        panel.replaceChildren();
+        const back = document.createElement("button");
+        back.type = "button";
+        back.dataset.referenceColorBack = "";
+        back.className = "w-full px-3 py-2 text-left text-sm hover:bg-gray-100";
+        back.textContent = `${t("Back")} · ${name}`;
+        panel.append(back);
+        const input = document.createElement("input");
+        input.type = "search";
+        input.className = "input input-sm w-full";
+        input.dataset.referenceColorSearch = "";
+        input.placeholder = t("Search colors…");
+        input.setAttribute("aria-label", t("Search colors"));
+        const wrapper = document.createElement("div");
+        wrapper.className = "px-3 py-2";
+        wrapper.append(input);
+        panel.append(wrapper);
+        const results = document.createElement("div");
+        results.dataset.referenceColorResults = "";
+        results.className = "max-h-64 overflow-y-auto";
+        panel.append(results);
+        this.renderLabelColors("");
+        input.focus();
+    }
+    /** Restore the label search without creating a label when the user goes back. */
+    private restoreLabelSearch(): void {
+        const panel = this.form?.querySelector<HTMLElement>("[data-reference-color-panel]");
+        if (!panel) return;
+        panel.hidden = true;
+        const search = panel.parentElement?.querySelector<HTMLElement>("[data-reference-label-search]");
+        if (search) search.hidden = false;
+        search?.querySelector<HTMLInputElement>("[data-reference-search]")?.focus();
+    }
+    /** Filter translated presets and expose their actual background colors. */
+    private renderLabelColors(query: string): void {
+        const results = this.form?.querySelector<HTMLElement>("[data-reference-color-results]");
+        if (!results) return;
+        const presets: Array<[string, string]> = [
+            [t("Gray"), "#64748b"], [t("Red"), "#dc2626"],
+            [t("Orange"), "#ea580c"], [t("Yellow"), "#facc15"],
+            [t("Green"), "#16a34a"], [t("Teal"), "#0d9488"],
+            [t("Blue"), "#2563eb"], [t("Purple"), "#9333ea"],
+            [t("Pink"), "#db2777"],
+        ];
+        results.replaceChildren();
+        for (const [name, color] of presets) {
+            if (!`${name} ${color}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())) continue;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.setAttribute("role", "menuitem");
+            button.dataset.referenceColor = color;
+            button.className = "flex items-center gap-2 w-full px-4 py-1.5 text-left text-sm transition-colors duration-150 hover:bg-gray-100";
+            const swatch = document.createElement("span");
+            swatch.className = "h-3 w-3 rounded-full";
+            swatch.style.backgroundColor = color;
+            button.append(swatch, document.createTextNode(name));
+            results.append(button);
+        }
+        if (!results.children.length) this.showSearchStatus(results, t("No results"));
+    }
     /** Create a shared label and select it without saving the parent object. */
-    private async createLabel(name: string): Promise<void> {
-        const data = new FormData(); data.append("name", name);
+    private async createLabel(name: string, color: string): Promise<void> {
+        const data = new FormData(); data.append("name", name); data.append("color", color);
         const csrf = this.form?.querySelector<HTMLInputElement>('[name="csrfmiddlewaretoken"]')?.value ?? "";
         const response = await fetch(this.element.dataset.referenceLabelsUrl!, { method: "POST", body: data, headers: { "X-CSRFToken": csrf }, signal: this.lifecycle.signal });
         if (!response.ok) { window.alert(t("Label could not be created")); return; }
         this.add(await response.json() as ReferenceTarget);
+        const panel = this.form?.querySelector<HTMLElement>("[data-reference-color-panel]");
+        if (panel) this.closeDropdown(panel);
+        this.restoreLabelSearch();
     }
     /** Release scoped subscriptions and asynchronous menu work on HTMX replacement. */
     public override destroy(): void {

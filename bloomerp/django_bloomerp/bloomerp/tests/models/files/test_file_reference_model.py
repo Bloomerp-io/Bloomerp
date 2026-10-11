@@ -341,6 +341,8 @@ class TestFileReferenceModel(BloomerpModelTestCase):
                 ("bloomerp", "ApplicationField"),
                 ("bloomerp", "File"),
                 ("bloomerp", "FileFieldReference"),
+                ("bloomerp", "AIArtifact"),
+                ("bloomerp", "FileExtraction"),
             ):
                 editor.create_model(before.apps.get_model(app_label, model_name))
         isolated.disable_constraint_checking()
@@ -385,3 +387,52 @@ class TestFileReferenceModel(BloomerpModelTestCase):
             for operation, previous, after in reversed(states):
                 operation.database_backwards("bloomerp", editor, after, previous)
         self.assertEqual(set(isolated.introspection.table_names()), baseline_tables)
+
+    def test_retirement_schema_removes_only_legacy_tables(self) -> None:
+        """
+        Use case: The legacy models are removed from an installation with node tables.
+        Expected result: Schema operations drop legacy tables and keep both replacement tables.
+        """
+        from importlib import import_module
+        from django.db import connection
+        from django.db.backends.sqlite3.base import DatabaseWrapper
+        from django.db.migrations import RunPython
+        from django.db.migrations.loader import MigrationLoader
+        from django.test import override_settings
+
+        # 1. Reconstruct the pre-retirement schema in an isolated SQLite database.
+        with override_settings(MIGRATION_MODULES={}):
+            current = MigrationLoader(None).project_state(
+                ("bloomerp", "0086_file_nodes_and_object_references")
+            )
+        isolated = DatabaseWrapper({
+            **connection.settings_dict, "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:", "OPTIONS": {}, "AUTOCOMMIT": True,
+        }, alias="default")
+        self.addCleanup(isolated.close)
+        with isolated.schema_editor(atomic=False) as editor:
+            for app_label, name in (
+                ("contenttypes", "ContentType"), ("bloomerp", "ApplicationField"),
+                ("bloomerp", "FileFolder"), ("bloomerp", "File"),
+                ("bloomerp", "FileFieldReference"), ("bloomerp", "DocumentTemplate"),
+                ("bloomerp", "FileNode"), ("bloomerp", "FileReference"),
+            ):
+                editor.create_model(current.apps.get_model(app_label, name))
+        isolated.disable_constraint_checking()
+        # 2. Apply real retirement schema operations; source reconciliation has separate coverage.
+        migration = import_module("bloomerp.migrations.0087_retire_legacy_file_models").Migration(
+            "0087_retire_legacy_file_models", "bloomerp"
+        )
+        with isolated.schema_editor(atomic=False) as editor:
+            for operation in migration.operations:
+                if isinstance(operation, RunPython):
+                    continue
+                after = current.clone()
+                operation.state_forwards("bloomerp", after)
+                operation.database_forwards("bloomerp", editor, current, after)
+                current = after
+        # 3. Verify the retired tables and destination field have disappeared.
+        tables = set(isolated.introspection.table_names())
+        self.assertTrue({"bloomerp_file_node", "bloomerp_file_reference"}.issubset(tables))
+        self.assertFalse({"bloomerp_file", "bloomerp_file_folder", "bloomerp_file_field_reference"} & tables)
+        self.assertNotIn("save_to_folder", current.models[("bloomerp", "documenttemplate")].fields)

@@ -13,6 +13,8 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import InMemoryStorage
 from django.db import IntegrityError, connection, models, transaction
 from django.db.migrations.state import ProjectState
+from django.db.migrations.loader import MigrationLoader
+from django.test import override_settings
 from django.db.models.deletion import ProtectedError
 
 from bloomerp.models.files.file_node import FileNode
@@ -29,6 +31,32 @@ class TestFileNodeModel(BloomerpModelTestCase):
     """Validate folders, immutable bytes, placement, and reference-safe deletion."""
 
     model = FileNode
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Create retired tables solely for historical data-copy tests and drop them afterward."""
+        with override_settings(MIGRATION_MODULES={}):
+            historical = MigrationLoader(None).project_state(
+                ("bloomerp", "0086_file_nodes_and_object_references")
+            )
+        state = ProjectState.from_apps(apps)
+        for name in ("filefolder", "file", "filefieldreference"):
+            state.add_model(historical.models[("bloomerp", name)].clone())
+        cls.historical_apps = state.apps
+        cls.legacy_tables = [cls.historical_apps.get_model("bloomerp", name)
+                              for name in ("FileFolder", "File", "FileFieldReference")]
+        with connection.schema_editor() as editor:
+            for model in cls.legacy_tables:
+                editor.create_model(model)
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """Remove the historical-only source tables before the fixture database is flushed."""
+        super().tearDownClass()
+        with connection.schema_editor() as editor:
+            for model in reversed(cls.legacy_tables):
+                editor.delete_model(model)
 
     def setUp(self) -> None:
         """Keep uploaded content in an isolated in-memory storage backend."""
@@ -371,7 +399,6 @@ class TestFileNodeModel(BloomerpModelTestCase):
         self.migration = import_module(
             "bloomerp.migrations.0086_file_nodes_and_object_references"
         )
-        self.historical_apps = ProjectState.from_apps(apps).apps
         self.legacy_file_model = self.historical_apps.get_model("bloomerp", "File")
         self.enterContext(
             patch.object(
@@ -576,26 +603,28 @@ class TestFileNodeModel(BloomerpModelTestCase):
         self.assertFalse(FileNode.objects.filter(kind="FOLDER").exists())
         self.assertEqual(folders.objects.get(pk=first.pk).parent_id, second.pk)
 
-    def test_node_byte_cleanup_waits_for_commit_and_preserves_legacy_owners(self) -> None:
-        """Keep rollback and migrated storage keys safe while deleting unused new bytes."""
-        from bloomerp.models.files.file import File
-
-        node = FileNode.objects.create(name="new.txt", kind="FILE", content=ContentFile(b"new", name="new.txt"))
+    def test_node_byte_cleanup_waits_for_commit_and_preserves_shared_nodes(self) -> None:
+        """
+        Use case: Multiple file nodes share a migrated storage key.
+        Expected result: Bytes remain until the final node is deleted and committed.
+        """
+        # 1. Defer deletion until the transaction commits.
+        node = FileNode.objects.create(kind="FILE", content=ContentFile(b"new", name="new.txt"))
         key = node.content.name
         with self.captureOnCommitCallbacks(execute=True):
             node.delete()
             self.assertTrue(self.storage.exists(key))
         self.assertFalse(self.storage.exists(key))
-
-        shared = FileNode.objects.create(name="migrated.txt", kind="FILE", content=ContentFile(b"legacy", name="migrated.txt"))
-        key = shared.content.name
-        with patch.object(File._meta.get_field("file"), "storage", self.storage):
-            legacy = File.objects.create(name="legacy.txt", file=key, persisted=True)
-            with self.captureOnCommitCallbacks(execute=True):
-                shared.delete()
-            self.assertTrue(self.storage.exists(key))
-            legacy.delete()
-            self.assertFalse(self.storage.exists(key))
+        # 2. Preserve bytes still used by another node.
+        first = FileNode.objects.create(kind="FILE", content=ContentFile(b"shared", name="shared.txt"))
+        second = FileNode.objects.create(kind="FILE", content=first.content.name)
+        key = first.content.name
+        with self.captureOnCommitCallbacks(execute=True):
+            first.delete()
+        self.assertTrue(self.storage.exists(key))
+        with self.captureOnCommitCallbacks(execute=True):
+            second.delete()
+        self.assertFalse(self.storage.exists(key))
 
     def test_rolled_back_node_deletion_keeps_content(self) -> None:
         """Discard cleanup callbacks when a transaction rolls back a node deletion."""
@@ -607,3 +636,32 @@ class TestFileNodeModel(BloomerpModelTestCase):
                 transaction.set_rollback(True)
         self.assertTrue(FileNode.objects.filter(pk=identity).exists())
         self.assertTrue(self.storage.exists(key))
+
+    def test_retirement_verifies_storage_keys_and_removes_model_state(self) -> None:
+        """
+        Use case: Legacy tables are retired after their files are copied to nodes.
+        Expected result: Uncopied storage keys block retirement and old model state disappears.
+        """
+        # 1. Verify an unconverted source prevents destructive schema operations.
+        self.prepare_legacy_migration()
+        self.storage.save("legacy/retirement.txt", ContentFile(b"preserved"))
+        source = self.legacy_file_model.objects.create(
+            name="Retirement", file="legacy/retirement.txt"
+        )
+        retirement = import_module("bloomerp.migrations.0087_retire_legacy_file_models")
+        with self.assertRaisesRegex(RuntimeError, "not fully represented"):
+            retirement.verify_file_cutover(self.historical_apps, connection.schema_editor())
+        # 2. Preserve the original UUID and bytes before permitting retirement.
+        self.run_legacy_migration()
+        retirement.verify_file_cutover(self.historical_apps, connection.schema_editor())
+        self.assertEqual(FileNode.objects.get(pk=source.pk).content.read(), b"preserved")
+        # 3. Confirm both runtime and final migration state exclude all retired models.
+        with override_settings(MIGRATION_MODULES={}):
+            state = MigrationLoader(None).project_state(
+                ("bloomerp", "0087_retire_legacy_file_models")
+            )
+        for name in ("File", "FileFolder", "FileFieldReference"):
+            with self.subTest(model=name), self.assertRaises(LookupError):
+                apps.get_model("bloomerp", name)
+            with self.subTest(state=name), self.assertRaises(LookupError):
+                state.apps.get_model("bloomerp", name)

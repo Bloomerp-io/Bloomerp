@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-05 10:37+0000\n"
+"POT-Creation-Date: 2026-10-11 10:34+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -34,7 +34,7 @@ msgstr "Een rijbeleidsregel vereist precies één voorwaardengroep."
 msgid "AND"
 msgstr "EN"
 
-#: static_src/ts/components/inputs/BehaviorBuilder.ts:268
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:268 static_src/ts/utils/contextMenu.ts:156
 msgid "Actions"
 msgstr ""
 
@@ -72,16 +72,29 @@ msgstr "Alle rijen"
 msgid "Apply"
 msgstr "Toepassen"
 
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+msgid "Attachment"
+msgstr "Bijlage"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:393
+#: static_src/ts/utils/contextMenu.ts:163
+msgid "Back"
+msgstr "Terug"
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:241
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:242
 msgid "Behavior name"
 msgstr ""
 
-#: static_src/ts/components/text_editor/actions.ts:173
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+msgid "Blue"
+msgstr "Blauw"
+
+#: static_src/ts/components/text_editor/actions.ts:206
 msgid "Bullet List"
 msgstr "Opsomming"
 
-#: static_src/ts/components/text_editor/actions.ts:185
+#: static_src/ts/components/text_editor/actions.ts:218
 msgid "Checklist"
 msgstr "Checklist"
 
@@ -93,7 +106,7 @@ msgstr "Wissen"
 msgid "Close"
 msgstr "Sluiten"
 
-#: static_src/ts/components/text_editor/actions.ts:133
+#: static_src/ts/components/text_editor/actions.ts:165
 msgid "Code Block"
 msgstr "Codeblok"
 
@@ -119,6 +132,10 @@ msgstr ""
 msgid "Could not load filter options. Please try again."
 msgstr "Filteropties laden is niet gelukt. Probeer het opnieuw."
 
+#: static_src/ts/utils/contextMenu.ts:281
+msgid "Could not load results. Try searching again."
+msgstr ""
+
 #: static_src/ts/components/filters/FilterContainer.ts:91
 msgid "Could not restore the initial filters."
 msgstr "De oorspronkelijke filters herstellen is niet gelukt."
@@ -127,9 +144,21 @@ msgstr "De oorspronkelijke filters herstellen is niet gelukt."
 msgid "Could not restore the initial filters. Clear them to start again."
 msgstr "De oorspronkelijke filters herstellen is niet gelukt. Wis ze om opnieuw te beginnen."
 
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:148
+msgid "Create label"
+msgstr "Label aanmaken"
+
 #: static_src/ts/components/SelectPreference.ts:73
 msgid "Delete {preference}"
 msgstr "{preference} verwijderen"
+
+#: static_src/ts/components/inbox/EmailEditor.ts:155
+msgid "Draft attachments cannot exceed 20 MB in total."
+msgstr ""
+
+#: static_src/ts/components/inbox/EmailEditor.ts:179
+msgid "Draft saved."
+msgstr ""
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:351
 msgid "Drag row"
@@ -139,9 +168,17 @@ msgstr "Rij verslepen"
 msgid "Edit"
 msgstr "Bewerken"
 
+#: static_src/ts/components/inbox/EmailEditor.ts:304
+msgid "Email operation failed. Your edits are still here; please try again."
+msgstr ""
+
 #: static_src/ts/components/filters/ConditionEditor.ts:94
 msgid "Enter a single field key."
 msgstr "Voer één veldsleutel in."
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:136
+msgid "Enter a valid email address or remove the invalid recipient."
+msgstr ""
 
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
@@ -150,6 +187,18 @@ msgstr "Groep uitklappen"
 #: static_src/ts/components/filters/ConditionEditor.ts:64
 msgid "Field"
 msgstr "Veld"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+msgid "Field reference"
+msgstr "Veldverwijzing"
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:16
+msgid "File upload failed"
+msgstr ""
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:351
+msgid "Files"
+msgstr "Bestanden"
 
 #: static_src/ts/components/filters/RenderedFilter.ts:86
 msgid "Filter actions"
@@ -168,41 +217,55 @@ msgstr "Filternaam"
 msgid "Filter scope is missing."
 msgstr "Filterscope ontbreekt."
 
-#: static_src/ts/components/text_editor/actions.ts:219
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+msgid "Gray"
+msgstr "Grijs"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+msgid "Green"
+msgstr "Groen"
+
+#: static_src/ts/components/text_editor/actions.ts:252
 msgid "HTML"
 msgstr "HTML"
 
-#: static_src/ts/components/text_editor/actions.ts:139
+#: static_src/ts/components/text_editor/actions.ts:171
 msgid "Heading 1"
 msgstr "Kop 1"
 
-#: static_src/ts/components/text_editor/actions.ts:145
+#: static_src/ts/components/text_editor/actions.ts:177
 msgid "Heading 2"
 msgstr "Kop 2"
 
-#: static_src/ts/components/text_editor/actions.ts:151
+#: static_src/ts/components/text_editor/actions.ts:183
 msgid "Heading 3"
 msgstr "Kop 3"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:308
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:309
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:381
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:382
 msgid "Hide formatting toolbar"
 msgstr "Opmaakwerkbalk verbergen"
 
-#: static_src/ts/components/text_editor/actions.ts:157
+#: static_src/ts/components/text_editor/actions.ts:189
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Image"
 msgstr "Afbeelding"
 
-#: static_src/ts/components/PermissionsTable.ts:354
-#: static_src/ts/components/PermissionsTable.ts:405
+#: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
 msgid "Invalid row policy"
 msgstr "Ongeldig rijbeleid"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:453
+msgid "Label could not be created"
+msgstr "Label kon niet worden aangemaakt"
 
 #: static_src/ts/components/filters/SavedFilters.ts:152
 msgid "Loading saved filters…"
 msgstr "Opgeslagen filters laden…"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:194
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:146
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:194 static_src/ts/utils/contextMenu.ts:261
+#: static_src/ts/utils/contextMenu.ts:272
 msgid "Loading…"
 msgstr "Laden…"
 
@@ -214,6 +277,17 @@ msgstr "Opzoeken"
 msgid "Match conditions"
 msgstr "Voorwaarden overeen laten komen"
 
+#: static_src/ts/components/text_editor/actions.ts:196
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+msgid "Mention"
+msgstr ""
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:65
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:78
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:82
+msgid "Mention suggestions"
+msgstr ""
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
 msgstr ""
@@ -222,7 +296,7 @@ msgstr ""
 msgid "Move action up"
 msgstr ""
 
-#: static_src/ts/components/data_view_components/KanbanBoard.ts:344
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
 msgstr "Geen items"
 
@@ -234,9 +308,15 @@ msgstr "Geen overeenkomende filters."
 msgid "No objects"
 msgstr "Geen objecten"
 
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:446
 #: static_src/ts/components/widgets/ForeignFieldWidget.ts:397
 msgid "No results"
 msgstr "Geen resultaten"
+
+#: static_src/ts/utils/contextMenu.ts:202
+msgid "No results."
+msgstr ""
 
 #: static_src/ts/components/filters/RenderedFilters.ts:92
 #: static_src/ts/components/filters/RenderedFilters.ts:135
@@ -247,7 +327,7 @@ msgstr "Geen rijen"
 msgid "No saved filters yet."
 msgstr "Nog geen opgeslagen filters."
 
-#: static_src/ts/components/text_editor/actions.ts:179
+#: static_src/ts/components/text_editor/actions.ts:212
 msgid "Numbered List"
 msgstr "Genummerde lijst"
 
@@ -255,9 +335,26 @@ msgstr "Genummerde lijst"
 msgid "OR"
 msgstr "OF"
 
+#: static_src/ts/components/text_editor/actions.ts:201
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+msgid "Object"
+msgstr ""
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:158
+msgid "Objects"
+msgstr "Objecten"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+msgid "Orange"
+msgstr "Oranje"
+
 #: static_src/ts/components/PermissionsTable.ts:388
 msgid "Permission required"
 msgstr "Machtiging vereist"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:430
+msgid "Pink"
+msgstr "Roze"
 
 #: static_src/ts/components/filters/widget.ts:36
 msgid "Please check the filter value."
@@ -267,11 +364,19 @@ msgstr "Controleer de filterwaarde."
 msgid "Please select at least one permission for the row policy."
 msgstr "Selecteer ten minste één machtiging voor het rijbeleid."
 
-#: static_src/ts/components/SelectPreference.ts:36
-#: static_src/ts/components/SelectPreference.ts:73
+#: static_src/ts/components/SelectPreference.ts:36 static_src/ts/components/SelectPreference.ts:73
 msgid "Preference"
 msgstr "Voorkeur"
 
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+msgid "Purple"
+msgstr "Paars"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+msgid "Red"
+msgstr "Rood"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:315
 #: static_src/ts/components/filters/RenderedFilter.ts:94
 msgid "Remove"
 msgstr "Verwijderen"
@@ -287,6 +392,10 @@ msgstr "Voorwaarde verwijderen"
 #: static_src/ts/components/filters/FilterContainer.ts:122
 msgid "Remove group"
 msgstr "Groep verwijderen"
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:104
+msgid "Remove recipient"
+msgstr ""
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:352
 msgid "Remove row"
@@ -310,6 +419,22 @@ msgstr "Filter opslaan"
 msgid "Saved filters"
 msgstr "Opgeslagen filters"
 
+#: static_src/ts/components/inbox/EmailEditor.ts:90
+msgid "Saving draft…"
+msgstr ""
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:400
+msgid "Search colors"
+msgstr "Kleuren zoeken"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:399
+msgid "Search colors…"
+msgstr "Kleuren zoeken…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:184
+msgid "Search could not be loaded"
+msgstr "Zoekresultaten konden niet worden geladen"
+
 #: static_src/ts/components/filters/SavedFilters.ts:64
 msgid "Search filters…"
 msgstr "Filters zoeken…"
@@ -317,6 +442,26 @@ msgstr "Filters zoeken…"
 #: static_src/ts/components/filters/SavedFilters.ts:65
 msgid "Search saved filters"
 msgstr "Opgeslagen filters zoeken"
+
+#: static_src/ts/components/text_editor/utils/templatePicker.ts:32
+msgid "Search templates"
+msgstr ""
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:81
+msgid "Search unavailable"
+msgstr ""
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:234
+msgid "Searching email addresses…"
+msgstr ""
+
+#: static_src/ts/utils/contextMenu.ts:118
+msgid "Searching…"
+msgstr ""
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+msgid "Search…"
+msgstr "Zoeken…"
 
 #: static_src/ts/components/filters/SavedFilters.ts:11
 msgid "Select"
@@ -334,6 +479,10 @@ msgstr "Sleutel selecteren"
 msgid "Select lookup"
 msgstr "Zoektype selecteren"
 
+#: static_src/ts/components/inbox/EmailEditor.ts:268
+msgid "Sending email…"
+msgstr ""
+
 #: static_src/ts/components/filters/RenderedFilter.ts:96
 msgid "Set default"
 msgstr "Als standaard instellen"
@@ -342,22 +491,35 @@ msgstr "Als standaard instellen"
 msgid "Share {preference}"
 msgstr "{preference} delen"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:526
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:547
 msgid "Show All Fields"
 msgstr "Alle velden weergeven"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:525
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:546
 msgid "Show Required Only"
 msgstr "Alleen verplichte velden weergeven"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:329
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:330
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:402
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:403
 msgid "Show formatting toolbar"
 msgstr "Opmaakwerkbalk tonen"
 
-#: static_src/ts/components/text_editor/actions.ts:191
+#: static_src/ts/components/inbox/EmailRecipients.ts:52
+msgid "Suggested email addresses"
+msgstr ""
+
+#: static_src/ts/components/text_editor/actions.ts:224
 msgid "Table"
 msgstr "Tabel"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+msgid "Teal"
+msgstr "Blauwgroen"
+
+#: static_src/ts/components/text_editor/actions.ts:158
+#: static_src/ts/components/text_editor/utils/templatePicker.ts:30
+msgid "Template"
+msgstr ""
 
 #: static_src/ts/components/PermissionsTable.ts:339
 msgid "The filter editor is not ready."
@@ -379,11 +541,32 @@ msgstr "Deze editor accepteert één voorwaardengroep per regel."
 msgid "Toggle fullscreen"
 msgstr "Volledig scherm in-/uitschakelen"
 
+#: static_src/ts/components/ResizableDiv.ts:249
+msgid "Toggle side panel"
+msgstr ""
+
 #: static_src/ts/components/widgets/ForeignFieldWidget.ts:201
 msgid "Unable to load this form. Close the dialog and try again."
 msgstr "Dit formulier kan niet worden geladen. Sluit het dialoogvenster en probeer het opnieuw."
 
-#: static_src/ts/components/workspaces/WorkspaceContainer.ts:252
+#: static_src/ts/components/workspaces/WorkspaceContainer.ts:265
 msgid "Unable to load tile."
 msgstr "Tegel kan niet worden geladen."
+
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:404
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:412
+msgid "Unable to move card. Please try again."
+msgstr ""
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:164
+msgid "Upload image"
+msgstr ""
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+msgid "Yellow"
+msgstr "Geel"
+
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:402
+msgid "You do not have permission to move this card."
+msgstr ""
 

@@ -90,7 +90,7 @@ class TestFileProvenance(BaseBloomerpTestCaseWithModels):
         # 2. Verify the legacy entry point now produces the shared typed schema.
         self.assertEqual(file.metadata.document_template.id, template.pk)
         self.assertFalse(file.metadata.signature.signed)
-        self.assertTrue(file.persisted)
+        self.assertTrue(file.references.filter(object_id=str(customer.pk)).exists())
 
     def test_signing_preserves_template_provenance(self) -> None:
         """
@@ -126,4 +126,4 @@ class TestFileProvenance(BaseBloomerpTestCaseWithModels):
         self.assertEqual(signed.metadata.document_template.id, template.pk)
         self.assertEqual(signed.metadata.signature.user_id, self.admin_user.pk)
         self.assertTrue(signed.metadata.signature.signed)
-        self.assertTrue(signed.persisted)
+        self.assertTrue(signed.references.filter(object_id=str(customer.pk)).exists())

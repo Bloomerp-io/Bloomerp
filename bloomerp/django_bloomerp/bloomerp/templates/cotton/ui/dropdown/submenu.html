@@ -65,6 +65,14 @@ Parameters:
             this.panelTop = nextTop;
         }
     }"
+    x-effect="const menu = $refs.menu;
+        if (open) {
+            if (!menu.matches(':popover-open')) menu.showPopover();
+            $nextTick(() => resolvePlacement());
+        } else if (menu.matches(':popover-open')) { menu.hidePopover(); }"
+    @transitionend.window="if (open && !$refs.menu.contains($event.target)) resolvePlacement()"
+    @resize.window="if (open) resolvePlacement()"
+    @scroll.window="if (open) resolvePlacement()"
     @dropdown-close="open = false"
     @dropdown-dismiss="open = false"
     @dropdown-close.window="open = false"
@@ -103,6 +111,7 @@ Parameters:
     <div
         x-ref="menu"
         data-dropdown-panel
+        popover="manual"
         x-show="open"
         x-cloak
         x-transition:enter="transition ease-out duration-100"
@@ -112,7 +121,7 @@ Parameters:
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
         class="
-            fixed z-[100] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg
+            fixed inset-auto z-[100] m-0 p-0 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg
             {{ width|default:'w-56' }}
             {{ menu_class }}
         "

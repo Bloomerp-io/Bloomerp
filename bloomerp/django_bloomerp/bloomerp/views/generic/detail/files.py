@@ -6,8 +6,7 @@ from typing import Any, ClassVar
 from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.filters.definition import Filter, FilterCondition
-from bloomerp.models.files import File
-from bloomerp.models.files.file_node import FileNode
+from bloomerp.models.files import FileNode
 from bloomerp.router import router
 
 from .base import BaseBloomerpDetailView
@@ -19,7 +18,7 @@ from .base import BaseBloomerpDetailView
     url_name="files",
     description="Files for object for {model} model",
     route_type="detail",
-    exclude_models=[File],
+    exclude_models=[FileNode],
 )
 class BloomerpDetailFileListView(BaseBloomerpDetailView):
     """Show file nodes associated with the viewed object's content type and key."""

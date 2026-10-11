@@ -17,7 +17,7 @@ from bloomerp.agents.artifacts.model import (
 from bloomerp.agents.artifacts.selection import resolve_selection, selection_item
 from bloomerp.agents.definition import AIArtifactSearchRequest
 from bloomerp.components.agents.search_artifacts import search_artifacts
-from bloomerp.models import File
+from bloomerp.models import FileNode
 from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
 
@@ -29,11 +29,11 @@ class ModelArtifactTests(TestCase):
         """Create an unprivileged user and an initially unassigned view policy."""
         self.user = get_user_model().objects.create_user(username="model-picker-user")
         self.request = RequestFactory().get(
-            "/", {"type": "model", "q": File._meta.label}
+            "/", {"type": "model", "q": FileNode._meta.label}
         )
         self.request.user = self.user
         self.policy = PolicyManager.create_policy(
-            File,
+            FileNode,
             AccessRule(
                 row_permissions=[RowPolicyRuleContent(permissions=["view"])],
                 field_permissions={},
@@ -52,9 +52,9 @@ class ModelArtifactTests(TestCase):
                 response = search_artifacts(self.request)
                 self.assertEqual(response.status_code, 200)
                 items = json.loads(response.content)["items"]
-                self.assertEqual([item["title"] for item in items], [File._meta.label])
+                self.assertEqual([item["title"] for item in items], [FileNode._meta.label])
                 resolved = resolve_selection(items[0]["token"], self.request)
-                self.assertEqual(resolved["payload"], {"model_label": File._meta.label})
+                self.assertEqual(resolved["payload"], {"model_label": FileNode._meta.label})
 
     def test_unprivileged_and_anonymous_users_have_no_models(self) -> None:
         """Hide model metadata from users without grants and anonymous callers."""
@@ -66,7 +66,7 @@ class ModelArtifactTests(TestCase):
                 )
                 with self.assertRaises(PermissionDenied):
                     authorize_model(
-                        ModelArtifactPayload(model_label=File._meta.label), self.request
+                        ModelArtifactPayload(model_label=FileNode._meta.label), self.request
                     )
 
     def test_revoked_policy_rejects_signed_selection(self) -> None:
@@ -74,7 +74,7 @@ class ModelArtifactTests(TestCase):
         PolicyManager.assign(self.policy, self.user)
         candidate = selection_item(
             MODEL_ARTIFACT,
-            ModelArtifactPayload(model_label=File._meta.label),
+            ModelArtifactPayload(model_label=FileNode._meta.label),
             self.request,
         )
         self.policy.users.clear()
@@ -86,9 +86,9 @@ class ModelArtifactTests(TestCase):
         self.user.is_superuser = True
         page = search_models(
             self.request,
-            AIArtifactSearchRequest(query=str(File._meta.verbose_name_plural).upper()),
+            AIArtifactSearchRequest(query=str(FileNode._meta.verbose_name_plural).upper()),
         )
-        self.assertIn(File._meta.label, [item.model_label for item in page.items])
+        self.assertIn(FileNode._meta.label, [item.model_label for item in page.items])
         expected = sorted(
             content_type.model_class()._meta.label
             for content_type in ContentType.objects.all()

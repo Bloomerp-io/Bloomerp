@@ -29,10 +29,13 @@ class TestLabels(BloomerpComponentTestCase):
                 name="User creates shared label",
                 user=self.normal_user,
                 method="POST",
-                data={"name": " New "},
+                data={"name": " New ", "color": "#facc15"},
                 expected=ExpectedResult(
                     status_code=201,
-                    response_validators=self.json_key_equals("label", "New"),
+                    response_validators=[
+                        self.json_key_equals("label", "New"),
+                        self.json_key_equals("color", "#facc15"),
+                    ],
                 ),
             ),
             RequestScenario(

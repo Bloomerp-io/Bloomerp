@@ -3,7 +3,7 @@ from django.apps import apps
 from django.db.models.fields.reverse_related import ManyToOneRel
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.communication import Comment
-from bloomerp.models.files import File
+from bloomerp.models.files import FileNode
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
@@ -51,8 +51,9 @@ class ForeignRelationshipView(BaseBloomerpDetailView):
 
 
 def _iter_foreign_relationship_specs() -> list[dict[str, Any]]:
+    """Discover ordinary reverse relationships, excluding dedicated file-node and comment views."""
     relationship_specs: list[dict[str, Any]] = []
-    skip_models = {File, Comment}
+    skip_models = {FileNode, Comment}
 
     for model in apps.get_models():
         if model in skip_models:

@@ -7,7 +7,7 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
 
 from bloomerp.files.access import FileAccessManager
-from bloomerp.models import File, FileNode, FileReference, Label
+from bloomerp.models import FileNode, FileReference, Label
 from bloomerp.models.definition import get_model_config
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.router import router
@@ -26,13 +26,13 @@ from bloomerp.services.search_services import SearchManager
 @login_required
 @require_GET
 def reference_search(request: HttpRequest) -> JsonResponse:
-    """Return bounded search results after filtering target rows and display fields."""
+    """Return bounded search results after filtering targets to accessible rows."""
     kind = request.GET.get("kind", "user")
     query = request.GET.get("q", "").strip()[:100]
     items: list[dict[str, str | int]] = []
     if kind == "label":
         items = [
-            {"kind": kind, "target_id": str(label.pk), "label": label.name}
+            {"kind": kind, "target_id": str(label.pk), "label": label.name, "color": label.color}
             for label in Label.objects.filter(name__icontains=query).order_by("name")[
                 :20
             ]
@@ -49,17 +49,16 @@ def reference_search(request: HttpRequest) -> JsonResponse:
                     "image/avif",
                 ]
             )
-        files = files.order_by("name")[:100]
-        for file in files:
-            if FileAccessManager(request.user).can_read_file_node(file):
-                items.append(
-                    {
-                        "kind": kind,
-                        "target_id": str(file.pk),
-                        "label": file.name or "File",
-                        "icon" : f"fa fa-file-{file.metadata.extension}"
-                    }
-                )
+        files = FileAccessManager(request.user).get_queryset(files).order_by("name", "pk")[:20]
+        items = [
+            {
+                "kind": kind,
+                "target_id": str(file.pk),
+                "label": file.name or "File",
+                "icon": f"fa fa-file-{file.metadata.extension}",
+            }
+            for file in files
+        ]
     elif kind in {"user", "object"}:
         search = SearchManager(request.user)
         candidates = (
@@ -76,7 +75,7 @@ def reference_search(request: HttpRequest) -> JsonResponse:
         result = search.search_objects(
             query,
             models=candidates,
-            exclude_models=[File, FileNode, FileReference, get_user_model(), Label]
+            exclude_models=[FileNode, FileReference, get_user_model(), Label]
             if kind == "object"
             else None,
             per_model_limit=100,
@@ -87,7 +86,7 @@ def reference_search(request: HttpRequest) -> JsonResponse:
             model = type(obj)
             if kind == "user" and not (obj.is_staff and obj.is_active):
                 continue
-            label = reference_display(request, obj)
+            label = reference_display(obj)
             if label:
                 config = get_model_config(model)
                 items.append(

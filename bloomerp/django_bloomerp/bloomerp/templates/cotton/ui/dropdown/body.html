@@ -76,6 +76,15 @@ Parameters:
         },
     }"
     x-effect="
+        {% if fixed %}
+        const menu = $refs.menu;
+        if (open) {
+            if (!menu.matches(':popover-open')) menu.showPopover();
+            $nextTick(() => resolvePlacement());
+        } else if (menu.matches(':popover-open')) {
+            menu.hidePopover();
+        }
+        {% endif %}
         if (open) {
             wasOpen = true;
         } else if (wasOpen) {
@@ -92,6 +101,7 @@ Parameters:
     "
     @dropdown-dismiss="open = false"
     {% if fixed %}
+    @transitionend.window="if (open && !$refs.menu.contains($event.target)) resolvePlacement()"
     @resize.window="if (open) resolvePlacement()"
     @scroll.window="if (open) resolvePlacement()"
     {% endif %}
@@ -174,9 +184,10 @@ Parameters:
     <div 
         x-ref="menu"
         data-dropdown-panel
+        {% if fixed %}popover="manual"{% endif %}
         class="
             bloomerp-dropdown-menu
-            {% if fixed %}fixed z-[140]{% else %}absolute z-[90]{% endif %}
+            {% if fixed %}fixed inset-auto z-[140] m-0 p-0 overflow-visible{% else %}absolute z-[90]{% endif %}
             {% if not fixed %}
                 {% if direction == 'up' %}
                     bottom-full mb-2

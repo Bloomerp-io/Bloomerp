@@ -1,6 +1,25 @@
 """Typed, queryable metadata captured for immutable file-node content."""
 
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class DocumentTemplateFileMetadata(BaseModel):
+    """Identify the document template that generated a stored file node."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: UUID
+    name: str
+
+
+class FileSignatureMetadata(BaseModel):
+    """Record a PDF signer and the separate immutable signed output node."""
+
+    model_config = ConfigDict(extra="forbid")
+    signed: bool = False
+    user_id: int | UUID | None = None
+    signed_file_id: UUID | None = None
 
 
 class BulkUploadFileMetadata(BaseModel):
@@ -41,3 +60,6 @@ class FileNodeMetaData(BaseModel):
     )
 
     bulk_upload: BulkUploadFileMetadata | None = None
+
+    document_template: DocumentTemplateFileMetadata | None = None
+    signature: FileSignatureMetadata | None = None

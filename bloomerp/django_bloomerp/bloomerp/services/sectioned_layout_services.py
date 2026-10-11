@@ -298,7 +298,7 @@ def build_layout_field_context(
     }
 
 
-def get_available_layout_fields(*, content_type: ContentType, user, layout_kind: str) -> list[dict[str, Any]]:
+def get_available_layout_fields(*, content_type: ContentType, user: Any, layout_kind: str) -> list[dict[str, Any]]:
     """
     Returns the available fields for a particular content type
     and user.
@@ -309,7 +309,9 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
     permission_prefix = "add" if layout_kind == "create" else "view"
     permission_str = f"{permission_prefix}_{model._meta.model_name}"
 
-    fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
+    fields = ApplicationField.objects.filter(content_type=content_type).exclude(
+        field__in=["object_labels", "avatar"]
+    ).order_by("field")
     available: list[dict[str, Any]] = []
     for field in fields:
         if not permission_manager.has_field_permission(field, permission_str):

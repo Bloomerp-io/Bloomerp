@@ -2,7 +2,7 @@ import bloomerp.model_fields.code_field
 import bloomerp.model_fields.icon_field
 import bloomerp.model_fields.text_editor_field
 import bloomerp.model_fields.user_field
-import bloomerp.models.files.file
+import bloomerp.files.legacy_migrations
 import bloomerp.models.users.user_list_view_preference
 import bloomerp.models.workspaces.tile
 import django.db.models.deletion
@@ -775,7 +775,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='file',
             name='file',
-            field=models.FileField(upload_to=bloomerp.models.files.file.File.upload_to, verbose_name='File'),
+            field=models.FileField(upload_to=bloomerp.files.legacy_migrations.legacy_file_upload_to, verbose_name='File'),
         ),
         migrations.AlterField(
             model_name='file',

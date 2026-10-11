@@ -481,6 +481,7 @@ export interface AIConversation {
   datetime_created: string;
   datetime_updated: string;
   id: string;
+  object_labels: unknown;
   owner: number;
   selected_agent: string | null;
   status: string;
@@ -489,7 +490,7 @@ export interface AIConversation {
 }
 
 export type AIConversationId = string;
-export type AIConversationFieldName = "approval_rules" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "owner" | "selected_agent" | "status" | "title" | "updated_by";
+export type AIConversationFieldName = "approval_rules" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "object_labels" | "owner" | "selected_agent" | "status" | "title" | "updated_by";
 
 export interface AIConversationCreate {
   approval_rules?: unknown;
@@ -510,6 +511,7 @@ export const aiConversationsFields: Record<AIConversationFieldName, BloomerpFiel
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "owner": {"name": "owner", "title": "Owner", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
   "selected_agent": {"name": "selected_agent", "title": "Selected Agent", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "AIAgent", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "open", "label": "Open"}, {"value": "archived", "label": "Archived"}]},
@@ -533,6 +535,7 @@ export interface AIMessage {
   datetime_created: string;
   datetime_updated: string;
   id: string;
+  object_labels: unknown;
   role: string;
   run: string | null;
   schema_version: number;
@@ -542,7 +545,7 @@ export interface AIMessage {
 }
 
 export type AIMessageId = string;
-export type AIMessageFieldName = "content_blocks" | "conversation" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "role" | "run" | "schema_version" | "sequence" | "status" | "updated_by";
+export type AIMessageFieldName = "content_blocks" | "conversation" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "object_labels" | "role" | "run" | "schema_version" | "sequence" | "status" | "updated_by";
 
 export interface AIMessageCreate {
   content_blocks?: unknown;
@@ -566,6 +569,7 @@ export const aiMessagesFields: Record<AIMessageFieldName, BloomerpFieldMetadata>
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "role": {"name": "role", "title": "Role", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "user", "label": "User"}, {"value": "assistant", "label": "Assistant"}, {"value": "system", "label": "System"}]},
   "run": {"name": "run", "title": "Run", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "AIRun", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "schema_version": {"name": "schema_version", "title": "Schema Version", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": [{"value": 1, "label": "Version 1"}]},
@@ -667,7 +671,7 @@ export const applicationFieldsFields: Record<ApplicationFieldFieldName, Bloomerp
   "db_field_type": {"name": "db_field_type", "title": "DB Field Type", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "db_table": {"name": "db_table", "title": "DB Table", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "field": {"name": "field", "title": "Field", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
-  "field_type": {"name": "field_type", "title": "Field Type", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "CharField", "label": "Char Field"}, {"value": "CodeField", "label": "Code Field"}, {"value": "ChoiceField", "label": "Choice Field"}, {"value": "TextField", "label": "Text Field"}, {"value": "EmailField", "label": "Email Field"}, {"value": "URLField", "label": "URL Field"}, {"value": "AddressField", "label": "Address Field"}, {"value": "PhoneNumberField", "label": "Phone Number Field"}, {"value": "SlugField", "label": "Slug Field"}, {"value": "IPAddressField", "label": "IP Address Field"}, {"value": "GenericIPAddressField", "label": "Generic IP Address Field"}, {"value": "IconField", "label": "Icon Field"}, {"value": "CountryField", "label": "Country Field"}, {"value": "AutoField", "label": "Auto Field"}, {"value": "BigAutoField", "label": "Big Auto Field"}, {"value": "SmallAutoField", "label": "Small Auto Field"}, {"value": "IntegerField", "label": "Integer Field"}, {"value": "FloatField", "label": "Float Field"}, {"value": "DecimalField", "label": "Decimal Field"}, {"value": "PositiveIntegerField", "label": "Positive Integer Field"}, {"value": "PositiveSmallIntegerField", "label": "Positive Small Integer Field"}, {"value": "BigIntegerField", "label": "Big Integer Field"}, {"value": "SmallIntegerField", "label": "Small Integer Field"}, {"value": "BooleanField", "label": "Boolean Field"}, {"value": "NullBooleanField", "label": "Null Boolean Field"}, {"value": "DateField", "label": "Date Field"}, {"value": "WeekField", "label": "Week Field"}, {"value": "DateTimeField", "label": "DateTime Field"}, {"value": "TimeField", "label": "Time Field"}, {"value": "DurationField", "label": "Duration Field"}, {"value": "ForeignKey", "label": "Foreign Key"}, {"value": "OneToOneField", "label": "One To One Field"}, {"value": "ManyToManyField", "label": "Many To Many Field"}, {"value": "OneToManyField", "label": "One To Many Field"}, {"value": "UserField", "label": "User Field"}, {"value": "OneToOneUserField", "label": "One To One User Field"}, {"value": "GenericRelation", "label": "Generic Relation"}, {"value": "GenericForeignKey", "label": "Generic Foreign Key"}, {"value": "FilesRelationField", "label": "Files"}, {"value": "Property", "label": "Property"}, {"value": "FileField", "label": "File Field"}, {"value": "ImageField", "label": "Image Field"}, {"value": "UUIDField", "label": "UUID Field"}, {"value": "BinaryField", "label": "Binary Field"}, {"value": "JSONField", "label": "JSON Field"}, {"value": "ArrayField", "label": "Array Field"}, {"value": "HStoreField", "label": "HStore Field"}, {"value": "StatusField", "label": "Status Field"}, {"value": "BloomerpFileField", "label": "Bloomerp File Field"}]},
+  "field_type": {"name": "field_type", "title": "Field Type", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "CharField", "label": "Char Field"}, {"value": "CodeField", "label": "Code Field"}, {"value": "ChoiceField", "label": "Choice Field"}, {"value": "TextField", "label": "Text Field"}, {"value": "EmailField", "label": "Email Field"}, {"value": "URLField", "label": "URL Field"}, {"value": "AddressField", "label": "Address Field"}, {"value": "PhoneNumberField", "label": "Phone Number Field"}, {"value": "SlugField", "label": "Slug Field"}, {"value": "IPAddressField", "label": "IP Address Field"}, {"value": "GenericIPAddressField", "label": "Generic IP Address Field"}, {"value": "IconField", "label": "Icon Field"}, {"value": "CountryField", "label": "Country Field"}, {"value": "AutoField", "label": "Auto Field"}, {"value": "BigAutoField", "label": "Big Auto Field"}, {"value": "SmallAutoField", "label": "Small Auto Field"}, {"value": "IntegerField", "label": "Integer Field"}, {"value": "FloatField", "label": "Float Field"}, {"value": "DecimalField", "label": "Decimal Field"}, {"value": "PositiveIntegerField", "label": "Positive Integer Field"}, {"value": "PositiveSmallIntegerField", "label": "Positive Small Integer Field"}, {"value": "BigIntegerField", "label": "Big Integer Field"}, {"value": "SmallIntegerField", "label": "Small Integer Field"}, {"value": "BooleanField", "label": "Boolean Field"}, {"value": "NullBooleanField", "label": "Null Boolean Field"}, {"value": "DateField", "label": "Date Field"}, {"value": "WeekField", "label": "Week Field"}, {"value": "DateTimeField", "label": "DateTime Field"}, {"value": "TimeField", "label": "Time Field"}, {"value": "DurationField", "label": "Duration Field"}, {"value": "ForeignKey", "label": "Foreign Key"}, {"value": "OneToOneField", "label": "One To One Field"}, {"value": "ManyToManyField", "label": "Many To Many Field"}, {"value": "OneToManyField", "label": "One To Many Field"}, {"value": "UserField", "label": "User Field"}, {"value": "OneToOneUserField", "label": "One To One User Field"}, {"value": "GenericRelation", "label": "Generic Relation"}, {"value": "GenericForeignKey", "label": "Generic Foreign Key"}, {"value": "FilesRelationField", "label": "Files"}, {"value": "Property", "label": "Property"}, {"value": "FileField", "label": "File Field"}, {"value": "ImageField", "label": "Image Field"}, {"value": "UUIDField", "label": "UUID Field"}, {"value": "BinaryField", "label": "Binary Field"}, {"value": "JSONField", "label": "JSON Field"}, {"value": "ArrayField", "label": "Array Field"}, {"value": "HStoreField", "label": "HStore Field"}, {"value": "StatusField", "label": "Status Field"}, {"value": "BloomerpFileField", "label": "Bloomerp File Field"}, {"value": "BloomerpLabelsField", "label": "Labels"}]},
   "id": {"name": "id", "title": "ID", "fieldType": "BigAutoField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "meta": {"name": "meta", "title": "Meta", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "related_model": {"name": "related_model", "title": "Related Model", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
@@ -775,10 +779,10 @@ export interface DocumentTemplate {
   id: string;
   include_page_numbers: boolean;
   name: string;
+  object_labels: unknown;
   page_margin: number;
   page_orientation: string;
   page_size: string;
-  save_to_folder: number | null;
   style_sets: Array<string>;
   template: string;
   template_header: string | null;
@@ -786,7 +790,7 @@ export interface DocumentTemplate {
 }
 
 export type DocumentTemplateId = string;
-export type DocumentTemplateFieldName = "content_types" | "created_by" | "custom_styling" | "datetime_created" | "datetime_updated" | "footer" | "free_variables" | "id" | "include_page_numbers" | "name" | "page_margin" | "page_orientation" | "page_size" | "save_to_folder" | "style_sets" | "template" | "template_header" | "updated_by";
+export type DocumentTemplateFieldName = "content_types" | "created_by" | "custom_styling" | "datetime_created" | "datetime_updated" | "footer" | "free_variables" | "id" | "include_page_numbers" | "name" | "object_labels" | "page_margin" | "page_orientation" | "page_size" | "style_sets" | "template" | "template_header" | "updated_by";
 
 export interface DocumentTemplateCreate {
   content_types?: Array<number>;
@@ -799,7 +803,6 @@ export interface DocumentTemplateCreate {
   page_margin?: number;
   page_orientation?: string;
   page_size?: string;
-  save_to_folder?: number | null;
   style_sets?: Array<string>;
   template?: string;
   template_header?: string | null;
@@ -820,10 +823,10 @@ export const documentTemplatesFields: Record<DocumentTemplateFieldName, Bloomerp
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "include_page_numbers": {"name": "include_page_numbers", "title": "Include Page Numbers", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "page_margin": {"name": "page_margin", "title": "Page Margin", "fieldType": "FloatField", "dbFieldType": "real", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "page_orientation": {"name": "page_orientation", "title": "Page Orientation", "fieldType": "CharField", "dbFieldType": "varchar(10)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "portrait", "label": "Portrait"}, {"value": "landscape", "label": "Landscape"}]},
   "page_size": {"name": "page_size", "title": "Page Size", "fieldType": "CharField", "dbFieldType": "varchar(10)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "A4", "label": "A4"}, {"value": "Letter", "label": "Letter"}, {"value": "A3", "label": "A3"}]},
-  "save_to_folder": {"name": "save_to_folder", "title": "Save To Folder", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "FileFolder", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "style_sets": {"name": "style_sets", "title": "Style Sets", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "DocumentTemplateStyling", "editable": true, "requiredOnCreate": false, "tsType": "Array<string>", "choices": null},
   "template": {"name": "template", "title": "Template", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "template_header": {"name": "template_header", "title": "Template Header", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "DocumentTemplateHeader", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
@@ -851,11 +854,12 @@ export interface DocumentTemplateHeader {
   margin_right: number;
   margin_top: number;
   name: string;
+  object_labels: unknown;
   updated_by: number | null;
 }
 
 export type DocumentTemplateHeaderId = string;
-export type DocumentTemplateHeaderFieldName = "created_by" | "datetime_created" | "datetime_updated" | "header" | "height" | "id" | "margin_bottom" | "margin_left" | "margin_right" | "margin_top" | "name" | "updated_by";
+export type DocumentTemplateHeaderFieldName = "created_by" | "datetime_created" | "datetime_updated" | "header" | "height" | "id" | "margin_bottom" | "margin_left" | "margin_right" | "margin_top" | "name" | "object_labels" | "updated_by";
 
 export interface DocumentTemplateHeaderCreate {
   created_by?: number | null;
@@ -884,6 +888,7 @@ export const documentTemplateHeadersFields: Record<DocumentTemplateHeaderFieldNa
   "margin_right": {"name": "margin_right", "title": "Margin Right", "fieldType": "FloatField", "dbFieldType": "real", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "margin_top": {"name": "margin_top", "title": "Margin Top", "fieldType": "FloatField", "dbFieldType": "real", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
@@ -902,12 +907,13 @@ export interface DocumentTemplateStyling {
   datetime_updated: string;
   id: string;
   name: string;
+  object_labels: unknown;
   styling: string;
   updated_by: number | null;
 }
 
 export type DocumentTemplateStylingId = string;
-export type DocumentTemplateStylingFieldName = "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "styling" | "updated_by";
+export type DocumentTemplateStylingFieldName = "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "object_labels" | "styling" | "updated_by";
 
 export interface DocumentTemplateStylingCreate {
   created_by?: number | null;
@@ -925,6 +931,7 @@ export const documentTemplateStylingsFields: Record<DocumentTemplateStylingField
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "styling": {"name": "styling", "title": "Styling", "fieldType": "CodeField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
@@ -947,13 +954,14 @@ export interface EmailDraft {
   email_account: string | null;
   id: string;
   object_id: string;
+  object_labels: unknown;
   payload: unknown;
   updated_by: number | null;
   user: number;
 }
 
 export type EmailDraftId = string;
-export type EmailDraftFieldName = "avatar" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "email_account" | "id" | "object_id" | "payload" | "updated_by" | "user";
+export type EmailDraftFieldName = "avatar" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "email_account" | "id" | "object_id" | "object_labels" | "payload" | "updated_by" | "user";
 
 export interface EmailDraftCreate {
   avatar?: string | null;
@@ -978,6 +986,7 @@ export const emailDraftsFields: Record<EmailDraftFieldName, BloomerpFieldMetadat
   "email_account": {"name": "email_account", "title": "Email Account", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "EmailAccount", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "object_id": {"name": "object_id", "title": "Object Id", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "payload": {"name": "payload", "title": "Payload", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
@@ -1027,115 +1036,109 @@ export class FieldPolicyApi extends ModelApi<FieldPolicy, FieldPolicyId, FieldPo
   }
 }
 
-export interface File {
-  content_type: number | null;
+export interface FileNode {
+  content: string | null;
   created_by: number | null;
   datetime_created: string;
   datetime_updated: string;
-  file: string;
-  folder: number | null;
   id: string;
+  kind: string;
   meta: unknown;
-  name: string | null;
-  object_id: string | null;
-  persisted: boolean;
+  name: string;
+  object_labels: unknown;
+  parent: string | null;
   updated_by: number | null;
 }
 
-export type FileId = string;
-export type FileFieldName = "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "file" | "folder" | "id" | "meta" | "name" | "object_id" | "persisted" | "updated_by";
+export type FileNodeId = string;
+export type FileNodeFieldName = "content" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "kind" | "meta" | "name" | "object_labels" | "parent" | "updated_by";
 
-export interface FileCreate {
-  content_type?: number | null;
+export interface FileNodeCreate {
+  content?: string | null;
   created_by?: number | null;
-  file: string;
-  folder?: number | null;
+  kind: string;
   meta?: unknown;
-  name?: string | null;
-  object_id?: string | null;
-  persisted?: boolean;
+  name: string;
+  parent?: string | null;
   updated_by?: number | null;
 }
 
-export type FileUpdate = Partial<FileCreate>;
-export type FileQuery = Partial<Record<FileFieldName | `${FileFieldName}__${string}`, QueryValue | QueryValue[]>>;
+export type FileNodeUpdate = Partial<FileNodeCreate>;
+export type FileNodeQuery = Partial<Record<FileNodeFieldName | `${FileNodeFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
-export const filesFields: Record<FileFieldName, BloomerpFieldMetadata> = {
-  "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+export const fileNodesFields: Record<FileNodeFieldName, BloomerpFieldMetadata> = {
+  "content": {"name": "content", "title": "Content", "fieldType": "FileField", "dbFieldType": "varchar(255)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "file": {"name": "file", "title": "File", "fieldType": "FileField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
-  "folder": {"name": "folder", "title": "Folder", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "FileFolder", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "meta": {"name": "meta", "title": "Meta", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
-  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
-  "object_id": {"name": "object_id", "title": "Object ID", "fieldType": "CharField", "dbFieldType": "varchar(36)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
-  "persisted": {"name": "persisted", "title": "Persisted", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "kind": {"name": "kind", "title": "Kind", "fieldType": "CharField", "dbFieldType": "varchar(9)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "FILE", "label": "File"}, {"value": "FOLDER", "label": "Folder"}]},
+  "meta": {"name": "meta", "title": "Meta", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "parent": {"name": "parent", "title": "Parent", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "FileNode", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const filesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
-export const filesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+export const fileNodesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const fileNodesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
-export class FileApi extends ModelApi<File, FileId, FileCreate, FileUpdate, FileQuery, FileFieldName> {
+export class FileNodeApi extends ModelApi<FileNode, FileNodeId, FileNodeCreate, FileNodeUpdate, FileNodeQuery, FileNodeFieldName> {
   constructor(client: BloomerpHttpClient) {
-    super(client, "/api/files/");
+    super(client, "/api/file_nodes/");
   }
 }
 
-export interface FileFolder {
-  content_type: number | null;
+export interface FileReference {
+  application_field: number | null;
+  content_type: number;
   created_by: number | null;
   datetime_created: string;
   datetime_updated: string;
-  id: number;
-  kind: string;
-  name: string;
-  object_id: string | null;
-  parent: number | null;
-  protected: boolean;
-  scope_key: string | null;
+  file: string;
+  id: string;
+  object_id: string;
+  object_labels: unknown;
+  occurrence_id: string;
   updated_by: number | null;
 }
 
-export type FileFolderId = number;
-export type FileFolderFieldName = "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "kind" | "name" | "object_id" | "parent" | "protected" | "scope_key" | "updated_by";
+export type FileReferenceId = string;
+export type FileReferenceFieldName = "application_field" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "file" | "id" | "object_id" | "object_labels" | "occurrence_id" | "updated_by";
 
-export interface FileFolderCreate {
-  content_type?: number | null;
+export interface FileReferenceCreate {
+  application_field?: number | null;
+  content_type: number;
   created_by?: number | null;
-  name: string;
-  object_id?: string | null;
-  parent?: number | null;
-  protected?: boolean;
+  file: string;
+  object_id: string;
+  occurrence_id?: string;
   updated_by?: number | null;
 }
 
-export type FileFolderUpdate = Partial<FileFolderCreate>;
-export type FileFolderQuery = Partial<Record<FileFolderFieldName | `${FileFolderFieldName}__${string}`, QueryValue | QueryValue[]>>;
+export type FileReferenceUpdate = Partial<FileReferenceCreate>;
+export type FileReferenceQuery = Partial<Record<FileReferenceFieldName | `${FileReferenceFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
-export const fileFoldersFields: Record<FileFolderFieldName, BloomerpFieldMetadata> = {
-  "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+export const fileReferencesFields: Record<FileReferenceFieldName, BloomerpFieldMetadata> = {
+  "application_field": {"name": "application_field", "title": "Application Field", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "ApplicationField", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "content_type": {"name": "content_type", "title": "Content Type", "fieldType": "ForeignKey", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": "ContentType", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "id": {"name": "id", "title": "ID", "fieldType": "BigAutoField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
-  "kind": {"name": "kind", "title": "Kind", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "module", "label": "Module"}, {"value": "model", "label": "Model"}, {"value": "object", "label": "Object"}, {"value": "manual", "label": "Manual"}]},
-  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
-  "object_id": {"name": "object_id", "title": "Object ID", "fieldType": "CharField", "dbFieldType": "varchar(36)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
-  "parent": {"name": "parent", "title": "Parent", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "FileFolder", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "protected": {"name": "protected", "title": "Protected", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
-  "scope_key": {"name": "scope_key", "title": "Scope key", "fieldType": "CharField", "dbFieldType": "varchar(512)", "nullable": true, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "file": {"name": "file", "title": "File", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "FileNode", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_id": {"name": "object_id", "title": "Object Id", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "occurrence_id": {"name": "occurrence_id", "title": "Occurrence Id", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const fileFoldersCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
-export const fileFoldersPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+export const fileReferencesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const fileReferencesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
-export class FileFolderApi extends ModelApi<FileFolder, FileFolderId, FileFolderCreate, FileFolderUpdate, FileFolderQuery, FileFolderFieldName> {
+export class FileReferenceApi extends ModelApi<FileReference, FileReferenceId, FileReferenceCreate, FileReferenceUpdate, FileReferenceQuery, FileReferenceFieldName> {
   constructor(client: BloomerpHttpClient) {
-    super(client, "/api/file_folders/");
+    super(client, "/api/file_references/");
   }
 }
 
@@ -1153,6 +1156,7 @@ export interface Form {
   max_submissions: number;
   max_submissions_per_ip: number;
   name: string;
+  object_labels: unknown;
   opens_at: string;
   public_embed_enabled: boolean;
   requires_authentication: boolean;
@@ -1162,7 +1166,7 @@ export interface Form {
 }
 
 export type FormId = string;
-export type FormFieldName = "avatar" | "closes_at" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "initial_payload" | "layout" | "max_submissions" | "max_submissions_per_ip" | "name" | "opens_at" | "public_embed_enabled" | "requires_authentication" | "requires_review" | "success_text" | "updated_by";
+export type FormFieldName = "avatar" | "closes_at" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "initial_payload" | "layout" | "max_submissions" | "max_submissions_per_ip" | "name" | "object_labels" | "opens_at" | "public_embed_enabled" | "requires_authentication" | "requires_review" | "success_text" | "updated_by";
 
 export interface FormCreate {
   avatar?: string | null;
@@ -1200,6 +1204,7 @@ export const formsFields: Record<FormFieldName, BloomerpFieldMetadata> = {
   "max_submissions": {"name": "max_submissions", "title": "Max Submissions", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "max_submissions_per_ip": {"name": "max_submissions_per_ip", "title": "Max Submissions Per IP", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "opens_at": {"name": "opens_at", "title": "Opens At", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "public_embed_enabled": {"name": "public_embed_enabled", "title": "Public Embed Enabled", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "requires_authentication": {"name": "requires_authentication", "title": "Requires Authentication", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
@@ -1225,12 +1230,13 @@ export interface FormSubmission {
   form: string | null;
   id: string;
   ip_address: unknown;
+  object_labels: unknown;
   persisted: boolean;
   updated_by: number | null;
 }
 
 export type FormSubmissionId = string;
-export type FormSubmissionFieldName = "created_by" | "data" | "datetime_created" | "datetime_updated" | "form" | "id" | "ip_address" | "persisted" | "updated_by";
+export type FormSubmissionFieldName = "created_by" | "data" | "datetime_created" | "datetime_updated" | "form" | "id" | "ip_address" | "object_labels" | "persisted" | "updated_by";
 
 export interface FormSubmissionCreate {
   created_by?: number | null;
@@ -1251,6 +1257,7 @@ export const formSubmissionsFields: Record<FormSubmissionFieldName, BloomerpFiel
   "form": {"name": "form", "title": "Form", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "Form", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "ip_address": {"name": "ip_address", "title": "IP Address", "fieldType": "IPAddressField", "dbFieldType": "char(39)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "persisted": {"name": "persisted", "title": "Persisted", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
@@ -1318,13 +1325,14 @@ export interface InboxFolder {
   datetime_updated: string;
   id: string;
   inbox: number;
+  object_labels: unknown;
   related_object_id: string | null;
   type: string;
   updated_by: number | null;
 }
 
 export type InboxFolderId = string;
-export type InboxFolderFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "inbox" | "related_object_id" | "type" | "updated_by";
+export type InboxFolderFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "inbox" | "object_labels" | "related_object_id" | "type" | "updated_by";
 
 export interface InboxFolderCreate {
   avatar?: string | null;
@@ -1345,6 +1353,7 @@ export const inboxFoldersFields: Record<InboxFolderFieldName, BloomerpFieldMetad
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "inbox": {"name": "inbox", "title": "Inbox", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "Inbox", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "related_object_id": {"name": "related_object_id", "title": "Related Object ID", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "type": {"name": "type", "title": "Type", "fieldType": "CharField", "dbFieldType": "varchar(50)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "all", "label": "All"}, {"value": "in_app_notifications", "label": "Notifications"}, {"value": "email", "label": "Emails"}]},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
@@ -1370,6 +1379,7 @@ export interface InboxItem {
   id: string;
   is_read: boolean;
   item_type: string;
+  object_labels: unknown;
   raw_meta_data: unknown;
   related_item_id: string | null;
   snippet: string | null;
@@ -1378,7 +1388,7 @@ export interface InboxItem {
 }
 
 export type InboxItemId = string;
-export type InboxItemFieldName = "actor" | "avatar" | "created_by" | "datetime_created" | "datetime_received" | "datetime_updated" | "folder" | "id" | "is_read" | "item_type" | "raw_meta_data" | "related_item_id" | "snippet" | "title" | "updated_by";
+export type InboxItemFieldName = "actor" | "avatar" | "created_by" | "datetime_created" | "datetime_received" | "datetime_updated" | "folder" | "id" | "is_read" | "item_type" | "object_labels" | "raw_meta_data" | "related_item_id" | "snippet" | "title" | "updated_by";
 
 export interface InboxItemCreate {
   actor?: string | null;
@@ -1408,6 +1418,7 @@ export const inboxItemsFields: Record<InboxItemFieldName, BloomerpFieldMetadata>
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "is_read": {"name": "is_read", "title": "Is Read", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "item_type": {"name": "item_type", "title": "Item Type", "fieldType": "CharField", "dbFieldType": "varchar(50)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "notification", "label": "Notification"}, {"value": "email", "label": "Email"}]},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "raw_meta_data": {"name": "raw_meta_data", "title": "Raw Meta Data", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "related_item_id": {"name": "related_item_id", "title": "Related Item ID", "fieldType": "CharField", "dbFieldType": "varchar(1000)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "snippet": {"name": "snippet", "title": "Snippet", "fieldType": "TextField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
@@ -1433,6 +1444,7 @@ export interface Initiative {
   id: string;
   labels: Array<string>;
   name: string;
+  object_labels: unknown;
   owner: number | null;
   parent: string | null;
   start_date: string;
@@ -1442,7 +1454,7 @@ export interface Initiative {
 }
 
 export type InitiativeId = string;
-export type InitiativeFieldName = "completed_at" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "labels" | "name" | "owner" | "parent" | "start_date" | "status" | "target_date" | "updated_by";
+export type InitiativeFieldName = "completed_at" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "labels" | "name" | "object_labels" | "owner" | "parent" | "start_date" | "status" | "target_date" | "updated_by";
 
 export interface InitiativeCreate {
   created_by?: number | null;
@@ -1469,6 +1481,7 @@ export const initiativesFields: Record<InitiativeFieldName, BloomerpFieldMetadat
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "labels": {"name": "labels", "title": "Labels", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "TodoLabel", "editable": true, "requiredOnCreate": false, "tsType": "Array<string>", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "owner": {"name": "owner", "title": "Owner", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "parent": {"name": "parent", "title": "Parent Initiative", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "Initiative", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "start_date": {"name": "start_date", "title": "Start Date", "fieldType": "DateField", "dbFieldType": "date", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
@@ -1748,12 +1761,13 @@ export interface SavedFilter {
   id: string;
   identifier: string;
   name: string;
+  object_labels: unknown;
   scope: string;
   updated_by: number | null;
 }
 
 export type SavedFilterId = string;
-export type SavedFilterFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "filters" | "id" | "identifier" | "name" | "scope" | "updated_by";
+export type SavedFilterFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "filters" | "id" | "identifier" | "name" | "object_labels" | "scope" | "updated_by";
 
 export interface SavedFilterCreate {
   avatar?: string | null;
@@ -1777,6 +1791,7 @@ export const savedFiltersFields: Record<SavedFilterFieldName, BloomerpFieldMetad
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "identifier": {"name": "identifier", "title": "Identifier", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "scope": {"name": "scope", "title": "Scope", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "model", "label": "Model"}, {"value": "workspace", "label": "Workspace"}]},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
@@ -1894,12 +1909,13 @@ export interface SqlQuery {
   datetime_updated: string;
   id: string;
   name: string;
+  object_labels: unknown;
   query: string;
   updated_by: number | null;
 }
 
 export type SqlQueryId = string;
-export type SqlQueryFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "query" | "updated_by";
+export type SqlQueryFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "object_labels" | "query" | "updated_by";
 
 export interface SqlQueryCreate {
   avatar?: string | null;
@@ -1919,6 +1935,7 @@ export const sqlQueriesFields: Record<SqlQueryFieldName, BloomerpFieldMetadata> 
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "query": {"name": "query", "title": "Query", "fieldType": "CodeField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
@@ -1942,13 +1959,14 @@ export interface Tile {
   icon: string;
   id: string;
   name: string;
+  object_labels: unknown;
   schema: unknown;
   type: string;
   updated_by: number | null;
 }
 
 export type TileId = string;
-export type TileFieldName = "auto_generated" | "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "icon" | "id" | "name" | "schema" | "type" | "updated_by";
+export type TileFieldName = "auto_generated" | "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "icon" | "id" | "name" | "object_labels" | "schema" | "type" | "updated_by";
 
 export interface TileCreate {
   avatar?: string | null;
@@ -1974,6 +1992,7 @@ export const tilesFields: Record<TileFieldName, BloomerpFieldMetadata> = {
   "icon": {"name": "icon", "title": "Icon", "fieldType": "IconField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "schema": {"name": "schema", "title": "Schema", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "unknown", "choices": null},
   "type": {"name": "type", "title": "Type", "fieldType": "CharField", "dbFieldType": "varchar(32)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "ANALYTICS_TILE", "label": "Analytics Tile"}, {"value": "CANVAS_TILE", "label": "Canvas"}, {"value": "LINKS_TILE", "label": "Links"}, {"value": "TEXT_TILE", "label": "Text"}, {"value": "DATAVIEW_TILE", "label": "Data View"}, {"value": "FORM_TILE", "label": "Form"}]},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
@@ -2001,6 +2020,7 @@ export interface Todo {
   initiative: string | null;
   labels: Array<string>;
   object_id: string | null;
+  object_labels: unknown;
   priority: string;
   requested_by: number | null;
   required_by: string;
@@ -2010,7 +2030,7 @@ export interface Todo {
 }
 
 export type TodoId = string;
-export type TodoFieldName = "assigned_to" | "content" | "content_type" | "created_by" | "datetime_completed" | "datetime_created" | "datetime_updated" | "effort" | "id" | "initiative" | "labels" | "object_id" | "priority" | "requested_by" | "required_by" | "status" | "title" | "updated_by";
+export type TodoFieldName = "assigned_to" | "content" | "content_type" | "created_by" | "datetime_completed" | "datetime_created" | "datetime_updated" | "effort" | "id" | "initiative" | "labels" | "object_id" | "object_labels" | "priority" | "requested_by" | "required_by" | "status" | "title" | "updated_by";
 
 export interface TodoCreate {
   assigned_to?: number | null;
@@ -2045,6 +2065,7 @@ export const todosFields: Record<TodoFieldName, BloomerpFieldMetadata> = {
   "initiative": {"name": "initiative", "title": "Initiative", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "Initiative", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "labels": {"name": "labels", "title": "Labels", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "TodoLabel", "editable": true, "requiredOnCreate": false, "tsType": "Array<string>", "choices": null},
   "object_id": {"name": "object_id", "title": "Object ID", "fieldType": "CharField", "dbFieldType": "varchar(36)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "priority": {"name": "priority", "title": "Priority", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "urgent", "label": "Urgent"}, {"value": "high", "label": "High"}, {"value": "medium", "label": "Medium"}, {"value": "low", "label": "Low"}]},
   "requested_by": {"name": "requested_by", "title": "Requested By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "required_by": {"name": "required_by", "title": "Required By", "fieldType": "DateField", "dbFieldType": "date", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
@@ -2069,11 +2090,12 @@ export interface TodoLabel {
   datetime_updated: string;
   id: string;
   name: string;
+  object_labels: unknown;
   updated_by: number | null;
 }
 
 export type TodoLabelId = string;
-export type TodoLabelFieldName = "color" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "updated_by";
+export type TodoLabelFieldName = "color" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "object_labels" | "updated_by";
 
 export interface TodoLabelCreate {
   color: string;
@@ -2092,6 +2114,7 @@ export const todoLabelsFields: Record<TodoLabelFieldName, BloomerpFieldMetadata>
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
@@ -2237,13 +2260,14 @@ export interface UserInboxPreference {
   datetime_created: string;
   datetime_updated: string;
   id: string;
+  object_labels: unknown;
   selected_inbox_folder: string | null;
   updated_by: number | null;
   user: number;
 }
 
 export type UserInboxPreferenceId = string;
-export type UserInboxPreferenceFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "selected_inbox_folder" | "updated_by" | "user";
+export type UserInboxPreferenceFieldName = "avatar" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "object_labels" | "selected_inbox_folder" | "updated_by" | "user";
 
 export interface UserInboxPreferenceCreate {
   avatar?: string | null;
@@ -2262,6 +2286,7 @@ export const userInboxPreferencesFields: Record<UserInboxPreferenceFieldName, Bl
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "selected_inbox_folder": {"name": "selected_inbox_folder", "title": "Selected Inbox Folder", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "InboxFolder", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "OneToOneField", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
@@ -2756,17 +2781,17 @@ export class BloomerpSdk {
         publicAccess: accessControlFieldPoliciesPublicAccess,
         fields: accessControlFieldPoliciesFields,
       },
-      files: {
-        endpoint: "/api/files/",
-        capabilities: filesCapabilities,
-        publicAccess: filesPublicAccess,
-        fields: filesFields,
+      fileNodes: {
+        endpoint: "/api/file_nodes/",
+        capabilities: fileNodesCapabilities,
+        publicAccess: fileNodesPublicAccess,
+        fields: fileNodesFields,
       },
-      fileFolders: {
-        endpoint: "/api/file_folders/",
-        capabilities: fileFoldersCapabilities,
-        publicAccess: fileFoldersPublicAccess,
-        fields: fileFoldersFields,
+      fileReferences: {
+        endpoint: "/api/file_references/",
+        capabilities: fileReferencesCapabilities,
+        publicAccess: fileReferencesPublicAccess,
+        fields: fileReferencesFields,
       },
       forms: {
         endpoint: "/api/forms/",
@@ -2961,8 +2986,8 @@ export class BloomerpSdk {
   public readonly documentTemplateStylings: DocumentTemplateStylingApi;
   public readonly emailDrafts: EmailDraftApi;
   public readonly accessControlFieldPolicies: FieldPolicyApi;
-  public readonly files: FileApi;
-  public readonly fileFolders: FileFolderApi;
+  public readonly fileNodes: FileNodeApi;
+  public readonly fileReferences: FileReferenceApi;
   public readonly forms: FormApi;
   public readonly formSubmissions: FormSubmissionApi;
   public readonly inboxes: InboxApi;
@@ -3008,8 +3033,8 @@ export class BloomerpSdk {
     this.documentTemplateStylings = new DocumentTemplateStylingApi(this.client);
     this.emailDrafts = new EmailDraftApi(this.client);
     this.accessControlFieldPolicies = new FieldPolicyApi(this.client);
-    this.files = new FileApi(this.client);
-    this.fileFolders = new FileFolderApi(this.client);
+    this.fileNodes = new FileNodeApi(this.client);
+    this.fileReferences = new FileReferenceApi(this.client);
     this.forms = new FormApi(this.client);
     this.formSubmissions = new FormSubmissionApi(this.client);
     this.inboxes = new InboxApi(this.client);

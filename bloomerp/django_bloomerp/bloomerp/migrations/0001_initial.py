@@ -4,7 +4,7 @@ import bloomerp.model_fields.code_field
 import bloomerp.model_fields.icon_field
 import bloomerp.model_fields.text_editor_field
 import bloomerp.model_fields.user_field
-import bloomerp.models.files.file
+import bloomerp.files.legacy_migrations
 import bloomerp.models.users.user_list_view_preference
 import bloomerp.models.workspaces.tile
 import django.contrib.auth.models
@@ -264,7 +264,7 @@ class Migration(migrations.Migration):
                 ('datetime_created', models.DateTimeField(auto_now_add=True)),
                 ('datetime_updated', models.DateTimeField(auto_now=True)),
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file', models.FileField(upload_to=bloomerp.models.files.file.File.upload_to)),
+                ('file', models.FileField(upload_to=bloomerp.files.legacy_migrations.legacy_file_upload_to)),
                 ('name', models.CharField(blank=True, max_length=100, null=True)),
                 ('object_id', models.CharField(blank=True, max_length=36, null=True)),
                 ('persisted', models.BooleanField(default=False)),
