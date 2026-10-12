@@ -138,10 +138,11 @@ def _get_item_config(layout_object: ContentLayoutModelMixin, application_field: 
 
 
 def _save_item_config(layout_object: ContentLayoutModelMixin, application_field: ApplicationField, config: dict) -> None:
+    """Update an existing layout item without implicitly adding absent fields."""
     layout = layout_object.layout_obj
     item = _find_layout_item(layout, application_field)
     if item is None:
-        return
+        raise ValueError("Save the field in the layout before configuring it.")
     item.config = config
     layout_object.layout = layout.model_dump()
     layout_object.save(update_fields=["layout"])
@@ -219,6 +220,11 @@ def field_display_options(request: HttpRequest, application_field_id: int) -> Ht
         return HttpResponse("Missing layout object", status=400)
     if not _user_can_configure_field(request, target, application_field):
         return HttpResponse("Permission denied", status=403)
+
+    if _find_layout_item(target.layout_object.layout_obj, application_field) is None:
+        return HttpResponse(
+            "Save the field in the layout before configuring it.", status=409
+        )
 
     field_type = application_field.get_field_type()
     if not field_type.get_display_options(application_field):
