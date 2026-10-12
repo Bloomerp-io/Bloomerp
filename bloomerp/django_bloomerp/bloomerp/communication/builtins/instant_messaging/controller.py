@@ -80,6 +80,14 @@ class IMController:
         )
         if recipient is None:
             raise PermissionDenied
+        # Lock both users in the same order for either direction of the pair.
+        # These rows exist even when the first direct conversation does not.
+        list(
+            user_model.objects.select_for_update()
+            .filter(pk__in=[self.user.pk, recipient.pk])
+            .order_by("pk")
+            .values_list("pk", flat=True)
+        )
         conversations = (
             IMConversation.objects.filter(connection__isnull=True, kind="direct")
             .annotate(member_count=Count("participants"))
