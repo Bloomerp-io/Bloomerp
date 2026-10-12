@@ -1,0 +1,6 @@
+{% load i18n crispy_forms_tags %}
+<div class="space-y-4">
+    <p>{{ provider_label }}</p>
+    <p class="text-sm text-gray-500">{% translate 'Save the account configuration, then validate and synchronize its numbers. Browser calling also requires a Voice API key and a TwiML application.' %}</p>
+    {{ form|crispy }}
+</div>

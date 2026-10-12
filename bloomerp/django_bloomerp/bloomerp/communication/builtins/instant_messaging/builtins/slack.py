@@ -85,7 +85,29 @@ class SlackAdapter(BaseIMAdapter):
         raise IMAdapterNotReady("Slack webhook verification is not implemented yet.")
 
 
+from ..definition import IMSelectionStep
+from django.utils.translation import gettext_lazy as _
+
 SLACK_IM_PROVIDER = IMProviderDefinition(
+    selection_steps=(
+        IMSelectionStep(
+            "connection_id",
+            _("Connection"),
+            "bloomerp.communication.builtins.instant_messaging.selection.configured_connections",
+        ),
+        IMSelectionStep(
+            "endpoint_id",
+            _("Sending endpoint"),
+            "bloomerp.communication.builtins.instant_messaging.selection.configured_endpoints",
+        ),
+        IMSelectionStep(
+            "recipient_id",
+            _("Recipient"),
+            "bloomerp.communication.builtins.instant_messaging.selection.external_recipients",
+            searchable=True,
+        ),
+    ),
+    start_handler="bloomerp.communication.builtins.instant_messaging.selection.start_external",
     key="slack",
     config_schema=SlackConnectionConfiguration,
     display_name="Slack",

@@ -89,7 +89,9 @@ class IMController:
             .values_list("pk", flat=True)
         )
         conversations = (
-            IMConversation.objects.filter(connection__isnull=True, kind="direct")
+            IMConversation.objects.filter(
+                provider_key="internal", connection__isnull=True, kind="direct"
+            )
             .annotate(member_count=Count("participants"))
             .filter(member_count=2)
         )
@@ -263,7 +265,6 @@ class IMController:
                 "IM group notification failed for %s", conversation_id
             )
 
-    @transaction.atomic
     def send_message(
         self,
         conversation_id: UUID,
@@ -279,16 +280,53 @@ class IMController:
         chat = (
             IMAccessManager(self.user)
             .get_conversations()
-            .select_for_update()
             .filter(pk=conversation_id)
             .first()
         )
         if chat is None:
             raise PermissionDenied
-        if chat.connection_id:
+        from .registry import IM_PROVIDER_REGISTRY
+        from django.utils.module_loading import import_string
+
+        provider = IM_PROVIDER_REGISTRY.get(chat.provider_key)
+        if provider and provider.send_handler:
+            return import_string(provider.send_handler)(
+                self.user,
+                conversation_id,
+                html,
+                client_id,
+                reply_to_id=reply_to_id,
+                thread_root_id=thread_root_id,
+            )
+        if chat.provider_key != "internal":
             raise ValidationError(
                 "Sending through this external provider is not available yet."
             )
+        return self._send_native_message(
+            conversation_id,
+            html,
+            client_id,
+            reply_to_id=reply_to_id,
+            thread_root_id=thread_root_id,
+        )
+
+    @transaction.atomic
+    def _send_native_message(
+        self,
+        conversation_id: UUID,
+        html: str,
+        client_id: str,
+        *,
+        reply_to_id: str | None = None,
+        thread_root_id: str | None = None,
+    ) -> IMMessage:
+        """Serialize native message allocation and publish only after persistence commits."""
+        chat = (
+            IMAccessManager(self.user)
+            .get_conversations()
+            .select_for_update()
+            .get(pk=conversation_id)
+        )
         if chat.status == "archived":
             raise ValidationError("This conversation is archived.")
         member = chat.participants.get(user=self.user, left_at__isnull=True)
@@ -326,7 +364,8 @@ class IMController:
         transaction.on_commit(partial(self.notify_message, message.pk))
         return message
 
-    def notify_message(self, message_id: UUID) -> None:
+    @staticmethod
+    def notify_message(message_id: UUID) -> None:
         """Publish committed-message invalidation without turning notification errors into failed sends."""
         message = IMMessage.objects.select_related("conversation", "sender").get(
             pk=message_id
@@ -340,10 +379,13 @@ class IMController:
                 "IM inbox update failed for %s", message.pk
             )
         recipients = tuple(
-            str(pk)
-            for pk in message.conversation.participants.filter(
+            str(member.user_id)
+            for member in message.conversation.participants.filter(
                 left_at__isnull=True, user__is_active=True
-            ).values_list("user_id", flat=True)
+            ).select_related("user")
+            if IMAccessManager(member.user).has_access_to_conversation(
+                message.conversation
+            )
         )
         adapter = IM_PROVIDER_REGISTRY.get("internal").create_adapter(
             IMConnectionContext(None, "internal")
@@ -379,7 +421,7 @@ class IMController:
         )
         if chat is None:
             raise PermissionDenied
-        if chat.connection_id or chat.status == "archived":
+        if chat.provider_key != "internal" or chat.status == "archived":
             raise ValidationError("Reactions are unavailable for this conversation.")
         if emoji not in REACTION_EMOJIS:
             raise ValidationError("Choose an emoji from the reaction picker.")
@@ -402,7 +444,8 @@ class IMController:
         if changed:
             transaction.on_commit(partial(self.notify_reactions, chat.pk))
 
-    def notify_reactions(self, conversation_id: UUID) -> None:
+    @staticmethod
+    def notify_reactions(conversation_id: UUID) -> None:
         """Publish content-free reaction invalidations only after persistence commits."""
         from asgiref.sync import async_to_sync
         from channels.layers import get_channel_layer

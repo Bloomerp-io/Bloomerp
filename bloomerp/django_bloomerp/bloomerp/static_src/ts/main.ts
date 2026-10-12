@@ -1,3 +1,4 @@
+import Phone from "./components/communication/Phone";
 import Conversation from './components/communication/Conversation';
 import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
 import ArtifactPicker from './components/agent/ArtifactPicker';
@@ -207,7 +208,8 @@ loadTranslations()
     .catch((error) => console.warn('Could not load the translation catalog', error))
     .finally(() => {
         // Components may synchronously render translated frontend labels.
-        setupComponentAutoInit();
+        registerComponent("bloomerp:phone", Phone);
+setupComponentAutoInit();
         initMessagesWebsocket();
         SetupAnimationListener();
     });

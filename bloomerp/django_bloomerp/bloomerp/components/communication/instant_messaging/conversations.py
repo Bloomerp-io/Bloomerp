@@ -15,6 +15,7 @@ from bloomerp.communication.builtins.instant_messaging.presentation import (
 from bloomerp.models.communication.instant_messaging import (
     IMConversationParticipant,
     IMMessage,
+    IMConversationActivity,
 )
 from bloomerp.router import router
 
@@ -84,6 +85,30 @@ def conversations(request: HttpRequest) -> HttpResponse:
             Subquery(unread_counts), 0, output_field=BigIntegerField()
         )
     )
+    activity_read = IMConversationParticipant.objects.filter(
+        conversation_id=OuterRef("conversation_id"),
+        user=request.user,
+        left_at__isnull=True,
+    ).values("last_read_activity_at")[:1]
+    unread_activities = (
+        IMConversationActivity.objects.filter(
+            conversation__in=IMAccessManager(request.user).get_conversations()
+        )
+        .exclude(actor=request.user)
+        .annotate(read_at=Subquery(activity_read))
+        .filter(Q(read_at__isnull=True) | Q(datetime_updated__gt=F("read_at")))
+    )
+    activity_counts = (
+        unread_activities.filter(conversation_id=OuterRef("pk"))
+        .order_by()
+        .values("conversation_id")
+        .annotate(total=Count("pk"))
+        .values("total")
+    )
+    queryset = queryset.annotate(
+        unread_count=F("unread_count")
+        + Coalesce(Subquery(activity_counts), 0, output_field=BigIntegerField())
+    )
     if request.GET.get("unread"):
         queryset = queryset.filter(unread_count__gt=0)
     rows = []
@@ -93,10 +118,13 @@ def conversations(request: HttpRequest) -> HttpResponse:
                 "conversation": chat,
                 "identity": conversation_identity(chat, request.user.pk),
                 "latest": chat.messages.order_by("-sequence").first(),
+                "latest_activity": chat.activities.order_by(
+                    "-datetime_updated"
+                ).first(),
                 "unread": chat.unread_count,
             }
         )
-    unread_total = unread_messages.count()
+    unread_total = unread_messages.count() + unread_activities.count()
     response = render(
         request,
         "components/communication/instant_messaging/conversations.html",

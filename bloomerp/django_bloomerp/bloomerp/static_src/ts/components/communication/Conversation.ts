@@ -13,6 +13,7 @@ export default class Conversation extends BaseComponent {
     private reacting = false;
     private readPending = false;
     private acknowledgedMessage = '';
+    private acknowledgedActivity = '';
     private visibilityObserver: MutationObserver | null = null;
     private referencePreviewCleanup: (() => void) | null = null;
     private clientId = crypto.randomUUID();
@@ -247,18 +248,22 @@ export default class Conversation extends BaseComponent {
     private markVisibleMessagesRead = async (): Promise<void> => {
         if (this.lifecycle.signal.aborted || this.readPending) return;
         const messageId = visibleConversationReadMarker(this.element, document.visibilityState);
-        if (!messageId || messageId === this.acknowledgedMessage) return;
+        const activity = this.element.querySelector<HTMLElement>('.im-messages')?.dataset.activityToken || '';
+        const visible = document.visibilityState === 'visible' && this.element.getClientRects().length > 0;
+        if (!visible || ((!messageId || messageId === this.acknowledgedMessage) && (!activity || activity === this.acknowledgedActivity))) return;
         const token = this.element.querySelector<HTMLInputElement>('[name="csrfmiddlewaretoken"]');
         if (!token) return;
         const data = new FormData();
         data.set('csrfmiddlewaretoken', token.value);
-        data.set('message_id', messageId);
+        if (messageId) data.set('message_id', messageId);
+        if (activity) data.set('activity_token', activity);
         data.set('thread_root', this.element.dataset.threadId || '');
         this.readPending = true;
         try {
             const response = await fetch(this.element.dataset.readUrl!, { method: 'POST', body: data, signal: this.lifecycle.signal });
             if (!response.ok || !(await response.json()).ok) return;
-            this.acknowledgedMessage = messageId;
+            this.acknowledgedMessage = messageId || '';
+            this.acknowledgedActivity = activity;
             document.body.dispatchEvent(new CustomEvent('im:unread-changed', { bubbles: true }));
         } catch {
             // Keep the marker unacknowledged so the next visibility/update event retries it.

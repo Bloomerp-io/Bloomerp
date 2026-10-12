@@ -37,6 +37,9 @@ class IMConversationParticipant(IMModel):
     )
     joined_at = models.DateTimeField(default=timezone.now)
     left_at = models.DateTimeField(null=True, blank=True)
+    last_read_activity_at = models.DateTimeField(
+        _("Last activity read"), null=True, blank=True
+    )
     muted_until = models.DateTimeField(null=True, blank=True)
     last_read_message = models.ForeignKey(
         "bloomerp.IMMessage",
@@ -80,6 +83,13 @@ class IMConversationParticipant(IMModel):
         ):
             raise ValidationError(
                 {"identity": _("Identity belongs to another connection.")}
+            )
+        if (
+            self.identity_id
+            and self.identity.provider_key != self.conversation.provider_key
+        ):
+            raise ValidationError(
+                {"identity": _("Identity belongs to another provider.")}
             )
         if self.last_read_message_id:
             self.check_conversation(

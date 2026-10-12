@@ -13,10 +13,15 @@ export default class MessagingPanel extends FloatingPanel {
         this.initializeFloatingPanel(signal);
         this.element.addEventListener('click', this.onClick, { signal });
         this.element.addEventListener('im:conversation-opened', this.onConversationOpened, { signal });
+        this.element.addEventListener('im:selection-opened', this.onConversationOpened, { signal });
         this.element.addEventListener('keydown', this.onKeyDown, { signal });
+        this.element.addEventListener('voip:incoming', this.onIncomingCall, { signal });
         this.element.addEventListener('htmx:responseError', this.onError, { signal });
         this.element.addEventListener('htmx:sendError', this.onError, { signal });
     }
+
+    /** Reveal incoming-call controls even when the messaging panel was closed. */
+    private onIncomingCall = (): void => { this.open(); };
 
     /** Resolve shell markup without reaching into another component instance. */
     private find<T extends HTMLElement = HTMLElement>(selector: string): T {

@@ -10,7 +10,10 @@ from bloomerp.tests.base import (
 )
 
 
-class TestRecipientsComponent(BloomerpComponentTestCase):
+from .phone_fixtures import PhoneDirectoryFixtures
+
+
+class TestRecipientsComponent(PhoneDirectoryFixtures, BloomerpComponentTestCase):
     """Verify active staff can discover each other without user-model permissions."""
 
     view_name = "components_im_recipients"
@@ -18,7 +21,9 @@ class TestRecipientsComponent(BloomerpComponentTestCase):
     def prepare_excluded_users(self, scenario: RequestScenario) -> None:
         """Add inactive staff and non-staff accounts that must stay out of search."""
         user_model = get_user_model()
-        user_model.objects.create(username="inactive_staff", is_staff=True, is_active=False)
+        user_model.objects.create(
+            username="inactive_staff", is_staff=True, is_active=False
+        )
         user_model.objects.create(username="non_staff", is_staff=False)
 
     def prepare_non_staff_actor(self, scenario: RequestScenario) -> None:
@@ -34,6 +39,18 @@ class TestRecipientsComponent(BloomerpComponentTestCase):
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover staff eligibility, policy-independent search, validation and login."""
         return [
+            RequestScenario(
+                name="Readable phone field uses object string label",
+                user=self.normal_user,
+                prepare=self.phone_setup,
+                query_params={"recipient_query": "Phone directory contact"},
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.contains_text("Phone directory contact"),
+                        self.contains_text("+32470000003"),
+                    ]
+                ),
+            ),
             RequestScenario(
                 name="Staff directory without an internal connection",
                 user=self.admin_user,
@@ -51,7 +68,9 @@ class TestRecipientsComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(
                     response_validators=[
                         self.contains_text('value="' + str(self.admin_user.pk) + '"'),
-                        self.does_not_contain_text('value="' + str(self.normal_user.pk) + '"'),
+                        self.does_not_contain_text(
+                            'value="' + str(self.normal_user.pk) + '"'
+                        ),
                         self.does_not_contain_text("inactive_staff"),
                         self.does_not_contain_text("non_staff"),
                     ]

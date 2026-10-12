@@ -19,7 +19,10 @@ from bloomerp.tests.base import (
 )
 
 
-class TestStartConversationComponent(BloomerpComponentTestCase):
+from .phone_fixtures import PhoneDirectoryFixtures
+
+
+class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTestCase):
     """Verify authenticated creation and revalidation at the selection boundary."""
 
     view_name = "components_im_start_conversation"
@@ -126,6 +129,25 @@ class TestStartConversationComponent(BloomerpComponentTestCase):
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise creation, duplicate selection, denied access and request methods."""
         return [
+            RequestScenario(
+                name="Phone provider selects the only authorized line",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.choose_phone,
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.contains_text("Phone directory contact"),
+                        self.contains_text('data-phone-action="call"'),
+                    ]
+                ),
+            ),
+            RequestScenario(
+                name="Changed phone source must be selected again",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.choose_changed_phone,
+                expected=ExpectedResult(status_code=400),
+            ),
             RequestScenario(
                 name="Create native conversation",
                 method="POST",

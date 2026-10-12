@@ -72,13 +72,18 @@ def handle_conversation_activity(
         .order_by("-sequence")
         .first()
     )
-    if latest is None:
-        return InboxSourceExecutionResult(outcome="skipped", reason="No messages")
+    activity = chat.activities.order_by("-datetime_updated").first()
+    if latest is None and activity is None:
+        return InboxSourceExecutionResult(outcome="skipped", reason="No activity")
     deliveries = []
     for folder in folders.select_related("inbox"):
         member = chat.participants.select_related("last_read_message").get(
             user_id=folder.inbox.user_id, left_at__isnull=True
         )
+        from .access import IMAccessManager
+
+        if not IMAccessManager(member.user).has_access_to_conversation(chat):
+            continue
         unread = (
             chat.messages.filter(
                 deleted_at__isnull=True,
@@ -90,6 +95,15 @@ def handle_conversation_activity(
             .exclude(sender=member)
             .exists()
         )
+        unread_activity = chat.activities.exclude(actor=member.user)
+        if member.last_read_activity_at:
+            unread_activity = unread_activity.filter(
+                datetime_updated__gt=member.last_read_activity_at
+            )
+        unread = unread or unread_activity.exists()
+        use_activity = activity is not None and (
+            latest is None or activity.datetime_updated > latest.datetime_created
+        )
         item, _ = InboxItem.objects.update_or_create(
             folder=folder,
             item_type="instant_messaging_item",
@@ -98,13 +112,19 @@ def handle_conversation_activity(
                 "title": conversation_identity(chat, member.user_id)["displayName"][
                     :1000
                 ],
-                "actor": participant_label(latest.sender)[:255],
-                "snippet": latest.body[:500],
-                "datetime_received": latest.sent_at or latest.datetime_created,
+                "actor": "" if use_activity else participant_label(latest.sender)[:255],
+                "snippet": activity.summary if use_activity else latest.body[:500],
+                "datetime_received": activity.datetime_updated
+                if use_activity
+                else latest.sent_at or latest.datetime_created,
                 "is_read": not unread,
             },
         )
-        if notify and latest.sender.user_id != member.user_id and unread:
+        if (
+            notify
+            and unread
+            and (use_activity or latest.sender.user_id != member.user_id)
+        ):
             deliveries.append(InboxSourceDelivery(folder=folder, items=(item,)))
     return InboxSourceExecutionResult(deliveries=tuple(deliveries))
 
@@ -141,6 +161,12 @@ def sync_conversation_read(conversation_id: UUID, user_id: int) -> None:
         .exclude(sender=member)
         .exists()
     )
+    activities = member.conversation.activities.exclude(actor=user_id)
+    if member.last_read_activity_at:
+        activities = activities.filter(
+            datetime_updated__gt=member.last_read_activity_at
+        )
+    unread = unread or activities.exists()
     InboxItem.objects.filter(
         item_type="instant_messaging_item",
         related_item_id=str(conversation_id),

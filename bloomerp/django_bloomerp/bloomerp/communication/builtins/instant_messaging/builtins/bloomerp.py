@@ -101,7 +101,19 @@ class InternalIMAdapter(BaseIMAdapter):
         return IMDeliveryResult()
 
 
+from ..definition import IMSelectionStep
+from django.utils.translation import gettext_lazy as _
+
 INTERNAL_IM_PROVIDER = IMProviderDefinition(
+    selection_steps=(
+        IMSelectionStep(
+            "recipient_id",
+            _("Staff"),
+            "bloomerp.communication.builtins.instant_messaging.selection.staff_recipients",
+            searchable=True,
+        ),
+    ),
+    start_handler="bloomerp.communication.builtins.instant_messaging.selection.start_staff",
     key="internal",
     display_name="Bloomerp",
     icon="fa-solid fa-comment-dots",
