@@ -28,21 +28,22 @@ def create_group(request: HttpRequest) -> HttpResponse:
     """Render a Crispy staff picker or create the selected internal group."""
     if not request.user.is_active or not request.user.is_staff:
         raise PermissionDenied
+    user_model = get_user_model()
     form = forms.Form(request.POST if request.method == "POST" else None)
     form.fields["name"] = forms.CharField(label="Group name", max_length=255)
     form.fields["recipients"] = forms.ModelMultipleChoiceField(
         label="Participants",
-        queryset=get_user_model()
+        queryset=user_model
         .objects.filter(is_active=True, is_staff=True)
         .exclude(pk=request.user.pk)
-        .order_by("username"),
+        .order_by(user_model.USERNAME_FIELD),
         widget=ForeignFieldWidget(
-            model=get_user_model(),
+            model=user_model,
             attrs={
                 "is_m2m": True,
                 "class": "input w-full",
                 "choices_filter": json.dumps([dict_to_filter(
-                    {"is_active": True, "is_staff": True}, model=get_user_model(),
+                    {"is_active": True, "is_staff": True}, model=user_model,
                 ).model_dump(mode="json")]),
                 "aria_label": "Participants",
             },

@@ -60,10 +60,12 @@ class InternalIMAdapter(BaseIMAdapter):
             raise ValueError("Invalid recipient page.")
         users = (
             user_model.objects.filter(
-                is_active=True, is_staff=True, username__icontains=query
+                is_active=True,
+                is_staff=True,
+                **{f"{user_model.USERNAME_FIELD}__icontains": query},
             )
             .exclude(pk=actor.pk)
-            .order_by("username", "pk")
+            .order_by(user_model.USERNAME_FIELD, "pk")
         )
         page = list(users[offset : offset + limit + 1])
         return IMRecipientPage(
