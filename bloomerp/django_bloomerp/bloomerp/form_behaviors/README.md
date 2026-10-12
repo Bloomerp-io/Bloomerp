@@ -153,9 +153,25 @@ each later action sees earlier value updates. Failure returns no partial batch.
   rejects arbitrary Python calls, cross-collection references, and target
   self-reference. Deleted rows are skipped; blank numeric operands are zero.
   The write policy controls whether existing values are replaced.
+  Scalar date/datetime formulas also accept a temporal source plus or minus a
+  whole-number numeric offset: `start_date + 14` adds 14 days, while
+  `start_time + 14` adds 14 minutes. The result must match the target's temporal
+  type. A blank temporal source leaves the target unchanged. Date differences,
+  date-plus-date, temporal multiplication/division, fractional offsets, and
+  temporal collection columns are not supported; numeric collection behavior
+  is unchanged. Aware datetime offsets count elapsed minutes across DST changes.
+- `SET_RELATIVE_DATE` ("Set relative date") writes an editable scalar date from
+  today's active-timezone date, or a datetime from the current instant. Its
+  required signed integer `offset` is labeled in days or minutes according to
+  the target; zero selects today/now. It supports `always` and `if_empty`.
+- Scalar datetime behavior responses use the existing field's local widget
+  format, including its seconds-only precision. Draft calculations keep typed,
+  timezone-aware values internally. Ambiguous DST fall-back wall times are rejected
+  because the existing datetime-local widget cannot submit their UTC offset.
+  These actions do not save records.
 - Restricted formula parsing/evaluation lives in the unified `CALCULATE` action;
   reusable numeric eligibility, destination normalization, and write policies
-  live under `shared/calculate.py` and `shared/write_policy.py`.
+  live under `shared/calculate.py`, `shared/temporal.py`, and `shared/write_policy.py`.
 - `CLEAR_VALUE` targets a normal top-level field and derives its empty public
   value from the registered form-field contract. This yields the appropriate
   scalar, boolean, relation, multi-value, or collection representation while

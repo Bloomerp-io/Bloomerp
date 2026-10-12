@@ -1,8 +1,9 @@
-"""Calculate scalar fields or numeric columns using a restricted formula language."""
+"""Calculate scalar numeric/date fields or numeric columns with safe formulas."""
 
 from __future__ import annotations
 
 import ast
+from datetime import date, datetime
 from decimal import Decimal, DecimalException
 from typing import Any
 
@@ -27,6 +28,13 @@ from bloomerp.form_behaviors.shared.calculate import (
     clean_numeric_destination,
     decimal_value,
     numeric_fields,
+)
+from bloomerp.form_behaviors.shared.temporal import (
+    TemporalKind,
+    clean_temporal_value,
+    shift_temporal,
+    temporal_fields,
+    temporal_kind,
 )
 from bloomerp.form_behaviors.shared.write_policy import (
     WritePolicyField,
@@ -133,13 +141,49 @@ def _parse(
     return tree, names, columns
 
 
+def _validate_result_type(
+    node: ast.AST, temporal_operands: dict[str, ApplicationField]
+) -> TemporalKind | None:
+    """Annotate temporal nodes and reject arithmetic that is not a numeric offset."""
+    kind: TemporalKind | None = None
+    if isinstance(node, ast.Expression):
+        kind = _validate_result_type(node.body, temporal_operands)
+    elif isinstance(node, ast.Name) and node.id in temporal_operands:
+        field = temporal_operands[node.id]
+        kind = temporal_kind(field)
+        node._bloomerp_temporal_field = field
+    elif isinstance(node, ast.BinOp):
+        left = _validate_result_type(node.left, temporal_operands)
+        right = _validate_result_type(node.right, temporal_operands)
+        if left or right:
+            if not left or right or not isinstance(node.op, (ast.Add, ast.Sub)):
+                raise forms.ValidationError(
+                    "A date or datetime supports only adding or subtracting a numeric offset."
+                )
+            kind = left
+    elif isinstance(node, ast.UnaryOp):
+        if _validate_result_type(node.operand, temporal_operands):
+            raise forms.ValidationError(
+                "Unary operators cannot apply to a date or datetime."
+            )
+    elif isinstance(node, ast.Call) and _validate_result_type(
+        node.args[0], temporal_operands
+    ):
+        raise forms.ValidationError("Aggregations cannot return a date or datetime.")
+    node._bloomerp_temporal_kind = kind
+    return kind
+
+
 def _evaluate(
     node: ast.AST, values: dict[str, Any], row: dict[str, Any] | None = None
-) -> Decimal | None:
-    """Evaluate only validated arithmetic and collection operations on draft values."""
+) -> Decimal | date | datetime | None:
+    """Evaluate validated numeric formulas and whole-unit temporal offsets."""
     if isinstance(node, ast.Expression):
         return _evaluate(node.body, values, row)
     if isinstance(node, ast.Name):
+        field = getattr(node, "_bloomerp_temporal_field", None)
+        if field is not None:
+            return clean_temporal_value(field, values.get(node.id))
         return decimal_value(values.get(node.id), node.id, noun="Field")
     if isinstance(node, ast.Attribute):
         if row is None:
@@ -178,8 +222,17 @@ def _evaluate(
         return evaluated[0] if node.func.id == "first" else evaluated[-1]
     if isinstance(node, ast.UnaryOp):
         operand = _evaluate(node.operand, values, row) or Decimal(0)
-        return operand if isinstance(node.op, ast.UAdd) else -operand
+        return operand if isinstance(node.op, ast.UAdd) else operand.copy_negate()
     if isinstance(node, ast.BinOp):
+        if getattr(node, "_bloomerp_temporal_kind", None):
+            temporal = _evaluate(node.left, values, row)
+            if temporal is None:
+                return None
+            offset = _evaluate(node.right, values, row) or Decimal(0)
+            return shift_temporal(
+                temporal,
+                offset.copy_negate() if isinstance(node.op, ast.Sub) else offset,
+            )
         left = _evaluate(node.left, values, row) or Decimal(0)
         right = _evaluate(node.right, values, row) or Decimal(0)
         try:
@@ -209,7 +262,11 @@ def calculate_config_form_factory(
     if owner is None or target is None:
         raise forms.ValidationError("Select a listener and target field first.")
     row_mode = target.field_type == FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id
-    parent_numeric = numeric_fields(owner.get_model())
+    parent_operands = numeric_fields(owner.get_model())
+    if not row_mode:
+        parent_operands = parent_operands | temporal_fields(
+            ApplicationField.get_for_model(owner.get_model())
+        )
     collections = ApplicationField.get_for_model(owner.get_model()).filter(
         field_type=FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id
     )
@@ -234,7 +291,11 @@ def calculate_config_form_factory(
             )
         expression = forms.CharField(
             max_length=500,
-            help_text="Use numeric fields, collection.column, and sum/count/first/last for scalar targets.",
+            help_text=(
+                "Use numeric fields, collection.column, and sum/count/first/last. "
+                "For scalar date/datetime targets, add or subtract whole-number offsets "
+                "from a date (days) or datetime (minutes). Blank dates leave the target unchanged."
+            ),
         )
         write_policy = WritePolicyField(
             allowed=("always", "if_empty", "if_empty_or_zero"), default="always"
@@ -250,11 +311,11 @@ def calculate_config_form_factory(
                 tree, names, columns = _parse(expression, row_mode=row_mode)
                 parent_fields = {
                     field.field: field
-                    for field in parent_numeric.filter(field__in=names)
+                    for field in parent_operands.filter(field__in=names)
                 }
                 if names - parent_fields.keys():
                     raise forms.ValidationError(
-                        f"Unknown or non-numeric field: {', '.join(sorted(names - parent_fields.keys()))}."
+                        f"Unknown or unsupported calculation field: {', '.join(sorted(names - parent_fields.keys()))}."
                     )
                 if not row_mode and target.field in names:
                     raise forms.ValidationError(
@@ -298,6 +359,18 @@ def calculate_config_form_factory(
                     raise forms.ValidationError(
                         "The target column cannot reference itself."
                     )
+                result_kind = _validate_result_type(
+                    tree,
+                    {
+                        name: field
+                        for name, field in parent_fields.items()
+                        if temporal_kind(field)
+                    },
+                )
+                if result_kind != (None if row_mode else temporal_kind(target)):
+                    raise forms.ValidationError(
+                        "The expression result type must match the date or datetime target."
+                    )
                 cleaned["source_fields"] = {
                     name: BehaviorFieldReference(field=field)
                     for name, field in parent_fields.items()
@@ -338,6 +411,8 @@ def calculate(
         if not should_write_value(context.target_value, policy):
             return BehaviorResult()
         result = _evaluate(tree, dict(context.values))
+        if result is None and getattr(tree, "_bloomerp_temporal_kind", None):
+            return BehaviorResult()
         if context.target_value == result:
             return BehaviorResult()
         return BehaviorResult(
@@ -367,7 +442,10 @@ def calculate(
 CALCULATE = BehaviorActionDefinition(
     id="calculate",
     label="Calculate",
-    description="Calculate a field or a column in every collection row from a safe numeric formula.",
+    description=(
+        "Calculate numeric values or scalar date/datetime offsets "
+        "(days for dates, minutes for datetimes) from a safe formula."
+    ),
     requires_target_field=True,
     execute=calculate,
     config_form_factory=calculate_config_form_factory,
