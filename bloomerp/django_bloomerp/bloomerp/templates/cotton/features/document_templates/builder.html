@@ -1,6 +1,26 @@
 {% load i18n %}
 {% load crispy_forms_tags %}
 
+{# These editing-only defaults never enter the saved template or PDF styling. #}
+<style>
+    .document-template-builder-page {
+        background: #ffffff;
+    }
+
+    @media screen {
+        .dark .document-template-builder-page {
+            /* Match dark inputs while preserving the paper baseline for custom designs. */
+            border: 1px solid var(--color-zinc-600);
+            color: #000000;
+        }
+
+        .dark .document-template-builder-page:not([data-document-styling="true"]):not(:has([style*="color" i], [style*="background" i], img, svg, #page-header-section style)) {
+            background: var(--color-base);
+            color: var(--color-zinc-100);
+        }
+    }
+</style>
+
 {% with field_config_id=id|add:"-fields" variable_catalog_id=id|add:"-variable-catalog" template_tags_id=id|add:"-template-tags" %}
 {{ template_builder_fields|json_script:field_config_id }}
 {{ template_builder_variable_catalog|json_script:variable_catalog_id }}
@@ -25,7 +45,7 @@
                 </div>
 
                 <!--Page container-->
-                <div id="page-container" style="background:#ffffff; font-size:12pt" class="mx-auto">
+                <div id="page-container" style="font-size:12pt" class="mx-auto document-template-builder-page">
                     <!--header section-->
                     <div id="page-header-section"></div>
 
