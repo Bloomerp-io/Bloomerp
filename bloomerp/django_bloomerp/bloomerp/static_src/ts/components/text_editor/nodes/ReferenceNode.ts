@@ -5,7 +5,7 @@ type SerializedReference = Spread<{ reference: ReferenceTarget }, SerializedText
 
 /** Read an atomic inline reference from its stable HTML attributes. */
 function convertReference(element: HTMLElement): DOMConversionOutput {
-    const node = $createReferenceNode({ kind: element.dataset.referenceKind as "user" | "object", target_id: element.dataset.targetId!, content_type_id: element.dataset.targetContentTypeId ? Number(element.dataset.targetContentTypeId) : undefined, label: element.textContent ?? "", occurrence_id: element.dataset.occurrenceId });
+    const node = $createReferenceNode({ kind: element.dataset.referenceKind as "user" | "object", target_id: element.dataset.targetId!, content_type_id: element.dataset.targetContentTypeId ? Number(element.dataset.targetContentTypeId) : undefined, label: element.textContent ?? "", occurrence_id: element.dataset.occurrenceId, url: element.dataset.referenceUrl });
     return { node, forChild: discardChild };
 }
 
@@ -64,6 +64,8 @@ export class ReferenceNode extends TextNode {
         element.dataset.targetId = this.__reference.target_id;
         element.dataset.occurrenceId = this.__reference.occurrence_id!;
         if (this.__reference.content_type_id) element.dataset.targetContentTypeId = String(this.__reference.content_type_id);
+        if (this.__reference.kind === "object" && this.__reference.url) element.dataset.referenceUrl = this.__reference.url;
+        else delete element.dataset.referenceUrl;
         element.classList.add("text-primary", "font-medium");
     }
     /** Prevent users from editing only part of the reference label. */

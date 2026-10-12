@@ -1,5 +1,6 @@
 
 
+from bloomerp.communication.builtins.instant_messaging.definition import INSTANT_MESSAGING
 from bloomerp.communication.definition import (
     InboxFolderTypeDefinition,
 )
@@ -49,7 +50,7 @@ INBOX_FOLDER_REGISTRY.register(
     IN_APP_NOTIFICATIONS,
 )
 INBOX_FOLDER_REGISTRY.register("EMAIL", EMAIL)
-
+INBOX_FOLDER_REGISTRY.register("IM", INSTANT_MESSAGING)
 
 def inbox_folder_choices() -> list[tuple[str, str]]:
     """Return folder choices lazily so extension registrations are included."""

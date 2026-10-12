@@ -1,6 +1,7 @@
 from bloomerp.models import TimestampModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import BloomerpModelConfig
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -20,6 +21,8 @@ class Comment(
         managed = True
         db_table = 'bloomerp_comment'
     
+    bloomerp_config = BloomerpModelConfig(module="communication")
+
     avatar = None
     
     content_type = models.ForeignKey(

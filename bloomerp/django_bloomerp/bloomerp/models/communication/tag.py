@@ -9,6 +9,7 @@ class Tag(models.Model):
     """Connect a source object to a readable target object."""
 
     bloomerp_config = BloomerpModelConfig(
+        module="communication",
         is_internal=True, api_settings=ApiSettings(enable_auto_generation=False)
     )
     source_content_type = models.ForeignKey(

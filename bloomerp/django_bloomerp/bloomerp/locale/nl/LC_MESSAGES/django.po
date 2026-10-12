@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-11 10:34+0000\n"
+"POT-Creation-Date: 2026-10-12 12:35+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -48,6 +48,11 @@ msgstr "%(actor)s heeft dit object aangemaakt"
 msgid "%(actor)s deleted this object"
 msgstr "%(actor)s heeft dit object verwijderd"
 
+#: templates/views/communication/create_im_connection/success.html:4
+#, python-format
+msgid "%(connection_name)s was saved as a draft."
+msgstr "%(connection_name)s is opgeslagen als concept."
+
 # | msgid "%(actor)s created this object"
 #: templates/components/communication/render_inbox_folder_items.html:16
 #: templates/components/communication/render_inbox_folder_items.html:19
@@ -57,6 +62,7 @@ msgid_plural "%(counter)s related messages"
 msgstr[0] "%(counter)s gerelateerd bericht"
 msgstr[1] "%(counter)s gerelateerde berichten"
 
+#: templates/components/communication/instant_messaging/conversations.html:6
 #: templates/views/generic/detail/activity.html:39
 #, python-format
 msgid "%(elapsed)s ago"
@@ -99,6 +105,12 @@ msgstr "25"
 msgid "2D Chart"
 msgstr "2D-grafiek"
 
+# | msgid "ai artifacts"
+#: communication/builtins/instant_messaging/draft.py:47
+#, fuzzy
+msgid "4 participants"
+msgstr "AI-artefacten"
+
 #: dataviews/definition.py:409
 msgid "50"
 msgstr "50"
@@ -136,7 +148,7 @@ msgstr ""
 
 #: models/files/file_extraction.py:323
 msgid "A completed extraction needs a manifest."
-msgstr ""
+msgstr "Voor een voltooide extractie is een manifest nodig."
 
 #: bloomerp.policy.description models/access_control/policy.py:76
 msgid "A description of the access control policy."
@@ -153,7 +165,7 @@ msgstr "De naam van het initiatief"
 
 #: models/files/file_node.py:175
 msgid "A file node requires content."
-msgstr ""
+msgstr "Een bestandsknooppunt vereist inhoud."
 
 #: automation/registry.py:60
 msgid "A flow node to branch the workflow"
@@ -161,7 +173,7 @@ msgstr "Een flownode om de workflow te vertakken"
 
 #: models/files/file_node.py:178
 msgid "A folder cannot contain file content."
-msgstr ""
+msgstr "Een map kan geen bestandsinhoud bevatten."
 
 #: workspaces/registry.py:60
 msgid ""
@@ -264,6 +276,10 @@ msgstr ""
 msgid "Abandoned"
 msgstr "Afgebroken"
 
+#: bloomerp.immessage.status models/communication/instant_messaging/im_message.py:50
+msgid "Accepted"
+msgstr "Geaccepteerd"
+
 # | msgid "Access Token"
 #: models/users/user.py:33
 msgid "Access"
@@ -307,7 +323,7 @@ msgstr "Toegangstoken"
 
 #: bloomerp.user.accessible_content_types
 msgid "Accessible Content Types"
-msgstr ""
+msgstr "Toegankelijke inhoudstypen"
 
 #: bloomerp.apikey.account models/api/api_key.py:88 models/communication/email_account.py:58
 msgid "Account"
@@ -339,8 +355,9 @@ msgstr "Actie-ID"
 msgid "Actions"
 msgstr "Acties"
 
-#: bloomerp.emailaccount.status bloomerp.workflow.active models/automation/workflow.py:199
-#: models/communication/email_account.py:37
+#: bloomerp.emailaccount.status bloomerp.imconnection.status bloomerp.workflow.active
+#: models/automation/workflow.py:199 models/communication/email_account.py:37
+#: models/communication/instant_messaging/im_connection.py:32
 msgid "Active"
 msgstr "Actief"
 
@@ -362,12 +379,14 @@ msgid "Activity logging is not enabled for this model."
 msgstr "Activiteitenlogboek is niet ingeschakeld voor dit model."
 
 #: bloomerp.activitylog.actor bloomerp.inboxitem.actor models/audit/activity_log.py:57
-#: models/communication/inbox/inbox_item.py:67
+#: models/communication/inbox/inbox_item.py:68
 msgid "Actor"
 msgstr "Actor"
 
 #: components/ui/sidebar.py:167 components/ui/sidebar.py:177 components/ui/sidebar.py:215
-#: components/ui/sidebar.py:243 templates/components/objects/dataview_actions/add.html:13
+#: components/ui/sidebar.py:243
+#: templates/components/communication/instant_messaging/group_members.html:29
+#: templates/components/objects/dataview_actions/add.html:13
 msgid "Add"
 msgstr "Toevoegen"
 
@@ -426,12 +445,17 @@ msgstr "Rij toevoegen"
 msgid "Additional metadata about the field."
 msgstr "Aanvullende metagegevens over het veld."
 
+#: bloomerp.imendpoint.address bloomerp.imidentity.address
+msgid "Address"
+msgstr "Adres"
+
 #: bloomerp.applicationfield.field_type
 msgid "Address Field"
 msgstr "Adresveld"
 
 # | msgid "Admin page"
-#: models/communication/channel_member.py:22
+#: bloomerp.imconversationparticipant.role
+#: models/communication/instant_messaging/im_conversation_participant.py:35
 msgid "Admin"
 msgstr "Beheerpagina"
 
@@ -440,7 +464,7 @@ msgid "Advanced formatting"
 msgstr "Geavanceerde opmaak"
 
 # | msgid "Advanced formatting"
-#: templates/views/base.html:38 templates/widgets/foreign_field_widget.html:30
+#: templates/views/base.html:38 templates/widgets/foreign_field_widget.html:33
 msgid "Advanced query"
 msgstr "Geavanceerde zoekopdracht"
 
@@ -458,7 +482,7 @@ msgstr "Agentversie"
 
 msgctxt "bloomerp:route:name"
 msgid "Agent browser connection"
-msgstr "Agentbrowserverbinding"
+msgstr "Browserverbinding van agent"
 
 # | msgid "API Keys"
 # | msgid "API Key Details"
@@ -474,6 +498,10 @@ msgstr "Agent die deze gebruikers en groepen mogen gebruiken."
 #: dataviews/pivot_table/config.py:70
 msgid "Aggregation"
 msgstr "Aggregatie"
+
+#: communication/builtins/instant_messaging/draft.py:70
+msgid "Agreed — and the back button keeps my search."
+msgstr "Akkoord — en met de terugknop blijft mijn zoekopdracht behouden."
 
 #: bloomerp.inboxfolder.type
 #: templates/views/access_control/manage_permissions/wizard_object_access_control.html:56
@@ -492,7 +520,7 @@ msgstr "Alle machtigingen"
 
 #: bloomerp.aiagentaccess.all_staff_users models/agents/ai_agent_access.py:29
 msgid "All Staff Users"
-msgstr ""
+msgstr "Alle medewerkers"
 
 #: bloomerp.aiagent.internal_resource_mode models/agents/ai_agent.py:136
 msgid "All built-in Bloomerp resources"
@@ -501,6 +529,10 @@ msgstr "Alle ingebouwde Bloomerp-bronnen"
 #: bloomerp.aiagent.internal_tool_mode models/agents/ai_agent.py:114
 msgid "All built-in Bloomerp tools"
 msgstr "Alle ingebouwde Bloomerp-tools"
+
+#: communication/builtins/instant_messaging/draft.py:130
+msgid "All clear now. I’ll update the project this afternoon."
+msgstr "Alles is nu duidelijk. Ik werk het project vanmiddag bij."
 
 #: templates/cotton/features/dataviews/calendar.html:149
 msgid "All day"
@@ -525,6 +557,10 @@ msgstr ""
 #: templates/components/objects/dataview_gant_unscheduled.html:21
 msgid "All visible records are scheduled."
 msgstr "Alle zichtbare records zijn ingepland."
+
+#: bloomerp.immessage.sequence models/communication/instant_messaging/im_message.py:30
+msgid "Allocated under a conversation lock by the messaging service."
+msgstr "Toegewezen onder een gespreksvergrendeling door de berichtenservice."
 
 # | msgid "Access Token"
 # | msgid "Access"
@@ -556,6 +592,12 @@ msgstr "Altijd"
 #: automation/registry.py:56
 msgid "An action to perform"
 msgstr "Een uit te voeren actie"
+
+# | msgid "An item is required."
+#: models/communication/instant_messaging/im_message_reaction.py:42
+#, fuzzy
+msgid "An emoji is required."
+msgstr "Er is een item vereist."
 
 #: models/project_management/initiative.py:271
 msgid "An initiative cannot be its own parent or a descendant."
@@ -624,7 +666,9 @@ msgstr "Goedkeuren"
 msgid "Archive"
 msgstr "Archiveren"
 
-#: bloomerp.aiconversation.status templates/cotton/features/agent/body.html:90
+#: bloomerp.aiconversation.status bloomerp.imconversation.status
+#: models/communication/instant_messaging/im_conversation.py:46
+#: templates/cotton/features/agent/body.html:90
 msgid "Archived"
 msgstr "Gearchiveerd"
 
@@ -658,6 +702,8 @@ msgstr "Bloom AI"
 #: templates/cotton/features/agent/body.html:40
 msgid "Ask BloomAI — drag to move, or use arrow keys when focused"
 msgstr ""
+"Vraag het aan BloomAI — sleep om te verplaatsen of gebruik de pijltjestoetsen wanneer de focus "
+"erop staat"
 
 # | msgctxt "bloomerp:route:description"
 # | msgid "List of your workspaces"
@@ -666,7 +712,11 @@ msgstr ""
 msgid "Ask anything about your workspace…"
 msgstr "Lijst van uw werkruimten"
 
-#: bloomerp.todo.assigned_to models/project_management/todo.py:380
+#: bloomerp.imconversation.assigned_team
+msgid "Assigned Team"
+msgstr "Toegewezen team"
+
+#: bloomerp.imconversation.assigned_to bloomerp.todo.assigned_to models/project_management/todo.py:380
 msgid "Assigned To"
 msgstr "Toegewezen aan"
 
@@ -681,7 +731,7 @@ msgstr "Bijvoegen"
 
 #: models/files/file_reference.py:166
 msgid "Attachment fields do not have editor occurrences."
-msgstr ""
+msgstr "Bijlagevelden hebben geen editorinstanties."
 
 #: templates/cotton/features/agent/body.html:134 templates/inbox_items/email.html:7
 msgid "Attachments"
@@ -703,7 +753,7 @@ msgstr "Geef het beleid een naam en beschrijving voordat u het opslaat."
 
 #: bloomerp.mcpintegration.authentication_type
 msgid "Authentication Type"
-msgstr ""
+msgstr "Authenticatietype"
 
 #: views/agents/create_mcp_integration.py:87
 msgid "Authentication configuration"
@@ -750,6 +800,10 @@ msgstr "Beschikbare modules"
 msgid "Avatar"
 msgstr "Avatar"
 
+#: bloomerp.imidentity.avatar_url
+msgid "Avatar Url"
+msgstr "Avatar-URL"
+
 #: dataviews/pivot_table/config.py:128
 msgid "Average"
 msgstr "Gemiddelde"
@@ -771,9 +825,21 @@ msgstr "Terug naar bijlagetypen"
 msgid "Back to chat"
 msgstr "Terug naar de chat"
 
+# | msgid "ai conversation"
+#: templates/components/communication/instant_messaging/conversation.html:16
+#, fuzzy
+msgid "Back to conversation"
+msgstr "AI-gesprek"
+
 #: templates/views/workflows/builder.html:33
 msgid "Back to editor"
 msgstr "Terug naar de editor"
+
+# | msgid "Back to chat"
+#: templates/components/communication/messaging_draft.html:7
+#, fuzzy
+msgid "Back to search"
+msgstr "Terug naar de chat"
 
 #: bloomerp.initiative.status bloomerp.todo.status models/project_management/initiative.py:26
 #: models/project_management/todo.py:55
@@ -824,6 +890,14 @@ msgstr "BloomAI reageert…"
 #: bloomerp.applicationfield.field_type
 msgid "Bloomerp File Field"
 msgstr "Bloomerp-bestandsveld"
+
+#: bloomerp.immessage.body
+msgid "Body"
+msgstr "Inhoud"
+
+#: bloomerp.immessage.body_html
+msgid "Body Html"
+msgstr "HTML-inhoud"
 
 # | msgid "Bookmarks"
 #: bloomerp.bookmark models/users/bookmark.py:13
@@ -887,7 +961,7 @@ msgid "Bulk Upload {model}"
 msgstr "Bulk uploaden van {model}"
 
 # | msgid "Row actions"
-#: templates/components/objects/dataview.html:173
+#: templates/components/objects/dataview.html:166
 msgid "Bulk actions"
 msgstr "Bulkacties"
 
@@ -911,6 +985,10 @@ msgstr "Agenda"
 msgid "Call API"
 msgstr "API aanroepen"
 
+#: communication/builtins/instant_messaging/draft.py:77
+msgid "Can we review the new design together tomorrow?"
+msgstr "Kunnen we het nieuwe ontwerp morgen samen doornemen?"
+
 # | msgid "Canceled"
 #: templates/cotton/features/agent/body.html:81
 #, fuzzy
@@ -919,6 +997,12 @@ msgstr "Geannuleerd"
 
 #: bloomerp.airun.cancel_requested_at
 msgid "Cancel Requested At"
+msgstr "Annuleringsverzoek ingediend op"
+
+# | msgid "Cancel Requested At"
+#: templates/components/communication/instant_messaging/conversation.html:19
+#, fuzzy
+msgid "Cancel quoted reply"
 msgstr "Annulering aangevraagd op"
 
 #: bloomerp.initiative.status models/project_management/initiative.py:31
@@ -963,31 +1047,8 @@ msgid "Changed rows"
 msgstr "Gewijzigde rijen"
 
 # | msgid "Change"
-#: models/communication/channel.py:8 models/communication/channel_member.py:31
+#: bloomerp.imconversation.kind models/communication/instant_messaging/im_conversation.py:35
 msgid "Channel"
-msgstr "Wijzigen"
-
-# | msgid "Content Type"
-# | msgid "Channel Type"
-#: models/communication/channel_member.py:9
-msgid "Channel Member"
-msgstr "Inhoudstype"
-
-# | msgid "Content Type"
-# | msgid "Channel Type"
-#: models/communication/channel_member.py:10
-msgid "Channel Members"
-msgstr "Inhoudstype"
-
-# | msgid "Content Type"
-#: models/communication/channel.py:17
-msgid "Channel Type"
-msgstr "Inhoudstype"
-
-# | msgid "Change"
-# | msgid "Channel"
-#: models/communication/channel.py:9
-msgid "Channels"
 msgstr "Wijzigen"
 
 #: bloomerp.applicationfield.field_type
@@ -1034,6 +1095,12 @@ msgstr "Kies een kleur voor elke waarde. Kleuren voor verwijderde keuzes worden 
 msgid "Choose a configured mapping key."
 msgstr "Kies een geconfigureerde mappingsleutel."
 
+# | msgid "The label"
+#: templates/cotton/features/instant_messaging/message.html:17
+#, fuzzy
+msgid "Choose a reaction"
+msgstr "Het label"
+
 #: templates/cotton/features/agent/body.html:112
 msgid "Choose a suggestion or ask a question."
 msgstr "Kies een suggestie of stel een vraag."
@@ -1046,7 +1113,7 @@ msgstr "Inhoudstype"
 
 #: views/communication/create_email_account.py:381
 msgid "Choose labels, a main folder, a Sent folder and optional icon colors."
-msgstr ""
+msgstr "Kies labels, een hoofdmap, een map voor verzonden berichten en optionele pictogramkleuren."
 
 # | msgid "The label"
 #: dataviews/kanban/config.py:152
@@ -1088,7 +1155,8 @@ msgstr "Kies welke modelmachtigingen dit beleid verleent."
 msgid "Clear icon color"
 msgstr "Keuzeveld"
 
-#: bloomerp.oauthaccesstoken.client_id bloomerp.oauthauthorizationcode.client_id
+#: bloomerp.immessage.client_id bloomerp.oauthaccesstoken.client_id
+#: bloomerp.oauthauthorizationcode.client_id
 msgid "Client Id"
 msgstr "Client-ID"
 
@@ -1097,7 +1165,7 @@ msgid "Clone row"
 msgstr "Rij klonen"
 
 # | msgid "Closes At"
-#: templates/views/base.html:73
+#: templates/views/base.html:74
 #, fuzzy
 msgid "Close"
 msgstr "Sluit op"
@@ -1111,6 +1179,13 @@ msgstr "Assistent sluiten"
 #: templates/components/communication/render_inbox_item.html:10
 #, fuzzy
 msgid "Close message"
+msgstr "Bovenliggend"
+
+# | msgid "Parent"
+# | msgid "Parent Message"
+#: templates/components/communication/messaging_draft.html:8
+#, fuzzy
+msgid "Close messages"
 msgstr "Bovenliggend"
 
 #: bloomerp.form.closes_at models/forms/form.py:132
@@ -1164,7 +1239,7 @@ msgid "Comma separated order for text X-axis values, for example Mon, Tue, Wed."
 msgstr "Door komma's gescheiden volgorde voor tekstwaarden op de X-as, bijvoorbeeld ma, di, wo."
 
 # | msgid "Comments"
-#: bloomerp.comment models/communication/comment.py:18
+#: bloomerp.comment models/communication/comment.py:19
 msgid "Comment"
 msgstr "Opmerkingen"
 
@@ -1180,14 +1255,22 @@ msgstr "Omleiding naar opmerkingdetails"
 #: bloomerp.documenttemplatestyling.comments bloomerp.emailaccount.comments
 #: bloomerp.emaildraft.comments bloomerp.fileextraction.comments bloomerp.filenode.comments
 #: bloomerp.filereference.comments bloomerp.form.comments bloomerp.formsubmission.comments
+#: bloomerp.imauthorization.comments bloomerp.imconnection.comments bloomerp.imconversation.comments
+#: bloomerp.imconversationparticipant.comments bloomerp.imendpoint.comments
+#: bloomerp.imidentity.comments bloomerp.immessage.comments bloomerp.immessageattachment.comments
+#: bloomerp.immessagereaction.comments bloomerp.imthreadreadposition.comments
 #: bloomerp.inboxfolder.comments bloomerp.inboxitem.comments bloomerp.initiative.comments
 #: bloomerp.mcpconnection.comments bloomerp.mcpintegration.comments bloomerp.savedfilter.comments
 #: bloomerp.sqlquery.comments bloomerp.tile.comments bloomerp.todo.comments bloomerp.todolabel.comments
 #: bloomerp.user.detail_sidebar_view_preference bloomerp.userinboxpreference.comments
-#: models/communication/comment.py:19 models/users/user.py:70
+#: models/communication/comment.py:20 models/users/user.py:70
 #: templates/views/generic/detail/base.html:144
 msgid "Comments"
 msgstr "Opmerkingen"
+
+msgctxt "bloomerp:module:name"
+msgid "Communication"
+msgstr "Communicatie"
 
 #: views/agents/create_ai_agent.py:262
 msgid "Complete the agent details first."
@@ -1207,7 +1290,7 @@ msgstr "Voltooid op"
 
 #: bloomerp.initiative.completion_percentage
 msgid "Completion Percentage"
-msgstr ""
+msgstr "Voltooiingspercentage"
 
 #: bloomerp.workflownode.sub_type
 msgid "Compute"
@@ -1234,7 +1317,7 @@ msgstr "Account configureren"
 
 #: views/communication/create_email_account.py:294
 msgid "Configure each discovered mailbox exactly once."
-msgstr ""
+msgstr "Configureer elke gevonden mailbox precies één keer."
 
 # | msgid "Configure row and field rules using only the global permissions
 # selected in step 1."
@@ -1271,8 +1354,19 @@ msgstr "Verbonden knooppunten moeten bij dezelfde workflow horen."
 msgid "Connecting…"
 msgstr "Verbinden…"
 
+#: bloomerp.imauthorization.connection bloomerp.imconversation.connection
+#: bloomerp.imendpoint.connection bloomerp.imidentity.connection
+msgid "Connection"
+msgstr "Verbinding"
+
 #: bloomerp.mcpintegration.connection_mode
 msgid "Connection Mode"
+msgstr "Verbindingsmodus"
+
+# | msgid "Connection Mode"
+#: templates/views/communication/create_im_connection/success.html:3
+#, fuzzy
+msgid "Connection created"
 msgstr "Verbindingsmodus"
 
 #: templates/cotton/features/agent/body.html:34
@@ -1288,8 +1382,7 @@ msgid "Consumed Message Sequence"
 msgstr "Verbruikt berichtvolgnummer"
 
 #: bloomerp.comment.content bloomerp.filenode.content bloomerp.todo.content
-#: models/communication/channel_message.py:18 models/communication/comment.py:39
-#: models/project_management/todo.py:426
+#: models/communication/comment.py:42 models/project_management/todo.py:426
 msgid "Content"
 msgstr "Inhoud"
 
@@ -1303,17 +1396,18 @@ msgstr "Inhoudsobject"
 
 #: bloomerp.todo.content_safe
 msgid "Content Safe"
-msgstr ""
+msgstr "Inhoud veilig"
 
 #: bloomerp.activitylog.content_type bloomerp.applicationfield.content_type
 #: bloomerp.bookmark.content_type bloomerp.comment.content_type bloomerp.emaildraft.content_type
 #: bloomerp.fieldpolicy.content_type bloomerp.filereference.content_type bloomerp.form.content_type
+#: bloomerp.imidentity.content_type bloomerp.immessageattachment.content_type
 #: bloomerp.mention.content_type bloomerp.objectlabel.content_type bloomerp.rowpolicy.content_type
 #: bloomerp.rowpolicyrule.content_type bloomerp.todo.content_type
 #: bloomerp.userdetailviewtabspreference.content_type bloomerp.userlistviewpreference.content_type
 #: bloomerp.userobjectlayoutpreference.content_type models/access_control/field_policy.py:29
 #: models/access_control/row_policy.py:21 models/application_field.py:46
-#: models/audit/activity_log.py:62 models/communication/comment.py:28 models/forms/form.py:85
+#: models/audit/activity_log.py:62 models/communication/comment.py:31 models/forms/form.py:85
 #: models/project_management/todo.py:463 models/users/base_view_preference.py:24
 #: models/users/bookmark.py:26 models/users/user_detail_view_tabs_preference.py:47
 msgid "Content Type"
@@ -1350,6 +1444,8 @@ msgstr "Doorgaan met %(provider_name)s"
 
 # | msgid "Conversation Type"
 #: bloomerp.aiartifact.conversation bloomerp.aimessage.conversation bloomerp.airun.conversation
+#: bloomerp.imconversationparticipant.conversation bloomerp.immessage.conversation
+#: bloomerp.inboxitem.item_type communication/builtins/instant_messaging/presentation.py:41
 #: templates/cotton/features/agent/body.html:115
 #, fuzzy
 msgid "Conversation"
@@ -1374,6 +1470,12 @@ msgstr ""
 #, fuzzy
 msgid "Conversation history"
 msgstr "Gespreksgeschiedenis"
+
+# | msgid "AI conversations"
+#: templates/components/communication/instant_messaging/messages.html:2
+#, fuzzy
+msgid "Conversation messages"
+msgstr "AI-gesprekken"
 
 # | msgid "Conversation Type"
 #: templates/cotton/features/agent/body.html:78
@@ -1410,6 +1512,12 @@ msgstr "Details"
 
 #: templates/cotton/features/agent/body.html:124
 msgid "Could not load attachments. Please try again."
+msgstr "Bijlagen konden niet worden geladen. Probeer het opnieuw."
+
+# | msgid "Could not load attachments. Please try again."
+#: templates/components/communication/messaging_draft.html:27
+#, fuzzy
+msgid "Could not load messages. Please try again."
 msgstr "Bijlagen konden niet worden geladen. Probeer het opnieuw."
 
 #: views/access_control/create_policy.py:486
@@ -1468,7 +1576,7 @@ msgstr "Gebruiker maken voor object"
 
 msgctxt "bloomerp:route:description"
 msgid "Create a new email account"
-msgstr ""
+msgstr "Een nieuw e-mailaccount aanmaken"
 
 msgctxt "bloomerp:route:description"
 msgid "Create a new object from User"
@@ -1502,6 +1610,17 @@ msgstr "Een toegangsbeheerbeleid aanmaken"
 msgid "Create an inbox or select one that has been shared with you."
 msgstr "Maak een inbox aan of selecteer er een die met u is gedeeld."
 
+msgctxt "bloomerp:route:description"
+msgid "Create an instant messaging connection"
+msgstr "Een verbinding voor instant messaging aanmaken"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Agent browser connection"
+#: templates/views/communication/create_im_connection/success.html:6
+#, fuzzy
+msgid "Create another connection"
+msgstr "Agentbrowserverbinding"
+
 # | msgctxt "bloomerp:route:name"
 # | msgid "Create user"
 #: templates/views/communication/inbox.html:207
@@ -1513,13 +1632,19 @@ msgstr "Aangepaste inbox aanmaken"
 msgid "Create default"
 msgstr "Standaard aanmaken"
 
+# | msgid "Create Todo"
+#: templates/components/communication/instant_messaging/create_group.html:9
+#, fuzzy
+msgid "Create group"
+msgstr "Taak maken"
+
 # | msgid "Create tile"
 #: templates/cotton/features/references/search.html:18
 msgid "Create label"
 msgstr "Label aanmaken"
 
 # | msgid "Create tile"
-#: templates/widgets/foreign_field_widget.html:29
+#: templates/widgets/foreign_field_widget.html:32
 msgid "Create new"
 msgstr "Nieuw aanmaken"
 
@@ -1533,7 +1658,7 @@ msgstr "Tegel maken"
 
 msgctxt "bloomerp:route:name"
 msgid "Create user"
-msgstr ""
+msgstr "Gebruiker aanmaken"
 
 msgctxt "bloomerp:route:name"
 msgid "Create {model}"
@@ -1547,11 +1672,16 @@ msgstr "{model} maken"
 #: bloomerp.documenttemplateheader.created_by bloomerp.documenttemplatestyling.created_by
 #: bloomerp.emailaccount.created_by bloomerp.emaildraft.created_by bloomerp.fileextraction.created_by
 #: bloomerp.filenode.created_by bloomerp.filereference.created_by bloomerp.form.created_by
-#: bloomerp.formsubmission.created_by bloomerp.inboxfolder.created_by bloomerp.inboxitem.created_by
-#: bloomerp.initiative.created_by bloomerp.label.created_by bloomerp.mcpconnection.created_by
-#: bloomerp.mcpintegration.created_by bloomerp.policy.created_by bloomerp.savedfilter.created_by
-#: bloomerp.sqlquery.created_by bloomerp.tile.created_by bloomerp.todo.created_by
-#: bloomerp.todolabel.created_by bloomerp.userinboxpreference.created_by bloomerp.workflow.created_by
+#: bloomerp.formsubmission.created_by bloomerp.imauthorization.created_by
+#: bloomerp.imconnection.created_by bloomerp.imconversation.created_by
+#: bloomerp.imconversationparticipant.created_by bloomerp.imendpoint.created_by
+#: bloomerp.imidentity.created_by bloomerp.immessage.created_by bloomerp.immessageattachment.created_by
+#: bloomerp.immessagereaction.created_by bloomerp.imthreadreadposition.created_by
+#: bloomerp.inboxfolder.created_by bloomerp.inboxitem.created_by bloomerp.initiative.created_by
+#: bloomerp.label.created_by bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by
+#: bloomerp.policy.created_by bloomerp.savedfilter.created_by bloomerp.sqlquery.created_by
+#: bloomerp.tile.created_by bloomerp.todo.created_by bloomerp.todolabel.created_by
+#: bloomerp.userinboxpreference.created_by bloomerp.workflow.created_by
 #: bloomerp.workflownode.created_by models/mixins/user_stamp_model_mixin.py:20
 msgid "Created By"
 msgstr "Gemaakt door"
@@ -1564,9 +1694,23 @@ msgstr "Aangemaakt door bericht"
 msgid "Created By Tool Call"
 msgstr "Aangemaakt door toolaanroep"
 
+#: bloomerp.imauthorization.credentials
+msgid "Credentials"
+msgstr "Inloggegevens"
+
 #: bloomerp.mcpconnection.credentials_encrypted
 msgid "Credentials Encrypted"
 msgstr "Inloggegevens versleuteld"
+
+#: models/communication/instant_messaging/im_authorization.py:70
+msgid "Credentials must map strings to strings."
+msgstr "Inloggegevens moeten tekenreeksen aan tekenreeksen koppelen."
+
+# | msgid "Ready to send."
+#: templates/components/communication/instant_messaging/conversation.html:23
+#, fuzzy
+msgid "Ctrl/⌘ + Enter to send"
+msgstr "Klaar om te verzenden."
 
 #: templates/cotton/app/sidebar/body.html:206
 msgid "Current language"
@@ -1660,6 +1804,11 @@ msgstr "Datum/tijdveld"
 #: bloomerp.emaildraft.datetime_created bloomerp.fileextraction.datetime_created
 #: bloomerp.filenode.datetime_created bloomerp.filereference.datetime_created
 #: bloomerp.form.datetime_created bloomerp.formsubmission.datetime_created
+#: bloomerp.imauthorization.datetime_created bloomerp.imconnection.datetime_created
+#: bloomerp.imconversation.datetime_created bloomerp.imconversationparticipant.datetime_created
+#: bloomerp.imendpoint.datetime_created bloomerp.imidentity.datetime_created
+#: bloomerp.immessage.datetime_created bloomerp.immessageattachment.datetime_created
+#: bloomerp.immessagereaction.datetime_created bloomerp.imthreadreadposition.datetime_created
 #: bloomerp.inboxfolder.datetime_created bloomerp.inboxitem.datetime_created
 #: bloomerp.initiative.datetime_created bloomerp.mcpconnection.datetime_created
 #: bloomerp.mcpintegration.datetime_created bloomerp.policy.datetime_created
@@ -1672,7 +1821,7 @@ msgstr "Datum/tijdveld"
 msgid "Datetime Created"
 msgstr "Datum/tijd aangemaakt"
 
-#: bloomerp.inboxitem.datetime_received models/communication/inbox/inbox_item.py:81
+#: bloomerp.inboxitem.datetime_received models/communication/inbox/inbox_item.py:82
 msgid "Datetime Received"
 msgstr "Datum/tijd ontvangen"
 
@@ -1687,7 +1836,12 @@ msgstr "Datum/tijd ontvangen"
 #: bloomerp.emailaccount.datetime_updated bloomerp.emaildraft.datetime_updated
 #: bloomerp.fileextraction.datetime_updated bloomerp.filenode.datetime_updated
 #: bloomerp.filereference.datetime_updated bloomerp.form.datetime_updated
-#: bloomerp.formsubmission.datetime_updated bloomerp.inboxfolder.datetime_updated
+#: bloomerp.formsubmission.datetime_updated bloomerp.imauthorization.datetime_updated
+#: bloomerp.imconnection.datetime_updated bloomerp.imconversation.datetime_updated
+#: bloomerp.imconversationparticipant.datetime_updated bloomerp.imendpoint.datetime_updated
+#: bloomerp.imidentity.datetime_updated bloomerp.immessage.datetime_updated
+#: bloomerp.immessageattachment.datetime_updated bloomerp.immessagereaction.datetime_updated
+#: bloomerp.imthreadreadposition.datetime_updated bloomerp.inboxfolder.datetime_updated
 #: bloomerp.inboxitem.datetime_updated bloomerp.initiative.datetime_updated
 #: bloomerp.mcpconnection.datetime_updated bloomerp.mcpintegration.datetime_updated
 #: bloomerp.policy.datetime_updated bloomerp.savedfilter.datetime_updated
@@ -1745,16 +1899,16 @@ msgstr "E-mailaccount"
 #: bloomerp.userlistviewpreference.default_filter_groups_json
 #: bloomerp.workspace.default_filter_groups_json
 msgid "Default Filter Groups Json"
-msgstr ""
+msgstr "Standaardfiltergroepen-JSON"
 
 #: bloomerp.userlistviewpreference.default_filter_records bloomerp.workspace.default_filter_records
 msgid "Default Filter Records"
-msgstr ""
+msgstr "Standaardfilterrecords"
 
 #: bloomerp.userlistviewpreference.default_filter_records_json
 #: bloomerp.workspace.default_filter_records_json
 msgid "Default Filter Records Json"
-msgstr ""
+msgstr "Standaardfilterrecords-JSON"
 
 #: bloomerp.userlistviewpreference.default_filters bloomerp.workspace.default_filters
 #: models/mixins/default_filters_mixin.py:15
@@ -1806,6 +1960,14 @@ msgstr "Waarde verwijderen"
 msgctxt "bloomerp:route:name"
 msgid "Delete {model}"
 msgstr "{model} verwijderen"
+
+#: bloomerp.immessage.deleted_at
+msgid "Deleted At"
+msgstr "Verwijderd op"
+
+#: bloomerp.immessage.status models/communication/instant_messaging/im_message.py:52
+msgid "Delivered"
+msgstr "Afgeleverd"
 
 #: templates/views/auth/oauth_authorize.html:53
 msgid "Deny"
@@ -1883,9 +2045,18 @@ msgctxt "bloomerp:route:description"
 msgid "Different document templates"
 msgstr "Verschillende documentsjablonen"
 
+#: bloomerp.imconversation.kind models/communication/instant_messaging/im_conversation.py:33
+msgid "Direct"
+msgstr "Direct"
+
+#: bloomerp.immessage.direction
+msgid "Direction"
+msgstr "Richting"
+
 # | msgid "Db Table"
 # | msgid "DB Table"
-#: forms/agents/ai_agent.py:138
+#: bloomerp.imconnection.status forms/agents/ai_agent.py:138
+#: models/communication/instant_messaging/im_connection.py:33
 #, fuzzy
 msgid "Disabled"
 msgstr "Databasetabel"
@@ -1902,6 +2073,10 @@ msgstr "Weergave"
 #: bloomerp.userlistviewpreference.display_fields models/users/user_list_view_preference.py:75
 msgid "Display Fields"
 msgstr "Weergavevelden"
+
+#: bloomerp.imidentity.display_name
+msgid "Display Name"
+msgstr "Weergavenaam"
 
 # | msgid "Display Fields"
 #: templates/widgets/mailbox_mapping.html:6
@@ -1980,6 +2155,14 @@ msgid ""
 "verified department detail URL and use <a href=\"{{ var_department_url }}\">{{ value }}</a>. No "
 "pre_formatted_value variable is provided."
 msgstr ""
+"Django-sjabloon voor de HTML van deze tabelcel. Gebruik deze optie om klikbare links te maken; "
+"alleen een ID-kolom retourneren maakt geen links. {{ value }} bevat de celwaarde nadat de "
+"formatter is toegepast, maar voordat het voorvoegsel en achtervoegsel zijn toegevoegd. Elke "
+"querykolom is beschikbaar als {{ var_column_alias }}, waarbij de alias in kleine letters is en "
+"spaties zijn vervangen door underscores, ook als de kolom niet in de tabel wordt weergegeven. "
+"Retourneer bijvoorbeeld een kolom department_url met een geverifieerde URL naar de "
+"afdelingsdetails en gebruik <a href=\"{{ var_department_url }}\">{{ value }}</a>. Er wordt geen "
+"variabele pre_formatted_value aangeboden."
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Document Templates"
@@ -2042,7 +2225,8 @@ msgstr "Downloaden"
 msgid "Download video"
 msgstr "Downloaden"
 
-#: bloomerp.emailaccount.status models/communication/email_account.py:36
+#: bloomerp.emailaccount.status bloomerp.imconnection.status models/communication/email_account.py:36
+#: models/communication/instant_messaging/im_connection.py:31
 msgid "Draft"
 msgstr "Concept"
 
@@ -2104,20 +2288,24 @@ msgstr ""
 msgid "Edit filter"
 msgstr "Filters laden..."
 
+#: bloomerp.immessage.edited_at
+msgid "Edited At"
+msgstr "Bewerkt op"
+
 #: models/files/file_reference.py:136
 msgid "Editor occurrences require a field."
-msgstr ""
+msgstr "Editorvermeldingen vereisen een veld."
 
 #: models/files/file_reference.py:173
 msgid "Editor references require an occurrence ID."
-msgstr ""
+msgstr "Editorverwijzingen vereisen een vermeldings-ID."
 
 #: bloomerp.inbox.effective_preference bloomerp.sidebar.effective_preference
 #: bloomerp.userdetailviewtabspreference.effective_preference
 #: bloomerp.userlistviewpreference.effective_preference
 #: bloomerp.userobjectlayoutpreference.effective_preference bloomerp.workspace.effective_preference
 msgid "Effective Preference"
-msgstr ""
+msgstr "Effectieve voorkeur"
 
 #: bloomerp.todo.effort models/project_management/todo.py:416
 msgid "Effort"
@@ -2140,20 +2328,20 @@ msgid "Email Address"
 msgstr "E-mailadres"
 
 # | msgid "Draft"
-#: bloomerp.emaildraft models/communication/email_draft.py:49
+#: bloomerp.emaildraft models/communication/email_draft.py:50
 #, fuzzy
 msgid "Email Draft"
 msgstr "Concept"
 
 # | msgid "Emails"
-#: bloomerp.emaildraft models/communication/email_draft.py:50
+#: bloomerp.emaildraft models/communication/email_draft.py:51
 #, fuzzy
 msgid "Email Drafts"
 msgstr "E-mails"
 
 #: bloomerp.applicationfield.field_type
 msgid "Email Field"
-msgstr ""
+msgstr "E-mailveld"
 
 # | msgid "Email account '%(account)s' created successfully."
 #: views/communication/create_email_account.py:446
@@ -2189,7 +2377,11 @@ msgstr "E-mailverificatie is vereist voordat dit account toegang kan krijgen tot
 
 #: bloomerp.inboxfolder.type
 msgid "Emails"
-msgstr ""
+msgstr "E-mails"
+
+#: bloomerp.immessagereaction.emoji
+msgid "Emoji"
+msgstr "Emoji"
 
 #: templates/components/files/preview.html:40
 msgid "Empty sheet"
@@ -2239,6 +2431,10 @@ msgstr "Datumveld"
 #: dataviews/gant/config.py:69
 msgid "End field"
 msgstr "Codeveld"
+
+#: bloomerp.imconversation.endpoint
+msgid "Endpoint"
+msgstr "Eindpunt"
 
 #: bloomerp.mcpintegration.endpoint_url models/agents/mcp_server.py:44
 msgid "Endpoint URL"
@@ -2292,8 +2488,9 @@ msgid "Entire dataset"
 msgstr "Initiële gegevens"
 
 #: bloomerp.airun.error bloomerp.airunattempt.error bloomerp.aitoolcall.error
-#: bloomerp.emailaccount.status bloomerp.mcpconnection.status models/agents/mcp_connection.py:48
-#: models/communication/email_account.py:38
+#: bloomerp.emailaccount.status bloomerp.imconnection.status bloomerp.mcpconnection.status
+#: models/agents/mcp_connection.py:48 models/communication/email_account.py:38
+#: models/communication/instant_messaging/im_connection.py:34
 msgid "Error"
 msgstr "Fout"
 
@@ -2321,7 +2518,7 @@ msgstr "Uitvoeringsmodus"
 
 #: bloomerp.workflowrun.execution_time
 msgid "Execution Time"
-msgstr ""
+msgstr "Uitvoeringstijd"
 
 #: templates/inbox_items/workflow_run.html:63
 msgid "Execution graph"
@@ -2337,7 +2534,7 @@ msgstr "Uitvoerder-ID"
 
 #: models/files/file_reference.py:177
 msgid "Expected an attachment or rich-text field."
-msgstr ""
+msgstr "Een bijlage- of rich-textveld verwacht."
 
 # | msgid "Expires At"
 #: bloomerp.aiapproval.status bloomerp.fileextraction.status bloomerp.mcpconnection.status
@@ -2347,9 +2544,9 @@ msgid "Expired"
 msgstr "Vervalt op"
 
 #: bloomerp.aiapproval.expires_at bloomerp.apikey.expires_at bloomerp.fileextraction.expires_at
-#: bloomerp.mcpconnection.expires_at bloomerp.oauthaccesstoken.expires_at
-#: bloomerp.oauthauthorizationcode.expires_at models/api/api_key.py:116
-#: models/files/file_extraction.py:202
+#: bloomerp.imauthorization.expires_at bloomerp.mcpconnection.expires_at
+#: bloomerp.oauthaccesstoken.expires_at bloomerp.oauthauthorizationcode.expires_at
+#: models/api/api_key.py:116 models/files/file_extraction.py:202
 msgid "Expires At"
 msgstr "Vervalt op"
 
@@ -2360,6 +2557,14 @@ msgstr "Verken uw gegevens, vind uw weg of krijg hulp bij de pagina die u bekijk
 #: templates/components/objects/dataview_actions/export.html:14
 msgid "Export"
 msgstr "Exporteren"
+
+#: bloomerp.imconnection.external_account_id
+msgid "External Account Id"
+msgstr "ID van extern account"
+
+#: bloomerp.imendpoint.external_id bloomerp.imidentity.external_id
+msgid "External Id"
+msgstr "Externe ID"
 
 #: bloomerp.aiagent.mcp_integrations forms/agents/ai_agent.py:164 models/agents/ai_agent.py:160
 msgid "External MCP integrations"
@@ -2378,8 +2583,9 @@ msgid "Extract Field"
 msgstr "Veld extraheren"
 
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
-#: bloomerp.fileextraction.status bloomerp.workflowrun.status bloomerp.workflowrunstep.status
-#: models/automation/workflow_run.py:111 models/automation/workflow_run_step.py:9
+#: bloomerp.fileextraction.status bloomerp.immessage.status bloomerp.workflowrun.status
+#: bloomerp.workflowrunstep.status models/automation/workflow_run.py:111
+#: models/automation/workflow_run_step.py:9 models/communication/instant_messaging/im_message.py:54
 #: models/files/file_extraction.py:174 templates/inbox_items/workflow_run.html:19
 msgid "Failed"
 msgstr "Mislukt"
@@ -2444,7 +2650,7 @@ msgid "Fields used to build the expandable row hierarchy."
 msgstr "Velden die worden gebruikt om de uitvouwbare rijhiërarchie te maken."
 
 #: bloomerp.aiartifact.file bloomerp.filenode.kind bloomerp.filereference.file
-#: models/files/file_node.py:146
+#: bloomerp.immessageattachment.file models/files/file_node.py:146
 msgid "File"
 msgstr "Bestand"
 
@@ -2475,7 +2681,7 @@ msgstr "Bestandsveld"
 
 msgctxt "bloomerp:module:name"
 msgid "File Management"
-msgstr ""
+msgstr "Bestandsbeheer"
 
 # | msgid "File Field"
 #: templates/dataviews/files.html:42
@@ -2493,7 +2699,7 @@ msgstr "Bestandsmappen"
 
 #: models/files/file_node.py:188
 msgid "File content is immutable; create a new file node."
-msgstr ""
+msgstr "Bestandsinhoud is onveranderlijk; maak een nieuw bestandsknooppunt aan."
 
 # | msgid "Email sent successfully."
 #: components/files/actions/delete_file.py:60
@@ -2523,6 +2729,10 @@ msgstr "E-mail succesvol verzonden."
 msgid "File renamed successfully."
 msgstr "E-mail succesvol verzonden."
 
+#: bloomerp.immessageattachment.filename
+msgid "Filename"
+msgstr "Bestandsnaam"
+
 #: bloomerp.aiagent.files bloomerp.aiagentaccess.files bloomerp.aiapproval.files
 #: bloomerp.aiartifact.files bloomerp.aiconversation.files bloomerp.aimessage.files
 #: bloomerp.aimessageartifact.files bloomerp.airun.files bloomerp.airunattempt.files
@@ -2531,11 +2741,15 @@ msgstr "E-mail succesvol verzonden."
 #: bloomerp.documenttemplateheader.files bloomerp.documenttemplatestyling.files
 #: bloomerp.emailaccount.files bloomerp.emaildraft.files bloomerp.fileextraction.files
 #: bloomerp.filenode.files bloomerp.filereference.files bloomerp.form.files
-#: bloomerp.formsubmission.files bloomerp.inboxfolder.files bloomerp.inboxitem.files
-#: bloomerp.initiative.files bloomerp.mcpconnection.files bloomerp.mcpintegration.files
-#: bloomerp.savedfilter.files bloomerp.sqlquery.files bloomerp.tile.files bloomerp.todo.files
-#: bloomerp.todolabel.files bloomerp.userinboxpreference.files dataviews/file_browser/renderer.py:141
-#: dataviews/file_browser/renderer.py:189 templates/mixins/bloomerp_layout_form_mixin.html:65
+#: bloomerp.formsubmission.files bloomerp.imauthorization.files bloomerp.imconnection.files
+#: bloomerp.imconversation.files bloomerp.imconversationparticipant.files bloomerp.imendpoint.files
+#: bloomerp.imidentity.files bloomerp.immessage.files bloomerp.immessageattachment.files
+#: bloomerp.immessagereaction.files bloomerp.imthreadreadposition.files bloomerp.inboxfolder.files
+#: bloomerp.inboxitem.files bloomerp.initiative.files bloomerp.mcpconnection.files
+#: bloomerp.mcpintegration.files bloomerp.savedfilter.files bloomerp.sqlquery.files bloomerp.tile.files
+#: bloomerp.todo.files bloomerp.todolabel.files bloomerp.userinboxpreference.files
+#: dataviews/file_browser/renderer.py:141 dataviews/file_browser/renderer.py:189
+#: templates/mixins/bloomerp_layout_form_mixin.html:65
 msgid "Files"
 msgstr "Bestanden"
 
@@ -2569,7 +2783,7 @@ msgstr "Filter verwijderd"
 
 #: bloomerp.savedfilter.filters
 msgid "Filters"
-msgstr ""
+msgstr "Filters"
 
 #: templates/inbox_items/workflow_run.html:34
 msgid "Finished"
@@ -2595,7 +2809,7 @@ msgstr "Floatveld"
 msgid "Flow"
 msgstr "Flow"
 
-#: bloomerp.filenode.kind bloomerp.inboxitem.folder models/communication/inbox/inbox_item.py:58
+#: bloomerp.filenode.kind bloomerp.inboxitem.folder models/communication/inbox/inbox_item.py:59
 #: models/files/file_node.py:147 templates/components/workspaces/tiles/builders/link_items.html:41
 #: templates/components/workspaces/tiles/builders/links.html:50
 msgid "Folder"
@@ -2611,7 +2825,7 @@ msgstr "Map aangemaakt"
 
 #: models/files/file_node.py:194
 msgid "Folder cycles are not allowed."
-msgstr ""
+msgstr "Mapcycli zijn niet toegestaan."
 
 # | msgid "Folder created"
 #: dataviews/file_browser/config.py:159 templates/dataviews/files.html:26
@@ -2719,7 +2933,7 @@ msgstr "Genereren"
 
 #: bloomerp.workflownode.sub_type
 msgid "Generate PDF"
-msgstr ""
+msgstr "PDF genereren"
 
 msgctxt "bloomerp:route:name"
 msgid "Generate PDF"
@@ -2751,7 +2965,7 @@ msgstr "Object ophalen"
 
 #: bloomerp.todo.git_branch_name
 msgid "Git Branch Name"
-msgstr ""
+msgstr "Git-branchnaam"
 
 #: views/access_control/create_policy.py:417
 msgid "Give the policy a name and description before saving."
@@ -2774,9 +2988,28 @@ msgid "Global permissions error"
 msgstr "Fout met globale machtigingen"
 
 # | msgid "Groups"
+#: bloomerp.imconversation.kind models/communication/instant_messaging/im_conversation.py:34
+#, fuzzy
+msgid "Group"
+msgstr "Groepen"
+
+# | msgid "Groups"
 #: dataviews/kanban/config.py:177
 msgid "Group by"
 msgstr "Groepen"
+
+# | msgid "Groups"
+# | msgid "Group by"
+#: templates/components/communication/instant_messaging/group_members.html:5
+#, fuzzy
+msgid "Group name"
+msgstr "Groepen"
+
+# | msgid "Account Settings"
+#: templates/components/communication/instant_messaging/conversation.html:8
+#, fuzzy
+msgid "Group settings"
+msgstr "Accountinstellingen"
 
 #: bloomerp.aiagentaccess.groups bloomerp.policy.groups models/access_control/policy.py:109
 #: models/agents/ai_agent_access.py:55
@@ -2800,7 +3033,7 @@ msgstr "HStore-veld"
 
 #: bloomerp.initiative.has_started
 msgid "Has Started"
-msgstr ""
+msgstr "Is gestart"
 
 #: bloomerp.apikey.key_hash
 msgid "Hashed API key secret. The raw token is only shown when it is created."
@@ -2850,6 +3083,10 @@ msgstr "Help me deze pagina te begrijpen"
 msgid "Hex color code for the sidebar item (e.g. #FF5733)."
 msgstr "Hexadecimale kleurcode voor het item in de zijbalk (bijv. #FF5733)."
 
+#: communication/builtins/instant_messaging/draft.py:23
+msgid "Hi! Have you had a chance to look at the updated proposal?"
+msgstr "Hoi! Heb je al de kans gehad om het bijgewerkte voorstel te bekijken?"
+
 #: bloomerp.todo.priority models/project_management/todo.py:40
 msgid "High"
 msgstr "Hoog"
@@ -2881,13 +3118,17 @@ msgstr "Menselijke tussenkomst"
 #: bloomerp.comment.id bloomerp.documenttemplate.id bloomerp.documenttemplateheader.id
 #: bloomerp.documenttemplatestyling.id bloomerp.emailaccount.id bloomerp.emaildraft.id
 #: bloomerp.fieldpolicy.id bloomerp.fileextraction.id bloomerp.filenode.id bloomerp.filereference.id
-#: bloomerp.form.id bloomerp.formsubmission.id bloomerp.inbox.id bloomerp.inboxfolder.id
-#: bloomerp.inboxitem.id bloomerp.initiative.id bloomerp.label.id bloomerp.mcpconnection.id
-#: bloomerp.mcpintegration.id bloomerp.mention.id bloomerp.oauthaccesstoken.id
-#: bloomerp.oauthauthorizationcode.id bloomerp.objectlabel.id bloomerp.policy.id bloomerp.rowpolicy.id
-#: bloomerp.rowpolicyrule.id bloomerp.rowpolicyrulepermission.id bloomerp.savedfilter.id
-#: bloomerp.sidebar.id bloomerp.sidebaritem.id bloomerp.sqlquery.id bloomerp.tag.id bloomerp.tile.id
-#: bloomerp.todo.id bloomerp.todolabel.id bloomerp.user.id bloomerp.userdetailviewtabitem.id
+#: bloomerp.form.id bloomerp.formsubmission.id bloomerp.imauthorization.id bloomerp.imconnection.id
+#: bloomerp.imconversation.id bloomerp.imconversationparticipant.id bloomerp.imendpoint.id
+#: bloomerp.imidentity.id bloomerp.immessage.id bloomerp.immessageattachment.id
+#: bloomerp.immessagereaction.id bloomerp.imthreadreadposition.id bloomerp.inbox.id
+#: bloomerp.inboxfolder.id bloomerp.inboxitem.id bloomerp.initiative.id bloomerp.label.id
+#: bloomerp.mcpconnection.id bloomerp.mcpintegration.id bloomerp.mention.id
+#: bloomerp.oauthaccesstoken.id bloomerp.oauthauthorizationcode.id bloomerp.objectlabel.id
+#: bloomerp.policy.id bloomerp.rowpolicy.id bloomerp.rowpolicyrule.id
+#: bloomerp.rowpolicyrulepermission.id bloomerp.savedfilter.id bloomerp.sidebar.id
+#: bloomerp.sidebaritem.id bloomerp.sqlquery.id bloomerp.tag.id bloomerp.tile.id bloomerp.todo.id
+#: bloomerp.todolabel.id bloomerp.user.id bloomerp.userdetailviewtabitem.id
 #: bloomerp.userdetailviewtabspreference.id bloomerp.userinboxpreference.id
 #: bloomerp.userlistviewpreference.id bloomerp.userobjectlayoutpreference.id bloomerp.workflow.id
 #: bloomerp.workflowedge.id bloomerp.workflownode.id bloomerp.workflowrun.id
@@ -2914,6 +3155,10 @@ msgstr "IMAP-poort"
 #: bloomerp.emailaccount.imap_security models/communication/email_account.py:153
 msgid "IMAP Security"
 msgstr "IMAP-beveiliging"
+
+msgctxt "bloomerp:route:name"
+msgid "IMConversationConsumer"
+msgstr "IMConversationConsumer"
 
 # | msgid "Ip Address"
 #: bloomerp.formsubmission.ip_address models/forms/form_submission.py:81
@@ -2957,6 +3202,17 @@ msgstr "Idempotentiesleutel"
 msgid "Identifier"
 msgstr "Identifier"
 
+#: bloomerp.imconversationparticipant.identity
+msgid "Identity"
+msgstr "Identiteit"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Agent browser connection"
+#: models/communication/instant_messaging/im_conversation_participant.py:82
+#, fuzzy
+msgid "Identity belongs to another connection."
+msgstr "Agentbrowserverbinding"
+
 #: bloomerp.workflownode.sub_type
 msgid "If Condition"
 msgstr "Als-voorwaarde"
@@ -2978,12 +3234,18 @@ msgstr "In uitvoering"
 msgid "In Review"
 msgstr "In beoordeling"
 
-#: bloomerp.comment.object_id models/communication/comment.py:33
+#: bloomerp.comment.object_id models/communication/comment.py:36
 msgid "In order to support both UUID and integer primary keys"
 msgstr "Om zowel UUID- als integer-primary keys te ondersteunen"
 
+# | msgid "Inbox"
+#: bloomerp.immessage.direction models/communication/instant_messaging/im_message.py:41
+#, fuzzy
+msgid "Inbound"
+msgstr "Postvak IN"
+
 #: bloomerp.inbox bloomerp.inboxfolder.inbox models/communication/inbox/inbox.py:20
-#: models/communication/inbox/inbox_folder.py:24 templates/cotton/app/sidebar/body.html:68
+#: models/communication/inbox/inbox_folder.py:27 templates/cotton/app/sidebar/body.html:68
 msgid "Inbox"
 msgstr "Postvak IN"
 
@@ -2991,11 +3253,11 @@ msgctxt "bloomerp:route:name"
 msgid "Inbox"
 msgstr "Inbox"
 
-#: bloomerp.inboxfolder models/communication/inbox/inbox_folder.py:16
+#: bloomerp.inboxfolder models/communication/inbox/inbox_folder.py:19
 msgid "Inbox Folder"
 msgstr "Inboxmap"
 
-#: bloomerp.inboxfolder models/communication/inbox/inbox_folder.py:17
+#: bloomerp.inboxfolder models/communication/inbox/inbox_folder.py:20
 msgid "Inbox Folders"
 msgstr "Inboxmappen"
 
@@ -3053,11 +3315,6 @@ msgstr ""
 "Geeft aan of deze voorkeur de initiële standaardinstelling voor de gebruiker is. Dit wordt "
 "gebruikt om de standaardvoorkeur van de gebruiker te bepalen wanneer deze voor het eerst een "
 "account aanmaakt."
-
-# | msgid "Indicates whether the inbox item has been read by the user."
-#: models/communication/channel.py:23
-msgid "Indicates whether the channel is currently active."
-msgstr "Geeft aan of het inboxitem door de gebruiker is gelezen."
 
 #: bloomerp.inboxitem.is_read
 msgid "Indicates whether the inbox item has been read by the user."
@@ -3120,7 +3377,7 @@ msgstr "Invoerwaarde"
 #: services/email_composer_services.py:209
 #, python-format
 msgid "Inserted templates define incompatible values for variable %(name)s."
-msgstr ""
+msgstr "Ingevoegde sjablonen definiëren onverenigbare waarden voor variabele %(name)s."
 
 #: bloomerp.applicationfield.field_type
 msgid "Integer Field"
@@ -3128,6 +3385,12 @@ msgstr "Integer-veld"
 
 #: bloomerp.mcpconnection.integration
 msgid "Integration"
+msgstr "Integratie"
+
+# | msgid "Integration"
+#: bloomerp.immessage.direction models/communication/instant_messaging/im_message.py:40
+#, fuzzy
+msgid "Internal"
 msgstr "Integratie"
 
 #: bloomerp.aimessage.status
@@ -3157,6 +3420,12 @@ msgid "Invalid content type ID"
 msgstr "Ongeldige ID voor inhoudstype"
 
 # | msgid "Increment first value"
+#: models/communication/instant_messaging/im_authorization.py:94
+#, fuzzy
+msgid "Invalid credential mapping."
+msgstr "Eerste waarde verhogen"
+
+# | msgid "Increment first value"
 #: forms/agents/ai_agent.py:363
 #, fuzzy
 msgid "Invalid credential value."
@@ -3183,7 +3452,7 @@ msgstr "Ongeldige goedkeuringsregels voor tools."
 #: services/email_composer_services.py:229
 #, python-format
 msgid "Invalid email template: %(error)s"
-msgstr ""
+msgstr "Ongeldig e-mailsjabloon: %(error)s"
 
 #: views/access_control/create_policy.py:290
 msgid "Invalid field policy"
@@ -3191,7 +3460,7 @@ msgstr "Ongeldig veldbeleid"
 
 #: models/files/file_extraction.py:116
 msgid "Invalid file extraction manifest."
-msgstr ""
+msgstr "Ongeldig manifest voor bestandsextractie."
 
 # | msgid "Invalid row policy field"
 #: models/filters/filter.py:16
@@ -3202,7 +3471,7 @@ msgstr "Ongeldig veld voor rijbeleid"
 #: communication/builtins/emails/mailboxes.py:77
 #, python-format
 msgid "Invalid mailbox mapping: %(error)s"
-msgstr ""
+msgstr "Ongeldige mailboxkoppeling: %(error)s"
 
 #: views/access_control/create_policy.py:281
 msgid "Invalid row policy"
@@ -3222,18 +3491,17 @@ msgstr "Ongeldige goedkeuringsregels voor tools."
 msgid "Invalid uploaded file."
 msgstr "Ongeldig veld voor rijbeleid"
 
-# | msgid "Active"
-#: models/communication/channel.py:24
+#: bloomerp.imendpoint.is_active
 msgid "Is Active"
 msgstr "Actief"
 
 #: bloomerp.user.is_anonymous
 msgid "Is Anonymous"
-msgstr ""
+msgstr "Is anoniem"
 
 #: bloomerp.user.is_authenticated
 msgid "Is Authenticated"
-msgstr ""
+msgstr "Is geverifieerd"
 
 #: bloomerp.initiative.is_completed bloomerp.todo.is_completed
 msgid "Is Completed"
@@ -3245,7 +3513,7 @@ msgstr "Is aanmaken"
 
 #: bloomerp.apikey.is_expired
 msgid "Is Expired"
-msgstr ""
+msgstr "Is verlopen"
 
 #: bloomerp.sidebaritem.is_folder bloomerp.userdetailviewtabitem.is_folder
 #: models/workspaces/sidebar_item.py:72
@@ -3254,25 +3522,25 @@ msgstr "Is map"
 
 #: bloomerp.sidebaritem.is_internal_url
 msgid "Is Internal Url"
-msgstr ""
+msgstr "Is interne URL"
 
-#: bloomerp.inboxitem.is_read models/communication/inbox/inbox_item.py:73
+#: bloomerp.inboxitem.is_read models/communication/inbox/inbox_item.py:74
 msgid "Is Read"
 msgstr "Is gelezen"
 
 #: bloomerp.apikey.is_revoked
 msgid "Is Revoked"
-msgstr ""
+msgstr "Is ingetrokken"
 
 #: bloomerp.apikey.is_usable
 msgid "Is Usable"
-msgstr ""
+msgstr "Is bruikbaar"
 
 #: bloomerp.sidebar.item_tree
 msgid "Item Tree"
-msgstr ""
+msgstr "Itemstructuur"
 
-#: bloomerp.inboxitem.item_type models/communication/inbox/inbox_item.py:38
+#: bloomerp.inboxitem.item_type models/communication/inbox/inbox_item.py:39
 msgid "Item Type"
 msgstr "Itemtype"
 
@@ -3296,9 +3564,17 @@ msgstr "Item verwijderd"
 msgid "Item updated"
 msgstr "Item bijgewerkt"
 
+#: communication/builtins/instant_messaging/draft.py:104
+msgid "I’ve added the notes in the project channel."
+msgstr "Ik heb de aantekeningen in het projectkanaal gezet."
+
 #: bloomerp.applicationfield.field_type
 msgid "JSON Field"
 msgstr "JSON-veld"
+
+#: bloomerp.imconversationparticipant.joined_at
+msgid "Joined At"
+msgstr "Toegetreden op"
 
 #: workspaces/analytics_tile/model.py:317
 msgid "KPI"
@@ -3320,7 +3596,8 @@ msgstr "Hash van sleutel"
 msgid "Key Prefix"
 msgstr "Sleutelvoorvoegsel"
 
-#: bloomerp.aiartifact.kind bloomerp.filenode.kind
+#: bloomerp.aiartifact.kind bloomerp.filenode.kind bloomerp.imauthorization.kind
+#: bloomerp.imconversation.kind
 msgid "Kind"
 msgstr "Soort"
 
@@ -3365,11 +3642,15 @@ msgstr "Kleuren van banen"
 msgid "Languages"
 msgstr "Talen"
 
+#: bloomerp.imconversation.last_activity_at
+msgid "Last Activity At"
+msgstr "Laatste activiteit op"
+
 #: bloomerp.mcpconnection.last_checked_at
 msgid "Last Checked At"
 msgstr "Laatst gecontroleerd op"
 
-#: models/communication/channel_member.py:52
+#: bloomerp.imconversationparticipant.last_read_message bloomerp.imthreadreadposition.last_read_message
 msgid "Last Read Message"
 msgstr "Laatst gelezen bericht"
 
@@ -3384,6 +3665,10 @@ msgstr "Laatste synchronisatie voltooid op"
 #: bloomerp.emailaccount.last_sync_started_at models/communication/email_account.py:266
 msgid "Last Sync Started At"
 msgstr "Laatste synchronisatie gestart op"
+
+#: bloomerp.imconnection.last_synced_at
+msgid "Last Synced At"
+msgstr "Laatst gesynchroniseerd op"
 
 #: bloomerp.apikey.last_used_at models/api/api_key.py:111
 msgid "Last Used At"
@@ -3401,7 +3686,7 @@ msgstr "Indeling"
 #: bloomerp.form.layout_obj bloomerp.userobjectlayoutpreference.layout_obj
 #: bloomerp.workspace.layout_obj
 msgid "Layout Obj"
-msgstr ""
+msgstr "Lay-outobject"
 
 #: bloomerp.airunattempt.lease_expires_at
 msgid "Lease Expires At"
@@ -3424,10 +3709,21 @@ msgid ""
 "Leave blank to use the email address. For aliases, enter the primary mailbox address if your "
 "provider requires it. Replies still go to the visible sender unless a reply address is specified."
 msgstr ""
+"Laat leeg om het e-mailadres te gebruiken. Voer voor aliassen het adres van de primaire mailbox "
+"in als je provider dit vereist. Antwoorden gaan nog steeds naar de zichtbare afzender, tenzij er "
+"een antwoordadres is opgegeven."
+
+#: templates/components/communication/instant_messaging/group_members.html:36
+msgid "Leave group"
+msgstr "Groep verlaten"
 
 #: workspaces/analytics_tile/model.py:200
 msgid "Left"
 msgstr "Links"
+
+#: bloomerp.imconversationparticipant.left_at
+msgid "Left At"
+msgstr "Vertrokken op"
 
 #: bloomerp.documenttemplateheader.margin_left models/document_templates/document_template_header.py:42
 msgid "Left margin of the header in inches."
@@ -3444,6 +3740,10 @@ msgstr "Positie van legenda"
 #: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:24
 msgid "Letter"
 msgstr "Letter"
+
+#: communication/builtins/instant_messaging/draft.py:54
+msgid "Let’s keep all launch feedback here. How does the messaging panel feel?"
+msgstr "Laten we alle feedback over de lancering hier verzamelen. Wat vind je van het berichtenpaneel?"
 
 #: templates/cotton/app/theme_selector.html:9
 msgid "Light"
@@ -3629,6 +3929,9 @@ msgid ""
 "Mailbox names on the left come from your provider. Labels and colors only change their appearance"
 " in Bloomerp. Choose at most one main folder and one Sent folder."
 msgstr ""
+"De mailboxnamen aan de linkerkant zijn afkomstig van je provider. Labels en kleuren veranderen "
+"alleen de weergave ervan in Bloomerp. Kies maximaal één hoofdmap en één map voor verzonden "
+"berichten."
 
 #: bloomerp.emailaccount.mailboxes models/communication/email_account.py:301
 #: views/communication/create_email_account.py:285
@@ -3640,6 +3943,14 @@ msgstr "Postvakken"
 #, fuzzy
 msgid "Main folder"
 msgstr "Bovenliggende map"
+
+#: templates/components/communication/instant_messaging/group_members.html:15
+msgid "Make admin"
+msgstr "Beheerder maken"
+
+msgctxt "bloomerp:module:description"
+msgid "Manage email accounts, instant messaging connections, and inboxes."
+msgstr "Beheer e-mailaccounts, instant messaging-verbindingen en inboxen."
 
 msgctxt "bloomerp:module:description"
 msgid "Manage todos and initiatives within the ERP system."
@@ -3655,11 +3966,11 @@ msgstr "Beheer je agents en houd het tokengebruik en de uitvoeringen bij."
 
 msgctxt "bloomerp:module:description"
 msgid "Manage your files."
-msgstr ""
+msgstr "Beheer je bestanden."
 
 #: bloomerp.fileextraction.manifest models/files/file_extraction.py:213
 msgid "Manifest"
-msgstr ""
+msgstr "Manifest"
 
 #: bloomerp.applicationfield.field_type
 msgid "Many To Many Field"
@@ -3779,7 +4090,8 @@ msgstr "Gemiddeld"
 
 # | msgid "Content Type"
 # | msgid "Channel Type"
-#: models/communication/channel_member.py:21
+#: bloomerp.imconversationparticipant.role
+#: models/communication/instant_messaging/im_conversation_participant.py:35
 msgid "Member"
 msgstr "Inhoudstype"
 
@@ -3793,10 +4105,11 @@ msgstr "Branches samenvoegen"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
-#: bloomerp.aimessageartifact.message bloomerp.airun.trigger_type
-#: models/communication/channel_message.py:8
+#: bloomerp.aimessageartifact.message bloomerp.airun.trigger_type bloomerp.immessageattachment.message
+#: bloomerp.immessagereaction.message
+#: templates/components/communication/instant_messaging/conversation.html:2
 msgid "Message"
-msgstr "Bovenliggend"
+msgstr "Bericht"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
@@ -3808,9 +4121,20 @@ msgstr "Bovenliggend"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
-#: models/communication/channel_message.py:9
+# | msgid "Message"
+#: templates/components/communication/instant_messaging/conversations.html:7
+#: templates/cotton/features/instant_messaging/message.html:6
+#: templates/cotton/features/instant_messaging/quote.html:3
+#, fuzzy
+msgid "Message deleted"
+msgstr "Bericht"
+
+# | msgid "Parent"
+# | msgid "Parent Message"
+#: bloomerp.inboxfolder.type templates/components/communication/messaging_draft.html:5
+#: templates/components/communication/messaging_draft.html:7
 msgid "Messages"
-msgstr "Bovenliggend"
+msgstr "Berichten"
 
 #: bloomerp.applicationfield.meta bloomerp.filenode.meta models/application_field.py:67
 msgid "Meta"
@@ -3818,7 +4142,7 @@ msgstr "Meta"
 
 #: bloomerp.filenode.metadata
 msgid "Metadata"
-msgstr ""
+msgstr "Metadata"
 
 #: dataviews/pivot_table/config.py:126
 msgid "Minimum"
@@ -3840,11 +4164,11 @@ msgstr "Model"
 
 #: bloomerp.documenttemplate.model_variable
 msgid "Model Variable"
-msgstr ""
+msgstr "Modelvariabele"
 
 #: bloomerp.documenttemplate.model_variable_id
 msgid "Model Variable Id"
-msgstr ""
+msgstr "Modelvariabele-ID"
 
 #: models/agents/ai_agent.py:303
 msgid "Model credentials could not be decrypted."
@@ -3874,6 +4198,13 @@ msgstr "Maand-dag-jaar (08-15-2000)"
 #: bloomerp.user.datetime_view_preference models/users/user.py:60
 msgid "Month-Day-Year Hour:Minute (08-15-2000 12:30)"
 msgstr "Maand-dag-jaar Uur:minuut (08-15-2000 12:30)"
+
+# | msgid "No results found."
+#: templates/components/communication/instant_messaging/group_members.html:32
+#: templates/components/communication/instant_messaging/recipients.html:15
+#, fuzzy
+msgid "More results"
+msgstr "Geen resultaten gevonden."
 
 # | msgid "Move up"
 #: components/files/actions/move_file.py:87 models/files/file_node.py:104
@@ -3905,7 +4236,7 @@ msgstr "Naar boven verplaatsen"
 msgid "Move up"
 msgstr "Naar boven verplaatsen"
 
-#: models/communication/channel_member.py:57
+#: bloomerp.imconversationparticipant.muted_until
 msgid "Muted Until"
 msgstr "Gedempt tot"
 
@@ -3920,17 +4251,18 @@ msgstr "Mijn werkruimten"
 #: bloomerp.aiagent.name bloomerp.aiagentaccess.name bloomerp.apikey.name
 #: bloomerp.documenttemplate.name bloomerp.documenttemplateheader.name
 #: bloomerp.documenttemplatestyling.name bloomerp.emailaccount.name bloomerp.fieldpolicy.name
-#: bloomerp.filenode.name bloomerp.form.name bloomerp.inbox.name bloomerp.inboxfolder.name
-#: bloomerp.initiative.name bloomerp.label.name bloomerp.mcpintegration.name bloomerp.policy.name
-#: bloomerp.rowpolicy.name bloomerp.savedfilter.name bloomerp.sidebar.name bloomerp.sidebaritem.name
-#: bloomerp.sqlquery.name bloomerp.tile.name bloomerp.todolabel.name
-#: bloomerp.userdetailviewtabitem.name bloomerp.userdetailviewtabspreference.name
-#: bloomerp.userlistviewpreference.name bloomerp.userobjectlayoutpreference.name bloomerp.workflow.name
-#: bloomerp.workflowedge.name bloomerp.workflownode.name bloomerp.workspace.name
-#: components/files/actions/rename_form.py:10 models/access_control/field_policy.py:35
-#: models/access_control/policy.py:71 models/access_control/row_policy.py:28
-#: models/agents/ai_agent.py:169 models/agents/ai_agent_access.py:26 models/agents/mcp_server.py:43
-#: models/api/api_key.py:93 models/automation/workflow.py:189 models/automation/workflow_edge.py:23
+#: bloomerp.filenode.name bloomerp.form.name bloomerp.imconnection.name bloomerp.imconversation.name
+#: bloomerp.imendpoint.name bloomerp.inbox.name bloomerp.inboxfolder.name bloomerp.initiative.name
+#: bloomerp.label.name bloomerp.mcpintegration.name bloomerp.policy.name bloomerp.rowpolicy.name
+#: bloomerp.savedfilter.name bloomerp.sidebar.name bloomerp.sidebaritem.name bloomerp.sqlquery.name
+#: bloomerp.tile.name bloomerp.todolabel.name bloomerp.userdetailviewtabitem.name
+#: bloomerp.userdetailviewtabspreference.name bloomerp.userlistviewpreference.name
+#: bloomerp.userobjectlayoutpreference.name bloomerp.workflow.name bloomerp.workflowedge.name
+#: bloomerp.workflownode.name bloomerp.workspace.name components/files/actions/rename_form.py:10
+#: models/access_control/field_policy.py:35 models/access_control/policy.py:71
+#: models/access_control/row_policy.py:28 models/agents/ai_agent.py:169
+#: models/agents/ai_agent_access.py:26 models/agents/mcp_server.py:43 models/api/api_key.py:93
+#: models/automation/workflow.py:189 models/automation/workflow_edge.py:23
 #: models/automation/workflow_node.py:54 models/communication/email_account.py:110
 #: models/document_templates/document_template.py:135
 #: models/document_templates/document_template_header.py:23
@@ -3981,6 +4313,10 @@ msgstr "Naam vereist"
 msgid "Navigate to the '{module}' module."
 msgstr "De startpagina voor de module {module}."
 
+#: bloomerp.imconversation.needs_reply
+msgid "Needs Reply"
+msgstr "Moet reageren"
+
 #: templates/components/forms/initial_data.html:29
 msgid "New"
 msgstr "Nieuw"
@@ -4006,6 +4342,12 @@ msgstr "AI-gesprek"
 msgid "New email"
 msgstr "Nieuwe e-mail"
 
+# | msgid "No grouping"
+#: templates/components/communication/instant_messaging/recipients.html:4
+#, fuzzy
+msgid "New group"
+msgstr "Geen groepering"
+
 #: components/ui/sidebar.py:89
 msgid "New link"
 msgstr "Nieuwe link"
@@ -4017,6 +4359,10 @@ msgstr "Volgende"
 #: bloomerp.emailaccount.next_sync_at models/communication/email_account.py:260
 msgid "Next Sync At"
 msgstr "Volgende synchronisatie op"
+
+#: communication/builtins/instant_messaging/draft.py:98
+msgid "Nice! I’ll take a look after lunch."
+msgstr "Leuk! Ik kijk er na de lunch even naar."
 
 # | msgid "Node"
 #: forms/agents/ai_agent.py:65
@@ -4069,6 +4415,11 @@ msgid "No color grouping"
 msgstr "Geen kleurengroepering"
 
 # | msgid "AI conversations"
+#: templates/components/communication/instant_messaging/conversations.html:10
+msgid "No conversations found."
+msgstr "Geen gesprekken gevonden."
+
+# | msgid "AI conversations"
 #: templates/cotton/features/agent/body.html:5
 #, fuzzy
 msgid "No conversations yet."
@@ -4085,6 +4436,12 @@ msgstr "Geen afhankelijkheid"
 #: templates/components/forms/initial_data_value.html:75
 msgid "No editable child fields"
 msgstr "Geen bewerkbare onderliggende velden"
+
+# | msgid "No AI providers are registered."
+#: templates/views/communication/create_im_connection/provider.html:5
+#, fuzzy
+msgid "No external messaging providers are registered."
+msgstr "Er zijn geen AI-providers geregistreerd."
 
 # | msgid "No users found."
 #: templates/dataviews/files.html:73
@@ -4125,6 +4482,13 @@ msgstr "Er zijn nog geen links toegevoegd."
 msgid "No matching items."
 msgstr "Filters laden..."
 
+# | msgid "ai messages"
+#: templates/components/communication/instant_messaging/conversations.html:7
+#: templates/components/communication/instant_messaging/messages.html:5
+#, fuzzy
+msgid "No messages yet."
+msgstr "AI-berichten"
+
 #: templates/components/preferences/select.html:48
 msgid "No preferences available yet."
 msgstr "Er zijn nog geen voorkeuren beschikbaar."
@@ -4158,6 +4522,12 @@ msgstr "Geen geplande records."
 msgid "No sections"
 msgstr "Rijacties"
 
+# | msgid "No users found."
+#: templates/components/communication/instant_messaging/recipients.html:14
+#, fuzzy
+msgid "No staff users found."
+msgstr "Geen gebruikers gevonden."
+
 #: templates/views/generic/detail/base.html:58
 msgid "No tabs in folder"
 msgstr "Geen tabbladen in map"
@@ -4180,17 +4550,21 @@ msgstr "Node"
 
 #: bloomerp.workflownode.node_sub_type
 msgid "Node Sub Type"
-msgstr ""
+msgstr "Knooppunt-subtype"
 
 #: bloomerp.workflownode.node_sub_type_id
 msgid "Node Sub Type Id"
-msgstr ""
+msgstr "Knooppunt-subtype-ID"
 
 # | msgid "Node subtype is required in config"
 #: models/automation/workflow_node.py:174
 #, fuzzy
 msgid "Node subtype is required"
 msgstr "Subtype van node is vereist in de configuratie"
+
+#: bloomerp.imconnection.settings models/communication/instant_messaging/im_connection.py:40
+msgid "Non-secret provider settings only."
+msgstr "Alleen niet-geheime providerinstellingen."
 
 #: bloomerp.emailaccount.imap_security bloomerp.emailaccount.smtp_security
 #: bloomerp.mcpintegration.authentication_type dataviews/definition.py:417 dataviews/definition.py:434
@@ -4220,15 +4594,15 @@ msgstr "Nummer"
 
 #: bloomerp.aiconversation.number_of_messages
 msgid "Number Of Messages"
-msgstr ""
+msgstr "Aantal berichten"
 
 #: bloomerp.workflowrun.number_of_steps
 msgid "Number Of Steps"
-msgstr ""
+msgstr "Aantal stappen"
 
 #: bloomerp.policy.number_of_users
 msgid "Number Of Users"
-msgstr ""
+msgstr "Aantal gebruikers"
 
 #: dataviews/pivot_table/config.py:71
 msgid "Numeric fields support all aggregations; booleans support sum and count; other fields use count."
@@ -4239,6 +4613,8 @@ msgstr ""
 #: workspaces/analytics_tile/model.py:267
 msgid "Numeric query columns used as chart series. Each column is summed within each X-axis category."
 msgstr ""
+"Numerieke querykolommen die als grafiekreeksen worden gebruikt. Elke kolom wordt opgeteld binnen "
+"elke categorie op de X-as."
 
 #: bloomerp.mcpintegration.authentication_type models/agents/mcp_server.py:29
 msgid "OAuth"
@@ -4274,17 +4650,17 @@ msgstr "OAuth-scopes"
 
 #: bloomerp.activitylog.object bloomerp.bookmark.object
 msgid "Object"
-msgstr ""
+msgstr "Object"
 
 # | msgid "Object Id"
 #: bloomerp.activitylog.object_id bloomerp.bookmark.object_id bloomerp.comment.object_id
-#: bloomerp.todo.object_id models/audit/activity_log.py:66 models/communication/comment.py:32
+#: bloomerp.todo.object_id models/audit/activity_log.py:66 models/communication/comment.py:35
 #: models/project_management/todo.py:471 models/users/bookmark.py:28
 msgid "Object ID"
 msgstr "Object-ID"
 
-#: bloomerp.emaildraft.object_id bloomerp.filereference.object_id bloomerp.mention.object_id
-#: bloomerp.objectlabel.object_id
+#: bloomerp.emaildraft.object_id bloomerp.filereference.object_id bloomerp.imidentity.object_id
+#: bloomerp.mention.object_id bloomerp.objectlabel.object_id
 msgid "Object Id"
 msgstr "Object-ID"
 
@@ -4303,7 +4679,12 @@ msgstr "Object als-voorwaarde"
 #: bloomerp.documenttemplatestyling.object_labels bloomerp.emailaccount.object_labels
 #: bloomerp.emaildraft.object_labels bloomerp.fileextraction.object_labels
 #: bloomerp.filenode.object_labels bloomerp.filereference.object_labels bloomerp.form.object_labels
-#: bloomerp.formsubmission.object_labels bloomerp.inboxfolder.object_labels
+#: bloomerp.formsubmission.object_labels bloomerp.imauthorization.object_labels
+#: bloomerp.imconnection.object_labels bloomerp.imconversation.object_labels
+#: bloomerp.imconversationparticipant.object_labels bloomerp.imendpoint.object_labels
+#: bloomerp.imidentity.object_labels bloomerp.immessage.object_labels
+#: bloomerp.immessageattachment.object_labels bloomerp.immessagereaction.object_labels
+#: bloomerp.imthreadreadposition.object_labels bloomerp.inboxfolder.object_labels
 #: bloomerp.inboxitem.object_labels bloomerp.initiative.object_labels
 #: bloomerp.mcpconnection.object_labels bloomerp.mcpintegration.object_labels
 #: bloomerp.savedfilter.object_labels bloomerp.sqlquery.object_labels bloomerp.tile.object_labels
@@ -4324,7 +4705,7 @@ msgstr "Objecten"
 
 #: bloomerp.filereference.occurrence_id bloomerp.mention.occurrence_id bloomerp.tag.occurrence_id
 msgid "Occurrence Id"
-msgstr ""
+msgstr "Voorkomens-ID"
 
 #: bloomerp.initiative.status models/project_management/initiative.py:29
 msgid "On Hold"
@@ -4366,17 +4747,29 @@ msgstr "Een-op-eenveld"
 msgid "One To One User Field"
 msgstr "Een-op-een gebruikersveld"
 
+#: models/communication/instant_messaging/im_message_attachment.py:38
+msgid "Only files can be attached to messages."
+msgstr "Alleen bestanden kunnen aan berichten worden toegevoegd."
+
 #: services/email_composer_services.py:155
 msgid "Only model fields can be used in email templates."
-msgstr ""
+msgstr "Alleen modelvelden kunnen in e-mailsjablonen worden gebruikt."
 
 #: form_behaviors/shared/write_policy.py:19
 msgid "Only when empty"
 msgstr "Alleen als leeg"
 
-#: bloomerp.aiconversation.status
+#: bloomerp.aiconversation.status bloomerp.imconversation.status
+#: models/communication/instant_messaging/im_conversation.py:44
 msgid "Open"
 msgstr "Open"
+
+# | msgid "Parent"
+# | msgid "Parent Message"
+#: templates/components/communication/messaging_draft.html:4
+#, fuzzy
+msgid "Open messages"
+msgstr "Bovenliggend"
 
 #: templates/inbox_items/workflow_run.html:52
 msgid "Open object"
@@ -4408,7 +4801,7 @@ msgstr "Bewerking bestaat niet"
 
 #: bloomerp.rowpolicyrule.operator_str
 msgid "Operator Str"
-msgstr ""
+msgstr "Operatorstring"
 
 #: bloomerp.inboxitem.raw_meta_data
 msgid "Optional JSON field to store additional metadata related to the inbox item."
@@ -4501,7 +4894,11 @@ msgstr "Oorspronkelijke browsercontext"
 
 #: dataviews/file_browser/renderer.py:112
 msgid "Other"
-msgstr ""
+msgstr "Overige"
+
+#: bloomerp.immessage.direction models/communication/instant_messaging/im_message.py:42
+msgid "Outbound"
+msgstr "Uitgaand"
 
 #: bloomerp.aitoolcall.status
 msgid "Outcome requires reconciliation"
@@ -4510,6 +4907,10 @@ msgstr "Uitkomst vereist reconciliatie"
 #: models/communication/email_account.py:78
 msgid "Outgoing mail"
 msgstr "Uitgaande e-mail"
+
+#: communication/builtins/instant_messaging/draft.py:124
+msgid "Outgoing phone call · 4 min 32 sec"
+msgstr "Uitgaand telefoongesprek · 4 min 32 sec"
 
 #: bloomerp.workflowrunstep.output_file models/automation/workflow_run_step.py:58
 msgid "Output File"
@@ -4541,7 +4942,8 @@ msgctxt "bloomerp:route:description"
 msgid "Overview of profile"
 msgstr "Profieloverzicht"
 
-#: bloomerp.aiconversation.owner bloomerp.initiative.owner models/communication/channel_member.py:23
+#: bloomerp.aiconversation.owner bloomerp.imconversationparticipant.role bloomerp.initiative.owner
+#: models/communication/instant_messaging/im_conversation_participant.py:35
 #: models/project_management/initiative.py:183
 msgid "Owner"
 msgstr "Eigenaar"
@@ -4579,14 +4981,13 @@ msgstr "Bovenliggend item"
 msgid "Parent Initiative"
 msgstr "Initiatief"
 
-# | msgid "Parent"
-#: models/communication/channel_message.py:36
-msgid "Parent Message"
-msgstr "Bovenliggend"
-
 #: templates/components/workspaces/tiles/builders/links.html:92
 msgid "Parent folder"
 msgstr "Bovenliggende map"
+
+#: bloomerp.immessagereaction.participant bloomerp.imthreadreadposition.participant
+msgid "Participant"
+msgstr "Deelnemer"
 
 #: bloomerp.emailaccount.password models/communication/email_account.py:137
 msgid "Password"
@@ -4604,7 +5005,8 @@ msgstr "Payload"
 
 # | msgid "Sort ascending"
 # | msgid "Ascending"
-#: bloomerp.aiapproval.status bloomerp.mcpconnection.status models/agents/mcp_connection.py:45
+#: bloomerp.aiapproval.status bloomerp.immessage.status bloomerp.mcpconnection.status
+#: models/agents/mcp_connection.py:45 models/communication/instant_messaging/im_message.py:49
 #, fuzzy
 msgid "Pending"
 msgstr "Oplopend sorteren"
@@ -4613,6 +5015,10 @@ msgstr "Oplopend sorteren"
 #: tests/views/generic/model/test_bloomerp_list_view.py:105
 msgid "People"
 msgstr "Personen"
+
+#: communication/builtins/instant_messaging/draft.py:38
+msgid "Perfect. Could we also include the installation date?"
+msgstr "Perfect. Kunnen we ook de installatiedatum opnemen?"
 
 #: bloomerp.rowpolicyrulepermission.permission models/access_control/row_policy_rule.py:221
 msgid "Permission"
@@ -4635,7 +5041,8 @@ msgstr "Opgeslagen"
 msgid "Persisted"
 msgstr "Opgeslagen"
 
-#: bloomerp.mcpintegration.connection_mode models/agents/mcp_server.py:24
+#: bloomerp.imauthorization.kind bloomerp.mcpintegration.connection_mode models/agents/mcp_server.py:24
+#: models/communication/instant_messaging/im_authorization.py:35
 msgid "Personal"
 msgstr "Persoonlijk"
 
@@ -4651,7 +5058,7 @@ msgstr "Telefoonnummerveld"
 
 #: dataviews/file_browser/config.py:158
 msgid "Physical"
-msgstr ""
+msgstr "Fysiek"
 
 # | msgid "file folders"
 #: templates/dataviews/files.html:28
@@ -4674,19 +5081,23 @@ msgstr "Draaitabel"
 #: bloomerp.comment.pk bloomerp.documenttemplate.pk bloomerp.documenttemplateheader.pk
 #: bloomerp.documenttemplatestyling.pk bloomerp.emailaccount.pk bloomerp.emaildraft.pk
 #: bloomerp.fieldpolicy.pk bloomerp.fileextraction.pk bloomerp.filenode.pk bloomerp.filereference.pk
-#: bloomerp.form.pk bloomerp.formsubmission.pk bloomerp.inbox.pk bloomerp.inboxfolder.pk
-#: bloomerp.inboxitem.pk bloomerp.initiative.pk bloomerp.label.pk bloomerp.mcpconnection.pk
-#: bloomerp.mcpintegration.pk bloomerp.mention.pk bloomerp.oauthaccesstoken.pk
-#: bloomerp.oauthauthorizationcode.pk bloomerp.objectlabel.pk bloomerp.policy.pk bloomerp.rowpolicy.pk
-#: bloomerp.rowpolicyrule.pk bloomerp.rowpolicyrulepermission.pk bloomerp.savedfilter.pk
-#: bloomerp.sidebar.pk bloomerp.sidebaritem.pk bloomerp.sqlquery.pk bloomerp.tag.pk bloomerp.tile.pk
-#: bloomerp.todo.pk bloomerp.todolabel.pk bloomerp.user.pk bloomerp.userdetailviewtabitem.pk
+#: bloomerp.form.pk bloomerp.formsubmission.pk bloomerp.imauthorization.pk bloomerp.imconnection.pk
+#: bloomerp.imconversation.pk bloomerp.imconversationparticipant.pk bloomerp.imendpoint.pk
+#: bloomerp.imidentity.pk bloomerp.immessage.pk bloomerp.immessageattachment.pk
+#: bloomerp.immessagereaction.pk bloomerp.imthreadreadposition.pk bloomerp.inbox.pk
+#: bloomerp.inboxfolder.pk bloomerp.inboxitem.pk bloomerp.initiative.pk bloomerp.label.pk
+#: bloomerp.mcpconnection.pk bloomerp.mcpintegration.pk bloomerp.mention.pk
+#: bloomerp.oauthaccesstoken.pk bloomerp.oauthauthorizationcode.pk bloomerp.objectlabel.pk
+#: bloomerp.policy.pk bloomerp.rowpolicy.pk bloomerp.rowpolicyrule.pk
+#: bloomerp.rowpolicyrulepermission.pk bloomerp.savedfilter.pk bloomerp.sidebar.pk
+#: bloomerp.sidebaritem.pk bloomerp.sqlquery.pk bloomerp.tag.pk bloomerp.tile.pk bloomerp.todo.pk
+#: bloomerp.todolabel.pk bloomerp.user.pk bloomerp.userdetailviewtabitem.pk
 #: bloomerp.userdetailviewtabspreference.pk bloomerp.userinboxpreference.pk
 #: bloomerp.userlistviewpreference.pk bloomerp.userobjectlayoutpreference.pk bloomerp.workflow.pk
 #: bloomerp.workflowedge.pk bloomerp.workflownode.pk bloomerp.workflowrun.pk
 #: bloomerp.workflowrunstep.pk bloomerp.workspace.pk
 msgid "Pk"
-msgstr ""
+msgstr "PK"
 
 #: workspaces/links_tile/model.py:129 workspaces/links_tile/model.py:206
 msgid "Please add a URL to the link"
@@ -4830,7 +5241,7 @@ msgstr "Naam van de voorkeur"
 
 #: bloomerp.user.default_email_account models/users/user.py:88
 msgid "Preferred sender when composing outside an inbox."
-msgstr ""
+msgstr "Voorkeursafzender bij het opstellen van een bericht buiten een inbox."
 
 #: workspaces/analytics_tile/model.py:81
 msgid "Prefix"
@@ -4882,6 +5293,10 @@ msgstr "Prioriteit"
 msgid "Processing..."
 msgstr "Verwerken..."
 
+#: communication/builtins/instant_messaging/draft.py:46
+msgid "Product team"
+msgstr "Productteam"
+
 #: models/users/user.py:23
 msgid "Profile"
 msgstr "Profiel"
@@ -4915,19 +5330,36 @@ msgstr "Voorgesteld"
 msgid "Protected related objects:"
 msgstr "Beveiligde gerelateerde objecten:"
 
-#: bloomerp.emailaccount.provider models/communication/email_account.py:121
+#: models/communication/instant_messaging/im_identity.py:50
+msgid "Provide both a content type and an object ID."
+msgstr "Geef zowel een inhoudstype als een object-ID op."
+
+#: bloomerp.emailaccount.provider bloomerp.imconnection.provider
+#: models/communication/email_account.py:121
 msgid "Provider"
 msgstr "Provider"
 
 #: bloomerp.aitoolcall.provider_call_id
 msgid "Provider Call Id"
-msgstr ""
+msgstr "Provideroproep-ID"
 
 # | msgid "Provider"
 #: bloomerp.aiagent.base_url models/agents/ai_agent.py:220
 #, fuzzy
 msgid "Provider Endpoint"
 msgstr "Provider"
+
+#: bloomerp.immessageattachment.provider_media_id
+msgid "Provider Media Id"
+msgstr "Providermedia-ID"
+
+#: bloomerp.immessage.provider_message_id
+msgid "Provider Message Id"
+msgstr "Providerbericht-ID"
+
+#: bloomerp.immessage.provider_metadata
+msgid "Provider Metadata"
+msgstr "Providermetadata"
 
 #: bloomerp.aiagent.model_identifier models/agents/ai_agent.py:182
 msgid "Provider Model Identifier"
@@ -4938,6 +5370,14 @@ msgstr "Model-ID van provider"
 #, fuzzy
 msgid "Provider Parameters"
 msgstr "Provider vereist"
+
+#: bloomerp.immessagereaction.provider_reaction_id
+msgid "Provider Reaction Id"
+msgstr "Providerreactie-ID"
+
+#: bloomerp.imconversation.provider_thread_id
+msgid "Provider Thread Id"
+msgstr "Providerthread-ID"
 
 # | msgid "Provider required"
 #: views/agents/create_ai_agent.py:71
@@ -4959,7 +5399,7 @@ msgstr "ID van provideroproep"
 
 #: bloomerp.emailaccount.mailboxes
 msgid "Provider mailbox names mapped to labels, roles and optional icon colors."
-msgstr ""
+msgstr "Postvaknamen van de provider, gekoppeld aan labels, rollen en optionele pictogramkleuren."
 
 # | msgid "Provider required"
 #: views/agents/create_ai_agent.py:84
@@ -4974,6 +5414,10 @@ msgstr "Provider vereist"
 #: bloomerp.emailaccount.oauth_tenant_id
 msgid "Provider tenant, directory, or workspace identifier when applicable."
 msgstr "Tenant-, directory- of werkruimte-identificatie van de provider, indien van toepassing."
+
+#: templates/views/communication/create_im_connection/success.html:5
+msgid "Provider verification and messaging are not enabled yet."
+msgstr "Verificatie en berichtenverkeer via de provider zijn nog niet ingeschakeld."
 
 #: bloomerp.emailaccount.sync_cursor
 msgid "Provider-specific cursor/state for incremental synchronization."
@@ -5025,9 +5469,23 @@ msgstr "Query vereist"
 msgid "Queued"
 msgstr "In de wachtrij"
 
-#: bloomerp.inboxitem.raw_meta_data models/communication/inbox/inbox_item.py:103
+#: templates/cotton/features/instant_messaging/message.html:13
+msgid "Quote"
+msgstr "Citeren"
+
+#: bloomerp.inboxitem.raw_meta_data models/communication/inbox/inbox_item.py:104
 msgid "Raw Meta Data"
 msgstr "Ruwe metadata"
+
+#: templates/cotton/features/instant_messaging/message.html:18
+msgid "React with"
+msgstr "Reageren met"
+
+# | msgid "Is Read"
+#: bloomerp.immessage.status models/communication/instant_messaging/im_message.py:53
+#, fuzzy
+msgid "Read"
+msgstr "Is gelezen"
 
 # | msgid "Is Read"
 #: bloomerp.mcpconnection.status models/agents/mcp_connection.py:46
@@ -5043,9 +5501,17 @@ msgstr "Voor actieve verbindingen zijn inloggegevens vereist."
 msgid "Reason"
 msgstr "Reden"
 
+#: bloomerp.immessage.received_at
+msgid "Received At"
+msgstr "Ontvangen op"
+
 #: templates/views/workflows/builder.html:26
 msgid "Recenter"
 msgstr "Opnieuw centreren"
+
+#: templates/components/communication/instant_messaging/recipients.html:22
+msgid "Recipient discovery for this connection is not available yet."
+msgstr "Ontvangers zoeken voor deze verbinding is nog niet beschikbaar."
 
 #: models/communication/signature_request.py:30
 msgid "Recipient of the signature request."
@@ -5061,7 +5527,7 @@ msgstr "Een AI-agent opnieuw configureren"
 
 msgctxt "bloomerp:route:name"
 msgid "Reconfigure email account"
-msgstr ""
+msgstr "E-mailaccount opnieuw configureren"
 
 #: views/agents/create_mcp_integration.py:347
 msgid "Reconnect after changing the authentication settings."
@@ -5074,6 +5540,10 @@ msgstr "Records"
 #: bloomerp.oauthauthorizationcode.redirect_uri
 msgid "Redirect Uri"
 msgstr "Omleidings-URI"
+
+#: models/communication/instant_messaging/im_message.py:131
+msgid "Reference an earlier message in this conversation."
+msgstr "Verwijs naar een eerder bericht in dit gesprek."
 
 #: bloomerp.workflowrunstep.node models/automation/workflow_run_step.py:65
 msgid "Reference to node object"
@@ -5091,7 +5561,7 @@ msgstr ""
 
 #: models/files/file_reference.py:114
 msgid "References must point to an existing file node."
-msgstr ""
+msgstr "Verwijzingen moeten verwijzen naar een bestaande bestandsnode."
 
 #: bloomerp.emailaccount.refresh_token models/communication/email_account.py:219
 msgid "Refresh Token"
@@ -5116,7 +5586,7 @@ msgid "Rejected"
 msgstr "Geselecteerd"
 
 # | msgid "Related Item Id"
-#: bloomerp.inboxitem.related_item_id models/communication/inbox/inbox_item.py:47
+#: bloomerp.inboxitem.related_item_id models/communication/inbox/inbox_item.py:48
 msgid "Related Item ID"
 msgstr "ID van gerelateerd item"
 
@@ -5124,8 +5594,12 @@ msgstr "ID van gerelateerd item"
 msgid "Related Model"
 msgstr "Gerelateerd model"
 
+#: bloomerp.imidentity.related_object
+msgid "Related Object"
+msgstr "Gerelateerd object"
+
 # | msgid "Related Object Id"
-#: bloomerp.inboxfolder.related_object_id models/communication/inbox/inbox_folder.py:35
+#: bloomerp.inboxfolder.related_object_id models/communication/inbox/inbox_folder.py:38
 msgid "Related Object ID"
 msgstr "ID van gerelateerd object"
 
@@ -5149,13 +5623,20 @@ msgstr "Gerelateerde objecten die zouden worden verwijderd:"
 
 #: models/users/user_detail_view_tabs_preference.py:364
 msgid "Relationships"
-msgstr ""
+msgstr "Relaties"
 
+#: templates/components/communication/instant_messaging/group_members.html:18
 #: templates/components/workspaces/tiles/builders/link_items.html:70
 #: templates/components/workspaces/tiles/builders/link_items.html:77
 #: templates/cotton/features/agent/body.html:126
 msgid "Remove"
 msgstr "Verwijderen"
+
+# | msgid "Remove row"
+#: templates/components/communication/instant_messaging/group_members.html:15
+#, fuzzy
+msgid "Remove admin role"
+msgstr "Rij verwijderen"
 
 #: models/agents/mcp_server.py:102
 msgid "Remove existing connections before changing this setting."
@@ -5205,6 +5686,10 @@ msgstr "Beantwoorden"
 #: components/communication/emails/reply_to_email.py:335
 msgid "Reply"
 msgstr "Beantwoorden"
+
+#: bloomerp.immessage.reply_to
+msgid "Reply To"
+msgstr "Antwoord aan"
 
 # | msgid "Email sent successfully."
 #: components/communication/emails/reply_to_email.py:316
@@ -5274,9 +5759,15 @@ msgctxt "bloomerp:route:name"
 msgid "Reset password for user (admin)"
 msgstr "Wachtwoord opnieuw instellen voor gebruiker (beheerder)"
 
+# | msgid "Resource"
+#: bloomerp.imconversation.status models/communication/instant_messaging/im_conversation.py:45
+#, fuzzy
+msgid "Resolved"
+msgstr "Resource"
+
 #: bloomerp.oauthaccesstoken.resource bloomerp.oauthauthorizationcode.resource
 msgid "Resource"
-msgstr "Resource"
+msgstr "Bron"
 
 #: templates/cotton/features/agent/body.html:36
 msgid "Response stopped."
@@ -5337,7 +5828,8 @@ msgstr "API-sleutel aanmaken"
 msgid "Revoked"
 msgstr "Ingetrokken op"
 
-#: bloomerp.apikey.revoked_at bloomerp.oauthaccesstoken.revoked_at models/api/api_key.py:122
+#: bloomerp.apikey.revoked_at bloomerp.imauthorization.revoked_at bloomerp.oauthaccesstoken.revoked_at
+#: models/api/api_key.py:122
 msgid "Revoked At"
 msgstr "Ingetrokken op"
 
@@ -5350,7 +5842,7 @@ msgstr "Rechts"
 msgid "Right margin of the header in inches."
 msgstr "Rechtermarge van de koptekst in inches."
 
-#: bloomerp.aimessage.role models/communication/channel_member.py:43
+#: bloomerp.aimessage.role bloomerp.imconversationparticipant.role
 msgid "Role"
 msgstr "Rol"
 
@@ -5360,7 +5852,7 @@ msgstr "Hoofdmap"
 
 #: bloomerp.sidebar.root_items
 msgid "Root Items"
-msgstr ""
+msgstr "Hoofditems"
 
 #: bloomerp.documenttemplate.content_types models/document_templates/document_template.py:148
 msgid "Root object types that can be used as variables in the document template."
@@ -5464,7 +5956,7 @@ msgstr "SMTP-beveiliging"
 
 #: bloomerp.emailaccount.smtp_envelope_sender models/communication/email_account.py:175
 msgid "SMTP envelope sender"
-msgstr ""
+msgstr "SMTP-envelopafzender"
 
 #: bloomerp.sqlquery models/workspaces/sql_query.py:17
 msgid "SQL Queries"
@@ -5487,6 +5979,10 @@ msgstr "SSL/TLS"
 #: models/communication/email_account.py:32
 msgid "STARTTLS"
 msgstr "STARTTLS"
+
+#: bloomerp.immessage.body_html models/communication/instant_messaging/im_message.py:35
+msgid "Sanitized editor HTML; body contains the searchable text."
+msgstr "Opgeschoonde HTML van de editor; de body bevat de doorzoekbare tekst."
 
 #: components/ui/sidebar.py:264 components/ui/sidebar.py:273
 #: templates/components/forms/initial_data.html:37 templates/components/preferences/select.html:78
@@ -5537,6 +6033,14 @@ msgstr "Overzicht van profiel"
 msgid "Save sent emails via IMAP"
 msgstr "Verzonden e-mails opslaan via IMAP"
 
+#: templates/views/communication/create_im_connection/configuration.html:4
+msgid ""
+"Save the account configuration as a draft. Provider verification and messaging are not enabled "
+"yet."
+msgstr ""
+"Sla de accountconfiguratie op als concept. Verificatie en berichtenverkeer via de provider zijn "
+"nog niet ingeschakeld."
+
 #: workspaces/analytics_tile/model.py:148
 msgid "Scatter"
 msgstr "Spreiding"
@@ -5562,6 +6066,10 @@ msgstr "Scope"
 #: models/project_management/todo.py:56
 msgid "Scoped"
 msgstr "Afgebakend"
+
+#: bloomerp.imauthorization.scopes
+msgid "Scopes"
+msgstr "Scopes"
 
 #: templates/cotton/app/sidebar/body.html:43 templates/cotton/features/agent/body.html:132
 #: templates/cotton/features/layout/container.html:98 templates/views/base.html:41
@@ -5597,6 +6105,10 @@ msgstr "Zoekvelden"
 msgid "Search inbox"
 msgstr "Zoeken:"
 
+#: templates/components/communication/messaging_draft.html:13
+msgid "Search messages and people"
+msgstr "Berichten en personen zoeken"
+
 #: templates/views/base.html:48
 msgid "Search or type a command"
 msgstr "Zoek of typ een opdracht"
@@ -5606,8 +6118,13 @@ msgid "Search route names or descriptions, or enter any URL."
 msgstr "Zoek routenamen of beschrijvingen, of voer een URL in."
 
 # | msgid "Search"
-#: templates/components/objects/dataview.html:44 templates/cotton/ui/search_section/container.html:28
-#: templates/views/communication/inbox.html:165
+#: templates/components/communication/messaging_draft.html:19
+#, fuzzy
+msgid "Search staff"
+msgstr "Zoeken"
+
+# | msgid "Search"
+#: templates/cotton/ui/search_section/container.html:28 templates/views/communication/inbox.html:165
 msgid "Search..."
 msgstr "Zoeken..."
 
@@ -5647,6 +6164,10 @@ msgstr "Selecteer een lijst met MCP-toolnamen."
 #, fuzzy
 msgid "Select a readable, populated email field."
 msgstr "Gerelateerd veld selecteren"
+
+#: models/communication/instant_messaging/im_thread_read_position.py:44
+msgid "Select a root message."
+msgstr "Selecteer een hoofdbericht."
 
 #: templates/cotton/features/dataviews/calendar.html:23
 msgid "Select a start date field in the display options."
@@ -5750,7 +6271,7 @@ msgid "Selected Agent"
 msgstr "Geselecteerde agent"
 
 #: bloomerp.userinboxpreference.selected_inbox_folder
-#: models/communication/inbox/user_inbox_preference.py:31
+#: models/communication/inbox/user_inbox_preference.py:32
 msgid "Selected Inbox Folder"
 msgstr "Geselecteerde inboxmap"
 
@@ -5788,6 +6309,7 @@ msgstr "Gebruikersbericht verzenden"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
+#: templates/components/communication/instant_messaging/conversation.html:23
 #: templates/cotton/features/agent/body.html:155
 #, fuzzy
 msgid "Send message"
@@ -5797,8 +6319,7 @@ msgstr "Bovenliggend"
 msgid "Send reply"
 msgstr "Antwoord verzenden"
 
-# | msgid "Send"
-#: models/communication/channel_message.py:26
+#: bloomerp.immessage.sender
 msgid "Sender"
 msgstr "Verzenden"
 
@@ -5806,14 +6327,28 @@ msgstr "Verzenden"
 msgid "Sender of the signature request."
 msgstr "Afzender van het verzoek om te ondertekenen."
 
+# | msgid "No workflow graph was available for this execution."
+#: templates/components/communication/instant_messaging/conversation.html:23
+#, fuzzy
+msgid "Sending is unavailable for this conversation."
+msgstr "Er was geen workflowgrafiek beschikbaar voor deze uitvoering."
+
+#: bloomerp.immessage.status models/communication/instant_messaging/im_message.py:51
+msgid "Sent"
+msgstr "Verzonden"
+
+#: bloomerp.immessage.sent_at
+msgid "Sent At"
+msgstr "Verzonden op"
+
 # | msgid "Parent folder"
 #: templates/widgets/mailbox_settings.html:12
 #, fuzzy
 msgid "Sent folder"
 msgstr "Bovenliggende map"
 
-#: bloomerp.aimessage.sequence bloomerp.airunevent.sequence bloomerp.workflowrunstep.sequence
-#: models/automation/workflow_run_step.py:33
+#: bloomerp.aimessage.sequence bloomerp.airunevent.sequence bloomerp.immessage.sequence
+#: bloomerp.workflowrunstep.sequence models/automation/workflow_run_step.py:33
 msgid "Sequence"
 msgstr "Volgorde"
 
@@ -5832,7 +6367,8 @@ msgstr "Geserialiseerde uitvoer die door deze uitvoering van de workflownode is 
 msgid "Server configuration"
 msgstr "Account configureren"
 
-#: models/forms/form.py:37 templates/cotton/features/document_templates/builder.html:63
+#: bloomerp.imconnection.settings models/forms/form.py:37
+#: templates/cotton/features/document_templates/builder.html:63
 msgid "Settings"
 msgstr "Instellingen"
 
@@ -5843,7 +6379,8 @@ msgid "Share preference"
 msgstr "Voorkeur delen"
 
 # | msgid "Shared with"
-#: bloomerp.mcpintegration.connection_mode models/agents/mcp_server.py:23
+#: bloomerp.imauthorization.kind bloomerp.mcpintegration.connection_mode models/agents/mcp_server.py:23
+#: models/communication/instant_messaging/im_authorization.py:35
 #, fuzzy
 msgid "Shared"
 msgstr "Gedeeld met"
@@ -5902,7 +6439,7 @@ msgstr "Shift + Enter voor een nieuwe regel"
 
 #: bloomerp.userlistviewpreference.should_display_field_options
 msgid "Should Display Field Options"
-msgstr ""
+msgstr "Veldopties weergeven"
 
 #: templates/views/forms/submit.html:53
 msgid "Show Required Only"
@@ -5915,7 +6452,7 @@ msgstr "Kolomtotalen"
 
 #: dataviews/kanban/config.py:170
 msgid "Show individual lanes for values outside custom groups."
-msgstr ""
+msgstr "Toon afzonderlijke kolommen voor waarden buiten aangepaste groepen."
 
 #: workspaces/analytics_tile/model.py:185
 msgid "Show legend"
@@ -5931,7 +6468,7 @@ msgstr "Rijtotaal weergeven"
 
 #: dataviews/kanban/config.py:169
 msgid "Show unmapped lanes"
-msgstr ""
+msgstr "Niet-toegewezen kolommen weergeven"
 
 #: templates/components/search/global_search.html:141
 #, python-format
@@ -5979,13 +6516,17 @@ msgstr "Aangemeld als"
 msgid "Signifies whether the page numbers are included or not."
 msgstr "Geeft aan of de paginanummers worden opgenomen."
 
-#: workspaces/analytics_tile/model.py:112
+#: bloomerp.immessageattachment.size workspaces/analytics_tile/model.py:112
 msgid "Size"
 msgstr "Grootte"
 
 #: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:182
 msgid "Size of the document template."
 msgstr "Grootte van de documentsjabloon."
+
+#: bloomerp.imconnection.provider
+msgid "Slack"
+msgstr "Slack"
 
 #: bloomerp.applicationfield.field_type
 msgid "Slug Field"
@@ -5999,7 +6540,7 @@ msgstr "Klein automatisch veld"
 msgid "Small Integer Field"
 msgstr "Veld voor klein geheel getal"
 
-#: bloomerp.inboxitem.snippet models/communication/inbox/inbox_item.py:96
+#: bloomerp.inboxitem.snippet models/communication/inbox/inbox_item.py:97
 msgid "Snippet"
 msgstr "Fragment"
 
@@ -6026,7 +6567,7 @@ msgstr "Bron"
 
 #: bloomerp.tag.source_content_type
 msgid "Source Content Type"
-msgstr ""
+msgstr "Broninhoudstype"
 
 # | msgid "Source"
 #: bloomerp.fileextraction.source_file models/files/file_extraction.py:183
@@ -6036,7 +6577,7 @@ msgstr "Bron"
 
 #: bloomerp.inboxitem.source_model
 msgid "Source Model"
-msgstr ""
+msgstr "Bronmodel"
 
 #: bloomerp.inbox.source_object bloomerp.sidebar.source_object
 #: bloomerp.userdetailviewtabspreference.source_object bloomerp.userlistviewpreference.source_object
@@ -6047,7 +6588,7 @@ msgstr "Bronobject"
 
 #: bloomerp.tag.source_object_id
 msgid "Source Object Id"
-msgstr ""
+msgstr "Bronobject-ID"
 
 #: bloomerp.emailaccount.oauth_scopes
 msgid "Space-separated OAuth scopes requested for this account."
@@ -6086,6 +6627,10 @@ msgid "Stacks multiple Y-axis series when supported by the selected chart type."
 msgstr ""
 "Stapelt meerdere reeksen op de Y-as wanneer dit wordt ondersteund door het geselecteerde "
 "grafiektype."
+
+#: templates/components/communication/instant_messaging/recipients.html:2
+msgid "Staff"
+msgstr "Medewerkers"
 
 #: bloomerp.initiative.start_date models/project_management/initiative.py:164
 msgid "Start Date"
@@ -6139,7 +6684,8 @@ msgstr "Status"
 
 #: bloomerp.aiapproval.status bloomerp.aiconversation.status bloomerp.aimessage.status
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
-#: bloomerp.emailaccount.status bloomerp.fileextraction.status bloomerp.initiative.status
+#: bloomerp.emailaccount.status bloomerp.fileextraction.status bloomerp.imconnection.status
+#: bloomerp.imconversation.status bloomerp.immessage.status bloomerp.initiative.status
 #: bloomerp.mcpconnection.status bloomerp.todo.status bloomerp.workflowrun.status
 #: bloomerp.workflowrunstep.status models/automation/workflow_run.py:407
 #: models/automation/workflow_run_step.py:45 models/communication/email_account.py:127
@@ -6213,11 +6759,11 @@ msgstr "Indienen"
 
 #: bloomerp.form.submit_api_url
 msgid "Submit Api Url"
-msgstr ""
+msgstr "API-verzend-URL"
 
 #: bloomerp.form.submit_url
 msgid "Submit Url"
-msgstr ""
+msgstr "Verzend-URL"
 
 msgctxt "bloomerp:route:description"
 msgid "Submit a form"
@@ -6248,9 +6794,10 @@ msgstr "Indienen"
 
 #: bloomerp.activitylog.summary_string
 msgid "Summary String"
-msgstr ""
+msgstr "Samenvattingstekst"
 
-#: bloomerp.emailaccount.sync_cursor models/communication/email_account.py:254
+#: bloomerp.emailaccount.sync_cursor bloomerp.imconnection.sync_cursor
+#: models/communication/email_account.py:254
 msgid "Sync Cursor"
 msgstr "Synchronisatiecursor"
 
@@ -6293,7 +6840,7 @@ msgstr "Tabel"
 
 #: bloomerp.tag.target_content_type
 msgid "Target Content Type"
-msgstr ""
+msgstr "Doelinhoudstype"
 
 #: bloomerp.initiative.target_date models/project_management/initiative.py:169
 msgid "Target Date"
@@ -6301,7 +6848,7 @@ msgstr "Doeldatum"
 
 #: bloomerp.tag.target_object_id
 msgid "Target Object Id"
-msgstr ""
+msgstr "Doelobject-ID"
 
 #: bloomerp.documenttemplate.template models/document_templates/document_template.py:142
 msgid "Template"
@@ -6336,6 +6883,10 @@ msgstr "Tekst die na de waarde komt"
 #: workspaces/analytics_tile/model.py:82
 msgid "Text that comes before the value"
 msgstr "Tekst die vóór de waarde komt"
+
+#: communication/builtins/instant_messaging/draft.py:119
+msgid "Thanks for the quick call earlier."
+msgstr "Bedankt voor het snelle telefoontje eerder."
 
 # | msgid "The name of the todo"
 #: bloomerp.todo.object_id models/project_management/todo.py:470
@@ -6441,7 +6992,13 @@ msgstr "De benodigde inspanning voor de taak"
 
 #: services/email_composer_services.py:151
 msgid "The email references a field you cannot view."
-msgstr ""
+msgstr "De e-mail verwijst naar een veld dat je niet kunt bekijken."
+
+# | msgid "The field used for the pie slice labels."
+#: models/communication/instant_messaging/im_conversation.py:94
+#, fuzzy
+msgid "The endpoint must belong to this connection."
+msgstr "Het veld dat wordt gebruikt voor de labels van de taartpunten."
 
 # | msgid "The field used for the pie slice labels."
 #: models/files/file_reference.py:151
@@ -6512,6 +7069,13 @@ msgid "The integration could not be saved. Review its settings."
 msgstr ""
 "De configuratie van het rijbeleid kon niet worden gelezen. Controleer stap 2 en probeer het "
 "opnieuw."
+
+# | msgid "The field to be used for the X-axis of the chart."
+# | msgid "The direction used for table sorting."
+#: communication/builtins/instant_messaging/draft.py:93
+#, fuzzy
+msgid "The integration is ready for a first look."
+msgstr "Het veld dat voor de X-as van de grafiek moet worden gebruikt."
 
 #: workspaces/analytics_tile/model.py:74
 msgid "The label"
@@ -6601,6 +7165,8 @@ msgstr "Het aantal records op elke pagina"
 #: workspaces/analytics_tile/model.py:397
 msgid "The numeric query column used for slice values. Values are summed within each label category."
 msgstr ""
+"De numerieke querykolom die wordt gebruikt voor segmentwaarden. Waarden worden opgeteld binnen "
+"elke labelcategorie."
 
 #: templates/inbox_items/workflow_run.html:107
 msgid ""
@@ -6628,7 +7194,7 @@ msgstr "De naam van het initiatief"
 
 #: models/files/file_node.py:199
 msgid "The parent must be an existing folder."
-msgstr ""
+msgstr "De bovenliggende map moet een bestaande map zijn."
 
 #: workspaces/analytics_tile/model.py:326
 msgid "The primary value"
@@ -6638,6 +7204,10 @@ msgstr "De primaire waarde"
 msgid "The priority of the todo"
 msgstr "De prioriteit van de todo"
 
+#: communication/builtins/instant_messaging/draft.py:62
+msgid "The provider badges make it much easier to find the right conversation."
+msgstr "Dankzij de providerbadges is het veel eenvoudiger om het juiste gesprek te vinden."
+
 # | msgid "The numeric field used for the pie slice values."
 #: workspaces/analytics_tile/model.py:386
 #, fuzzy
@@ -6646,7 +7216,13 @@ msgstr "Het numerieke veld dat wordt gebruikt voor de waarden van de taartpunt."
 
 #: workspaces/analytics_tile/model.py:256
 msgid "The query column used to group the chart's X-axis categories."
-msgstr ""
+msgstr "De querykolom die wordt gebruikt om de categorieën op de X-as van de grafiek te groeperen."
+
+# | msgid "The field used for the pie slice labels."
+#: models/communication/instant_messaging/im_thread_read_position.py:52
+#, fuzzy
+msgid "The read marker must belong to this thread."
+msgstr "Het veld dat wordt gebruikt voor de labels van de taartpunten."
 
 # | msgid "The selected folder no longer exists"
 #: models/files/file_reference.py:159
@@ -6843,6 +7419,19 @@ msgid_plural "This will delete %(count)s objects in total, including related rec
 msgstr[0] "Dit verwijdert in totaal %(count)s object, inclusief gerelateerde records."
 msgstr[1] "Dit verwijdert in totaal %(count)s objecten, inclusief gerelateerde records."
 
+#: templates/components/communication/instant_messaging/conversation.html:16
+#: templates/cotton/features/instant_messaging/message.html:14
+msgid "Thread"
+msgstr "Gespreksdraad"
+
+#: bloomerp.immessage.thread_root bloomerp.imthreadreadposition.thread_root
+msgid "Thread Root"
+msgstr "Hoofdbericht van de gespreksdraad"
+
+#: models/communication/instant_messaging/im_message.py:137
+msgid "Threads must reference a root message, not another reply."
+msgstr "Gespreksdraden moeten verwijzen naar een hoofdbericht, niet naar een ander antwoord."
+
 # | msgctxt "bloomerp:route:name"
 # | msgid "Tiles"
 #: bloomerp.tile models/workspaces/tile.py:26
@@ -6881,7 +7470,7 @@ msgid "Timestamp when the inbox item was received by its source system."
 msgstr "Tijdstempel waarop het inboxitem door het bronsysteem is ontvangen."
 
 #: bloomerp.aiconversation.title bloomerp.applicationfield.title bloomerp.inboxitem.title
-#: bloomerp.todo.title models/communication/inbox/inbox_item.py:89
+#: bloomerp.todo.title models/communication/inbox/inbox_item.py:90
 #: models/project_management/todo.py:421
 msgid "Title"
 msgstr "Titel"
@@ -6908,7 +7497,7 @@ msgstr "Taken"
 
 #: bloomerp.initiative.todo_count
 msgid "Todo Count"
-msgstr ""
+msgstr "Aantal taken"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Todo Labels"
@@ -7041,6 +7630,14 @@ msgstr "Totalen"
 msgid "Totals scope"
 msgstr "Totalen"
 
+#: models/communication/instant_messaging/im_conversation_participant.py:92
+msgid "Track thread reads separately."
+msgstr "Leesstatus van gespreksdraden afzonderlijk bijhouden."
+
+#: templates/components/communication/instant_messaging/group_members.html:16
+msgid "Transfer ownership"
+msgstr "Eigenaarschap overdragen"
+
 #: automation/registry.py:51 bloomerp.workflownode.type
 msgid "Trigger"
 msgstr "Trigger"
@@ -7058,7 +7655,7 @@ msgid "Trigger Type"
 msgstr "Triggertype"
 
 #: bloomerp.inboxfolder.type bloomerp.tile.type bloomerp.workflownode.type
-#: models/automation/workflow_node.py:67 models/communication/inbox/inbox_folder.py:29
+#: models/automation/workflow_node.py:67 models/communication/inbox/inbox_folder.py:32
 #: models/workspaces/tile.py:46
 msgid "Type"
 msgstr "Type"
@@ -7105,6 +7702,16 @@ msgstr "Niet-beschikbare resource: %(uri)s"
 #, python-format
 msgid "Unavailable tool: %(name)s"
 msgstr "Niet-beschikbare tool: %(name)s"
+
+#: bloomerp.immessagereaction.emoji models/communication/instant_messaging/im_message_reaction.py:25
+msgid "Unicode emoji, including skin tones/ZWJ sequences, or a provider custom emoji key."
+msgstr ""
+"Unicode-emoji, inclusief huidskleuren/ZWJ-reeksen, of een aangepaste emoji-sleutel van de "
+"provider."
+
+#: templates/components/communication/messaging_draft.html:15
+msgid "Unread only"
+msgstr "Alleen ongelezen"
 
 #: templates/cotton/features/dataviews/calendar.html:258
 msgid "Unscheduled"
@@ -7154,11 +7761,16 @@ msgstr "Deze tegel bijwerken"
 #: bloomerp.documenttemplateheader.updated_by bloomerp.documenttemplatestyling.updated_by
 #: bloomerp.emailaccount.updated_by bloomerp.emaildraft.updated_by bloomerp.fileextraction.updated_by
 #: bloomerp.filenode.updated_by bloomerp.filereference.updated_by bloomerp.form.updated_by
-#: bloomerp.formsubmission.updated_by bloomerp.inboxfolder.updated_by bloomerp.inboxitem.updated_by
-#: bloomerp.initiative.updated_by bloomerp.label.updated_by bloomerp.mcpconnection.updated_by
-#: bloomerp.mcpintegration.updated_by bloomerp.policy.updated_by bloomerp.savedfilter.updated_by
-#: bloomerp.sqlquery.updated_by bloomerp.tile.updated_by bloomerp.todo.updated_by
-#: bloomerp.todolabel.updated_by bloomerp.userinboxpreference.updated_by bloomerp.workflow.updated_by
+#: bloomerp.formsubmission.updated_by bloomerp.imauthorization.updated_by
+#: bloomerp.imconnection.updated_by bloomerp.imconversation.updated_by
+#: bloomerp.imconversationparticipant.updated_by bloomerp.imendpoint.updated_by
+#: bloomerp.imidentity.updated_by bloomerp.immessage.updated_by bloomerp.immessageattachment.updated_by
+#: bloomerp.immessagereaction.updated_by bloomerp.imthreadreadposition.updated_by
+#: bloomerp.inboxfolder.updated_by bloomerp.inboxitem.updated_by bloomerp.initiative.updated_by
+#: bloomerp.label.updated_by bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by
+#: bloomerp.policy.updated_by bloomerp.savedfilter.updated_by bloomerp.sqlquery.updated_by
+#: bloomerp.tile.updated_by bloomerp.todo.updated_by bloomerp.todolabel.updated_by
+#: bloomerp.userinboxpreference.updated_by bloomerp.workflow.updated_by
 #: bloomerp.workflownode.updated_by models/mixins/user_stamp_model_mixin.py:27
 msgid "Updated By"
 msgstr "Bijgewerkt door"
@@ -7238,6 +7850,10 @@ msgstr "Huidige selectie gebruiken"
 msgid "Use rule"
 msgstr "Regel gebruiken"
 
+#: models/communication/instant_messaging/im_authorization.py:88
+msgid "Use set_credentials() to encrypt secrets."
+msgstr "Gebruik set_credentials() om geheimen te versleutelen."
+
 #: templates/components/workspaces/tiles/builders/links.html:21
 msgid "Use the arrows to reorder items"
 msgstr "Gebruik de pijlen om items opnieuw te ordenen"
@@ -7259,14 +7875,14 @@ msgstr ""
 "Alleen gebruikt voor toegang tot geselecteerde tools. Laat leeg om geen ingebouwde tools toe te "
 "staan. Niet-beschikbare namen blijven behouden, maar kunnen niet worden uitgevoerd."
 
-#: bloomerp.aimessage.role bloomerp.bookmark.user bloomerp.emaildraft.user bloomerp.inbox.user
+#: bloomerp.aimessage.role bloomerp.bookmark.user bloomerp.emaildraft.user
+#: bloomerp.imauthorization.user bloomerp.imconversationparticipant.user bloomerp.inbox.user
 #: bloomerp.mcpconnection.user bloomerp.mention.user bloomerp.oauthaccesstoken.user
 #: bloomerp.oauthauthorizationcode.user bloomerp.sidebar.user bloomerp.user
 #: bloomerp.userdetailviewtabspreference.user bloomerp.userinboxpreference.user
 #: bloomerp.userlistviewpreference.user bloomerp.userobjectlayoutpreference.user
-#: bloomerp.workspace.user models/communication/channel_member.py:37
-#: models/communication/inbox/user_inbox_preference.py:23 models/users/base_preference.py:106
-#: models/users/bookmark.py:21 models/users/user.py:163
+#: bloomerp.workspace.user models/communication/inbox/user_inbox_preference.py:24
+#: models/users/base_preference.py:106 models/users/bookmark.py:21 models/users/user.py:163
 msgid "User"
 msgstr "Gebruiker"
 
@@ -7421,7 +8037,7 @@ msgstr "Rij bekijken"
 
 #: dataviews/file_browser/config.py:158
 msgid "Virtual"
-msgstr ""
+msgstr "Virtueel"
 
 # | msgid "file folders"
 #: templates/dataviews/files.html:27
@@ -7508,6 +8124,10 @@ msgstr "Waarmee kan ik je helpen?"
 #: templates/components/forms/initial_data_value.html:6
 msgid "What should be preset for"
 msgstr "Wat moet vooraf worden ingesteld voor"
+
+#: bloomerp.imconnection.provider
+msgid "WhatsApp"
+msgstr "WhatsApp"
 
 #: form_behaviors/shared/write_policy.py:20
 msgid "When empty or zero"
@@ -7638,6 +8258,12 @@ msgstr ""
 "ruimte maken voor de informatie, tegels en snelkoppelingen die u als eerste wilt zien, en "
 "schakelen tussen verschillende werkruimten wanneer u een andere focus nodig hebt."
 
+# | msgid "Write your message"
+#: templates/components/communication/instant_messaging/conversation.html:21
+#, fuzzy
+msgid "Write a message…"
+msgstr "Schrijf uw bericht"
+
 #: templates/components/communication/emails/email_editor.html:152
 msgid "Write your message"
 msgstr "Schrijf uw bericht"
@@ -7690,9 +8316,17 @@ msgstr "Jaar-maand-dag uur:minuut (2000-08-15 12:30)"
 msgid "Yes"
 msgstr "Ja"
 
+#: communication/builtins/instant_messaging/draft.py:30
+msgid "Yes, the new layout looks great. I’ll send the final details this afternoon."
+msgstr "Ja, de nieuwe indeling ziet er geweldig uit. Ik stuur de definitieve details vanmiddag."
+
 #: templates/cotton/features/agent/body.html:8
 msgid "Yesterday"
 msgstr "Gisteren"
+
+#: templates/cotton/features/instant_messaging/message.html:4
+msgid "You"
+msgstr "Jij"
 
 #: templates/views/generic/detail/delete.html:5
 #, python-format
@@ -7809,19 +8443,19 @@ msgstr "e-mailadres"
 
 #: bloomerp.filenode
 msgid "file node"
-msgstr ""
+msgstr "bestandsnode"
 
 #: bloomerp.filenode
 msgid "file nodes"
-msgstr ""
+msgstr "bestandsnodes"
 
 #: bloomerp.filereference
 msgid "file reference"
-msgstr ""
+msgstr "bestandsverwijzing"
 
 #: bloomerp.filereference
 msgid "file references"
-msgstr ""
+msgstr "bestandsverwijzingen"
 
 #: bloomerp.user.first_name
 msgid "first name"
@@ -7831,13 +8465,93 @@ msgstr "voornaam"
 msgid "groups"
 msgstr "groepen"
 
+#: bloomerp.imauthorization
+msgid "im authorization"
+msgstr "IM-autorisatie"
+
+#: bloomerp.imauthorization
+msgid "im authorizations"
+msgstr "IM-autorisaties"
+
+#: bloomerp.imconnection
+msgid "im connection"
+msgstr "IM-verbinding"
+
+#: bloomerp.imconnection
+msgid "im connections"
+msgstr "IM-verbindingen"
+
+#: bloomerp.imconversation
+msgid "im conversation"
+msgstr "IM-gesprek"
+
+#: bloomerp.imconversationparticipant
+msgid "im conversation participant"
+msgstr "deelnemer aan IM-gesprek"
+
+#: bloomerp.imconversationparticipant
+msgid "im conversation participants"
+msgstr "deelnemers aan IM-gesprek"
+
+#: bloomerp.imconversation
+msgid "im conversations"
+msgstr "IM-gesprekken"
+
+#: bloomerp.imendpoint
+msgid "im endpoint"
+msgstr "IM-eindpunt"
+
+#: bloomerp.imendpoint
+msgid "im endpoints"
+msgstr "IM-eindpunten"
+
+#: bloomerp.imidentity
+msgid "im identity"
+msgstr "IM-identiteit"
+
+#: bloomerp.imidentity
+msgid "im identitys"
+msgstr "IM-identiteiten"
+
+#: bloomerp.immessage
+msgid "im message"
+msgstr "IM-bericht"
+
+#: bloomerp.immessageattachment
+msgid "im message attachment"
+msgstr "bijlage bij IM-bericht"
+
+#: bloomerp.immessageattachment
+msgid "im message attachments"
+msgstr "bijlagen bij IM-bericht"
+
+#: bloomerp.immessagereaction
+msgid "im message reaction"
+msgstr "reactie op IM-bericht"
+
+#: bloomerp.immessagereaction
+msgid "im message reactions"
+msgstr "reacties op IM-bericht"
+
+#: bloomerp.immessage
+msgid "im messages"
+msgstr "IM-berichten"
+
+#: bloomerp.imthreadreadposition
+msgid "im thread read position"
+msgstr "leespositie in IM-thread"
+
+#: bloomerp.imthreadreadposition
+msgid "im thread read positions"
+msgstr "leesposities in IM-thread"
+
 #: bloomerp.label
 msgid "label"
-msgstr ""
+msgstr "label"
 
 #: bloomerp.label
 msgid "labels"
-msgstr ""
+msgstr "labels"
 
 #: bloomerp.user.last_login
 msgid "last login"
@@ -7849,11 +8563,11 @@ msgstr "achternaam"
 
 #: bloomerp.mention
 msgid "mention"
-msgstr ""
+msgstr "vermelding"
 
 #: bloomerp.mention
 msgid "mentions"
-msgstr ""
+msgstr "vermeldingen"
 
 #: views/communication/create_email_account.py:100
 msgid "name@example.com"
@@ -7877,11 +8591,11 @@ msgstr "o auth autorisatiecodes"
 
 #: bloomerp.objectlabel
 msgid "object label"
-msgstr ""
+msgstr "objectlabel"
 
 #: bloomerp.objectlabel
 msgid "object labels"
-msgstr ""
+msgstr "objectlabels"
 
 #: templates/views/auth/login.html:72
 msgid "or contact your staff."
@@ -7890,6 +8604,12 @@ msgstr "of neem contact op met uw personeel."
 #: bloomerp.user.password
 msgid "password"
 msgstr "wachtwoord"
+
+# | msgid "Actions"
+#: templates/cotton/features/instant_messaging/reaction.html:3
+#, fuzzy
+msgid "reactions"
+msgstr "Acties"
 
 #: bloomerp.savedfilter
 msgid "saved filter"
@@ -7909,11 +8629,11 @@ msgstr "supergebruikersstatus"
 
 #: bloomerp.tag
 msgid "tag"
-msgstr ""
+msgstr "tag"
 
 #: bloomerp.tag
 msgid "tags"
-msgstr ""
+msgstr "tags"
 
 #: bloomerp.user.user_permissions
 msgid "user permissions"
@@ -7929,7 +8649,7 @@ msgstr "werkruimte"
 
 msgctxt "bloomerp:route:name"
 msgid "{model_plural}"
-msgstr ""
+msgstr "{model_plural}"
 
 msgctxt "bloomerp:route:name"
 msgid "{module}"
@@ -8087,6 +8807,25 @@ msgstr "Relatie {related_model_plural} voor {model}"
 #~ msgid "Cached list of folders/mailboxes for this account."
 #~ msgstr "Gecachte lijst met mappen/postvakken voor dit account."
 
+# | msgid "Content Type"
+# | msgid "Channel Type"
+#~ msgid "Channel Member"
+#~ msgstr "Inhoudstype"
+
+# | msgid "Content Type"
+# | msgid "Channel Type"
+#~ msgid "Channel Members"
+#~ msgstr "Inhoudstype"
+
+# | msgid "Content Type"
+#~ msgid "Channel Type"
+#~ msgstr "Inhoudstype"
+
+# | msgid "Change"
+# | msgid "Channel"
+#~ msgid "Channels"
+#~ msgstr "Wijzigen"
+
 #~ msgid "Code Generator"
 #~ msgstr "Codegenerator"
 
@@ -8165,6 +8904,10 @@ msgstr "Relatie {related_model_plural} voor {model}"
 #~ msgid "Id"
 #~ msgstr "ID"
 
+# | msgid "Indicates whether the inbox item has been read by the user."
+#~ msgid "Indicates whether the channel is currently active."
+#~ msgstr "Geeft aan of het inboxitem door de gebruiker is gelezen."
+
 #~ msgid "Initial default"
 #~ msgstr "Initiële standaardinstelling"
 
@@ -8195,6 +8938,10 @@ msgstr "Relatie {related_model_plural} voor {model}"
 
 #~ msgid "Only you can manage who has access to this workspace."
 #~ msgstr "Alleen jij kunt beheren wie toegang heeft tot deze werkruimte."
+
+# | msgid "Parent"
+#~ msgid "Parent Message"
+#~ msgstr "Bovenliggend"
 
 #~ msgid "Pivot Table"
 #~ msgstr "Draaitabel"
@@ -8461,3 +9208,7 @@ msgstr "Relatie {related_model_plural} voor {model}"
 #~ msgid "workspaces"
 #~ msgstr "werkruimten"
 
+
+#: templates/components/communication/messaging_draft.html
+msgid "Search messages and people…"
+msgstr "Berichten en personen zoeken…"

@@ -48,7 +48,7 @@ class EmailAccount(BloomerpModel):
         ]
     
     bloomerp_config = BloomerpModelConfig(
-        module=None,
+        module="communication",
         api_settings=ApiSettings(enable_auto_generation=False),
         detail_view_settings=DetailViewSettings(
             layouts=[FieldLayout(

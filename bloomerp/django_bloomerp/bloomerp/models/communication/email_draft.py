@@ -14,6 +14,7 @@ class EmailDraft(BloomerpModel):
     """Store an owner's editable message and template arguments until sending."""
 
     bloomerp_config = BloomerpModelConfig(
+        module="communication",
         is_internal=True,
         activity_log_settings=ActivityLogSettings(enabled=False),
         api_settings=ApiSettings(

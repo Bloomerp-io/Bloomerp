@@ -1,0 +1,38 @@
+{% load i18n %}
+<div class="im-recipient-search" data-group-members>
+    {% if error %}<p role="alert" class="text-danger-dark">{{ error }}</p>{% endif %}
+    {% if can_manage %}
+    <input class="input w-full" data-group-name aria-label="{% translate 'Group name' %}" value="{{ conversation.name }}" required maxlength="255">
+    <p data-group-name-error role="alert" class="text-danger-dark text-sm mt-1" hidden></p>
+    {% endif %}
+    {% for person in members %}
+    <form class="py-2" hx-post="{% url 'components_im_group_members' conversation.pk %}" hx-target="closest [data-group-members]" hx-swap="outerHTML">
+        {% csrf_token %}<input type="hidden" name="user_id" value="{{ person.user_id }}">
+        <span class="block text-sm mb-1">{{ person.user }} · {{ person.get_role_display }}</span>
+        <div class="flex items-center gap-1 whitespace-nowrap">
+        {% if person.pk != member.pk and person.role != 'owner' %}
+            {% if member.role == 'owner' %}
+                {% if person.role == 'member' %}<button type="submit" name="action" value="promote" class="btn btn-secondary btn-xs">{% translate 'Make admin' %}</button>{% else %}<button type="submit" name="action" value="demote" class="btn btn-secondary btn-xs">{% translate 'Remove admin role' %}</button>{% endif %}
+                <button type="submit" name="action" value="transfer" class="btn btn-secondary btn-xs">{% translate 'Transfer ownership' %}</button>
+            {% endif %}
+            {% if member.role == 'owner' or member.role == 'admin' and person.role == 'member' %}<button type="submit" name="action" value="remove" class="btn btn-secondary btn-xs">{% translate 'Remove' %}</button>{% endif %}
+        {% endif %}
+        </div>
+    </form>
+    {% endfor %}
+    {% if can_manage %}
+    <c-ui.dropdown.divider />
+    <c-ui.search name="recipient_query" placeholder="Search staff to add…" hx-get="{% url 'components_im_group_members' conversation.pk %}" hx-trigger="input changed delay:300ms" hx-target="closest [data-group-members]" hx-swap="outerHTML" value="{{ query }}" />
+    {% for person in page.items %}
+    <form hx-post="{% url 'components_im_group_members' conversation.pk %}" hx-target="closest [data-group-members]" hx-swap="outerHTML">
+        {% csrf_token %}<input type="hidden" name="user_id" value="{{ person.external_id }}"><input type="hidden" name="action" value="add">
+        <button type="submit" class="im-recipient text-primary-800 hover:bg-primary-50 focus-visible:bg-primary-50">{% translate 'Add' %} {{ person.display_name }}</button>
+    </form>
+    {% endfor %}
+    {% if page.next_cursor %}<button type="button" class="im-recipient text-primary-800 hover:bg-primary-50 focus-visible:bg-primary-50" hx-get="{% url 'components_im_group_members' conversation.pk %}?recipient_query={{ query|urlencode }}&cursor={{ page.next_cursor }}" hx-target="closest [data-group-members]" hx-swap="outerHTML">{% translate 'More results' %}</button>{% endif %}
+    {% endif %}
+    <c-ui.dropdown.divider />
+    <form hx-post="{% url 'components_im_group_members' conversation.pk %}" hx-target="closest [data-group-members]" hx-swap="outerHTML">
+        {% csrf_token %}<button type="submit" name="action" value="leave" class="btn btn-secondary btn-xs">{% translate 'Leave group' %}</button>
+    </form>
+</div>

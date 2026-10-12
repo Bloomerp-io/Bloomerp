@@ -6,12 +6,15 @@ from django.db.models import Q
 from bloomerp.communication.definition import InboxFolderTypeDefinition
 from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY, inbox_folder_choices
 from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.communication.inbox.inbox_item import InboxItem
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.utils.requests import parse_bool_parameter
 from django.db.models.query import QuerySet
 
 class InboxFolder(BloomerpModel):
+    bloomerp_config = BloomerpModelConfig(module="communication")
+
     class Meta:
         verbose_name = _("Inbox Folder")
         verbose_name_plural = _("Inbox Folders")

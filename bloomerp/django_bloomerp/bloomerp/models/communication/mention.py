@@ -10,6 +10,7 @@ class Mention(models.Model):
     """Store manual mentions and independently removable inline occurrences."""
 
     bloomerp_config = BloomerpModelConfig(
+        module="communication",
         is_internal=True, api_settings=ApiSettings(enable_auto_generation=False)
     )
     content_type = models.ForeignKey(

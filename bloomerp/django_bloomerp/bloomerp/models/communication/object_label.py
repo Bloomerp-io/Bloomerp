@@ -9,6 +9,7 @@ class ObjectLabel(models.Model):
     """Assign each label once to a parent independently of its fields."""
 
     bloomerp_config = BloomerpModelConfig(
+        module="communication",
         is_internal=True, api_settings=ApiSettings(enable_auto_generation=False)
     )
     label = models.ForeignKey("bloomerp.Label", on_delete=models.CASCADE)

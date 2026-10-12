@@ -1,3 +1,4 @@
+import { bindReferencePreviews } from "@/utils/referencePreviews";
 import type { ContextMenuSubmenu } from "@/utils/contextMenu";
 import { ReferencePicker } from "./utils/referencePicker";
 import { ReferenceNode, type ReferenceTarget } from "./nodes/ReferenceNode";
@@ -65,6 +66,7 @@ import {
 
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
+    private referencePreviewCleanup: (() => void) | null = null;
     private referencePicker: ReferencePicker | null = null;
     private templatePicker: TemplatePicker | null = null;
     private unregister: (() => void) | null = null;
@@ -177,6 +179,7 @@ export class BloomerpTextEditor extends BaseWidget {
         window.addEventListener(TEXT_EDITOR_TOOLBAR_VISIBILITY_EVENT, this.toolbarVisibilityHandler);
 
         this.editor.setRootElement(editorRef);
+        this.referencePreviewCleanup = bindReferencePreviews(editorRef);
         this.hostClickHandler = (event: MouseEvent) => {
             if (event.target !== this.element) return;
             this.editor?.focus();
@@ -227,6 +230,8 @@ export class BloomerpTextEditor extends BaseWidget {
 
     /** Release editor menus, subscriptions, and Lexical resources. */
     public destroy(): void {
+        this.referencePreviewCleanup?.();
+        this.referencePreviewCleanup = null;
         this.referencePicker?.destroy();
         this.referencePicker = null;
         this.templatePicker?.destroy();

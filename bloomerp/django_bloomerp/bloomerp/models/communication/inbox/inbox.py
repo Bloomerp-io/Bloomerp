@@ -31,6 +31,10 @@ class Inbox(BasePreference):
             ),
         ]
 
+    bloomerp_config = BasePreference.bloomerp_config.model_copy(
+        update={"module": "communication"},
+    )
+
     force_copy_initial_default = True
 
     @classmethod

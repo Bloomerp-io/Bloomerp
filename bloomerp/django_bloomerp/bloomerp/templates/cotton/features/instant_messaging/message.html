@@ -1,0 +1,24 @@
+{% load i18n %}
+<c-vars row conversation thread_root />
+<article class="im-message{% if row.own %} im-own{% endif %}" data-message-id="{{ row.message.pk }}" data-reaction-url="{% url 'components_im_reaction' conversation.pk row.message.pk %}">
+    <div class="im-message-author">{% if row.own %}{% translate 'You' %}{% else %}{{ row.author }}{% endif %}</div>
+    <div class="im-bubble {% if row.own %}bg-primary-50{% else %}bg-base{% endif %}">
+        {% if row.message.deleted_at %}<p>{% translate 'Message deleted' %}</p>{% else %}
+            {% if row.message.reply_to %}<c-features.instant_messaging.quote :message="row.message.reply_to" />{% endif %}
+            <div data-message-body data-text-editor-body>{% if row.html %}{{ row.html }}{% else %}{{ row.message.body|linebreaksbr }}{% endif %}</div>
+            {% for attachment in row.message.attachments.all %}<c-features.instant_messaging.attachment :attachment="attachment" />{% endfor %}
+        {% endif %}
+    </div>
+    <div class="im-message-actions"><time>{{ row.message.sent_at|default:row.message.datetime_created|date:"M j, H:i" }}</time>
+        {% if not row.message.deleted_at %}<button type="button" data-quote-message="{{ row.message.pk }}">{% translate 'Quote' %}</button>{% endif %}
+        {% if not thread_root %}<button type="button" hx-get="{% url 'components_conversation' conversation.pk %}?thread={{ row.message.pk }}" hx-target="closest .im-conversation-content" hx-swap="outerHTML">{% translate 'Thread' %} · {{ row.message.reply_count }}</button>{% endif %}
+        {% if row.can_react %}
+            <c-ui.dropdown.body trigger_icon_class="fa-regular fa-face-smile" trigger_aria_label="Add reaction" :fixed="True" width="w-56">
+                <div class="im-emoji-picker" role="group" aria-label="{% translate 'Choose a reaction' %}">
+                    {% for emoji in row.reaction_emojis %}<button type="button" data-reaction-emoji="{{ emoji }}" data-reaction-active="true" aria-label="{% translate 'React with' %} {{ emoji }}">{{ emoji }}</button>{% endfor %}
+                </div>
+            </c-ui.dropdown.body>
+        {% endif %}
+    </div>
+    {% if row.reactions %}<div class="im-reactions">{% for reaction in row.reactions %}<c-features.instant_messaging.reaction :emoji="reaction.emoji" :count="reaction.count" :own="reaction.own" :enabled="row.can_react" />{% endfor %}</div>{% endif %}
+</article>

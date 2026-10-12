@@ -1,0 +1,23 @@
+{% load i18n %}
+<c-ui.dropdown.title>{% translate 'Staff' %}</c-ui.dropdown.title>
+{% if can_create_group %}
+{% translate 'New group' as new_group_label %}
+<c-ui.dropdown.submenu :text="new_group_label" icon="fa-solid fa-user-group" id="im-new-group" width="w-80">
+    <div hx-get="{% url 'components_im_create_group' %}" hx-trigger="load" hx-swap="innerHTML"></div>
+</c-ui.dropdown.submenu>
+{% endif %}
+{% for person in page.items %}
+<form hx-post="{% url 'components_im_start_conversation' %}" hx-target="#im-conversation-host" hx-swap="innerHTML" hx-disabled-elt="find button">
+    {% csrf_token %}<input type="hidden" name="recipient_id" value="{{ person.external_id }}">
+    <button type="submit" class="im-recipient text-primary-800 hover:bg-primary-50 focus-visible:bg-primary-50" role="menuitem"><i class="fa-solid fa-user" aria-hidden="true"></i><span>{{ person.display_name }}</span></button>
+</form>
+{% empty %}<p class="im-recipient-note">{% translate 'No staff users found.' %}</p>{% endfor %}
+{% if page.next_cursor %}<button type="button" class="im-recipient text-primary-800 hover:bg-primary-50 focus-visible:bg-primary-50" hx-get="{% url 'components_im_recipients' %}?recipient_query={{ query|urlencode }}&cursor={{ page.next_cursor }}" hx-target="#im-recipient-results">{% translate 'More results' %}</button>{% endif %}
+
+
+
+{% for connection in connections %}
+<c-ui.dropdown.divider />
+<c-ui.dropdown.title>{{ connection.name }}</c-ui.dropdown.title>
+<p class="im-recipient-note">{% translate 'Recipient discovery for this connection is not available yet.' %}</p>
+{% endfor %}
