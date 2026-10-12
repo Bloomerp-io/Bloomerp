@@ -1,0 +1,6 @@
+{% load i18n %}
+    <div class="im-messages" role="log" aria-label="{% translate 'Conversation messages' %}">
+        {% for row in rows %}
+            <c-features.instant_messaging.message :row="row" :conversation="conversation" :thread_root="thread_root" />
+        {% empty %}<p class="im-empty">{% translate 'No messages yet.' %}</p>{% endfor %}
+    </div>

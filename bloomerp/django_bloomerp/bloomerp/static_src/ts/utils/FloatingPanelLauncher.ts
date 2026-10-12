@@ -1,5 +1,5 @@
-/** Keep the assistant launcher movable without treating a drag as an open action. */
-export default class AgentLauncher {
+/** Keep the floating launcher movable without treating a drag as an open action. */
+export default class FloatingPanelLauncher {
     private pointerId: number | null = null;
     private startX = 0;
     private startY = 0;

@@ -12,6 +12,7 @@ class Label(UserStampModelMixin, models.Model):
     """Provide one shared, case-insensitive catalogue of labels."""
 
     bloomerp_config = BloomerpModelConfig(
+        module="communication",
         is_internal=True, api_settings=ApiSettings(enable_auto_generation=False)
     )
     name = models.CharField(max_length=100)

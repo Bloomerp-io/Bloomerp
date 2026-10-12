@@ -34,7 +34,9 @@ def render_inbox_folder(request: HttpRequest, folder_id: str) -> HttpResponse:
     query_params.pop("page", None)
     try:
         paginator = Paginator(
-            inbox_folder.query_items(query_params),
+            inbox_folder.query_items(query_params).filter(
+                pk__in=accessible_inbox_items(request.user).values("pk")
+            ),
             INBOX_PAGE_SIZE,
         )
         page_obj = paginator.get_page(request.GET.get("page", 1))

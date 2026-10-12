@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,9 +19,7 @@ def accessible_inboxes(user: AbstractBloomerpUser) -> QuerySet[Inbox]:
     return (
         Inbox.objects.filter(source_object__isnull=True)
         .filter(
-            Q(user=user)
-            | Q(shared_with_users=user)
-            | Q(shared_with_groups__user=user)
+            Q(user=user) | Q(shared_with_users=user) | Q(shared_with_groups__user=user)
         )
         .distinct()
     )
@@ -46,9 +43,17 @@ def accessible_inbox_folders(
 
 def accessible_inbox_items(user: AbstractBloomerpUser) -> QuerySet[InboxItem]:
     """Return items belonging to inbox sources available to ``user``."""
+    from bloomerp.communication.builtins.instant_messaging.access import IMAccessManager
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
-    return InboxItem.objects.filter(folder__inbox__in=accessible_inboxes(user))
+    conversation_ids = [
+        str(pk)
+        for pk in IMAccessManager(user).get_conversations().values_list("pk", flat=True)
+    ]
+    return InboxItem.objects.filter(folder__inbox__in=accessible_inboxes(user)).filter(
+        ~Q(item_type="instant_messaging_item")
+        | Q(related_item_id__in=conversation_ids, folder__inbox__user=user)
+    )
 
 
 def user_has_access_to_inbox_folder(

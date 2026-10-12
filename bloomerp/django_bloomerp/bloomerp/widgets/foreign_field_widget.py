@@ -134,7 +134,7 @@ class ForeignFieldWidget(widgets.Widget):
         # Get the related model class
         related_model_class = self.get_related_model_class()
         
-        context["choices_filter_json"] = ""
+        context["choices_filter_json"] = self.attrs.get("choices_filter", "")
         if self.source_field and related_model_class is not None:
             model_field = self.source_field._get_model_field()
             if hasattr(model_field, "get_limit_choices_to"):

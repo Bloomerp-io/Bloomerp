@@ -1,0 +1,26 @@
+{% comment %}
+Floating panel shell. Pass a unique panel_id, title, logo URL, launcher_label,
+close_label and storage_key. Slots: launcher (orb artwork/badge), header_start
+(back controls), header_controls (history/new controls), and default content.
+Additional attributes are forwarded to the panel. Both consumers share its layout.
+{% endcomment %}
+<c-vars panel_id="" title="" logo="" launcher_label="" close_label="" storage_key="" launcher_class="right-6 z-[85]" />
+<button type="button" data-floating-panel-action="open" data-floating-panel-launcher
+    aria-controls="{{ panel_id }}" aria-expanded="false" aria-label="{{ launcher_label }}"
+    class="floating-panel-launcher fixed bottom-6 {{ launcher_class }} focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">{{ launcher }}</button>
+<section id="{{ panel_id }}" data-floating-panel data-launcher-storage-key="{{ storage_key }}" hidden aria-label="{{ title }}"
+    class="fixed inset-y-3 right-3 z-[85] flex w-[calc(100%-1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl {{ class }}" {{ attrs }}>
+    <header class="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4 text-sm text-gray-900">
+        <div class="flex min-w-0 items-center gap-3">
+            {{ header_start }}
+            {% if logo %}<img src="{{ logo }}" alt="" class="shrink-0 object-contain h-8 w-8" aria-hidden="true" />{% endif %}
+            <h2 class="m-0 truncate font-semibold text-sm">{{ title }}</h2>
+        </div>
+        <div class="flex items-center gap-1">
+            {{ header_controls }}
+            <button type="button" data-floating-panel-action="close" aria-label="{{ close_label }}"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+    </header>
+    {{ slot }}
+</section>

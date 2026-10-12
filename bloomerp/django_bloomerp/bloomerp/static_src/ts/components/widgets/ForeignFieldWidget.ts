@@ -974,12 +974,14 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
     }
 
+    /** Keep choice results within the active top-layer menu, or portal to the body. */
     private portalDropdownToBody(): void {
-        if (!this.dropdown || this.dropdown.parentElement === document.body) return;
+        const container = this.element.closest<HTMLElement>('[popover]') || document.body;
+        if (!this.dropdown || this.originalDropdownParent) return;
 
         this.originalDropdownParent = this.dropdown.parentElement;
         this.originalDropdownNextSibling = this.dropdown.nextSibling;
-        document.body.appendChild(this.dropdown);
+        container.appendChild(this.dropdown);
 
         this.dropdown.style.position = 'absolute';
         this.dropdown.style.right = 'auto';
@@ -1021,6 +1023,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.originalDropdownNextSibling = null;
     }
 
+    /** Align results with the input in the portal container's coordinate space. */
     private positionDropdown(): void {
         if (!this.dropdown || !this.input || this.dropdown.classList.contains('hidden')) return;
 
@@ -1029,8 +1032,10 @@ export default class ForeignFieldWidget extends BaseWidget {
         const scrollY = window.scrollY || window.pageYOffset;
         const width = Math.max(inputRect.width, 160);
 
-        this.dropdown.style.left = `${inputRect.left + scrollX}px`;
-        this.dropdown.style.top = `${inputRect.bottom + scrollY + 4}px`;
+        const parent = this.dropdown.parentElement;
+        const parentRect = parent !== document.body ? parent?.getBoundingClientRect() : null;
+        this.dropdown.style.left = `${inputRect.left + (parentRect ? -parentRect.left - (parent?.clientLeft || 0) : scrollX)}px`;
+        this.dropdown.style.top = `${inputRect.bottom + (parentRect ? -parentRect.top - (parent?.clientTop || 0) : scrollY) + 4}px`;
         this.dropdown.style.width = `${width}px`;
     }
 
