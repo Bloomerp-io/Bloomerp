@@ -209,7 +209,7 @@ loadTranslations()
     .finally(() => {
         // Components may synchronously render translated frontend labels.
         registerComponent("bloomerp:phone", Phone);
-setupComponentAutoInit();
+        setupComponentAutoInit();
         initMessagesWebsocket();
         SetupAnimationListener();
     });

@@ -1,32 +1,39 @@
-"""Shared Twilio request verification and incoming conversation reconciliation."""
+"""Provider-dispatched request verification and incoming conversation reconciliation."""
 
 from typing import Any
 from uuid import UUID
 from django.core.exceptions import PermissionDenied
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from bloomerp.models.communication.voip import VoIPConnection, VoIPNumber
 from . import controller
-from .controller import callback_url
-from .builtins.twilio import TwilioAdapter
+from django.utils.module_loading import import_string
+from .registry import VOIP_PROVIDER_REGISTRY
 
 
 def verified_connection(
     request: HttpRequest, connection_id: UUID, kind: str, **kwargs: Any
 ) -> VoIPConnection:
     """Verify signatures against the configured public URL, never an untrusted Host header."""
-    connection = get_object_or_404(
-        VoIPConnection, pk=connection_id, provider="twilio", status="active"
-    )
+    connection = get_object_or_404(VoIPConnection, pk=connection_id, status="active")
     adapter = controller.adapter_for(connection)
-    if not isinstance(adapter, TwilioAdapter) or not adapter.verify_webhook(
-        callback_url(connection, kind, **kwargs),
-        request.POST,
-        request.headers.get("X-Twilio-Signature", ""),
-    ):
+    if not adapter.verify_request(request, kind, **kwargs):
         raise PermissionDenied
     return connection
+
+
+def dispatch_webhook(
+    request: HttpRequest, connection_id: UUID, kind: str, **kwargs: Any
+) -> HttpResponse:
+    """Select a registered handler without interpreting another carrier's payload format."""
+    connection = get_object_or_404(VoIPConnection, pk=connection_id, status="active")
+    provider = VOIP_PROVIDER_REGISTRY.get(connection.provider)
+    handler = provider.webhook_handlers.get(kind) if provider else None
+    if handler is None:
+        raise PermissionDenied
+    connection = verified_connection(request, connection_id, kind, **kwargs)
+    return import_string(handler)(request, connection, **kwargs)
 
 
 @transaction.atomic

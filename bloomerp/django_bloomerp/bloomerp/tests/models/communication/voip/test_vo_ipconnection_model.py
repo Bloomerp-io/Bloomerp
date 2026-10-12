@@ -194,3 +194,77 @@ class TestVoIpconnectionModel(VoIPFixtures, BloomerpModelTestCase):
         identity = conversation_identity(self.chat, self.normal_user.pk)
         self.assertEqual(identity["displayName"], self.identity.address)
         self.assertEqual(identity["address"], self.identity.address)
+
+    def test_queued_sync_rechecks_authorization(self) -> None:
+        """Use case: A worker runs after permission loss. Expected result: no carrier operation starts."""
+        from unittest.mock import patch
+        from django.core.exceptions import PermissionDenied
+        from bloomerp.communication.builtins.voip.actions import (
+            synchronize_connection_job,
+        )
+
+        self.prepare_voip()
+        with patch(
+            "bloomerp.communication.builtins.voip.controller.adapter_for"
+        ) as factory:
+            with self.assertRaises(PermissionDenied):
+                synchronize_connection_job(self.connection.pk, self.normal_user.pk)
+            factory.assert_not_called()
+
+    def test_number_purchase_recovers_remote_success(self) -> None:
+        """Use case: A purchase timed out after carrier acceptance. Expected result: recover the exact owned line without buying twice."""
+        from unittest.mock import patch
+        from bloomerp.communication.builtins.voip.controller import VoIPController
+        from bloomerp.communication.builtins.voip.definition import VoIPNumberData
+
+        self.prepare_voip()
+        remote = VoIPNumberData("PN" + "8" * 32, "+32470000008", "Remote", True, True)
+        with patch(
+            "bloomerp.communication.builtins.voip.controller.adapter_for"
+        ) as factory:
+            factory.return_value.list_numbers.return_value = (remote,)
+            controller = VoIPController(self.admin_user)
+            first = controller.provision_number(
+                self.connection.pk, remote.number, "Reception", {}
+            )
+            second = controller.provision_number(
+                self.connection.pk, remote.number, "Reception", {}
+            )
+            factory.return_value.provision_number.assert_not_called()
+            self.assertEqual(first.pk, second.pk)
+            self.assertTrue(first.assigned_users.filter(pk=self.admin_user.pk).exists())
+
+    def test_twilio_purchase_configures_callbacks(self) -> None:
+        """Use case: Provision through Twilio. Expected result: exact number, regulatory references and POST callbacks reach the SDK."""
+        from unittest.mock import patch, Mock
+        from bloomerp.communication.builtins.voip.controller import adapter_for
+
+        self.prepare_voip()
+        adapter = adapter_for(self.connection)
+        remote = Mock(
+            sid="PN" + "8" * 32,
+            phone_number="+32470000008",
+            friendly_name="Reception",
+            capabilities={"sms": True, "voice": True},
+        )
+        with patch.object(adapter, "client") as client:
+            client.return_value.incoming_phone_numbers.create.return_value = remote
+            result = adapter.provision_number(
+                remote.phone_number,
+                "Reception",
+                {"address_sid": "AD" + "1" * 32, "bundle_sid": "BU" + "2" * 32},
+                {
+                    "voice": "https://example.test/voice/",
+                    "sms": "https://example.test/sms/",
+                    "call_status": "https://example.test/status/",
+                },
+            )
+            submitted = (
+                client.return_value.incoming_phone_numbers.create.call_args.kwargs
+            )
+        self.assertEqual(result.external_id, remote.sid)
+        self.assertEqual(submitted["phone_number"], remote.phone_number)
+        self.assertEqual(submitted["voice_method"], "POST")
+        self.assertEqual(submitted["sms_method"], "POST")
+        self.assertEqual(submitted["status_callback"], "https://example.test/status/")
+        self.assertEqual(submitted["bundle_sid"], "BU" + "2" * 32)

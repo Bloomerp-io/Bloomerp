@@ -21,8 +21,8 @@ class TestCreateVoIpconnectionViewE2E(BloomerpE2ETestCase):
         return [
             E2ERequestScenario(
                 name="Configure a Twilio account",
-                user=self.normal_user,
-                url=reverse("voip_connections_add"),
+                user=self.admin_user,
+                url=reverse("voip_connections_model"),
                 prepare=self.prepare_encryption,
                 actions=[
                     E2EAction(
@@ -44,6 +44,18 @@ class TestCreateVoIpconnectionViewE2E(BloomerpE2ETestCase):
 
     def complete_wizard(self) -> None:
         """Choose the carrier and submit its typed configuration through the browser."""
+        expect(
+            self.page.locator('[bloomerp-component="bloomerp:messaging-panel"]')
+        ).to_have_attribute("data-component-initialized", "true")
+        self.page.get_by_role(
+            "link", name="Create a VoIP connection", exact=True
+        ).click()
+        expect(self.page.locator("#wizard-root")).to_have_attribute(
+            "data-component-initialized", "true"
+        )
+        expect(
+            self.page.locator('#wizard-root [bloomerp-component="selectable-cards"]')
+        ).to_have_attribute("data-component-initialized", "true")
         self.page.locator('[data-value="twilio"]').click()
         self.page.locator('button[name="_wizard_action"][value="next"]').click()
         self.page.locator('#wizard-root input[name="name"]').fill("Browser Twilio")
@@ -60,12 +72,13 @@ class TestCreateVoIpconnectionViewE2E(BloomerpE2ETestCase):
 
     def verify_saved(self) -> None:
         """Check completion exposes synchronization without echoing the submitted secret."""
-        expect(self.page.locator("#wizard-root")).to_contain_text("Connection created")
+        expect(self.page.locator("#wizard-root")).to_have_count(0)
+        expect(
+            self.page.get_by_text("Browser Twilio", exact=True).first
+        ).to_be_visible()
         self.assertTrue(
             VoIPConnection.objects.filter(
                 name="Browser Twilio", status="draft"
             ).exists()
         )
-        self.assertNotIn(
-            "e2e-private-token", self.page.locator("#wizard-root").inner_html()
-        )
+        self.assertNotIn("e2e-private-token", self.page.content())

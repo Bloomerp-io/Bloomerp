@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-12 12:35+0000\n"
+"POT-Creation-Date: 2026-10-12 20:10+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -93,6 +93,29 @@ msgstr "Blauw"
 #: static_src/ts/components/text_editor/actions.ts:206
 msgid "Bullet List"
 msgstr "Opsomming"
+
+#: static_src/ts/components/communication/Phone.ts:147
+msgid "Call ended"
+msgstr "Gesprek beëindigd"
+
+#: static_src/ts/components/communication/Phone.ts:51
+#: static_src/ts/components/communication/Phone.ts:141
+msgid "Call in progress"
+msgstr "Gesprek gaande"
+
+#: static_src/ts/components/communication/Phone.ts:154
+msgid "Calling failed. Check microphone permission, connection settings and line access."
+msgstr ""
+"Bellen mislukt. Controleer de microfoontoestemming, verbindingsinstellingen en toegang tot de "
+"lijn."
+
+#: static_src/ts/components/communication/Phone.ts:58
+msgid "Calling is unavailable. Check your connection and line access."
+msgstr "Bellen is niet beschikbaar. Controleer je verbinding en toegang tot de lijn."
+
+#: static_src/ts/components/communication/Phone.ts:107
+msgid "Calling…"
+msgstr "Bellen…"
 
 #: static_src/ts/components/text_editor/actions.ts:218
 msgid "Checklist"
@@ -251,6 +274,10 @@ msgstr "Opmaakwerkbalk verbergen"
 msgid "Image"
 msgstr "Afbeelding"
 
+#: static_src/ts/components/communication/Phone.ts:122
+msgid "Incoming call"
+msgstr "Inkomende oproep"
+
 #: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
 msgid "Invalid row policy"
 msgstr "Ongeldig rijbeleid"
@@ -264,7 +291,7 @@ msgid "Loading saved filters…"
 msgstr "Opgeslagen filters laden…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:146
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:194 static_src/ts/utils/contextMenu.ts:260
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:202 static_src/ts/utils/contextMenu.ts:260
 #: static_src/ts/utils/contextMenu.ts:271
 msgid "Loading…"
 msgstr "Laden…"
@@ -288,6 +315,10 @@ msgstr "Vermelden"
 msgid "Mention suggestions"
 msgstr "Suggesties voor vermeldingen"
 
+#: static_src/ts/components/communication/Phone.ts:51
+msgid "Microphone muted"
+msgstr "Microfoon gedempt"
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
 msgstr "Actie omlaag verplaatsen"
@@ -295,6 +326,10 @@ msgstr "Actie omlaag verplaatsen"
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:97
 msgid "Move action up"
 msgstr "Actie omhoog verplaatsen"
+
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "No authorized voice lines are available"
+msgstr "Er zijn geen geautoriseerde telefoonlijnen beschikbaar"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
@@ -310,7 +345,7 @@ msgstr "Geen objecten"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:446
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:407
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:416
 msgid "No results"
 msgstr "Geen resultaten"
 
@@ -372,6 +407,10 @@ msgstr "Voorkeur"
 msgid "Purple"
 msgstr "Paars"
 
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "Ready for incoming calls"
+msgstr "Gereed voor inkomende oproepen"
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Red"
 msgstr "Rood"
@@ -401,7 +440,7 @@ msgstr "Ontvanger verwijderen"
 msgid "Remove row"
 msgstr "Rij verwijderen"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:519
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:528
 msgid "Remove {label}"
 msgstr "{label} verwijderen"
 
@@ -545,11 +584,11 @@ msgstr "Volledig scherm in-/uitschakelen"
 msgid "Toggle side panel"
 msgstr "Zijpaneel in- of uitschakelen"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:201
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:209
 msgid "Unable to load this form. Close the dialog and try again."
 msgstr "Dit formulier kan niet worden geladen. Sluit het dialoogvenster en probeer het opnieuw."
 
-#: static_src/ts/components/workspaces/WorkspaceContainer.ts:265
+#: static_src/ts/components/workspaces/WorkspaceContainer.ts:268
 msgid "Unable to load tile."
 msgstr "Tegel kan niet worden geladen."
 

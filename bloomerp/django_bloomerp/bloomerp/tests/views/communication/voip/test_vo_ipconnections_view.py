@@ -18,9 +18,7 @@ class TestVoIpconnectionsView(BloomerpViewTestCase):
             RequestScenario(
                 name="Staff can manage their carrier accounts",
                 user=self.normal_user,
-                expected=ExpectedResult(
-                    response_validators=[self.contains_text("VoIP connections")]
-                ),
+                expected=ExpectedResult(status_code=302),
             ),
             RequestScenario(
                 name="Login required", expected=ExpectedResult(status_code=302)

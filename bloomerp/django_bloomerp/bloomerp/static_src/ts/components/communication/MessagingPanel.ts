@@ -46,13 +46,15 @@ export default class MessagingPanel extends FloatingPanel {
         }
     };
 
-    /** Reveal a successfully created conversation and dismiss the standard dropdown. */
+    /** Reveal a successfully created conversation and dismiss the header dropdowns. */
     private onConversationOpened = (): void => {
         this.find('[data-chat-view]').hidden = false;
         this.find('[data-list-view]').hidden = true;
         this.find('[data-action="back"]').hidden = false;
         this.find('[data-load-error]').hidden = true;
-        this.element.querySelector('[bloomerp-component="dropdown-keyboard"]')?.dispatchEvent(new CustomEvent('dropdown-dismiss', { bubbles: true }));
+        for (const dropdown of this.element.querySelectorAll('[bloomerp-component="dropdown-keyboard"]')) {
+            dropdown.dispatchEvent(new CustomEvent('dropdown-dismiss', { bubbles: true }));
+        }
         this.find('[data-action="back"]').focus();
     };
 

@@ -26,12 +26,30 @@ class CommunicationModule(BloomerpModule):
             links=[
                 Link(
                     name=_("Manage VoIP connections"),
-                    url_name="voip_connections",
+                    url_name="voip_connections_model",
                     is_internal=True,
                 ),
                 Link(
                     name=_("Create a VoIP connection"),
                     url_name="voip_connections_add",
+                    is_internal=True,
+                ),
+            ],
+        ),
+        LinkTileConfig(
+            id="communication:phone-numbers",
+            name=_("Phone numbers"),
+            description=_("Manage business lines, capabilities and staff assignments."),
+            icon="fa-solid fa-phone-volume",
+            links=[
+                Link(
+                    name=_("View phone numbers"),
+                    url_name="voip_numbers_model",
+                    is_internal=True,
+                ),
+                Link(
+                    name=_("Create a phone number from a connection"),
+                    url_name="voip_connections_model",
                     is_internal=True,
                 ),
             ],
@@ -81,11 +99,12 @@ class CommunicationModule(BloomerpModule):
             rows=[
                 LayoutRow(
                     title="Quick access",
-                    columns=2,
+                    columns=3,
                     items=[
                         LayoutItem(id="communication:email-accounts"),
                         LayoutItem(id="communication:im-connections"),
                         LayoutItem(id="communication:voip-connections"),
+                        LayoutItem(id="communication:phone-numbers"),
                     ],
                 ),
             ],

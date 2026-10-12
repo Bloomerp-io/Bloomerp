@@ -3,7 +3,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Mapping
+from typing import Any, Mapping, ClassVar
+from django.http import HttpRequest
 from pydantic import BaseModel, ConfigDict, Field
 from django.utils.translation import gettext_lazy as _
 
@@ -65,6 +66,13 @@ class VoIPConfiguration(BaseModel):
         raise NotImplementedError
 
 
+class VoIPNumberOptions(BaseModel):
+    """Validate provider-owned operation inputs without accepting undeclared keys."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    field_choices: ClassVar[Mapping[str, tuple[tuple[str, str], ...]]] = {}
+
+
 class BaseVoIPAdapter(ABC):
     """Normalize carrier operations without owning database or inbox writes."""
 
@@ -92,6 +100,28 @@ class BaseVoIPAdapter(ABC):
         """Send an SMS once and return its provider identifier."""
         raise NotImplementedError
 
+    def search_numbers(self, options: Mapping[str, Any]) -> tuple[VoIPNumberData, ...]:
+        """Find available carrier numbers without reserving or purchasing them."""
+        raise NotImplementedError
+
+    def provision_number(
+        self,
+        number: str,
+        name: str,
+        options: Mapping[str, Any],
+        callbacks: Mapping[str, str],
+    ) -> VoIPNumberData:
+        """Purchase one exact number and configure its application callbacks."""
+        raise NotImplementedError
+
+    def callback_url(self, kind: str, **kwargs: Any) -> str:
+        """Resolve a provider-specific callback address from trusted configuration."""
+        raise NotImplementedError
+
+    def verify_request(self, request: HttpRequest, kind: str, **kwargs: Any) -> bool:
+        """Reject incoming requests unless the carrier implementation authenticates them."""
+        return False
+
     def browser_token(self, identity: str) -> str:
         """Issue short-lived credentials for one authorized browser identity."""
         raise NotImplementedError
@@ -107,6 +137,19 @@ class VoIPProviderDefinition:
     description: str
     config_schema: type[VoIPConfiguration]
     adapter_class: type[BaseVoIPAdapter]
+    number_search_schema: type[VoIPNumberOptions] | None = None
+    number_purchase_schema: type[VoIPNumberOptions] | None = None
+    purchase_notice: str = ""
+    pricing_url: str = ""
+    account_id_field: str = ""
+    immutable_config_fields: tuple[str, ...] = ()
+    callback_labels: Mapping[str, str] = field(default_factory=dict)
+    callback_help: str = ""
+    configuration_help: str = ""
+    webhook_handlers: Mapping[str, str] = field(default_factory=dict)
+    browser_driver: str = ""
+    operation_errors: tuple[type[Exception], ...] = (ValueError,)
+    max_sms_length: int = 1600
 
     def create_adapter(self, context: VoIPContext) -> BaseVoIPAdapter:
         """Construct a server-side adapter from freshly resolved secrets."""

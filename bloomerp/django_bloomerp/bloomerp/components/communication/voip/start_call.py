@@ -17,7 +17,7 @@ from bloomerp.communication.builtins.voip.controller import VoIPController
 @login_required
 @require_POST
 def start_call(request: HttpRequest, conversation_id: UUID) -> JsonResponse:
-    """Reserve a call before the Voice SDK requests signed TwiML routing."""
+    """Reserve a call before the provider browser driver requests carrier routing."""
     try:
         controller = VoIPController(request.user)
         if request.POST.get("action") == "cancel":

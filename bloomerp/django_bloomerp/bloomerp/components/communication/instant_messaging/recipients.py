@@ -3,6 +3,9 @@
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
+from django.utils.module_loading import import_string
+from urllib.parse import urlencode
 from django.views.decorators.http import require_GET
 
 from bloomerp.communication.builtins.instant_messaging.registry import (
@@ -17,7 +20,7 @@ from bloomerp.router import router
 @login_required
 @require_GET
 def recipients(request: HttpRequest) -> HttpResponse:
-    """Return the staff messaging directory with the provider's typed cursor."""
+    """Render each provider directory and its authorized creation actions."""
     from django.core.exceptions import ValidationError
     from bloomerp.communication.builtins.instant_messaging.selection import (
         resolve_steps,
@@ -29,7 +32,22 @@ def recipients(request: HttpRequest) -> HttpResponse:
         for provider in IM_PROVIDER_REGISTRY.values():
             if request.GET.get("provider") and request.GET["provider"] != provider.key:
                 continue
+            actions = [
+                {
+                    "definition": action,
+                    "id": f"im-{provider.key}-{action.key}",
+                    "url": reverse("components_im_create_group")
+                    + "?"
+                    + urlencode({"provider": provider.key, "action": action.key}),
+                }
+                for action in provider.creation_actions
+                if import_string(action.permission_resolver)(request)
+            ]
             if not provider.selection_steps:
+                if actions:
+                    groups.append(
+                        {"provider": provider, "actions": actions, "options": ()}
+                    )
                 continue
             selected, step, options = resolve_steps(
                 provider, request.user, {}, query, request.GET.get("cursor", "")
@@ -37,6 +55,7 @@ def recipients(request: HttpRequest) -> HttpResponse:
             groups.append(
                 {
                     "provider": provider,
+                    "actions": actions,
                     "step": step,
                     "options": options.items,
                     "next_cursor": options.next_cursor,
@@ -50,7 +69,6 @@ def recipients(request: HttpRequest) -> HttpResponse:
         "components/communication/instant_messaging/recipients.html",
         {
             "groups": groups,
-            "can_create_group": request.user.is_active and request.user.is_staff,
             "query": query,
         },
     )

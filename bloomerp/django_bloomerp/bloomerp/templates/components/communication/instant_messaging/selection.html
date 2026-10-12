@@ -1,7 +1,7 @@
 {% load i18n %}
 <section class="p-4 space-y-3"><h3>{{ step.label }}</h3>
 {% for option in options %}
-<form hx-post="{% url 'components_im_start_conversation' %}" hx-target="#im-conversation-host">{% csrf_token %}
+<form hx-post="{% url 'components_im_start_conversation' %}" hx-target="#im-conversation-host" hx-swap="innerHTML settle:0ms">{% csrf_token %}
 <input type="hidden" name="provider" value="{{ provider.key }}">
 {% for key, value in selected.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
 <input type="hidden" name="{{ step.key }}" value="{{ option.value }}">

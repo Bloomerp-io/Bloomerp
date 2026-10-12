@@ -281,6 +281,17 @@ class IMTimelineSource:
 
 
 @dataclass(frozen=True)
+class IMCreationAction:
+    """Declare a provider-owned creation flow and its server-side authorization check."""
+
+    key: str
+    label: str
+    icon: str
+    handler: str
+    permission_resolver: str
+
+
+@dataclass(frozen=True)
 class IMProviderDefinition:
     """Declare static provider branding, adapter type and setup requirements.
 
@@ -298,6 +309,7 @@ class IMProviderDefinition:
     auth_mode: Literal["internal", "embedded_signup", "oauth"] = "internal"
     planned_capabilities: IMCapabilities = field(default_factory=IMCapabilities)
     selection_steps: tuple[IMSelectionStep, ...] = ()
+    creation_actions: tuple[IMCreationAction, ...] = ()
     start_handler: str = ""
     send_handler: str = ""
     actions_resolver: str = ""

@@ -1,7 +1,11 @@
 """Twilio REST, signed webhooks and browser Voice SDK authorization."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Mapping, Literal
+from django.http import HttpRequest
+from django.urls import reverse
+from requests.exceptions import RequestException
+from twilio.base.exceptions import TwilioException
 from django.utils.translation import gettext_lazy as _
 from pydantic import Field, SecretStr
 from twilio.http.http_client import TwilioHttpClient
@@ -11,6 +15,7 @@ from twilio.rest import Client
 from twilio.request_validator import RequestValidator
 from ..definition import (
     BaseVoIPAdapter,
+    VoIPNumberOptions,
     VoIPCapabilities,
     VoIPCallData,
     VoIPConfiguration,
@@ -44,6 +49,47 @@ class TwilioConfiguration(VoIPConfiguration):
     def external_account_id(self) -> str:
         """Bind the saved connection to the configured Twilio account."""
         return self.account_sid
+
+
+class TwilioNumberSearch(VoIPNumberOptions):
+    """Declare Twilio's availability filters and translated picker choices."""
+
+    country: str = Field(
+        pattern=r"^[A-Za-z]{2}$",
+        max_length=2,
+        title=_("Country code"),
+        description=_("Two-letter country code, for example BE or US."),
+    )
+    kind: Literal["local", "mobile", "toll_free"] = Field(title=_("Number type"))
+    field_choices = {
+        "kind": (
+            ("local", _("Local")),
+            ("mobile", _("Mobile")),
+            ("toll_free", _("Toll-free")),
+        )
+    }
+    contains: str = Field(default="", max_length=16, title=_("Number contains"))
+
+
+class TwilioNumberPurchase(VoIPNumberOptions):
+    """Declare optional regulatory references required by Twilio provisioning."""
+
+    address_sid: str = Field(
+        default="",
+        pattern=r"^(AD[0-9a-fA-F]{32})?$",
+        title=_("Twilio address SID"),
+        description=_(
+            "If required for this number, enter the address registered in Twilio."
+        ),
+    )
+    bundle_sid: str = Field(
+        default="",
+        pattern=r"^(BU[0-9a-fA-F]{32})?$",
+        title=_("Twilio regulatory bundle SID"),
+        description=_(
+            "If required for this number, enter an approved Twilio regulatory bundle."
+        ),
+    )
 
 
 class TwilioAdapter(BaseVoIPAdapter):
@@ -122,6 +168,72 @@ class TwilioAdapter(BaseVoIPAdapter):
             .sid
         )
 
+    def search_numbers(self, options: Mapping[str, Any]) -> tuple[VoIPNumberData, ...]:
+        """Return a bounded inventory of available local, mobile or toll-free numbers."""
+        criteria = TwilioNumberSearch.model_validate(options)
+        resource = getattr(
+            self.client().available_phone_numbers(criteria.country.upper()),
+            criteria.kind,
+        )
+        filters = {"contains": criteria.contains} if criteria.contains else {}
+        return tuple(
+            VoIPNumberData(
+                "",
+                item.phone_number,
+                item.friendly_name or "",
+                bool(item.capabilities.get("SMS", item.capabilities.get("sms"))),
+                bool(item.capabilities.get("voice", item.capabilities.get("Voice"))),
+            )
+            for item in resource.list(limit=20, **filters)
+        )
+
+    def provision_number(
+        self,
+        number: str,
+        name: str,
+        options: Mapping[str, Any],
+        callbacks: Mapping[str, str],
+    ) -> VoIPNumberData:
+        """Provision an exact E.164 number once, wiring signed inbound callbacks."""
+        extra = {
+            key: value
+            for key, value in options.items()
+            if key in {"address_sid", "bundle_sid"} and value
+        }
+        item = self.client().incoming_phone_numbers.create(
+            phone_number=number,
+            friendly_name=name or number,
+            voice_url=callbacks["voice"],
+            voice_method="POST",
+            sms_url=callbacks["sms"],
+            sms_method="POST",
+            status_callback=callbacks["call_status"],
+            status_callback_method="POST",
+            **extra,
+        )
+        return VoIPNumberData(
+            item.sid,
+            item.phone_number,
+            item.friendly_name or "",
+            bool(item.capabilities.get("sms")),
+            bool(item.capabilities.get("voice")),
+        )
+
+    def callback_url(self, kind: str, **kwargs: Any) -> str:
+        """Build Twilio callback URLs from the configured signature-stable public origin."""
+        return self.context.settings["public_url"].rstrip("/") + reverse(
+            f"voip_{kind}",
+            kwargs={"connection_id": self.context.connection_id, **kwargs},
+        )
+
+    def verify_request(self, request: HttpRequest, kind: str, **kwargs: Any) -> bool:
+        """Authenticate Twilio form callbacks with their account and exact configured URL."""
+        return self.verify_webhook(
+            self.callback_url(kind, **kwargs),
+            request.POST,
+            request.headers.get("X-Twilio-Signature", ""),
+        )
+
     def browser_token(self, identity: str) -> str:
         """Issue a ten-minute Voice grant without exposing long-lived secrets."""
         token = AccessToken(
@@ -157,4 +269,28 @@ TWILIO_PROVIDER = VoIPProviderDefinition(
     description=_("SMS, browser calls and synchronized call history."),
     config_schema=TwilioConfiguration,
     adapter_class=TwilioAdapter,
+    number_search_schema=TwilioNumberSearch,
+    number_purchase_schema=TwilioNumberPurchase,
+    account_id_field="account_sid",
+    configuration_help=_(
+        "Browser calling requires a Voice API key and a TwiML application."
+    ),
+    purchase_notice=_(
+        "This provisions a paid number on your Twilio account. Availability and any required regulatory approval are checked by Twilio."
+    ),
+    pricing_url="https://www.twilio.com/en-us/phone-numbers/pricing",
+    callback_help=_(
+        "Use HTTP POST. Set the TwiML application and number Voice URL, the number Messaging URL, and the incoming call status callback to these addresses."
+    ),
+    callback_labels={
+        "voice": _("Voice URL"),
+        "sms": _("SMS URL"),
+        "call_status": _("Call status URL"),
+    },
+    webhook_handlers={
+        kind: f"bloomerp.communication.builtins.voip.builtins.twilio_webhooks.{kind}.{kind}"
+        for kind in ("voice", "sms", "call_status", "message_status")
+    },
+    browser_driver="twilio",
+    operation_errors=(TwilioException, RequestException, ValueError),
 )

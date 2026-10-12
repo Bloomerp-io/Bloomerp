@@ -22,17 +22,19 @@ class TestCreateVoIpconnectionView(BloomerpModelViewTestCase):
         return [
             RequestScenario(
                 name="Offer Twilio setup to staff",
-                user=self.normal_user,
+                user=self.admin_user,
                 expected=ExpectedResult(
                     response_validators=[self.contains_text("Twilio")]
                 ),
             ),
             RequestScenario(
                 name="Save encrypted carrier configuration",
-                user=self.normal_user,
+                user=self.admin_user,
                 method="POST",
                 prepare=self.configure_twilio,
-                expected=ExpectedResult(response_validators=[self.validate_saved]),
+                expected=ExpectedResult(
+                    status_code=302, response_validators=[self.validate_saved]
+                ),
             ),
         ]
 
@@ -43,7 +45,7 @@ class TestCreateVoIpconnectionView(BloomerpModelViewTestCase):
                 BLOOMERP_CONFIG=BloomerpConfig(email_secret_key="test-key")
             )
         )
-        self.client.force_login(self.normal_user)
+        self.client.force_login(self.admin_user)
         self.client.post(
             self.get_endpoint(self.view_name, None), {"provider": "twilio"}
         )

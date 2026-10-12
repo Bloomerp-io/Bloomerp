@@ -1,4 +1,5 @@
-import { Call, Device } from '@twilio/voice-sdk';
+import type { BrowserCall, BrowserDevice } from '../../communication/voip/definition';
+import { createBrowserDevice } from '../../communication/voip/registry';
 import BaseComponent from '../BaseComponent';
 import { t as _ } from '../../utils/i18n';
 
@@ -7,8 +8,8 @@ interface Connection { id: string; token_url: string; }
 /** Keep browser audio sessions outside conversation fragments so chat navigation preserves calls. */
 export default class Phone extends BaseComponent {
     private lifecycle = new AbortController();
-    private devices = new Map<string, Device>();
-    private call: Call | null = null;
+    private devices = new Map<string, BrowserDevice>();
+    private call: BrowserCall | null = null;
     private busy = false;
     private muted = false;
 
@@ -29,7 +30,7 @@ export default class Phone extends BaseComponent {
     }
 
     /** Dispose one carrier device without retaining active registrations. */
-    private destroyDevice(device: Device): void { device.destroy(); }
+    private destroyDevice(device: BrowserDevice): void { device.destroy(); }
 
     /** Clean up only when this persistent shell is actually removed. */
     private onCleanup = (event: Event): void => { if (event.target === this.element) this.destroy(); };
@@ -47,7 +48,7 @@ export default class Phone extends BaseComponent {
         if (action === 'enable') void this.enable();
         if (action === 'call') void this.start(button);
         if (action === 'answer') this.call?.accept();
-        if (action === 'hangup') { if (this.call?.status() === Call.State.Pending) this.call.reject(); else this.call?.disconnect(); }
+        if (action === 'hangup') { if (this.call?.isPending()) this.call.reject(); else this.call?.disconnect(); }
         if (action === 'mute' && this.call) { this.muted = !this.muted; this.call.mute(this.muted); this.status(this.muted ? _('Microphone muted') : _('Call in progress')); }
     };
 
@@ -60,22 +61,22 @@ export default class Phone extends BaseComponent {
     }
 
     /** Create an authorized carrier registration and refresh its short-lived token. */
-    private async device(connection: Connection): Promise<Device> {
+    private async device(connection: Connection): Promise<BrowserDevice> {
         const existing = this.devices.get(connection.id);
         if (existing) return existing;
         const credentials = await this.post(connection.token_url);
-        const device = new Device(credentials.token, { tokenRefreshMs: 60000 });
+        const device = createBrowserDevice(credentials.driver, credentials.token);
         this.devices.set(connection.id, device);
-        device.on('incoming', this.incoming);
-        device.on('error', this.error);
-        device.on('tokenWillExpire', this.refreshToken.bind(this, connection, device));
+        device.onIncoming(this.incoming);
+        device.onError(this.error);
+        device.onTokenExpiry(this.refreshToken.bind(this, connection, device));
         try { await device.register(); }
         catch (error) { device.destroy(); this.devices.delete(connection.id); throw error; }
         return device;
     }
 
     /** Refresh authorization and drop registrations immediately when line access is revoked. */
-    private async refreshToken(connection: Connection, device: Device): Promise<void> {
+    private async refreshToken(connection: Connection, device: BrowserDevice): Promise<void> {
         try { const refreshed = await this.post(connection.token_url); device.updateToken(refreshed.token); }
         catch { device.destroy(); this.devices.delete(connection.id); this.error(); }
     }
@@ -94,7 +95,7 @@ export default class Phone extends BaseComponent {
         finally { this.busy = false; }
     }
 
-    /** Reserve a server-authorized call and pass only its opaque ID to Twilio. */
+    /** Reserve a server-authorized call and pass its opaque ID to the configured browser transport. */
     private async start(button: HTMLElement): Promise<void> {
         if (this.call || this.busy) return;
         this.busy = true;
@@ -103,7 +104,7 @@ export default class Phone extends BaseComponent {
             const device = await this.device({ id: button.dataset.connectionId!, token_url: button.dataset.tokenUrl! });
             const reserved = await this.post(button.dataset.callUrl!, new URLSearchParams({ client_id: crypto.randomUUID() }));
             reservationId = reserved.call_id;
-            this.bindCall(await device.connect({ params: { CallId: reserved.call_id } }));
+            this.bindCall(await device.connect(reserved.call_id));
             this.status(_('Calling…'));
         } catch {
             if (reservationId) {
@@ -116,7 +117,7 @@ export default class Phone extends BaseComponent {
     }
 
     /** Present an incoming call without automatically opening the microphone. */
-    private incoming = (call: Call): void => {
+    private incoming = (call: BrowserCall): void => {
         if (this.call || this.busy) { call.reject(); return; }
         this.bindCall(call);
         this.status(_('Incoming call'));
@@ -125,7 +126,7 @@ export default class Phone extends BaseComponent {
     };
 
     /** Bind one session and keep the global controls synchronized with SDK state. */
-    private bindCall(call: Call): void {
+    private bindCall(call: BrowserCall): void {
         this.call = call;
         this.muted = false;
         this.control('hangup', false);

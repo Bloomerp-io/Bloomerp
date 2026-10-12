@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-12 12:35+0000\n"
+"POT-Creation-Date: 2026-10-12 20:10+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: it\n"
@@ -93,6 +93,29 @@ msgstr "Blu"
 #: static_src/ts/components/text_editor/actions.ts:206
 msgid "Bullet List"
 msgstr "Elenco puntato"
+
+#: static_src/ts/components/communication/Phone.ts:147
+msgid "Call ended"
+msgstr "Chiamata terminata"
+
+#: static_src/ts/components/communication/Phone.ts:51
+#: static_src/ts/components/communication/Phone.ts:141
+msgid "Call in progress"
+msgstr "Chiamata in corso"
+
+#: static_src/ts/components/communication/Phone.ts:154
+msgid "Calling failed. Check microphone permission, connection settings and line access."
+msgstr ""
+"Chiamata non riuscita. Controlla le autorizzazioni del microfono, le impostazioni di connessione "
+"e l’accesso alla linea."
+
+#: static_src/ts/components/communication/Phone.ts:58
+msgid "Calling is unavailable. Check your connection and line access."
+msgstr "Chiamate non disponibili. Controlla la connessione e l’accesso alla linea."
+
+#: static_src/ts/components/communication/Phone.ts:107
+msgid "Calling…"
+msgstr "Chiamata in corso…"
 
 #: static_src/ts/components/text_editor/actions.ts:218
 msgid "Checklist"
@@ -251,6 +274,10 @@ msgstr "Nascondi la barra degli strumenti di formattazione"
 msgid "Image"
 msgstr "Immagine"
 
+#: static_src/ts/components/communication/Phone.ts:122
+msgid "Incoming call"
+msgstr "Chiamata in arrivo"
+
 #: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
 msgid "Invalid row policy"
 msgstr "Criterio di riga non valido"
@@ -264,7 +291,7 @@ msgid "Loading saved filters…"
 msgstr "Caricamento dei filtri salvati…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:146
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:194 static_src/ts/utils/contextMenu.ts:260
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:202 static_src/ts/utils/contextMenu.ts:260
 #: static_src/ts/utils/contextMenu.ts:271
 msgid "Loading…"
 msgstr "Caricamento…"
@@ -288,6 +315,10 @@ msgstr "Menzione"
 msgid "Mention suggestions"
 msgstr "Suggerimenti di menzione"
 
+#: static_src/ts/components/communication/Phone.ts:51
+msgid "Microphone muted"
+msgstr "Microfono disattivato"
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
 msgstr "Sposta l’azione in basso"
@@ -295,6 +326,10 @@ msgstr "Sposta l’azione in basso"
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:97
 msgid "Move action up"
 msgstr "Sposta l’azione in alto"
+
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "No authorized voice lines are available"
+msgstr "Non sono disponibili linee vocali autorizzate"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
@@ -310,7 +345,7 @@ msgstr "Nessun oggetto"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:446
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:407
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:416
 msgid "No results"
 msgstr "Nessun risultato"
 
@@ -372,6 +407,10 @@ msgstr "Preferenza"
 msgid "Purple"
 msgstr "Viola"
 
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "Ready for incoming calls"
+msgstr "Pronto a ricevere chiamate"
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Red"
 msgstr "Rosso"
@@ -401,7 +440,7 @@ msgstr "Rimuovi destinatario"
 msgid "Remove row"
 msgstr "Rimuovi riga"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:519
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:528
 msgid "Remove {label}"
 msgstr "Rimuovi {label}"
 
@@ -545,11 +584,11 @@ msgstr "Attiva/disattiva schermo intero"
 msgid "Toggle side panel"
 msgstr "Mostra/nascondi pannello laterale"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:201
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:209
 msgid "Unable to load this form. Close the dialog and try again."
 msgstr "Impossibile caricare questo modulo. Chiudi la finestra di dialogo e riprova."
 
-#: static_src/ts/components/workspaces/WorkspaceContainer.ts:265
+#: static_src/ts/components/workspaces/WorkspaceContainer.ts:268
 msgid "Unable to load tile."
 msgstr "Impossibile caricare il riquadro."
 

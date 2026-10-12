@@ -1,14 +1,14 @@
 {% load i18n %}
-{% if can_create_group %}
-{% translate 'New group' as new_group_label %}
-<c-ui.dropdown.submenu :text="new_group_label" icon="fa-solid fa-user-group" id="im-new-group" width="w-80">
-    <div hx-get="{% url 'components_im_create_group' %}" hx-trigger="load" hx-swap="innerHTML"></div>
-</c-ui.dropdown.submenu>
-{% endif %}
 {% for group in groups %}
+<div data-im-provider="{{ group.provider.key }}">
 <c-ui.dropdown.title>{{ group.provider.display_name }}</c-ui.dropdown.title>
+{% for action in group.actions %}
+<c-ui.dropdown.submenu :text="action.definition.label" :icon="action.definition.icon" :id="action.id" width="w-80">
+    <div hx-get="{{ action.url }}" hx-trigger="load" hx-swap="innerHTML settle:0ms"></div>
+</c-ui.dropdown.submenu>
+{% endfor %}
 {% for option in group.options %}
-<form hx-post="{% url 'components_im_start_conversation' %}" hx-target="#im-conversation-host" hx-swap="innerHTML">{% csrf_token %}
+<form hx-post="{% url 'components_im_start_conversation' %}" hx-target="#im-conversation-host" hx-swap="innerHTML settle:0ms">{% csrf_token %}
 <input type="hidden" name="provider" value="{{ group.provider.key }}">
 {% for key, value in group.selected.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
 <input type="hidden" name="{{ group.step.key }}" value="{{ option.value }}">
@@ -16,4 +16,5 @@
 </form>
 {% empty %}<p class="im-recipient-note">{% translate 'No available recipients or connections.' %}</p>{% endfor %}
 {% if group.next_cursor %}<button class="im-recipient" hx-get="{% url 'components_im_recipients' %}?provider={{ group.provider.key|urlencode }}&amp;cursor={{ group.next_cursor|urlencode }}&amp;recipient_query={{ query|urlencode }}" hx-target="#im-recipient-results">{% translate 'More results' %}</button>{% endif %}
+</div>
 {% endfor %}

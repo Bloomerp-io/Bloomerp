@@ -2040,6 +2040,8 @@ html.dark [data-workflow-node-item]:hover {
 /* Shared messaging shell and reusable conversation fragments. */
 .im-theme { --im-accent: var(--color-primary-600); --im-muted: var(--color-primary-600); --im-line: var(--color-gray-200); color: #252c38; font-family: var(--font-sans, sans-serif); font-size: 14px; }
 .im-theme [hidden] { display: none !important; }
+.im-phone-controls { display: none; }
+.im-phone-controls:has(button:not([hidden])), .im-phone-controls:has([data-phone-status]:not(:empty)) { display: flex; }
 .im-theme button { cursor: pointer; }
 .im-theme button:focus-visible, .im-theme input:focus-visible, .im-theme textarea:focus-visible, .im-message:focus-visible { outline: 2px solid var(--im-accent); outline-offset: 3px; }
 .im-orb { background: var(--im-accent); color: white; border: 1px solid #ffffff55; box-shadow: 0 5px 18px #30265530; font-size: 22px; }

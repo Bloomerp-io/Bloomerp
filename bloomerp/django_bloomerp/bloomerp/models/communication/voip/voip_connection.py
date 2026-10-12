@@ -10,6 +10,26 @@ from bloomerp.communication.utils.crypto import (
     is_encrypted_email_secret,
 )
 from .base import VoIPModel
+from django.utils.translation import gettext_noop
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DataviewHTMLAction,
+    get_default_dataview_actions,
+    ApiSettings,
+    ActivityLogSettings,
+    DetailViewSettings,
+    ModelViewSettings,
+    FieldLayout,
+    LayoutRow,
+    LayoutItem,
+    ObjectAction,
+)
+from bloomerp.communication.builtins.voip.actions import (
+    can_change_connection,
+    can_create_connection,
+    synchronize_numbers,
+)
 
 
 def voip_provider_choices() -> list[tuple[str, str]]:
@@ -21,6 +41,79 @@ def voip_provider_choices() -> list[tuple[str, str]]:
 
 class VoIPConnection(VoIPModel):
     """Own an independently configured carrier account and synchronization state."""
+
+    bloomerp_config = BloomerpModelConfig(
+        module="communication",
+        api_settings=ApiSettings(enable_auto_generation=False),
+        activity_log_settings=ActivityLogSettings(enabled=False),
+        model_view_settings=ModelViewSettings(
+            dataview_actions=[
+                DataviewHTMLAction(
+                    id="add",
+                    template_name="models/voip_connection/add.html",
+                    should_render_func=can_create_connection,
+                ),
+                *get_default_dataview_actions(skip=["add"]),
+            ],
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Connections"),
+                    display_fields=[
+                        "name",
+                        "provider",
+                        "status",
+                        "last_synced_at",
+                        "validated_at",
+                    ],
+                    sort_field="name",
+                )
+            ],
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    name=gettext_noop("Connection"),
+                    rows=[
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Account"),
+                            items=[
+                                LayoutItem(id=field)
+                                for field in (
+                                    "name",
+                                    "provider",
+                                    "external_account_id",
+                                    "status",
+                                )
+                            ],
+                        ),
+                        LayoutRow(
+                            columns=3,
+                            title=gettext_noop("Synchronization"),
+                            items=[
+                                LayoutItem(id=field)
+                                for field in (
+                                    "sync_enabled",
+                                    "last_synced_at",
+                                    "validated_at",
+                                )
+                            ],
+                        ),
+                    ],
+                )
+            ],
+            skip_views=["files", "document_templates"],
+        ),
+        object_actions=[
+            ObjectAction(
+                id="synchronize_numbers",
+                label=gettext_noop("Synchronize phone numbers"),
+                icon="fa-solid fa-rotate",
+                execution_func=synchronize_numbers,
+                should_render_func=can_change_connection,
+            ),
+        ],
+    )
 
     immutable_fields = ("provider", "external_account_id")
     name = models.CharField(_("Name"), max_length=255)

@@ -5,10 +5,84 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import RegexValidator
 from .base import VoIPModel
+from django.utils.translation import gettext_noop
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    get_default_dataview_actions,
+    ApiSettings,
+    ActivityLogSettings,
+    DetailViewSettings,
+    ModelViewSettings,
+    FieldLayout,
+    LayoutRow,
+    LayoutItem,
+)
 
 
 class VoIPNumber(VoIPModel):
     """Represent a carrier line available to its assigned active staff."""
+
+    bloomerp_config = BloomerpModelConfig(
+        module="communication",
+        api_settings=ApiSettings(enable_auto_generation=False),
+        activity_log_settings=ActivityLogSettings(enabled=False),
+        model_view_settings=ModelViewSettings(
+            skip_views=["add"],
+            dataview_actions=get_default_dataview_actions(skip=["add"]),
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Phone numbers"),
+                    display_fields=[
+                        "name",
+                        "number",
+                        "connection",
+                        "is_active",
+                        "supports_sms",
+                        "supports_voice",
+                        "assigned_users",
+                    ],
+                    sort_field="number",
+                )
+            ],
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    name=gettext_noop("Phone number"),
+                    rows=[
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Business line"),
+                            items=[
+                                LayoutItem(id=field)
+                                for field in (
+                                    "name",
+                                    "number",
+                                    "connection",
+                                    "is_active",
+                                )
+                            ],
+                        ),
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Capabilities"),
+                            items=[
+                                LayoutItem(id=field)
+                                for field in ("supports_sms", "supports_voice")
+                            ],
+                        ),
+                        LayoutRow(
+                            columns=1,
+                            title=gettext_noop("Access"),
+                            items=[LayoutItem(id="assigned_users")],
+                        ),
+                    ],
+                )
+            ],
+            skip_views=["files", "document_templates"],
+        ),
+    )
 
     immutable_fields = ("connection_id", "number", "provider_number_id")
     connection = models.ForeignKey(

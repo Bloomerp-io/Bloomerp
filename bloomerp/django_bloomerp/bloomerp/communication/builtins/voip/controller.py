@@ -7,7 +7,6 @@ from uuid import UUID
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Max
-from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from bloomerp.models.users.user import AbstractBloomerpUser
@@ -39,9 +38,11 @@ def adapter_for(connection: VoIPConnection) -> BaseVoIPAdapter:
 
 def callback_url(connection: VoIPConnection, kind: str, **kwargs: Any) -> str:
     """Build signature-stable callback URLs from administrator-supplied public origin."""
-    return connection.settings["public_url"].rstrip("/") + reverse(
-        f"voip_{kind}", kwargs={"connection_id": connection.pk, **kwargs}
+    provider = VOIP_PROVIDER_REGISTRY.get(connection.provider)
+    context = VoIPContext(
+        str(connection.pk), connection.external_account_id, connection.settings, {}
     )
+    return provider.create_adapter(context).callback_url(kind, **kwargs)
 
 
 def notify_conversation(conversation_id: UUID) -> None:
@@ -134,6 +135,64 @@ class VoIPController:
                 )
         return connection
 
+    @transaction.atomic
+    def provision_number(
+        self, connection_id: UUID, number: str, name: str, options: dict[str, Any]
+    ) -> VoIPNumber:
+        """Provision one authorized exact line, recovering a previously accepted carrier request."""
+        import re
+
+        connection = (
+            self.access.get_connections()
+            .select_for_update()
+            .filter(pk=connection_id)
+            .first()
+        )
+        if connection is None:
+            raise PermissionDenied
+        if connection.status != "active" or not re.fullmatch(
+            r"\+[1-9]\d{1,14}", number
+        ):
+            raise ValidationError(
+                _("Synchronize the connection and select an available number first.")
+            )
+        provider = VOIP_PROVIDER_REGISTRY.get(connection.provider)
+        if provider.number_purchase_schema is None:
+            raise ValidationError(
+                _("Number provisioning is unavailable for this provider.")
+            )
+        options = provider.number_purchase_schema.model_validate(options).model_dump(
+            mode="json"
+        )
+        existing = connection.numbers.filter(number=number).first()
+        if existing:
+            return existing
+        adapter = adapter_for(connection)
+        # Recover an exact purchase after an ambiguous timeout instead of allocating a different line.
+        remote = next(
+            (item for item in adapter.list_numbers() if item.number == number), None
+        )
+        if remote is None:
+            remote = adapter.provision_number(
+                number,
+                name,
+                options,
+                {
+                    kind: callback_url(connection, kind)
+                    for kind in provider.callback_labels
+                },
+            )
+        line = VoIPNumber.objects.create(
+            connection=connection,
+            number=remote.number,
+            provider_number_id=remote.external_id,
+            name=name or remote.name,
+            supports_sms=remote.sms,
+            supports_voice=remote.voice,
+        )
+        line.assigned_users.add(self.user)
+        return line
+
     def conversation(self, conversation_id: UUID) -> Any:
         """Recheck membership and current line assignment before sending or calling."""
         from bloomerp.communication.builtins.instant_messaging.access import (
@@ -178,8 +237,12 @@ class VoIPController:
         if kwargs.get("reply_to_id") or kwargs.get("thread_root_id"):
             raise ValidationError(_("SMS does not support quoted replies or threads."))
         body, _html = prepare_content(html, self.user, chat)
-        if not body or len(body) > 1600:
-            raise ValidationError(_("Enter between 1 and 1600 characters."))
+        provider = VOIP_PROVIDER_REGISTRY.get(chat.voip_number.connection.provider)
+        if not body or len(body) > provider.max_sms_length:
+            raise ValidationError(
+                _("Enter between 1 and %(limit)s characters.")
+                % {"limit": provider.max_sms_length}
+            )
         with transaction.atomic():
             IMConversation.objects.select_for_update().get(pk=chat.pk)
             sender = chat.participants.get(user=self.user, left_at__isnull=True)
@@ -243,7 +306,7 @@ class VoIPController:
         return call
 
     def prepare_call(self, conversation_id: UUID, client_id: str) -> PhoneCall:
-        """Reserve an authorized outgoing session for signed TwiML dispatch."""
+        """Reserve an authorized outgoing session for carrier dispatch."""
         chat = self.conversation(conversation_id)
         number = chat.voip_number
         if not number.supports_voice or not number.connection.settings.get(

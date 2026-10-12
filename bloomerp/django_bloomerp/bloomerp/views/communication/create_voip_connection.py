@@ -7,6 +7,8 @@ from typing import Any
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
+from django_htmx.http import HttpResponseClientRedirect
 from django.views.generic import TemplateView
 from django.utils.translation import gettext as _
 
@@ -61,7 +63,11 @@ def configuration_context(
 ) -> dict[str, Any]:
     """Keep submitted validation errors local to this request, including secret fields."""
     form = view.configuration_form or view.build_form()
-    return {"form": form, "provider_label": form.provider.display_name}
+    return {
+        "form": form,
+        "provider_label": form.provider.display_name,
+        "configuration_help": form.provider.configuration_help,
+    }
 
 
 def process_configuration(
@@ -94,9 +100,12 @@ class CreateVoIPConnectionView(WizardMixin, BaseBloomerpView, TemplateView):
     configuration_form: IMConnectionForm | None = None
 
     def has_permission(self) -> bool:
-        """Grant this setup workflow to every active staff user without broad model grants."""
-        user = self.request.user
-        return user.is_authenticated and user.is_active and user.is_staff
+        """Require the standard model-level add permission for connection setup."""
+        from bloomerp.permissions.manager import UserPolicyManager
+
+        return UserPolicyManager(self.request.user).has_global_permission(
+            self.model, "add"
+        )
 
     def normalize_step_index(self, step: int) -> int:
         """Prevent direct configuration or completion before selecting an external provider."""
@@ -167,9 +176,9 @@ class CreateVoIPConnectionView(WizardMixin, BaseBloomerpView, TemplateView):
             return WizardError(
                 message=_("Review the connection configuration."), step=1
             )
-        self.template_name = "views/communication/create_voip_connection/success.html"
-        return self.render_to_response(
-            self.get_context_data(
-                connection_name=connection.name, connection=connection
-            )
+        url = connection.get_absolute_url()
+        return (
+            HttpResponseClientRedirect(url)
+            if getattr(self.request, "htmx", False)
+            else redirect(url)
         )

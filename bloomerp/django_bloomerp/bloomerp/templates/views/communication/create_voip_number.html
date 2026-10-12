@@ -1,0 +1,63 @@
+{% load i18n crispy_forms_tags %}
+<div class="space-y-6">
+    <form method="get" action="{{ request.path }}" class="space-y-4"
+          hx-get="{{ request.path }}" hx-target="#detail-view-content"
+          hx-swap="innerHTML" hx-push-url="true" hx-disabled-elt="find button[type='submit']">
+        <input type="hidden" name="search" value="1">
+        <c-ui.text.subtitle>{% translate 'Search available numbers' %}</c-ui.text.subtitle>
+        {{ search_form.non_field_errors }}
+        {% for field in search_form.hidden_fields %}{{ field }}{% endfor %}
+        <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
+            {% for field in search_form.visible_fields %}
+                <div class="min-w-0">{{ field|as_crispy_field }}</div>
+            {% endfor %}
+        </div>
+        <div class="pt-3">
+            <button class="btn btn-secondary btn-sm" type="submit">{% translate 'Search available numbers' %}</button>
+        </div>
+    </form>
+    {% if offers %}
+    <form id="voip-number-purchase-form" method="post" class="space-y-4">
+        {% csrf_token %}
+        <fieldset class="space-y-3">
+            <legend class="mb-3"><c-ui.text.subtitle>{% translate 'Select a phone number' %}</c-ui.text.subtitle></legend>
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {% for offer in offers %}
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition-colors hover:border-primary-300 hover:bg-primary-50 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-500">
+                <input class="h-4 w-4 shrink-0 accent-primary" type="radio" name="selection" value="{{ offer.token }}" required>
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-700" aria-hidden="true"><i class="fa-solid fa-phone"></i></span>
+                <span class="min-w-0 space-y-2">
+                    <span class="block font-semibold text-primary-900">{{ offer.number.number }}</span>
+                    {% if offer.number.name and offer.number.name != offer.number.number %}<span class="block text-sm text-gray-500">{{ offer.number.name }}</span>{% endif %}
+                    <span class="flex flex-wrap gap-2">
+                        {% if offer.number.sms %}<span class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700"><i class="fa-solid fa-message" aria-hidden="true"></i>{% translate 'SMS' %}</span>{% endif %}
+                        {% if offer.number.voice %}<span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"><i class="fa-solid fa-phone" aria-hidden="true"></i>{% translate 'Voice' %}</span>{% endif %}
+                    </span>
+                </span>
+            </label>
+            {% endfor %}
+            </div>
+        </fieldset>
+        <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+            {% for field in purchase_form.visible_fields %}
+                <div class="min-w-0 {% if field.name == 'confirm' %}md:col-span-2{% endif %}">
+                    {{ field|as_crispy_field }}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="space-y-4 border-t border-gray-200 pt-4">
+            {% if provider.purchase_notice %}<c-ui.text.muted>{{ provider.purchase_notice }}</c-ui.text.muted>{% endif %}
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {% if provider.pricing_url %}<a class="text-sm font-medium text-primary-700 underline underline-offset-4 hover:text-primary-900" href="{{ provider.pricing_url }}" target="_blank" rel="noopener noreferrer">{% translate 'Provider pricing' %}</a>{% endif %}
+                <button class="btn btn-primary btn-sm sm:ml-auto" type="submit">{% translate 'Create selected number' %}</button>
+            </div>
+        </div>
+    </form>
+    {% elif purchase_form.is_bound %}
+        {{ purchase_form.non_field_errors }}
+        {% for field in purchase_form %}{{ field.errors }}{% endfor %}
+        <p>{% translate 'Search again to select an available number.' %}</p>
+    {% elif search_form.is_bound and not search_form.errors %}
+        <p>{% translate 'No numbers were found. Try another search.' %}</p>
+    {% endif %}
+</div>

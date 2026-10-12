@@ -1,6 +1,9 @@
 """Shared carrier fixtures for generated model and endpoint scenarios."""
 
 from typing import Any
+from unittest.mock import patch
+from bloomerp.communication.builtins.voip.registry import VOIP_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.voip.builtins.twilio import TWILIO_PROVIDER
 from django.test import override_settings
 from django.utils import timezone
 from bloomerp.config.definition import BloomerpConfig
@@ -18,6 +21,10 @@ class VoIPFixtures:
     def prepare_voip(self) -> None:
         """Prepare encrypted carrier credentials and explicit staff line assignments."""
         from django.contrib.auth import get_user_model
+
+        self.enterContext(
+            patch.dict(VOIP_PROVIDER_REGISTRY._registry, {"twilio": TWILIO_PROVIDER})
+        )
 
         if (
             not hasattr(self, "admin_user")
