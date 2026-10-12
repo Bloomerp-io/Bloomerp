@@ -1,8 +1,17 @@
 """User lifecycle contracts for automatic staff inbox provisioning."""
 
+from typing import Any
+from unittest.mock import patch
+
+from django.contrib.admin import AdminSite, ModelAdmin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.db import transaction
+from django.forms import modelform_factory
+from django.test import RequestFactory, TestCase
 
 from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
+from bloomerp.forms.model_form import BloomerpModelForm
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.models.users.user import AbstractBloomerpUser
@@ -13,6 +22,25 @@ User = get_user_model()
 
 class TestUserModel(BloomerpModelTestCase):
     model = User
+
+    def test_model_scenarios(self) -> None:
+        """Simulate commit after each isolated save in the declarative scenarios.
+
+        The shared runner wraps scenarios in rollback-only transactions. Keep
+        its single-save validators while explicitly executing their callbacks;
+        transaction-wide behavior is tested below without this adapter.
+        """
+        original_save = User.save
+
+        def save_with_callbacks(
+            user: AbstractBloomerpUser, *args: Any, **kwargs: Any
+        ) -> None:
+            """Persist a scenario save and execute callbacks at its simulated commit."""
+            with self.captureOnCommitCallbacks(execute=True):
+                original_save(user, *args, **kwargs)
+
+        with patch.object(User, "save", save_with_callbacks):
+            super().test_model_scenarios()
 
     def has_default_inbox(self, user: AbstractBloomerpUser) -> bool:
         """Require exactly one selected inbox with the registered default folders."""
@@ -246,3 +274,159 @@ class TestUserModel(BloomerpModelTestCase):
                 create_validators=self.has_default_inbox,
             ),
         ]
+
+
+class TestUserInboxCommit(TestCase):
+    """Exercise transaction boundaries separately from single-save scenarios."""
+
+    def setUp(self) -> None:
+        """Create two group-shared defaults and a non-staff recipient."""
+        self.owner = User.objects.create(username="template-owner")
+        self.user = User.objects.create(username="recipient")
+        self.original_group = Group.objects.create(name="Original group")
+        self.final_group = Group.objects.create(name="Final group")
+        self.original_default = Inbox.objects.create(
+            user=self.owner, name="Original default", initial_default=True
+        )
+        self.final_default = Inbox.objects.create(
+            user=self.owner, name="Final default", initial_default=True
+        )
+        self.original_default.shared_with_groups.add(self.original_group)
+        self.final_default.shared_with_groups.add(self.final_group)
+        InboxFolder.objects.create(
+            inbox=self.final_default, type="in_app_notifications"
+        )
+
+    def assert_final_default(self) -> None:
+        """Require one independent selected copy of the final group default."""
+        inbox = Inbox.objects.get(user=self.user)
+        self.assertEqual(inbox.name, "Final default")
+        self.assertTrue(inbox.selected)
+        self.assertIsNone(inbox.source_object_id)
+        self.assertCountEqual(
+            inbox.folders.values_list("type", flat=True), ["in_app_notifications"]
+        )
+
+    def test_bloomerp_form_creates_with_group_default(self) -> None:
+        """Staff creation and group assignment use the form's final defaults."""
+        form_class = modelform_factory(
+            User, form=BloomerpModelForm, fields=["username", "is_staff", "groups"]
+        )
+        form = form_class(
+            {
+                "username": "created-staff",
+                "is_staff": True,
+                "groups": [self.final_group.pk],
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.user = form.save()
+            self.assertFalse(Inbox.objects.filter(user=self.user).exists())
+        self.assert_final_default()
+
+    def test_deleted_user_does_not_provision(self) -> None:
+        """A queued callback must tolerate deletion before the transaction commits."""
+        user_pk = self.user.pk
+        with self.captureOnCommitCallbacks(execute=True), transaction.atomic():
+            self.user.is_staff = True
+            self.user.save()
+            self.user.delete()
+        self.assertFalse(Inbox.objects.filter(user_id=user_pk).exists())
+
+    def test_bloomerp_form_promotes_with_group_default(self) -> None:
+        """The atomic application form must finish M2M writes before provisioning."""
+        form_class = modelform_factory(
+            User, form=BloomerpModelForm, fields=["is_staff", "groups"]
+        )
+        form = form_class(
+            {"is_staff": True, "groups": [self.final_group.pk]}, instance=self.user
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        with self.captureOnCommitCallbacks(execute=True):
+            form.save()
+            self.assertFalse(Inbox.objects.filter(user=self.user).exists())
+        self.assert_final_default()
+
+    def test_admin_save_uses_replacement_group(self) -> None:
+        """An admin-style atomic save must use new groups rather than old membership."""
+        self.user.groups.add(self.original_group)
+        form_class = modelform_factory(User, fields=["is_staff", "groups"])
+        form = form_class(
+            {"is_staff": True, "groups": [self.final_group.pk]}, instance=self.user
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        admin = ModelAdmin(User, AdminSite())
+        request = RequestFactory().post("/admin/users/")
+        with self.captureOnCommitCallbacks(execute=True), transaction.atomic():
+            user = form.save(commit=False)
+            admin.save_model(request, user, form, change=True)
+            admin.save_related(request, form, [], change=True)
+            self.assertFalse(Inbox.objects.filter(user=self.user).exists())
+        self.assert_final_default()
+
+    def test_repeated_saves_in_transaction_create_one_inbox(self) -> None:
+        """All queued callbacks must recheck the final state and existing inbox."""
+        with self.captureOnCommitCallbacks(execute=True), transaction.atomic():
+            self.user.is_staff = True
+            self.user.save()
+            self.user.groups.set([self.final_group])
+            self.user.save()
+            self.user.save(update_fields=["first_name"])
+            self.assertFalse(Inbox.objects.filter(user=self.user).exists())
+        self.assert_final_default()
+
+    def test_rolled_back_promotion_does_not_provision(self) -> None:
+        """A savepoint rollback must discard its inbox provisioning callback."""
+        with (
+            self.captureOnCommitCallbacks(execute=True) as callbacks,
+            self.assertRaisesMessage(ValueError, "rollback"),
+            transaction.atomic(),
+        ):
+            self.user.is_staff = True
+            self.user.save()
+            self.user.groups.add(self.final_group)
+            raise ValueError("rollback")
+        self.assertEqual(callbacks, [])
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_staff)
+        self.assertFalse(Inbox.objects.filter(user=self.user).exists())
+
+    def test_final_nonstaff_state_does_not_provision(self) -> None:
+        """A later demotion in the same transaction supersedes a queued promotion."""
+        with self.captureOnCommitCallbacks(execute=True), transaction.atomic():
+            self.user.is_staff = True
+            self.user.save()
+            self.user.is_staff = False
+            self.user.save()
+        self.assertFalse(Inbox.objects.filter(user=self.user).exists())
+
+    def test_inbox_created_before_commit_is_preserved(self) -> None:
+        """Keep a custom inbox created after the user save but before commit."""
+        with self.captureOnCommitCallbacks(execute=True), transaction.atomic():
+            self.user.is_staff = True
+            self.user.save()
+            inbox = Inbox.objects.create(user=self.user, name="Custom")
+            Inbox.objects.filter(pk=inbox.pk).update(selected=False)
+            folder = InboxFolder.objects.create(
+                inbox=inbox, type="in_app_notifications"
+            )
+            self.user.groups.add(self.final_group)
+        self.assertEqual(Inbox.objects.get(user=self.user).pk, inbox.pk)
+        inbox.refresh_from_db()
+        self.assertFalse(inbox.selected)
+        self.assertEqual(list(inbox.folders.values_list("pk", flat=True)), [folder.pk])
+
+    def test_shared_selection_created_before_commit_is_preserved(self) -> None:
+        """Do not replace a selected shared reference with an initial-default copy."""
+        with self.captureOnCommitCallbacks(execute=True), transaction.atomic():
+            self.user.is_staff = True
+            self.user.save()
+            reference = Inbox.objects.create(
+                user=self.user, source_object=self.original_default, selected=True
+            )
+            self.user.groups.add(self.final_group)
+        inbox = Inbox.objects.get(user=self.user)
+        self.assertEqual(inbox.pk, reference.pk)
+        self.assertEqual(inbox.source_object_id, self.original_default.pk)
+        self.assertTrue(inbox.selected)

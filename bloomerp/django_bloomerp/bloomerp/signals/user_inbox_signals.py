@@ -1,5 +1,6 @@
 """Provision staff inboxes through the normal preference lifecycle."""
 
+from functools import partial
 from typing import Any
 
 from django.conf import settings
@@ -10,6 +11,29 @@ from django.dispatch import receiver
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.services.preference_services import PreferenceManager
+
+
+def _provision_staff_user_inbox(
+    user_model: type[AbstractBloomerpUser],
+    user_pk: Any,
+    using: str,
+) -> None:
+    """Reload and lock the committed user before creating a missing inbox.
+
+    Recheck staff status and inbox ownership because either can change between
+    saving the user and committing the surrounding transaction. The preference
+    manager retains the standard initial-default copy behavior.
+    """
+    with transaction.atomic(using=using):
+        user = (
+            user_model._default_manager.using(using)
+            .select_for_update()
+            .filter(pk=user_pk, is_staff=True)
+            .first()
+        )
+        if user is None or Inbox.objects.filter(user=user).exists():
+            return
+        PreferenceManager(user).get_or_create_selected(Inbox)
 
 
 @receiver(
@@ -24,23 +48,19 @@ def ensure_staff_user_inbox(
     using: str,
     **kwargs: Any,
 ) -> None:
-    """Ensure persisted staff users have an inbox without altering existing ones.
+    """Provision after the complete user transaction, including group writes.
 
-    Raw fixture saves must not query related tables. Lock the persisted user so
-    overlapping user-save handlers cannot both provision an inbox, and read its
-    staff flag rather than unsaved values left on a partially saved instance.
-    The preference manager retains the standard initial-default copy behavior.
+    Raw fixture saves do not schedule work. Atomic Bloomerp forms and Django
+    admin save many-to-many groups after the user row; waiting until commit
+    lets group-shared initial defaults participate. Callers of a generic,
+    non-atomic ModelForm must wrap both save and save_m2m in one transaction.
+    In autocommit mode the callback runs immediately. A callback failure rolls
+    back its inbox writes, but cannot roll back the already-committed user.
     """
     if raw:
         return
 
-    with transaction.atomic(using=using):
-        user = (
-            sender._default_manager.using(using)
-            .select_for_update()
-            .filter(pk=instance.pk, is_staff=True)
-            .first()
-        )
-        if user is None or Inbox.objects.filter(user=user).exists():
-            return
-        PreferenceManager(user).get_or_create_selected(Inbox)
+    transaction.on_commit(
+        partial(_provision_staff_user_inbox, sender, instance.pk, using),
+        using=using,
+    )
