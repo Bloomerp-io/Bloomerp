@@ -49,6 +49,11 @@ export default class ForeignFieldWidget extends BaseWidget {
     private advancedModalClosedTarget: HTMLElement | null = null;
     private originalDropdownParent: HTMLElement | null = null;
     private originalDropdownNextSibling: ChildNode | null = null;
+    private dropdownPopoverHost: HTMLElement | null = null;
+    /** Close nested results before their top-layer parent disappears. */
+    private onPopoverToggle = (event: Event): void => {
+        if ((event as ToggleEvent).newState === 'closed') this.hideDropdown();
+    };
     private repositionDropdownHandler: (() => void) | null = null;
     private searchAbortController: AbortController | null = null;
     private searchRequestId: number = 0;
@@ -59,6 +64,7 @@ export default class ForeignFieldWidget extends BaseWidget {
     private advancedControlEl: HTMLElement | null = null;
     
 
+    /** Connect the input, result menu, and related-object controls. */
     public initialize(): void {
         this.outsideClickHandler = this.handleOutsideClick.bind(this);
 
@@ -91,6 +97,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.element.addEventListener('focusout', this.boundOnFocusOut);
         this.resultsList.addEventListener('click', this.boundOnResultClick);
         this.dropdown.addEventListener('keydown', this.boundOnDropdownKeyDown);
+        this.dropdown.addEventListener('focusout', this.boundOnFocusOut);
 
         // wire create / advanced controls inside dropdown (if present)
         this.createControlEl = this.element.querySelector('.foreign-field-dropdown [data-action="create-new"]') as HTMLElement | null;
@@ -114,6 +121,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         if (this.input && this.boundOnFocus) this.input.removeEventListener('focus', this.boundOnFocus);
         if (this.input && this.boundOnKeyDown) this.input.removeEventListener('keydown', this.boundOnKeyDown);
         if (this.resultsList && this.boundOnResultClick) this.resultsList.removeEventListener('click', this.boundOnResultClick);
+        if (this.dropdown && this.boundOnFocusOut) this.dropdown.removeEventListener('focusout', this.boundOnFocusOut);
         if (this.dropdown && this.boundOnDropdownKeyDown) this.dropdown.removeEventListener('keydown', this.boundOnDropdownKeyDown);
         if (this.createControlEl && this.boundCreateClick) this.createControlEl.removeEventListener('click', this.boundCreateClick);
         if (this.advancedControlEl && this.boundAdvancedClick) this.advancedControlEl.removeEventListener('click', this.boundAdvancedClick);
@@ -270,7 +278,18 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
     }
 
+    /** Keep nested result navigation and dismissal separate from the owning filter. */
     private onDropdownKeyDown(e: KeyboardEvent): void {
+        if (e.key === 'Escape' && this.dropdown && !this.dropdown.classList.contains('hidden')) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.input?.focus();
+            this.hideDropdown();
+            return;
+        }
+        if (this.dropdownPopoverHost && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+            e.stopPropagation();
+        }
         // Dropdowns can be portalled to body, outside their layout container.
         if (getItemNavigationKey(e)) {
             const forwarded = new KeyboardEvent('keydown', {
@@ -926,15 +945,17 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.hideDropdown();
     }
 
-    private showDropdown() {
+    /** Display results in the same rendering layer as their input. */
+    private showDropdown(): void {
         if (!this.dropdown) return;
 
-        this.portalDropdownToBody();
+        this.portalDropdown();
         this.dropdown.classList.remove('hidden');
         this.positionDropdown();
     }
 
-    private hideDropdown() {
+    /** Cancel pending searches and return hidden results to the widget. */
+    private hideDropdown(): void {
         if (!this.dropdown) return;
 
         this.cancelPendingSearch();
@@ -974,14 +995,16 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
     }
 
-    /** Keep choice results within the active top-layer menu, or portal to the body. */
-    private portalDropdownToBody(): void {
-        const container = this.element.closest<HTMLElement>('[popover]') || document.body;
+    /** Preserve top-layer ancestry without changing ordinary body-portalled widgets. */
+    private portalDropdown(): void {
         if (!this.dropdown || this.originalDropdownParent) return;
+        const popover = this.element.closest<HTMLElement>('[popover]');
+        this.dropdownPopoverHost = popover?.matches(':popover-open') ? popover : null;
 
         this.originalDropdownParent = this.dropdown.parentElement;
         this.originalDropdownNextSibling = this.dropdown.nextSibling;
-        container.appendChild(this.dropdown);
+        (this.dropdownPopoverHost ?? document.body).appendChild(this.dropdown);
+        this.dropdownPopoverHost?.addEventListener('beforetoggle', this.onPopoverToggle);
 
         this.dropdown.style.position = 'absolute';
         this.dropdown.style.right = 'auto';
@@ -990,13 +1013,17 @@ export default class ForeignFieldWidget extends BaseWidget {
 
         this.repositionDropdownHandler = () => this.positionDropdown();
         window.addEventListener('resize', this.repositionDropdownHandler);
+        this.dropdownPopoverHost?.addEventListener('transitionend', this.repositionDropdownHandler);
         window.addEventListener('scroll', this.repositionDropdownHandler, true);
     }
 
+    /** Remove portal listeners and restore the original parent, order, and styles. */
     private restoreDropdown(): void {
         if (!this.dropdown || !this.originalDropdownParent) return;
 
+        this.dropdownPopoverHost?.removeEventListener('beforetoggle', this.onPopoverToggle);
         if (this.repositionDropdownHandler) {
+            this.dropdownPopoverHost?.removeEventListener('transitionend', this.repositionDropdownHandler);
             window.removeEventListener('resize', this.repositionDropdownHandler);
             window.removeEventListener('scroll', this.repositionDropdownHandler, true);
             this.repositionDropdownHandler = null;
@@ -1021,21 +1048,30 @@ export default class ForeignFieldWidget extends BaseWidget {
 
         this.originalDropdownParent = null;
         this.originalDropdownNextSibling = null;
+        this.dropdownPopoverHost = null;
     }
 
-    /** Align results with the input in the portal container's coordinate space. */
+    /** Position within the portal padding box, including popover animation scale. */
     private positionDropdown(): void {
         if (!this.dropdown || !this.input || this.dropdown.classList.contains('hidden')) return;
 
         const inputRect = this.input.getBoundingClientRect();
+        const host = this.dropdownPopoverHost;
+        if (host) {
+            const rect = host.getBoundingClientRect();
+            const scaleX = host.offsetWidth ? rect.width / host.offsetWidth || 1 : 1;
+            const scaleY = host.offsetHeight ? rect.height / host.offsetHeight || 1 : 1;
+            this.dropdown.style.left = `${(inputRect.left - rect.left) / scaleX - host.clientLeft + host.scrollLeft}px`;
+            this.dropdown.style.top = `${(inputRect.bottom - rect.top + 4) / scaleY - host.clientTop + host.scrollTop}px`;
+            this.dropdown.style.width = `${Math.max(inputRect.width / scaleX, 160)}px`;
+            return;
+        }
         const scrollX = window.scrollX || window.pageXOffset;
         const scrollY = window.scrollY || window.pageYOffset;
         const width = Math.max(inputRect.width, 160);
 
-        const parent = this.dropdown.parentElement;
-        const parentRect = parent !== document.body ? parent?.getBoundingClientRect() : null;
-        this.dropdown.style.left = `${inputRect.left + (parentRect ? -parentRect.left - (parent?.clientLeft || 0) : scrollX)}px`;
-        this.dropdown.style.top = `${inputRect.bottom + (parentRect ? -parentRect.top - (parent?.clientTop || 0) : scrollY) + 4}px`;
+        this.dropdown.style.left = `${inputRect.left + scrollX}px`;
+        this.dropdown.style.top = `${inputRect.bottom + scrollY + 4}px`;
         this.dropdown.style.width = `${width}px`;
     }
 
