@@ -1,5 +1,6 @@
 """Accessible conversation search for the floating messaging panel."""
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import BigIntegerField, Count, F, OuterRef, Prefetch, Q, Subquery
 from django.db.models.functions import Coalesce
@@ -41,9 +42,10 @@ def conversations(request: HttpRequest) -> HttpResponse:
     )
     query = request.GET.get("q", "").strip()[:200]
     if query:
+        login_field = get_user_model().USERNAME_FIELD
         queryset = queryset.filter(
             Q(name__icontains=query)
-            | Q(participants__user__username__icontains=query)
+            | Q(**{f"participants__user__{login_field}__icontains": query})
             | Q(participants__user__first_name__icontains=query)
             | Q(participants__user__last_name__icontains=query)
             | Q(participants__user__email__icontains=query)
