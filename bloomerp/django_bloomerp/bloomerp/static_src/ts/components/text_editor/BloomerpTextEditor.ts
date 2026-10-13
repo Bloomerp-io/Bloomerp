@@ -1,3 +1,4 @@
+import { bindReferencePreviews } from "@/utils/referencePreviews";
 import type { ContextMenuSubmenu } from "@/utils/contextMenu";
 import { ReferencePicker } from "./utils/referencePicker";
 import { ReferenceNode, type ReferenceTarget } from "./nodes/ReferenceNode";
@@ -7,6 +8,7 @@ import { t as _ } from "@/utils/i18n";
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
 import { CodeBlockNode } from "./nodes/CodeBlockNode";
+import { registerLinkBehavior } from "./utils/linkBehavior";
 import { registerHtmlBehavior } from "./utils/htmlBehavior";
 import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
@@ -65,6 +67,7 @@ import {
 
 export class BloomerpTextEditor extends BaseWidget {
     public editor: LexicalEditor | null = null;
+    private referencePreviewCleanup: (() => void) | null = null;
     private referencePicker: ReferencePicker | null = null;
     private templatePicker: TemplatePicker | null = null;
     private unregister: (() => void) | null = null;
@@ -120,6 +123,7 @@ export class BloomerpTextEditor extends BaseWidget {
         this.editor = createEditor({
             namespace: "BloomerpTextEditor",
             theme: {
+                link: !this.overrideDefaultStyling ? 'text-blue-600 underline' : '',
                 paragraph: !this.overrideDefaultStyling ? 'text-md mb-2 last:mb-0' : '',
                 heading: {
                     h1: !this.overrideDefaultStyling ? 'text-4xl font-bold mb-2' : '',
@@ -177,6 +181,7 @@ export class BloomerpTextEditor extends BaseWidget {
         window.addEventListener(TEXT_EDITOR_TOOLBAR_VISIBILITY_EVENT, this.toolbarVisibilityHandler);
 
         this.editor.setRootElement(editorRef);
+        this.referencePreviewCleanup = bindReferencePreviews(editorRef);
         this.hostClickHandler = (event: MouseEvent) => {
             if (event.target !== this.element) return;
             this.editor?.focus();
@@ -191,6 +196,7 @@ export class BloomerpTextEditor extends BaseWidget {
 
         this.unregister = mergeRegister(
             this.editor.registerCommand(PASTE_COMMAND, this.pasteReferences.bind(this), COMMAND_PRIORITY_LOW),
+            registerLinkBehavior(this.editor, this.element),
             registerRichText(this.editor),
             registerHistory(this.editor, historyState, 300),
             registerTableBehavior(this.editor, this.element),
@@ -227,6 +233,8 @@ export class BloomerpTextEditor extends BaseWidget {
 
     /** Release editor menus, subscriptions, and Lexical resources. */
     public destroy(): void {
+        this.referencePreviewCleanup?.();
+        this.referencePreviewCleanup = null;
         this.referencePicker?.destroy();
         this.referencePicker = null;
         this.templatePicker?.destroy();

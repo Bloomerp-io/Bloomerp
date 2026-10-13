@@ -36,29 +36,15 @@
     data-status-cancelled="{% trans 'Response stopped.' %}"
     data-status-interrupted="{% trans 'Connection interrupted. The response may be incomplete.' %}"
     data-status-failed="{% trans 'The response could not be completed. Please try again.' %}">
-    <button type="button" data-agent-action="open" aria-controls="bloomerp-agent-panel" aria-expanded="false"
-        aria-label="{% trans 'Ask BloomAI' %}" title="{% trans 'Ask BloomAI — drag to move, or use arrow keys when focused' %}"
-        class="bloomerp-agent-launcher fixed bottom-6 right-6 z-[85] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">
-        <span class="bloomerp-agent-orb" aria-hidden="true"></span>
-    </button>
-
-    <section id="bloomerp-agent-panel" data-agent-panel hidden aria-label="{% trans 'BloomAI assistant' %}"
-        class="fixed inset-y-3 right-3 z-[85] flex w-[calc(100%-1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
-        <header class="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-zinc-800">
-            <div class="flex items-center gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white">
-                    <img src="{% static 'bloomerp/img/bloomai-logo.png' %}" alt="" class="h-8 w-8 object-contain" width="32" height="32" />
-                </span>
-                <div>
-                    <h2 class="text-sm font-semibold">BloomAI</h2>
-                </div>
-            </div>
-            <div class="flex items-center gap-1">
-                <button type="button" data-agent-action="history" aria-label="{% trans 'Conversation history' %}" title="{% trans 'Conversation history' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span data-agent-unread hidden class="h-2 w-2 rounded-full bg-primary-500"></span></button>
-                <button type="button" data-agent-action="reset" aria-label="{% trans 'New conversation' %}" title="{% trans 'New conversation' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
-                <button type="button" data-agent-action="close" aria-label="{% trans 'Close assistant' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-            </div>
-        </header>
+    {% static 'bloomerp/img/bloomai-logo.png' as agent_logo %}
+    <c-ui.floating_panel panel_id="bloomerp-agent-panel" title="BloomAI" :logo="agent_logo"
+        launcher_label="{% trans 'Ask BloomAI' %}" close_label="{% trans 'Close assistant' %}"
+        storage_key="bloomerp_agent_launcher_{{ request.user.pk }}" data-agent-panel>
+        <c-slot name="launcher"><span class="bloomerp-agent-orb" aria-hidden="true"></span></c-slot>
+        <c-slot name="header_controls">
+                <button type="button" data-agent-action="history" aria-label="{% trans 'Conversation history' %}" title="{% trans 'Conversation history' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span data-agent-unread hidden class="h-2 w-2 rounded-full bg-primary-500"></span></button>
+                <button type="button" data-agent-action="reset" aria-label="{% trans 'New conversation' %}" title="{% trans 'New conversation' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+        </c-slot>
 
         <div data-agent-conversation-tools hidden class="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-5 py-2 dark:border-zinc-800">
             <h3 data-agent-title class="min-w-0 truncate text-sm font-medium"></h3>
@@ -86,7 +72,7 @@
                 <button type="button" data-agent-action="history-back" class="text-sm text-primary-600">{% trans 'Back to chat' %}</button>
             </div>
             <label for="agent-history-search" class="sr-only">{% trans 'Search conversations' %}</label>
-            <input id="agent-history-search" data-agent-search type="search" maxlength="255" placeholder="{% trans 'Search conversations…' %}" class="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-zinc-800" />
+            <input id="agent-history-search" data-agent-search data-floating-panel-focus type="search" maxlength="255" placeholder="{% trans 'Search conversations…' %}" class="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-zinc-800" />
             <label class="mb-3 flex items-center gap-2 text-xs text-gray-500"><input type="checkbox" data-agent-archived />{% trans 'Archived' %}</label>
             <p data-agent-history-status role="status" class="py-3 text-sm text-gray-500"></p>
             <div data-agent-history-list class="space-y-1"></div>
@@ -138,7 +124,7 @@
                 <input data-artifact-file type="file" hidden />
                 <div data-artifact-chips class="mb-2 flex flex-wrap gap-1.5"></div>
                 <label for="bloomerp-agent-input" class="sr-only">{% trans 'Message BloomAI' %}</label>
-                <textarea id="bloomerp-agent-input" data-agent-input rows="2" placeholder="{% trans 'Ask anything about your workspace…' %}" class="block max-h-36 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-zinc-100"></textarea>
+                <textarea id="bloomerp-agent-input" data-agent-input data-floating-panel-focus rows="2" placeholder="{% trans 'Ask anything about your workspace…' %}" class="block max-h-36 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-zinc-100"></textarea>
                 <div class="mt-2 flex items-center justify-between gap-2">
                     <div class="flex min-w-0 flex-1 items-center gap-1">
                         <button type="button" data-artifact-plus aria-label="{% trans 'Add files or modules' %}" aria-haspopup="listbox" aria-expanded="false" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
@@ -166,7 +152,7 @@
             </form>
             <p class="mt-2 text-center text-[11px] text-gray-400">{% trans 'Enter to send' %}<span class="mx-1.5">·</span>{% trans 'Shift + Enter for a new line' %}</p>
         </footer>
-    </section>
+    </c-ui.floating_panel>
 
 </div>
 {% endif %}

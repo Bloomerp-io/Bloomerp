@@ -29,6 +29,7 @@ class InboxItem(BloomerpModel):
         ]
     
     bloomerp_config = BloomerpModelConfig(
+        module="communication",
         activity_log_settings=ActivityLogSettings(enabled=False)
     )
     

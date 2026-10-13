@@ -1,0 +1,10 @@
+{% load i18n %}
+<span hidden data-unread-total="{{ unread_total }}"></span>
+{% for row in rows %}
+<button type="button" class="im-conversation" data-action="chat" data-conversation-id="{{ row.conversation.pk }}" hx-get="{% url 'components_conversation' row.conversation.pk %}" hx-target="#im-conversation-host" hx-swap="innerHTML" hx-sync="#im-conversation-host:replace">
+    {% if row.unread %}<span class="im-unread" data-unread="{{ row.unread }}">{{ row.unread }}</span>{% endif %}
+    <span class="im-row-content"><span class="im-row-title"><span class="im-chat-identity"><c-features.instant_messaging.identity :identity="row.identity" /></span><time datetime="{{ row.conversation.last_activity_at|date:'c' }}">{% blocktranslate with elapsed=row.conversation.last_activity_at|timesince %}{{ elapsed }} ago{% endblocktranslate %}</time></span>
+        <span class="im-row-preview">{% if row.latest_activity and not row.latest %}{{ row.latest_activity.summary }}{% elif row.latest_activity.datetime_updated > row.latest.datetime_created %}{{ row.latest_activity.summary }}{% elif row.latest.deleted_at %}{% translate 'Message deleted' %}{% elif row.latest %}{{ row.latest.body }}{% else %}{% translate 'No messages yet.' %}{% endif %}</span>
+    </span>
+</button>
+{% empty %}<p class="im-empty">{% translate 'No conversations found.' %}</p>{% endfor %}

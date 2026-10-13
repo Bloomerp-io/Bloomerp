@@ -1,0 +1,3 @@
+{% load i18n %}
+<c-vars message />
+<blockquote class="im-quoted bg-white">{% if message.deleted_at %}{% translate 'Message deleted' %}{% else %}{{ message.body }}{% endif %}</blockquote>

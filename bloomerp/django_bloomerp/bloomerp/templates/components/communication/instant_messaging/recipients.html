@@ -1,0 +1,20 @@
+{% load i18n %}
+{% for group in groups %}
+<div data-im-provider="{{ group.provider.key }}">
+<c-ui.dropdown.title>{{ group.provider.display_name }}</c-ui.dropdown.title>
+{% for action in group.actions %}
+<c-ui.dropdown.submenu :text="action.definition.label" :icon="action.definition.icon" :id="action.id" width="w-80">
+    <div hx-get="{{ action.url }}" hx-trigger="load" hx-swap="innerHTML settle:0ms"></div>
+</c-ui.dropdown.submenu>
+{% endfor %}
+{% for option in group.options %}
+<form hx-post="{% url 'components_im_start_conversation' %}" hx-target="#im-conversation-host" hx-swap="innerHTML settle:0ms">{% csrf_token %}
+<input type="hidden" name="provider" value="{{ group.provider.key }}">
+{% for key, value in group.selected.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+<input type="hidden" name="{{ group.step.key }}" value="{{ option.value }}">
+<button type="submit" class="im-recipient text-primary-800" role="menuitem"><i class="{{ group.provider.icon }}" aria-hidden="true"></i><span>{{ option.label }}<small class="block text-gray-500">{{ option.description }}</small></span></button>
+</form>
+{% empty %}<p class="im-recipient-note">{% translate 'No available recipients or connections.' %}</p>{% endfor %}
+{% if group.next_cursor %}<button class="im-recipient" hx-get="{% url 'components_im_recipients' %}?provider={{ group.provider.key|urlencode }}&amp;cursor={{ group.next_cursor|urlencode }}&amp;recipient_query={{ query|urlencode }}" hx-target="#im-recipient-results">{% translate 'More results' %}</button>{% endif %}
+</div>
+{% endfor %}

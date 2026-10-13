@@ -1,7 +1,9 @@
 """Database-backed completion-date contracts for Todo saves."""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
+from bloomerp.models.definition import ObjectAction, ObjectHTMLAction
 from bloomerp.models.project_management.todo import Todo, TodoStatus
 from bloomerp.tests.base import BloomerpModelTestCase, ModelScenario
 
@@ -10,6 +12,30 @@ COMPLETED_AT = datetime(2024, 1, 2, 3, 4, tzinfo=UTC)
 
 class TestTodoModel(BloomerpModelTestCase):
     model = Todo
+
+    def test_framework_has_no_legacy_todo_actions(self) -> None:
+        """Keep completion and developer branch-copy actions out of the framework."""
+        config = self.get_model_config()
+        self.assertIsNotNone(config)
+        for action in config.object_actions or []:
+            with self.subTest(action=action):
+                if isinstance(action, ObjectAction):
+                    self.assertNotEqual(action.id, "mark_as_completed")
+                if isinstance(action, ObjectHTMLAction):
+                    self.assertNotEqual(
+                        action.template_name, "models/todo/copy_git_branch_name.html"
+                    )
+
+    def test_existing_branch_name_property_remains_compatible(self) -> None:
+        """Keep the public branch-name helper stable for existing client callers."""
+        todo = Todo(
+            id=UUID("2fc3b6bf-d619-493e-b878-84951e28a832"),
+            title='Take out "Copy branch name" and "Mark as completed" from object actions of Todo model',
+        )
+        self.assertEqual(
+            todo.git_branch_name,
+            "todo/a832-take-out-copy-branch-name-and-mark-as-completed-from-object-actions-of-todo-model",
+        )
 
     def complete_with_partial_save(self, todo: Todo) -> None:
         """Persist only status, just as a Kanban move does."""

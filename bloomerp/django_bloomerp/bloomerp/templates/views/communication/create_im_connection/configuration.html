@@ -1,0 +1,6 @@
+{% load i18n crispy_forms_tags %}
+<div class="space-y-4">
+    <p>{{ provider_label }}</p>
+    <p class="text-sm text-gray-500">{% translate 'Save the account configuration as a draft. Provider verification and messaging are not enabled yet.' %}</p>
+    {{ form|crispy }}
+</div>

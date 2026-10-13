@@ -1021,12 +1021,23 @@ export default class ForeignFieldWidget extends BaseWidget {
     private restoreDropdown(): void {
         if (!this.dropdown || !this.originalDropdownParent) return;
 
-        this.dropdownPopoverHost?.removeEventListener('beforetoggle', this.onPopoverToggle);
-        if (this.repositionDropdownHandler) {
-            this.dropdownPopoverHost?.removeEventListener('transitionend', this.repositionDropdownHandler);
-            window.removeEventListener('resize', this.repositionDropdownHandler);
-            window.removeEventListener('scroll', this.repositionDropdownHandler, true);
-            this.repositionDropdownHandler = null;
+        const originalParent = this.originalDropdownParent;
+        const originalNextSibling = this.originalDropdownNextSibling;
+        const popoverHost = this.dropdownPopoverHost;
+        const repositionHandler = this.repositionDropdownHandler;
+        // Moving a focused result can synchronously fire focusout, which calls
+        // hideDropdown again. Invalidate restoration before any DOM mutation so
+        // that nested cleanup cannot move the same node a second time.
+        this.originalDropdownParent = null;
+        this.originalDropdownNextSibling = null;
+        this.dropdownPopoverHost = null;
+        this.repositionDropdownHandler = null;
+
+        popoverHost?.removeEventListener('beforetoggle', this.onPopoverToggle);
+        if (repositionHandler) {
+            popoverHost?.removeEventListener('transitionend', repositionHandler);
+            window.removeEventListener('resize', repositionHandler);
+            window.removeEventListener('scroll', repositionHandler, true);
         }
 
         this.dropdown.style.position = '';
@@ -1038,17 +1049,13 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.dropdown.style.zIndex = '';
 
         if (
-            this.originalDropdownNextSibling
-            && this.originalDropdownNextSibling.parentNode === this.originalDropdownParent
+            originalNextSibling
+            && originalNextSibling.parentNode === originalParent
         ) {
-            this.originalDropdownParent.insertBefore(this.dropdown, this.originalDropdownNextSibling);
+            originalParent.insertBefore(this.dropdown, originalNextSibling);
         } else {
-            this.originalDropdownParent.appendChild(this.dropdown);
+            originalParent.appendChild(this.dropdown);
         }
-
-        this.originalDropdownParent = null;
-        this.originalDropdownNextSibling = null;
-        this.dropdownPopoverHost = null;
     }
 
     /** Position within the portal padding box, including popover animation scale. */

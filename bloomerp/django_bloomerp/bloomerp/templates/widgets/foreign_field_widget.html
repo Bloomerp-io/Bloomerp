@@ -16,7 +16,8 @@
     >
     <div class="relative">
         <input 
-            type="text" 
+            type="text"
+            {% if widget.attrs.aria_label %}aria-label="{{ widget.attrs.aria_label }}"{% endif %}
             class="{{ widget.attrs.class }}"
             value="{% if not widget.is_m2m %}{{ selected_label }}{% endif %}"
             {% if widget.attrs.disabled %} disabled {% endif %}

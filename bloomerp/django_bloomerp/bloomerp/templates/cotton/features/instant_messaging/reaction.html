@@ -1,0 +1,3 @@
+{% load i18n %}
+<c-vars emoji count own enabled />
+<button type="button" class="im-reaction {% if own %}bg-primary-100{% else %}bg-primary-50{% endif %}" data-reaction-emoji="{{ emoji }}" data-reaction-active="{{ own|yesno:'false,true' }}" aria-pressed="{{ own|yesno:'true,false' }}" aria-label="{{ emoji }} · {{ count }} {% translate 'reactions' %}" {% if not enabled %}disabled{% endif %}>{{ emoji }} <span>{{ count }}</span></button>

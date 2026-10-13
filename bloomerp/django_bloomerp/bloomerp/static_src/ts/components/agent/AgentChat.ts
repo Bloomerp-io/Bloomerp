@@ -1,7 +1,7 @@
 import htmx from 'htmx.org';
-import AgentLauncher from './AgentLauncher';
+import FloatingPanel from '../FloatingPanel';
 import ArtifactPicker, { type ArtifactChoice } from './ArtifactPicker';
-import BaseComponent, { getComponent } from '../BaseComponent';
+import { getComponent } from '../BaseComponent';
 import BloomerpAgent, { getBrowserAgent, type ConversationApprovalRules } from '../../utils/agent';
 import { parseAgentEditorState } from '../../utils/agentEditorState';
 import { renderAgentMessage } from '../../utils/agentMarkdown';
@@ -18,7 +18,7 @@ type ConversationSnapshot = {
 };
 
 /** Present streamed chat through the shared authenticated browser bridge. */
-export default class AgentChat extends BaseComponent {
+export default class AgentChat extends FloatingPanel {
     private attachments: ArtifactChoice[] = [];
     private attachmentBusy = false;
     private approvalRules: ConversationApprovalRules = {default: 'writes', tools: {}};
@@ -29,10 +29,8 @@ export default class AgentChat extends BaseComponent {
     private agentSelectionRequired: boolean = false;
     private availableAgents: {id: string; name: string}[] = [];
     private lifecycle: AbortController | null = null;
-    private panel: HTMLElement | null = null;
     private input: HTMLTextAreaElement | null = null;
     private messages: HTMLElement | null = null;
-    private previousFocus: HTMLElement | null = null;
 
     private bridge: BloomerpAgent | null = null;
     private conversationId: string | null = null;
@@ -71,12 +69,10 @@ export default class AgentChat extends BaseComponent {
         if (!this.element) return;
         this.lifecycle?.abort();
         this.lifecycle = new AbortController();
-        this.panel = this.element.querySelector('[data-agent-panel]');
         this.input = this.element.querySelector('[data-agent-input]');
         this.messages = this.element.querySelector('[data-agent-messages]');
         const signal = this.lifecycle.signal;
-        const launcher = this.element.querySelector<HTMLButtonElement>('[data-agent-action="open"]');
-        if (launcher) new AgentLauncher(launcher, `bloomerp_agent_launcher_${this.element.dataset.agentUser}`, signal);
+        this.initializeFloatingPanel(signal);
         this.element.addEventListener('click', this.onClick, { signal });
         this.element.addEventListener('submit', this.onSubmit, { signal });
         this.element.addEventListener('agent:attachments-changed', this.onAttachments, { signal });
@@ -85,7 +81,6 @@ export default class AgentChat extends BaseComponent {
         this.element.addEventListener('change', this.onAgentChanged, { signal });
         this.element.addEventListener('change', this.onApprovalChanged, { signal });
         this.element.addEventListener('keydown', this.onKeyDown, { signal });
-        document.addEventListener('keydown', this.onDocumentKeyDown, { signal });
         this.bridge = getBrowserAgent();
         this.bridge?.addEventListener('connected', this.onConnectionChanged, { signal });
         this.bridge?.addEventListener('disconnected', this.onConnectionChanged, { signal });
@@ -488,7 +483,7 @@ export default class AgentChat extends BaseComponent {
         } catch { /* Storage can be unavailable without disabling the editor. */ }
     };
 
-    /** Restore drafts and panel visibility, then fetch the selected transcript on connection. */
+    /** Restore drafts, then fetch the selected transcript on connection. */
     private restoreEditorState(): boolean {
         try {
             const saved = parseAgentEditorState(sessionStorage.getItem(`${this.storageKey()}.editor`));
@@ -499,7 +494,6 @@ export default class AgentChat extends BaseComponent {
             const form = this.element?.querySelector<HTMLElement>('[data-artifact-search-url]');
             const picker = form ? getComponent(form) : null;
             if (picker instanceof ArtifactPicker) picker.restoreSelection(saved.attachments);
-            if (saved.open) this.open();
             this.historyVisible = saved.historyVisible;
             return true;
         } catch { return false; }
@@ -536,30 +530,15 @@ export default class AgentChat extends BaseComponent {
         try { sessionStorage.removeItem(this.storageKey()); } catch { /* Storage is optional. */ }
     }
 
-    /** Open the nonmodal assistant and focus its composer. */
-    private open(): void {
-        if (!this.panel) return;
-        this.previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-        this.panel.hidden = false;
-        const launcher = this.element?.querySelector<HTMLElement>('[data-agent-action="open"]');
-        if (launcher) {
-            launcher.hidden = true;
-            launcher.setAttribute('aria-expanded', 'true');
-        }
-        this.input?.focus();
+    /** Open the shared shell and persist the assistant's visibility. */
+    protected override open(): void {
+        super.open();
         this.saveEditorState();
     }
 
-    /** Close the assistant without discarding the current conversation. */
-    private close(): void {
-        if (!this.panel) return;
-        this.panel.hidden = true;
-        const launcher = this.element?.querySelector<HTMLElement>('[data-agent-action="open"]');
-        if (launcher) {
-            launcher.hidden = false;
-            launcher.setAttribute('aria-expanded', 'false');
-        }
-        this.previousFocus?.focus();
+    /** Close the shared shell without discarding the current conversation. */
+    protected override close(): void {
+        super.close();
         this.saveEditorState();
     }
 
@@ -619,9 +598,7 @@ export default class AgentChat extends BaseComponent {
         if (action === 'rename') { this.toggleRename(true); return; }
         if (action === 'cancel-rename') { this.toggleRename(false); return; }
         if (action === 'archive' || action === 'restore') { this.editConversation({archived: action === 'archive'}); return; }
-        if (action === 'open') this.open();
-        else if (action === 'close') this.close();
-        else if (action === 'reset') this.reset();
+        if (action === 'reset') this.reset();
         else if (action === 'stop') this.stop();
         else if (target.dataset.agentPrompt) {
             this.submit(target.innerText.trim());
@@ -1136,11 +1113,6 @@ export default class AgentChat extends BaseComponent {
             event.preventDefault();
             this.element?.querySelector<HTMLFormElement>('[data-agent-form]')?.requestSubmit();
         }
-    };
-
-    /** Allow keyboard users to dismiss the open panel with Escape. */
-    private onDocumentKeyDown = (event: KeyboardEvent): void => {
-        if (event.key === 'Escape' && this.panel && !this.panel.hidden) this.close();
     };
 
     /** Receive the registry-backed composer's selected candidates and upload state. */

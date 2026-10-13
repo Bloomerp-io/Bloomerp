@@ -195,6 +195,18 @@ class BehaviorExecutor:
             return cleaned.pk
         return cleaned
 
+    def _serialize_update_value(self, field: ApplicationField, value: Any) -> Any:
+        """Format scalar datetimes for their local widget while retaining typed drafts."""
+        form_field = build_form_field(field, layout_config=self.items[field.field].config)
+        if isinstance(form_field, forms.DateTimeField):
+            formatted = form_field.widget.format_value(form_field.prepare_value(value))
+            if value is not None:
+                # A datetime-local input cannot retain a DST fold's UTC offset.
+                # Reject an ambiguous wall time rather than emit an unsavable draft.
+                form_field.clean(formatted)
+            return formatted
+        return serialize_form_value(value)
+
     def _clean_rows(self, field: ApplicationField, value: Any) -> list[dict[str, Any]]:
         """Validate partial collection rows without persistence or child-row policy checks."""
         if value is None:
@@ -381,7 +393,9 @@ class BehaviorExecutor:
                         declared_update_field, update.value,
                     )
                     updates.append(
-                        replace(update, value=serialize_form_value(draft[update.field]))
+                        replace(update, value=self._serialize_update_value(
+                            declared_update_field, draft[update.field],
+                        ))
                     )
                 for state in result.states:
                     if (

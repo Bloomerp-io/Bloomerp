@@ -1,4 +1,5 @@
 import { t as _ } from "./i18n";
+import { getContextMenuLayer } from "./contextMenuLayer";
 
 export type ContextMenuItem = {
     label: string;
@@ -178,9 +179,7 @@ class ContextMenu implements ContextMenuController {
         }
         this.element.classList.remove("hidden");
         activeMenu = this;
-        const modal = this.trigger?.closest<HTMLElement>('[bloomerp-component="modal"]');
-        const zIndex = modal ? Number.parseInt(getComputedStyle(modal).zIndex, 10) : 50;
-        this.element.style.zIndex = String((Number.isFinite(zIndex) ? zIndex : 100) + 1);
+        this.element.style.zIndex = String(getContextMenuLayer(this.trigger));
         this.renderItems();
         this.reposition();
         if (page.submenu?.search) {

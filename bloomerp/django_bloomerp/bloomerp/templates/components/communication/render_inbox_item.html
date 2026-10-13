@@ -60,6 +60,9 @@
         </div>
     </header>
 
+    {% if item.item_type == "instant_messaging_item" %}
+        {{ content|safe }}
+    {% else %}
     <div class="min-h-0 flex-1 overflow-y-auto">
         <div class="mx-auto max-w-5xl px-8 py-6">
             <div class="flex items-start gap-3">
@@ -89,6 +92,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 

@@ -1,3 +1,5 @@
+import Phone from "./components/communication/Phone";
+import Conversation from './components/communication/Conversation';
 import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
 import ArtifactPicker from './components/agent/ArtifactPicker';
 import ColoredChoices from './components/ColoredChoices';
@@ -81,6 +83,7 @@ import { setupLanguageSwitch } from './utils/languageSwitch';
 import { FileBrowser } from './components/data_view_components/FileBrowser';
 import { initBrowserAgent } from './utils/agent';
 import AgentChat from './components/agent/AgentChat';
+import MessagingPanel from './components/communication/MessagingPanel';
 
 
 Object.assign(window, { showMessage });
@@ -92,6 +95,8 @@ registerComponent('bloomerp:artifact-picker', ArtifactPicker);
 registerComponent('modal', Modal);
 registerComponent('drawer', Drawer);
 registerComponent('bloomerp:agent-chat', AgentChat);
+registerComponent('bloomerp:messaging-panel', MessagingPanel);
+registerComponent('bloomerp:im-conversation', Conversation);
 registerComponent('sidebar', Sidebar);
 registerComponent('breadcrumb', Breadcrumb);
 registerComponent('resizable-div', ResizableDiv);
@@ -203,6 +208,7 @@ loadTranslations()
     .catch((error) => console.warn('Could not load the translation catalog', error))
     .finally(() => {
         // Components may synchronously render translated frontend labels.
+        registerComponent("bloomerp:phone", Phone);
         setupComponentAutoInit();
         initMessagesWebsocket();
         SetupAnimationListener();

@@ -21,6 +21,13 @@ Use the established Bloomerp base test case and declarative scenario pattern
 whenever they support the behavior being tested. Do not default to ad-hoc test
 methods or copy an older test without checking the documentation first.
 
+For new models, views, components, and all other supported generator targets,
+generate their test cases with `generate_test_cases` and add coverage to those
+generated cases using the established base classes and declarative scenarios.
+Do not replace generated cases with one-off or consolidated test files. Follow
+the testing guides for specialized behavior that the generated cases cannot
+express, and preserve authored tests when running the generator.
+
 
 ## Permissions
 

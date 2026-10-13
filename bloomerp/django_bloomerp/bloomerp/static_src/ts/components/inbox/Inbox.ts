@@ -31,9 +31,18 @@ export class Inbox extends BaseComponent {
         this.setupSearchInputListener();
         this.setupInboxActionListener();
         this.setupKeyboardNavigation();
+        document.body.addEventListener("im:unread-changed", this.refreshConversationItems, { signal: this.keyboardController!.signal });
         this.searchInput?.focus();
         
     }
+
+    /** Refresh conversation summaries while preserving the open conversation editor. */
+    private refreshConversationItems = (): void => {
+        const query = new Map<string, string>();
+        const search = this.searchInput?.value.trim();
+        if (search) query.set("q", search);
+        this.queryInbox(query);
+    };
 
     /** Navigate visible message rows without fetching a preview until activation. */
     private setupKeyboardNavigation(): void {

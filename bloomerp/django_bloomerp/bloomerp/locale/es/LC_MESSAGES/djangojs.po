@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-11 10:34+0000\n"
+"POT-Creation-Date: 2026-10-12 20:10+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -34,13 +34,13 @@ msgstr "Una regla de política de filas requiere exactamente un grupo de condici
 msgid "AND"
 msgstr "Y"
 
-#: static_src/ts/components/inputs/BehaviorBuilder.ts:268 static_src/ts/utils/contextMenu.ts:156
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:268 static_src/ts/utils/contextMenu.ts:157
 msgid "Actions"
-msgstr ""
+msgstr "Acciones"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:269
 msgid "Add action"
-msgstr ""
+msgstr "Añadir acción"
 
 #: static_src/ts/components/filters/FilterContainer.ts:122
 msgid "Add condition"
@@ -77,14 +77,14 @@ msgid "Attachment"
 msgstr "Archivo adjunto"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:393
-#: static_src/ts/utils/contextMenu.ts:163
+#: static_src/ts/utils/contextMenu.ts:164
 msgid "Back"
 msgstr "Volver"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:241
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:242
 msgid "Behavior name"
-msgstr ""
+msgstr "Nombre del comportamiento"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
 msgid "Blue"
@@ -92,11 +92,34 @@ msgstr "Azul"
 
 #: static_src/ts/components/text_editor/actions.ts:206
 msgid "Bullet List"
+msgstr "Lista con viñetas"
+
+#: static_src/ts/components/communication/Phone.ts:147
+msgid "Call ended"
+msgstr "Llamada finalizada"
+
+#: static_src/ts/components/communication/Phone.ts:51
+#: static_src/ts/components/communication/Phone.ts:141
+msgid "Call in progress"
+msgstr "Llamada en curso"
+
+#: static_src/ts/components/communication/Phone.ts:154
+msgid "Calling failed. Check microphone permission, connection settings and line access."
 msgstr ""
+"Error al llamar. Comprueba los permisos del micrófono, la configuración de conexión y el acceso a"
+" la línea."
+
+#: static_src/ts/components/communication/Phone.ts:58
+msgid "Calling is unavailable. Check your connection and line access."
+msgstr "No se puede llamar. Comprueba la conexión y el acceso a la línea."
+
+#: static_src/ts/components/communication/Phone.ts:107
+msgid "Calling…"
+msgstr "Llamando…"
 
 #: static_src/ts/components/text_editor/actions.ts:218
 msgid "Checklist"
-msgstr ""
+msgstr "Lista de verificación"
 
 #: static_src/ts/components/filters/FilterContainer.ts:74
 msgid "Clear"
@@ -108,7 +131,7 @@ msgstr "Cerrar"
 
 #: static_src/ts/components/text_editor/actions.ts:165
 msgid "Code Block"
-msgstr ""
+msgstr "Bloque de código"
 
 #: static_src/ts/components/filters/FilterContainer.ts:106
 #: static_src/ts/components/filters/FilterContainer.ts:155
@@ -126,15 +149,15 @@ msgstr "Grupo de condiciones"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:263
 msgid "Conditions"
-msgstr ""
+msgstr "Condiciones"
 
 #: static_src/ts/components/filters/api.ts:24
 msgid "Could not load filter options. Please try again."
 msgstr "No se pudieron cargar las opciones del filtro. Inténtalo de nuevo."
 
-#: static_src/ts/utils/contextMenu.ts:281
+#: static_src/ts/utils/contextMenu.ts:280
 msgid "Could not load results. Try searching again."
-msgstr ""
+msgstr "No se pudieron cargar los resultados. Inténtalo de nuevo."
 
 #: static_src/ts/components/filters/FilterContainer.ts:91
 msgid "Could not restore the initial filters."
@@ -150,15 +173,15 @@ msgstr "Crear etiqueta"
 
 #: static_src/ts/components/SelectPreference.ts:73
 msgid "Delete {preference}"
-msgstr ""
+msgstr "Eliminar {preference}"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:155
 msgid "Draft attachments cannot exceed 20 MB in total."
-msgstr ""
+msgstr "Los archivos adjuntos del borrador no pueden superar los 20 MB en total."
 
 #: static_src/ts/components/inbox/EmailEditor.ts:179
 msgid "Draft saved."
-msgstr ""
+msgstr "Borrador guardado."
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:351
 msgid "Drag row"
@@ -170,7 +193,7 @@ msgstr "Editar"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:304
 msgid "Email operation failed. Your edits are still here; please try again."
-msgstr ""
+msgstr "La operación de correo electrónico falló. Tus cambios siguen aquí; inténtalo de nuevo."
 
 #: static_src/ts/components/filters/ConditionEditor.ts:94
 msgid "Enter a single field key."
@@ -178,7 +201,7 @@ msgstr "Introduce una única clave de campo."
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:136
 msgid "Enter a valid email address or remove the invalid recipient."
-msgstr ""
+msgstr "Introduce una dirección de correo electrónico válida o elimina el destinatario no válido."
 
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
@@ -194,7 +217,7 @@ msgstr "Referencia de campo"
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:16
 msgid "File upload failed"
-msgstr ""
+msgstr "Error al subir el archivo"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:351
 msgid "Files"
@@ -227,29 +250,33 @@ msgstr "Verde"
 
 #: static_src/ts/components/text_editor/actions.ts:252
 msgid "HTML"
-msgstr ""
+msgstr "HTML"
 
 #: static_src/ts/components/text_editor/actions.ts:171
 msgid "Heading 1"
-msgstr ""
+msgstr "Encabezado 1"
 
 #: static_src/ts/components/text_editor/actions.ts:177
 msgid "Heading 2"
-msgstr ""
+msgstr "Encabezado 2"
 
 #: static_src/ts/components/text_editor/actions.ts:183
 msgid "Heading 3"
-msgstr ""
+msgstr "Encabezado 3"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:381
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:382
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:386
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:387
 msgid "Hide formatting toolbar"
-msgstr ""
+msgstr "Ocultar barra de herramientas de formato"
 
 #: static_src/ts/components/text_editor/actions.ts:189
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Image"
-msgstr ""
+msgstr "Imagen"
+
+#: static_src/ts/components/communication/Phone.ts:122
+msgid "Incoming call"
+msgstr "Llamada entrante"
 
 #: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
 msgid "Invalid row policy"
@@ -264,8 +291,8 @@ msgid "Loading saved filters…"
 msgstr "Cargando filtros guardados…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:146
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:194 static_src/ts/utils/contextMenu.ts:261
-#: static_src/ts/utils/contextMenu.ts:272
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:202 static_src/ts/utils/contextMenu.ts:260
+#: static_src/ts/utils/contextMenu.ts:271
 msgid "Loading…"
 msgstr "Cargando…"
 
@@ -280,25 +307,33 @@ msgstr "Coincidir con las condiciones"
 #: static_src/ts/components/text_editor/actions.ts:196
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Mention"
-msgstr ""
+msgstr "Mención"
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:65
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:78
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:82
 msgid "Mention suggestions"
-msgstr ""
+msgstr "Sugerencias de menciones"
+
+#: static_src/ts/components/communication/Phone.ts:51
+msgid "Microphone muted"
+msgstr "Micrófono silenciado"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
-msgstr ""
+msgstr "Bajar acción"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:97
 msgid "Move action up"
-msgstr ""
+msgstr "Subir acción"
+
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "No authorized voice lines are available"
+msgstr "No hay líneas de voz autorizadas disponibles"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
-msgstr ""
+msgstr "No hay elementos"
 
 #: static_src/ts/components/filters/SavedFilters.ts:127
 msgid "No matching filters."
@@ -310,13 +345,13 @@ msgstr "No hay objetos"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:446
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:397
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:416
 msgid "No results"
 msgstr "Sin resultados"
 
-#: static_src/ts/utils/contextMenu.ts:202
+#: static_src/ts/utils/contextMenu.ts:201
 msgid "No results."
-msgstr ""
+msgstr "No hay resultados."
 
 #: static_src/ts/components/filters/RenderedFilters.ts:92
 #: static_src/ts/components/filters/RenderedFilters.ts:135
@@ -329,7 +364,7 @@ msgstr "Aún no hay filtros guardados."
 
 #: static_src/ts/components/text_editor/actions.ts:212
 msgid "Numbered List"
-msgstr ""
+msgstr "Lista numerada"
 
 #: static_src/ts/components/filters/FilterContainer.ts:103
 msgid "OR"
@@ -338,7 +373,7 @@ msgstr "O"
 #: static_src/ts/components/text_editor/actions.ts:201
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Object"
-msgstr ""
+msgstr "Objeto"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:158
 msgid "Objects"
@@ -366,11 +401,15 @@ msgstr "Selecciona al menos un permiso para la política de filas."
 
 #: static_src/ts/components/SelectPreference.ts:36 static_src/ts/components/SelectPreference.ts:73
 msgid "Preference"
-msgstr ""
+msgstr "Preferencia"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
 msgid "Purple"
 msgstr "Morado"
+
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "Ready for incoming calls"
+msgstr "Listo para recibir llamadas"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Red"
@@ -383,7 +422,7 @@ msgstr "Eliminar"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:99
 msgid "Remove action"
-msgstr ""
+msgstr "Eliminar acción"
 
 #: static_src/ts/components/filters/ConditionEditor.ts:23
 msgid "Remove condition"
@@ -395,15 +434,15 @@ msgstr "Quitar grupo"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:104
 msgid "Remove recipient"
-msgstr ""
+msgstr "Eliminar destinatario"
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:352
 msgid "Remove row"
 msgstr "Eliminar fila"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:509
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:528
 msgid "Remove {label}"
-msgstr ""
+msgstr "Eliminar {label}"
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:349
 msgid "Row title"
@@ -421,7 +460,7 @@ msgstr "Filtros guardados"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:90
 msgid "Saving draft…"
-msgstr ""
+msgstr "Guardando borrador…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:400
 msgid "Search colors"
@@ -445,19 +484,19 @@ msgstr "Buscar filtros guardados"
 
 #: static_src/ts/components/text_editor/utils/templatePicker.ts:32
 msgid "Search templates"
-msgstr ""
+msgstr "Buscar plantillas"
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:81
 msgid "Search unavailable"
-msgstr ""
+msgstr "Búsqueda no disponible"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:234
 msgid "Searching email addresses…"
-msgstr ""
+msgstr "Buscando direcciones de correo electrónico…"
 
-#: static_src/ts/utils/contextMenu.ts:118
+#: static_src/ts/utils/contextMenu.ts:119
 msgid "Searching…"
-msgstr ""
+msgstr "Buscando…"
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Search…"
@@ -481,7 +520,7 @@ msgstr "Seleccionar operador de búsqueda"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:268
 msgid "Sending email…"
-msgstr ""
+msgstr "Enviando correo electrónico…"
 
 #: static_src/ts/components/filters/RenderedFilter.ts:96
 msgid "Set default"
@@ -489,7 +528,7 @@ msgstr "Establecer como predeterminado"
 
 #: static_src/ts/components/SelectPreference.ts:36
 msgid "Share {preference}"
-msgstr ""
+msgstr "Compartir {preference}"
 
 #: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:547
 msgid "Show All Fields"
@@ -499,18 +538,18 @@ msgstr "Mostrar todos los campos"
 msgid "Show Required Only"
 msgstr "Mostrar solo los obligatorios"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:402
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:403
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:407
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:408
 msgid "Show formatting toolbar"
-msgstr ""
+msgstr "Mostrar la barra de herramientas de formato"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:52
 msgid "Suggested email addresses"
-msgstr ""
+msgstr "Direcciones de correo electrónico sugeridas"
 
 #: static_src/ts/components/text_editor/actions.ts:224
 msgid "Table"
-msgstr ""
+msgstr "Tabla"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Teal"
@@ -519,7 +558,7 @@ msgstr "Verde azulado"
 #: static_src/ts/components/text_editor/actions.ts:158
 #: static_src/ts/components/text_editor/utils/templatePicker.ts:30
 msgid "Template"
-msgstr ""
+msgstr "Plantilla"
 
 #: static_src/ts/components/PermissionsTable.ts:339
 msgid "The filter editor is not ready."
@@ -543,24 +582,24 @@ msgstr "Activar o desactivar pantalla completa"
 
 #: static_src/ts/components/ResizableDiv.ts:249
 msgid "Toggle side panel"
-msgstr ""
+msgstr "Alternar panel lateral"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:201
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:209
 msgid "Unable to load this form. Close the dialog and try again."
 msgstr "No se pudo cargar este formulario. Cierra el cuadro de diálogo e inténtalo de nuevo."
 
-#: static_src/ts/components/workspaces/WorkspaceContainer.ts:265
+#: static_src/ts/components/workspaces/WorkspaceContainer.ts:268
 msgid "Unable to load tile."
 msgstr "No se pudo cargar el mosaico."
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:404
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:412
 msgid "Unable to move card. Please try again."
-msgstr ""
+msgstr "No se pudo mover la tarjeta. Inténtalo de nuevo."
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:164
 msgid "Upload image"
-msgstr ""
+msgstr "Subir imagen"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
 msgid "Yellow"
@@ -568,5 +607,5 @@ msgstr "Amarillo"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:402
 msgid "You do not have permission to move this card."
-msgstr ""
+msgstr "No tienes permiso para mover esta tarjeta."
 

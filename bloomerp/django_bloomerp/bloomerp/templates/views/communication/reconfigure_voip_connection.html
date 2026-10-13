@@ -1,0 +1,18 @@
+{% load i18n crispy_forms_tags %}
+<div class="space-y-6">
+    <form id="voip-reconfigure-form" method="post" class="space-y-4">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <p>{% translate 'After saving, use the Synchronize phone numbers object action to validate the updated connection.' %}</p>
+        <button type="submit" class="btn btn-primary">{% translate 'Save configuration' %}</button>
+    </form>
+    <section class="space-y-2">
+        <h3>{% translate 'Provider callbacks' %}</h3>
+        <p>{{ callback_help }}</p>
+        <dl>
+            {% for callback in callback_urls %}
+                <dt>{{ callback.label }}</dt><dd><code>{{ callback.url }}</code></dd>
+            {% endfor %}
+        </dl>
+    </section>
+</div>

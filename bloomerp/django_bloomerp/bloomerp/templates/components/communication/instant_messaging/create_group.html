@@ -1,0 +1,13 @@
+{% load i18n crispy_forms_tags %}
+<div class="im-recipient-search" data-group-create>
+    <form hx-post="{% url 'components_im_create_group' %}" hx-target="closest [data-group-create]" hx-swap="outerHTML" hx-disabled-elt="find button">
+        {% csrf_token %}
+        <input type="hidden" name="provider" value="{{ provider.key }}">
+        <input type="hidden" name="action" value="{{ action.key }}">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-4" role="alert">{{ form.non_field_errors }}</div>
+        {% endif %}
+        {% for field in form %}{{ field|as_crispy_field }}{% endfor %}
+        <button type="submit" class="btn btn-primary">{% translate 'Create group' %}</button>
+    </form>
+</div>
