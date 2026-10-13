@@ -9,6 +9,8 @@ import SearchSection from "../SearchSection";
 import BaseSectionedLayoutItem, { type LayoutItemEditRequestDetail } from "./BaseSectionedLayoutItem";
 import { getCsrfToken } from "../../utils/cookies";
 import { parseBoolean } from "../../utils/booleans";
+import showMessage from "../../utils/messages";
+import { MessageType } from "../UiMessage";
 
 export type SectionedLayoutItemPayload = {
     id: string;
@@ -68,6 +70,10 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
     protected activeItemEditorId: string | null = null;
     protected itemEditorModalClosedHandler: (() => void) | null = null;
     protected itemEditRequestHandler: ((event: Event) => void) | null = null;
+    private itemEditorRequest = 0;
+    private itemRefreshInFlight: Promise<void> | null = null;
+    private failedItemRefreshes = new Set<string>();
+    private refreshedItemElements = new WeakMap<HTMLElement, HTMLElement>();
 
     protected abstract getItemComponent(element: HTMLElement): TItem | null;
     protected abstract getItemSelector(): string;
@@ -140,6 +146,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         void item;
     }
 
+    /** Bind layout editing, navigation, and settings requests to this container. */
     public initialize(): void {
         if (!this.element) return;
 
@@ -162,9 +169,9 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         this.element.addEventListener("layout:item-colspan-change", () => {
             void this.requestSave();
         });
-        this.itemEditRequestHandler = (event: Event) => {
+        this.itemEditRequestHandler = (event: Event): void => {
             const { detail } = event as CustomEvent<LayoutItemEditRequestDetail>;
-            this.openItemEditor(detail);
+            void this.openItemEditor(detail);
         };
         this.element.addEventListener("layout:item-edit-request", this.itemEditRequestHandler);
 
@@ -192,10 +199,12 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         this.searchButton?.addEventListener("click", this.searchButtonHandler);
         this.searchInput?.addEventListener("input", this.searchInputHandler);
         this.element.addEventListener("keydown", this.searchKeydownHandler, true);
-        this.itemEditorModalClosedHandler = () => {
+        this.itemEditorModalClosedHandler = (): void => {
             const itemId = this.activeItemEditorId;
             this.activeItemEditorId = null;
-            if (itemId) void this.rerenderItem(itemId);
+            if (itemId) void this.rerenderItem(itemId).catch((): void => {
+                showMessage(t("Unable to refresh field settings. Please try again."), MessageType.ERROR);
+            });
         };
 
         this.setupDnD();
@@ -207,7 +216,12 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         }
     }
 
+    /** Cancel queued saves and editors when this layout is removed. */
     public override destroy(): void {
+        this.itemEditorRequest += 1;
+        if (this.saveTimeoutId !== null) window.clearTimeout(this.saveTimeoutId);
+        this.saveTimeoutId = null;
+        this.pendingSaveAfterFlight = false;
         this.element?.removeEventListener("keydown", this.itemNavigationHandler, true);
         this.destroySortables();
         if (this.searchButtonHandler) {
@@ -442,22 +456,49 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         }
     }
 
-    protected openItemEditor({ itemId, url }: LayoutItemEditRequestDetail): void {
+    /** Persist newly added items before the settings endpoint reads their configuration. */
+    protected async openItemEditor({ itemId, url }: LayoutItemEditRequestDetail): Promise<void> {
         const modal = this.getItemEditorModal();
         if (!url || !itemId || !modal) return;
         const modalBody = modal.element?.querySelector<HTMLElement>("#field-display-option-modal-body");
-        if (!modalBody) return;
+        const itemElement = this.items.find((item: TItem): boolean => item.getLayoutItemId() === itemId)?.element;
+        if (!modalBody || !itemElement) return;
 
-        if (this.itemEditorModalClosedHandler) {
-            modal.element?.removeEventListener("bloomerp:modal-closed", this.itemEditorModalClosedHandler);
-            modal.element?.addEventListener("bloomerp:modal-closed", this.itemEditorModalClosedHandler);
+        const request = ++this.itemEditorRequest;
+        const button = itemElement.querySelector<HTMLButtonElement>("[data-layout-edit-item]");
+        button?.setAttribute("aria-busy", "true");
+        try {
+            await this.flushSave();
+            let currentItemElement = itemElement;
+            while (this.refreshedItemElements.has(currentItemElement)) {
+                currentItemElement = this.refreshedItemElements.get(currentItemElement)!;
+            }
+            if (request !== this.itemEditorRequest || !this.element?.isConnected
+                || !currentItemElement.isConnected || !this.element.contains(currentItemElement)) return;
+            if (this.itemEditorModalClosedHandler) {
+                modal.element?.removeEventListener("bloomerp:modal-closed", this.itemEditorModalClosedHandler);
+                modal.element?.addEventListener("bloomerp:modal-closed", this.itemEditorModalClosedHandler);
+            }
+            this.activeItemEditorId = itemId;
+            modal.open();
+            try {
+                await htmx.ajax("get", url, { target: modalBody, swap: "innerHTML" });
+            } catch {
+                if (request === this.itemEditorRequest && this.element?.isConnected
+                    && this.activeItemEditorId === itemId) {
+                    // No settings were loaded, so closing must not refresh the saved field.
+                    this.activeItemEditorId = null;
+                    modal.close();
+                    showMessage(t("Unable to load field settings. Please try again."), MessageType.ERROR);
+                }
+            }
+        } catch {
+            if (request === this.itemEditorRequest && this.element?.isConnected) {
+                this.reportLayoutSaveFailure();
+            }
+        } finally {
+            button?.removeAttribute("aria-busy");
         }
-        this.activeItemEditorId = itemId;
-        modal.open();
-        void htmx.ajax("get", url, {
-            target: modalBody,
-            swap: "innerHTML",
-        });
     }
 
     protected getItemEditorModal(): Modal | null {
@@ -466,17 +507,40 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         return modal instanceof Modal ? modal : null;
     }
 
-    protected async rerenderItem(itemId: string): Promise<void> {
-        const item = this.items.find((candidate) => candidate.getLayoutItemId() === itemId);
+    /** Track item refreshes so layout snapshots never omit temporarily removed fields. */
+    protected rerenderItem(itemId: string): Promise<void> {
+        const refresh = (this.itemRefreshInFlight ?? Promise.resolve()).then((): Promise<void> => this.refreshItem(itemId));
+        this.itemRefreshInFlight = refresh;
+        void refresh.finally((): void => {
+            if (this.itemRefreshInFlight === refresh) this.itemRefreshInFlight = null;
+        }).catch((): void => { /* The caller handles a failed refresh. */ });
+        return refresh;
+    }
+
+    /** Restore the original item if its server-rendered replacement cannot be loaded. */
+    private async refreshItem(itemId: string): Promise<void> {
+        const item = this.items.find((candidate: TItem): boolean => candidate.getLayoutItemId() === itemId);
         const itemElement = item?.element;
         const rowElement = itemElement?.closest<HTMLElement>("[data-layout-row]");
         if (!itemElement || !rowElement) return;
 
         const rowIndex = this.getRowIndexFromElement(rowElement);
         const position = Array.from(rowElement.querySelectorAll<HTMLElement>(this.getItemSelector())).indexOf(itemElement);
+        const parent = itemElement.parentElement;
+        const nextSibling = itemElement.nextSibling;
         itemElement.remove();
-        await this.renderItem(itemId, rowIndex, position);
-        this.reindexItems();
+        try {
+            await this.renderItem(itemId, rowIndex, position);
+            this.failedItemRefreshes.delete(itemId);
+        } catch (error) {
+            this.failedItemRefreshes.add(itemId);
+            if (parent?.isConnected) parent.insertBefore(itemElement, nextSibling?.parentNode === parent ? nextSibling : null);
+            throw error;
+        } finally {
+            this.reindexItems();
+        }
+        const replacement = this.items.find((candidate: TItem): boolean => candidate.getLayoutItemId() === itemId)?.element;
+        if (replacement) this.refreshedItemElements.set(itemElement, replacement);
     }
 
     protected onKeyDown(event: KeyboardEvent): void {
@@ -850,41 +914,60 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         });
     }
 
-    protected requestSave(): Promise<void> {
-        return new Promise((resolve) => {
-            if (this.saveTimeoutId !== null) {
-                window.clearTimeout(this.saveTimeoutId);
-            }
-
-            this.saveTimeoutId = window.setTimeout(() => {
-                this.saveTimeoutId = null;
-                void this.flushSave().then(resolve);
-            }, BaseSectionedLayoutContainer.SAVE_DEBOUNCE_MS);
-        });
-    }
-
-    protected async flushSave(): Promise<void> {
-        if (!this.element) return;
+    /** Debounce autosaves while keeping failures visible and promises handled. */
+    protected requestSave(): void {
         if (this.saveInFlight) {
             this.pendingSaveAfterFlight = true;
-            await this.saveInFlight;
             return;
         }
+        if (this.saveTimeoutId !== null) window.clearTimeout(this.saveTimeoutId);
+        this.saveTimeoutId = window.setTimeout((): void => {
+            this.saveTimeoutId = null;
+            void this.flushSave().catch((): void => this.reportLayoutSaveFailure());
+        }, BaseSectionedLayoutContainer.SAVE_DEBOUNCE_MS);
+    }
 
-        this.saveInFlight = this.performSave();
-        try {
-            await this.saveInFlight;
-        } finally {
-            this.saveInFlight = null;
-            if (this.pendingSaveAfterFlight) {
-                this.pendingSaveAfterFlight = false;
-                await this.flushSave();
-            }
+    /** Await the entire save queue, including changes made during an active request. */
+    protected async flushSave(): Promise<void> {
+        if (!this.element?.isConnected) return;
+        if (this.saveTimeoutId !== null) window.clearTimeout(this.saveTimeoutId);
+        this.saveTimeoutId = null;
+        this.pendingSaveAfterFlight = true;
+        if (!this.saveInFlight) {
+            this.saveInFlight = this.drainSaveQueue().finally((): void => {
+                this.saveInFlight = null;
+            });
+        }
+        await this.saveInFlight;
+    }
+
+    /** Serialize layout writes so editors never observe an earlier in-flight layout. */
+    private async drainSaveQueue(): Promise<void> {
+        while (this.pendingSaveAfterFlight && this.element?.isConnected) {
+            this.pendingSaveAfterFlight = false;
+            await this.performSave();
         }
     }
 
+    /** Explain that settings remain unavailable until the layout is saved successfully. */
+    private reportLayoutSaveFailure(): void {
+        if (!this.element?.isConnected) return;
+        showMessage(t("Unable to save the layout. Please try again before editing settings."), MessageType.ERROR);
+    }
+
+    /** Save the current layout and reject unsuccessful HTTP responses. */
     protected async performSave(): Promise<void> {
-        if (!this.element) return;
+        while (this.itemRefreshInFlight) await this.itemRefreshInFlight;
+        // A failed refresh may have restored markup older than the saved settings.
+        for (const itemId of this.failedItemRefreshes) {
+            if (!this.items.some((item: TItem): boolean => item.getLayoutItemId() === itemId)) {
+                this.failedItemRefreshes.delete(itemId);
+                continue;
+            }
+            await this.rerenderItem(itemId);
+        }
+        while (this.itemRefreshInFlight) await this.itemRefreshInFlight;
+        if (!this.element?.isConnected) return;
         const payload = this.getSavePayload();
         this.element.setAttribute("data-layout", JSON.stringify(payload.layout));
         this.layoutRows = payload.layout.rows;
@@ -892,7 +975,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         const saveUrl = this.element.dataset.layoutSaveUrl;
         if (!saveUrl) return;
 
-        await fetch(saveUrl, {
+        const response = await fetch(saveUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -900,6 +983,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             },
             body: JSON.stringify(payload),
         });
+        if (!response.ok) throw new Error(`Layout save failed with status ${response.status}`);
     }
 
     protected serializeRows(): SectionedLayoutRowPayload[] {

@@ -3,29 +3,36 @@
 import json
 
 from django import forms
+from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import LayoutItem
-from bloomerp.models.forms.form import Form
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
-from bloomerp.models.workspaces.tile import Tile
-from bloomerp.models.workspaces.workspace import Workspace
-from bloomerp.router import router
 
-from django.contrib.contenttypes.models import ContentType
-from django.shortcuts import get_object_or_404, render
+from bloomerp.components.objects.details.field_display_options import (
+    LayoutConfigTarget,
+    _user_can_configure_field,
+)
 from bloomerp.forms.model_form import (
     bloomerp_modelform_factory,
     get_model_form_application_fields,
 )
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import LayoutItem
+from bloomerp.models.forms.form import Form
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
+from bloomerp.models.workspaces.tile import Tile
+from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
+from bloomerp.router import router
 from bloomerp.services.sectioned_layout_services import (
     build_crud_layout_field_context,
     get_object_field_value,
 )
 from bloomerp.services.workspace_services import build_workspace_layout_item
+
 
 # TODO: Permission checks and caching required
 def _tile(request: HttpRequest, content_type: ContentType) -> HttpResponse:
@@ -102,6 +109,31 @@ def _get_layout_item(request: HttpRequest, content_type: ContentType, field_id: 
     )
 
 
+def _get_field_edit_url(
+    request: HttpRequest,
+    content_type: ContentType,
+    application_field: ApplicationField,
+) -> str | None:
+    """Expose settings for authorized layout owners, including newly added fields."""
+    layout_object_id = request.GET.get("layout_object_id")
+    layout_model = content_type.model_class()
+    if not layout_object_id or layout_model not in {Form, UserObjectLayoutPreference}:
+        return None
+    layout_object = get_object_or_404(layout_model, pk=layout_object_id)
+    target = LayoutConfigTarget(layout_object, layout_object.content_type)
+    if not _user_can_configure_field(request, target, application_field):
+        return None
+    if not application_field.get_field_type().get_display_options(application_field):
+        return None
+    return (
+        reverse(
+            "components_field_display_options",
+            kwargs={"application_field_id": application_field.pk},
+        )
+        + f"?layout_object_content_type_id={content_type.pk}&layout_object_id={layout_object.pk}"
+    )
+
+
 def _render_application_field(request: HttpRequest, content_type: ContentType) -> HttpResponse:
     """Render a refreshed field with the same behavior metadata as the full form."""
     model_content_type_id = request.GET.get(
@@ -161,15 +193,7 @@ def _render_application_field(request: HttpRequest, content_type: ContentType) -
                 else "value"
             ),
         },
-        edit_url=(
-            reverse(
-                "components_field_display_options",
-                kwargs={"application_field_id": application_field.pk},
-            )
-            + f"?layout_object_content_type_id={content_type.pk}&layout_object_id={request.GET.get('layout_object_id')}"
-            if layout_item is not None and application_field.get_field_type().get_display_options(application_field)
-            else None
-        ),
+        edit_url=_get_field_edit_url(request, content_type, application_field),
     )
     if "non_required_fields_visible" in request.GET:
         item.is_visible = request.GET.get("non_required_fields_visible") == "true" or context["is_required"] or bool(context["errors"])
