@@ -23,3 +23,9 @@ __all__ = [
     "IMMessageReaction",
     "IMThreadReadPosition",
 ]
+
+from .im_identity_source import IMIdentitySource
+
+from .im_conversation_activity import IMConversationActivity
+
+__all__ += ["IMIdentitySource", "IMConversationActivity"]

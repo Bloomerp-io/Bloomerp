@@ -10,18 +10,28 @@ from bloomerp.communication.builtins.instant_messaging.definition import (
     IMProviderDefinition,
 )
 from bloomerp.forms.agents.ai_agent import schema_form_field
+from bloomerp.communication.builtins.voip.definition import (
+    VoIPConfiguration,
+    VoIPProviderDefinition,
+)
+from django.utils.translation import gettext as _
 
 
 class IMConnectionForm(forms.Form):
     """Validate provider configuration without keeping secret inputs in session state."""
 
     def __init__(
-        self, *args: Any, provider: IMProviderDefinition, **kwargs: Any
+        self,
+        *args: Any,
+        provider: IMProviderDefinition | VoIPProviderDefinition,
+        stored_credentials: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
         """Build the provider's typed fields using the existing schema form mapper."""
         super().__init__(*args, **kwargs)
         self.provider = provider
-        self.configuration: IMConnectionConfiguration | None = None
+        self.stored_credentials = stored_credentials
+        self.configuration: IMConnectionConfiguration | VoIPConfiguration | None = None
         schema = provider.config_schema.model_json_schema()
         for name, definition in schema.get("properties", {}).items():
             self.fields[name] = schema_form_field(
@@ -29,6 +39,11 @@ class IMConnectionForm(forms.Form):
             )
             if definition.get("writeOnly"):
                 self.fields[name].initial = None
+                if stored_credentials is not None:
+                    self.fields[name].required = False
+                    self.fields[name].help_text = _(
+                        "Leave blank to keep the stored credential."
+                    )
                 self.fields[name].widget = forms.PasswordInput(
                     render_value=False,
                     attrs={"autocomplete": "new-password"},
@@ -39,13 +54,17 @@ class IMConnectionForm(forms.Form):
         data = super().clean()
         if self.errors:
             return data
+        if self.stored_credentials is not None:
+            for name, value in self.stored_credentials.items():
+                if name in self.fields and not data.get(name):
+                    data[name] = value
         try:
             self.configuration = self.provider.config_schema.model_validate(data)
         except ValidationError as error:
             for issue in error.errors(include_input=False):
                 name = str(issue["loc"][0]) if issue["loc"] else None
                 self.add_error(
-                    name if name in self.fields else None, "Check this value."
+                    name if name in self.fields else None, _("Check this value.")
                 )
         return data
 

@@ -18,7 +18,10 @@ from bloomerp.tests.base import (
 )
 
 
-class TestReadPositionComponent(BloomerpComponentTestCase):
+from bloomerp.tests.models.communication.voip.fixtures import VoIPFixtures
+
+
+class TestReadPositionComponent(VoIPFixtures, BloomerpComponentTestCase):
     """Verify private, monotonic acknowledgements and accurate unread totals."""
 
     view_name = "components_im_read_position"
@@ -108,9 +111,41 @@ class TestReadPositionComponent(BloomerpComponentTestCase):
             == self.reply.pk
         )
 
+    def prepare_call_activity(self, scenario: RequestScenario) -> None:
+        """Create a call-only conversation and sign its rendered activity watermark."""
+        from django.core import signing
+        from bloomerp.models.communication.instant_messaging import (
+            IMConversationActivity,
+        )
+
+        self.prepare_voip()
+        activity = IMConversationActivity.objects.create(
+            conversation=self.chat,
+            kind="phone_call",
+            source_id="call",
+            summary="Missed call",
+        )
+        scenario.view_kwargs = {"conversation_id": self.chat.pk}
+        scenario.data = {
+            "activity_token": signing.dumps(
+                {
+                    "conversation": str(self.chat.pk),
+                    "at": activity.datetime_updated.isoformat(),
+                },
+                salt="im-activity-read",
+            )
+        }
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise acknowledgements, races, thread isolation and request restrictions."""
         return [
+            RequestScenario(
+                name="Acknowledge a rendered call without a fake message",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.prepare_call_activity,
+                expected=ExpectedResult(status_code=200),
+            ),
             RequestScenario(
                 name="Read only displayed messages",
                 method="POST",

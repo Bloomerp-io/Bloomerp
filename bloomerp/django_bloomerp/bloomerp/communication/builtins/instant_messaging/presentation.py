@@ -26,14 +26,17 @@ def participant_label(participant: IMConversationParticipant) -> str:
 
 def conversation_identity(conversation: IMConversation, user_id: Any) -> dict[str, Any]:
     """Resolve provider branding and the other participants without remote requests."""
-    provider = IM_PROVIDER_REGISTRY.get(
-        conversation.connection.provider if conversation.connection_id else "internal"
-    )
+    provider = IM_PROVIDER_REGISTRY.get(conversation.provider_key)
     others = [
         p
         for p in conversation.participants.all()
         if p.user_id != user_id and p.left_at is None
     ]
+    remote_participants = [
+        participant for participant in others if participant.identity_id
+    ]
+    if conversation.kind == "direct" and remote_participants:
+        others = remote_participants
     person = others[0] if len(others) == 1 else None
     name = (
         conversation.name
@@ -47,6 +50,12 @@ def conversation_identity(conversation: IMConversation, user_id: Any) -> dict[st
             address = person.user.email or person.user.get_username()
             avatar = person.user.avatar.url if person.user.avatar else ""
         else:
+            if provider and provider.identity_label_resolver:
+                from django.utils.module_loading import import_string
+
+                name = import_string(provider.identity_label_resolver)(
+                    person.identity, user_id
+                )
             address = person.identity.address
             avatar = person.identity.avatar_url
     if (

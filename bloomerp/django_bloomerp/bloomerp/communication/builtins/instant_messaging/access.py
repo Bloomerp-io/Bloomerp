@@ -18,8 +18,14 @@ class IMAccessManager:
         """Scope conversations to active membership, including for superusers."""
         if not self.user.is_authenticated or not self.user.is_active:
             return IMConversation.objects.none()
+        from django.db.models import Q
+        from bloomerp.communication.builtins.voip.access import VoIPAccessManager
+
         return IMConversation.objects.filter(
             participants__user=self.user, participants__left_at__isnull=True
+        ).filter(
+            Q(voip_number__isnull=True)
+            | Q(voip_number__in=VoIPAccessManager(self.user).get_numbers(active=False))
         )
 
     def has_access_to_conversation(self, conversation: IMConversation) -> bool:

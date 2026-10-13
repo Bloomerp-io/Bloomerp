@@ -246,6 +246,52 @@ class IMConnectionConfiguration(BaseModel):
 
 
 @dataclass(frozen=True)
+class IMSelectionOption:
+    """Carry an opaque selection value with a visible label and optional address."""
+
+    value: str
+    label: str
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class IMSelectionPage:
+    """Return bounded selection options and a provider-owned continuation cursor."""
+
+    items: tuple[IMSelectionOption, ...] = ()
+    next_cursor: str | None = None
+
+
+@dataclass(frozen=True)
+class IMSelectionStep:
+    """Declare a dependent selection resolved server-side by a typed function."""
+
+    key: str
+    label: str
+    resolver: str
+    searchable: bool = False
+
+
+@dataclass(frozen=True)
+class IMTimelineSource:
+    """Register a separate activity source and its shared timeline renderer."""
+
+    resolver: str
+    template: str
+
+
+@dataclass(frozen=True)
+class IMCreationAction:
+    """Declare a provider-owned creation flow and its server-side authorization check."""
+
+    key: str
+    label: str
+    icon: str
+    handler: str
+    permission_resolver: str
+
+
+@dataclass(frozen=True)
 class IMProviderDefinition:
     """Declare static provider branding, adapter type and setup requirements.
 
@@ -262,6 +308,13 @@ class IMProviderDefinition:
     description: str = ""
     auth_mode: Literal["internal", "embedded_signup", "oauth"] = "internal"
     planned_capabilities: IMCapabilities = field(default_factory=IMCapabilities)
+    selection_steps: tuple[IMSelectionStep, ...] = ()
+    creation_actions: tuple[IMCreationAction, ...] = ()
+    start_handler: str = ""
+    send_handler: str = ""
+    actions_resolver: str = ""
+    identity_label_resolver: str = ""
+    timeline_sources: tuple[IMTimelineSource, ...] = ()
     internal: bool = False
     transport_ready: bool = False
     config_schema: type[IMConnectionConfiguration] = IMConnectionConfiguration
@@ -278,6 +331,7 @@ class IMProviderDefinition:
     def create_adapter(self, context: IMConnectionContext) -> BaseIMAdapter:
         """Instantiate the declared adapter with server-resolved connection context."""
         return self.adapter_class(context)
+
 
 INSTANT_MESSAGING = InboxFolderTypeDefinition(
     key="instant_messaging",

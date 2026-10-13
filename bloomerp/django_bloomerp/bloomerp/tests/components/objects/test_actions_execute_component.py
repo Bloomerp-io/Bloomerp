@@ -15,7 +15,15 @@ from bloomerp.tests.base import (
 )
 
 
-class TestActionsExecuteComponent(BloomerpComponentTestCase):
+from bloomerp.tests.views.communication.voip.admin_fixtures import (
+    VoIPAdministrationFixtures,
+)
+from unittest.mock import patch
+
+
+class TestActionsExecuteComponent(
+    VoIPAdministrationFixtures, BloomerpComponentTestCase
+):
     """Tests function `actions_execute` from `bloomerp/components/objects/actions.py`."""
 
     view_name = "components_objects_actions"
@@ -31,6 +39,30 @@ class TestActionsExecuteComponent(BloomerpComponentTestCase):
             "action_id": "view_file",
         }
         return [
+            RequestScenario(
+                name="Queue VoIP sync with connection change policy",
+                method="POST",
+                user=self.normal_user,
+                prepare=[self.prepare_voip_action, self.grant_connection_access],
+                expected=ExpectedResult(response_validators=[self.verify_queued]),
+            ),
+            RequestScenario(
+                name="Connection owner without change policy cannot sync",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.prepare_denied_action,
+                expected=ExpectedResult(
+                    status_code=403, response_validators=[self.verify_not_queued]
+                ),
+            ),
+            RequestScenario(
+                name="GET cannot synchronize carrier numbers",
+                user=self.admin_user,
+                prepare=self.prepare_voip_action,
+                expected=ExpectedResult(
+                    status_code=405, response_validators=[self.verify_not_queued]
+                ),
+            ),
             RequestScenario(
                 name="View action renders preview into shared drawer",
                 method="POST",
@@ -89,3 +121,40 @@ class TestActionsExecuteComponent(BloomerpComponentTestCase):
         self.assertIs(
             FileNode.bloomerp_config.object_actions[0].execution_func, preview_file
         )
+
+    def prepare_voip_action(self, scenario: RequestScenario) -> None:
+        """Use the real generic action endpoint with a deterministic async dispatcher."""
+        self.prepare_account(scenario)
+        scenario.view_kwargs = {
+            "content_type_id": ContentType.objects.get_for_model(self.connection).pk,
+            "object_id": self.connection.pk,
+            "action_id": "synchronize_numbers",
+        }
+        self.dispatch_job = self.enterContext(
+            patch(
+                "bloomerp.communication.builtins.voip.actions.run_async_or_sync",
+                return_value=(True, None),
+            )
+        )
+
+    def prepare_denied_action(self, scenario: RequestScenario) -> None:
+        """Make an unprivileged user the creator to test the new permission contract."""
+        self.prepare_voip_action(scenario)
+        self.connection.created_by = self.normal_user
+        self.connection.save()
+
+    def verify_queued(self, response: HttpResponse) -> bool:
+        """Verify only serializable identifiers cross the async boundary."""
+        from bloomerp.communication.builtins.voip.actions import (
+            synchronize_connection_job,
+        )
+
+        self.dispatch_job.assert_called_once_with(
+            synchronize_connection_job, self.connection.pk, self.normal_user.pk
+        )
+        return "queued" in response.content.decode()
+
+    def verify_not_queued(self, response: HttpResponse) -> bool:
+        """Ensure denied actions never dispatch carrier work."""
+        self.dispatch_job.assert_not_called()
+        return True

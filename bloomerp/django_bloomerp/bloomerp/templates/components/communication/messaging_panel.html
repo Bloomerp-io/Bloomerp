@@ -8,16 +8,32 @@
         <c-slot name="launcher"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i><span class="im-count" data-count hidden></span></c-slot>
         <c-slot name="header_start"><button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50" data-action="back" data-floating-panel-focus hidden aria-label="{% translate 'Back to search' %}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button></c-slot>
         <c-slot name="header_controls">
+                    <c-ui.dropdown.body width="w-56" :fixed="True">
+                        <c-slot name="trigger_html">
+                            <button type="button" x-ref="trigger" aria-label="{% translate 'Settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
+                        </c-slot>
+                        <button type="button" role="menuitem" data-phone-action="enable" @click="$dispatch('dropdown-close')" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-primary-800 transition-colors hover:bg-primary-50 focus:bg-primary-50">
+                            <i class="fa-solid fa-phone w-4" aria-hidden="true"></i>
+                            <span>{% translate 'Enable phone' %}</span>
+                        </button>
+                    </c-ui.dropdown.body>
                     <c-ui.dropdown.body width="w-80" :fixed="True">
                         <c-slot name="trigger_html">
                             <button type="button" x-ref="trigger" aria-label="{% translate 'New conversation' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
                         </c-slot>
                         <div class="im-recipient-search">
-                            <c-ui.search name="recipient_query" placeholder="Search staff…" aria-label="{% translate 'Search staff' %}" hx-get="{% url 'components_im_recipients' %}" hx-trigger="input changed delay:300ms" hx-target="#im-recipient-results" hx-sync="this:replace" />
+                            <c-ui.search name="recipient_query" placeholder="{% translate 'Search people and phone numbers…' %}" aria-label="{% translate 'Search people and phone numbers' %}" hx-get="{% url 'components_im_recipients' %}" hx-trigger="input changed delay:300ms" hx-target="#im-recipient-results" hx-sync="this:replace" />
                         </div>
                         <div id="im-recipient-results" class="im-recipient-results" hx-get="{% url 'components_im_recipients' %}" hx-trigger="load"></div>
                     </c-ui.dropdown.body>
         </c-slot>
+        <div bloomerp-component="bloomerp:phone" data-connections-url="{% url 'components_voip_browser_connections' %}" class="im-phone-controls flex-wrap items-center gap-2 border-b border-gray-200 p-3">
+            {% csrf_token %}
+            <button class="btn btn-primary btn-sm" data-phone-action="answer" hidden>{% translate 'Answer' %}</button>
+            <button class="btn btn-secondary btn-sm" data-phone-action="mute" hidden>{% translate 'Mute / unmute' %}</button>
+            <button class="btn btn-secondary btn-sm" data-phone-action="hangup" hidden>{% translate 'End call' %}</button>
+            <span class="text-sm text-primary-800" data-phone-status role="status"></span>
+        </div>
         <div data-list-view class="im-list-view">
             <div class="im-search-wrap"><form id="im-conversation-search-form" hx-get="{% url 'components_im_conversations' %}" hx-trigger="submit, input delay:300ms" hx-target="#im-conversations" hx-sync="this:replace">
                 <div class="im-search-row">

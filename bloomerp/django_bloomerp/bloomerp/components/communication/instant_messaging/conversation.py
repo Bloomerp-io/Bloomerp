@@ -87,11 +87,43 @@ def render_conversation(request: HttpRequest, conversation_id: UUID) -> HttpResp
                 "author": participant_label(message.sender),
                 "reactions": list(reactions.values()),
                 "reaction_emojis": REACTION_EMOJIS,
-                "can_react": chat.connection_id is None
+                "can_react": chat.provider_key == "internal"
                 and chat.status != "archived"
                 and not message.deleted_at,
             }
         )
+    from django.utils.module_loading import import_string
+    from bloomerp.communication.builtins.instant_messaging.registry import (
+        IM_PROVIDER_REGISTRY,
+    )
+
+    provider = IM_PROVIDER_REGISTRY.get(chat.provider_key)
+    actions = {
+        "can_send": chat.provider_key == "internal" and chat.status != "archived"
+    }
+    if provider and provider.actions_resolver:
+        actions = import_string(provider.actions_resolver)(request.user, chat)
+    if provider and root is None:
+        for source in provider.timeline_sources:
+            for activity in import_string(source.resolver)(request.user, chat):
+                rows.append({"activity": activity, "template": source.template})
+    rows.sort(key=timeline_order)
+    from django.core import signing
+
+    latest_activity = (
+        chat.activities.order_by("-datetime_updated").first() if root is None else None
+    )
+    activity_token = (
+        signing.dumps(
+            {
+                "conversation": str(chat.pk),
+                "at": latest_activity.datetime_updated.isoformat(),
+            },
+            salt="im-activity-read",
+        )
+        if latest_activity
+        else ""
+    )
     response = render(
         request,
         (
@@ -101,12 +133,21 @@ def render_conversation(request: HttpRequest, conversation_id: UUID) -> HttpResp
         ),
         {
             "conversation": chat,
-            "can_send": chat.connection_id is None and chat.status != "archived",
+            **actions,
             "identity": conversation_identity(chat, request.user.pk),
             "rows": rows,
+            "activity_token": activity_token,
             "thread_root": root,
             "editor_name": f"im_body_{uuid4().hex}",
         },
     )
     response["Cache-Control"] = "private, no-store"
     return response
+
+
+def timeline_order(row: dict[str, object]) -> tuple[object, str]:
+    """Order independent timeline records deterministically without duplicating calls."""
+    record = row.get("message") or row["activity"]
+    return getattr(record, "started_at", None) or record.datetime_created, str(
+        record.pk
+    )

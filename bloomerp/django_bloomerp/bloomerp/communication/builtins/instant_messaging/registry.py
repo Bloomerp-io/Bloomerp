@@ -46,3 +46,8 @@ IM_PROVIDER_REGISTRY.register("SLACK", SLACK_IM_PROVIDER)
 def im_provider_choices() -> list[tuple[str, str]]:
     """Return current provider choices without freezing extension registrations."""
     return IM_PROVIDER_REGISTRY.choices()
+
+
+from .builtins.phone import PHONE_IM_PROVIDER
+
+IM_PROVIDER_REGISTRY.register("PHONE", PHONE_IM_PROVIDER)

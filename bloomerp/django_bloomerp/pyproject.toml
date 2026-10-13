@@ -160,6 +160,7 @@ dependencies = [
     "ruff>=0.16.8",
     "pydantic-ai-slim[anthropic,openai]>=1.38,<1.39",
     "anthropic>=0.75,<0.76",
+    "twilio>=9,<10",
 ]
 
 [project.optional-dependencies]
