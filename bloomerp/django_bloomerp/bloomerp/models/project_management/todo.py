@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from tokenize import String
 
 from django.db import connection, models
-from django.http import HttpRequest, HttpResponse
 from slugify import slugify
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from bloomerp.model_fields.user_field import UserField
@@ -22,14 +21,10 @@ from bloomerp.models.definition import (
     DetailTabsConfiguration,
     DetailViewSettings,
     ModelViewSettings,
-    ObjectAction,
-    ObjectHTMLAction,
     StringSearchSettings,
 )
 from bloomerp.utils.models import get_list_view_url
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileFilter, FieldConfig
-from bloomerp.permissions.definition import BloomerpPermission
-from bloomerp.utils.requests import render_message
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig
 from bloomerp.workspaces.form_tile import render
 from bloomerp.workspaces.analytics_tile.model import AnalyticsTileType
@@ -78,23 +73,6 @@ def _average_completion_speed_query() -> str:
     """
 
 
-def _mark_as_completed(request:HttpRequest, object:"Todo") -> HttpResponse:
-    """
-    Marks the todo as completed and sets the datetime_completed field to the current time.
-    """
-    from bloomerp.permissions.manager import UserPolicyManager
-    manager = UserPolicyManager(request.user)
-
-    if not manager.has_access_to_object(object, BloomerpPermission.CHANGE):
-        message = _("You do not have permission to mark this todo as completed.")
-    else:
-        message = _("Todo marked as completed.")
-        object.status = TodoStatus.COMPLETED
-        object.save()
-    
-    return render_message(request, message, "info")
-    
-
 class Todo(BloomerpModel):
     """
     The todo model is for Bloomerp's internal project management module.
@@ -127,17 +105,6 @@ class Todo(BloomerpModel):
                 ),
             ]
         ),
-        object_actions=[
-            ObjectHTMLAction(
-                template_name="models/todo/copy_git_branch_name.html"
-            ),
-            ObjectAction(
-                id="mark_as_completed",
-                label=gettext_noop("Mark as Completed"),
-                should_render_func=lambda _, object: object.status != TodoStatus.COMPLETED,
-                execution_func=_mark_as_completed
-            )
-        ],
         detail_view_settings=DetailViewSettings(
             layouts=[
                 FieldLayout(
