@@ -17,6 +17,7 @@
     "test:text-editor-links": "node --experimental-strip-types --test ts/components/text_editor/utils/linkBehavior.test.ts",
     "test:sdk": "node --experimental-transform-types --test ts/sdk/sdk.test.ts",
     "test:foreign-field": "node --experimental-strip-types --test ts/components/widgets/ForeignFieldWidget.test.ts",
+    "test:effective-filters": "node --experimental-strip-types --test ts/components/filters/EffectiveFilters.test.ts",
     "test:theme": "node --experimental-strip-types --test ts/components/theme/theme.test.ts ts/components/theme/neutralHighlights.test.ts",
     "test:agent": "node --experimental-strip-types --experimental-test-module-mocks --test ts/utils/agent.test.ts ts/utils/agentEditorState.test.ts",
     "test:agent-markdown": "node --experimental-strip-types --test ts/utils/agentMarkdown.test.ts",

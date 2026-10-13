@@ -1,6 +1,7 @@
 import json
 import re
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 from django import forms
@@ -197,7 +198,15 @@ def _build_bulk_action_state(
         queryset = string_search_on_queryset(queryset, query)
 
     filter_querydict = _filter_querydict(request, preference, model)
-    queryset = ModelFilterManager(model).filter(filter_querydict, queryset=queryset)
+    filter_manager = ModelFilterManager(model)
+    filters = filter_manager.parse(
+        filter_querydict, recover=True,
+        validate_filters=partial(permission_manager.validate_filters, model),
+    )
+    queryset = filter_manager.apply(filters, queryset=queryset)
+    effective_querydict = QueryDict(mutable=True)
+    if filters:
+        effective_querydict["filter"] = json.dumps([group.model_dump(mode="json") for group in filters])
 
     object_ids = request.GET.getlist("object_ids")
     selection = request.GET.get("selection")
@@ -212,8 +221,8 @@ def _build_bulk_action_state(
         queryset=queryset,
         permission=permission,
         object_ids=object_ids,
-        filter_querystring=filter_querydict.urlencode(),
-        query_summary=_query_summary(filter_querydict),
+        filter_querystring=effective_querydict.urlencode(),
+        query_summary=_query_summary(effective_querydict),
         selection_label="current selection" if selection == "selected" or object_ids else "all filtered records",
     )
 

@@ -55,6 +55,7 @@
 {% if not is_data_section_request %}
     <div id="data-view-data-section" class="h-full">
 {% endif %}
+        <span hidden data-effective-json-filters="{{ effective_json_filters }}"></span>
         {{ before_data_view|safe }}
         {% if preference.split_view_enabled %}
         <div class="flex h-[calc(100vh-200px)] w-full min-w-0 overflow-hidden rounded-xl" data-split-view-container>

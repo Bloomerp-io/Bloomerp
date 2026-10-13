@@ -1,4 +1,5 @@
 import json
+from functools import partial
 
 from django import forms
 from django.core import signing
@@ -8,7 +9,6 @@ from django.urls import reverse
 from django.core.exceptions import FieldDoesNotExist
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.filters.manager import ModelFilterManager
-from bloomerp.filters.parser import parse_filters
 from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
@@ -23,7 +23,7 @@ from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.router import router
-from django.http import HttpRequest
+from django.http import HttpRequest, QueryDict
 from django.http import HttpResponse
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.object_services import string_search_on_queryset
@@ -171,11 +171,23 @@ def _build_dataview_state(
             filter_querydict.pop(key, None)
     filter_querydict = preference.apply_default_filters(filter_querydict)
     
-    filters = parse_filters(filter_querydict, model=Model)
-    
-    manager.validate_filters(Model, filters)
-    
+    manager.validate_filters(Model, [])
     filter_manager = ModelFilterManager(Model)
+    # Keep the JSON editor's effective input separate from shorthand URL
+    # parameters; editing shorthand URLs remains a separate UI concern.
+    json_querydict = QueryDict(mutable=True)
+    json_querydict.setlist("filter", filter_querydict.getlist("filter"))
+    filters = filter_manager.parse(
+        json_querydict, recover=True,
+        validate_filters=partial(manager.validate_filters, Model),
+    )
+    effective_json_filters = json.dumps([group.model_dump(mode="json") for group in filters])
+    shorthand_querydict = filter_querydict.copy()
+    shorthand_querydict.pop("filter", None)
+    filters += filter_manager.parse(
+        shorthand_querydict, recover=True,
+        validate_filters=partial(manager.validate_filters, Model),
+    )
     queryset = filter_manager.apply(
         filters,
         queryset
@@ -193,6 +205,7 @@ def _build_dataview_state(
         dataview_options,
     )
 
+    renderer_context["effective_json_filters"] = effective_json_filters
     count = queryset.count() if calculate_count else 0
     queryset = manager.annotate_field_permissions(
         queryset,
@@ -567,7 +580,7 @@ def dataview(
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
         'renderer_operation_querystring': renderer_operation_querystring,
-        'initial_filters': request.GET.get('filter'),
+        'initial_filters': state.context["effective_json_filters"],
         'count' : state.count,
         'before_data_view': before_data_view,
         'is_data_section_request': is_data_section_request,

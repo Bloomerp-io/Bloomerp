@@ -1,8 +1,24 @@
+import json
+from typing import Any
 from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import HttpResponse
+from django.urls import reverse
 
+from bloomerp.filters.definition import Filter, FilterCondition
+from bloomerp.models.filters.filter import SavedFilter
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.permissions.definition import (
+    AccessRule,
+    BloomerpPermission,
+    RowPolicyRuleContent,
+)
+from bloomerp.permissions.manager import PolicyManager
+from bloomerp.services.bulk_action_services import execute_bulk_delete
+from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -314,3 +330,280 @@ class TestBulkAddressUpdates(BloomerpComponentTestCase):
         return self.AddressModel.objects.filter(
             pk__in=[self.selected.pk, self.unselected.pk],
         ).count() == 2
+
+
+class TestBulkFilterRecovery(BloomerpComponentTestCase):
+    """Keep recovered list filters and bulk targets aligned at the HTTP boundary."""
+
+    auto_create_customers = False
+    view_name = "components_bulk_actions"
+
+    def setUp(self) -> None:
+        """Grant view and bulk-delete access to three rows, hiding one field."""
+        super().setUp()
+        self.nonmatching = self.create_customer("Below filter", "Private", 10)
+        self.matching = self.create_customer("Selected match", "Private", 20)
+        self.unselected = self.create_customer("Unselected match", "Private", 30)
+        self.restricted = self.create_customer("Restricted match", "Private", 40)
+        self.content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        self.policy = PolicyManager.create_policy(
+            self.CustomerModel,
+            access_rule=AccessRule(
+                row_permissions=[RowPolicyRuleContent(
+                    connector="AND",
+                    conditions=[FilterCondition(
+                        field_path="age", lookup_id="less_than_or_equal", value=30,
+                    )],
+                    permissions=[BloomerpPermission.VIEW],
+                )],
+                field_permissions={
+                    "first_name": [BloomerpPermission.VIEW],
+                    "age": [BloomerpPermission.VIEW],
+                },
+            ),
+            global_permissions=[BloomerpPermission.VIEW, BloomerpPermission.BULK_DELETE],
+        )
+        # Match stored bulk row grants used by the service tests. The policy
+        # factory exposes bulk-delete only globally, while stored row rules
+        # still participate in the endpoint and worker's authorized queryset.
+        self.policy.row_policy.rules.get().add_permission("bulk_delete_customer")
+        self.policy.assign_user(self.normal_user)
+
+    def _recovery_query(self, selected: bool = False) -> dict[str, Any]:
+        """Combine a valid JSON sibling, malformed inputs, and a forbidden field."""
+        valid_group = Filter(connector="AND", conditions=[FilterCondition(
+            field_path="age", lookup_id="greater_than_or_equal", value=20,
+        )]).model_dump()
+        query: dict[str, Any] = {
+            "selection": "filtered",
+            "filter": [
+                json.dumps([valid_group, {"connector": "AND", "conditions": "invalid sibling"}]),
+                "{malformed JSON",
+            ],
+            "last_name": "Forbidden filter value",
+        }
+        if selected:
+            query.update({
+                "selection": "selected",
+                "object_ids": [
+                    str(self.matching.pk), str(self.nonmatching.pk), str(self.restricted.pk),
+                ],
+            })
+        return query
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        """Exercise single-request recovery, defaults, and selection isolation."""
+        common = {
+            "user": self.normal_user,
+            "view_kwargs": {"content_type_id": self.content_type.pk},
+        }
+        return [
+            RequestScenario(
+                name="preview only effective filters after malformed and forbidden inputs",
+                **common,
+                query_params=self._recovery_query(),
+                expected=ExpectedResult(response_validators=[
+                    self._all_filtered_preview, self._effective_summary,
+                ]),
+            ),
+            RequestScenario(
+                name="intersect selected ids with recovered filters and authorized rows",
+                **common,
+                query_params=self._recovery_query(selected=True),
+                expected=ExpectedResult(response_validators=[
+                    self._selected_preview, self._effective_summary,
+                ]),
+            ),
+            RequestScenario(
+                name="preserve default filters while recovering user filters",
+                **common,
+                query_params=self._recovery_query(),
+                prepare=self._add_default_filter,
+                expected=ExpectedResult(response_validators=[
+                    self._selected_preview, self._effective_summary,
+                ]),
+            ),
+            RequestScenario(
+                name="all-filtered post deletes only recovered authorized matches",
+                **common,
+                method="POST",
+                query_params=self._recovery_query(),
+                data={"action": "bulk_delete"},
+                prepare=self._disable_celery,
+                cleanup=self._restore_celery,
+                expected=ExpectedResult(response_validators=self._all_filtered_deleted),
+            ),
+            RequestScenario(
+                name="selected post preserves nonmatching restricted and unselected rows",
+                **common,
+                method="POST",
+                query_params=self._recovery_query(selected=True),
+                data={"action": "bulk_delete"},
+                prepare=self._disable_celery,
+                cleanup=self._restore_celery,
+                expected=ExpectedResult(response_validators=self._selected_deleted),
+            ),
+            RequestScenario(
+                name="default filters also narrow the recovered bulk post",
+                **common,
+                method="POST",
+                query_params=self._recovery_query(),
+                data={"action": "bulk_delete"},
+                prepare=[self._add_default_filter, self._disable_celery],
+                cleanup=self._restore_celery,
+                expected=ExpectedResult(response_validators=self._selected_deleted),
+            ),
+            RequestScenario(
+                name="empty explicit selection never broadens to all recovered matches",
+                **common,
+                method="POST",
+                query_params={**self._recovery_query(), "selection": "selected"},
+                data={"action": "bulk_delete"},
+                expected=ExpectedResult(status_code=400, response_validators=self._all_preserved),
+            ),
+        ]
+
+    def _add_default_filter(self, _scenario: RequestScenario) -> None:
+        """Limit the default preference to one of the recovered matches."""
+        preference = PreferenceManager(self.normal_user).get_or_create_selected(
+            UserListViewPreference, scope={"content_type_id": self.content_type.pk},
+        )
+        saved_filter = SavedFilter.objects.create(
+            name="Bulk recovery default", scope="model", identifier=str(self.content_type.pk),
+            filters=[Filter(connector="AND", conditions=[FilterCondition(
+                field_path="age", lookup_id="equals", value=20,
+            )]).model_dump()],
+        )
+        preference.add_default_filter(saved_filter)
+
+    def _disable_celery(self, _scenario: RequestScenario) -> None:
+        """Execute the actual bulk worker inline for one isolated scenario."""
+        self.celery_patch = patch("bloomerp.utils.async_utils.is_celery_available", return_value=False)
+        self.celery_patch.start()
+
+    def _restore_celery(self, _scenario: RequestScenario) -> None:
+        """Restore asynchronous dispatch immediately after the scenario."""
+        self.celery_patch.stop()
+
+    def _effective_summary(self, response: HttpResponse) -> bool:
+        """Show the retained age filter without claiming rejected inputs apply."""
+        summary = json.dumps(response.context["query_summary"])
+        return (
+            "age" in summary
+            and "last_name" not in summary
+            and "Forbidden filter value" not in summary
+            and "invalid sibling" not in summary
+            and "malformed JSON" not in summary
+        )
+
+    def _all_filtered_preview(self, response: HttpResponse) -> bool:
+        """Confirm malformed filters never widen the preview beyond two matches."""
+        return response.context["count"] == 2 and response.context["delete_count"] == 2
+
+    def _selected_preview(self, response: HttpResponse) -> bool:
+        """Confirm selected ids or defaults further narrow the authorized matches."""
+        return response.context["count"] == 1 and response.context["delete_count"] == 1
+
+    def _all_filtered_deleted(self, response: HttpResponse) -> bool:
+        """Verify all-filtered POST leaves both nonmatches and unauthorized rows."""
+        return (
+            set(self.CustomerModel.objects.values_list("pk", flat=True))
+            == {self.nonmatching.pk, self.restricted.pk}
+            and "bloomerp:bulk-action-complete" in response.headers.get("HX-Trigger-After-Swap", "")
+        )
+
+    def _selected_deleted(self, response: HttpResponse) -> bool:
+        """Verify explicit selection deletes only its one authorized filter match."""
+        return (
+            set(self.CustomerModel.objects.values_list("pk", flat=True))
+            == {self.nonmatching.pk, self.unselected.pk, self.restricted.pk}
+            and "bloomerp:bulk-action-complete" in response.headers.get("HX-Trigger-After-Swap", "")
+        )
+
+    def _all_preserved(self, _response: HttpResponse) -> bool:
+        """Confirm an empty or rejected action preserves every fixture."""
+        return self.CustomerModel.objects.count() == 4
+
+    def test_list_preview_and_post_share_recovered_targets(self) -> None:
+        """Follow both server-side journeys; one request scenario cannot retain responses.
+
+        This specialized integration method follows the testing guide's exception
+        for multi-step behavior. It checks endpoint state without browser wiring.
+        """
+        self.client.force_login(self.normal_user)
+        kwargs = {"content_type_id": self.content_type.pk}
+        list_url = reverse("components_dataview", kwargs=kwargs)
+        bulk_url = reverse(self.view_name, kwargs=kwargs)
+        for selected in (False, True):
+            with self.subTest(selected=selected), transaction.atomic():
+                try:
+                    list_query = self._recovery_query()
+                    list_query.pop("selection")
+                    listing = self.client.get(list_url, query_params=list_query)
+                    self.assertEqual(listing.status_code, 200)
+                    visible_ids = {entry.pk for entry in listing.context["queryset"]}
+                    self.assertSetEqual(visible_ids, {self.matching.pk, self.unselected.pk})
+                    self.assertEqual(
+                        [condition.field_path for group in listing.context["filters"] for condition in group.conditions],
+                        ["age"],
+                    )
+                    query = self._recovery_query(selected=selected)
+                    expected_ids = visible_ids & {self.matching.pk} if selected else visible_ids
+                    preview = self.client.get(bulk_url, query_params=query)
+                    self.assertEqual(preview.status_code, 200)
+                    self.assertEqual(preview.context["delete_count"], len(expected_ids))
+                    self.assertTrue(self._effective_summary(preview))
+                    with patch("bloomerp.utils.async_utils.is_celery_available", return_value=False):
+                        result = self.client.post(
+                            preview.context["submit_url"], data={"action": "bulk_delete"},
+                        )
+                    self.assertEqual(result.status_code, 200)
+                    remaining_ids = set(self.CustomerModel.objects.values_list("pk", flat=True))
+                    self.assertSetEqual(
+                        remaining_ids,
+                        {self.nonmatching.pk, self.matching.pk, self.unselected.pk, self.restricted.pk} - expected_ids,
+                    )
+                finally:
+                    transaction.set_rollback(True)
+
+    def _queue_recovered_delete(self) -> dict[str, Any]:
+        """Capture the real endpoint's serialized worker arguments after recovery."""
+        self.client.force_login(self.normal_user)
+        with patch(
+            "bloomerp.components.objects.dataviews.bulk_actions.run_async_or_sync",
+            return_value=(True, None),
+        ) as dispatch:
+            response = self.client.post(
+                reverse(self.view_name, kwargs={"content_type_id": self.content_type.pk}),
+                query_params=self._recovery_query(), data={"action": "bulk_delete"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "queued")
+        self.assertIs(dispatch.call_args.args[0], execute_bulk_delete)
+        worker_args = dispatch.call_args.kwargs
+        self.assertSetEqual(set(worker_args["object_ids"]), {str(self.matching.pk), str(self.unselected.pk)})
+        self.assertEqual(self.CustomerModel.objects.count(), 4)
+        return worker_args
+
+    def test_worker_rechecks_bulk_permission_after_recovery(self) -> None:
+        """Reject a queued action when its user's global bulk permission is revoked."""
+        worker_args = self._queue_recovered_delete()
+        bulk_permission = self.policy.global_permissions.get(codename="bulk_delete_customer")
+        self.policy.global_permissions.remove(bulk_permission)
+        with self.assertRaises(PermissionDenied):
+            execute_bulk_delete(**worker_args)
+        self.assertEqual(self.CustomerModel.objects.count(), 4)
+
+    def test_worker_rechecks_authorized_rows_after_recovery(self) -> None:
+        """Narrow queued identifiers again if row permissions change before execution."""
+        worker_args = self._queue_recovered_delete()
+        row_rule = self.policy.row_policy.rules.get()
+        row_rule.rule = Filter(connector="AND", conditions=[FilterCondition(
+            field_path="age", lookup_id="equals", value=20,
+        )]).model_dump()
+        row_rule.save()
+        self.assertEqual(execute_bulk_delete(**worker_args), 1)
+        self.assertSetEqual(
+            set(self.CustomerModel.objects.values_list("pk", flat=True)),
+            {self.nonmatching.pk, self.unselected.pk, self.restricted.pk},
+        )

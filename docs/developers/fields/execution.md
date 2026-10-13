@@ -49,7 +49,7 @@ The legacy `__all__` sentinel becomes an empty AND group; it is not a supported 
 
 These checks deliberately reject some safe but complicated combinations of overlapping policies: they do not try to prove arbitrary predicates equivalent. They never inspect today's row contents to infer that access is unrestricted. Related-row scoping during execution is still future work.
 
-The dataview calls validation after parsing and before applying filters. Other authorization adapters, including the API's public/model-defined access modes, must establish equivalent dependency checks before enabling filter execution; a restricted root queryset alone is insufficient.
+The dataview and bulk-action boundary supply this validator to the interactive recovery mode described below. Other authorization adapters, including the API's public/model-defined access modes, must establish equivalent dependency checks before enabling filter execution; a restricted root queryset alone is insufficient.
 
 ## Query parameter parsing
 
@@ -74,3 +74,39 @@ or a Django `QueryDict`, preserving repeated values.
   `ValidationError`. Empty input and `filter=[]` return no groups; a blank `filter`
   is invalid. Lookup value cleaning and JSON field/lookup resolution happen during
   compilation, not deserialization.
+
+## Interactive recovery
+
+`ModelFilterManager.parse()` and `.filter()` are strict by default. Interactive
+user-filter boundaries may explicitly set `recover=True` and supply their
+existing dependency validator:
+
+```python
+from functools import partial
+from bloomerp.permissions.manager import UserPolicyManager
+
+manager = ModelFilterManager(Customer)
+groups = manager.parse(
+    request.GET,
+    recover=True,
+    validate_filters=partial(UserPolicyManager(request.user).validate_filters, Customer),
+)
+queryset = manager.apply(groups, queryset=authorized_customers)
+```
+
+Recovery omits malformed parameters, invalid group schemas, invalid conditions,
+and conditions denied by the validator. Valid siblings, repeated parameters,
+connectors, and defaults survive. Groups emptied by rejected conditions are
+omitted; an explicitly empty OR group still matches no rows. Authorization runs
+before compilation or value cleaning, including for invalid lookups on known
+fields. The caller must still enforce its model/action gate and supply the
+original authorized queryset; recovery never grants row or mutation permission.
+
+The dataview and both bulk preview and submission use this same recovery mode.
+Bulk summaries show effective filters; selected IDs still intersect the authorized
+queryset, and queued work still rechecks bulk permissions. Dataview JSON badges
+and editors use the server's recovered JSON payload after full and partial
+renders. Shorthand URL editing remains outside this contract.
+
+Do not use recovery for stored permission definitions or policy compilers.
+`parse_filters`, `apply`, and the shared compilers retain strict validation.
