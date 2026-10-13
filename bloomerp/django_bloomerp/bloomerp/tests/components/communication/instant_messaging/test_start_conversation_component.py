@@ -9,9 +9,15 @@ from django.contrib.auth import get_user_model
 from django.db import connection, connections, transaction
 from django.http import HttpResponse
 from django.test import skipUnlessDBFeature
+from django.utils import timezone
 
 from bloomerp.communication.builtins.instant_messaging.controller import IMController
-from bloomerp.models.communication.instant_messaging import IMConnection, IMConversation
+from bloomerp.models.communication.instant_messaging import (
+    IMConnection,
+    IMConversation,
+    IMConversationParticipant,
+)
+from bloomerp.communication.builtins.instant_messaging.access import IMAccessManager
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -26,6 +32,60 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
     """Verify authenticated creation and revalidation at the selection boundary."""
 
     view_name = "components_im_start_conversation"
+
+    def select_shared_phone(self, scenario: RequestScenario) -> None:
+        """Select a shared line with eligible staff and ineligible assigned accounts."""
+        self.choose_phone(scenario)
+        user_model = get_user_model()
+        self.line_colleague = user_model.objects.create(
+            username="line_colleague", is_staff=True
+        )
+        self.inactive_assignee = user_model.objects.create(
+            username="inactive_assignee", is_staff=True, is_active=False
+        )
+        self.non_staff_assignee = user_model.objects.create(username="non_staff_assignee")
+        self.number.assigned_users.add(
+            self.line_colleague, self.inactive_assignee, self.non_staff_assignee
+        )
+
+    def select_existing_shared_phone(self, scenario: RequestScenario) -> None:
+        """Reuse a phone chat whose assigned colleague previously left."""
+        self.select_shared_phone(scenario)
+        self.existing_phone_chat = IMConversation.objects.create(
+            provider_key="phone",
+            voip_number=self.number,
+            phone_address=str(self.contact.phone),
+        )
+        departed_at = timezone.now()
+        IMConversationParticipant.objects.create(
+            conversation=self.existing_phone_chat,
+            user=self.line_colleague,
+            joined_at=departed_at,
+            left_at=departed_at,
+        )
+
+    def validate_shared_phone(self, response: HttpResponse) -> bool:
+        """Ensure only active assigned staff join and can open the phone conversation."""
+        chat = IMConversation.objects.get(
+            voip_number=self.number, phone_address=str(self.contact.phone)
+        )
+        return (
+            set(
+                chat.participants.filter(user__isnull=False, left_at__isnull=True)
+                .values_list("user_id", flat=True)
+            )
+            == {self.normal_user.pk, self.line_colleague.pk}
+            and IMAccessManager(self.line_colleague).has_access_to_conversation(chat)
+        )
+
+    def validate_existing_shared_phone(self, response: HttpResponse) -> bool:
+        """Re-enroll eligible staff without duplicating the existing phone chat."""
+        return (
+            self.validate_shared_phone(response)
+            and IMConversation.objects.get(
+                voip_number=self.number, phone_address=str(self.contact.phone)
+            ).pk == self.existing_phone_chat.pk
+        )
 
     def select_recipient(self, scenario: RequestScenario) -> None:
         """Choose another active staff user from the standard fixtures."""
@@ -129,6 +189,22 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise creation, duplicate selection, denied access and request methods."""
         return [
+            RequestScenario(
+                name="Outbound phone chat enrolls all active assigned staff",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.select_shared_phone,
+                expected=ExpectedResult(response_validators=[self.validate_shared_phone]),
+            ),
+            RequestScenario(
+                name="Reused outbound phone chat re-enrolls assigned staff",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.select_existing_shared_phone,
+                expected=ExpectedResult(
+                    response_validators=[self.validate_existing_shared_phone]
+                ),
+            ),
             RequestScenario(
                 name="Phone provider selects the only authorized line",
                 method="POST",

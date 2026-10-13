@@ -236,7 +236,7 @@ class VoIPController:
             )
         if kwargs.get("reply_to_id") or kwargs.get("thread_root_id"):
             raise ValidationError(_("SMS does not support quoted replies or threads."))
-        body, _html = prepare_content(html, self.user, chat)
+        _html, body = prepare_content(html, self.user, chat)
         provider = VOIP_PROVIDER_REGISTRY.get(chat.voip_number.connection.provider)
         if not body or len(body) > provider.max_sms_length:
             raise ValidationError(

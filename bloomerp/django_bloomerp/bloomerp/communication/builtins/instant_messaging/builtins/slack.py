@@ -62,7 +62,7 @@ class SlackAdapter(BaseIMAdapter):
         """Translate sanitized editor content into slack message text."""
         from html import escape
 
-        from ..content import format_content
+        from bloomerp.utils.rich_text import format_content
 
         return format_content(message.body_html or escape(message.body), "slack")
 

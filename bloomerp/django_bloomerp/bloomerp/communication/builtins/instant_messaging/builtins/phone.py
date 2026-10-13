@@ -151,7 +151,7 @@ def business_numbers(
 
 @transaction.atomic
 def start_phone(user: AbstractBloomerpUser, selected: dict[str, str]) -> Any:
-    """Create one line/address conversation while retaining separate source associations."""
+    """Create or reuse a line/address chat and enroll its active assigned staff."""
     from bloomerp.models.communication.instant_messaging import (
         IMConversation,
         IMConversationParticipant,
@@ -187,7 +187,13 @@ def start_phone(user: AbstractBloomerpUser, selected: dict[str, str]) -> Any:
     IMConversationParticipant.objects.get_or_create(
         conversation=chat, identity=identity
     )
-    IMConversationParticipant.objects.get_or_create(conversation=chat, user=user)
+    for assignee in number.assigned_users.filter(is_active=True, is_staff=True):
+        IMConversationParticipant.objects.update_or_create(
+            conversation=chat, user=assignee, defaults={"left_at": None}
+        )
+    IMConversationParticipant.objects.update_or_create(
+        conversation=chat, user=user, defaults={"left_at": None}
+    )
     return chat
 
 
