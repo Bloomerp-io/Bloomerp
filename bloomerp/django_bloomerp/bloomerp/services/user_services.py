@@ -139,12 +139,13 @@ def get_data_view_fields(
         if field_id in accessible_fields_by_id
     ]
     
+    # Avatar stays optional by default, but must remain available to select.
     # Build accessible fields list with visibility flag
     visible_field_ids_set = set(visible_field_ids)
     accessible_fields = [
         (field, field.id in visible_field_ids_set)
         for field in accessible_fields_qs
-        if field.field not in {"object_labels", "avatar"} or field.id in visible_field_ids_set
+        if field.field != "object_labels" or field.id in visible_field_ids_set
     ]
     
     return DataViewFields(
