@@ -59,7 +59,8 @@ class TestLoadedFieldSettingsE2E(BloomerpE2ETestCase):
         selector = f'[data-layout-grid] [data-layout-item-id="{self.status.pk}"] [data-detail-label]'
         expect(self.page.locator(selector)).to_have_text("New Field Progress")
         self.page.reload()
-        expect(self.page.locator(selector)).to_have_text("New Field Progress")
+        # The full detail view includes the required-field marker for status.
+        expect(self.page.locator(selector)).to_have_text("New Field Progress *")
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
         """Run the add, configure, save, dismiss, and reload regression journey."""
