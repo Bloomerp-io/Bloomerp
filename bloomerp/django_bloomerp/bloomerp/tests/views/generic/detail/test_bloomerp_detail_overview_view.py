@@ -60,6 +60,7 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         customer_kwargs = {"pk": self.customer.pk}
         return [
             *self.get_attachment_scenarios(),
+            *self.get_avatar_scenarios(),
             ModelRequestScenario(
                 name="Record editors can attach using an inherited layout",
                 model=self.CustomerModel,
@@ -799,3 +800,139 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 LayoutItem(id=self.fields_by_name["files"].pk)
             ])]).model_dump(mode="json"),
         )
+
+
+    def get_avatar_scenarios(self) -> list[ModelRequestScenario]:
+        """Cover hidden header uploads and avatar permissions on detail saves."""
+        return [
+            ModelRequestScenario(
+                name="Detail layout without avatar renders one hidden upload input",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_permitted_avatar_layout,
+                expected=ExpectedResult(response_validators=self.hidden_avatar_input_renders),
+            ),
+            ModelRequestScenario(
+                name="Detail save persists an avatar omitted from the layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_permitted_avatar_upload,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=self.updated_avatar_was_saved,
+                ),
+            ),
+            ModelRequestScenario(
+                name="Detail layout hides upload for a view-only avatar field",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_denied_avatar_layout,
+                expected=ExpectedResult(response_validators=self.avatar_input_is_absent),
+            ),
+            ModelRequestScenario(
+                name="Forged detail avatar upload cannot bypass field permissions",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_denied_avatar_upload,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("Permission denied for fields: avatar"),
+                    self.denied_avatar_is_unchanged,
+                ]),
+            ),
+        ]
+
+    def configure_avatar_free_layout(self) -> None:
+        """Select a customer detail layout with no avatar field item."""
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.normal_user,
+            content_type=self.content_type,
+            selected=True,
+            layout=FieldLayout(rows=[LayoutRow(columns=1, items=[
+                LayoutItem(id=self.fields_by_name["first_name"].pk)
+            ])]).model_dump(mode="json"),
+        )
+
+    def prepare_permitted_avatar_layout(self, _scenario: ModelRequestScenario) -> None:
+        """Grant avatar edits on this customer without exposing it in the layout."""
+        self.grant_policy(
+            view_fields=["first_name", "avatar"], change_fields=["first_name", "avatar"]
+        )
+        self.configure_avatar_free_layout()
+
+    def prepare_denied_avatar_layout(self, _scenario: ModelRequestScenario) -> None:
+        """Allow viewing the avatar while permitting edits only to the first name."""
+        self.grant_policy(
+            view_fields=["first_name", "avatar"], change_fields=["first_name"]
+        )
+        self.configure_avatar_free_layout()
+
+    def prepare_permitted_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a valid hidden avatar upload alongside an unchanged customer name."""
+        self.prepare_permitted_avatar_layout(scenario)
+        self.set_avatar_upload_data(scenario)
+
+    def prepare_denied_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Attempt to overwrite an existing avatar without change-field permission."""
+        self.prepare_denied_avatar_layout(scenario)
+        self.customer.avatar = "avatars/existing-avatar.gif"
+        self.customer.save(update_fields=["avatar"])
+        self.set_avatar_upload_data(scenario)
+
+    def set_avatar_upload_data(self, scenario: ModelRequestScenario) -> None:
+        """Provide a fresh valid image for the multipart detail submission."""
+        self.uploaded_avatar_bytes = (
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00"
+            b"\xff\xff\xff,\x00\x00\x00\x00\x01\x00\x01\x00"
+            b"\x00\x02\x02D\x01\x00;"
+        )
+        scenario.data = {
+            "first_name": "Allowed",
+            "avatar": SimpleUploadedFile(
+                "header-avatar.gif", self.uploaded_avatar_bytes, content_type="image/gif"
+            ),
+        }
+
+    def hidden_avatar_input_renders(self, response: HttpResponse) -> bool:
+        """Check the absent layout field has exactly one hidden in-form upload."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        inputs = soup.select(
+            'input[type="file"][name="avatar"][data-reference-avatar-input]'
+        )
+        layout_ids = {
+            str(item.id) for row in response.context["layout"].rows for item in row.items
+        }
+        return (
+            str(self.fields_by_name["avatar"].pk) not in layout_ids
+            and len(inputs) == 1
+            and inputs[0].has_attr("hidden")
+            and inputs[0].has_attr("data-reference-avatar-input")
+            and inputs[0].find_parent("form") is not None
+            and inputs[0].find_parent("form").get("hx-post") == response.request["PATH_INFO"]
+        )
+
+    def avatar_input_is_absent(self, response: HttpResponse) -> bool:
+        """Ensure record change access does not expose a denied avatar upload."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        return soup.select_one('input[type="file"][name="avatar"]') is None
+
+    def updated_avatar_was_saved(self, _response: HttpResponse) -> bool:
+        """Verify the customer references the uploaded bytes after detail saving."""
+        self.customer.refresh_from_db()
+        if not self.customer.avatar or not self.customer.avatar.storage.exists(self.customer.avatar.name):
+            return False
+        with self.customer.avatar.open("rb") as avatar:
+            return avatar.read() == self.uploaded_avatar_bytes
+
+    def denied_avatar_is_unchanged(self, _response: HttpResponse) -> bool:
+        """Verify a rejected forged upload preserves the existing avatar value."""
+        self.customer.refresh_from_db()
+        return self.customer.avatar.name == "avatars/existing-avatar.gif"

@@ -309,8 +309,10 @@ def get_available_layout_fields(*, content_type: ContentType, user: Any, layout_
     permission_prefix = "add" if layout_kind == "create" else "view"
     permission_str = f"{permission_prefix}_{model._meta.model_name}"
 
+    # Avatar is omitted from generated defaults, not from permission-checked
+    # layout choices: legacy avatar cells must remain editable and removable.
     fields = ApplicationField.objects.filter(content_type=content_type).exclude(
-        field__in=["object_labels", "avatar"]
+        field__in=["object_labels"]
     ).order_by("field")
     available: list[dict[str, Any]] = []
     for field in fields:
