@@ -458,7 +458,7 @@ wheels = [
 
 [[package]]
 name = "bloomerp"
-version = "1.17.1b3"
+version = "1.17.1"
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
