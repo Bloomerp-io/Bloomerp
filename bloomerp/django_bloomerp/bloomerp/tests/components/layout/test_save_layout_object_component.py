@@ -16,7 +16,10 @@ from bloomerp.permissions.definition import (
     RowPolicyRuleContent,
 )
 from bloomerp.permissions.manager import PolicyManager
-from bloomerp.services.sectioned_layout_services import create_default_layout
+from bloomerp.services.sectioned_layout_services import (
+    create_default_layout,
+    get_available_layout_fields,
+)
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -280,7 +283,7 @@ class TestSaveLayoutObjectComponent(BloomerpComponentTestCase):
                     ),
                 ),
             ),
-        ] + self._avatar_layout_scenarios()
+        ] + self._avatar_layout_scenarios() + self._row_title_scenarios()
 
     def _grant_customer_field_permission(
         self,
@@ -397,6 +400,17 @@ class TestSaveLayoutObjectComponent(BloomerpComponentTestCase):
             row_permissions=[],
             global_permissions=[permission],
         ).assign_user(self.normal_user)
+        available = get_available_layout_fields(
+            content_type=self.customer_content_type,
+            user=self.admin_user,
+            layout_kind="detail",
+        )
+        header_ids = set(
+            ApplicationField.get_for_model(self.CustomerModel)
+            .filter(field__in=["avatar", "object_labels"])
+            .values_list("pk", flat=True)
+        )
+        self.assertFalse(header_ids.intersection(field["id"] for field in available))
         generated = create_default_layout(self.CustomerModel)
         self.assertNotIn(
             str(avatar.pk),
@@ -418,3 +432,151 @@ class TestSaveLayoutObjectComponent(BloomerpComponentTestCase):
         return retained != permitted and response.json().get(
             "error" if not permitted else "status"
         ) == ("Permission denied for protected layout field" if not permitted else "ok")
+
+    def _row_title_scenarios(self) -> list[RequestScenario]:
+        """Cover fresh defaults and legacy hidden-label rows without relaxing field access."""
+        scenarios = []
+        for kind in ("detail", "create", "form"):
+            target = self.admin_form if kind == "form" else self.admin_object_layout
+            content_type = (
+                self.form_content_type
+                if kind == "form"
+                else self.object_layout_content_type
+            )
+            scenarios.append(
+                RequestScenario(
+                    name=f"Fresh default row title can be renamed: {kind}",
+                    method="POST",
+                    user=self.admin_user,
+                    view_kwargs={
+                        "content_type_id": content_type.pk,
+                        "object_id": target.pk,
+                    },
+                    query_params={"layout_mode": "create" if kind == "form" else kind},
+                    data={},
+                    content_type="application/json",
+                    prepare=partial(self._prepare_fresh_row_title, kind=kind),
+                    expected=ExpectedResult(
+                        response_validators=partial(
+                            self._fresh_row_title_saved, kind=kind
+                        )
+                    ),
+                )
+            )
+            for permitted in (True, False):
+                target = (
+                    self.normal_user_form
+                    if kind == "form"
+                    else self.normal_user_object_layout
+                )
+                scenarios.append(
+                    RequestScenario(
+                        name=f"Legacy labels row rename {kind}: permitted={permitted}",
+                        method="POST",
+                        user=self.normal_user,
+                        view_kwargs={
+                            "content_type_id": content_type.pk,
+                            "object_id": target.pk,
+                        },
+                        query_params={
+                            "layout_mode": "create" if kind == "form" else kind
+                        },
+                        data={},
+                        content_type="application/json",
+                        prepare=partial(
+                            self._prepare_legacy_labels_row,
+                            kind=kind,
+                            permitted=permitted,
+                        ),
+                        expected=ExpectedResult(
+                            status_code=200 if permitted else 403,
+                            response_validators=partial(
+                                self._legacy_labels_row_saved,
+                                kind=kind,
+                                permitted=permitted,
+                            ),
+                        ),
+                    )
+                )
+        return scenarios
+
+    def _prepare_fresh_row_title(self, scenario: RequestScenario, *, kind: str) -> None:
+        """Regenerate a real default layout and submit only a row-title change."""
+        target = self.admin_form if kind == "form" else self.admin_object_layout
+        target.layout = create_default_layout(self.CustomerModel).model_dump()
+        target.save(update_fields=["layout"])
+        layout = target.layout_obj.model_dump()
+        layout["rows"][0]["title"] = "Personal details"
+        scenario.data["layout"] = layout
+
+    def _fresh_row_title_saved(self, _response: HttpResponse, *, kind: str) -> bool:
+        """Verify the regenerated layout title persists without header attachment fields."""
+        target = self.admin_form if kind == "form" else self.admin_object_layout
+        target.refresh_from_db()
+        header_ids = set(
+            ApplicationField.get_for_model(self.CustomerModel)
+            .filter(field__in=["avatar", "object_labels"])
+            .values_list("pk", flat=True)
+        )
+        stored_ids = {
+            str(item.id) for row in target.layout_obj.rows for item in row.items
+        }
+        return target.layout_obj.rows[
+            0
+        ].title == "Personal details" and not stored_ids.intersection(
+            str(value) for value in header_ids
+        )
+
+    def _prepare_legacy_labels_row(
+        self, scenario: RequestScenario, *, kind: str, permitted: bool
+    ) -> None:
+        """Seed an old labels cell and distinguish field access from catalog visibility."""
+        labels = ApplicationField.get_by_field(self.CustomerModel, "object_labels")
+        target = (
+            self.normal_user_form if kind == "form" else self.normal_user_object_layout
+        )
+        target.layout = {
+            "rows": [
+                {
+                    "title": "Details",
+                    "columns": 2,
+                    "items": [
+                        {"id": str(labels.pk)},
+                        {"id": str(self.first_name_field.pk)},
+                    ],
+                }
+            ]
+        }
+        target.save(update_fields=["layout"])
+        permission = (
+            BloomerpPermission.VIEW if kind == "detail" else BloomerpPermission.ADD
+        )
+        if kind == "form":
+            self._grant_normal_user_form_access()
+        fields = {self.first_name_field: [permission]}
+        if permitted:
+            fields[labels] = [permission]
+        PolicyManager.create_policy(
+            self.CustomerModel,
+            field_permissions=fields,
+            row_permissions=[],
+            global_permissions=[permission],
+        ).assign_user(self.normal_user)
+        layout = target.layout_obj.model_dump()
+        layout["rows"][0]["title"] = "Personal details"
+        scenario.data["layout"] = layout
+
+    def _legacy_labels_row_saved(
+        self, response: HttpResponse, *, kind: str, permitted: bool
+    ) -> bool:
+        """Allow authorized row metadata edits while preserving denied rows exactly."""
+        target = (
+            self.normal_user_form if kind == "form" else self.normal_user_object_layout
+        )
+        target.refresh_from_db()
+        expected_title = "Personal details" if permitted else "Details"
+        return target.layout_obj.rows[
+            0
+        ].title == expected_title and response.json().get(
+            "status" if permitted else "error"
+        ) == ("ok" if permitted else "Permission denied for protected layout field")

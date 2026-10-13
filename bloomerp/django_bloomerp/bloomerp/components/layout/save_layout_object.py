@@ -1,17 +1,20 @@
 import json
 
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 
 from bloomerp.models import ApplicationField
 from bloomerp.models.forms.form import Form
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.models.workspaces.workspace import Workspace
-from bloomerp.router import router
 from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
+from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.sectioned_layout_services import (
     get_available_layout_fields,
@@ -38,6 +41,32 @@ def _get_valid_field_ids(
             layout_kind=scope,
         )
     }
+
+
+def _get_protected_field_ids(
+    request: HttpRequest,
+    *,
+    content_type: ContentType,
+    scope: str,
+    existing_ids: set[str],
+) -> set[str]:
+    """Protect denied fields, not fields omitted from the presentation catalog.
+
+    Header-managed fields may remain in older saved layouts even though they
+    cannot be added through the layout picker. Their row metadata and removal
+    still follow ordinary field permissions.
+    """
+    model = content_type.model_class()
+    permission = create_permission_str(model, "add" if scope == "create" else "view")
+    manager = UserPolicyManager(request.user)
+    permitted_ids = {
+        str(field.pk)
+        for field in ApplicationField.objects.filter(
+            content_type=content_type, pk__in=existing_ids
+        )
+        if manager.has_field_permission(field, permission)
+    }
+    return existing_ids - permitted_ids
 
 
 def _protected_layout_items_are_unchanged(
@@ -72,10 +101,11 @@ def _save_layout_preference(
     *,
     payload: dict,
     content_type: ContentType,
-    model,
+    model: type[Model],
     scope: str,
     preference: UserObjectLayoutPreference,
 ) -> HttpResponse:
+    """Save an authorized layout while preserving genuinely inaccessible fields."""
     manager = UserPolicyManager(request.user)
     target_content_type_id = _get_payload_target_content_type_id(payload)
     if target_content_type_id and str(target_content_type_id) != str(content_type.id):
@@ -116,7 +146,9 @@ def _save_layout_preference(
             status=403,
         )
 
-    protected_ids = existing_ids - valid_new_ids
+    protected_ids = _get_protected_field_ids(
+        request, content_type=content_type, scope=scope, existing_ids=existing_ids
+    )
     if not _protected_layout_items_are_unchanged(
         existing_layout=preference.layout_obj,
         submitted_layout=layout,
@@ -163,6 +195,7 @@ def _save_workspace(
 
 
 def _save_form(request: HttpRequest, form: Form, payload: dict) -> HttpResponse:
+    """Save an authorized layout while preserving genuinely inaccessible fields."""
     manager = UserPolicyManager(request.user)
     if not manager.has_access_to_object(form, create_permission_str(form, "change")):
         return HttpResponse("Permission denied", status=403)
@@ -206,7 +239,9 @@ def _save_form(request: HttpRequest, form: Form, payload: dict) -> HttpResponse:
             status=403,
         )
 
-    protected_ids = existing_ids - valid_ids
+    protected_ids = _get_protected_field_ids(
+        request, content_type=target_content_type, scope="create", existing_ids=existing_ids
+    )
     if not _protected_layout_items_are_unchanged(
         existing_layout=form.layout_obj,
         submitted_layout=layout,

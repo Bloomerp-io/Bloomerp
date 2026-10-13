@@ -309,10 +309,9 @@ def get_available_layout_fields(*, content_type: ContentType, user: Any, layout_
     permission_prefix = "add" if layout_kind == "create" else "view"
     permission_str = f"{permission_prefix}_{model._meta.model_name}"
 
-    # Avatar is omitted from generated defaults, not from permission-checked
-    # layout choices: legacy avatar cells must remain editable and removable.
+    # Avatar and labels are managed through Attach, not the layout picker.
     fields = ApplicationField.objects.filter(content_type=content_type).exclude(
-        field__in=["object_labels"]
+        field__in=["object_labels", "avatar"]
     ).order_by("field")
     available: list[dict[str, Any]] = []
     for field in fields:
@@ -377,7 +376,7 @@ def resolve_field(
 
 
 def create_default_layout(
-    model: Type[Model],
+    model: type[Model],
     application_fields: QuerySet[ApplicationField] | list[ApplicationField] | None = None,
     *,
     layout: FieldLayout | None = None,
@@ -443,6 +442,7 @@ def create_default_layout(
                 "files",
                 "avatar",
                 "labels",
+                "object_labels",
             ]
         ]
         return FieldLayout(
