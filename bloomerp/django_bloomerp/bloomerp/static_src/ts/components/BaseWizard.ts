@@ -25,10 +25,17 @@ export default class BaseWizard extends BaseComponent {
     private form: HTMLFormElement | null = null;
     private submitHandler: ((event: SubmitEvent) => void) | null = null;
     private afterRequestHandler: ((event: Event) => void) | null = null;
+    /** Release component listeners when HTMX removes this wizard root. */
+    private readonly cleanupHandler: (event: Event) => void = (event: Event): void => {
+        if (event.target === this.element) window.setTimeout(() => this.destroy(), 0);
+    };
     private pendingRequest: PendingWizardRequest | null = null;
 
+    /** Bind submit, request, and HTMX cleanup listeners. */
     public initialize(): void {
         if (!this.element) return;
+
+        this.element.addEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
 
         this.form = this.element.querySelector("form");
         if (!this.form) return;
@@ -40,7 +47,10 @@ export default class BaseWizard extends BaseComponent {
         this.form.addEventListener("htmx:afterRequest", this.afterRequestHandler);
     }
 
+    /** Remove listeners and clear references when the wizard is replaced. */
     public destroy(): void {
+        this.element?.removeEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
+
         if (this.form && this.submitHandler) {
             this.form.removeEventListener("submit", this.submitHandler);
         }
