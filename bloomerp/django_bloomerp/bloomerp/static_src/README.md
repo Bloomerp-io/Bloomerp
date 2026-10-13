@@ -171,8 +171,15 @@ Templates now include the bundled JavaScript:
 ```
 
 **`templates/snippets/vite_bundle.html`:**
-- In DEBUG mode: Loads from Vite dev server with HMR
+- In DEBUG mode with a Vite URL: Loads the Vite browser client and TypeScript source from the dev server
 - In production: Loads from built static files
+
+The Django template settings must include
+`bloomerp.context_processors.debug_mode` so request templates receive `DEBUG`
+and `BLOOMERP_VITE_DEV_SERVER_URL`. The generated project settings include this
+processor. Without it, templates fall back to compiled static files even when
+`npm run dev` is running. Vite serves TypeScript directly during development;
+it does not update the production JavaScript bundle on disk.
 
 ## Adding New TypeScript Modules
 
@@ -327,6 +334,12 @@ If you see errors about connecting to `localhost:5173`:
 2. Check that port 5173 is not blocked
 3. Verify Django DEBUG=True in settings
 
+If TypeScript changes appear only after `npm run build`, inspect the page's
+script URLs. Development pages should load `http://localhost:5173/@vite/client`
+and `http://localhost:5173/ts/main.ts`, rather than
+`/static/bloomerp/js/dist/main.js`. Check that the Bloomerp context processor
+is registered and that `BLOOMERP_CONFIG.vite_dev_server_url` is nonempty.
+
 ### TypeScript errors
 
 Run type checking:
@@ -362,6 +375,17 @@ npm run type-check
 7. **Build before deploy** - Always run `npm run build` before deploying
 
 ## Resources
+
+Assistant chat responses use Marked and DOMPurify in the browser, with the same
+renderer for accumulated streaming text and restored history. User messages and
+the composer remain plain text. Raw HTML is displayed literally; generated HTML
+is sanitized with a Markdown-only tag and attribute allowlist. Code remains
+literal, tables scroll within the bubble, and Markdown images show their labels
+without loading external resources. Run `npm run test:agent-markdown` for the
+renderer tests alongside `npm run test:agent` for bridge and editor-state tests.
+The chat's separate progress live region uses ordered operational events rather
+than model reasoning or tool arguments. Run `npm run test:agent-progress` for
+stage mapping, replay order, snapshot restoration and safe status rendering.
 
 - [Vite Documentation](https://vitejs.dev/)
 - [TypeScript Documentation](https://www.typescriptlang.org/docs/)

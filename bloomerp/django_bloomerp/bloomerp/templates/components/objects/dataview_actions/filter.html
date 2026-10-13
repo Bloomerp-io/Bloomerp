@@ -1,3 +1,4 @@
+{% load i18n %}
 <div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}" data-filter-host-editor>
     <c-ui.shortcut_tooltip
         position="bottom"
@@ -6,7 +7,7 @@
         focus_target="select"
     >
         <c-ui.dropdown.body
-            trigger_text="Filter"
+            trigger_text="{% translate "Filter" %}"
             trigger_icon_class="fa fa-filter"
             trigger_button_class="btn-secondary"
             trigger_class="w-full justify-center gap-2"

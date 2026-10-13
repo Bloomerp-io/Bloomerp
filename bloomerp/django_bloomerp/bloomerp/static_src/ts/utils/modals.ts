@@ -40,8 +40,8 @@ export function buildModalShell(element: HTMLElement): void {
             const controls = document.createElement('div');
             controls.className = 'flex space-x-2';
             controls.append(
-                buildModalButton(element.id, 'bloomerp-full-screen-modal', t('Toggle fullscreen'), 'fa-expand'),
-                buildModalButton(element.id, 'bloomerp-close-modal', t('Close'), 'fa-times'),
+                buildModalButton(element.id, 'bloomerp-full-screen-modal', t('Toggle fullscreen'), 'fa-expand', 'mod+shift+space', 'bottom'),
+                buildModalButton(element.id, 'bloomerp-close-modal', t('Close'), 'fa-times', 'mod+shift+,'),
             );
             header.appendChild(controls);
         }
@@ -64,7 +64,16 @@ export function buildModalShell(element: HTMLElement): void {
 }
 
 /** Create an accessible shell control without inserting interpolated HTML. */
-function buildModalButton(id: string, attribute: string, label: string, icon: string): HTMLButtonElement {
+function buildModalButton(id: string, attribute: string, label: string, icon: string, shortcut: string, position: 'left' | 'bottom' = 'left'): HTMLElement {
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('bloomerp-component', 'shortcut-tooltip');
+    wrapper.dataset.shortcut = shortcut;
+    wrapper.dataset.action = 'click';
+    wrapper.dataset.position = position;
+    if (position === 'bottom') {
+        wrapper.className = '[&>[data-shortcut-tooltip]]:left-auto [&>[data-shortcut-tooltip]]:right-0 [&>[data-shortcut-tooltip]]:translate-x-0 [&>[data-shortcut-tooltip]>div:last-child]:left-auto [&>[data-shortcut-tooltip]>div:last-child]:right-1 [&>[data-shortcut-tooltip]>div:last-child]:translate-x-0';
+    }
+    wrapper.dataset.text = label;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'hover:cursor-pointer';
@@ -75,7 +84,8 @@ function buildModalButton(id: string, attribute: string, label: string, icon: st
     glyph.className = `fas ${icon} text-primary-900 font-medium`;
     glyph.setAttribute('aria-hidden', 'true');
     button.appendChild(glyph);
-    return button;
+    wrapper.appendChild(button);
+    return wrapper;
 }
 
 /** Return the last opened modal, independent of its declaration's DOM order. */

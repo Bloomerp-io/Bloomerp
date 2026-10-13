@@ -1,4 +1,7 @@
+from django.contrib.contenttypes.models import ContentType
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.middleware.csrf import get_token
+from django.shortcuts import get_object_or_404, render
 from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.components.objects.dataviews.dataview import (
@@ -14,9 +17,6 @@ from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.user_services import toggle_field_visibility
-from django.contrib.contenttypes.models import ContentType
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
 
 
 def _change_data_view_field_visibility(
@@ -53,8 +53,9 @@ def _change_data_view_field_visibility(
 
 def _change_data_view_options(
     state: DataviewState,
-    post_data,
+    post_data: QueryDict,
 ) -> HttpResponse | None:
+    """Validate typed options and return useful errors for invalid mapping rows."""
     preference = state.preference
     view_type = post_data["dataview_options_view_type"]
     if view_type != preference.view_type:
@@ -67,7 +68,7 @@ def _change_data_view_options(
     form_cls = definition.config_cls.form_factory(state)
     form = form_cls(post_data)
     if not form.is_valid():
-        return HttpResponse("Invalid options", status=400)
+        return HttpResponse(f"Invalid options: {form.errors.as_text()}", status=400)
 
     options = dict(preference.options or {})
     option_model = definition.config_cls
@@ -129,7 +130,30 @@ def _render_display_options(
     )
 
 
-def _get_preference_operation(post_data) -> str | None:
+def _change_data_view_field_order(state: DataviewState, post_data: QueryDict) -> HttpResponse | None:
+    """Save a permutation of the current visible fields without changing visibility or access."""
+    view_type = post_data.get("reorder_view_type")
+    if view_type != state.preference.view_type:
+        return HttpResponse("Invalid reorder view type", status=400)
+    try:
+        field_ids = [int(value) for value in post_data.getlist("field_order")]
+    except ValueError:
+        return HttpResponse("Invalid field order", status=400)
+    accessible_ids = {field.id for field in state.accessible_fields}
+    if not set(field_ids).issubset(accessible_ids):
+        return HttpResponse("Permission denied", status=403)
+    visible_ids = {field.id for field in state.fields.visible_fields}
+    if len(field_ids) != len(set(field_ids)) or set(field_ids) != visible_ids:
+        return HttpResponse("Field order must contain each visible field exactly once", status=400)
+    state.preference.set_visible_field_ids(view_type, field_ids)
+    state.preference.save(update_fields=["display_fields"])
+    return None
+
+
+def _get_preference_operation(post_data: QueryDict) -> str | None:
+    """Resolve the requested display preference operation from submitted values."""
+    if "reorder_view_type" in post_data:
+        return "field_order"
     if "view_type" in post_data:
         return "change_type"
     if "split_view_enabled" in post_data:
@@ -182,6 +206,11 @@ def update_dataview_preference(request: HttpRequest, content_type_id: int) -> Ht
             error_response = _change_data_view_options(state, request.POST)
         case "field":
             error_response = _change_data_view_field_visibility(request, content_type, preference, request.POST)
+        case "field_order":
+            state = _build_dataview_state(request, content_type_id, preference)
+            if isinstance(state, HttpResponse):
+                return state
+            error_response = _change_data_view_field_order(state, request.POST)
         case _:
             error_response = None
 

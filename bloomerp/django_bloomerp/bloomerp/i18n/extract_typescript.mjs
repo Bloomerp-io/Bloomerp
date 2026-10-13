@@ -44,7 +44,7 @@ for (const filename of files) {
       const name = node.expression.text;
       let message = null;
       let context = null;
-      if (name === "t") message = literal(node.arguments[0]);
+      if (name === "t" || name === "_") message = literal(node.arguments[0]);
       if (name === "tn") {
         const singular = literal(node.arguments[0]);
         const plural = literal(node.arguments[1]);

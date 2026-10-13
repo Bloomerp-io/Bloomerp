@@ -1,15 +1,18 @@
 """The same predicates must select the same rows through Q, SQL and permissions."""
-from unittest.mock import patch
+import json
+from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection
+from django.http import QueryDict
 from django.test import RequestFactory
 from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.filters.compiler import compile_filters, compile_sql_filters, resolve_condition
 from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.filters.manager import ModelFilterManager
+from bloomerp.filters.parser import parse_filters
 from bloomerp.permissions.compilers.django_q_permission_compiler import DjangoQPermissionCompiler
 from bloomerp.permissions.compilers.python_permission_compiler import PythonPermissionCompiler
 from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
@@ -278,3 +281,141 @@ class TestSharedFilterCompiler(BaseBloomerpTestCaseWithModels):
         for context in (None, request):
             with patch("bloomerp.filters.compiler.current_request", return_value=context):
                 self.assert_backends_match(groups, {2})
+
+
+    def test_manager_recovery_keeps_valid_json_siblings_and_connectors(self) -> None:
+        """Recover malformed conditions and groups without losing valid OR siblings."""
+        valid = [
+            FilterCondition(field_path="age", lookup_id="equals", value=2),
+            FilterCondition(field_path="age", lookup_id="equals", value=4),
+        ]
+        args = {"filter": json.dumps([
+            {"connector": "OR", "conditions": [
+                valid[0].model_dump(),
+                {"field_path": "age", "lookup_id": "equals"},
+                7,
+                {"field_path": "age", "lookup_id": "equals", "value": "invalid"},
+                valid[1].model_dump(),
+            ]},
+            {"connector": "X", "conditions": [valid[0].model_dump()]},
+            {"connector": "AND", "conditions": "invalid"},
+            None,
+            {"connector": "AND", "conditions": [
+                {"field_path": "age", "lookup_id": "less_than", "value": 6},
+            ]},
+        ])}
+        manager = ModelFilterManager(self.CustomerModel)
+        groups = manager.parse(args, recover=True)
+        self.assertEqual(groups, [
+            Filter(connector="OR", conditions=valid),
+            Filter(connector="AND", conditions=[
+                FilterCondition(field_path="age", lookup_id="less_than", value=6),
+            ]),
+        ])
+        result = manager.filter(args, self.CustomerModel.objects.all(), recover=True)
+        self.assertEqual(set(result.values_list("age", flat=True)), {2, 4})
+
+    def test_manager_recovery_isolates_repeated_json_and_shorthand_values(self) -> None:
+        """Recover each parameter independently while preserving every surviving value."""
+        first = Filter(connector="OR", conditions=[
+            FilterCondition(field_path="age", lookup_id="equals", value=2),
+            FilterCondition(field_path="age", lookup_id="equals", value=4),
+        ])
+        second = Filter(connector="AND", conditions=[
+            FilterCondition(field_path="age", lookup_id="less_than", value=6),
+        ])
+        args = QueryDict(mutable=True)
+        args.setlist("age_gte", ["2", "invalid", "4"])
+        args.setlist("filter", ["broken", f"[{first.model_dump_json()}]", "null", f"[{second.model_dump_json()}]"])
+        args["missing_field"] = "ignored"
+        args["age_unknown"] = "ignored"
+        args["page"] = "2"
+        args["last_name"] = "Example"
+        groups = ModelFilterManager(self.CustomerModel).parse(args, recover=True)
+        self.assertEqual(groups, [first, second, Filter(connector="AND", conditions=[
+            FilterCondition(field_path="age", lookup_id="greater_than_or_equal", value="2"),
+            FilterCondition(field_path="age", lookup_id="greater_than_or_equal", value="4"),
+            FilterCondition(field_path="last_name", lookup_id="equals", value="Example"),
+        ])])
+        self.assert_backends_match(groups, {4})
+
+    def test_manager_recovery_preserves_mapping_list_values(self) -> None:
+        """Keep a dictionary list as one lookup value rather than repeated conditions."""
+        groups = ModelFilterManager(self.CustomerModel).parse(
+            {"age_in": [2, "4"], "missing_field": "ignored"}, recover=True,
+        )
+        self.assertEqual(groups, [Filter(connector="AND", conditions=[
+            FilterCondition(field_path="age", lookup_id="values_in", value=[2, "4"]),
+        ])])
+        self.assert_backends_match(groups, {2, 4})
+
+    def test_manager_recovery_distinguishes_explicit_and_invalid_empty_groups(self) -> None:
+        """Retain explicit empty OR semantics but drop groups emptied by recovery."""
+        invalid = {"field_path": "age", "lookup_id": "equals", "value": "invalid"}
+        valid = FilterCondition(field_path="age", lookup_id="equals", value=2)
+        manager = ModelFilterManager(self.CustomerModel)
+        args = {"filter": json.dumps([
+            {"connector": "OR", "conditions": [invalid]},
+            {"connector": "AND", "conditions": [invalid]},
+            {"connector": "AND", "conditions": [valid.model_dump()]},
+        ])}
+        self.assertEqual(manager.parse(args, recover=True), [Filter(connector="AND", conditions=[valid])])
+        self.assertEqual(set(manager.filter(args, self.CustomerModel.objects.all(), recover=True).values_list("age", flat=True)), {2})
+        for empty in ({"connector": "OR", "conditions": []}, {"connector": "OR"}):
+            with self.subTest(empty=empty):
+                explicit = {"filter": json.dumps([empty]), "age": "2"}
+                groups = manager.parse(explicit, recover=True)
+                self.assertEqual(groups[0], Filter(connector="OR", conditions=[]))
+                self.assertFalse(manager.filter(explicit, self.CustomerModel.objects.all(), recover=True).exists())
+
+    def test_manager_recovery_never_widens_the_callers_queryset(self) -> None:
+        """Recovered or absent constraints can only operate on the authorized input rows."""
+        manager = ModelFilterManager(self.CustomerModel)
+        restricted = self.CustomerModel.objects.filter(age=2)
+        invalid = {"filter": "broken", "age_unknown": "value", "age": "invalid"}
+        self.assertIs(manager.filter(invalid, restricted, recover=True), restricted)
+        mixed = {"filter": "broken", "age_gte": "4"}
+        self.assertFalse(manager.filter(mixed, restricted, recover=True).exists())
+        self.assertEqual(set(restricted.values_list("age", flat=True)), {2})
+
+    def test_manager_parse_defaults_to_the_existing_parser_order(self) -> None:
+        """Default parsing keeps JSON groups first and uncleaned shorthand values last."""
+        args = QueryDict(mutable=True)
+        args.setlist("age_gte", ["2", "4"])
+        args.setlist("filter", ['[{"connector":"AND"}]', '[{"connector":"OR"}]'])
+        args["last_name"] = "Example"
+        expected = parse_filters(args, model=self.CustomerModel)
+        self.assertEqual(ModelFilterManager(self.CustomerModel).parse(args), expected)
+        self.assertEqual([group.connector for group in expected], ["AND", "OR", "AND"])
+        self.assertEqual([condition.value for condition in expected[-1].conditions], ["2", "4", "Example"])
+
+    def test_manager_default_filtering_remains_strict(self) -> None:
+        """Opting out of recovery preserves malformed schema, field, lookup, and value errors."""
+        invalid_parameters = [
+            {"filter": "broken"},
+            {"filter": '[{"connector":"AND","conditions":[{"field_path":"age"}]}]'},
+            {"missing_field": "value"},
+            {"age_unknown": "value"},
+            {"age": "invalid"},
+        ]
+        manager = ModelFilterManager(self.CustomerModel)
+        for args in invalid_parameters:
+            with self.subTest(args=args), self.assertRaises(ValidationError):
+                manager.filter(args, self.CustomerModel.objects.all())
+
+    def test_manager_recovery_only_swallows_expected_validation_failures(self) -> None:
+        """Permission and validation denials are recoverable; programming errors propagate."""
+        manager = ModelFilterManager(self.CustomerModel)
+        for error in (PermissionDenied("denied"), ValidationError("invalid"), RuntimeError("unexpected")):
+            with self.subTest(error=type(error).__name__):
+                validate = Mock(side_effect=error)
+                if isinstance(error, RuntimeError):
+                    with self.assertRaisesMessage(RuntimeError, "unexpected"):
+                        manager.parse({"age": "2"}, recover=True, validate_filters=validate)
+                else:
+                    self.assertEqual(manager.parse({"age": "2"}, recover=True, validate_filters=validate), [])
+                validate.assert_called_once_with([Filter(connector="AND", conditions=[
+                    FilterCondition(field_path="age", lookup_id="equals", value="2"),
+                ])])
+                with self.assertRaises(type(error)):
+                    manager.filter({"age": "2"}, self.CustomerModel.objects.all(), validate_filters=validate)

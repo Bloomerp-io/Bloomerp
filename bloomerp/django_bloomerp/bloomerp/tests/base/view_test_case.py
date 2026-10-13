@@ -1,11 +1,9 @@
-from typing import Optional
-
+from django.db import models
 from django.db.models import Model
 from django.urls import reverse
-from django.db import models
 
-from bloomerp.modules.definition import module_registry
-from bloomerp.router import RouteType, router
+from bloomerp.modules.definition import ModuleConfig, module_registry
+from bloomerp.router import BloomerpRoute, RouteType, router
 from bloomerp.tests.base.core_test_case import BaseBloomerpTestCaseWithModels
 from bloomerp.tests.base.request_test_case_mixin import (
     ModelRequestScenario,
@@ -35,18 +33,24 @@ class BloomerpViewTestCase(RequestTestCaseMixin, BaseBloomerpTestCaseWithModels)
             return resolved_module
         return selected_module
 
-    def get_route(self, view_name: str | None = None, *, model=None, module=None):
+    def get_route(
+        self,
+        view_name: str | None = None,
+        *,
+        model: type[Model] | None = None,
+        module: ModuleConfig | str | None = None,
+    ) -> BloomerpRoute:
         """Resolve the concrete route for this test's model/module context."""
         selected_view_name = view_name or self.view_name
-        selected_model = self.model if model is None else model
+        selected_agent = self.model if model is None else model
         selected_module = self.get_test_case_module(module)
         candidates = [
             route
             for route in router.get_routes_by_type(self.route_type)
             if selected_view_name in {route.base_url_name, route.url_name}
             and (
-                selected_model is None
-                or route.model is selected_model
+                selected_agent is None
+                or route.model is selected_agent
             )
             and (selected_module is None or route.module == selected_module)
         ]
@@ -109,7 +113,7 @@ class BloomerpViewTestCase(RequestTestCaseMixin, BaseBloomerpTestCaseWithModels)
         if self.module is not None:
             self.assertEqual(route.module, self.get_test_case_module())
             
-    def get_view_kwargs(self) -> Optional[dict]:
+    def get_view_kwargs(self) -> dict | None:
         """Sets the default view kwargs for all tests if not given in setup
 
         Returns:

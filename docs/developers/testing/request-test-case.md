@@ -4,6 +4,11 @@
 `BloomerpViewTestCase` and `BloomerpComponentTestCase`. It describes one Django
 test-client request and its expected response without involving a browser.
 
+For MCP tools and resource readers, use `McpRequestScenario` with
+[`BloomerpMcpViewTestCase`](mcp-view-test-case.md). It shares this preparation,
+authentication, validation, cleanup, and rollback lifecycle while encoding an
+MCP JSON-RPC request.
+
 ## Basic scenario
 
 ```python

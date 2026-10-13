@@ -17,7 +17,7 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.forms.form import Form as BloomerpForm
 from bloomerp.models.forms.form_submission import FormSubmission
 from bloomerp.services.sectioned_layout_services import (
@@ -673,7 +673,8 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertEqual(saved.id, original_id)
         self.assertEqual(saved.first_name, "Grace")
 
-    def test_create_layout_fields_include_permitted_system_fields(self):
+    def test_create_layout_fields_include_permitted_system_fields(self) -> None:
+        """Offer permitted system fields while hiding attachment-managed labels and avatars."""
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
 
         available_fields = get_available_layout_fields(
@@ -682,6 +683,8 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
             layout_kind="create",
         )
         available_ids = {field["id"] for field in available_fields}
+        for field_name in ("avatar", "object_labels"):
+            self.assertNotIn(ApplicationField.get_by_field(self.CustomerModel, field_name).pk, available_ids)
 
         for field_name in {
             "id",
@@ -880,7 +883,8 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
             ).exists()
         )
 
-    def test_model_form_save_persists_structured_file_values(self):
+    def test_model_form_save_persists_structured_file_values(self) -> None:
+        """Persist structured uploads as file nodes with references to the saved object."""
         customer = self.create_customer("File", "Owner", 42)
         uploaded_file = SimpleUploadedFile(
             "agreement.pdf",
@@ -902,9 +906,8 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
 
         saved_customer = form.save()
 
-        attached_file = File.objects.get(name="agreement.pdf")
-        self.assertEqual(attached_file.object_id, str(saved_customer.pk))
-        self.assertTrue(attached_file.persisted)
+        attached_file = FileNode.objects.get(name="agreement.pdf")
+        self.assertTrue(attached_file.references.filter(object_id=str(saved_customer.pk)).exists())
 
     def test_model_form_deserializes_json_compatible_values(self):
         customer = self.create_customer("Deserialize", "Values", 43)
@@ -1263,7 +1266,8 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
             ).exists()
         )
 
-    def test_form_submission_with_review_attaches_files_to_submission_then_persist_moves_to_object(self):
+    def test_form_submission_with_review_attaches_files_to_submission_then_persist_moves_to_object(self) -> None:
+        """Share submission uploads with the resulting object through file references."""
         parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
         form_submission_content_type = ContentType.objects.get_for_model(FormSubmission)
         fields_by_name = {
@@ -1332,7 +1336,7 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertTrue(response.submitted)
         submission = response.form_submission
         submission.refresh_from_db()
-        attached_files = list(File.objects.filter(object_id=str(submission.pk)))
+        attached_files = list(FileNode.objects.filter(references__content_type=form_submission_content_type, references__object_id=str(submission.pk)).distinct())
         self.assertEqual(len(attached_files), 2)
         self.assertEqual(
             {attached_file.name for attached_file in attached_files},
@@ -1340,7 +1344,7 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         )
         self.assertTrue(
             all(
-                attached_file.content_type == form_submission_content_type
+                attached_file.references.filter(content_type=form_submission_content_type, object_id=str(submission.pk)).exists()
                 for attached_file in attached_files
             )
         )
@@ -1354,11 +1358,13 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         customer = self.CustomerModel.objects.get(first_name="Reviewed")
         for attached_file in attached_files:
             attached_file.refresh_from_db()
-            self.assertEqual(attached_file.content_type, parent_content_type)
-            self.assertEqual(attached_file.object_id, str(customer.pk))
-            self.assertTrue(attached_file.persisted)
+            self.assertTrue(attached_file.references.filter(
+                content_type=parent_content_type, object_id=str(customer.pk),
+                application_field__isnull=True,
+            ).exists())
 
-    def test_form_submission_without_review_moves_files_to_persisted_object_immediately(self):
+    def test_form_submission_without_review_moves_files_to_persisted_object_immediately(self) -> None:
+        """Attach uploaded nodes immediately when a form submission requires no review."""
         parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
         fields_by_name = {
             field.field: field
@@ -1402,23 +1408,25 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
             },
         )()
 
-        response = FormManager(form_object).register_submission(
-            {
+        manager = FormManager(form_object)
+        submitted_form = manager.layout_form_cls()(
+            data={
                 "first_name": "Immediate",
                 "last_name": "Customer",
                 "age": "43",
             },
-            request=request,
+            files=request.FILES,
         )
+        self.assertTrue(submitted_form.is_valid(), submitted_form.errors)
+        response = manager.register_submission(submitted_form, request=request)
 
         self.assertTrue(response.submitted)
         response.form_submission.refresh_from_db()
         self.assertTrue(response.form_submission.persisted)
         customer = self.CustomerModel.objects.get(first_name="Immediate")
-        attached_file = File.objects.get(name="immediate.pdf")
-        self.assertEqual(attached_file.content_type, parent_content_type)
-        self.assertEqual(attached_file.object_id, str(customer.pk))
-        self.assertEqual(response.form_submission.data["files"], [str(attached_file.id)])
+        attached_file = FileNode.objects.get(name="immediate.pdf")
+        self.assertTrue(attached_file.references.filter(content_type=parent_content_type, object_id=str(customer.pk)).exists())
+        self.assertEqual(response.form_submission.data["files"], ["immediate.pdf"])
 
     def test_form_initial_payload_persists_hidden_model_fields(self):
         parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
@@ -1554,6 +1562,23 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertTrue(
             any("row_policy" in message.lower() or "row policy" in message.lower() for message in exc_info.exception.messages)
         )
+
+    def test_attachment_fields_are_not_offered_as_new_dataview_columns(self) -> None:
+        """Hide header-managed field choices while retaining an existing label column."""
+        from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+        from bloomerp.services.user_services import get_data_view_fields
+
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        preference = UserListViewPreference.objects.create(
+            user=self.admin_user, content_type=content_type, name="Attachment fields",
+            view_type="table", display_fields={"table": []},
+        )
+        fields = get_data_view_fields(preference)
+        self.assertFalse({"avatar", "object_labels"} & {field.field for field, _ in fields.accessible_fields})
+        labels = ApplicationField.get_by_field(self.CustomerModel, "object_labels")
+        preference.set_visible_field_ids("table", [labels.pk])
+        preference.save(update_fields=["display_fields"])
+        self.assertEqual(get_data_view_fields(preference).visible_fields, [labels])
 
 
 class FormCleanTestCase(BaseBloomerpTestCaseWithModels):

@@ -4,6 +4,7 @@ from datetime import date
 
 from django.contrib.contenttypes.models import ContentType
 
+from bloomerp.automation.actions.extract_field import ExtractFieldExecutor
 from bloomerp.automation.flows.object_if_condition import (
     ObjectIfConditionExecutor,
     ObjectIfConditionForm,
@@ -70,9 +71,28 @@ class TestObjectIfConditionNode(BloomerpWorkflowNodeTestCase):
             {"field_path": "title", "lookup_id": "equals", "value": todo.title},
         ]}]
         trigger_input = ObjectCrudTrigger({}).execute({"instance": todo, "event": "created"})
+        extracted_input = ExtractFieldExecutor({"field_path": "instance"}).execute(trigger_input)
         trigger_schema = ObjectCrudTrigger.get_output_schema({"content_type_id": content_type.pk})
 
         return [
+            WorkflowNodeScenario(
+                name="model extracted from CRUD trigger routes true and passes through",
+                parameters={
+                    "content_type_id": content_type.pk,
+                    "filters": matching_groups,
+                },
+                trigger_data=extracted_input,
+                expected_output=RouteResult(port_id="true", output=todo),
+            ),
+            WorkflowNodeScenario(
+                name="model outside the filtered queryset routes false and passes through",
+                parameters={
+                    "content_type_id": content_type.pk,
+                    "filters": matching_groups,
+                },
+                trigger_data=other,
+                expected_output=RouteResult(port_id="false", output=other),
+            ),
             WorkflowNodeScenario(
                 name="matching object in an OR filter routes true",
                 parameters={

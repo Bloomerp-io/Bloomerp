@@ -5,9 +5,12 @@
     data-gant-unscheduled-item
     data-object-id="{{ row.object.pk }}"
     data-object-string="{{ row.object }}"
+    data-detail-url="{{ row.object.get_absolute_url }}"
     data-gant-can-edit-start="{{ row.can_edit_start|yesno:'true,false' }}"
     data-gant-can-edit-end="{{ row.can_edit_end|yesno:'true,false' }}"
     draggable="{% if row.can_edit_start and row.can_edit_end %}true{% else %}false{% endif %}"
+    tabindex="0"
+    bloomerp-component="gant-chart-sidebar-item"
 >
     <i class="fa fa-grip-vertical text-gray-400" aria-hidden="true"></i>
     <span class="truncate">{{ row.object }}</span>

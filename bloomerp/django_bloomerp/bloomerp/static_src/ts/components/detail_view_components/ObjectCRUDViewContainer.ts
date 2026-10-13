@@ -21,9 +21,14 @@ type PendingCellChange = {
     previousSnapshot: DetailViewCellSnapshot;
     snapshot: DetailViewCellSnapshot;
 };
+type PendingAttachmentChange = { restore: () => void };
+type PendingChange = PendingCellChange | PendingAttachmentChange;
+
 // TODO: This can be refactored even more
 
 export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContainer<DetailViewCell> {
+    private attachmentsDirty: boolean = false;
+    private attachmentLifecycle: AbortController | null = null;
     private currentItem: DetailViewCell | null = null;
     private focusInHandler: ((event: FocusEvent) => void) | null = null;
     private nonRequiredFieldsVisible: boolean = true;
@@ -36,7 +41,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
     private btnContainer: HTMLElement | null = null;
     private backBtn: HTMLButtonElement | null = null;
     private resetBtn: HTMLButtonElement | null = null;
-    private pendingChanges: PendingCellChange[] = [];
+    private pendingChanges: PendingChange[] = [];
     private detailViewCellChangeHandler: ((event: Event) => void) | null = null;
     private backButtonHandler: (() => void) | null = null;
     private resetButtonHandler: (() => void) | null = null;
@@ -61,8 +66,11 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.currentItem = item;
     }
 
+    /** Connect field history, manual attachment history, and layout behavior for this form. */
     public override initialize(): void {
         super.initialize();
+        this.attachmentLifecycle = new AbortController();
+        this.element.closest("form")?.addEventListener("bloomerp:attachments-changed", this.onAttachmentsChanged, { signal: this.attachmentLifecycle.signal });
         this.items.forEach((item) => {
             if (!item.element || item.element.hasAttribute("tabindex")) return;
             item.element.setAttribute("tabindex", "0");
@@ -140,7 +148,9 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
 
     }
 
+    /** Release field history, attachment listeners, and layout resources. */
     public override destroy(): void {
+        this.attachmentLifecycle?.abort();
         this.behaviorRuntime?.destroy();
         this.behaviorRuntime = null;
         super.destroy();
@@ -315,8 +325,17 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.resetBtn = this.element.querySelector<HTMLButtonElement>("#object-crud-container-reset-button");
     }
 
+    /** Keep manual attachment changes visible in the current form's save controls. */
+    private onAttachmentsChanged = (event: Event): void => {
+        const detail = (event as CustomEvent<{ dirty: boolean; undo?: () => void }>).detail;
+        this.attachmentsDirty = detail.dirty;
+        if (detail.undo) this.pendingChanges.push({ restore: detail.undo });
+        this.syncChangeButtonsVisibility();
+    };
+
+    /** Refresh save controls when either fields or manual attachments have changed. */
     private syncChangeButtonsVisibility(): void {
-        this.btnContainer?.classList.toggle("hidden", this.pendingChanges.length === 0);
+        this.btnContainer?.classList.toggle("hidden", this.pendingChanges.length === 0 && !this.attachmentsDirty);
     }
 
     /** Cancel outstanding evaluations before restoring the previous widget snapshot. */
@@ -325,6 +344,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         const lastChange = this.pendingChanges.pop();
         if (!lastChange) return;
 
+        if ("restore" in lastChange) { lastChange.restore(); this.syncChangeButtonsVisibility(); return; }
         lastChange.cell.restoreChange(lastChange.target, lastChange.previousValue, lastChange.previousSnapshot);
         console.log("ObjectCRUDViewContainer undo change:", {
             cell: lastChange.cell,
@@ -344,9 +364,10 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         const changesToReset = [...this.pendingChanges].reverse();
         this.pendingChanges = [];
 
-        changesToReset.forEach((change) => {
-            change.cell.restoreChange(change.target, change.previousValue, change.previousSnapshot);
-        });
+        for (const change of changesToReset) {
+            if ("restore" in change) change.restore();
+            else change.cell.restoreChange(change.target, change.previousValue, change.previousSnapshot);
+        }
 
         console.log("ObjectCRUDViewContainer reset changes:", {
             resetCount: changesToReset.length,

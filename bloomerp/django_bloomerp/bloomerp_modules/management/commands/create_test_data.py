@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import Any
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
-from django.utils import timezone
 from django.contrib.auth.hashers import make_password
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
 
 FIRST_NAMES = [
     "Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie", "Cameron",
@@ -84,7 +86,8 @@ class Command(BaseCommand):
             ),
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
+        """Create linked sample records and a runnable CRM qualification workflow."""
         force = options.get("force", False)
         employee_multiplier = max(options.get("employee_multiplier", 1.0), 0.0)
 
@@ -93,8 +96,91 @@ class Command(BaseCommand):
         self._create_user_data(force)
         self._create_crm_data(force)
         self._create_finance_data(force)
+        self._create_demo_workflow()
 
         self.stdout.write(self.style.SUCCESS("Test data creation complete."))
+
+    def _create_demo_workflow(self) -> None:
+        """Seed one manual lead qualification flow and a successful example run."""
+        from bloomerp.automation.run import run_workflow
+        from bloomerp.models.automation.workflow import Workflow
+        from bloomerp.models.automation.workflow_node import WorkflowNode
+        from bloomerp.models.automation.workflow_run import WorkflowRunStatus
+
+        with transaction.atomic():
+            name = "Demo: Qualify a CRM lead"
+            if Workflow.objects.filter(name=name).exists():
+                return
+
+            workflow = Workflow.objects.create(
+                name=name,
+                active=True,
+                run_asynchronously=False,
+                enable_logging=True,
+            )
+            trigger = WorkflowNode.objects.create(
+                workflow=workflow,
+                name="New lead details",
+                type="TRIGGER",
+                sub_type="HUMAN_TRIGGER",
+                parameters={
+                    "data": {
+                        "lead_name": "Acme Expansion",
+                        "account_name": "Acme Manufacturing",
+                        "estimated_value": 25000,
+                    }
+                },
+                pos_x=80,
+                pos_y=180,
+            )
+            decision = WorkflowNode.objects.create(
+                workflow=workflow,
+                name="Is the lead worth 20,000 or more?",
+                type="FLOW",
+                sub_type="IF_CONDITION",
+                parameters={
+                    "field": "estimated_value",
+                    "operator": "greater_than_or_equal",
+                    "value": "20000",
+                },
+                pos_x=360,
+                pos_y=180,
+            )
+            high_priority = WorkflowNode.objects.create(
+                workflow=workflow,
+                name="Prepare discovery call",
+                type="ACTION",
+                sub_type="ENRICH_DATA",
+                parameters={
+                    "data": {
+                        "priority": "high",
+                        "next_step": "Schedule a discovery call",
+                    }
+                },
+                pos_x=680,
+                pos_y=80,
+            )
+            standard_priority = WorkflowNode.objects.create(
+                workflow=workflow,
+                name="Prepare qualification email",
+                type="ACTION",
+                sub_type="ENRICH_DATA",
+                parameters={
+                    "data": {
+                        "priority": "normal",
+                        "next_step": "Send a qualification email",
+                    }
+                },
+                pos_x=680,
+                pos_y=280,
+            )
+            workflow.connect_nodes(trigger, decision)
+            workflow.connect_nodes(decision, high_priority, output_port="true")
+            workflow.connect_nodes(decision, standard_priority, output_port="false")
+
+            example_run = run_workflow(workflow, {})
+            if example_run is None or example_run.status != WorkflowRunStatus.SUCCEEDED:
+                raise RuntimeError("The demo lead qualification workflow did not complete")
 
     def _get_model(self, model_name: str):
         try:
@@ -2200,7 +2286,6 @@ class Command(BaseCommand):
                     is_folder=False,
                     position=i
                 )
-
 
 
 

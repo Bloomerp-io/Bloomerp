@@ -1,0 +1,62 @@
+{% load i18n %}
+{% if kind == "pdf" %}
+    <div class="h-full min-h-0 bg-slate-900">
+        <iframe src="{{ media_url }}" class="block h-full w-full border-0" title="{{ file.name }}"></iframe>
+    </div>
+{% elif kind == "image" %}
+    <div class="flex h-full min-h-0 items-center justify-center bg-gray-50 p-6">
+        <img src="{{ media_url }}" alt="{{ file.name }}" class="max-h-full max-w-full rounded-lg object-contain shadow-lg">
+    </div>
+{% elif kind == "video" %}
+    <div class="flex h-full min-h-0 items-center justify-center bg-slate-950">
+        <video src="{{ media_url }}" controls playsinline preload="metadata" aria-label="{{ file.name }}" class="max-h-full w-full">
+            <a href="{{ download_url }}" download>{% translate "Download video" %}</a>
+        </video>
+    </div>
+{% elif kind == "audio" %}
+    <div class="flex h-full min-h-0 flex-col items-center justify-center gap-4 p-6">
+        <p class="text-sm font-medium">{{ file.name }}</p>
+        <audio src="{{ media_url }}" controls preload="metadata" aria-label="{{ file.name }}" class="w-full">
+            <a href="{{ download_url }}" download>{% translate "Download audio" %}</a>
+        </audio>
+    </div>
+{% elif kind == "sheets" %}
+    <div class="h-full overflow-auto p-4">
+        {% if truncated %}<p class="mb-3 text-sm">{% translate "This is a partial preview. Download the file to see all data." %}</p>{% endif %}
+        {% for sheet in sheets %}
+            <details class="mb-4"{% if forloop.first %} open{% endif %}>
+                <summary class="cursor-pointer py-2 font-semibold">{{ sheet.name }}</summary>
+                {% if sheet.truncated %}<p class="mb-2 text-sm">{% translate "This is a partial preview. Download the file to see all data." %}</p>{% endif %}
+                <div class="overflow-auto rounded-xl border border-gray-200">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50"><tr>
+                            <th class="border-b border-gray-200 px-3 py-2" scope="col">#</th>
+                            {% for column in sheet.columns %}<th class="border-b border-gray-200 px-3 py-2" scope="col">{{ column }}</th>{% endfor %}
+                        </tr></thead>
+                        <tbody>
+                            {% for row in sheet.rows %}<tr>
+                                <th class="border-b border-gray-200 px-3 py-2" scope="row">{{ forloop.counter }}</th>
+                                {% for cell in row %}<td class="whitespace-pre-wrap border-b border-gray-200 px-3 py-2">{{ cell }}</td>{% endfor %}
+                            </tr>{% empty %}<tr><td class="px-3 py-2">{% translate "Empty sheet" %}</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        {% endfor %}
+        <a href="{{ download_url }}" class="btn btn-secondary btn-sm" download>{% translate "Download" %}</a>
+    </div>
+{% elif kind == "text" %}
+    <div class="h-full overflow-auto p-4">
+        {% if truncated %}<p class="mb-3 text-sm">{% translate "This is a partial preview. Download the file to see all data." %}</p>{% endif %}
+        <pre class="whitespace-pre-wrap break-words text-sm">{{ text }}</pre>
+    </div>
+{% else %}
+    <div class="flex h-full min-h-0 items-center justify-center bg-slate-50 px-8 text-center">
+        <div class="max-w-sm">
+            <i class="fa-regular fa-file text-2xl" aria-hidden="true"></i>
+            <h4 class="mt-4 text-sm font-semibold">{% translate "Preview unavailable" %}</h4>
+            <p class="mt-2 text-sm">{% blocktranslate with name=file.name %}{{ name }} cannot be previewed here.{% endblocktranslate %}</p>
+            <a href="{{ download_url }}" class="btn btn-primary btn-sm mt-4" download>{% translate "Download" %}</a>
+        </div>
+    </div>
+{% endif %}

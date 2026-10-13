@@ -1,8 +1,15 @@
 """Filter references may only depend on data the user is allowed to inspect."""
+import json
+from functools import partial
+from unittest.mock import patch
+
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
-from bloomerp.filters.definition import Filter, FilterCondition
+from bloomerp.filters.definition import Filter, FilterCondition, Filters
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.filters.resolver import FilterFieldResolver
 from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager, UserPolicyManager
@@ -116,3 +123,118 @@ class TestFilterAuthorization(BaseBloomerpTestCaseWithModels):
         self.assertFalse(manager.can_execute_filters(self.CustomerModel, self.filters("age")))
         with self.assertRaises(ValidationError):
             manager.can_execute_filters(self.CustomerModel, self.filters("missing_field"))
+
+
+    def test_manager_recovery_validates_each_condition_before_cleaning(self) -> None:
+        """Forbidden known fields never reach compilation or value cleaning, regardless of lookup."""
+        self.grant(self.CustomerModel, ["first_name"])
+        manager = ModelFilterManager(self.CustomerModel)
+        validate = partial(UserPolicyManager(self.normal_user).validate_filters, self.CustomerModel)
+        for lookup in ("equals", "not_registered", "contains"):
+            with self.subTest(lookup=lookup):
+                args = {"filter": json.dumps([{
+                    "connector": "OR", "conditions": [
+                        {"field_path": "age", "lookup_id": lookup, "value": "invalid"},
+                    ],
+                }])}
+                with patch("bloomerp.filters.manager.compile_condition") as compile_condition, patch(
+                    "bloomerp.filters.compiler.clean_lookup_value",
+                ) as clean_value:
+                    self.assertEqual(manager.parse(args, recover=True, validate_filters=validate), [])
+                    compile_condition.assert_not_called()
+                    clean_value.assert_not_called()
+                    with self.assertRaises(PermissionDenied):
+                        manager.filter(args, self.CustomerModel.objects.all(), validate_filters=validate)
+                    compile_condition.assert_not_called()
+                    clean_value.assert_not_called()
+
+    def test_manager_recovery_drops_unknown_paths_before_compilation(self) -> None:
+        """An authorization callback's invalid path error is recovered before compiler execution."""
+        self.grant(self.CustomerModel, ["first_name"])
+        args = {"filter": json.dumps([{
+            "connector": "AND", "conditions": [
+                {"field_path": "missing_field", "lookup_id": "equals", "value": "value"},
+            ],
+        }])}
+        validate = partial(UserPolicyManager(self.normal_user).validate_filters, self.CustomerModel)
+        with patch("bloomerp.filters.manager.compile_condition") as compile_condition, patch(
+            "bloomerp.filters.compiler.clean_lookup_value",
+        ) as clean_value:
+            self.assertEqual(ModelFilterManager(self.CustomerModel).parse(args, recover=True, validate_filters=validate), [])
+            compile_condition.assert_not_called()
+            clean_value.assert_not_called()
+
+    def test_manager_recovery_preserves_allowed_or_siblings_of_nested_denials(self) -> None:
+        """Recover nested permission failures independently while retaining the parent's OR connector."""
+        self.grant(self.CustomerModel, ["first_name", "country"])
+        self.grant(self.CountryModel, ["name", "planet"])
+        allowed = self.CustomerModel.objects.first()
+        condition = FilterCondition(field_path="first_name", lookup_id="equals", value=allowed.first_name)
+        args = {"filter": json.dumps([{
+            "connector": "OR", "conditions": [
+                condition.model_dump(),
+                {"field_path": "country__planet__name", "lookup_id": "equals", "value": "Earth"},
+            ],
+        }])}
+        validate = partial(UserPolicyManager(self.normal_user).validate_filters, self.CustomerModel)
+        manager = ModelFilterManager(self.CustomerModel)
+        groups = manager.parse(args, recover=True, validate_filters=validate)
+        self.assertEqual(groups, [Filter(connector="OR", conditions=[condition])])
+        result = manager.filter(args, self.CustomerModel.objects.all(), recover=True, validate_filters=validate)
+        self.assertEqual(set(result.values_list("pk", flat=True)), {allowed.pk})
+        with self.assertRaises(PermissionDenied):
+            manager.filter(args, self.CustomerModel.objects.all(), validate_filters=validate)
+
+    def test_manager_recovery_denied_relation_does_not_query_related_data(self) -> None:
+        """Authorize relation dependencies before model-choice cleaning can query related rows."""
+        self.grant(self.CustomerModel, ["first_name"])
+        country_id = self.CountryModel.objects.first().pk
+        validate = partial(UserPolicyManager(self.normal_user).validate_filters, self.CustomerModel)
+        manager = ModelFilterManager(self.CustomerModel)
+        with CaptureQueriesContext(connection) as queries, patch(
+            "bloomerp.filters.compiler.clean_lookup_value",
+        ) as clean_value:
+            self.assertEqual(manager.parse({"country": str(country_id)}, recover=True, validate_filters=validate), [])
+            clean_value.assert_not_called()
+        table = connection.ops.quote_name(self.CountryModel._meta.db_table)
+        self.assertFalse(any(f"FROM {table}" in query["sql"] for query in queries.captured_queries))
+
+    def test_manager_recovery_allows_authorized_relation_and_preserves_row_scope(self) -> None:
+        """Authorized relation filters work without replacing the caller's row-restricted queryset."""
+        self.grant(self.CustomerModel, ["country"])
+        self.grant(self.CountryModel, ["name"])
+        country = self.CountryModel.objects.first()
+        entries = list(self.CustomerModel.objects.order_by("pk")[:2])
+        for entry in entries:
+            entry.country = country
+            entry.save()
+        restricted = self.CustomerModel.objects.filter(pk=entries[0].pk)
+        validate = partial(UserPolicyManager(self.normal_user).validate_filters, self.CustomerModel)
+        manager = ModelFilterManager(self.CustomerModel)
+        args = {"country__name": country.name, "missing_field": "ignored"}
+        result = manager.filter(args, restricted, recover=True, validate_filters=validate)
+        self.assertEqual(set(result.values_list("pk", flat=True)), {entries[0].pk})
+
+    def test_manager_callback_receives_single_conditions_with_original_values(self) -> None:
+        """Run dependency authorization on each condition without mutating its group or raw value."""
+        self.grant(self.CustomerModel, ["first_name", "age"])
+        policy_manager = UserPolicyManager(self.normal_user)
+        received: list[Filters] = []
+
+        def validate(groups: Filters) -> None:
+            """Record the callback contract and delegate real dependency authorization."""
+            self.assertEqual(len(groups), 1)
+            self.assertEqual(len(groups[0].conditions), 1)
+            received.append(groups)
+            policy_manager.validate_filters(self.CustomerModel, groups)
+
+        conditions = [
+            FilterCondition(field_path="age", lookup_id="equals", value="25"),
+            FilterCondition(field_path="first_name", lookup_id="equals", value="David"),
+        ]
+        original = Filter(connector="OR", conditions=conditions)
+        args = {"filter": f"[{original.model_dump_json()}]"}
+        groups = ModelFilterManager(self.CustomerModel).parse(args, recover=True, validate_filters=validate)
+        self.assertEqual(groups, [original])
+        self.assertEqual([group[0].conditions[0] for group in received], conditions)
+        self.assertEqual(conditions[0].value, "25")

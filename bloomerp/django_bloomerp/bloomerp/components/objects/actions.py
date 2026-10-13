@@ -1,4 +1,4 @@
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from bloomerp.models.definition import ObjectAction, get_model_config
 from bloomerp.router import router
 from bloomerp.utils.models import get_object_model_and_content_type_or_404
@@ -15,7 +15,7 @@ def actions_execute(
     content_type_id:int, 
     object_id:str, 
     action_id:str,
-    ):
+    ) -> HttpResponse | StreamingHttpResponse:
     """Executes the action
 
     Args:
@@ -42,17 +42,18 @@ def actions_execute(
         response = action.execution_func(request, object)
         
         if not response:
-            return render_message(
+            response = render_message(
                 request=request,
                 message=action.success_message or "Action executed successfully",
                 type="success",
             )
-        return response
     
     except Exception as e:
-        return render_message(
+        response = render_message(
             request,
             f"An error occurred: {e}",
             "error"
         )
+    response["HX-Retarget"] = action.target
+    return response
     

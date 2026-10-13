@@ -11,6 +11,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 
+from bloomerp.dataviews.table.renderer import TableDataviewRenderer
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
@@ -23,6 +24,25 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
 
     template_name = "cotton/features/dataviews/gant.html"
     reserved_query_params = {"gant_page", "gant_unscheduled_page"}
+
+    @classmethod
+    def apply_sorting(
+        cls,
+        queryset: QuerySet,
+        request: HttpRequest,
+        dataview_fields: Any,
+        options: object | None = None,
+    ) -> tuple[QuerySet, dict[str, Any]]:
+        """Apply the configured order only for a concrete field visible to the user."""
+        ordering = getattr(options, "ordering", None)
+        direction = getattr(options, "ordering_direction", "asc") or "asc"
+        sortable = TableDataviewRenderer._get_sortable_fields_by_name(
+            queryset, dataview_fields,
+        )
+        if ordering not in sortable or direction not in {"asc", "desc"}:
+            return queryset, {}
+        expression = ordering if direction == "asc" else f"-{ordering}"
+        return queryset.order_by(expression, "pk"), {}
 
     @classmethod
     def paginate_queryset(
@@ -49,7 +69,9 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
                     f"{start_field.field}__isnull": False,
                     f"{end_field.field}__isnull": False,
                 },
-            ).order_by(start_field.field, "pk")
+            )
+            if not queryset.query.order_by:
+                queryset = queryset.order_by(start_field.field, "pk")
 
         page_size = int(getattr(options, "page_size", 25))
         page_obj = cls.paginate_object_list(
@@ -147,7 +169,9 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
         queryset = self.state.queryset.filter(
             Q(**{f"{start_field.field}__isnull": True})
             | Q(**{f"{end_field.field}__isnull": True}),
-        ).order_by("pk")
+        )
+        if not queryset.query.order_by:
+            queryset = queryset.order_by("pk")
         return self.paginate_object_list(
             queryset,
             int(getattr(self.options, "page_size", 25)),

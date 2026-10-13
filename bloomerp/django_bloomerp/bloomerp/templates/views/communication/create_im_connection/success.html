@@ -1,0 +1,7 @@
+{% load i18n %}
+<div id="wizard-root" class="space-y-4" role="status">
+    <h2 class="text-xl font-semibold">{% translate 'Connection created' %}</h2>
+    <p>{% blocktranslate %}{{ connection_name }} was saved as a draft.{% endblocktranslate %}</p>
+    <p>{% translate 'Provider verification and messaging are not enabled yet.' %}</p>
+    <a class="btn btn-primary" href="{{ request.path }}">{% translate 'Create another connection' %}</a>
+</div>

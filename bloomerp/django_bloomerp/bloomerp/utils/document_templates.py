@@ -1,5 +1,8 @@
 from bloomerp.models.document_templates import DocumentTemplate
-from bloomerp.models.files import File
+from bloomerp.models.files import FileNode, FileReference
+from bloomerp.files.definition import DocumentTemplateFileMetadata, FileNodeMetaData, FileSignatureMetadata
+from django.db import transaction
+from typing import Any
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.utils.pdf import generate_pdf
 from django.db.models import Model
@@ -7,25 +10,24 @@ from django.core.files.base import ContentFile
 from django.template import engines
 from bloomerp.utils.pdf import PdfHandler
 
-from django.contrib.auth import get_user_model
-User = get_user_model()
 
 class DocumentController:
     '''
     Controller class for everything related to documents.
     '''
 
-    def __init__(self, document_template : DocumentTemplate=None, user : AbstractBloomerpUser = None) -> None:
+    def __init__(self, document_template: DocumentTemplate | None = None, user: AbstractBloomerpUser | None = None) -> None:
+        """Bind document generation and signing to a template and optional actor."""
         self.document_template = document_template
         self.user = user
 
     def create_document(
             self,
-            document_template:DocumentTemplate, 
-            instance:Model, 
-            free_variables: dict=None,
-            persist:bool=True
-        ):
+            document_template:DocumentTemplate,
+            instance: Model | None,
+            free_variables: dict[str, Any] | None = None,
+            persist: bool = True,
+        ) -> FileNode | ContentFile:
         ''' Creates a document for a particular template, using the model variable and the free variables:
             - Template : The document template
             - Instance : The model instance
@@ -36,19 +38,21 @@ class DocumentController:
 
         if instance:
             data['object'] = instance
-    	
+
         data["vars"] = free_variables or {}
 
         #Create metadata variable
-        meta_data = {}
-        meta_data['document_template'] = document_template.pk
+        meta_data = FileNodeMetaData(
+            document_template=DocumentTemplateFileMetadata(
+                id=document_template.pk, name=document_template.name,
+            ),
+            signature=FileSignatureMetadata(signed=False),
+        )
 
-        meta_data['signed'] = False
-        
-        #Format HTML       
+        #Format HTML
         django_engine = engines["django"]
         temp = django_engine.from_string("{% load document_template_tags %}" + document_template.template)
-        formatted_html = temp.render(data)        
+        formatted_html = temp.render(data)
 
         styling = document_template.get_combined_styling()
 
@@ -94,39 +98,23 @@ class DocumentController:
         )
 
         content_file = ContentFile(document_bytes)
-        
+
         if persist:
-            file_object = File()
-        
-            #Save the file
-            file_object.file.save(document_template.name + ' ' + str(instance) + '.pdf', content_file)
+            from bloomerp.services.document_services import DocumentTemplateService
 
-            file_object.name = document_template.name + ' ' + str(instance)
-            file_object.content_object = instance
-
-            # Add created by
-            file_object.created_by = self.user
-            file_object.updated_by = self.user
-            
-
-            #Save metadata
-            file_object.meta = meta_data
-
-            file_object.save()
-
-            if document_template.save_to_folder:
-                file_object.folder = document_template.save_to_folder
-                file_object.save(update_fields=["folder"])
-                
-
+            file_object = DocumentTemplateService(document_template, self.user).create_file(
+                document_bytes, objects=[instance] if instance is not None else [],
+                filename=f"{document_template.name} {instance}",
+            )
+            file_object.meta.update(meta_data.model_dump(mode="json", exclude_none=True))
+            file_object.save(update_fields=["meta"])
             return file_object
-        else:
-            return content_file
-        
+        return content_file
+
     def create_preview_document(
             self,
             document_template:DocumentTemplate,
-            data:dict
+            data: dict[str, Any]
         ) -> ContentFile:
         ''' Creates a preview document for a particular document_template, using the model variable and the free variables:
             - Template : The document document_template
@@ -137,7 +125,7 @@ class DocumentController:
         data.setdefault("vars", {})
         temp = django_engine.from_string("{% load document_template_tags %}" + document_template.template)
         formatted_html = temp.render(data)
-        
+
 
         styling = document_template.get_combined_styling()
 
@@ -187,28 +175,22 @@ class DocumentController:
         return content_file
 
     def sign_pdf(
-            self, 
-            file : File, 
+            self,
+            file: FileNode,
             signature_bytes : bytes
-            ) -> File:
+            ) -> FileNode:
         '''
         Function that will sign a pdf file, using signature bytes.
         '''
-        file_path = file.file.path
+        file_path = file.content.path
 
-        # Create metadata variable
-        meta_data = {}
-
-        # If a user is present, add the user to the metadata
-        if self.user:
-            meta_data['user'] = self.user.pk
-
-        # Check if the file object has a document template
-        if 'document_template' in file.meta:
-            meta_data['document_template'] = file.meta['document_template']
-
-        # Add signed equals to true
-        meta_data['signed'] = True
+        # Preserve template provenance and type the signature information.
+        meta_data = FileNodeMetaData(
+            document_template=file.metadata.document_template,
+            signature=FileSignatureMetadata(
+                signed=True, user_id=self.user.pk if self.user else None,
+            ),
+        )
 
         # Create a PdfHandler object
         handler = PdfHandler(file_path)
@@ -221,23 +203,28 @@ class DocumentController:
 
         # Create a content file
         content_file = ContentFile(document_bytes)
-        
-        # Create a file object
-        signed_file_obj = File()
 
-        #Save the file
-        signed_file_obj.file.save(file.name + '- signed' '.pdf', content_file)
-
-        signed_file_obj.content_object = file.content_object
-
-        signed_file_obj.meta = meta_data
-        signed_file_obj.name = file.name + '- signed.pdf' 
-        signed_file_obj.save()
-        
-        # Update the original file with the signed file id
-        file.meta = {'signed_file_id': str(signed_file_obj.pk)}
-        file.save()
-
+        signed_file_obj = FileNode(
+            name=f"{file.name} - signed.pdf", kind="FILE",
+            content=ContentFile(document_bytes, name=f"{file.name} - signed.pdf"),
+            meta=meta_data.model_dump(mode="json", exclude_none=True),
+            created_by=self.user, updated_by=self.user,
+        )
+        try:
+            with transaction.atomic():
+                signed_file_obj.save()
+                for reference in file.references.filter(application_field__isnull=True):
+                    FileReference.objects.create(
+                        file=signed_file_obj, content_type=reference.content_type,
+                        object_id=reference.object_id,
+                        created_by=self.user, updated_by=self.user,
+                    )
+                file.meta["signature"] = FileSignatureMetadata(
+                    signed_file_id=signed_file_obj.pk,
+                ).model_dump(mode="json", exclude_none=True)
+                file.save(update_fields=["meta"])
+        except Exception:
+            if signed_file_obj.content and signed_file_obj.content._committed:
+                signed_file_obj.content.delete(save=False)
+            raise
         return signed_file_obj
-        
-

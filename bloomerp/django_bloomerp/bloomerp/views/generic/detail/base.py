@@ -132,6 +132,9 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         context["tabs"] = [
             item for item in context["tab_items"] if not item["is_folder"]
         ]
+        from bloomerp.services.email_composer_services import email_fields_for_object
+
+        context["object_email_fields"] = email_fields_for_object(self.request.user, self.object)
         context["object_actions"] = self.get_object_actions()
         return context
 

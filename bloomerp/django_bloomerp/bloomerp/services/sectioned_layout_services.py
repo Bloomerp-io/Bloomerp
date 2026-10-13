@@ -244,7 +244,11 @@ def resolve_detail_layout_rows(
 
 
 def get_layout_widget_attrs(*, widget: forms.Widget) -> dict[str, str]:
-    widget_choices = getattr(widget, "get_choices", lambda *_args, **_kwargs: getattr(widget, "choices", []))()
+    """Style layout widgets while preserving compact checkbox controls."""
+    if isinstance(widget, forms.CheckboxInput):
+        return {"class": "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"}
+    choices_getter = getattr(widget, "get_choices", None)
+    widget_choices = choices_getter() if choices_getter else getattr(widget, "choices", [])
     is_select_widget = isinstance(widget, forms.Select) or bool(widget_choices)
     return {
         "class": "select w-full" if is_select_widget else "input w-full",
@@ -294,7 +298,7 @@ def build_layout_field_context(
     }
 
 
-def get_available_layout_fields(*, content_type: ContentType, user, layout_kind: str) -> list[dict[str, Any]]:
+def get_available_layout_fields(*, content_type: ContentType, user: Any, layout_kind: str) -> list[dict[str, Any]]:
     """
     Returns the available fields for a particular content type
     and user.
@@ -305,7 +309,10 @@ def get_available_layout_fields(*, content_type: ContentType, user, layout_kind:
     permission_prefix = "add" if layout_kind == "create" else "view"
     permission_str = f"{permission_prefix}_{model._meta.model_name}"
 
-    fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
+    # Avatar and labels are managed through Attach, not the layout picker.
+    fields = ApplicationField.objects.filter(content_type=content_type).exclude(
+        field__in=["object_labels", "avatar"]
+    ).order_by("field")
     available: list[dict[str, Any]] = []
     for field in fields:
         if not permission_manager.has_field_permission(field, permission_str):
@@ -369,14 +376,12 @@ def resolve_field(
 
 
 def create_default_layout(
-    model: Type[Model],
+    model: type[Model],
     application_fields: QuerySet[ApplicationField] | list[ApplicationField] | None = None,
     *,
     layout: FieldLayout | None = None,
 ) -> FieldLayout:
-    """
-    Creates a default field layout based on the given model.
-    """
+    """Resolve configured layouts or generate details without header attachment fields."""
     content_type = ContentType.objects.get_for_model(model)
     if application_fields is None:
         application_fields = ApplicationField.objects.filter(content_type=content_type).order_by("field")
@@ -433,7 +438,11 @@ def create_default_layout(
                 "created_by",
                 "datetime_created",
                 "datetime_updated",
-                "comments"
+                "comments",
+                "files",
+                "avatar",
+                "labels",
+                "object_labels",
             ]
         ]
         return FieldLayout(

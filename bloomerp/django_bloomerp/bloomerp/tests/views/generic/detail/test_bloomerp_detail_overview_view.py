@@ -5,6 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.urls import reverse
 
+from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models import (
     ApplicationField,
@@ -26,6 +27,8 @@ from bloomerp.models.users.user import DetailSidebarViewPreference
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleContent
+from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base.request_test_case_mixin import (
     ExpectedResult,
     ModelRequestScenario,
@@ -56,6 +59,32 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Return the permission, layout, persistence, and activity scenarios."""
         customer_kwargs = {"pk": self.customer.pk}
         return [
+            *self.get_attachment_scenarios(),
+            *self.get_avatar_scenarios(),
+            ModelRequestScenario(
+                name="Record editors can attach using an inherited layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.prepare_editor_shared_layout,
+                expected=ExpectedResult(response_validators=self.shared_attachment_controls),
+            ),
+            ModelRequestScenario(
+                name="View-only users cannot attach even when they own the layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.grant_names_only,
+                expected=ExpectedResult(response_validators=self.no_attachment_controls),
+            ),
+            ModelRequestScenario(
+                name="Change permission for other records does not enable attachments",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs=customer_kwargs,
+                prepare=self.grant_other_record_change,
+                expected=ExpectedResult(response_validators=self.no_attachment_controls),
+            ),
             ModelRequestScenario(
                 name="Object overview requires global view permission",
                 description="UC: A row policy matches but global view access is absent.\nExpected Result: The detail page returns 403.",
@@ -84,8 +113,8 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 expected=ExpectedResult(response_validators=self.age_is_disabled),
             ),
             ModelRequestScenario(
-                name="Generated layouts omit system fields but keep files editable",
-                description="UC: An administrator opens an object using the generated default layout.\nExpected Result: Internal system fields are omitted while files stay visible and enabled.",
+                name="Generated detail layouts omit header attachment fields and enable Attach",
+                description="UC: An administrator opens a generated detail layout.\nExpected Result: System and header attachment fields are omitted while Attach is enabled.",
                 model=self.CustomerModel,
                 user=self.admin_user,
                 view_kwargs=customer_kwargs,
@@ -232,6 +261,70 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             ),
         ]
 
+    def prepare_editor_shared_layout(self, scenario: ModelRequestScenario) -> None:
+        """Give a record editor a shared layout that they cannot edit."""
+        self.grant_first_name_change(scenario)
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        source = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            name="Shared editor layout",
+            initial_default=True,
+            layout={"rows": [{"columns": 1, "items": [
+                {"id": self.fields_by_name["first_name"].pk}
+            ]}]},
+        )
+        source.shared_with_users.add(self.normal_user)
+
+    def grant_other_record_change(self, scenario: ModelRequestScenario) -> None:
+        """Allow viewing this record while change access matches only other records."""
+        PolicyManager.create_policy(
+            self.CustomerModel,
+            access_rule=AccessRule(
+                row_permissions=[
+                    RowPolicyRuleContent(
+                        connector="AND", conditions=[], permissions=[BloomerpPermission.VIEW]
+                    ),
+                    RowPolicyRuleContent(
+                        connector="AND",
+                        conditions=[FilterCondition(field_path="age", lookup_id="equals", value=99)],
+                        permissions=[BloomerpPermission.CHANGE],
+                    ),
+                ],
+                field_permissions={
+                    "first_name": [BloomerpPermission.VIEW, BloomerpPermission.CHANGE],
+                },
+            ),
+        ).assign_user(self.normal_user)
+
+    def shared_attachment_controls(self, response: HttpResponse) -> bool:
+        """Check record editors get attachment controls independently of layout ownership."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        host = soup.find(attrs={"bloomerp-component": "reference-attachments"})
+        return (
+            not response.context["can_change"]
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
+            and soup.find(attrs={"name": "object_references"}) is not None
+            and host is not None
+            and host.get("data-can-change") == "true"
+        )
+
+    def no_attachment_controls(self, response: HttpResponse) -> bool:
+        """Check layout ownership cannot grant attachment edits on a read-only record."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        host = soup.find(attrs={"bloomerp-component": "reference-attachments"})
+        return (
+            response.context["can_change"]
+            and not response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is None
+            and soup.find(attrs={"name": "object_references"}) is None
+            and host is not None
+            and host.get("data-can-change") == "false"
+        )
+
     def get_endpoint(self, view_name, kwargs, setup=None):
         if view_name == "detail_layout_available_fields":
             preference_type = ContentType.objects.get_for_model(UserObjectLayoutPreference)
@@ -308,13 +401,15 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         field = soup.find(attrs={"name": "age"})
         return field is not None and field.has_attr("disabled")
 
-    def system_fields_have_correct_state(self, response):
+    def system_fields_have_correct_state(self, response: HttpResponse) -> bool:
+        """Check generated detail layouts offer attachments through the header controls."""
         items = {str(item.id): item for row in response.context["layout"].rows for item in row.items}
-        system_names = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments"}
+        system_names = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments", "files", "avatar"}
+        soup = BeautifulSoup(response.content, "html.parser")
         return (
             all(str(self.fields_by_name[name].pk) not in items for name in system_names)
-            and items[str(self.fields_by_name["files"].pk)].is_visible
-            and "disabled" not in items[str(self.fields_by_name["files"].pk)].content
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
         )
 
     def configure_layout_with_deleted_field(
@@ -456,3 +551,388 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         activity = ActivityLog.objects.filter(object_id=self.activity_todo.pk, content_type=ContentType.objects.get_for_model(Todo)).first()
         self.activity_todo.refresh_from_db()
         return activity is not None and activity.action == ActivityLogAction.CHANGE and activity.source == ActivityLogSource.DETAIL and self.activity_todo.title == "AFTER" and self.activity_todo.updated_by == self.admin_user
+
+    def get_attachment_scenarios(self) -> list[ModelRequestScenario]:
+        """Exercise single/multiple uploads and individual/all removals through detail POSTs."""
+        return [
+            ModelRequestScenario(
+                name="Generic uploads survive the simultaneous reference payload",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_generic_upload,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=lambda response: self.customer.files.filter(
+                        file__name="manual.txt", application_field__isnull=True,
+                        occurrence_id__isnull=True,
+                    ).count() == 1,
+                ),
+            ),
+            ModelRequestScenario(
+                name="Add one field attachment",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_single_upload,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.one_attachment_saved
+                ),
+            ),
+            ModelRequestScenario(
+                name="Add multiple field attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_multiple_uploads,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.two_attachments_saved
+                ),
+            ),
+            ModelRequestScenario(
+                name="Remove one of multiple field attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_remove_one,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.one_attachment_removed
+                ),
+            ),
+            ModelRequestScenario(
+                name="Remove all field attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_remove_all,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.all_attachments_removed
+                ),
+            ),
+            ModelRequestScenario(
+                name="Invalid upload preserves existing attachments",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_invalid_upload,
+                expected=ExpectedResult(
+                    status_code=200, response_validators=self.invalid_upload_is_safe
+                ),
+            ),
+            ModelRequestScenario(
+                name="Foreign attachment ID is rejected",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                method="POST",
+                prepare=self.prepare_foreign_attachment,
+                expected=ExpectedResult(
+                    status_code=200, response_validators=self.foreign_attachment_is_safe
+                ),
+            ),
+        ]
+
+    def configure_attachment_layout(
+        self, scenario: ModelRequestScenario, *, multiple: bool
+    ) -> None:
+        """Expose only the picture field in a selected detail layout."""
+        self.attachment_field = self.CustomerModel._meta.get_field("picture")
+        self.attachment_field.multiple = multiple
+        self.attachment_field.allowed_extensions = [".pdf"]
+        scenario.view_kwargs = {"pk": self.customer.pk}
+        scenario.data = {"picture__present": "1"}
+        UserObjectLayoutPreference.objects.filter(
+            user=self.admin_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            selected=True,
+            layout=FieldLayout(
+                rows=[
+                    LayoutRow(
+                        columns=1,
+                        items=[LayoutItem(id=self.fields_by_name["picture"].pk)],
+                    )
+                ]
+            ).model_dump(mode="json"),
+        )
+
+    def prepare_single_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a single PDF to an empty single-file field."""
+        self.configure_attachment_layout(scenario, multiple=False)
+        scenario.data["picture"] = SimpleUploadedFile("one.pdf", b"one")
+
+    def prepare_multiple_uploads(self, scenario: ModelRequestScenario) -> None:
+        """Submit two PDFs to a multiple-file field."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        scenario.data["picture"] = [
+            SimpleUploadedFile("one.pdf", b"one"),
+            SimpleUploadedFile("two.pdf", b"two"),
+        ]
+
+    def seed_attachments(self) -> None:
+        """Create two owned attachments and remember their IDs and storage names."""
+        from bloomerp.models.files.file_node import FileNode
+
+        self.attachment_field.on_save(
+            self.customer,
+            [],
+            [
+                SimpleUploadedFile("one.pdf", b"one"),
+                SimpleUploadedFile("two.pdf", b"two"),
+            ],
+        )
+        self.original_attachment_ids = [str(file.pk) for file in self.customer.picture]
+        self.original_files = list(
+            FileNode.objects.filter(pk__in=self.original_attachment_ids)
+        )
+
+    def prepare_remove_one(self, scenario: ModelRequestScenario) -> None:
+        """Retain one of two existing attachments."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        self.seed_attachments()
+        scenario.data["picture__retain"] = [self.original_attachment_ids[0]]
+
+    def prepare_remove_all(self, scenario: ModelRequestScenario) -> None:
+        """Submit the editor with neither existing attachment retained."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        self.seed_attachments()
+
+    def prepare_invalid_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a disallowed replacement while existing attachments remain."""
+        self.prepare_remove_all(scenario)
+        scenario.data["picture__retain"] = self.original_attachment_ids
+        scenario.data["picture"] = SimpleUploadedFile("bad.exe", b"bad")
+
+    def prepare_foreign_attachment(self, scenario: ModelRequestScenario) -> None:
+        """Attempt to retain a file belonging to a different object."""
+        self.configure_attachment_layout(scenario, multiple=True)
+        self.other_customer = self.create_customer("Other", "Person", 40)
+        self.attachment_field.on_save(
+            self.other_customer, [], [SimpleUploadedFile("private.pdf", b"private")]
+        )
+        scenario.data["picture__retain"] = [str(file.pk) for file in self.other_customer.picture]
+
+    def attachment_count_is(self, count: int) -> bool:
+        """Check IDs, object ownership, field metadata, and persisted storage."""
+
+        self.customer.refresh_from_db()
+        files = list(self.customer.picture)
+        return (
+            len(files) == count
+            and len(self.customer.picture) == count
+            and all(
+                file.references.filter(
+                    content_type_id=self.content_type.pk, object_id=str(self.customer.pk),
+                    application_field__field="picture", occurrence_id__isnull=True,
+                ).exists()
+                and file.content.storage.exists(file.content.name)
+                for file in files
+            )
+        )
+
+    def one_attachment_saved(self, _response: HttpResponse) -> bool:
+        """Check one upload was attached to the detail object."""
+        return self.attachment_count_is(1)
+
+    def two_attachments_saved(self, _response: HttpResponse) -> bool:
+        """Check both uploads were attached to the detail object."""
+        return self.attachment_count_is(2)
+
+    def one_attachment_removed(self, _response: HttpResponse) -> bool:
+        """Check removal unlinks only the deselected file and preserves its bytes."""
+        from bloomerp.models.files.file_node import FileNode
+
+        removed_id = self.original_attachment_ids[1]
+        removed = next(
+            file for file in self.original_files if str(file.pk) == removed_id
+        )
+        return (
+            self.attachment_count_is(1)
+            and FileNode.objects.filter(pk=removed_id).exists()
+            and not removed.references.exists()
+            and removed.content.storage.exists(removed.content.name)
+        )
+
+    def all_attachments_removed(self, _response: HttpResponse) -> bool:
+        """Check clearing the field removes all usages while preserving nodes and bytes."""
+        from bloomerp.models.files.file_node import FileNode
+
+        return (
+            self.attachment_count_is(0)
+            and FileNode.objects.filter(pk__in=self.original_attachment_ids).count() == 2
+            and all(
+                file.content.storage.exists(file.content.name) and not file.references.exists()
+                for file in self.original_files
+            )
+        )
+
+    def invalid_upload_is_safe(self, response: HttpResponse) -> bool:
+        """Check invalid input renders errors and preserves both stored attachments."""
+        return (
+            self.attachment_count_is(2)
+            and "Unsupported file extension" in response.content.decode()
+        )
+
+    def foreign_attachment_is_safe(self, response: HttpResponse) -> bool:
+        """Check a forged retained ID cannot attach or delete another object's file."""
+        from bloomerp.models.files.file_node import FileNode
+
+        return (
+            self.attachment_count_is(0)
+            and FileNode.objects.filter(pk__in=[file.pk for file in self.other_customer.picture]).count() == 1
+            and "Attachments do not belong" in response.content.decode()
+        )
+
+    def prepare_generic_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a generic files upload alongside the manual chip state."""
+        scenario.view_kwargs = {"pk": self.customer.pk}
+        scenario.data = {
+            "files": SimpleUploadedFile("manual.txt", b"manual"),
+            "object_references": '{"fields": {}, "manual": []}',
+        }
+        UserObjectLayoutPreference.objects.filter(
+            user=self.admin_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user, content_type=self.content_type, selected=True,
+            layout=FieldLayout(rows=[LayoutRow(columns=1, items=[
+                LayoutItem(id=self.fields_by_name["files"].pk)
+            ])]).model_dump(mode="json"),
+        )
+
+
+    def get_avatar_scenarios(self) -> list[ModelRequestScenario]:
+        """Cover hidden header uploads and avatar permissions on detail saves."""
+        return [
+            ModelRequestScenario(
+                name="Detail layout without avatar renders one hidden upload input",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_permitted_avatar_layout,
+                expected=ExpectedResult(response_validators=self.hidden_avatar_input_renders),
+            ),
+            ModelRequestScenario(
+                name="Detail save persists an avatar omitted from the layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_permitted_avatar_upload,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=self.updated_avatar_was_saved,
+                ),
+            ),
+            ModelRequestScenario(
+                name="Detail layout hides upload for a view-only avatar field",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_denied_avatar_layout,
+                expected=ExpectedResult(response_validators=self.avatar_input_is_absent),
+            ),
+            ModelRequestScenario(
+                name="Forged detail avatar upload cannot bypass field permissions",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                view_kwargs={"pk": self.customer.pk},
+                prepare=self.prepare_denied_avatar_upload,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("Permission denied for fields: avatar"),
+                    self.denied_avatar_is_unchanged,
+                ]),
+            ),
+        ]
+
+    def configure_avatar_free_layout(self) -> None:
+        """Select a customer detail layout with no avatar field item."""
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.normal_user,
+            content_type=self.content_type,
+            selected=True,
+            layout=FieldLayout(rows=[LayoutRow(columns=1, items=[
+                LayoutItem(id=self.fields_by_name["first_name"].pk)
+            ])]).model_dump(mode="json"),
+        )
+
+    def prepare_permitted_avatar_layout(self, _scenario: ModelRequestScenario) -> None:
+        """Grant avatar edits on this customer without exposing it in the layout."""
+        self.grant_policy(
+            view_fields=["first_name", "avatar"], change_fields=["first_name", "avatar"]
+        )
+        self.configure_avatar_free_layout()
+
+    def prepare_denied_avatar_layout(self, _scenario: ModelRequestScenario) -> None:
+        """Allow viewing the avatar while permitting edits only to the first name."""
+        self.grant_policy(
+            view_fields=["first_name", "avatar"], change_fields=["first_name"]
+        )
+        self.configure_avatar_free_layout()
+
+    def prepare_permitted_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Submit a valid hidden avatar upload alongside an unchanged customer name."""
+        self.prepare_permitted_avatar_layout(scenario)
+        self.set_avatar_upload_data(scenario)
+
+    def prepare_denied_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Attempt to overwrite an existing avatar without change-field permission."""
+        self.prepare_denied_avatar_layout(scenario)
+        self.customer.avatar = "avatars/existing-avatar.gif"
+        self.customer.save(update_fields=["avatar"])
+        self.set_avatar_upload_data(scenario)
+
+    def set_avatar_upload_data(self, scenario: ModelRequestScenario) -> None:
+        """Provide a fresh valid image for the multipart detail submission."""
+        self.uploaded_avatar_bytes = (
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00"
+            b"\xff\xff\xff,\x00\x00\x00\x00\x01\x00\x01\x00"
+            b"\x00\x02\x02D\x01\x00;"
+        )
+        scenario.data = {
+            "first_name": "Allowed",
+            "avatar": SimpleUploadedFile(
+                "header-avatar.gif", self.uploaded_avatar_bytes, content_type="image/gif"
+            ),
+        }
+
+    def hidden_avatar_input_renders(self, response: HttpResponse) -> bool:
+        """Check the absent layout field has exactly one hidden in-form upload."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        inputs = soup.select(
+            'input[type="file"][name="avatar"][data-reference-avatar-input]'
+        )
+        layout_ids = {
+            str(item.id) for row in response.context["layout"].rows for item in row.items
+        }
+        return (
+            str(self.fields_by_name["avatar"].pk) not in layout_ids
+            and len(inputs) == 1
+            and inputs[0].has_attr("hidden")
+            and inputs[0].has_attr("data-reference-avatar-input")
+            and inputs[0].find_parent("form") is not None
+            and inputs[0].find_parent("form").get("hx-post") == response.request["PATH_INFO"]
+        )
+
+    def avatar_input_is_absent(self, response: HttpResponse) -> bool:
+        """Ensure record change access does not expose a denied avatar upload."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        return soup.select_one('input[type="file"][name="avatar"]') is None
+
+    def updated_avatar_was_saved(self, _response: HttpResponse) -> bool:
+        """Verify the customer references the uploaded bytes after detail saving."""
+        self.customer.refresh_from_db()
+        if not self.customer.avatar or not self.customer.avatar.storage.exists(self.customer.avatar.name):
+            return False
+        with self.customer.avatar.open("rb") as avatar:
+            return avatar.read() == self.uploaded_avatar_bytes
+
+    def denied_avatar_is_unchanged(self, _response: HttpResponse) -> bool:
+        """Verify a rejected forged upload preserves the existing avatar value."""
+        self.customer.refresh_from_db()
+        return self.customer.avatar.name == "avatars/existing-avatar.gif"

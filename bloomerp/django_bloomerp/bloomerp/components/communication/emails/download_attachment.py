@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 
-from bloomerp.communication.emails.actions import fetch_email_attachment
+from bloomerp.communication.builtins.emails.actions import fetch_email_attachment
 from bloomerp.communication.utils.permissions import accessible_inbox_items
 from bloomerp.router import router
 

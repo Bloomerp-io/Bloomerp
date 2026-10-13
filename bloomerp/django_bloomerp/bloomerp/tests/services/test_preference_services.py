@@ -1,6 +1,7 @@
 import inspect
 
 from django.apps import apps
+from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 
@@ -88,6 +89,40 @@ class PreferenceManagerTestCase(BaseBloomerpTestCaseWithModels):
             UserListViewPreference.objects.filter(user=self.admin_user).count(),
             1,
         )
+
+    def test_group_selection_falls_back_after_membership_is_revoked(self) -> None:
+        """
+        Use case: A selected shared preference becomes unavailable after group membership ends.
+        Expected result: The live source is used while shared, then an owned preference is selected.
+        """
+        # 1. Select a group-shared source for an ordinary user with an owned fallback.
+        manager = PreferenceManager(self.normal_user)
+        owned = UserListViewPreference.objects.create(
+            user=self.normal_user, content_type=self.content_type, name="Owned fallback"
+        )
+        source = UserListViewPreference.objects.create(
+            user=self.admin_user, content_type=self.content_type, name="Group view"
+        )
+        group = Group.objects.create(name="Selected preference group")
+        group.user_set.add(self.normal_user)
+        source.shared_with_groups.add(group)
+        manager.select(source)
+        self.assertEqual(
+            manager.get_or_create_selected(UserListViewPreference, self.scope), source
+        )
+        # 2. Revoke membership without deleting the stored reference.
+        group.user_set.remove(self.normal_user)
+        self.assertTrue(
+            UserListViewPreference.objects.filter(
+                user=self.normal_user, source_object=source
+            ).exists()
+        )
+        # 3. Resolve the remaining owned preference rather than the revoked source.
+        self.assertEqual(
+            manager.get_or_create_selected(UserListViewPreference, self.scope), owned
+        )
+        owned.refresh_from_db()
+        self.assertTrue(owned.selected)
 
     def test_get_or_create_selected_selects_existing_unselected_preference(self):
         existing = UserListViewPreference.objects.create(

@@ -1,31 +1,26 @@
+import re
+import tempfile
+
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from django.http import HttpResponse
 from django.test import TransactionTestCase, modify_settings
 from django.test.utils import override_settings
-from django.db import models
 from django.urls import clear_url_caches
-from channels.routing import URLRouter
-from channels.testing import WebsocketCommunicator
-import re
-import tempfile
+
 from bloomerp.management.commands import save_application_fields
 from bloomerp.model_fields.file_field import BloomerpFileField
 from bloomerp.model_fields.text_editor_field import TextEditorField
 from bloomerp.model_fields.user_field import UserField
-from bloomerp.tests.utils.users import create_admin, create_normal_user
+
+# Preserve imports from the former home of the channel base.
+from bloomerp.tests.base.channel_test_case import (
+    BloomerpChannelTestCase as BloomerpChannelTestCase,  # noqa: PLC0414 -- compatibility re-export
+)
 from bloomerp.tests.utils.dynamic_models import create_test_models
 from bloomerp.tests.utils.names import FIRST_NAMES, LAST_NAMES
-from bloomerp.router import router
-from django.db import models
-from django.contrib.contenttypes.models import ContentType
+from bloomerp.tests.utils.users import create_admin, create_normal_user
 
-class BloomerpChannelTestCase(TransactionTestCase):
-    """Base test case for websocket consumers registered with a route registry."""
-
-    def websocket_application(self, registry):
-        return URLRouter(registry.create_websocket_url_patterns())
-
-    def websocket_communicator(self, registry, path: str):
-        return WebsocketCommunicator(self.websocket_application(registry), path)
 
 # Avoid re-running Debug Toolbar's AppConfig while pytest-django has replaced
 # MIGRATION_MODULES with its non-dict --no-migrations sentinel.
@@ -131,9 +126,9 @@ class BaseBloomerpTestCaseWithModels(TransactionTestCase):
            and clears Django's URL resolver cache so the test client can
            resolve those URLs.
         """
+        import bloomerp.urls as bloomerp_urls
         from bloomerp.modules.definition import module_registry
         from bloomerp.router import router
-        import bloomerp.urls as bloomerp_urls
 
         # Re-scan so model→module mappings include the new test models
         module_registry._register_models_from_apps()

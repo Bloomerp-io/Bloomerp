@@ -6,6 +6,7 @@ from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext
+from django.template.loader import render_to_string
 
 from bloomerp.models import LayoutItem
 from bloomerp.models.workspaces.workspace import Workspace
@@ -20,6 +21,7 @@ from bloomerp.services.sectioned_layout_services import AvailableLayoutItem
 from django.db.models import Q
 from django.forms import Form
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+
 
 PRIMITIVE_FIELD_TYPE_MAP = {
     TileFieldType.TEXT.value.key: FIELD_TYPE_REGISTRY.CHAR_FIELD,
@@ -267,6 +269,14 @@ def build_workspace_layout_item(
             "?reset_wizard=true"
         ),
         search_keywords=tile.get_type_display(),
+        label_content_right=render_to_string(
+            "cotton/ui/tooltip.html",
+            {
+                "text": _tile_description or "",
+                "position": "top",
+                "slot": format_html('<i class="fa fa-info text-xs"></i>'),
+            },
+        ) if _tile_description else None
     )
 
 

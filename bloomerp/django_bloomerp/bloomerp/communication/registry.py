@@ -1,9 +1,12 @@
 
 
-from bloomerp.communication.inbox_folder_definition import (
-    InboxFolderType,
+from bloomerp.communication.builtins.instant_messaging.definition import INSTANT_MESSAGING
+from bloomerp.communication.definition import (
     InboxFolderTypeDefinition,
 )
+from bloomerp.communication.builtins.all.definition import ALL
+from bloomerp.communication.builtins.emails.definition import EMAIL
+from bloomerp.communication.builtins.in_app_notifications.definition import IN_APP_NOTIFICATIONS
 from bloomerp.utils.registry import BaseRegistry
 
 
@@ -41,13 +44,13 @@ class InboxFolderRegistry(BaseRegistry[InboxFolderTypeDefinition]):
 
 INBOX_FOLDER_REGISTRY = InboxFolderRegistry(InboxFolderTypeDefinition)
 
-INBOX_FOLDER_REGISTRY.register("ALL", InboxFolderType.ALL.value)
+INBOX_FOLDER_REGISTRY.register("ALL", ALL)
 INBOX_FOLDER_REGISTRY.register(
     "IN_APP_NOTIFICATIONS",
-    InboxFolderType.IN_APP_NOTIFICATIONS.value,
+    IN_APP_NOTIFICATIONS,
 )
-INBOX_FOLDER_REGISTRY.register("EMAIL", InboxFolderType.EMAIL.value)
-
+INBOX_FOLDER_REGISTRY.register("EMAIL", EMAIL)
+INBOX_FOLDER_REGISTRY.register("IM", INSTANT_MESSAGING)
 
 def inbox_folder_choices() -> list[tuple[str, str]]:
     """Return folder choices lazily so extension registrations are included."""

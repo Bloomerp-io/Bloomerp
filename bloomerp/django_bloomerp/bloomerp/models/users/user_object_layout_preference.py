@@ -18,6 +18,7 @@ class UserObjectLayoutPreference(ContentLayoutModelMixin, BaseViewPreference):
 
     bloomerp_config = BloomerpModelConfig(
         module=UsersModule,
+        api_settings=BaseViewPreference.bloomerp_config.api_settings.model_copy(deep=True),
         string_search_settings=StringSearchSettings(
             allow_global_search=False,
             string_search_fields=[

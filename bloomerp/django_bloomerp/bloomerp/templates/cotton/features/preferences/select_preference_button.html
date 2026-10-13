@@ -1,3 +1,4 @@
+{% load i18n %}
 <c-ui.dropdown.body
     trigger_text="{% if not icon_only %}{{ selected_preference_name|default:'Preference' }}{% endif %}"
     trigger_icon_class="{{ trigger_icon_class|default:'fa fa-bookmark' }}"
@@ -20,7 +21,7 @@
         hx-push-url="false"
     >
         <div class="px-4 py-3 text-sm text-gray-500">
-            Loading preferences...
+            {% translate "Loading preferences..." %}
         </div>
     </div>
 </c-ui.dropdown.body>

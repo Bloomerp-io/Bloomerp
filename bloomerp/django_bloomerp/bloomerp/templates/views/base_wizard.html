@@ -41,44 +41,51 @@
 
                 <div class="justify-self-start md:justify-self-end flex items-center gap-2">
                     {% if wizard_has_data %}
-                    <button 
-                        class="btn btn-sm btn-danger"
-                        hx-target="#wizard-root"
-                        hx-swap="outerHTML"
-                        hx-get="{{ request.path }}?reset_wizard=true"
-                        >
-                        {% blocktrans %}Reset{% endblocktrans %}
-                    </button>
+                    <c-ui.shortcut_tooltip shortcut="mod+," action="click" position="bottom">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-danger"
+                            hx-target="#wizard-root"
+                            hx-swap="outerHTML"
+                            hx-get="{{ request.path }}?reset_wizard=true"
+                            >
+                            {% blocktrans %}Reset{% endblocktrans %}
+                        </button>
+                    </c-ui.shortcut_tooltip>
                     {% endif %}
                     {% if step_index > 0 %}
+                        <c-ui.shortcut_tooltip shortcut="mod+." action="click" position="bottom">
+                            <button
+                                type="submit"
+                                name="_wizard_action"
+                                value="back"
+                                class="btn btn-sm btn-secondary"
+                                x-bind:disabled="wizardSubmitting"
+                                x-bind:class="{ 'opacity-60 cursor-not-allowed': wizardSubmitting }"
+                            >
+                                {% trans "Back" %}
+                            </button>
+                        </c-ui.shortcut_tooltip>
+                    {% endif %}
+
+                    <c-ui.shortcut_tooltip shortcut="mod+s" action="click" position="bottom">
                         <button
                             type="submit"
                             name="_wizard_action"
-                            value="back"
-                            class="btn btn-sm btn-secondary"
+                            value="next"
+                            class="btn btn-sm btn-primary"
                             x-bind:disabled="wizardSubmitting"
                             x-bind:class="{ 'opacity-60 cursor-not-allowed': wizardSubmitting }"
                         >
-                            {% trans "Back" %}
+                            <span x-show="!wizardSubmitting">
+                                {{ wizard_submit_label|default:_("Continue") }}
+                            </span>
+                            <span x-show="wizardSubmitting" class="inline-flex items-center gap-2">
+                                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                                {% trans "Processing..." %}
+                            </span>
                         </button>
-                    {% endif %}
-
-                    <button
-                        type="submit"
-                        name="_wizard_action"
-                        value="next"
-                        class="btn btn-sm btn-primary"
-                        x-bind:disabled="wizardSubmitting"
-                        x-bind:class="{ 'opacity-60 cursor-not-allowed': wizardSubmitting }"
-                    >
-                        <span x-show="!wizardSubmitting">
-                            {{ wizard_submit_label|default:_("Continue") }}
-                        </span>
-                        <span x-show="wizardSubmitting" class="inline-flex items-center gap-2">
-                            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
-                            {% trans "Processing..." %}
-                        </span>
-                    </button>
+                    </c-ui.shortcut_tooltip>
                 </div>
             </div>
         </div>

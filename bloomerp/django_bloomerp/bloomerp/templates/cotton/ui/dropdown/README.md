@@ -74,7 +74,6 @@ Use the existing `text="..."` API when you want the built-in dropdown item butto
 Supported `c-ui.dropdown.body` parameters:
 
 - `trigger_text`
-- `trigger_icon`
 - `trigger_icon_class`
 - `trigger_button_class`
 - `trigger_class`

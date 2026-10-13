@@ -1,0 +1,17 @@
+{% load i18n %}
+<c-vars name="" value="" placeholder="Search..." input_id="" type="text" />
+
+<div class="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-1 text-[length:1rem] leading-6 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary sm:max-w-80 sm:flex-none">
+    <span class="pointer-events-none shrink-0 text-gray-400">
+        <i class="fa fa-search"></i>
+    </span>
+    <input
+        type="{{ type }}"
+        name="{{ name }}"
+        value="{{ value }}"
+        placeholder="{% translate placeholder %}"
+        class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none! focus-visible:outline-none! focus:ring-0!"
+        {% if input_id %}id="{{ input_id }}"{% endif %}
+        {{ attrs }}
+    />
+</div>

@@ -1,0 +1,14 @@
+{% load i18n %}
+<div class="space-y-6">
+    {{ form.non_field_errors }}
+    {% if step_index == 1 and authentication_summary %}
+    <div class="alert alert-info"><p>{{ authentication_summary }}</p></div>
+    {% endif %}
+    <c-features.layout.container
+        :layout="details_layout"
+        :can_change="False"
+        component_name="object-crud-view-container"
+        :no_header="True"
+        />
+    <p class="text-sm text-muted">{% trans "For a pre-registered OAuth client, register this callback URL:" %} <code>{{ callback_url }}</code></p>
+</div>

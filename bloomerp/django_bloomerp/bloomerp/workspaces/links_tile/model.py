@@ -3,6 +3,7 @@ from typing import Literal, Optional, Self
 
 from django.utils.translation import gettext_lazy as _
 from pydantic import BaseModel, Field
+from pydantic.json_schema import SkipJsonSchema
 
 from bloomerp.models.workspaces.sidebar_item import is_internal_sidebar_url
 from bloomerp.workspaces.base import (
@@ -14,20 +15,46 @@ from bloomerp.workspaces.base import (
 
 
 class Link(BaseModel):
-    url: str = ""
-    url_name: str = ""
-    name: str
-    icon: str = ""
-    is_internal: bool = False
-    is_folder: bool = False
-    children: list["Link"] = Field(default_factory=list)
+    """A navigation link or a folder containing an ordered list of nested items."""
+
+    url: str = Field(
+        default="",
+        description="Navigation destination: an instance-relative URL such as '/' or an absolute external URL. Use a discovered page URL rather than guessing a route. Ignored for folders.",
+    )
+    url_name: SkipJsonSchema[str] = Field(
+        default="",
+        description="Optional route-name metadata. The renderer does not resolve this value into a URL; supply the destination in url.",
+    )
+    name: str = Field(description="Visible label of the link or folder.")
+    icon: str = Field(
+        default="",
+        description="Font Awesome CSS classes, for example 'fa-solid fa-link'. Empty hides the link icon; folders use a default folder icon.",
+    )
+    is_internal: SkipJsonSchema[bool] = Field(
+        default=False,
+        description="Whether the destination supports internal HTMX navigation. The renderer recalculates this from url; it does not control access to the destination.",
+    )
+    is_folder: bool = Field(
+        default=False,
+        description="Set true for an expandable folder that displays children instead of navigating to url. Set false for a clickable link.",
+    )
+    children: list["Link"] = Field(
+        default_factory=list,
+        description="Ordered nested links or folders. Displayed only when is_folder is true; leave empty for a clickable link.",
+    )
 
 
 class LinkTileConfig(BaseTileConfig):
-    links: list[Link]
+    """Configuration for a tile displaying navigation links and nested folders."""
+
+    id: SkipJsonSchema[str | None] = None
+    links: list[Link] = Field(
+        description="Ordered top-level links and folders displayed on the tile. Nest items in a folder's children. This list is required; an empty list creates an empty tile.",
+    )
 
     @classmethod
     def get_default(cls) -> Self:
+        """Return a links tile containing an internal Home link."""
         return cls(
             links=[
                 Link(
@@ -39,7 +66,8 @@ class LinkTileConfig(BaseTileConfig):
         )
 
     @classmethod
-    def get_operation(cls, operation):
+    def get_operation(cls, operation: str) -> TileOperationDefinition:
+        """Return the payload model and handler for a supported link editor operation."""
         return {
             "add_link": TileOperationDefinition(AddLinkOperation, AddLinkHandler),
             "add_folder": TileOperationDefinition(AddFolderOperation, AddFolderHandler),
@@ -81,10 +109,12 @@ def _iter_links(items: list[Link]) -> Iterator[Link]:
 
 
 class AddLinkOperation(BaseModel):
-    url: str
-    name: Optional[str] = None
-    icon: str = ""
-    parent_path: list[int] = Field(default_factory=list)
+    """Payload for appending a navigation link at the root or inside a folder."""
+
+    url: str = Field(description="Nonblank destination URL. A URL already used by a non-folder item anywhere in this tile is rejected.")
+    name: Optional[str] = Field(default=None, description="Visible link label. Although nullable in the payload, a nonblank name is required by the handler.")
+    icon: str = Field(default="", description="Font Awesome CSS classes for the link icon; empty displays no icon.")
+    parent_path: list[int] = Field(default_factory=list, description="Zero-based index path to the destination folder. [] appends at the root; [0, 1] appends inside the second child folder of the first root folder. Every index must identify an existing folder.")
 
 
 class AddLinkHandler(TileOperationHandler):
@@ -113,9 +143,11 @@ class AddLinkHandler(TileOperationHandler):
 
 
 class AddFolderOperation(BaseModel):
-    name: str
-    icon: str = ""
-    parent_path: list[int] = Field(default_factory=list)
+    """Payload for appending an empty folder at the root or inside another folder."""
+
+    name: str = Field(description="Nonblank visible folder label.")
+    icon: str = Field(default="", description="Font Awesome CSS classes for the folder icon; empty uses the default folder icon.")
+    parent_path: list[int] = Field(default_factory=list, description="Zero-based index path to the existing parent folder. [] appends at the root; [0] appends inside the first root folder. Every index must identify a folder.")
 
 
 class AddFolderHandler(TileOperationHandler):
@@ -132,7 +164,9 @@ class AddFolderHandler(TileOperationHandler):
 
 
 class RemoveLinkOperation(BaseModel):
-    path: list[int]
+    """Payload for removing a link or a folder and all its descendants."""
+
+    path: list[int] = Field(description="Nonempty zero-based index path to the existing item to remove. [0] targets the first root item; [0, 1] targets its second child. Removing a folder also removes its entire subtree.")
 
 
 class RemoveLinkHandler(TileOperationHandler):
@@ -150,11 +184,13 @@ class RemoveLinkHandler(TileOperationHandler):
 
 
 class UpdateLinkOperation(BaseModel):
-    path: list[int]
-    url: str = ""
-    name: str
-    icon: str = ""
-    parent_path: list[int] | None = None
+    """Payload for replacing an item's label and icon and updating a link destination."""
+
+    path: list[int] = Field(description="Nonempty zero-based index path to the existing link or folder. [0] targets the first root item; [0, 1] targets its second child.")
+    url: str = Field(default="", description="Replacement destination URL. Must be nonblank when updating a link; ignored for folders.")
+    name: str = Field(description="Replacement visible label; must be nonblank for both links and folders.")
+    icon: str = Field(default="", description="Replacement Font Awesome CSS classes. Empty clears a link icon or restores the default folder icon.")
+    parent_path: list[int] | None = Field(default=None, description="For links only: zero-based path to the destination folder, or [] for the root. null keeps the current parent. Moving to a different parent appends the link there. Paths refer to the configuration before the update; ignored for folders.")
 
 
 class UpdateLinkHandler(TileOperationHandler):
@@ -187,8 +223,10 @@ class UpdateLinkHandler(TileOperationHandler):
 
 
 class MoveLinkOperation(BaseModel):
-    path: list[int]
-    direction: Literal["up", "down"]
+    """Payload for reordering a link or folder among its current siblings."""
+
+    path: list[int] = Field(description="Nonempty zero-based index path to the item to reorder. [0] targets the first root item; [0, 1] targets its second child.")
+    direction: Literal["up", "down"] = Field(description="Move one position earlier ('up') or later ('down') among siblings. Does not change the parent; moving past either end leaves the order unchanged.")
 
 
 class MoveLinkHandler(TileOperationHandler):

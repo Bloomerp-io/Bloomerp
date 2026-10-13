@@ -1,28 +1,25 @@
 
-from typing import Optional, Type
+from dataclasses import dataclass
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import transaction
 from django.http import HttpRequest
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
-from bloomerp.forms.model_form import BloomerpModelForm
-from bloomerp.forms.model_form import bloomerp_modelform_factory
+from bloomerp.form_fields.files_relation_field import FilesCleanedData
+from bloomerp.forms.model_form import BloomerpModelForm, bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
-from bloomerp.models.files.file import File
+from bloomerp.models.files.file_reference import FileReference
 from bloomerp.models.forms.form import Form
 from bloomerp.models.forms.form_submission import FormSubmission
-
-
 from bloomerp.utils.json_serialization import make_json_safe
-from dataclasses import dataclass
-from django.core.exceptions import FieldDoesNotExist
+
 
 @dataclass
 class FormSubmissionResponse:
     submitted:bool
     message:str
-    form_submission:Optional[FormSubmission] = None
+    form_submission:FormSubmission | None = None
 
 
 class FormManager:
@@ -53,14 +50,13 @@ class FormManager:
             data=make_json_safe(submission_data),
         )
         if form.files:
-            File.upload_files_to_object(
-                submission,
-                [
+            FilesCleanedData(
+                files=[
                     uploaded_file
                     for _, uploaded_files in form.files.lists()
                     for uploaded_file in uploaded_files
-                ],
-            )
+                ]
+            ).save(submission, user=request.user if request.user.is_authenticated else None)
         
         if not self.form.requires_review:
             submission = self.persist_form_submission(submission, request=request)
@@ -199,7 +195,7 @@ class FormManager:
 
         return application_fields
 
-    def layout_field_names(self, extra_fields: Optional[list[str]] = None) -> list[str]:
+    def layout_field_names(self, extra_fields: list[str] | None = None) -> list[str]:
         """Return target field names represented by this form's layout."""
         field_names = [field.field for field in self.layout_application_fields()]
         seen = set(field_names)
@@ -212,7 +208,7 @@ class FormManager:
 
         return field_names
 
-    def layout_model_form_field_names(self, extra_fields: Optional[list[str]] = None) -> list[str]:
+    def layout_model_form_field_names(self, extra_fields: list[str] | None = None) -> list[str]:
         """Return layout fields that can be passed to a target model ModelForm."""
         field_names = [
             field.field
@@ -247,7 +243,7 @@ class FormManager:
             return False
         return True
 
-    def layout_form_cls(self, extra_fields:Optional[list[str]]=None) -> Optional[Type[BloomerpModelForm]]:
+    def layout_form_cls(self, extra_fields:list[str] | None=None) -> type[BloomerpModelForm] | None:
         """Returns the layout form for this form object
 
         Returns:
@@ -260,7 +256,9 @@ class FormManager:
         
         return bloomerp_modelform_factory(target_model, fields=field_names)
         
-    def persist_form_submission(self, form_submission:FormSubmission, request: HttpRequest | None = None):
+    def persist_form_submission(
+        self, form_submission: FormSubmission, request: HttpRequest | None = None
+    ) -> FormSubmission:
         """Method to persist a form submission. Can be used
 
         Args:
@@ -281,11 +279,15 @@ class FormManager:
         with transaction.atomic():
             target_object = target_form.save()
             
-            files = form_submission.files.all()
-            if files:
-                File.move_files_to_object(
-                    target=target_object,
-                    files=files
+            for reference in form_submission.files.filter(
+                application_field__isnull=True, occurrence_id__isnull=True
+            ):
+                FileReference.objects.get_or_create(
+                    file_id=reference.file_id,
+                    content_type=self.form.content_type,
+                    object_id=str(target_object.pk),
+                    application_field=None,
+                    occurrence_id=None,
                 )
             
             form_submission.persisted = True

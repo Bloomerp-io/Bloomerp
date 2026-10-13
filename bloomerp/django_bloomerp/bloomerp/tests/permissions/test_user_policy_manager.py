@@ -14,6 +14,7 @@ from bloomerp.permissions.manager import (
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils.functional import SimpleLazyObject
 
 from bloomerp.tests.utils.names import FIRST_NAMES
 """
@@ -80,6 +81,21 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
         accessible_queryset = manager.get_accessible_queryset(self.CustomerModel, BloomerpPermission.VIEW)
         
         self._validate_queryset_results(accessible_queryset, self.CustomerModel.objects.all())
+
+    def test_lazy_user_object_can_be_checked_for_access(self) -> None:
+        """Resolve the model behind Django's lazy request user during object checks."""
+        def load_user() -> models.Model:
+            """Return the test user when Django evaluates the lazy wrapper."""
+            return self.admin_user
+
+        wrapped_user = SimpleLazyObject(load_user)
+        manager = UserPolicyManager(self.admin_user)
+
+        self.assertTrue(manager.has_access_to_object(wrapped_user, BloomerpPermission.CHANGE))
+        self.assertIsInstance(
+            manager.get_accessible_fields_for_object(wrapped_user, BloomerpPermission.CHANGE),
+            models.QuerySet,
+        )
     
     def test_normal_user_with_no_policies_has_no_access(self):
         """

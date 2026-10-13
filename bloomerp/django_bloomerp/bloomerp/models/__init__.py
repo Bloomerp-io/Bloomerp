@@ -13,7 +13,7 @@ from .document_templates import *
 from .users.user_list_view_preference import *
 from .project_management import *
 from .communication import *
-from .llm import *
+from .agents import *
 from .access_control import *
 from .automation import *
 from .filters.filter import SavedFilter

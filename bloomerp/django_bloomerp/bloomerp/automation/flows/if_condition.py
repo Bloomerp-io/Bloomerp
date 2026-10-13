@@ -3,18 +3,28 @@ from typing import Any
 
 from django import forms
 
-from bloomerp.automation.base_executor import BaseExecutor
-from bloomerp.automation.base_executor import NodeExecutionError
+from bloomerp.automation.base_executor import BaseExecutor, NodeExecutionError
 from bloomerp.automation.ports import WorkflowNodeOutputPort
 from bloomerp.automation.results import RouteResult
-from bloomerp.automation.schema import WorkflowIOFlowKind, WorkflowInputRequirement, WorkflowIOSchema, WorkflowValueField
+from bloomerp.automation.schema import (
+    WorkflowInputRequirement,
+    WorkflowIOFlowKind,
+    WorkflowIOSchema,
+    WorkflowValueField,
+)
 from bloomerp.automation.values import get_path_value
 
 
 class IfConditionForm(forms.Form):
     field = forms.CharField(
         label="Field",
-        help_text="Use a path on the incoming data, for example status or input.item.active.",
+        help_text=(
+            "Use a field path from the upstream node's output structure, as shown in node context. "
+            "Start with input for the whole incoming value, then follow its nested fields. "
+            "For example, use input.item.active when active belongs to item; "
+            "use input.active only when active is a top-level field. "
+            "Enter the path without template braces."
+        ),
     )
     operator = forms.ChoiceField(
         choices=[

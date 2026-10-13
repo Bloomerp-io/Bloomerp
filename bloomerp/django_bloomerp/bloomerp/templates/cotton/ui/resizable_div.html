@@ -9,6 +9,7 @@ Parameters:
 - start_width (str): The initial width of the resizable div. Is a string with the unit, e.g. "200px" or "50%". 
 - fit_to_main_bottom (bool, optional): If true, keep the div height aligned with the bottom of the main panel.
 - force_open (bool, optional): Expand a panel that was saved at zero width for a direct link.
+- toggle_shortcut (str, optional): Keyboard shortcut for collapsing and reopening the panel.
 - resize_from (str, optional): Edge used as the resize handle: "left" (default) or "right".
 - class (str, optional): Additional classes to add to the resizable div. Default is "".
 
@@ -23,6 +24,7 @@ Slots:
     data-id="{{ id }}"
     data-start-width="{{ start_width }}"
     data-fit-to-main-bottom="{{ fit_to_main_bottom|default:'false' }}"
+    data-toggle-shortcut="{{ toggle_shortcut|default:'' }}"
     data-resize-from="{{ resize_from|default:'left' }}"
     class="{{ class }}"
     id="resizable-div-{{ id }}"

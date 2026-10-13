@@ -1,0 +1,2 @@
+{% load i18n %}
+<div class="rounded-xl border border-gray-200 p-3 my-2" data-call-id="{{ call.pk }}"><i class="fa-solid fa-phone" aria-hidden="true"></i> {{ call.get_direction_display }} · {{ call.get_status_display }}<div>{{ call.from_address }} → {{ call.to_address }}</div><small>{{ call.started_at|date:"SHORT_DATETIME_FORMAT" }} · {% blocktranslate with seconds=call.duration %}{{ seconds }} seconds{% endblocktranslate %}</small></div>

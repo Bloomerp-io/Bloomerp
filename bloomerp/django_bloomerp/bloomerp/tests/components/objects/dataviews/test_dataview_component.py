@@ -1,4 +1,5 @@
 """Readable dataview scenarios for the draft unified filtering pipeline."""
+import json
 from collections.abc import Callable
 from unittest import skip
 
@@ -6,6 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from django.http import QueryDict
+from django.utils.html import escape
 from pydantic import TypeAdapter
 
 from bloomerp.dataviews.definition import BaseDataview, DataviewTypeDefinition
@@ -15,6 +17,7 @@ from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
+from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleCondition, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
@@ -94,6 +97,22 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         validate.__name__ = f"contains_entries(exact_count={len(expected_entries)}, fields={fields})"
         return validate
 
+
+    def has_effective_json_filters(self, groups: Filters) -> Callable[[HttpResponse], bool]:
+        """Verify editor input and the fragment marker contain only effective JSON filters."""
+        expected = [group.model_dump(mode="json") for group in groups]
+
+        def validate(response: HttpResponse) -> bool:
+            """Compare recovered context and its safely escaped client payload."""
+            value = response.context["effective_json_filters"]
+            return (
+                json.loads(value) == expected
+                and response.context["initial_filters"] == value
+                and f'data-effective-json-filters="{escape(value)}"' in response.content.decode()
+            )
+
+        return validate
+
     
     def uses_render_value_function(self, field, instance):
         def validate(response):
@@ -134,7 +153,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         return set_fields
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Exercise dataview rendering, filter recovery, and access enforcement."""
+        """Exercise rendering, filter recovery, and permission-aware field choices."""
         for i in range(10):
             planet = self.PlanetModel.objects.create(name=f"Planet {i}")
             country = self.CountryModel.objects.create(name=f"Country {i}", planet=planet)
@@ -428,7 +447,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 )
             ),
             RequestScenario(
-                name="Filtering on in-accesible field is denied",
+                name="Forbidden filter is omitted without granting row access",
                 user=self.normal_user,
                 prepare=self.set_policies(
                     policies=[
@@ -455,11 +474,11 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                     )
                 ),
                 expected=ExpectedResult(
-                    status_code=403
+                    response_validators=self.contains_entries(customers.none())
                 )
             )
         ]
-        
+
         for name, query_params in [
             ("Blank required shorthand value", {"age": ""}),
             ("Malformed shorthand value", {"age": "not a number"}),
@@ -491,6 +510,53 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 ])),
                 expected=ExpectedResult(response_validators=self.contains_entries(customers.filter(age=3))),
             ))
+
+        for connector in ("AND", "OR"):
+            request_scenarios.append(RequestScenario(
+                name=f"FILTERS: Valid {connector} JSON survives malformed schema siblings",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params={"filter": json.dumps([
+                    {"connector": "invalid", "conditions": []},
+                    {"connector": connector, "conditions": [
+                        {"field_path": "age", "lookup_id": "equals", "value": 3},
+                        {"field_path": "age", "value": 8},
+                        None,
+                    ]},
+                    {"connector": "AND", "conditions": "invalid"},
+                ])},
+                expected=ExpectedResult(response_validators=[
+                    self.contains_entries(customers.filter(age=3)),
+                    self.has_effective_json_filters([Filter(connector=connector, conditions=[
+                        FilterCondition(field_path="age", lookup_id="equals", value=3),
+                    ])]),
+                ]),
+            ))
+
+        request_scenarios.append(RequestScenario(
+            name="FILTERS: Forbidden condition is omitted while an allowed sibling remains",
+            user=self.normal_user,
+            view_kwargs=kwargs,
+            prepare=self.set_policies(
+                policies=[AccessRule(
+                    row_permissions=[RowPolicyRuleContent(
+                        connector="AND", conditions=[], permissions=[BloomerpPermission.VIEW],
+                    )],
+                    field_permissions={"first_name": [BloomerpPermission.VIEW]},
+                )],
+                global_permissions=[BloomerpPermission.VIEW],
+            ),
+            query_params=filter_query_params(Filter(connector="AND", conditions=[
+                FilterCondition(field_path="first_name", lookup_id="equals", value="First Name 3"),
+                FilterCondition(field_path="age", lookup_id="equals", value=8),
+            ])),
+            expected=ExpectedResult(response_validators=[
+                self.contains_entries(customers.filter(age=3)),
+                self.has_effective_json_filters([Filter(connector="AND", conditions=[
+                    FilterCondition(field_path="first_name", lookup_id="equals", value="First Name 3"),
+                ])]),
+            ]),
+        ))
 
         request_scenarios.extend([
             RequestScenario(
@@ -534,7 +600,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(response_validators=self.contains_entries(customers.filter(age=3))),
             ),
             RequestScenario(
-                name="FILTERS: Invalid value does not bypass field permissions",
+                name="FILTERS: Forbidden invalid value is omitted without granting row access",
                 user=self.normal_user,
                 view_kwargs=kwargs,
                 prepare=self.set_policies(
@@ -545,11 +611,45 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                     global_permissions=[BloomerpPermission.VIEW],
                 ),
                 query_params={"age": ""},
-                expected=ExpectedResult(status_code=403),
+                expected=ExpectedResult(response_validators=self.contains_entries(customers.none())),
             ),
         ])
+
+        request_scenarios.extend(
+            [
+                RequestScenario(
+                    name="Avatar is selectable without being a default visible column",
+                    user=self.admin_user,
+                    view_kwargs=kwargs,
+                    expected=ExpectedResult(
+                        response_validators=self.avatar_available_but_not_selected
+                    ),
+                ),
+                RequestScenario(
+                    name="Avatar is omitted when the viewer lacks avatar field permission",
+                    user=self.normal_user,
+                    view_kwargs=kwargs,
+                    prepare=self.grant_view_without_avatar,
+                    expected=ExpectedResult(
+                        response_validators=self.avatar_unavailable
+                    ),
+                ),
+                RequestScenario(
+                    name="Models without avatar do not gain an avatar choice",
+                    user=self.admin_user,
+                    view_kwargs={
+                        "content_type_id": ContentType.objects.get_for_model(
+                            TodoLabel
+                        ).pk
+                    },
+                    expected=ExpectedResult(
+                        response_validators=self.avatar_unavailable
+                    ),
+                ),
+            ]
+        )
         return request_scenarios
-    
+
     def set_policies(self, policies:list[AccessRule], global_permissions:list[BloomerpPermission]):
         def _set_policies(scenario:RequestScenario):
             for policy in policies:
@@ -562,4 +662,40 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 )
 
         return _set_policies
-    
+
+    def avatar_available_but_not_selected(self, response: HttpResponse) -> bool:
+        """Keep avatar discoverable in display options without adding it by default."""
+        fields = response.context["fields"]
+        avatar_choices = [
+            (field, selected)
+            for field, selected in fields.accessible_fields
+            if field.field == "avatar"
+        ]
+        return (
+            len(avatar_choices) == 1
+            and not avatar_choices[0][1]
+            and response.context["avatar_field"] is None
+        )
+
+    def avatar_unavailable(self, response: HttpResponse) -> bool:
+        """Do not expose an unsupported or permission-denied avatar field."""
+        return all(
+            field.field != "avatar"
+            for field, _selected in response.context["fields"].accessible_fields
+        )
+
+    def grant_view_without_avatar(self, _scenario: RequestScenario) -> None:
+        """Give access to customer rows and one business field, but not avatars."""
+        field = ApplicationField.get_by_field(self.CustomerModel, "first_name")
+        PolicyManager.create_policy(
+            self.CustomerModel,
+            field_permissions={field: [BloomerpPermission.VIEW]},
+            global_permissions=[BloomerpPermission.VIEW],
+            row_permissions=[
+                RowPolicyRuleContent(
+                    connector="AND",
+                    permissions=[BloomerpPermission.VIEW],
+                    conditions=[],
+                )
+            ],
+        ).assign_user(self.normal_user)

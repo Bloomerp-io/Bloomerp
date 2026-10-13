@@ -2,27 +2,166 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import copy
+from typing import Any
 
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import (
+    FieldDoesNotExist,
+    ValidationError as DjangoValidationError,
+)
+from django.db.models import Model
 from django.http import HttpRequest
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from bloomerp.mcp.definition import McpTool
 from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
 from bloomerp.utils.api import ApiAccessResolver
-from bloomerp.utils.models import model_name_plural_underline
 from bloomerp.views.api.base import BaseBloomerpApiView
 from bloomerp.views.api.generic.base import BaseModelApiView, get_auto_api_models
 
 
-class AssistantMutationRequestSerializer(serializers.Serializer):
-    resource = serializers.CharField(
-        help_text="The generated API resource key, for example `customers`.",
+def resolve_assistant_model(model_label: str) -> type[Model] | None:
+    """Resolve only models currently exposed by the generated API, by Django label."""
+    for model in get_auto_api_models():
+        if model._meta.label_lower == model_label.lower():
+            return model
+    return None
+
+
+class AssistantModelIdentitySerializer(serializers.Serializer):
+    """Reject obsolete resource keys instead of silently ignoring them."""
+
+    def to_internal_value(self, data: Any) -> dict[str, Any]:
+        """Require callers to identify models through model_label."""
+        if isinstance(data, Mapping) and "resource" in data:
+            raise serializers.ValidationError({"resource": "Use model_label instead of resource."})
+        return super().to_internal_value(data)
+
+
+class AssistantObjectRetrieveRequestSerializer(AssistantModelIdentitySerializer):
+    """Accept the model label and primary key supplied by an object artifact."""
+
+    model_label = serializers.RegexField(
+        regex=r"^[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*$",
+        help_text="The object's Django model label, for example `sales.Customer`.",
+    )
+    object_id = serializers.CharField(
+        max_length=255,
+        help_text="The target object's primary key from the object artifact.",
+    )
+
+
+class AssistantObjectRetrieveResponseSerializer(serializers.Serializer):
+    """Return permitted fields and the canonical model identity used for mutations."""
+
+    model_label = serializers.CharField(
+        help_text="Use this model_label directly in mutation calls."
+    )
+    object_id = serializers.CharField()
+    object = serializers.DictField()
+
+
+def object_retrieve_input_schema() -> dict[str, Any]:
+    """Describe the artifact identity accepted by the read-only MCP tool."""
+    return serializer_input_schema(AssistantObjectRetrieveRequestSerializer)
+
+
+def object_retrieve_output_schema() -> dict[str, Any]:
+    """Describe the retrieved object and its shared model-label identity."""
+    return serializer_output_schema(AssistantObjectRetrieveResponseSerializer)
+
+
+@router.register(
+    path="objects/retrieve/",
+    route_type="api",
+    name="Assistant Object Retrieval",
+    url_name="api_assistant_object_retrieve",
+    mcp=McpTool(
+        title="Retrieve an object",
+        description=(
+            "Read an object's current permitted fields using the model_label and "
+            "object_id from an object artifact. Use the same model_label for mutations."
+        ),
+        input_schema=object_retrieve_input_schema,
+        output_schema=object_retrieve_output_schema,
+        read_only_hint=True,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=False,
+    ),
+)
+class AssistantObjectRetrieveView(BaseBloomerpApiView):
+    """Retrieve one generated API object directly from an artifact identity."""
+
+    permission_classes = (IsAuthenticated,)
+    http_method_names = ["get", "options"]
+
+    @extend_schema(
+        tags=["Assistant"],
+        parameters=[AssistantObjectRetrieveRequestSerializer],
+        responses={
+            200: AssistantObjectRetrieveResponseSerializer,
+            400: serializers.DictField(),
+            403: serializers.DictField(),
+            404: serializers.DictField(),
+        },
+        description=(
+            "Retrieve an object exposed by the generated model API using its model "
+            "label and primary key. Applies the generated API's row and field access."
+        ),
+    )
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """Resolve an exposed model and delegate retrieval to its generated API."""
+        serializer = AssistantObjectRetrieveRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        model_label = serializer.validated_data["model_label"]
+        object_id = serializer.validated_data["object_id"]
+        model = self._get_model_for_label(model_label)
+        if model is None:
+            raise ValidationError({"model_label": "Unknown generated API model."})
+
+        try:
+            model._meta.pk.to_python(object_id)
+        except (DjangoValidationError, ValueError, TypeError) as exc:
+            raise ValidationError(
+                {"object_id": "Invalid primary key for this model."}
+            ) from exc
+
+        viewset = BaseModelApiView()
+        viewset.model = model
+        viewset.request = request
+        viewset.action = "retrieve"
+        viewset.args = ()
+        viewset.kwargs = {"pk": object_id}
+        viewset.format_kwarg = None
+        viewset.filter_backends = ()
+        response = viewset.retrieve(request)
+        return Response(
+            {
+                "model_label": model._meta.label,
+                "object_id": object_id,
+                "object": response.data,
+            },
+            status=response.status_code,
+            headers=response.headers,
+        )
+
+    def _get_model_for_label(self, model_label: str) -> type[Model] | None:
+        """Resolve only models currently exposed by the generated API."""
+        return resolve_assistant_model(model_label)
+
+
+class AssistantMutationRequestSerializer(AssistantModelIdentitySerializer):
+    """Accept the same model label used by shared object and model artifacts."""
+
+    model_label = serializers.RegexField(
+        regex=r"^[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*$",
+        help_text="The Django model label from the artifact or catalog, for example `sales.Customer`.",
     )
     operation = serializers.ChoiceField(
         choices=("create", "update", "delete"),
@@ -32,18 +171,16 @@ class AssistantMutationRequestSerializer(serializers.Serializer):
         required=False,
         help_text="The target object's primary key. Required for `update` and `delete`.",
     )
-    data = serializers.JSONField(
+    data = serializers.DictField(
         required=False,
-        help_text="An object containing the model fields to create or update.",
+        help_text=(
+            "An object containing the model fields to create or update. "
+            "Pass the object directly, not a JSON-encoded string."
+        ),
     )
 
-    def validate_resource(self, value: str) -> str:
-        resource = value.strip().strip("/")
-        if not resource:
-            raise serializers.ValidationError("This field may not be blank.")
-        return resource
-
-    def validate(self, attrs: dict) -> dict:
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """Require a model identity and the data needed by the chosen operation."""
         operation = attrs["operation"]
         object_id = attrs.get("object_id")
         data = attrs.get("data")
@@ -55,7 +192,9 @@ class AssistantMutationRequestSerializer(serializers.Serializer):
                 )
         elif not object_id:
             raise serializers.ValidationError(
-                {"object_id": "This field is required for update and delete operations."}
+                {
+                    "object_id": "This field is required for update and delete operations."
+                }
             )
 
         if operation in {"create", "update"}:
@@ -76,14 +215,25 @@ class AssistantMutationRequestSerializer(serializers.Serializer):
 
 
 class AssistantMutationResponseSerializer(serializers.Serializer):
-    resource = serializers.CharField()
+    """Return the canonical model label and the mutation outcome."""
+
+    model_label = serializers.CharField()
     operation = serializers.ChoiceField(choices=("create", "update", "delete"))
     object = serializers.DictField(required=False)
     object_id = serializers.CharField(required=False)
 
 
+class AssistantMutationCatalogEntrySerializer(serializers.Serializer):
+    """Advertise canonical model identities and their authorized mutation contracts."""
+
+    model_label = serializers.CharField(help_text="Use this model_label in retrieve and mutation calls.")
+    label = serializers.CharField()
+    object_id = serializers.DictField()
+    operations = serializers.DictField()
+
+
 class AssistantMutationCatalogResponseSerializer(serializers.Serializer):
-    resources = serializers.ListField(child=serializers.DictField())
+    resources = AssistantMutationCatalogEntrySerializer(many=True)
     page = serializers.IntegerField()
     page_size = serializers.IntegerField()
     total_resources = serializers.IntegerField()
@@ -92,17 +242,22 @@ class AssistantMutationCatalogResponseSerializer(serializers.Serializer):
     has_previous = serializers.BooleanField()
 
 
-class AssistantMutationCatalogQuerySerializer(serializers.Serializer):
+class AssistantMutationCatalogQuerySerializer(AssistantModelIdentitySerializer):
     page = serializers.IntegerField(required=False, min_value=1, default=1)
-    page_size = serializers.IntegerField(required=False, min_value=1, max_value=50, default=10)
+    page_size = serializers.IntegerField(
+        required=False, min_value=1, max_value=50, default=10
+    )
     search = serializers.CharField(required=False, allow_blank=True, max_length=100)
-    resource = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    model_label = serializers.RegexField(
+        regex=r"^[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*$",
+        required=False,
+        help_text="Exact Django model label, for example `sales.Customer`.",
+    )
 
     def validate_search(self, value: str) -> str:
+        """Trim a catalog search without changing its case-insensitive semantics."""
         return value.strip()
 
-    def validate_resource(self, value: str) -> str:
-        return value.strip().strip("/")
 
 
 @router.register(
@@ -113,7 +268,7 @@ class AssistantMutationCatalogQuerySerializer(serializers.Serializer):
     mcp=McpTool(
         title="List available mutations",
         description=(
-            "List generated API resources, operations, and writable fields available "
+            "List generated API model labels, operations, and writable fields available "
             "to the authenticated user."
         ),
         input_schema=lambda: serializer_input_schema(
@@ -155,37 +310,41 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
                 name="search",
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description="Case-insensitive search across resource keys, model names, and labels.",
+                description="Case-insensitive search across model labels and display names.",
             ),
             OpenApiParameter(
-                name="resource",
+                name="model_label",
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description="Exact resource key, for example customers.",
+                description="Exact Django model label from an artifact, for example sales.Customer.",
             ),
         ],
         responses={200: AssistantMutationCatalogResponseSerializer},
         description=(
             "List generated API resources, operations, and writable API fields available "
             "to the authenticated user. Results are paginated and can be filtered with "
-            "search or an exact resource key. Use returned resource and field names with "
+            "search or an exact model_label. Use returned model_label and field names with "
             "the Assistant Mutations endpoint."
         ),
     )
-    def get(self, request: HttpRequest, *args, **kwargs) -> Response:
-        query_serializer = AssistantMutationCatalogQuerySerializer(data=request.query_params)
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """List authorized mutation contracts identified by shared model labels."""
+        query_serializer = AssistantMutationCatalogQuerySerializer(
+            data=request.query_params
+        )
         query_serializer.is_valid(raise_exception=True)
 
         page = query_serializer.validated_data["page"]
         page_size = query_serializer.validated_data["page_size"]
         search = query_serializer.validated_data.get("search", "").lower()
-        resource_filter = query_serializer.validated_data.get("resource", "")
+        model_filter = query_serializer.validated_data.get("model_label", "").lower()
         resolver = ApiAccessResolver(request)
         models = [
             model
-            for model in sorted(get_auto_api_models(), key=self._resource_key)
+            for model in sorted(get_auto_api_models(), key=self._model_label)
             if self._has_mutation_access(resolver, model)
-            and self._matches_query(model, search, resource_filter)
+            and (not model_filter or model._meta.label_lower == model_filter)
+            and self._matches_query(model, search)
         ]
         total_resources = len(models)
         total_pages = (total_resources + page_size - 1) // page_size
@@ -198,7 +357,7 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
             if operations:
                 resources.append(
                     {
-                        "resource": self._resource_key(model),
+                        "model_label": model._meta.label,
                         "label": str(model._meta.verbose_name_plural),
                         "object_id": self._primary_key_schema(model),
                         "operations": operations,
@@ -228,15 +387,13 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
         writable_fields = resolver.get_accessible_field_names(model, "update")
         return writable_fields is None or bool(writable_fields)
 
-    def _matches_query(self, model, search: str, resource_filter: str) -> bool:
-        resource = self._resource_key(model)
-        if resource_filter and resource != resource_filter:
-            return False
+    def _matches_query(self, model: type[Model], search: str) -> bool:
+        """Search canonical model labels and human-readable model names."""
         if not search:
             return True
 
         searchable_values = (
-            resource,
+            model._meta.label,
             model._meta.model_name,
             str(model._meta.verbose_name),
             str(model._meta.verbose_name_plural),
@@ -307,7 +464,10 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
         viewset.format_kwarg = None
         return viewset.get_serializer()
 
-    def _serialize_field(self, name: str, field, action: str) -> dict:
+    def _serialize_field(
+        self, name: str, field: serializers.Field, action: str
+    ) -> dict[str, Any]:
+        """Describe a writable field with canonical identities for related models."""
         field_schema = {
             "name": name,
             "type": self._field_type(field),
@@ -331,7 +491,7 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
 
         related_model = self._related_model(field)
         if related_model is not None:
-            field_schema["related_resource"] = self._resource_key(related_model)
+            field_schema["related_model_label"] = related_model._meta.label
         else:
             choices = self._serialize_choices(field)
             if choices:
@@ -417,8 +577,9 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
             schema["format"] = "uuid"
         return schema
 
-    def _resource_key(self, model) -> str:
-        return model_name_plural_underline(model)
+    def _model_label(self, model: type[Model]) -> str:
+        """Return the canonical model identity used to sort catalog entries."""
+        return model._meta.label
 
     def _json_value(self, value):
         if value is None or isinstance(value, (str, int, float, bool)):
@@ -435,7 +596,7 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
         title="Mutate an object",
         description=(
             "Create, update, or delete an object through Bloomerp's "
-            "permission-aware generated API."
+            "permission-aware generated API using the model_label from an artifact or catalog."
         ),
         input_schema=lambda: serializer_input_schema(
             AssistantMutationRequestSerializer
@@ -450,7 +611,7 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
     ),
 )
 class AssistantMutationView(BaseBloomerpApiView):
-    """Create, update, or delete one generated API object by resource key."""
+    """Mutate a generated API object using its shared model-label identity."""
 
     serializer_class = AssistantMutationRequestSerializer
     permission_classes = (IsAuthenticated,)
@@ -468,19 +629,20 @@ class AssistantMutationView(BaseBloomerpApiView):
         },
         description=(
             "Create, partially update, or delete one object exposed by BloomERP's "
-            "generated model API. The resource is resolved server-side; this endpoint "
+            "generated model API. The model_label is resolved server-side; this endpoint "
             "does not accept arbitrary URLs or HTTP methods."
         ),
     )
-    def post(self, request: HttpRequest, *args, **kwargs) -> Response:
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """Resolve a shared model identity and delegate to its permission-aware API."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        resource = serializer.validated_data["resource"]
+        model_label = serializer.validated_data["model_label"]
         operation = serializer.validated_data["operation"]
-        model = self._get_model_for_resource(resource)
+        model = resolve_assistant_model(model_label)
         if model is None:
-            raise ValidationError({"resource": "Unknown generated API resource."})
+            raise ValidationError({"model_label": "Unknown generated API model."})
 
         response = self._perform_mutation(
             request,
@@ -490,7 +652,10 @@ class AssistantMutationView(BaseBloomerpApiView):
             object_id=serializer.validated_data.get("object_id"),
         )
 
-        result = {"resource": resource, "operation": operation}
+        result = {
+            "model_label": model._meta.label,
+            "operation": operation,
+        }
         if operation == "delete":
             result["object_id"] = serializer.validated_data["object_id"]
             return Response(result, status=status.HTTP_200_OK)
@@ -498,18 +663,25 @@ class AssistantMutationView(BaseBloomerpApiView):
         result["object"] = response.data
         return Response(result, status=response.status_code, headers=response.headers)
 
-    def get_serializer(self, *args, **kwargs):
+    def get_serializer(
+        self, *args: Any, **kwargs: Any
+    ) -> AssistantMutationRequestSerializer:
+        """Build the assistant mutation request serializer."""
         return self.serializer_class(*args, **kwargs)
 
-    def _get_model_for_resource(self, resource: str):
-        for model in get_auto_api_models():
-            route_resource = model_name_plural_underline(model)
-            if route_resource == resource:
-                return model
-        return None
-
-    def _perform_mutation(self, request, *, model, operation: str, data, object_id: str | None) -> Response:
-        action = {"create": "create", "update": "partial_update", "delete": "destroy"}[operation]
+    def _perform_mutation(
+        self,
+        request: Request,
+        *,
+        model: type[Model],
+        operation: str,
+        data: Mapping[str, Any] | None,
+        object_id: str | None,
+    ) -> Response:
+        """Execute the selected operation with the generated API's access enforcement."""
+        action = {"create": "create", "update": "partial_update", "delete": "destroy"}[
+            operation
+        ]
         model_request = copy(request)
         model_request._full_data = data or {}
 

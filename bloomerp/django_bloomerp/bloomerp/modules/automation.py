@@ -6,7 +6,7 @@ from .definition import BloomerpModule
 class AutomationModule(BloomerpModule):
     id = "automation"
     code = "automation"
-    icon = "fa-solid fa-robot"
+    icon = "fa-solid fa-hexagon-nodes"
     name = "Automation"
     description = "With automation, streamline and optimize your business processes by creating automated workflows."
 

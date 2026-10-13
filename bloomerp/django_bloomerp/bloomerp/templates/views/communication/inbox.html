@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load crispy_forms_tags %}
 
 {% if inbox %}
@@ -18,7 +19,7 @@
     >
     <aside class="flex min-w-[20rem] flex-1 flex-col border-r border-gray-200 bg-white">
         <header class="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-5">
-            <div class="flex min-w-0 items-center gap-2">
+            <div class="flex min-w-0 flex-col">
             <c-ui.dropdown.body
                 id="select-folder-dropdown"
                 :trigger_text="inbox_preference.selected_inbox_folder.name"
@@ -45,7 +46,7 @@
                                     data-inbox-subfolder-filters='{{ subfolder.filters_json }}'
                                     @click="$dispatch('dropdown-close')"
                                 >
-                                    <i class="fa fa-folder mr-3 h-4 w-4 flex-shrink-0"></i>
+                                    <i class="fa fa-folder mr-3 h-4 w-4 flex-shrink-0"{% if subfolder.color %} style="color: {{ subfolder.color }}"{% endif %}></i>
                                     <span class="truncate">{{ subfolder.name }}</span>
                                 </button>
                             {% endfor %}
@@ -56,14 +57,14 @@
                 {% endfor %}
 
                 {% if can_manage_inbox %}
-                    <c-ui.dropdown.item text="Add folder" icon="fa fa-plus" id="add-folder-btn" />
+                    <c-ui.dropdown.item text="{% translate "Add folder" %}" icon="fa fa-plus" id="add-folder-btn" />
                 {% endif %}
                 <c-ui.dropdown.divider />
                 
                 <c-ui.dropdown.submenu 
                     id="" 
                     class="" icon="" 
-                    text="Select Inbox" 
+                    text="{% translate "Select Inbox" %}"
                     width="w-72"
                     >
                     <div
@@ -75,7 +76,7 @@
                         hx-push-url="false"
                     >
                         <div class="px-4 py-3 text-sm text-gray-500">
-                            Loading preferences...
+                            {% translate "Loading preferences..." %}
                         </div>
                     </div>
                 </c-ui.dropdown.submenu>
@@ -124,7 +125,7 @@
                             {{ action.name }}
                         </button>
                     {% empty %}
-                        <c-ui.dropdown.item text="No actions" disabled=True />
+                        <c-ui.dropdown.item text="{% translate "No actions" %}" disabled=True />
                     {% endfor %}
                         
                 </c-ui.dropdown.body>
@@ -148,22 +149,25 @@
                             {{ filter.name }}
                         </button>
                     {% empty %}
-                        <c-ui.dropdown.item text="No filters" disabled=True />
+                        <c-ui.dropdown.item text="{% translate "No filters" %}" disabled=True />
                     {% endfor %}
                 </c-ui.dropdown.body>
             </div>
         </header>
 
-        <div class="shrink-0 space-y-4 border-b border-gray-200 p-4">
-            <label
-                class="flex h-11 items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 text-gray-500 shadow-xs">
-                <i class="fa fa-search text-sm"></i>
-                <input
-                    class="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-gray-900 placeholder:text-gray-500 focus:ring-0"
-                    placeholder="Search"
-                    id="inbox-search-input"
+        <div class="shrink-0 border-b border-gray-200 p-4">
+            <c-ui.shortcut_tooltip shortcut="mod+/" action="focus" position="bottom" target="#inbox-search-input" text="{% translate 'Search' %}">
+                <label for="inbox-search-input" class="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-1 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                    <span class="pointer-events-none shrink-0 text-gray-400"><i class="fa fa-search" aria-hidden="true"></i></span>
+                    <input
+                        type="text"
+                        class="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                        placeholder="{% translate 'Search...' %}"
+                        aria-label="{% translate 'Search inbox' %}"
+                        id="inbox-search-input"
                     >
-            </label>
+                </label>
+            </c-ui.shortcut_tooltip>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto" id="inbox-items">
@@ -184,24 +188,23 @@
 </div>
 {% else %}
 
-<c-ui.center_page_element class="" icon="fa fa-envelope" title="Create Inbox"
-    text="Create an inbox or select one that has been shared with you.">
+<c-ui.center_page_element class="" icon="fa fa-envelope" title="{% translate "Create Inbox" %}"
+    text="{% translate "Create an inbox or select one that has been shared with you." %}">
     <div id="create-inbox-panel" class="flex flex-col items-center gap-4">
 
         <c-features.preferences.select_preference_button
             model="Inbox"
-            selected_preference_name="Select shared inbox"
+            selected_preference_name="{% translate "Select shared inbox" %}"
             trigger_icon_class="fa fa-inbox"
         />
 
         <button class="btn btn-primary" hx-post="{% url 'components_create_inbox' %}" hx-target="this"
-            hx-swap="innerHTML" hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}", "create_default": "true"}'>Create
-            default</button>
+            hx-swap="innerHTML" hx-vals='{"csrfmiddlewaretoken": "{{ csrf_token }}", "create_default": "true"}'>{% translate "Create default" %}</button>
 
         <button class="btn btn-secondary" type="button" hx-get="{% url 'components_create_inbox' %}"
             hx-target="#create-custom-inbox-modal-body" bloomerp-open-modal="create-custom-inbox-modal"
             hx-swap="innerHTML" hx-animation>
-            Create custom
+            {% translate "Create custom" %}
         </button>
     </div>
 </c-ui.center_page_element>

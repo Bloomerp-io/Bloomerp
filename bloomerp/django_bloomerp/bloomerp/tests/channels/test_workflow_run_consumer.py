@@ -1,16 +1,30 @@
-from channels.layers import get_channel_layer
-from django.contrib.auth.models import AnonymousUser
+"""Exercise workflow-run access and event isolation as socket conversations."""
+
+from typing import Any
 
 from bloomerp.channels.workflows.events import workflow_run_group_name
 from bloomerp.channels.workflows.workflow_run_consumer import WorkflowRunConsumer
 from bloomerp.models import User
 from bloomerp.models.automation import Workflow
 from bloomerp.router import BloomerpRouteRegistry
-from bloomerp.tests.base import BloomerpChannelTestCase
+from bloomerp.tests.base import (
+    BloomerpChannelTestCase,
+    ChannelAction,
+    ChannelContext,
+    ChannelScenario,
+    Connect,
+    Disconnect,
+    ExpectJson,
+    ExpectNoMessage,
+    PublishGroupEvent,
+)
 
 
 class WorkflowRunConsumerTests(BloomerpChannelTestCase):
+    """Declare workflow stream acceptance, rejection, and subscription scenarios."""
+
     def setUp(self) -> None:
+        """Create read-only workflow fixtures and register the real consumer."""
         super().setUp()
         self.user = User.objects.create_superuser(
             username="workflow-run-observer",
@@ -21,55 +35,74 @@ class WorkflowRunConsumerTests(BloomerpChannelTestCase):
             password="password",
         )
         self.workflow = Workflow.objects.create(name="Observed workflow")
+        self.other_workflow = Workflow.objects.create(name="Other workflow")
         self.registry = BloomerpRouteRegistry()
         self.registry.register(
             re_path=r"^ws/automation/workflow-run/(?P<workflow_id>\d+)/$",
             route_type="websocket",
         )(WorkflowRunConsumer)
 
-    def communicator_for(self, user):
-        communicator = self.websocket_communicator(
-            self.registry,
-            f"/ws/automation/workflow-run/{self.workflow.id}/",
-        )
-        communicator.scope["user"] = user
-        return communicator
-
-    async def test_authorized_user_receives_workflow_run_events(self):
-        communicator = self.communicator_for(self.user)
-        connected, _ = await communicator.connect()
-        self.assertTrue(connected)
-
-        channel_layer = get_channel_layer()
-        await channel_layer.group_send(
-            workflow_run_group_name(self.workflow.id),
-            {
-                "type": "workflow_run_event",
-                "payload": {
-                    "type": "workflow_run",
-                    "event": "node.started",
-                    "workflow_id": self.workflow.id,
-                    "run_id": 10,
-                    "node_id": 20,
-                    "sequence": 0,
-                    "status": "RUNNING",
-                },
-            },
+    async def assert_subscription_removed(self, context: ChannelContext) -> None:
+        """Verify disconnect removed the subscription from the in-memory backend."""
+        self.assertNotIn(
+            workflow_run_group_name(self.workflow.pk), context.layer.groups
         )
 
-        payload = await communicator.receive_json_from()
-        self.assertEqual(payload["event"], "node.started")
-        self.assertEqual(payload["node_id"], 20)
-        await communicator.disconnect()
-
-    async def test_anonymous_user_is_rejected(self):
-        communicator = self.communicator_for(AnonymousUser())
-        connected, close_code = await communicator.connect()
-        self.assertFalse(connected)
-        self.assertEqual(close_code, 4401)
-
-    async def test_user_without_change_access_is_rejected(self):
-        communicator = self.communicator_for(self.unauthorized_user)
-        connected, close_code = await communicator.connect()
-        self.assertFalse(connected)
-        self.assertEqual(close_code, 4403)
+    def get_test_scenarios(self) -> list[ChannelScenario]:
+        """Return conversations covering access gates, delivery, and cleanup."""
+        path = f"/ws/automation/workflow-run/{self.workflow.pk}/"
+        group = workflow_run_group_name(self.workflow.pk)
+        payload: dict[str, Any] = {
+            "type": "workflow_run",
+            "event": "node.started",
+            "workflow_id": self.workflow.pk,
+            "run_id": 10,
+            "node_id": 20,
+            "sequence": 0,
+            "status": "RUNNING",
+        }
+        event = {"type": "workflow_run_event", "payload": payload}
+        return [
+            ChannelScenario(
+                name="authorized observer receives the complete event",
+                steps=[
+                    Connect(path=path, user=self.user),
+                    PublishGroupEvent(group=group, event=event),
+                    ExpectJson(payload=payload),
+                    Disconnect(),
+                    ChannelAction(
+                        name="workflow subscription removed",
+                        execute=self.assert_subscription_removed,
+                    ),
+                ],
+            ),
+            ChannelScenario(
+                name="anonymous visitor is rejected",
+                steps=[Connect(path=path, accepted=False, close_code=4401)],
+            ),
+            ChannelScenario(
+                name="user without change access is rejected",
+                steps=[
+                    Connect(
+                        path=path,
+                        user=self.unauthorized_user,
+                        accepted=False,
+                        close_code=4403,
+                    )
+                ],
+            ),
+            ChannelScenario(
+                name="workflow streams are isolated",
+                steps=[
+                    Connect(path=path, user=self.user),
+                    Connect(
+                        path=f"/ws/automation/workflow-run/{self.other_workflow.pk}/",
+                        user=self.user,
+                        socket="other",
+                    ),
+                    PublishGroupEvent(group=group, event=event),
+                    ExpectJson(payload=payload),
+                    ExpectNoMessage(socket="other"),
+                ],
+            ),
+        ]

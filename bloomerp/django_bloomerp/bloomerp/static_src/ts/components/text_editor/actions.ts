@@ -1,3 +1,5 @@
+import type { ContextMenuSubmenu } from "@/utils/contextMenu";
+import { t as _ } from "@/utils/i18n";
 import { $createHeadingNode } from "@lexical/rich-text";
 import {
     $createListNode,
@@ -19,6 +21,7 @@ import {
 import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./utils/wordSelector";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 import { promptImageUpload } from "./utils/imageBehavior";
+import { promptLinkInsert } from "./utils/linkPicker";
 import { promptHtmlInsert } from "./utils/htmlBehavior";
 import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
 
@@ -26,6 +29,7 @@ import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
 export type Action = {
     label: string,
     icon: string,
+    submenu?: (textEditor: BloomerpTextEditor) => ContextMenuSubmenu;
     handler: (textEditor: BloomerpTextEditor) => void
 }
 
@@ -126,59 +130,114 @@ function handleOrderedList(textEditor: BloomerpTextEditor): void {
     handleList(textEditor, "number");
 }
 
+/** Open the shared picker after removing a slash-command trigger. */
+function handleTemplate(textEditor: BloomerpTextEditor): void {
+    textEditor.openTemplatePicker();
+}
+
+/** Supply the template child page to the shared context menu. */
+function templateSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu {
+    return textEditor.getTemplateSubmenu();
+}
+
+/** Open the stored-file picker for image insertion. */
+function handleStoredImage(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("file"); }
+/** Supply image search and upload to the slash menu. */
+function storedImageSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("file"); }
+/** Open the user mention picker. */
+function handleMention(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("user"); }
+/** Supply user search to the slash menu. */
+function mentionSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("user"); }
+/** Open readable object reference selection. */
+function handleObjectReference(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("object"); }
+/** Supply readable object search to the slash menu. */
+function objectReferenceSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("object"); }
+
+/** Open the link form after the toolbar restores the editor's selection. */
+function handleLink(textEditor: BloomerpTextEditor): void {
+    /** Defer modal focus until the toolbar's click handler has finished. */
+    function openLink(): void {
+        if (textEditor.editor) promptLinkInsert(textEditor.editor, textEditor.element);
+    }
+    queueMicrotask(openLink);
+}
+
 export let ACTIONS: Record<string, Action> = {
+    link: {
+        /** Resolve the named-link action label. */
+        get label(): string { return _("Link"); },
+        icon: "fa-solid fa-link",
+        handler: handleLink,
+    },
+    template: {
+        /** Resolve the shared template command label. */
+        get label(): string { return _("Template"); },
+        icon: "fa-solid fa-file-lines",
+        handler: handleTemplate,
+        submenu: templateSubmenu,
+    },
     code_block: {
-        label: "Code Block",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Code Block"); },
         icon: "fa-solid fa-code",
         handler: handleCodeBlock,
     },
     h1: {
-        label: "Heading 1",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Heading 1"); },
         icon: "fa-solid fa-heading",
         handler: (textEditor) => handleHeading(textEditor, "h1")
     },
     h2: {
-        label: "Heading 2",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Heading 2"); },
         icon: "fa-solid fa-heading",
         handler: (textEditor) => handleHeading(textEditor, "h2")
     },
     h3: {
-        label: "Heading 3",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Heading 3"); },
         icon: "fa-solid fa-heading",
         handler: (textEditor) => handleHeading(textEditor, "h3")
     },
     image: {
-        label: "Image",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Image"); },
         icon: "fa-solid fa-image",
-        handler: (textEditor) => {
-            const editor = getLexicalEditor(textEditor);
-            if (!editor) {
-                return;
-            }
-
-            editor.update(() => {
-                removeTriggerWord()
-            });
-            promptImageUpload(editor);
-        }
+        handler: handleStoredImage,
+        submenu: storedImageSubmenu,
+    },
+    mention: {
+        /** Resolve the mention action label. */
+        get label(): string { return _("Mention"); },
+        icon: "fa-solid fa-at", handler: handleMention, submenu: mentionSubmenu,
+    },
+    object_reference: {
+        /** Resolve the object reference action label. */
+        get label(): string { return _("Object"); },
+        icon: "fa-solid fa-link", handler: handleObjectReference, submenu: objectReferenceSubmenu,
     },
     unordered_list: {
-        label: "Bullet List",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Bullet List"); },
         icon: "fa-solid fa-list-ul",
         handler: handleUnorderedList,
     },
     ordered_list: {
-        label: "Numbered List",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Numbered List"); },
         icon: "fa-solid fa-list-ol",
         handler: handleOrderedList,
     },
     checklist: {
-        label: "Checklist",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Checklist"); },
         icon: "fa-solid fa-list-check",
         handler: handleChecklist,
     },
     table: {
-        label: "Table",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("Table"); },
         icon: "fa-solid fa-table",
         handler: (textEditor) => {
             const editor = getLexicalEditor(textEditor);
@@ -205,7 +264,8 @@ export let ACTIONS: Record<string, Action> = {
         }
     },
     html: {
-        label: "HTML",
+        /** Resolve the command label after the active catalog loads. */
+        get label(): string { return _("HTML"); },
         icon: "fa-solid fa-code",
         handler: (textEditor) => {
             const editor = getLexicalEditor(textEditor);

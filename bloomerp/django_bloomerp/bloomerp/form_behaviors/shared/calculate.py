@@ -11,6 +11,7 @@ from django.db import models
 from django.db.models import QuerySet
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+from bloomerp.form_behaviors.shared.temporal import temporal_kind
 from bloomerp.models.application_field import ApplicationField
 
 MAX_EXPRESSION_NODES = 100
@@ -44,7 +45,7 @@ def numeric_fields(model: type[models.Model]) -> QuerySet[ApplicationField]:
 def calculation_target_fields(
     fields: QuerySet[ApplicationField],
 ) -> QuerySet[ApplicationField]:
-    """Return property, editable numeric, and editable unbound text targets."""
+    """Return property, numeric, unbound text, and scalar temporal targets."""
     eligible_ids: list[int] = []
     for field in fields:
         if field.field_type == FIELD_TYPE_REGISTRY.PROPERTY.id:
@@ -54,6 +55,9 @@ def calculation_target_fields(
             model_field = field._get_model_field()
             form_field = field.get_form_field()
         except (AttributeError, FieldDoesNotExist, LookupError, TypeError, ValueError):
+            continue
+        if temporal_kind(field):
+            eligible_ids.append(field.pk)
             continue
         numeric = isinstance(model_field, NUMERIC_MODEL_FIELDS)
         text = (

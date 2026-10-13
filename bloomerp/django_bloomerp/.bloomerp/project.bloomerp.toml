@@ -16,3 +16,9 @@ enabled = true
 
 [bloomerp.auth.oauth]
 enabled = true
+
+[bloomerp]
+email_secret_key="123"
+
+[bloomerp.i18n]
+languages = ["en", "nl", "fr", "de", "es", "it", "pt", "ru", "pl"]

@@ -275,6 +275,14 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         return Array.from(this.selectedCells);
     }
 
+    /** Release selection references when an updated card leaves the visible query. */
+    protected removeCellFromSelection(cell: BaseDataViewCell): void {
+        this.selectedCells.delete(cell);
+        cell.unselect();
+        if (this.selectionAnchor === cell) this.selectionAnchor = null;
+        if (this.currentCell === cell) this.currentCell = null;
+    }
+
     private getCellCoords(cell: BaseDataViewCell): { row: number; col: number } | null {
         const el = cell.element;
         if (!el) return null;

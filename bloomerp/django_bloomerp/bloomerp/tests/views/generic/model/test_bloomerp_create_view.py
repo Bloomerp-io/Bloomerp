@@ -3,6 +3,7 @@ import json
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.urls import reverse
 
@@ -45,6 +46,7 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         customer = self.CustomerModel
         planet = self.PlanetModel
         return [
+            *self.get_avatar_scenarios(),
             ModelRequestScenario(
                 name="Create form shows field help text",
                 description="UC: A field has help text.\nExpected Result: The create form displays it below the field.",
@@ -58,8 +60,8 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
                 expected=ExpectedResult(response_validators=self.input_equals("first_name", "XYZ")),
             ),
             ModelRequestScenario(
-                name="Generated create layout omits system fields and keeps files enabled",
-                description="UC: An administrator opens a generated create form.\nExpected Result: Internal system fields are omitted while files remain editable.",
+                name="Generated create layout omits header attachment fields and enables Attach",
+                description="UC: An administrator opens a generated create form.\nExpected Result: System and header attachment fields are omitted while Attach is enabled.",
                 model=customer, user=self.admin_user,
                 expected=ExpectedResult(response_validators=self.generated_create_field_state),
             ),
@@ -67,7 +69,14 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
                 name="Shared initial create layout is materialized and selected",
                 description="UC: A shared layout is marked as the user's initial default.\nExpected Result: It renders through a selected live reference without a local duplicate.",
                 model=customer, user=self.admin_user, prepare=self.prepare_shared_layout,
-                expected=ExpectedResult(response_validators=[self.contains_text("Shared create layout"), self.shared_layout_reference_selected]),
+                expected=ExpectedResult(response_validators=[self.contains_text("Shared create layout"), self.shared_layout_reference_selected, self.shared_attachment_controls]),
+            ),
+            ModelRequestScenario(
+                name="Record creators can attach using an inherited layout",
+                model=customer,
+                user=self.normal_user,
+                prepare=self.prepare_creator_shared_layout,
+                expected=ExpectedResult(response_validators=self.shared_attachment_controls),
             ),
             ModelRequestScenario(
                 name="One-to-many values survive a validation error",
@@ -318,10 +327,16 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
     def grant_no_row_policy(self, _scenario):
         self.grant_policy(["first_name", "last_name", "age"], [])
 
-    def generated_create_field_state(self, response):
+    def generated_create_field_state(self, response: HttpResponse) -> bool:
+        """Check generated forms omit header fields while offering attachment controls."""
         items = {str(item.id): item for row in response.context["layout"].rows for item in row.items}
-        system = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments"}
-        return all(str(self.fields_by_name[name].pk) not in items for name in system) and items[str(self.fields_by_name["files"].pk)].is_visible and "disabled" not in items[str(self.fields_by_name["files"].pk)].content
+        system = {"id", "pk", "datetime_created", "datetime_updated", "created_by", "updated_by", "comments", "files", "avatar"}
+        soup = BeautifulSoup(response.content, "html.parser")
+        return (
+            all(str(self.fields_by_name[name].pk) not in items for name in system)
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
+        )
 
     def prepare_shared_layout(self, _scenario):
         self.shared_layout = UserObjectLayoutPreference.objects.create(user=self.normal_user, content_type=self.content_type, name="Shared initial create", initial_default=True, layout={"rows": [{"title": "Shared create layout", "columns": 1, "items": [{"id": self.fields_by_name["first_name"].pk, "colspan": 1}]}]})
@@ -332,6 +347,37 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
     def shared_layout_reference_selected(self, _response):
         reference = UserObjectLayoutPreference.objects.get(user=self.admin_user, content_type=self.content_type)
         return reference.source_object == self.shared_layout and reference.selected and not UserObjectLayoutPreference.objects.filter(user=self.admin_user, content_type=self.content_type, source_object__isnull=True).exists()
+
+    def prepare_creator_shared_layout(self, scenario: ModelRequestScenario) -> None:
+        """Give a regular record creator an inherited layout they cannot manage."""
+        self.grant_basic_create_policy(scenario)
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        source = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=self.content_type,
+            name="Shared creator layout",
+            initial_default=True,
+            layout={"rows": [{"columns": 1, "items": [
+                {"id": self.fields_by_name[name].pk}
+                for name in ("first_name", "last_name", "age")
+            ]}]},
+        )
+        source.shared_with_users.add(self.normal_user)
+
+    def shared_attachment_controls(self, response: HttpResponse) -> bool:
+        """Check record creation enables attachments without enabling layout editing."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        host = soup.find(attrs={"bloomerp-component": "reference-attachments"})
+        return (
+            not response.context["can_change"]
+            and response.context["can_manage_attachments"]
+            and soup.find(attrs={"name": "reference-attach"}) is not None
+            and soup.find(attrs={"name": "object_references"}) is not None
+            and host is not None
+            and host.get("data-can-change") == "true"
+        )
 
     def save_controls_render(self, response):
         html = response.content.decode()
@@ -460,3 +506,129 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         self.first_layout.refresh_from_db()
         self.second_layout.refresh_from_db()
         return not self.first_layout.selected and self.second_layout.selected
+
+
+    def get_avatar_scenarios(self) -> list[ModelRequestScenario]:
+        """Cover header avatar uploads independently of create-layout fields."""
+        return [
+            ModelRequestScenario(
+                name="Create layout without avatar renders one hidden upload input",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                prepare=self.prepare_permitted_avatar_layout,
+                expected=ExpectedResult(response_validators=self.hidden_avatar_input_renders),
+            ),
+            ModelRequestScenario(
+                name="Create upload persists an avatar omitted from the layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                prepare=self.prepare_permitted_avatar_upload,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=self.created_avatar_was_saved,
+                ),
+            ),
+            ModelRequestScenario(
+                name="Create layout does not expose an avatar without add permission",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                prepare=self.prepare_denied_avatar_layout,
+                expected=ExpectedResult(response_validators=self.avatar_input_is_absent),
+            ),
+            ModelRequestScenario(
+                name="Forged create avatar upload cannot bypass field permissions",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                prepare=self.prepare_denied_avatar_upload,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("Permission denied for fields: avatar"),
+                    self.no_customer_created,
+                ]),
+            ),
+        ]
+
+    def configure_avatar_free_layout(self) -> None:
+        """Select a create layout containing only the required customer fields."""
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.normal_user,
+            content_type=self.content_type,
+            selected=True,
+            layout={"rows": [{"columns": 3, "items": [
+                {"id": self.fields_by_name[name].pk}
+                for name in ("first_name", "last_name", "age")
+            ]}]},
+        )
+
+    def prepare_permitted_avatar_layout(self, _scenario: ModelRequestScenario) -> None:
+        """Allow customer and avatar creation with no avatar layout item."""
+        self.grant_policy(
+            ["first_name", "last_name", "age", "avatar"], [self.basic_rule()]
+        )
+        self.configure_avatar_free_layout()
+
+    def prepare_denied_avatar_layout(self, scenario: ModelRequestScenario) -> None:
+        """Allow customer creation while withholding avatar field access."""
+        self.grant_basic_create_policy(scenario)
+        self.configure_avatar_free_layout()
+
+    def prepare_permitted_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Upload a valid avatar through the header on a permitted create request."""
+        self.prepare_permitted_avatar_layout(scenario)
+        self.set_avatar_upload_data(scenario)
+
+    def prepare_denied_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Forge a valid avatar upload on an otherwise permitted create request."""
+        self.prepare_denied_avatar_layout(scenario)
+        self.set_avatar_upload_data(scenario)
+
+    def set_avatar_upload_data(self, scenario: ModelRequestScenario) -> None:
+        """Supply required customer values and a valid single-pixel GIF upload."""
+        self.uploaded_avatar_bytes = (
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00"
+            b"\xff\xff\xff,\x00\x00\x00\x00\x01\x00\x01\x00"
+            b"\x00\x02\x02D\x01\x00;"
+        )
+        scenario.data = {
+            "first_name": "Allowed",
+            "last_name": "Avatar",
+            "age": 30,
+            "avatar": SimpleUploadedFile(
+                "header-avatar.gif", self.uploaded_avatar_bytes, content_type="image/gif"
+            ),
+        }
+
+    def hidden_avatar_input_renders(self, response: HttpResponse) -> bool:
+        """Check that the permitted avatar is outside the layout and inside the form."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        inputs = soup.select(
+            'input[type="file"][name="avatar"][data-reference-avatar-input]'
+        )
+        layout_ids = {
+            str(item.id) for row in response.context["layout"].rows for item in row.items
+        }
+        return (
+            str(self.fields_by_name["avatar"].pk) not in layout_ids
+            and len(inputs) == 1
+            and inputs[0].has_attr("hidden")
+            and inputs[0].has_attr("data-reference-avatar-input")
+            and inputs[0].find_parent("form") is not None
+            and inputs[0].find_parent("form").get("hx-post") == response.request["PATH_INFO"]
+        )
+
+    def avatar_input_is_absent(self, response: HttpResponse) -> bool:
+        """Check that header controls do not expose a denied avatar upload."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        return soup.select_one('input[type="file"][name="avatar"]') is None
+
+    def created_avatar_was_saved(self, _response: HttpResponse) -> bool:
+        """Verify the created customer references the exact uploaded avatar bytes."""
+        customer = self.CustomerModel.objects.get()
+        if not customer.avatar or not customer.avatar.storage.exists(customer.avatar.name):
+            return False
+        with customer.avatar.open("rb") as avatar:
+            return avatar.read() == self.uploaded_avatar_bytes

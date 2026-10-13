@@ -3,24 +3,27 @@ import { resolve } from 'path';
 
 export default defineConfig({
   root: './',
+  // Resolve emitted fonts and other assets relative to the deployed bundle.
+  base: './',
   
   build: {
     outDir: '../static/bloomerp/js/dist',
     emptyOutDir: true,
-    manifest: true,
+    // Keep the manifest visible to Django's staticfiles finder and collectstatic.
+    manifest: 'manifest.json',
     sourcemap: true, // Enable source maps for debugging
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'ts/entry.ts'),
       },
       output: {
-        // Keep application startup in one hashed module. The template versions
-        // main.js with a query string; lazy chunks must not import that entry
-        // without the query and execute startup a second time.
+        // Keep application startup in one hashed module. Every module, including
+        // the entry, has a build-specific URL so lazy imports cannot load an
+        // entry cached from an earlier release.
         manualChunks: {
           app: [resolve(__dirname, 'ts/main.ts')],
         },
-        entryFileNames: '[name].js',
+        entryFileNames: '[name]-[hash].js',
         chunkFileNames: '[name]-[hash].js',
         // The Django head template loads the application's CSS at this path.
         assetFileNames: asset => asset.names.includes('app.css') ? 'main.css' : '[name].[ext]',

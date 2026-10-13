@@ -72,6 +72,11 @@
             </button>
         </div>
         <!--End controls-->
+        {% if item.label_content_right %}
+        <div>
+            {{ item.label_content_right | safe }}
+        </div>
+        {% endif %}
     </div>
 
     <div class="layout-item__body min-w-0" data-layout-item-body>

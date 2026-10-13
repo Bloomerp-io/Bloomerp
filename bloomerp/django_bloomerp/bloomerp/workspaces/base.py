@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from typing import TYPE_CHECKING, Callable, Literal, Optional, Self, Type
 from django import forms
 from django.template.loader import render_to_string
-
+from pydantic.json_schema import SkipJsonSchema
 from bloomerp.filters.definition import FilterField
 
 if TYPE_CHECKING:
@@ -35,10 +35,10 @@ class TileOperationDefinition:
 class BaseTileConfig(BaseModel):
     """Shared metadata and behavior for declarative tile configurations."""
 
-    id: str | None = None
-    name: str | None = None
-    description: str | None = None
-    icon: str | None = None
+    id: SkipJsonSchema[str | None] = None
+    name: SkipJsonSchema[str | None] = None
+    description: SkipJsonSchema[str | None] = None
+    icon: SkipJsonSchema[str | None] = None
     filter_shared_keys: dict[str, str | None] = Field(
         default_factory=dict,
         description="Workspace filter aliases by field name. Omitted fields share by name; null keeps a field tile-specific.",
@@ -85,4 +85,3 @@ class TileTypeDefinition(BaseModel):
     model:Type[BaseTileConfig] | None = None
     render_cls:Type[BaseTileRenderer] | None = None
     filter_fields_factory:Callable[[BaseTileConfig], list[FilterField]] = lambda _:[]
-

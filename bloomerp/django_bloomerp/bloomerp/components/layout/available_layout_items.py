@@ -40,13 +40,13 @@ def _get_application_fields(request: HttpRequest, content_type: ContentType):
     if scope is None:
         return HttpResponse("Unsupported content type for application fields", status=400)
 
-    model_id = request.GET.get("target_content_type_id") or request.GET.get(
+    agent_id = request.GET.get("target_content_type_id") or request.GET.get(
         "content_type_id"
     )
-    if not model_id:
+    if not agent_id:
         return HttpResponse("Missing target_content_type_id", status=400)
 
-    model_content_type = get_object_or_404(ContentType, id=model_id)
+    model_content_type = get_object_or_404(ContentType, id=agent_id)
     model = model_content_type.model_class()
     if model is None:
         return HttpResponse("Invalid content type", status=400)

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db.models import Count, ForeignKey, OneToOneField, Q, QuerySet
-from django.http import HttpResponse, JsonResponse
+from typing import TYPE_CHECKING, Any
+
+from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist, ValidationError
+from django.db.models import Count, ForeignKey, Model, OneToOneField, Q, QuerySet
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
 from django.urls import reverse
-from typing import TYPE_CHECKING
 
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
+
+from ..definition import DataviewPagination, DataviewState
+from .config import KanbanDataView
 
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
@@ -17,16 +22,21 @@ if TYPE_CHECKING:
 
 from ..definition import BaseDataviewRenderer
 
-
 KANBAN_EMPTY_COLUMN_VALUE = "__none__"
 KANBAN_MAX_RELATED_COLUMNS = 50
 
 
 class KanbanDataviewRenderer(BaseDataviewRenderer):
     template_name = "cotton/features/dataviews/kanban.html"
-    reserved_query_params = {"kanban_page", "kanban_column"}
+    reserved_query_params = {"kanban_page", "kanban_column", "kanban_loaded_ids"}
 
-    def get_context_data(self, pagination) -> dict:
+    @classmethod
+    def action_requires_count(cls, action: str) -> bool:
+        """Skip the board total when saving and rendering a single moved card."""
+        return action != "move"
+
+    def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
+        """Build paginated lanes and their configured drop targets and colours."""
         context = super().get_context_data(pagination)
         move_url = reverse(
             "components_dataview_renderer_operation",
@@ -72,13 +82,16 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                     allowed_related_queryset=allowed_related_queryset,
                     preference=self.state.preference,
                     page_size=page_size,
+                    options=self.options,
                 )
 
         context.update({
             "kanban_groups": kanban_groups,
             "kanban_too_many_groups": kanban_too_many_groups,
             "group_by_field": group_by_field,
-            "kanban_page_querystring": self.build_page_querystring(self.state.request),
+            "kanban_page_querystring": self.build_page_querystring(
+                self.state.request, self.state.operation_context_token
+            ),
             "component_args" : {
                 "data-group-by-field-id": group_by_field.id if group_by_field else "",
                 "data-group-by-field" : group_by_field.field if group_by_field else "",
@@ -115,11 +128,12 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     @classmethod
     def build_page_querystring(
         cls,
-        request,
+        request: HttpRequest,
         operation_context_token: str | None = None,
     ) -> str:
+        """Keep filters and operation authorization without lane pagination parameters."""
         querydict = request.GET.copy()
-        for key in ("page", "kanban_page", "kanban_column"):
+        for key in {"page"} | cls.reserved_query_params:
             querydict.pop(key, None)
         if operation_context_token:
             querydict["_dataview_operation_context"] = operation_context_token
@@ -133,11 +147,14 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         )
 
     @classmethod
-    def handle_action(cls, action: str, request, state) -> HttpResponse:
+    def handle_action(cls, action: str, request: HttpRequest, state: DataviewState) -> HttpResponse:
+        """Handle card moves and additional pages of ordinary or custom lanes."""
         if action == "move":
             return cls._move_card(request, state)
         if action != "column":
             return super().handle_action(action, request, state)
+
+        from bloomerp.components.objects.dataviews.dataview import _get_actions
 
         group_by_field = cls.get_group_by_field(
             state.fields,
@@ -150,17 +167,32 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if not column_value:
             return HttpResponse("Missing kanban column.", status=400)
 
+        loaded_ids = None
+        pagination_data = request.POST if request.method == "POST" else request.GET
+        if "kanban_loaded_ids" in pagination_data:
+            try:
+                loaded_ids = cls._parse_card_ids(state.model, pagination_data["kanban_loaded_ids"])
+            except (TypeError, ValueError, ValidationError):
+                return HttpResponse("Invalid loaded card IDs.", status=400)
+
         group = cls.build_column_group(
-            state.queryset,
-            group_by_field,
-            column_value,
+            state.queryset, group_by_field, column_value,
             preference=state.preference,
+            options=state.options,
+            user=request.user,
             page_size=getattr(state.options, "page_size", 25),
             page_number=request.GET.get("kanban_page", 1),
+            loaded_ids=loaded_ids,
         )
         if group is None:
             return HttpResponse("Kanban column not found.", status=404)
 
+        card_order = None
+        if loaded_ids is not None:
+            card_order = cls._loaded_card_order(
+                state.queryset, group_by_field, group["member_values"],
+                state.preference, [*loaded_ids, *(obj.pk for obj in group["items"])],
+            )
         return render(
             request,
             "components/objects/dataview_kanban_cards.html",
@@ -170,6 +202,9 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "avatar_field": state.avatar_field,
                 "group": group,
                 "preference": state.preference,
+                "object_actions": _get_actions(state.model),
+                "kanban_append": True,
+                "kanban_card_order": card_order,
                 "kanban_page_querystring": cls.build_page_querystring(
                     request,
                     state.operation_context_token,
@@ -177,8 +212,32 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             },
         )
 
+    @staticmethod
+    def _parse_card_ids(model: type[Model], raw_ids: str) -> list[Any]:
+        """Validate displayed-card exclusions using the model's primary-key field."""
+        return [model._meta.pk.to_python(value) for value in raw_ids.split(",") if value]
+
     @classmethod
-    def _move_card(cls, request, state) -> HttpResponse:
+    def _loaded_card_order(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        values: list[Any],
+        preference: UserListViewPreference | None,
+        loaded_ids: list[Any],
+    ) -> list[str]:
+        """Fetch loaded IDs for a configured sort, without rendering or loading a lane."""
+        sort_options = (preference.options or {}).get("kanban", {}) if preference else {}
+        if not sort_options.get("sort_field") or not loaded_ids:
+            return []
+        items = cls._lane_queryset(
+            queryset, group_by_field, values, preference
+        ).filter(pk__in=loaded_ids)
+        return [str(pk) for pk in items.values_list("pk", flat=True)]
+
+    @classmethod
+    def _move_card(cls, request: HttpRequest, state: DataviewState) -> HttpResponse:
+        """Save an authorized category and return its card and loaded destination order."""
         if request.method != "POST":
             return HttpResponse("Method not allowed", status=405)
 
@@ -186,6 +245,13 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         group_value = request.POST.get("group_value")
         if not object_id:
             return HttpResponse("Missing required fields", status=400)
+
+        loaded_ids = None
+        if "kanban_loaded_ids" in request.POST:
+            try:
+                loaded_ids = cls._parse_card_ids(state.model, request.POST["kanban_loaded_ids"])
+            except (TypeError, ValueError, ValidationError):
+                return HttpResponse("Invalid loaded card IDs.", status=400)
 
         group_by_field = cls.get_group_by_field(state.fields, state.options)
         if not group_by_field:
@@ -214,7 +280,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if normalized_value is None:
             if not model_field.null and not model_field.blank:
                 return HttpResponse("Field does not allow empty values", status=400)
-            value = None
+            value = "" if model_field.empty_strings_allowed and not model_field.null else None
         else:
             try:
                 if isinstance(model_field, (ForeignKey, OneToOneField)):
@@ -229,159 +295,361 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
 
         setattr(obj, group_by_field.field, value)
         obj.save(update_fields=[group_by_field.field])
-        return JsonResponse({"status": "ok"})
+        # Re-evaluate filters and row-sensitive field annotations after the move.
+        visible_object = state.queryset.filter(pk=obj.pk).first()
+        card_html = ""
+        if visible_object is not None:
+            from bloomerp.components.objects.dataviews.dataview import _get_actions
+            from bloomerp.field_types.utils.value_loading import prepare_field_values
+
+            cls._prepare_card_colour(visible_object, group_by_field, state.options)
+            prepare_field_values([visible_object], state.render_fields)
+            card_html = render_to_string(
+                "components/objects/kanban_card.html",
+                {
+                    "object": visible_object,
+                    "content_type_id": state.content_type_id,
+                    "fields": state.render_fields,
+                    "avatar_field": state.avatar_field,
+                    "preference": state.preference,
+                    "object_actions": _get_actions(state.model),
+                    "row_index": request.POST.get("row_index", "0"),
+                },
+                request=request,
+            )
+        result: dict[str, Any] = {"status": "ok", "card_html": card_html}
+        if loaded_ids is not None:
+            concrete_value = getattr(obj, model_field.attname)
+            values = [concrete_value]
+            for members in getattr(state.options, "custom_groupings", {}).values():
+                if cls._format_column_value(concrete_value) in members:
+                    value_field = (
+                        model_field.target_field
+                        if isinstance(model_field, (ForeignKey, OneToOneField))
+                        else model_field
+                    )
+                    for value in members:
+                        try:
+                            values.append(
+                                None if value == KANBAN_EMPTY_COLUMN_VALUE
+                                else value_field.to_python(value)
+                            )
+                        except (TypeError, ValueError, ValidationError):
+                            continue
+                    break
+            result["ordered_ids"] = cls._loaded_card_order(
+                state.queryset, group_by_field, values, state.preference,
+                [*loaded_ids, obj.pk],
+            )
+        return JsonResponse(result)
 
     @classmethod
     def build_column_group(
         cls,
-        queryset,
-        group_by_field,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
         column_value: str,
-        preference=None,
+        preference: UserListViewPreference | None = None,
         page_size: int | None = None,
-        page_number=1,
-    ) -> dict | None:
-        field_name = group_by_field.field
-        field_type = group_by_field.field_type
-        model_field = cls._get_model_field(queryset, field_name)
-        value = cls._coerce_column_value(column_value, model_field)
-
-        column_queryset = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
-        item_count = column_queryset.count()
-        if item_count == 0 and value is not None:
-            return None
-
-        if value is None:
-            label = "Unassigned"
-        elif field_type in ["ForeignKey", "OneToOneField"]:
-            label = cls._get_related_label(queryset, field_name, value)
+        page_number: int | str = 1,
+        options: KanbanDataView | None = None,
+        user: AbstractBloomerpUser | None = None,
+        loaded_ids: list[Any] | None = None,
+    ) -> dict[str, Any] | None:
+        """Resolve and paginate only the requested ordinary or custom lane."""
+        custom_groupings = getattr(options, "custom_groupings", {})
+        if (
+            column_value.startswith("__group__:")
+            and column_value[len("__group__:") :] in custom_groupings
+        ):
+            requested_keys = custom_groupings.get(column_value[len("__group__:") :], [])
         else:
-            label = cls._get_choice_label(model_field, value)
-
-        return cls._build_group(
-            value,
-            label,
-            column_queryset,
-            page_size,
-            page_number,
-            item_count=item_count,
+            requested_keys = [column_value]
+        if not requested_keys:
+            return None
+        model_field = cls._get_model_field(queryset, group_by_field.field)
+        values = []
+        for key in requested_keys:
+            try:
+                if key == KANBAN_EMPTY_COLUMN_VALUE:
+                    value = None
+                elif isinstance(model_field, (ForeignKey, OneToOneField)):
+                    value = model_field.target_field.to_python(key)
+                else:
+                    value = model_field.to_python(key) if model_field else key
+            except (TypeError, ValueError, ValidationError):
+                continue
+            values.append(value)
+        if not values:
+            return None
+        lane_queryset = cls._lane_queryset(queryset, group_by_field, values, preference)
+        related_queryset = None
+        if isinstance(model_field, (ForeignKey, OneToOneField)):
+            related_queryset = cls.get_allowed_related_queryset(
+                group_by_field, user
+            ).filter(pk__in=[value for value in values if value is not None])
+        metadata = cls.build_lane_metadata(
+            lane_queryset,
+            group_by_field,
+            user,
+            related_queryset,
         )
+        metadata = cls.merge_lane_metadata(
+            metadata, custom_groupings, getattr(options, "custom_group_order", []),
+            getattr(options, "show_unmapped_lanes", True),
+        )
+        group = next(
+            (item for item in metadata if item["request_value"] == column_value), None
+        )
+        if group is None:
+            return None
+        return cls._materialize_lane(
+            queryset, group_by_field, group, preference, page_size,
+            1 if loaded_ids is not None else page_number, options,
+            loaded_ids=loaded_ids,
+        )
+
+    @classmethod
+    def build_lane_metadata(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        user: AbstractBloomerpUser | None = None,
+        allowed_related_queryset: QuerySet | None = None,
+    ) -> list[dict[str, Any]]:
+        """Collect eligible lane labels, keys and counts without querying any card objects."""
+        field_name = group_by_field.field
+        model_field = cls._get_model_field(queryset, field_name)
+        counts = {
+            row[field_name]: row["item_count"]
+            for row in queryset.order_by()
+            .values(field_name)
+            .annotate(item_count=Count("pk"))
+            .order_by(field_name)
+        }
+        empty_count = sum(
+            count for value, count in counts.items() if value in (None, "")
+        )
+        groups = (
+            [cls._lane_metadata(None, "Unassigned", empty_count)] if empty_count else []
+        )
+        if isinstance(model_field, (ForeignKey, OneToOneField)):
+            related_queryset = allowed_related_queryset
+            if related_queryset is None:
+                related_queryset = cls.get_allowed_related_queryset(
+                    group_by_field, user
+                )
+            groups.extend(
+                cls._lane_metadata(item.pk, str(item), counts.get(item.pk, 0))
+                for item in related_queryset
+            )
+            return groups
+        seen_values = {None, ""}
+        for value, label in cls._iter_choices(
+            getattr(model_field, "choices", None) or []
+        ):
+            if value in seen_values:
+                continue
+            groups.append(cls._lane_metadata(value, str(label), counts.get(value, 0)))
+            seen_values.add(value)
+        groups.extend(
+            cls._lane_metadata(value, str(value), count)
+            for value, count in counts.items()
+            if value not in seen_values
+        )
+        return groups
+
+    @classmethod
+    def _lane_metadata(cls, value: Any, label: str, count: int) -> dict[str, Any]:
+        """Describe an ordinary lane without constructing or evaluating its card queryset."""
+        return {
+            "value": value,
+            "request_value": cls._format_column_value(value),
+            "label": label,
+            "count": count,
+            "member_values": [value],
+        }
+
+    @classmethod
+    def merge_lane_metadata(
+        cls,
+        groups: list[dict[str, Any]],
+        custom_groupings: dict[str, list[str]],
+        custom_group_order: list[str] | None = None,
+        show_unmapped_lanes: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Merge eligible members and optionally retain unmapped lanes without loading cards."""
+        by_value = {group["request_value"]: group for group in groups}
+        consumed: set[str] = set()
+        merged = []
+        labels = dict.fromkeys([*(custom_group_order or []), *custom_groupings])
+        for label in labels:
+            values = custom_groupings.get(label, [])
+            members = [
+                by_value[value]
+                for value in values
+                if value in by_value and value not in consumed
+            ]
+            if not members:
+                continue
+            consumed.update(member["request_value"] for member in members)
+            merged.append(
+                {
+                    "value": label,
+                    "label": label,
+                    "request_value": "__group__:" + label,
+                    "colour_key": label,
+                    "count": sum(member["count"] for member in members),
+                    "member_values": [
+                        value for member in members for value in member["member_values"]
+                    ],
+                    "destinations": [
+                        {"value": member["request_value"], "label": member["label"]}
+                        for member in members
+                    ],
+                }
+            )
+        if show_unmapped_lanes:
+            merged.extend(
+                group for group in groups if group["request_value"] not in consumed
+            )
+        return merged
 
     @classmethod
     def build_groups(
         cls,
-        queryset,
-        group_by_field,
-        user=None,
-        allowed_related_queryset=None,
-        preference=None,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        user: AbstractBloomerpUser | None = None,
+        allowed_related_queryset: QuerySet | None = None,
+        preference: UserListViewPreference | None = None,
         page_size: int | None = None,
-        page_number=1,
-    ) -> list[dict]:
-        field_name = group_by_field.field
-        model_field = cls._get_model_field(queryset, field_name)
-        groups = []
-
-        if isinstance(model_field, (ForeignKey, OneToOneField)):
-            count_rows = list(
-                queryset
-                .values(field_name)
-                .annotate(item_count=Count("pk"))
-                .order_by(field_name)
+        page_number: int | str = 1,
+        options: KanbanDataView | None = None,
+    ) -> list[dict[str, Any]]:
+        """Resolve lane metadata first, then load only each final lane's visible page."""
+        metadata = cls.build_lane_metadata(
+            queryset, group_by_field, user, allowed_related_queryset
+        )
+        metadata = cls.merge_lane_metadata(
+            metadata, getattr(options, "custom_groupings", {}),
+            getattr(options, "custom_group_order", []),
+            getattr(options, "show_unmapped_lanes", True),
+        )
+        return [
+            cls._materialize_lane(
+                queryset,
+                group_by_field,
+                group,
+                preference,
+                page_size,
+                page_number,
+                options,
             )
-            counts_by_value = {
-                row[field_name]: row["item_count"]
-                for row in count_rows
-            }
+            for group in metadata
+        ]
 
-            if None in counts_by_value:
-                items = cls._build_column_queryset(queryset, field_name, model_field, None, preference=preference)
-                groups.append(cls._build_group(
-                    None, "Unassigned", items, page_size, page_number,
-                    item_count=counts_by_value[None]
-                ))
+    @classmethod
+    def _lane_queryset(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        values: list[Any],
+        preference: UserListViewPreference | None,
+    ) -> QuerySet:
+        """Filter lane members and apply saved sorting with a stable primary-key tie break."""
+        model_field = cls._get_model_field(queryset, group_by_field.field)
+        lane_filter = Q(pk__in=[])
+        for value in values:
+            lane_filter |= (
+                cls._build_empty_filter(group_by_field.field, model_field)
+                if value is None
+                else Q(**{group_by_field.field: value})
+            )
+        items = queryset.filter(lane_filter)
+        sort_options = (
+            (preference.options or {}).get("kanban", {}) if preference else {}
+        )
+        sort_field = sort_options.get("sort_field")
+        if sort_field:
+            items = items.order_by(
+                ("-" if sort_options.get("sort_direction") == "desc" else "")
+                + sort_field,
+                "pk",
+            )
+        return items
 
-            if allowed_related_queryset is None:
-                allowed_related_queryset = cls.get_allowed_related_queryset(
-                    group_by_field,
-                    user,
-                )
+    @classmethod
+    def _materialize_lane(
+        cls,
+        queryset: QuerySet,
+        group_by_field: ApplicationField,
+        metadata: dict[str, Any],
+        preference: UserListViewPreference | None,
+        page_size: int | None,
+        page_number: int | str,
+        options: KanbanDataView | None,
+        loaded_ids: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """Paginate one final lane and attach its header and destination presentation."""
+        items = cls._lane_queryset(
+            queryset, group_by_field, metadata["member_values"], preference
+        )
+        if loaded_ids is not None:
+            items = items.exclude(pk__in=loaded_ids)
+        group = cls._build_group(
+            metadata["value"],
+            metadata["label"],
+            items,
+            page_size,
+            page_number,
+            metadata["count"],
+        )
+        group.update(metadata)
+        colours = getattr(options, "lane_colouring", {})
+        group["colour"] = colours.get(group.get("colour_key", group["request_value"]))
+        group["foreground"] = cls._header_foreground(group["colour"])
+        group.setdefault(
+            "destinations", [{"value": group["request_value"], "label": group["label"]}]
+        )
+        group["destination_value"] = group["destinations"][0]["value"]
+        for destination in group["destinations"]:
+            destination["colour"] = colours.get(destination["value"], group["colour"])
+        for item in group["items"]:
+            cls._prepare_card_colour(item, group_by_field, options)
+        return group
 
-            for related_object in allowed_related_queryset:
-                value = related_object.pk
-                items = cls._build_column_queryset(
-                    queryset,
-                    field_name,
-                    model_field,
-                    value,
-                    preference=preference,
-                )
-                groups.append(cls._build_group(
-                    value,
-                    str(related_object),
-                    items,
-                    page_size,
-                    page_number,
-                    item_count=counts_by_value.get(value, 0),
-                ))
-        else:
-            empty_count = queryset.filter(cls._build_empty_filter(field_name, model_field)).count()
-            if empty_count:
-                items = cls._build_column_queryset(queryset, field_name, model_field, None, preference=preference)
-                groups.append(cls._build_group(
-                    None, "Unassigned", items, page_size, page_number,
-                    item_count=empty_count
-                ))
+    @classmethod
+    def _prepare_card_colour(
+        cls,
+        obj: Any,
+        group_by_field: ApplicationField,
+        options: KanbanDataView | None,
+    ) -> None:
+        """Apply the same concrete-category and custom-lane colours to every card render."""
+        try:
+            model_field = obj._meta.get_field(group_by_field.field)
+            attribute = model_field.attname
+        except FieldDoesNotExist:
+            attribute = group_by_field.field
+        value = cls._format_column_value(getattr(obj, attribute))
+        custom_groups = getattr(options, "custom_groupings", {})
+        lane_key = next(
+            (name for name, values in custom_groups.items() if value in values), value
+        )
+        colours = getattr(options, "lane_colouring", {})
+        obj.kanban_header_colour = colours.get(value, colours.get(lane_key))
+        obj.kanban_header_foreground = cls._header_foreground(obj.kanban_header_colour)
 
-            if model_field and getattr(model_field, "choices", None):
-                seen_values = set()
-                counts_by_value = {
-                    row[field_name]: row["item_count"]
-                    for row in (
-                        queryset
-                        .exclude(cls._build_empty_filter(field_name, model_field))
-                        .values(field_name)
-                        .annotate(item_count=Count("pk"))
-                        .order_by(field_name)
-                    )
-                }
-
-                for choice_value, choice_label in cls._iter_choices(model_field.choices):
-                    if choice_value in (None, ""):
-                        continue
-
-                    choice_items = cls._build_column_queryset(queryset, field_name, model_field, choice_value, preference=preference)
-                    groups.append(cls._build_group(
-                        choice_value, str(choice_label), choice_items, page_size, page_number,
-                        item_count=counts_by_value.get(choice_value, 0)
-                    ))
-                    seen_values.add(choice_value)
-
-                for value, item_count in counts_by_value.items():
-                    if value in seen_values:
-                        continue
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
-                    groups.append(cls._build_group(
-                        value, str(value), items, page_size, page_number,
-                        item_count=item_count
-                    ))
-            else:
-                count_rows = (
-                    queryset
-                    .exclude(cls._build_empty_filter(field_name, model_field))
-                    .values(field_name)
-                    .annotate(item_count=Count("pk"))
-                    .order_by(field_name)
-                )
-                for row in count_rows:
-                    value = row[field_name]
-                    items = cls._build_column_queryset(queryset, field_name, model_field, value, preference=preference)
-                    groups.append(cls._build_group(
-                        value, str(value), items, page_size, page_number,
-                        item_count=row["item_count"]
-                    ))
-
-        return groups
+    @staticmethod
+    def _header_foreground(colour: str | None) -> str:
+        """Choose the higher-contrast black or white text for a configured header."""
+        if not colour:
+            return "#111827"
+        channels = [int(colour[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
+        luminance = sum(channel * weight for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True))
+        return "#000000" if luminance > 0.179 else "#ffffff"
 
     @staticmethod
     def _format_column_value(value) -> str:

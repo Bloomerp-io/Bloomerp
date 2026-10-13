@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load bloomerp %}
 {% load crispy_forms_tags %}
 
@@ -32,19 +33,12 @@
                 action="focus" 
                 position="bottom" 
                 target="#data-view-search-input-{{ content_type_id }}">
-                <div class="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-1 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary sm:max-w-80 sm:flex-none">
-                    <span class="pointer-events-none shrink-0 text-gray-400">
-                        <i class="fa fa-search"></i>
-                    </span>
-                    <input
-                        type="text"
-                        name="q"
-                        value="{{ search_query }}"
-                        placeholder="Search..."
-                        class="w-full border-0 bg-transparent p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-                        id="data-view-search-input-{{ content_type_id }}"
-                    />
-                </div>
+                <c-ui.search
+                    name="q"
+                    :value="search_query"
+                    placeholder="Search..."
+                    input_id="data-view-search-input-{{ content_type_id }}"
+                />
             </c-ui.shortcut_tooltip>
         </div>
 
@@ -61,6 +55,7 @@
 {% if not is_data_section_request %}
     <div id="data-view-data-section" class="h-full">
 {% endif %}
+        <span hidden data-effective-json-filters="{{ effective_json_filters }}"></span>
         {{ before_data_view|safe }}
         {% if preference.split_view_enabled %}
         <div class="flex h-[calc(100vh-200px)] w-full min-w-0 overflow-hidden rounded-xl" data-split-view-container>
@@ -169,7 +164,7 @@
     
     
     <c-ui.modal id="export-objects-modal" title="Export"/>
-    <c-ui.modal id="bulk-actions-modal" title="Bulk actions"/>
+    <c-ui.modal id="bulk-actions-modal" title="{% translate "Bulk actions" %}"/>
 
 </div>
 {% endif %}

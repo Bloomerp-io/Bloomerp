@@ -23,6 +23,7 @@ export class RenderedFilters {
     private components: RenderedFilter[] = [];
     private serialized?: string;
     private defaults: SavedFilter[] = [];
+    private effectiveDefaultIds?: Set<string>;
     private api: FilterApi;
     private error = document.createElement('p');
     private busy = false;
@@ -41,19 +42,28 @@ export class RenderedFilters {
         root.addEventListener(RenderedFilter.editEvent, this.onEdit);
     }
 
-    public restore(json: string | null): void {
+    /** Restore server-recovered input without reintroducing rejected default groups. */
+    public restore(json: string | null, authoritative: boolean = false): void {
         try {
-            this.setFilters(parseInitialFilters(json ?? '[]'));
+            this.setFilters(parseInitialFilters(json ?? '[]'), undefined, authoritative);
         }
         catch { /* The host/backend reports invalid query filters; never rewrite them here. */ }
     }
 
     /** Render the active filters and resolve labels for relation values. */
-    public setFilters(filters: Filter[], identity?: AppliedFilterIdentity): void {
+    public setFilters(filters: Filter[], identity?: AppliedFilterIdentity, authoritative: boolean = false): void {
         const scope = this.root.dataset.scope;
         if (scope !== 'model' && scope !== 'workspace') return;
         const context = { scope, id: this.root.dataset.scopeId! } as const;
-        const defaultEntries = this.defaults.map(record => ({
+        if (authoritative) {
+            this.effectiveDefaultIds = new Set(this.defaults.filter(
+                (record: SavedFilter): boolean => this.hasDefaultFilters(filters, record),
+            ).map((record: SavedFilter): string => record.id));
+        }
+        const visibleDefaults = this.defaults.filter(
+            (record: SavedFilter): boolean => !this.effectiveDefaultIds || this.effectiveDefaultIds.has(record.id),
+        );
+        const defaultEntries = visibleDefaults.map(record => ({
             key: crypto.randomUUID(), label: record.name, filters: structuredClone(record.filters),
             scope: context, savedFilterId: record.id, defaultFilterId: record.id,
         }));
@@ -113,6 +123,16 @@ export class RenderedFilters {
         return `${condition.field_path.replace(/__/g, ' › ').replace(/_/g, ' ')} ${condition.lookup_id.replace(/_/g, ' ')} ${value ?? ''}`.trim();
     }
 
+    /** Keep a named default only when its complete predicate survived recovery. */
+    private hasDefaultFilters(filters: Filter[], record: SavedFilter): boolean {
+        const size = record.filters.length;
+        const identity = filterIdentity(record.filters);
+        return size > 0 && filters.some((_group: Filter, start: number): boolean =>
+            start + size <= filters.length
+            && filterIdentity(filters.slice(start, start + size)) === identity,
+        );
+    }
+
     private withoutDefaultFilters(filters: Filter[]): Filter[] {
         const remaining = structuredClone(filters);
         this.defaults.forEach(record => {
@@ -148,6 +168,7 @@ export class RenderedFilters {
             try {
                 await this.api.defaultFilter('remove', this.root.dataset.hostId!, [], current.defaultFilterId);
                 this.defaults = this.defaults.filter(record => record.id !== current.defaultFilterId);
+                this.effectiveDefaultIds?.delete(current.defaultFilterId);
                 this.error.textContent = '';
             } catch (error) { this.error.textContent = (error as Error).message; return; }
             finally { this.busy = false; }
@@ -176,6 +197,7 @@ export class RenderedFilters {
             entry.defaultFilterId = record.id;
             entry.label = record.name;
             this.defaults = [...this.defaults.filter(item => item.id !== record.id), record];
+            this.effectiveDefaultIds?.add(record.id);
             this.error.textContent = '';
             this.render();
         } catch (error) { this.error.textContent = (error as Error).message; }

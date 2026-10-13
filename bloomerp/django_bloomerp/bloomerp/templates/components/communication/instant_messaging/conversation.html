@@ -1,0 +1,29 @@
+{% load i18n %}
+<section class="im-conversation-content im-chat-view im-theme" bloomerp-component="bloomerp:im-conversation" data-read-url="{% url 'components_im_read_position' conversation.pk %}" data-load-url="{% url 'components_conversation' conversation.pk %}" data-thread-id="{{ thread_root.pk }}" data-group-url="{% url 'components_im_group_members' conversation.pk %}" data-editor-label="{% translate 'Message' %}" data-conversation-id="{{ conversation.pk }}" aria-label="{{ identity.displayName }}">
+    <header class="im-chat-header">
+        {% if conversation.kind == 'group' and conversation.provider_key == 'internal' %}
+        <div class="im-chat-identity"><c-features.instant_messaging.identity :identity="identity" :show_provider="False" /></div>
+        <c-ui.dropdown.body width="w-80" :fixed="True" menu_class="max-h-80 overflow-y-auto">
+            <c-slot name="trigger_html">
+                <button type="button" class="im-icon-button text-primary-800" x-ref="trigger" aria-label="{% translate 'Group settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())">
+                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                </button>
+            </c-slot>
+            <div hx-get="{% url 'components_im_group_members' conversation.pk %}" hx-trigger="load"></div>
+        </c-ui.dropdown.body>
+        {% else %}<div class="im-chat-identity"><c-features.instant_messaging.identity :identity="identity" /></div>{% endif %}
+        {% if business_number %}<small>{{ business_number }}</small>{% endif %}
+        {% if can_call %}<button type="button" class="im-icon-button text-primary-800" data-phone-action="call" data-connection-id="{{ conversation.voip_number.connection_id }}" data-token-url="{% url 'components_voip_token' conversation.voip_number.connection_id %}" data-call-url="{% url 'components_voip_start_call' conversation.pk %}" aria-label="{% translate 'Call' %}"><i class="fa-solid fa-phone" aria-hidden="true"></i></button>{% endif %}
+    </header>
+    {% if thread_root %}<div class="im-thread-banner bg-base"><span>{% translate 'Thread' %}</span><button type="button" hx-get="{% url 'components_conversation' conversation.pk %}" hx-target="closest .im-conversation-content" hx-swap="outerHTML">{% translate 'Back to conversation' %}</button></div>{% endif %}
+    {% include "components/communication/instant_messaging/messages.html" %}
+    <form class="im-composer-wrap" data-send-form action="{% url 'components_im_send_message' conversation.pk %}" method="post">{% csrf_token %}
+        <div class="im-quote-preview" data-quote-preview hidden><span data-quote-text></span><button type="button" class="im-icon-button text-primary-800" data-cancel-quote aria-label="{% translate 'Cancel quoted reply' %}">×</button></div>
+        <div class="im-composer bg-white">
+            {% translate 'Write a message…' as placeholder %}
+            <c-ui.inputs.text_editor :name="editor_name" :compact="True" :include_toolbar="True" :placeholder="placeholder" />
+            <div class="im-composer-bottom"><span>{% if can_send %}{% translate 'Ctrl/⌘ + Enter to send' %}{% else %}{% translate 'Sending is unavailable for this conversation.' %}{% endif %}</span><button type="submit" class="im-send" {% if not can_send %}disabled{% endif %} aria-label="{% translate 'Send message' %}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button></div>
+        </div>
+        <p data-send-error role="alert" hidden></p>
+    </form>
+</section>

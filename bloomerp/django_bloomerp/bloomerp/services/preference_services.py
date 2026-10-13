@@ -5,7 +5,7 @@ from typing import Any
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Q, QuerySet
+from django.db.models import Exists, OuterRef, Q, QuerySet
 
 from bloomerp.models.users.base_preference import BasePreference
 from bloomerp.models.users.user import AbstractBloomerpUser
@@ -80,6 +80,28 @@ class PreferenceManager:
             pass
         return None
 
+    def _shared_with_user_condition(
+        self,
+        preference_model: type[BasePreference],
+        preference_id_field: str = "pk",
+    ) -> Q:
+        """Check live direct and group shares without multiplying preference rows."""
+        user_shares = preference_model._meta.get_field("shared_with_users")
+        group_shares = preference_model._meta.get_field("shared_with_groups")
+        direct = user_shares.remote_field.through.objects.filter(
+            **{
+                f"{user_shares.m2m_field_name()}_id": OuterRef(preference_id_field),
+                f"{user_shares.m2m_reverse_field_name()}_id": self.user.pk,
+            }
+        )
+        groups = group_shares.remote_field.through.objects.filter(
+            **{
+                f"{group_shares.m2m_field_name()}_id": OuterRef(preference_id_field),
+                f"{group_shares.m2m_reverse_field_name()}__user": self.user,
+            }
+        )
+        return Q(Exists(direct)) | Q(Exists(groups))
+
     def get_available(
         self,
         preference_model: type[BasePreference],
@@ -99,30 +121,25 @@ class PreferenceManager:
         scope = preference_model.normalize_scope(clean_scope(scope))
         owned_references = preference_model.objects.filter(
             user=self.user,
-            source_object__isnull=False,
+            source_object_id=OuterRef("pk"),
             **scope,
-        ).filter(
-            Q(source_object__shared_with_users=self.user)
-            | Q(source_object__shared_with_groups__user=self.user)
-        )
-        owned_sources = preference_model.objects.filter(
-            user=self.user,
-            source_object__isnull=True,
-            **scope,
-        )
-        shared_sources = (
-            preference_model.objects.filter(
-                Q(shared_with_users=self.user)
-                | Q(shared_with_groups__user=self.user),
-                source_object__isnull=True,
-                **scope,
-            )
-            .exclude(user=self.user)
-            .exclude(pk__in=owned_references.values("source_object_id"))
         )
         qs = (
-            (owned_sources | owned_references | shared_sources)
-            .distinct()
+            preference_model.objects.filter(**scope).filter(
+                Q(user=self.user, source_object__isnull=True)
+                | (
+                    Q(user=self.user, source_object__isnull=False)
+                    & self._shared_with_user_condition(
+                        preference_model, "source_object_id"
+                    )
+                )
+                | (
+                    Q(source_object__isnull=True)
+                    & ~Q(user=self.user)
+                    & self._shared_with_user_condition(preference_model)
+                    & ~Q(Exists(owned_references))
+                )
+            )
             .select_related("source_object", "user")
             .order_by("name", "pk")
         )
@@ -161,9 +178,8 @@ class PreferenceManager:
                 **scope,
             ).filter(
                 Q(source_object__isnull=True)
-                | Q(source_object__shared_with_users=self.user)
-                | Q(source_object__shared_with_groups__user=self.user)
-            ).distinct().select_related("source_object").order_by("-selected", "pk")
+                | self._shared_with_user_condition(preference_model, "source_object_id")
+            ).select_related("source_object").order_by("-selected", "pk")
             entry = owned.first()
             if entry is not None:
                 self._select_entry(entry, scope)

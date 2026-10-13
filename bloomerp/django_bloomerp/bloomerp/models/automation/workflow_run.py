@@ -378,7 +378,7 @@ class WorkflowRun(
                             name="workflow_name",
                             opts={
                                 "label": "Workflow",
-                                "advanced_formatting": """<a href="{% url 'workflow_runs_detail_overview' pk=var_run_id %}">{{ var_workflow_name }}</a>""",
+                                "advanced_formatting": """<a href="{% url 'workflow_runs_detail_overview' pk=var_run_id %}" hx-get="{% url 'workflow_runs_detail_overview' pk=var_run_id %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true">{{ var_workflow_name }}</a>""",
                             },
                         ),
                         FieldConfig(name="datetime_created", opts={"label": "Started"}),

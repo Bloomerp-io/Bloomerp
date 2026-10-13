@@ -1,17 +1,14 @@
 import json
+from functools import partial
 
 from django import forms
 from django.core import signing
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.core.exceptions import FieldDoesNotExist, ValidationError
+from django.core.exceptions import FieldDoesNotExist
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.filters.manager import ModelFilterManager
-from bloomerp.filters.compiler import compile_condition
-from bloomerp.filters.definition import Filters
-from bloomerp.filters.parser import parse_filters
-from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
 from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
@@ -54,54 +51,6 @@ SHELL_RESERVED_QUERY_KEYS = {
 DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
 DATAVIEW_OPERATION_CONTEXT_SALT = "bloomerp.dataview.renderer-operation"
 DATAVIEW_OPERATION_CONTEXT_MAX_AGE = 60 * 60 * 24
-
-
-def _parse_dataview_filters(
-    args: QueryDict, model: type[Model], manager: UserPolicyManager,
-) -> Filters:
-    """Discard invalid dataview inputs while preserving valid groups and values.
-
-    Parse repeated parameters separately so one malformed input cannot discard
-    another. Drop groups emptied by invalid conditions, but preserve explicitly
-    empty groups and their connector semantics. Shared filter and permission
-    compilers remain strict outside this interactive boundary.
-    """
-    filters: Filters = []
-    resolver = FilterFieldResolver.for_model(model)
-    for key, values in args.lists():
-        for value in values:
-            parameter = QueryDict(mutable=True)
-            parameter[key] = value
-            try:
-                groups = parse_filters(parameter, model=model)
-            except ValidationError:
-                continue
-            for group in groups:
-                conditions = []
-                for condition in group.conditions:
-                    try:
-                        field, target = resolver.resolve(condition.field_path)
-                        resolve_lookup(field, target, condition.lookup_id)
-                    except ValidationError:
-                        continue
-                    conditions.append(condition)
-                if conditions or not group.conditions:
-                    filters.append(group.model_copy(update={"conditions": conditions}))
-    # Authorize known dependencies before value cleaning, which can query
-    # related records. Invalid values must not bypass field access checks.
-    manager.validate_filters(model, filters)
-    valid_filters: Filters = []
-    for group in filters:
-        conditions = []
-        for condition in group.conditions:
-            try:
-                compile_condition(condition, model=model)
-            except ValidationError:
-                continue
-            conditions.append(condition)
-        if conditions or not group.conditions:
-            valid_filters.append(group.model_copy(update={"conditions": conditions}))
-    return valid_filters
 
 
 def _sign_dataview_operation_context(
@@ -157,6 +106,7 @@ def _build_dataview_state(
     *,
     base_queryset: QuerySet | None = None,
     additional_reserved_query_keys: set[str] | None = None,
+    calculate_count: bool = True,
 ) -> DataviewState | HttpResponse:
     """Builds the dataview query state
 
@@ -164,6 +114,7 @@ def _build_dataview_state(
         request (HttpRequest): the request object
         content_type_id (int): the content type id
         preference: An explicit available preference, or the user's selected preference.
+        calculate_count: Calculate the filtered total when the renderer needs it.
 
     Returns:
         DataviewState | HttpResponse: The prepared state or an error response.
@@ -220,9 +171,23 @@ def _build_dataview_state(
             filter_querydict.pop(key, None)
     filter_querydict = preference.apply_default_filters(filter_querydict)
     
-    filters = _parse_dataview_filters(filter_querydict, Model, manager)
-    
+    manager.validate_filters(Model, [])
     filter_manager = ModelFilterManager(Model)
+    # Keep the JSON editor's effective input separate from shorthand URL
+    # parameters; editing shorthand URLs remains a separate UI concern.
+    json_querydict = QueryDict(mutable=True)
+    json_querydict.setlist("filter", filter_querydict.getlist("filter"))
+    filters = filter_manager.parse(
+        json_querydict, recover=True,
+        validate_filters=partial(manager.validate_filters, Model),
+    )
+    effective_json_filters = json.dumps([group.model_dump(mode="json") for group in filters])
+    shorthand_querydict = filter_querydict.copy()
+    shorthand_querydict.pop("filter", None)
+    filters += filter_manager.parse(
+        shorthand_querydict, recover=True,
+        validate_filters=partial(manager.validate_filters, Model),
+    )
     queryset = filter_manager.apply(
         filters,
         queryset
@@ -240,7 +205,8 @@ def _build_dataview_state(
         dataview_options,
     )
 
-    count = queryset.count()
+    renderer_context["effective_json_filters"] = effective_json_filters
+    count = queryset.count() if calculate_count else 0
     queryset = manager.annotate_field_permissions(
         queryset,
         dataview_render_fields + ([avatar_field] if avatar_field else []),
@@ -614,7 +580,7 @@ def dataview(
         'dataview_base_url': dataview_base_url,
         'data_view_url': data_view_url,
         'renderer_operation_querystring': renderer_operation_querystring,
-        'initial_filters': request.GET.get('filter'),
+        'initial_filters': state.context["effective_json_filters"],
         'count' : state.count,
         'before_data_view': before_data_view,
         'is_data_section_request': is_data_section_request,

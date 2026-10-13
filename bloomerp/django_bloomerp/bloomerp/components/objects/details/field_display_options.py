@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.forms import Form as DjangoForm
@@ -72,7 +73,7 @@ def create_form(
     """Build display-option fields with the owning layout context for behavior editors."""
     attrs = {
         option.id: option.build_form_field(application_field)
-        for option in field_type.display_options
+        for option in field_type.get_display_options(application_field)
     }
     if target is not None:
         field_catalog = _layout_field_catalog(target)
@@ -137,27 +138,39 @@ def _get_item_config(layout_object: ContentLayoutModelMixin, application_field: 
 
 
 def _save_item_config(layout_object: ContentLayoutModelMixin, application_field: ApplicationField, config: dict) -> None:
+    """Update an existing layout item without implicitly adding absent fields."""
     layout = layout_object.layout_obj
     item = _find_layout_item(layout, application_field)
     if item is None:
-        return
+        raise ValueError("Save the field in the layout before configuring it.")
     item.config = config
     layout_object.layout = layout.model_dump()
     layout_object.save(update_fields=["layout"])
 
 
-def _build_initial_config(field_type: FieldTypeDefinition, config: dict) -> dict:
+def _build_initial_config(
+    field_type: FieldTypeDefinition,
+    application_field: ApplicationField,
+    config: dict[str, Any],
+) -> dict[str, Any]:
+    """Restore values for options that are still applicable to this field."""
     return {
         option.id: config.get(option.id, option.default)
-        for option in field_type.display_options
+        for option in field_type.get_display_options(application_field)
     }
 
 
-def _merge_cleaned_config(field_type: FieldTypeDefinition, current_config: dict, cleaned_data: dict) -> dict:
+def _merge_cleaned_config(
+    field_type: FieldTypeDefinition,
+    application_field: ApplicationField,
+    current_config: dict[str, Any],
+    cleaned_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge current option values while preserving unrelated layout settings."""
     next_config = dict(current_config)
-    for option in field_type.display_options:
+    for option in field_type.get_display_options(application_field):
         value = cleaned_data.get(option.id)
-        if value in (None, "", []):
+        if value in (None, "", [], {}):
             next_config.pop(option.id, None)
         else:
             next_config[option.id] = value
@@ -199,7 +212,8 @@ def _user_can_configure_field(request: HttpRequest, target: LayoutConfigTarget, 
     path="components/field_display_options/<int:application_field_id>/",
     name="components_field_display_options",
 )
-def field_display_options(request: HttpRequest, application_field_id: int):
+def field_display_options(request: HttpRequest, application_field_id: int) -> HttpResponse:
+    """Render or save settings after checking field access and layout ownership."""
     application_field = get_object_or_404(ApplicationField, id=application_field_id)
     target = _get_layout_config_target(request)
     if target is None:
@@ -207,8 +221,13 @@ def field_display_options(request: HttpRequest, application_field_id: int):
     if not _user_can_configure_field(request, target, application_field):
         return HttpResponse("Permission denied", status=403)
 
+    if _find_layout_item(target.layout_object.layout_obj, application_field) is None:
+        return HttpResponse(
+            "Save the field in the layout before configuring it.", status=409
+        )
+
     field_type = application_field.get_field_type()
-    if not field_type.display_options:
+    if not field_type.get_display_options(application_field):
         return HttpResponse("This field does not have display options.")
 
     form_class = create_form(
@@ -227,7 +246,9 @@ def field_display_options(request: HttpRequest, application_field_id: int):
     if request.method == "POST":
         form = form_class(request.POST)
         if form.is_valid():
-            next_config = _merge_cleaned_config(field_type, current_config, form.cleaned_data)
+            next_config = _merge_cleaned_config(
+                field_type, application_field, current_config, form.cleaned_data
+            )
             _save_item_config(target.layout_object, application_field, next_config)
             response_html = render_to_string(
                 "cotton/ui/message.html",
@@ -241,7 +262,9 @@ def field_display_options(request: HttpRequest, application_field_id: int):
             response = HttpResponse(response_html)
             return response
     else:
-        form = form_class(initial=_build_initial_config(field_type, current_config))
+        form = form_class(
+            initial=_build_initial_config(field_type, application_field, current_config)
+        )
 
     return render_blank_form(
         request,

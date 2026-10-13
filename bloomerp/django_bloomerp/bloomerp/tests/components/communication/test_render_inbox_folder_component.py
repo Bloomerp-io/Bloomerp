@@ -1,81 +1,67 @@
-from unittest.mock import Mock, patch
+"""Pagination contracts for grouped and ordinary inbox list responses."""
 
 from django.http import HttpResponse
-from django.test import RequestFactory, SimpleTestCase
-
-from bloomerp.components.communication.render_inbox_folder_items import (
-    INBOX_PAGE_SIZE,
-    render_inbox_folder,
+from bloomerp.models.communication.inbox.inbox import Inbox
+from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+from bloomerp.models.communication.inbox.inbox_item import InboxItem
+from bloomerp.tests.base import (
+    BloomerpComponentTestCase,
+    ExpectedResult,
+    RequestScenario,
 )
-class TestRenderInboxFolderPagination(SimpleTestCase):
-    """Tests pagination internals with a mocked inbox provider."""
 
-    def setUp(self):
-        self.request_factory = RequestFactory()
-        self.folder = Mock()
-        self.folder.query_items.return_value = list(range(205))
 
-    @patch(
-        "bloomerp.components.communication.render_inbox_folder_items.render"
-    )
-    @patch(
-        "bloomerp.components.communication.render_inbox_folder_items.get_object_or_404"
-    )
-    @patch(
-        "bloomerp.components.communication.render_inbox_folder_items."
-        "accessible_inbox_folders"
-    )
-    def test_returns_at_most_one_hundred_items_per_page(
-        self,
-        accessible_inbox_folders,
-        get_object_or_404,
-        render,
-    ):
-        accessible_inbox_folders.return_value = Mock()
-        get_object_or_404.return_value = self.folder
-        render.return_value = HttpResponse()
+class TestRenderInboxFolderPagination(BloomerpComponentTestCase):
+    view_name = "components_render_inbox_folder_items"
 
-        request = self.request_factory.get("/inbox-items/", {"page": 2})
-        request.user = Mock(is_authenticated=True)
-        render_inbox_folder(request, "folder-id")
-
-        context = render.call_args.args[2]
-        self.assertEqual(INBOX_PAGE_SIZE, 100)
-        self.assertEqual(context["items"], list(range(100, 200)))
-        self.assertEqual(context["page_obj"].number, 2)
-        self.assertTrue(context["page_obj"].has_next())
-
-    @patch(
-        "bloomerp.components.communication.render_inbox_folder_items.render"
-    )
-    @patch(
-        "bloomerp.components.communication.render_inbox_folder_items.get_object_or_404"
-    )
-    @patch(
-        "bloomerp.components.communication.render_inbox_folder_items."
-        "accessible_inbox_folders"
-    )
-    def test_last_page_contains_remaining_items_and_preserves_filters(
-        self,
-        accessible_inbox_folders,
-        get_object_or_404,
-        render,
-    ):
-        accessible_inbox_folders.return_value = Mock()
-        get_object_or_404.return_value = self.folder
-        render.return_value = HttpResponse()
-
-        request = self.request_factory.get(
-            "/inbox-items/",
-            {"page": 3, "q": "invoice", "status": "unread"},
+    def prepare_items(self, scenario: RequestScenario) -> None:
+        """Seed enough notification items to paginate without provider behavior."""
+        inbox = Inbox.objects.create(name="Pagination", user=self.admin_user)
+        folder = InboxFolder.objects.create(inbox=inbox, type="in_app_notifications")
+        InboxItem.objects.bulk_create(
+            [
+                InboxItem(
+                    folder=folder, item_type="notification", title=f"Invoice {index}"
+                )
+                for index in range(205)
+            ]
         )
-        request.user = Mock(is_authenticated=True)
-        render_inbox_folder(request, "folder-id")
+        scenario.view_kwargs = {"folder_id": str(folder.pk)}
 
-        context = render.call_args.args[2]
-        self.assertEqual(context["items"], list(range(200, 205)))
-        self.assertFalse(context["page_obj"].has_next())
-        self.assertEqual(
-            context["pagination_querystring"],
-            "q=invoice&status=unread",
+    def full_page(self, response: HttpResponse) -> bool:
+        """Verify a page contains exactly one hundred item buttons and a next cursor."""
+        return (
+            response.content.count(b"data-inbox-row-button") == 100
+            and b"page=3" in response.content
         )
+
+    def last_page(self, response: HttpResponse) -> bool:
+        """Verify the last page contains only the remaining items and no loader."""
+        return (
+            response.content.count(b"data-inbox-row-button") == 5
+            and b"data-inbox-page-loader" not in response.content
+        )
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        """Exercise pagination control parsing and preservation of semantic filters."""
+        return [
+            RequestScenario(
+                name="Second page preserves the search",
+                user=self.admin_user,
+                prepare=self.prepare_items,
+                query_params={"page": 2, "q": "Invoice"},
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.full_page,
+                        self.contains_text("q=Invoice"),
+                    ]
+                ),
+            ),
+            RequestScenario(
+                name="Last page has the remaining five messages",
+                user=self.admin_user,
+                prepare=self.prepare_items,
+                query_params={"page": 3},
+                expected=ExpectedResult(response_validators=self.last_page),
+            ),
+        ]

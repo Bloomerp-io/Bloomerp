@@ -1,9 +1,9 @@
 from django.test import SimpleTestCase
 
-from bloomerp.communication.emails.email_providers import EmailProviderDefinition
-from bloomerp.communication.emails.providers.imap_smtp import ImapSmtpAdapter
-from bloomerp.communication.emails.registry import EMAIL_PROVIDER_REGISTRY
-from bloomerp.communication.inbox_folder_definition import (
+from bloomerp.communication.builtins.emails.email_providers import EmailProviderDefinition
+from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.definition import (
     InboxEventSource,
     InboxFolderTypeDefinition,
     InboxItemTypeDefinition,

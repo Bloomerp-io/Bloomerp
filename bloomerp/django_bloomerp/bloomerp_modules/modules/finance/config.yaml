@@ -3,3 +3,179 @@ code: FIN
 name: Finance
 description: Financial management module of the application
 icon: fa-solid fa-chart-line
+tiles:
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: finance:receivables-outstanding
+    name: Receivables outstanding
+    description: Unpaid customer invoice balances.
+    icon: fa-solid fa-file-invoice-dollar
+    query: |
+      SELECT invoice.outstanding_amount, invoice.currency, invoice.due_date
+      FROM finance_accounts_receivable_customer_invoice invoice
+      WHERE invoice.outstanding_amount > 0
+    fields:
+      value:
+        - {name: outstanding_amount, opts: {aggregator: SUM, formatter: CURRENCY_USD}}
+    filters:
+      - {field: currency, type: text}
+      - {field: due_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: finance:payables-outstanding
+    name: Payables outstanding
+    description: Unpaid vendor invoice balances.
+    icon: fa-solid fa-receipt
+    query: |
+      SELECT invoice.outstanding_amount, invoice.currency, invoice.due_date
+      FROM finance_accounts_payable_vendor_invoice invoice
+      WHERE invoice.outstanding_amount > 0
+    fields:
+      value:
+        - {name: outstanding_amount, opts: {aggregator: SUM, formatter: CURRENCY_USD}}
+    filters:
+      - {field: currency, type: text}
+      - {field: due_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: finance:bank-balance
+    name: Bank balance
+    description: Latest reconciled balances for active bank accounts.
+    icon: fa-solid fa-building-columns
+    query: |
+      SELECT bank.last_reconciled_balance, bank.currency
+      FROM finance_treasury_bank_account bank
+      WHERE bank.is_active = TRUE
+    fields:
+      value:
+        - {name: last_reconciled_balance, opts: {aggregator: SUM, formatter: CURRENCY_USD}}
+    filters:
+      - {field: currency, type: text}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: finance:posted-entries
+    name: Posted entries
+    description: Journal entries posted to the ledger.
+    icon: fa-solid fa-book
+    query: |
+      SELECT entry.id, entry.currency
+      FROM finance_general_ledger_journal_entry entry
+      WHERE entry.status = 'POSTED'
+    fields:
+      value:
+        - {name: id, opts: {aggregator: COUNT, formatter: INTEGER}}
+    filters:
+      - {field: currency, type: text}
+  - tile_type: ANALYTICS_TILE
+    type: TWO_DIM_CHART
+    id: finance:invoicing-trend
+    name: Customer invoicing by month
+    icon: fa-solid fa-chart-line
+    query: |
+      SELECT SUBSTR(CAST(invoice.invoice_date AS TEXT), 1, 7) AS month_label,
+             invoice.total_amount, invoice.currency, invoice.invoice_date
+      FROM finance_accounts_receivable_customer_invoice invoice
+      WHERE invoice.status != 'CANCELLED'
+    fields:
+      x_axis:
+        - {name: month_label}
+      y_axis:
+        - {name: total_amount, opts: {label: Invoiced, color: '#2563eb'}}
+    opts: {chart_type: bar, show_legend: false}
+    filters:
+      - {field: currency, type: text}
+      - {field: invoice_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: TWO_DIM_CHART
+    id: finance:vendor-spend
+    name: Vendor invoices by supplier
+    icon: fa-solid fa-chart-column
+    query: |
+      SELECT vendor.vendor_name, invoice.total_amount, invoice.currency,
+             invoice.invoice_date, invoice.due_date
+      FROM finance_accounts_payable_vendor_invoice invoice
+      INNER JOIN finance_accounts_payable_vendor vendor ON vendor.id = invoice.vendor_id
+      WHERE invoice.status != 'CANCELLED'
+    fields:
+      x_axis:
+        - {name: vendor_name}
+      y_axis:
+        - {name: total_amount, opts: {label: Invoiced, color: '#f59e0b'}}
+    opts: {chart_type: bar, show_legend: false}
+    filters:
+      - {field: currency, type: text}
+      - {field: invoice_date, type: date}
+      - {field: due_date, type: date}
+      - {field: vendor_name, type: text}
+  - tile_type: ANALYTICS_TILE
+    type: TABLE
+    id: finance:outstanding-invoices
+    name: Outstanding customer invoices
+    icon: fa-solid fa-list-check
+    query: |
+      SELECT invoice.invoice_number, customer.customer_name,
+             invoice.due_date, invoice.outstanding_amount,
+             invoice.currency, invoice.status
+      FROM finance_accounts_receivable_customer_invoice invoice
+      INNER JOIN finance_accounts_receivable_customer customer ON customer.id = invoice.customer_id
+      WHERE invoice.outstanding_amount > 0
+      ORDER BY invoice.due_date ASC
+    fields:
+      columns:
+        - {name: invoice_number, opts: {label: Invoice}}
+        - {name: customer_name, opts: {label: Customer}}
+        - {name: due_date, opts: {label: Due date}}
+        - {name: outstanding_amount, opts: {label: Outstanding, formatter: CURRENCY_USD}}
+        - {name: status, opts: {label: Status}}
+    opts: {page_size: 10}
+    filters:
+      - {field: currency, type: text}
+      - {field: due_date, type: date}
+      - {field: customer_name, type: text}
+  - type: LINKS_TILE
+    id: finance:receivables-shortcuts
+    name: Receivables
+    icon: fa-solid fa-file-invoice
+    links:
+      - {name: View customer invoices, url_name: customer_invoices_model, is_internal: true}
+      - {name: View customers, url_name: customers_model, is_internal: true}
+  - type: LINKS_TILE
+    id: finance:payables-shortcuts
+    name: Payables
+    icon: fa-solid fa-money-bill-transfer
+    links:
+      - {name: View vendor invoices, url_name: vendor_invoices_model, is_internal: true}
+      - {name: View vendors, url_name: vendors_model, is_internal: true}
+  - type: LINKS_TILE
+    id: finance:ledger-shortcuts
+    name: Ledger and cash
+    icon: fa-solid fa-book-open
+    links:
+      - {name: View journal entries, url_name: journal_entries_model, is_internal: true}
+      - {name: View bank accounts, url_name: bank_accounts_model, is_internal: true}
+workspaces:
+  - name: Finance overview
+    is_default: true
+    rows:
+      - title: Quick access
+        columns: 3
+        items:
+          - {id: finance:receivables-shortcuts}
+          - {id: finance:payables-shortcuts}
+          - {id: finance:ledger-shortcuts}
+      - title: At a glance
+        columns: 4
+        items:
+          - {id: finance:receivables-outstanding}
+          - {id: finance:payables-outstanding}
+          - {id: finance:bank-balance}
+          - {id: finance:posted-entries}
+      - title: Cash flow picture
+        columns: 2
+        items:
+          - {id: finance:invoicing-trend}
+          - {id: finance:vendor-spend}
+      - title: Receivables to follow up
+        columns: 1
+        items:
+          - {id: finance:outstanding-invoices}

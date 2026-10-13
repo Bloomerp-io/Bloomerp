@@ -4,6 +4,7 @@ from bloomerp.mcp.definition import McpTool
 from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
 from bloomerp.services.sql_services import SqlExecutor
+from bloomerp.utils.sql import get_active_dialect
 from bloomerp.views.api.base import BaseBloomerpApiView
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
@@ -73,7 +74,11 @@ class ExecuteSqlErrorResponseSerializer(serializers.Serializer):
     url_name="api_sql_execute",
     mcp=McpTool(
         title="Execute SQL",
-        description="Execute a permission-filtered read-only SQL query.",
+        description=(
+            "Execute a permission-filtered read-only SQL query. "
+            f"The active SQL dialect is {get_active_dialect()}. "
+            "Use this dialect's syntax, including its date functions and type casts."
+        ),
         input_schema=lambda: serializer_input_schema(ExecuteSqlRequestSerializer),
         output_schema=lambda: serializer_output_schema(ExecuteSqlResponseSerializer),
         read_only_hint=True,

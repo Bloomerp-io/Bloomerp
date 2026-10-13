@@ -12,6 +12,7 @@ Field Types form an import part of the BloomERP framework as they are used accro
 
 ## Start here
 
+- [File Reference](file-field.md): configure uploads, persistence, and file provenance.
 - [Field types](field-type.md): declare available lookups and understand model versus analytics fields.
 - [Shared execution](execution.md): use typed filters and row-policy predicates.
 - [Writing a lookup](lookups.md): build an input, compile a condition, and register an operator.

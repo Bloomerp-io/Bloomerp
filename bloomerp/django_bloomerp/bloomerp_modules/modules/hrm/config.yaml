@@ -3,3 +3,191 @@ code: HRM
 name: Human Resources
 description: Complete HR system
 icon: fa-solid fa-user-tie
+tiles:
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: hrm:active-employees
+    name: Active employees
+    icon: fa-solid fa-users
+    query: |
+      SELECT employee.id, department.name AS department_name,
+             employee.employment_type, employee.hire_date
+      FROM hrm_employees_employee employee
+      LEFT JOIN hrm_core_people_department department ON department.id = employee.department_id
+      WHERE employee.status = 'active'
+    fields:
+      value:
+        - {name: id, opts: {aggregator: COUNT, formatter: INTEGER}}
+    filters:
+      - {field: department_name, type: text, shared_key: department}
+      - {field: employment_type, type: text}
+      - {field: hire_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: hrm:contractors
+    name: Contractors
+    icon: fa-solid fa-user-gear
+    query: |
+      SELECT employee.id, department.name AS department_name, employee.hire_date
+      FROM hrm_employees_employee employee
+      LEFT JOIN hrm_core_people_department department ON department.id = employee.department_id
+      WHERE employee.status = 'active' AND employee.employment_type = 'contractor'
+    fields:
+      value:
+        - {name: id, opts: {aggregator: COUNT, formatter: INTEGER}}
+    filters:
+      - {field: department_name, type: text, shared_key: department}
+      - {field: hire_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: hrm:open-roles
+    name: Open roles
+    icon: fa-solid fa-briefcase
+    query: |
+      SELECT opening.openings_count, department.name AS department_name
+      FROM hrm_recruitment_job_opening opening
+      LEFT JOIN hrm_core_people_department department ON department.id = opening.department_id
+      WHERE opening.status = 'open'
+    fields:
+      value:
+        - {name: openings_count, opts: {aggregator: SUM, formatter: INTEGER}}
+    filters:
+      - {field: department_name, type: text, shared_key: department}
+  - tile_type: ANALYTICS_TILE
+    type: KPI
+    id: hrm:pending-leave
+    name: Leave requests
+    description: Requests awaiting approval.
+    icon: fa-solid fa-calendar-check
+    query: |
+      SELECT request.id, department.name AS department_name
+      FROM hrm_time_attendance_leave_request request
+      INNER JOIN hrm_employees_employee employee ON employee.id = request.employee_id
+      LEFT JOIN hrm_core_people_department department ON department.id = employee.department_id
+      WHERE request.status = 'requested'
+    fields:
+      value:
+        - {name: id, opts: {aggregator: COUNT, formatter: INTEGER}}
+    filters:
+      - {field: department_name, type: text, shared_key: department}
+  - tile_type: ANALYTICS_TILE
+    type: TWO_DIM_CHART
+    id: hrm:headcount-by-department
+    name: Headcount by department
+    icon: fa-solid fa-chart-column
+    query: |
+      SELECT COALESCE(department.name, 'Unassigned') AS department_name,
+             1 AS employee_count, employee.employment_type, employee.hire_date
+      FROM hrm_employees_employee employee
+      LEFT JOIN hrm_core_people_department department ON department.id = employee.department_id
+      WHERE employee.status = 'active'
+    fields:
+      x_axis:
+        - {name: department_name}
+      y_axis:
+        - {name: employee_count, opts: {label: Employees, color: '#4f46e5'}}
+    opts: {chart_type: bar, show_legend: false}
+    filters:
+      - {field: department_name, type: text, shared_key: department}
+      - {field: employment_type, type: text}
+      - {field: hire_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: PIE_CHART
+    id: hrm:employment-mix
+    name: Employment mix
+    icon: fa-solid fa-chart-pie
+    query: |
+      SELECT CASE employee.employment_type
+               WHEN 'full_time' THEN 'Full time'
+               WHEN 'part_time' THEN 'Part time'
+               WHEN 'contractor' THEN 'Contractor'
+               WHEN 'intern' THEN 'Intern'
+               ELSE 'Other'
+             END AS employment_label,
+             1 AS employee_count, department.name AS department_name,
+             employee.hire_date
+      FROM hrm_employees_employee employee
+      LEFT JOIN hrm_core_people_department department ON department.id = employee.department_id
+      WHERE employee.status = 'active'
+    fields:
+      labels:
+        - {name: employment_label}
+      values:
+        - {name: employee_count, opts: {label: Employees, formatter: INTEGER}}
+    opts: {show_legend: true, legend_position: right}
+    filters:
+      - {field: department_name, type: text, shared_key: department}
+      - {field: hire_date, type: date}
+  - tile_type: ANALYTICS_TILE
+    type: TABLE
+    id: hrm:recent-hires
+    name: Recent hires
+    icon: fa-solid fa-address-card
+    query: |
+      SELECT employee.first_name, employee.last_name,
+             department.name AS department_name, employee.employment_type,
+             employee.hire_date
+      FROM hrm_employees_employee employee
+      LEFT JOIN hrm_core_people_department department ON department.id = employee.department_id
+      WHERE employee.status = 'active'
+      ORDER BY employee.hire_date DESC
+    fields:
+      columns:
+        - {name: first_name, opts: {label: First name}}
+        - {name: last_name, opts: {label: Last name}}
+        - {name: department_name, opts: {label: Department}}
+        - {name: employment_type, opts: {label: Type}}
+        - {name: hire_date, opts: {label: Hire date}}
+    opts: {page_size: 10}
+    filters:
+      - {field: department_name, type: text, shared_key: department}
+      - {field: employment_type, type: text}
+      - {field: hire_date, type: date}
+  - type: LINKS_TILE
+    id: hrm:people-shortcuts
+    name: People
+    icon: fa-solid fa-users
+    links:
+      - {name: View employees, url_name: employees_model, is_internal: true}
+      - {name: Add employee, url_name: employees_add, is_internal: true}
+      - {name: View departments, url_name: departments_model, is_internal: true}
+  - type: LINKS_TILE
+    id: hrm:hiring-shortcuts
+    name: Hiring
+    icon: fa-solid fa-user-plus
+    links:
+      - {name: View job openings, url_name: job_openings_model, is_internal: true}
+      - {name: View candidates, url_name: candidates_model, is_internal: true}
+  - type: LINKS_TILE
+    id: hrm:leave-shortcuts
+    name: Time off
+    icon: fa-solid fa-calendar-days
+    links:
+      - {name: View leave requests, url_name: leave_requests_model, is_internal: true}
+      - {name: Add leave request, url_name: leave_requests_add, is_internal: true}
+workspaces:
+  - name: Human Resources overview
+    is_default: true
+    rows:
+      - title: Quick access
+        columns: 3
+        items:
+          - {id: hrm:people-shortcuts}
+          - {id: hrm:hiring-shortcuts}
+          - {id: hrm:leave-shortcuts}
+      - title: At a glance
+        columns: 4
+        items:
+          - {id: hrm:active-employees}
+          - {id: hrm:contractors}
+          - {id: hrm:open-roles}
+          - {id: hrm:pending-leave}
+      - title: Workforce picture
+        columns: 2
+        items:
+          - {id: hrm:headcount-by-department}
+          - {id: hrm:employment-mix}
+      - title: People to know
+        columns: 1
+        items:
+          - {id: hrm:recent-hires}

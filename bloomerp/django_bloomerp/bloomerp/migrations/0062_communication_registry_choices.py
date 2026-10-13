@@ -1,6 +1,6 @@
 from django.db import migrations, models
 
-import bloomerp.communication.emails.registry
+import bloomerp.communication.builtins.emails.registry
 import bloomerp.communication.registry
 
 
@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
             model_name="emailaccount",
             name="provider",
             field=models.CharField(
-                choices=bloomerp.communication.emails.registry.email_provider_choices,
+                choices=bloomerp.communication.builtins.emails.registry.email_provider_choices,
                 default="imap",
                 max_length=32,
                 verbose_name="Provider",

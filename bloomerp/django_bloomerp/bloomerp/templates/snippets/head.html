@@ -93,6 +93,7 @@
 
 {% else %}
     <!-- Production mode: Built bundle -->
-    <link href="{% static 'bloomerp/js/dist/main.css' %}" rel="stylesheet" />
-    <link href="{% static 'bloomerp/css/dist/styles.css' %}" rel="stylesheet" />
+    {% bloomerp_asset_version as asset_version %}
+    <link href="{% static 'bloomerp/js/dist/main.css' %}?v={{ asset_version|urlencode }}" rel="stylesheet" />
+    <link href="{% static 'bloomerp/css/dist/styles.css' %}?v={{ asset_version|urlencode }}" rel="stylesheet" />
 {% endif %}

@@ -1,13 +1,27 @@
 from collections.abc import Callable
 from copy import deepcopy
+import re
 from typing import Any, TypeAlias
+from urllib.parse import unquote, urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 McpSchema: TypeAlias = dict[str, Any]
 McpSchemaFactory: TypeAlias = Callable[[], McpSchema]
 McpSchemaSource: TypeAlias = McpSchema | McpSchemaFactory
+
+RESOURCE_VARIABLE_PATTERN = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def validate_resource_uri(uri: str) -> str:
+    """Require an absolute URI without whitespace, malformed escapes, or template syntax."""
+    if not re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", uri):
+        raise ValueError("MCP resource URIs must include a scheme")
+    if re.search(r'[\s\x00-\x1f\x7f{}<>"\\]', uri) or re.search(r"%(?![0-9A-Fa-f]{2})", uri):
+        raise ValueError("Invalid MCP resource URI")
+    urlsplit(uri)
+    return uri
 
 
 class McpTool(BaseModel):
@@ -90,3 +104,83 @@ class McpTool(BaseModel):
             for name, value in annotations.items()
             if value is not None
         }
+
+
+class McpResourceMetadata(BaseModel):
+    """Share content metadata between concrete and parameterized MCP resources."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    title: str | None = Field(default=None, min_length=1)
+    description: str | None = Field(default=None, min_length=1)
+    mime_type: str = Field(default="text/plain", min_length=1)
+
+
+class McpResource(McpResourceMetadata):
+    """Expose a router reader under one concrete resource URI."""
+
+    uri: str = Field(min_length=1)
+
+    @field_validator("uri")
+    @classmethod
+    def validate_uri(cls, value: str) -> str:
+        """Validate the public resource address at registration time."""
+        return validate_resource_uri(value)
+
+
+class McpResourceTemplate(McpResourceMetadata):
+    """Expose a reader using simple, single-segment RFC 6570 `{name}` variables."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, arbitrary_types_allowed=True)
+    uri_template: str = Field(min_length=1)
+    parameter_schema: McpSchemaSource | None = Field(default=None, exclude=True)
+
+    @field_validator("uri_template")
+    @classmethod
+    def validate_template(cls, value: str) -> str:
+        """Reject unsupported expressions, repeated variables, and invalid literal URIs."""
+        variables = RESOURCE_VARIABLE_PATTERN.findall(value)
+        if not variables or len(variables) != len(set(variables)):
+            raise ValueError("Resource templates require unique named variables")
+        if "request" in variables:
+            raise ValueError("Resource template variable 'request' is reserved")
+        if not re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", value):
+            raise ValueError("Resource templates require a literal URI scheme")
+        validate_resource_uri(RESOURCE_VARIABLE_PATTERN.sub("value", value))
+        return value
+
+    @property
+    def identity(self) -> str:
+        """Normalize variable names when detecting equivalent template registrations."""
+        return RESOURCE_VARIABLE_PATTERN.sub("{}", self.uri_template)
+
+    def match_uri(self, uri: str) -> dict[str, str] | None:
+        """Extract decoded string arguments without permitting segment or path traversal."""
+        parts: list[str] = []
+        position = 0
+        for variable in RESOURCE_VARIABLE_PATTERN.finditer(self.uri_template):
+            parts.append(re.escape(self.uri_template[position:variable.start()]))
+            parts.append(f"(?P<{variable.group(1)}>[^/?#]+)")
+            position = variable.end()
+        parts.append(re.escape(self.uri_template[position:]))
+        match = re.fullmatch("".join(parts), uri)
+        if match is None:
+            return None
+        arguments = {name: unquote(value, errors="strict") for name, value in match.groupdict().items()}
+        for value in arguments.values():
+            if value in {".", ".."} or re.search(r"[/\\\x00-\x1f\x7f]", value):
+                raise ValueError("Invalid resource template argument")
+        return arguments
+
+    def get_parameter_schema(self) -> McpSchema:
+        """Return argument validation for URI strings, or a supplied schema factory."""
+        if self.parameter_schema is not None:
+            return McpTool._resolve_schema(self.parameter_schema)
+        names = RESOURCE_VARIABLE_PATTERN.findall(self.uri_template)
+        return {
+            "type": "object", "additionalProperties": False,
+            "properties": {name: {"type": "string", "minLength": 1} for name in names},
+            "required": names,
+        }
+
+
+McpContract: TypeAlias = McpTool | McpResource | McpResourceTemplate

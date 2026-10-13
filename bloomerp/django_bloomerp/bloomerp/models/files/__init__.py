@@ -1,4 +1,9 @@
-from .file import File
-from .file_folder import FileFolder
+from .file_extraction import FileExtraction
+from .file_node import FileNode
+from .file_reference import FileReference
 
-__all__ = ['File', 'FileFolder']
+__all__ = [
+    'FileExtraction',
+    'FileNode',
+    'FileReference',
+]

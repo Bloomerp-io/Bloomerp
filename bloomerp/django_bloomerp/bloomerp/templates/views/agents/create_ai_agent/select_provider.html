@@ -1,0 +1,8 @@
+{% load i18n %}
+<c-ui.inputs.selectable_cards.container name="provider" :include_search="False" :allow_multiple="False" value="{{ selected_provider }}">
+    {% for provider in providers %}
+        <c-ui.inputs.selectable_cards.item value="{{ provider.id }}" name="{{ provider.name }}" description="{{ provider.description }}" icon="fa-solid fa-robot" />
+    {% empty %}
+        <p>{% trans "No AI providers are registered." %}</p>
+    {% endfor %}
+</c-ui.inputs.selectable_cards.container>

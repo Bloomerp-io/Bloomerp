@@ -1,5 +1,6 @@
 import json
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 from django.contrib.contenttypes.models import ContentType
@@ -30,7 +31,7 @@ from bloomerp.celery.tasks.workflow_task import (
     run_scheduled_workflow,
     run_workflow_async,
 )
-from bloomerp.signals.automation_signals import setup_automation_signals
+from bloomerp.signals.automation_signals import _create_handler, setup_automation_signals
 from bloomerp.tests.utils.dynamic_models import create_test_models, ensure_content_types_for_models
 from django.contrib.auth import get_user_model
 
@@ -912,6 +913,70 @@ class TestAutomation(TransactionTestCase):
             instance.delete()
             run_workflow_mock.assert_called_once()
         
+    def test_signal_workflow_failure_is_isolated_from_notifications(self) -> None:
+        """Continue later triggers after a failure with absent users or broken toast delivery."""
+        cases = [
+            ("no request", None, None, 0),
+            ("anonymous user", SimpleNamespace(user=SimpleNamespace(is_authenticated=False)), None, 0),
+            ("authenticated user", SimpleNamespace(user=self.user), None, 1),
+            ("toast unavailable", SimpleNamespace(user=self.user), RuntimeError("channel unavailable"), 1),
+        ]
+        handler = _create_handler("update", [self.start_node, self.start_node])
+        for name, request, toast_error, toast_count in cases:
+            with (
+                self.subTest(name=name),
+                patch("bloomerp.signals.automation_signals.current_request", return_value=request),
+                patch("bloomerp.signals.automation_signals.run_workflow", side_effect=[ValueError("boom"), None]) as run,
+                patch("bloomerp.signals.automation_signals.send_toast_message", side_effect=toast_error) as toast,
+                self.assertLogs("bloomerp.signals.automation_signals", level="ERROR") as logs,
+            ):
+                handler(sender=self.CustomerModel, instance=self.CustomerModel(), created=False)
+                self.assertEqual(run.call_count, 2)
+                self.assertEqual(toast.call_count, toast_count)
+                self.assertIn("boom", "\n".join(logs.output))
+                if toast_count:
+                    self.assertEqual(toast.call_args.args[0], self.user.pk)
+                    self.assertEqual(toast.call_args.args[1].message_type, "danger")
+
+    def test_signal_handler_does_not_swallow_process_interrupts(self) -> None:
+        """Propagate process interruption instead of treating it as a workflow failure."""
+        handler = _create_handler("update", [self.start_node])
+        with (
+            patch("bloomerp.signals.automation_signals.run_workflow", side_effect=KeyboardInterrupt),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            handler(sender=self.CustomerModel, instance=self.CustomerModel(), created=False)
+
+    def test_failed_signal_workflow_preserves_object_save(self) -> None:
+        """Commit an object update and failed run after a workflow node database error."""
+        customer = self.CustomerModel.objects.create(first_name="Before", last_name="Save", age=20)
+        self.start_node.sub_type = "ON_OBJECT_UPDATE"
+        self.start_node.parameters = {"content_type_id": self.customer_content_type.pk}
+        self.start_node.save(update_fields=["sub_type", "parameters"])
+        setup_automation_signals(refresh=True)
+
+        def execute_with_database_error(node: WorkflowNode, input_data: object) -> object:
+            """Pass through trigger input and fail the action with a database constraint error."""
+            if node.pk == self.end_node.pk:
+                User.objects.create(username=self.user.username)
+            return input_data
+
+        with (
+            patch.object(WorkflowNode, "execute", new=execute_with_database_error),
+            patch("bloomerp.signals.automation_signals.current_request", return_value=None),
+            self.assertLogs("bloomerp.signals.automation_signals", level="ERROR"),
+        ):
+            with transaction.atomic():
+                customer.first_name = "After"
+                customer.save(update_fields=["first_name"])
+                self.assertTrue(self.CustomerModel.objects.filter(pk=customer.pk).exists())
+
+        customer.refresh_from_db()
+        self.assertEqual(customer.first_name, "After")
+        workflow_run = self.workflow.runs.latest("id")
+        self.assertEqual(workflow_run.status, WorkflowRunStatus.FAILED)
+        self.assertIsNotNone(workflow_run.finished_at)
+
     def test_run_workflow_called_after_update(self):
         """
         Ensures workflow runs when an object is updated with a matching trigger.

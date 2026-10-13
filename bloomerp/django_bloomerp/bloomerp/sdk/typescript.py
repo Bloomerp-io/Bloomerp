@@ -138,6 +138,7 @@ try {{
         return "\n\n".join(section.rstrip() for section in sections if section).strip() + "\n"
 
     def render_prelude(self) -> str:
+        """Generate the HTTP client, authentication, and shared TypeScript contracts."""
         auth_strategy_types = json.dumps(self.get_enabled_auth_strategy_types())
         return f"""export type QueryValue = string | number | boolean | null | undefined;
 export type QueryParams = Record<string, QueryValue | QueryValue[]>;
@@ -391,8 +392,9 @@ export class BloomerpHttpClient {{
     }}
   }}
 
+  /** Set JSON headers for serialized payloads; let browsers encode multipart bodies. */
   private shouldSetJsonContentType(body: BodyInit | null | undefined, headers: Headers): boolean {{
-    return body !== undefined && body !== null && !headers.has("Content-Type");
+    return typeof body === "string" && !headers.has("Content-Type");
   }}
 
   private getAuthorizationHeader(): string | null {{

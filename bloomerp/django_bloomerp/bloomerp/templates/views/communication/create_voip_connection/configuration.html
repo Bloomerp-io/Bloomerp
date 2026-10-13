@@ -1,0 +1,7 @@
+{% load i18n crispy_forms_tags %}
+<div class="space-y-4">
+    <p>{{ provider_label }}</p>
+    <p class="text-sm text-gray-500">{% translate 'Save the account configuration, then validate and synchronize its numbers.' %}</p>
+    {% if configuration_help %}<p class="text-sm text-gray-500">{{ configuration_help }}</p>{% endif %}
+    {{ form|crispy }}
+</div>

@@ -1,20 +1,21 @@
-from typing import Any
 from django.db.models import Model
 from django.views.generic import TemplateView
-from bloomerp.models.files import File
+
+from bloomerp.models.files import FileNode
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
+from bloomerp.router import router
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
-from bloomerp.router import router
+
 
 @router.register(
     path="/",
-    name="{model} List",
+    name="{model_plural}",
     url_name="model",
     description="List of records for {model} model",
     route_type="model",
-    exclude_models=[File],
+    exclude_models=[FileNode],
 )
 class BloomerpListView(BaseBloomerpView, BloomerpModelContextMixin, TemplateView):
     model: Model = None
@@ -29,8 +30,3 @@ class BloomerpListView(BaseBloomerpView, BloomerpModelContextMixin, TemplateView
             self.model,
             BloomerpPermission.VIEW
         )
-
-    def get_context_data(self, **kwargs: Any) -> dict:
-        context = super().get_context_data(**kwargs)
-        context["title"] = self.model._meta.verbose_name.capitalize() + " list"
-        return context

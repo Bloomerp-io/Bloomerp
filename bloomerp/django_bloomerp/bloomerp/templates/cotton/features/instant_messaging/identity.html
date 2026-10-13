@@ -1,0 +1,4 @@
+<c-vars identity show_provider="True" />
+<span class="im-avatar bg-primary-100 text-primary-800">{% if identity.avatar %}<img src="{{ identity.avatar }}" alt="">{% elif identity.group %}<i class="fa-solid fa-user-group" aria-hidden="true"></i>{% else %}{{ identity.initials }}{% endif %}</span>
+<span class="im-identity-text"><strong>{{ identity.displayName }}</strong><span>{{ identity.address }}</span></span>
+{% if identity.provider and show_provider %}<span class="im-provider" title="{{ identity.provider.display_name }}"><i class="{{ identity.provider.icon }}" aria-hidden="true"></i><span>{{ identity.provider.display_name }}</span></span>{% endif %}

@@ -7,12 +7,11 @@ from django.conf import settings
 from django.db import models, transaction
 from django.db.models.base import ModelBase
 
-from bloomerp.lookups import builtins as lookups
+from bloomerp.filters.definition import FilterCondition
 from bloomerp.models.definition import ApiAccessSettings, ApiSettings, BloomerpModelConfig
 from bloomerp.permissions.definition import (
     AccessRule,
     BloomerpPermission,
-    RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
@@ -73,9 +72,9 @@ class BasePreference(
                                     BloomerpPermission.CHANGE,
                                 ],
                                 conditions=[
-                                    RowPolicyRuleCondition(
-                                        field="user",
-                                        operator=lookups.EQUALS_USER.id,
+                                    FilterCondition(
+                                        field_path="user",
+                                        lookup_id="equals",
                                         value="$user",
                                     )
                                 ],

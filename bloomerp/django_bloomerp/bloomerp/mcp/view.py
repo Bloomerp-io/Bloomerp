@@ -1,15 +1,20 @@
-"""HTTP transport for router-registered MCP tools."""
+"""HTTP transport for router-registered MCP tools and resources."""
 
+import base64
 import logging
 from typing import Any
 from urllib.parse import urlsplit
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, HttpResponse
 
 from bloomerp.api.base import AUTHENTICATION_CLASSES
 from bloomerp.api.authentication_classes import BloomerpOAuthAuthentication
 from bloomerp.oauth import MCP_SCOPE, oauth_enabled, oauth_metadata_url
+from bloomerp.mcp.definition import McpResource, McpResourceTemplate, McpTool, validate_resource_uri
 from bloomerp.router import BloomerpRoute, RouteType, ViewType, router
 from jsonschema import Draft202012Validator
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
+from rest_framework.exceptions import PermissionDenied as ApiPermissionDenied
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -27,7 +32,7 @@ class McpEndpointView(APIView):
     http_method_names = ("post", "options")
 
     def get_permissions(self) -> list[BasePermission]:
-        """Allow OAuth clients to discover tools before account linking."""
+        """Allow OAuth clients to discover MCP catalogs before account linking."""
         if oauth_enabled():
             return [AllowAny()]
         return super().get_permissions()
@@ -82,11 +87,28 @@ class McpEndpointView(APIView):
             negotiated = requested if requested in supported_versions else "2025-11-25"
             return self._result(message_id, {
                 "protocolVersion": negotiated,
-                "capabilities": {"tools": {}},
+                "capabilities": {"tools": {}, "resources": {}},
                 "serverInfo": {"name": "Bloomerp", "version": "0.1.0"},
             })
         if method == "ping":
             return self._result(message_id, {})
+        if method in {"resources/list", "resources/templates/list"}:
+            if params.get("cursor") is not None:
+                return self._error(message_id, -32602, "Resource catalogs do not accept cursors")
+            templates = method == "resources/templates/list"
+            routes = router.get_mcp_resource_templates() if templates else router.get_mcp_resources()
+            key = "resourceTemplates" if templates else "resources"
+            return self._result(message_id, {
+                key: [self._resource_definition(route) for route in routes],
+            })
+        if method == "resources/read":
+            if not request.user.is_authenticated:
+                header = self.get_authenticate_header(request)
+                return Response(
+                    self._error(message_id, -32001, "MCP authentication required").data,
+                    status=401, headers={"WWW-Authenticate": header} if header else None,
+                )
+            return self._read_resource(request, message_id, params)
         if method == "tools/list":
             try:
                 return self._result(message_id, {
@@ -125,7 +147,7 @@ class McpEndpointView(APIView):
     def _tool_definition(route: BloomerpRoute) -> dict[str, Any]:
         """Advertise a registered route as an MCP tool."""
         contract = route.mcp
-        assert contract is not None
+        assert isinstance(contract, McpTool)
         definition: dict[str, Any] = {
             "name": route.url_name,
             "description": contract.description or route.description or route.name,
@@ -143,6 +165,77 @@ class McpEndpointView(APIView):
             definition["securitySchemes"] = [{"type": "oauth2", "scopes": [MCP_SCOPE]}]
         return definition
 
+    @staticmethod
+    def _resource_definition(route: BloomerpRoute) -> dict[str, Any]:
+        """Advertise resource identity and metadata without invoking its reader."""
+        contract = route.mcp
+        assert isinstance(contract, (McpResource, McpResourceTemplate))
+        definition: dict[str, Any] = {
+            "name": route.url_name, "title": contract.title or route.localized_name,
+            "description": contract.description or route.localized_description,
+            "mimeType": contract.mime_type,
+        }
+        if isinstance(contract, McpResource):
+            definition["uri"] = contract.uri
+        else:
+            definition["uriTemplate"] = contract.uri_template
+        return definition
+
+    def _read_resource(
+        self, request: Request, message_id: str | int, params: dict[str, Any],
+    ) -> Response:
+        """Resolve a registered URI and run its reader as the authenticated caller."""
+        uri = params.get("uri")
+        if not isinstance(uri, str):
+            return self._error(message_id, -32602, "Resource URI must be a string")
+        try:
+            validate_resource_uri(uri)
+            resolved = router.resolve_mcp_resource(uri)
+        except ValueError as error:
+            return self._error(message_id, -32602, str(error))
+        if resolved is None:
+            return self._error(message_id, -32002, "Resource not found")
+        route, arguments = resolved
+        contract = route.mcp
+        assert isinstance(contract, (McpResource, McpResourceTemplate))
+        try:
+            if isinstance(contract, McpResourceTemplate):
+                schema = contract.get_parameter_schema()
+                Draft202012Validator.check_schema(schema)
+                errors = list(Draft202012Validator(schema).iter_errors(arguments))
+                if errors:
+                    return self._error(message_id, -32602, errors[0].message)
+            result = self._dispatch_view(request, route, arguments)
+            status_code = getattr(result, "status_code", 200)
+            if status_code in {401, 403}:
+                return self._error(message_id, -32001, "Resource access denied")
+            if status_code == 404:
+                return self._error(message_id, -32002, "Resource not found")
+            if status_code >= 400:
+                return self._error(message_id, -32603, "Resource reader failed")
+            payload = result.data if isinstance(result, Response) else result
+            if isinstance(payload, HttpResponse):
+                payload = payload.content
+                if contract.mime_type.startswith("text/") or contract.mime_type == "application/json":
+                    payload = payload.decode(result.charset)
+            content: dict[str, Any] = {"uri": uri, "mimeType": contract.mime_type}
+            if isinstance(payload, bytes):
+                content["blob"] = base64.b64encode(payload).decode("ascii")
+            elif isinstance(payload, str):
+                content["text"] = payload
+            elif isinstance(payload, (dict, list)):
+                content["text"] = JSONRenderer().render(payload).decode("utf-8")
+            else:
+                raise TypeError("Resource readers must return text, bytes, or JSON objects/arrays")
+            return self._result(message_id, {"contents": [content]})
+        except (PermissionDenied, ApiPermissionDenied):
+            return self._error(message_id, -32001, "Resource access denied")
+        except Http404:
+            return self._error(message_id, -32002, "Resource not found")
+        except Exception:
+            logger.exception("MCP resource %s failed", uri)
+            return self._error(message_id, -32603, "Resource reader failed")
+
     def _call_tool(
         self, request: Request, message_id: str | int, params: dict[str, Any]
     ) -> Response:
@@ -156,7 +249,7 @@ class McpEndpointView(APIView):
         )
         if route is None:
             return self._error(message_id, -32602, "Unknown tool")
-        assert route.mcp is not None
+        assert isinstance(route.mcp, McpTool)
         try:
             errors = list(Draft202012Validator(route.mcp.get_input_schema()).iter_errors(arguments))
         except (TypeError, ValueError):
@@ -193,7 +286,9 @@ class McpEndpointView(APIView):
         request: Request, route: BloomerpRoute, arguments: dict[str, Any]
     ) -> Any:
         """Re-enter a route's view with the authenticated caller's identity."""
-        if route.route_type == RouteType.MCP or route.view_type == ViewType.FUNCTION:
+        if route.route_type == RouteType.MCP_RESOURCE:
+            method = "get"
+        elif route.route_type == RouteType.MCP or route.view_type == ViewType.FUNCTION:
             method = "post"
         else:
             methods = [
@@ -206,15 +301,20 @@ class McpEndpointView(APIView):
             method = methods[0]
         factory = APIRequestFactory()
         path = route.path or "/mcp"
+        forwarded_context = {"HTTP_HOST": request.get_host(), "secure": request.is_secure()}
         if method == "get":
-            forwarded = factory.get(path, data=arguments)
+            forwarded = factory.get(path, data=arguments, **forwarded_context)
         else:
-            forwarded = factory.post(path, data=arguments, format="json")
+            forwarded = factory.post(path, data=arguments, format="json", **forwarded_context)
         force_authenticate(forwarded, user=request.user, token=request.auth)
-        if route.view_type == ViewType.CLASS:
-            view_callable = route.view.as_view(**router._get_route_kwargs(route))
-            return view_callable(forwarded)
         forwarded.user = request.user
         forwarded.auth = request.auth
         forwarded.data = arguments
-        return route.view(forwarded, **router._get_route_kwargs(route))
+        if route.view_type == ViewType.CLASS:
+            view_callable = route.view.as_view(**router._get_route_kwargs(route))
+            view_arguments = arguments if route.route_type == RouteType.MCP_RESOURCE else {}
+            return view_callable(forwarded, **view_arguments)
+        view_kwargs = router._get_route_kwargs(route)
+        if route.route_type == RouteType.MCP_RESOURCE:
+            view_kwargs.update(arguments)
+        return route.view(forwarded, **view_kwargs)

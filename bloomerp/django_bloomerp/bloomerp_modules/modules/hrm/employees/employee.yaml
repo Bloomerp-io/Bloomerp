@@ -150,7 +150,12 @@ fields:
     options:
       null: true
       blank: true
-      
+  
+  - id: resume
+    name: Resume
+    description: The resume
+    type: BloomerpFileField
+    
   
 
 

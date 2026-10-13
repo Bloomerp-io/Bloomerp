@@ -1,0 +1,6 @@
+{% load i18n %}
+<c-ui.inputs.selectable_cards.container name="provider" :include_search="False" :allow_multiple="False" value="{{ selected_provider }}">
+    {% for provider in providers %}
+        <c-ui.inputs.selectable_cards.item value="{{ provider.key }}" name="{{ provider.display_name }}" description="{{ provider.description }}" icon="{{ provider.icon }}" />
+    {% empty %}<p>{% translate 'No VoIP providers are registered.' %}</p>{% endfor %}
+</c-ui.inputs.selectable_cards.container>

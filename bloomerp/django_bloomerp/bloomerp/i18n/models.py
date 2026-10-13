@@ -47,6 +47,14 @@ def model_messages(app: AppConfig, source_language: str) -> list[dict]:
                     messages.append(
                         {"message": value, "locations": [(model_location, None)]}
                     )
+            for name in dir(model):
+                if not name.startswith("_") and isinstance(getattr(model, name, None), property):
+                    messages.append(
+                        {
+                            "message": name.replace("_", " ").title(),
+                            "locations": [(f"{model_location}.{name}", None)],
+                        }
+                    )
             for field in model._meta.get_fields():
                 label = getattr(field, "verbose_name", None)
                 if label:

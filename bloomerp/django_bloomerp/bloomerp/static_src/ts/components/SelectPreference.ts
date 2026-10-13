@@ -3,6 +3,7 @@ import BaseComponent from "./BaseComponent";
 import getGeneralModal from "@/utils/modals";
 import { getCsrfToken } from "@/utils/cookies";
 import htmx from "htmx.org";
+import { t as _ } from "@/utils/i18n";
 
 export class SelectPreference extends BaseComponent {
     private modelName: string | null = null;
@@ -29,9 +30,10 @@ export class SelectPreference extends BaseComponent {
         window.location.reload();
     }
 
+    /** Open sharing with a complete translated title. */
     private launchShareModal(preferenceId: string): void {
         const modal = getGeneralModal();
-        const title = "Share " + (this.element?.dataset.modelVerboseName || "Preference");
+        const title = _("Share {preference}").replace("{preference}", this.element?.dataset.modelVerboseName || _("Preference"));
         modal.setTitle(title);
         htmx.ajax("get", this.getSharePreferenceUrl(preferenceId), {
             target: modal.getBodyElement(),
@@ -63,11 +65,12 @@ export class SelectPreference extends BaseComponent {
         if (renameButton) this.beginRename(renameButton.dataset.renamePreference || "", renameButton);
     }
 
+    /** Open deletion with a complete translated title. */
     private launchDeleteModal(preferenceId: string): void {
         if (!preferenceId) return;
 
         const modal = getGeneralModal();
-        const title = "Delete " + (this.element?.dataset.modelVerboseName || "Preference");
+        const title = _("Delete {preference}").replace("{preference}", this.element?.dataset.modelVerboseName || _("Preference"));
         modal.setTitle(title);
         htmx.ajax("get", this.getDeletePreferenceUrl(preferenceId), {
             target: modal.getBodyElement(),

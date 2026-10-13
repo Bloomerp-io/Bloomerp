@@ -4,6 +4,7 @@ from typing import Any
 
 from django import forms
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model
 from pydantic import TypeAdapter
 
 from bloomerp.automation.base_executor import BaseExecutor
@@ -87,8 +88,8 @@ class ObjectIfConditionExecutor(BaseExecutor):
         """Pass the incoming object schema through either output port."""
         return input_schema
 
-    def execute(self, input_data: dict[str, Any]) -> RouteResult:
-        """Route true only when the incoming object matches the saved filters."""
+    def execute(self, input_data: dict[str, Any] | Model) -> RouteResult:
+        """Route models or trigger dictionaries by the saved filters, preserving input."""
         params = self.resolve_config(input_data)
         model, _ = get_model_and_content_type_or_404(params.get("content_type_id"))
         filters = params.get("filters") or []
@@ -98,10 +99,13 @@ class ObjectIfConditionExecutor(BaseExecutor):
             filters = _FILTERS_ADAPTER.validate_python(filters, strict=True)
 
         queryset = ModelFilterManager(model).apply(filters, queryset=model.objects.all())
-        object_id = input_data.get("id")
-        if object_id is None:
-            instance = input_data.get("instance")
-            object_id = instance.get("id") if isinstance(instance, dict) else getattr(instance, "pk", None)
+        if isinstance(input_data, Model):
+            object_id = input_data.pk
+        else:
+            object_id = input_data.get("id")
+            if object_id is None:
+                instance = input_data.get("instance")
+                object_id = instance.get("id") if isinstance(instance, dict) else getattr(instance, "pk", None)
         matches = object_id is not None and queryset.filter(pk=object_id).exists()
         return RouteResult(
             port_id="true" if matches else "false",

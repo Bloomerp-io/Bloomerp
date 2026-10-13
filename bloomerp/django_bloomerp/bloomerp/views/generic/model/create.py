@@ -8,7 +8,7 @@ from django.views.generic.edit import CreateView
 
 from bloomerp.forms.model_form import BloomerpModelForm
 from bloomerp.models.definition import BloomerpModelConfig
-from bloomerp.models.files import File
+from bloomerp.models.files import FileNode
 from bloomerp.models.workspaces import SqlQuery, Tile
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.permissions.manager import UserPolicyManager
@@ -36,7 +36,7 @@ def _redirect_url(model: type[models.Model], obj: models.Model) -> str | None:
     url_name="add",
     description="Create a new object from {model}",
     route_type="model",
-    exclude_models=[File, Tile, SqlQuery, User, Workspace],
+    exclude_models=[FileNode, Tile, SqlQuery, User, Workspace],
 )
 class BloomerpCreateView(BaseBloomerpView, LayoutModelFormMixin, CreateView):
     layout_mode = "create"

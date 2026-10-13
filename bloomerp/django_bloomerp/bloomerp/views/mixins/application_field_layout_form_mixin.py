@@ -40,8 +40,9 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
         "<div class='text-gray-600 text-sm'>You don't have access to this field</div>"
     )
     def edit_url_extractor_func(self, item: LayoutItem) -> str | None:
+        """Link to settings only when this application field offers display options."""
         application_field = self.get_application_field(item)
-        if not application_field.get_field_type().display_options:
+        if not application_field.get_field_type().get_display_options(application_field):
             return None
         
         layout_object = self.get_layout_object()

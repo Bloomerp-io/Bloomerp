@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-19 14:13+0000\n"
+"POT-Creation-Date: 2026-10-12 20:10+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: pt\n"
@@ -19,27 +19,593 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.16.0\n"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:358
+#: static_src/ts/components/filters/SavedFilters.ts:193
+msgid "A filter name is required."
+msgstr "É necessário indicar um nome para o filtro."
+
+#: static_src/ts/components/PermissionsTable.ts:393
+msgid "A row policy rule requires exactly one condition group."
+msgstr "Uma regra de política de linhas requer exatamente um grupo de condições."
+
+#: static_src/ts/components/filters/FilterContainer.ts:103
+#: static_src/ts/components/filters/FilterContainer.ts:167
+#: static_src/ts/components/filters/RenderedFilters.ts:85
+#: static_src/ts/components/filters/RenderedFilters.ts:136
+msgid "AND"
+msgstr "E"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:268 static_src/ts/utils/contextMenu.ts:157
+msgid "Actions"
+msgstr "Ações"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:269
+msgid "Add action"
+msgstr "Adicionar ação"
+
+#: static_src/ts/components/filters/FilterContainer.ts:122
+msgid "Add condition"
+msgstr "Adicionar condição"
+
+#: static_src/ts/components/filters/SavedFilters.ts:69
+msgid "Add filter"
+msgstr "Adicionar filtro"
+
+#: static_src/ts/components/filters/FilterContainer.ts:73
+#: static_src/ts/components/filters/FilterContainer.ts:78
+msgid "Add group"
+msgstr "Adicionar grupo"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:350
 msgid "Add row below"
 msgstr "Adicionar linha abaixo"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:359
+#: static_src/ts/components/PermissionsTable.ts:440
+msgid "All objects"
+msgstr "Todos os objetos"
+
+#: static_src/ts/components/filters/RenderedFilters.ts:92
+#: static_src/ts/components/filters/RenderedFilters.ts:135
+msgid "All rows"
+msgstr "Todas as linhas"
+
+#: static_src/ts/components/filters/FilterContainer.ts:69
+msgid "Apply"
+msgstr "Aplicar"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+msgid "Attachment"
+msgstr "Anexo"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:393
+#: static_src/ts/utils/contextMenu.ts:164
+msgid "Back"
+msgstr "Voltar"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:241
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:242
+msgid "Behavior name"
+msgstr "Nome do comportamento"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+msgid "Blue"
+msgstr "Azul"
+
+#: static_src/ts/components/text_editor/actions.ts:206
+msgid "Bullet List"
+msgstr "Lista com marcadores"
+
+#: static_src/ts/components/communication/Phone.ts:147
+msgid "Call ended"
+msgstr "Chamada terminada"
+
+#: static_src/ts/components/communication/Phone.ts:51
+#: static_src/ts/components/communication/Phone.ts:141
+msgid "Call in progress"
+msgstr "Chamada em curso"
+
+#: static_src/ts/components/communication/Phone.ts:154
+msgid "Calling failed. Check microphone permission, connection settings and line access."
+msgstr ""
+"Falha ao efetuar a chamada. Verifique as permissões do microfone, as definições de ligação e o "
+"acesso à linha."
+
+#: static_src/ts/components/communication/Phone.ts:58
+msgid "Calling is unavailable. Check your connection and line access."
+msgstr "Não é possível efetuar chamadas. Verifique a ligação e o acesso à linha."
+
+#: static_src/ts/components/communication/Phone.ts:107
+msgid "Calling…"
+msgstr "A ligar…"
+
+#: static_src/ts/components/text_editor/actions.ts:218
+msgid "Checklist"
+msgstr "Lista de verificação"
+
+#: static_src/ts/components/filters/FilterContainer.ts:74
+msgid "Clear"
+msgstr "Limpar"
+
+#: static_src/ts/utils/modals.ts:44
+msgid "Close"
+msgstr "Fechar"
+
+#: static_src/ts/components/text_editor/actions.ts:165
+msgid "Code Block"
+msgstr "Bloco de código"
+
+#: static_src/ts/components/filters/FilterContainer.ts:106
+#: static_src/ts/components/filters/FilterContainer.ts:155
+msgid "Collapse group"
+msgstr "Recolher grupo"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:175
+#: static_src/ts/components/filters/widget.ts:26
+msgid "Complete every filter condition before applying."
+msgstr "Preencha todas as condições do filtro antes de o aplicar."
+
+#: static_src/ts/components/filters/FilterContainer.ts:165
+msgid "Condition group"
+msgstr "Grupo de condições"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:263
+msgid "Conditions"
+msgstr "Condições"
+
+#: static_src/ts/components/filters/api.ts:24
+msgid "Could not load filter options. Please try again."
+msgstr "Não foi possível carregar as opções de filtro. Tente novamente."
+
+#: static_src/ts/utils/contextMenu.ts:280
+msgid "Could not load results. Try searching again."
+msgstr "Não foi possível carregar os resultados. Tente pesquisar novamente."
+
+#: static_src/ts/components/filters/FilterContainer.ts:91
+msgid "Could not restore the initial filters."
+msgstr "Não foi possível restaurar os filtros iniciais."
+
+#: static_src/ts/components/filters/FilterContainer.ts:175
+msgid "Could not restore the initial filters. Clear them to start again."
+msgstr "Não foi possível restaurar os filtros iniciais. Limpe-os para começar de novo."
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:148
+msgid "Create label"
+msgstr "Criar etiqueta"
+
+#: static_src/ts/components/SelectPreference.ts:73
+msgid "Delete {preference}"
+msgstr "Excluir {preference}"
+
+#: static_src/ts/components/inbox/EmailEditor.ts:155
+msgid "Draft attachments cannot exceed 20 MB in total."
+msgstr "Os anexos do rascunho não podem exceder 20 MB no total."
+
+#: static_src/ts/components/inbox/EmailEditor.ts:179
+msgid "Draft saved."
+msgstr "Rascunho salvo."
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:351
 msgid "Drag row"
 msgstr "Arrastar linha"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:360
+#: static_src/ts/components/filters/RenderedFilter.ts:95
+msgid "Edit"
+msgstr "Editar"
+
+#: static_src/ts/components/inbox/EmailEditor.ts:304
+msgid "Email operation failed. Your edits are still here; please try again."
+msgstr "Falha na operação de e-mail. Suas edições ainda estão aqui; tente novamente."
+
+#: static_src/ts/components/filters/ConditionEditor.ts:94
+msgid "Enter a single field key."
+msgstr "Introduza uma única chave de campo."
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:136
+msgid "Enter a valid email address or remove the invalid recipient."
+msgstr "Digite um endereço de e-mail válido ou remova o destinatário inválido."
+
+#: static_src/ts/components/filters/FilterContainer.ts:155
+msgid "Expand group"
+msgstr "Expandir grupo"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:64
+msgid "Field"
+msgstr "Campo"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+msgid "Field reference"
+msgstr "Referência de campo"
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:16
+msgid "File upload failed"
+msgstr "Falha no envio do arquivo"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:351
+msgid "Files"
+msgstr "Arquivos"
+
+#: static_src/ts/components/filters/RenderedFilter.ts:86
+msgid "Filter actions"
+msgstr "Ações do filtro"
+
+#: static_src/ts/components/filters/api.ts:12
+msgid "Filter endpoint is missing."
+msgstr "O endpoint do filtro está em falta."
+
+#: static_src/ts/components/filters/SavedFilters.ts:86
+#: static_src/ts/components/filters/SavedFilters.ts:87
+msgid "Filter name"
+msgstr "Nome do filtro"
+
+#: static_src/ts/components/filters/FilterContainer.ts:85
+msgid "Filter scope is missing."
+msgstr "O âmbito do filtro está em falta."
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+msgid "Gray"
+msgstr "Cinza"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+msgid "Green"
+msgstr "Verde"
+
+#: static_src/ts/components/text_editor/actions.ts:252
+msgid "HTML"
+msgstr "HTML"
+
+#: static_src/ts/components/text_editor/actions.ts:171
+msgid "Heading 1"
+msgstr "Título 1"
+
+#: static_src/ts/components/text_editor/actions.ts:177
+msgid "Heading 2"
+msgstr "Título 2"
+
+#: static_src/ts/components/text_editor/actions.ts:183
+msgid "Heading 3"
+msgstr "Título 3"
+
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:386
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:387
+msgid "Hide formatting toolbar"
+msgstr "Ocultar barra de ferramentas de formatação"
+
+#: static_src/ts/components/text_editor/actions.ts:189
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+msgid "Image"
+msgstr "Imagem"
+
+#: static_src/ts/components/communication/Phone.ts:122
+msgid "Incoming call"
+msgstr "Chamada recebida"
+
+#: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
+msgid "Invalid row policy"
+msgstr "Política de linhas inválida"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:453
+msgid "Label could not be created"
+msgstr "Não foi possível criar a etiqueta"
+
+#: static_src/ts/components/filters/SavedFilters.ts:152
+msgid "Loading saved filters…"
+msgstr "A carregar filtros guardados…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:146
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:202 static_src/ts/utils/contextMenu.ts:260
+#: static_src/ts/utils/contextMenu.ts:271
+msgid "Loading…"
+msgstr "A carregar…"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:122
+msgid "Lookup"
+msgstr "Pesquisa"
+
+#: static_src/ts/components/filters/FilterContainer.ts:102
+msgid "Match conditions"
+msgstr "Condições de correspondência"
+
+#: static_src/ts/components/text_editor/actions.ts:196
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+msgid "Mention"
+msgstr "Menção"
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:65
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:78
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:82
+msgid "Mention suggestions"
+msgstr "Sugestões de menção"
+
+#: static_src/ts/components/communication/Phone.ts:51
+msgid "Microphone muted"
+msgstr "Microfone silenciado"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:98
+msgid "Move action down"
+msgstr "Mover ação para baixo"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:97
+msgid "Move action up"
+msgstr "Mover ação para cima"
+
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "No authorized voice lines are available"
+msgstr "Não há linhas de voz autorizadas disponíveis"
+
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:453
+msgid "No items"
+msgstr "Nenhum item"
+
+#: static_src/ts/components/filters/SavedFilters.ts:127
+msgid "No matching filters."
+msgstr "Nenhum filtro correspondente."
+
+#: static_src/ts/components/PermissionsTable.ts:440
+msgid "No objects"
+msgstr "Nenhum objeto"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:446
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:416
+msgid "No results"
+msgstr "Nenhum resultado"
+
+#: static_src/ts/utils/contextMenu.ts:201
+msgid "No results."
+msgstr "Nenhum resultado."
+
+#: static_src/ts/components/filters/RenderedFilters.ts:92
+#: static_src/ts/components/filters/RenderedFilters.ts:135
+msgid "No rows"
+msgstr "Nenhuma linha"
+
+#: static_src/ts/components/filters/SavedFilters.ts:127
+msgid "No saved filters yet."
+msgstr "Ainda não há filtros guardados."
+
+#: static_src/ts/components/text_editor/actions.ts:212
+msgid "Numbered List"
+msgstr "Lista numerada"
+
+#: static_src/ts/components/filters/FilterContainer.ts:103
+msgid "OR"
+msgstr "OU"
+
+#: static_src/ts/components/text_editor/actions.ts:201
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+msgid "Object"
+msgstr "Objeto"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:158
+msgid "Objects"
+msgstr "Objetos"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+msgid "Orange"
+msgstr "Laranja"
+
+#: static_src/ts/components/PermissionsTable.ts:388
+msgid "Permission required"
+msgstr "Permissão necessária"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:430
+msgid "Pink"
+msgstr "Rosa"
+
+#: static_src/ts/components/filters/widget.ts:36
+msgid "Please check the filter value."
+msgstr "Verifique o valor do filtro."
+
+#: static_src/ts/components/PermissionsTable.ts:388
+msgid "Please select at least one permission for the row policy."
+msgstr "Selecione pelo menos uma permissão para a política de linha."
+
+#: static_src/ts/components/SelectPreference.ts:36 static_src/ts/components/SelectPreference.ts:73
+msgid "Preference"
+msgstr "Preferência"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+msgid "Purple"
+msgstr "Roxo"
+
+#: static_src/ts/components/communication/Phone.ts:92
+msgid "Ready for incoming calls"
+msgstr "Pronto para receber chamadas"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+msgid "Red"
+msgstr "Vermelho"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:315
+#: static_src/ts/components/filters/RenderedFilter.ts:94
+msgid "Remove"
+msgstr "Remover"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:99
+msgid "Remove action"
+msgstr "Remover ação"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:23
+msgid "Remove condition"
+msgstr "Remover condição"
+
+#: static_src/ts/components/filters/FilterContainer.ts:122
+msgid "Remove group"
+msgstr "Remover grupo"
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:104
+msgid "Remove recipient"
+msgstr "Remover destinatário"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:352
 msgid "Remove row"
 msgstr "Remover linha"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:357
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:528
+msgid "Remove {label}"
+msgstr "Remover {label}"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:349
 msgid "Row title"
 msgstr "Título da linha"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:522
+#: static_src/ts/components/filters/SavedFilters.ts:89
+#: static_src/ts/components/filters/SavedFilters.ts:90
+#: static_src/ts/components/filters/SavedFilters.ts:91
+msgid "Save filter"
+msgstr "Guardar filtro"
+
+#: static_src/ts/components/filters/SavedFilters.ts:59
+msgid "Saved filters"
+msgstr "Filtros guardados"
+
+#: static_src/ts/components/inbox/EmailEditor.ts:90
+msgid "Saving draft…"
+msgstr "Salvando rascunho…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:400
+msgid "Search colors"
+msgstr "Pesquisar cores"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:399
+msgid "Search colors…"
+msgstr "Pesquisar cores…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:184
+msgid "Search could not be loaded"
+msgstr "Não foi possível carregar a pesquisa"
+
+#: static_src/ts/components/filters/SavedFilters.ts:64
+msgid "Search filters…"
+msgstr "Pesquisar filtros…"
+
+#: static_src/ts/components/filters/SavedFilters.ts:65
+msgid "Search saved filters"
+msgstr "Pesquisar filtros guardados"
+
+#: static_src/ts/components/text_editor/utils/templatePicker.ts:32
+msgid "Search templates"
+msgstr "Pesquisar modelos"
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:81
+msgid "Search unavailable"
+msgstr "Pesquisa indisponível"
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:234
+msgid "Searching email addresses…"
+msgstr "Pesquisando endereços de e-mail…"
+
+#: static_src/ts/utils/contextMenu.ts:119
+msgid "Searching…"
+msgstr "Pesquisando…"
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+msgid "Search…"
+msgstr "Pesquisar…"
+
+#: static_src/ts/components/filters/SavedFilters.ts:11
+msgid "Select"
+msgstr "Selecionar"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:65
+msgid "Select field"
+msgstr "Selecionar campo"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:93
+msgid "Select key"
+msgstr "Selecionar chave"
+
+#: static_src/ts/components/filters/ConditionEditor.ts:124
+msgid "Select lookup"
+msgstr "Selecionar consulta"
+
+#: static_src/ts/components/inbox/EmailEditor.ts:268
+msgid "Sending email…"
+msgstr "Enviando e-mail…"
+
+#: static_src/ts/components/filters/RenderedFilter.ts:96
+msgid "Set default"
+msgstr "Definir como predefinido"
+
+#: static_src/ts/components/SelectPreference.ts:36
+msgid "Share {preference}"
+msgstr "Compartilhar {preference}"
+
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:547
 msgid "Show All Fields"
 msgstr "Mostrar todos os campos"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:521
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:546
 msgid "Show Required Only"
 msgstr "Mostrar apenas os obrigatórios"
+
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:407
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:408
+msgid "Show formatting toolbar"
+msgstr "Mostrar barra de ferramentas de formatação"
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:52
+msgid "Suggested email addresses"
+msgstr "Endereços de e-mail sugeridos"
+
+#: static_src/ts/components/text_editor/actions.ts:224
+msgid "Table"
+msgstr "Tabela"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+msgid "Teal"
+msgstr "Verde-azulado"
+
+#: static_src/ts/components/text_editor/actions.ts:158
+#: static_src/ts/components/text_editor/utils/templatePicker.ts:30
+msgid "Template"
+msgstr "Modelo"
+
+#: static_src/ts/components/PermissionsTable.ts:339
+msgid "The filter editor is not ready."
+msgstr "O editor de filtros não está pronto."
+
+#: static_src/ts/components/filters/ConditionEditor.ts:112
+msgid "The saved filter field is unavailable."
+msgstr "O campo do filtro guardado não está disponível."
+
+#: static_src/ts/components/filters/ConditionEditor.ts:168
+msgid "The saved filter lookup could not be restored."
+msgstr "Não foi possível restaurar a consulta do filtro guardado."
+
+#: static_src/ts/components/filters/FilterContainer.ts:183
+msgid "This editor accepts one condition group per rule."
+msgstr "Este editor aceita um grupo de condições por regra."
+
+#: static_src/ts/utils/modals.ts:43
+msgid "Toggle fullscreen"
+msgstr "Ativar/desativar ecrã inteiro"
+
+#: static_src/ts/components/ResizableDiv.ts:249
+msgid "Toggle side panel"
+msgstr "Alternar painel lateral"
+
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:209
+msgid "Unable to load this form. Close the dialog and try again."
+msgstr "Não foi possível carregar este formulário. Feche a caixa de diálogo e tente novamente."
+
+#: static_src/ts/components/workspaces/WorkspaceContainer.ts:268
+msgid "Unable to load tile."
+msgstr "Não foi possível carregar o mosaico."
+
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:404
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:412
+msgid "Unable to move card. Please try again."
+msgstr "Não foi possível mover o cartão. Tente novamente."
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:164
+msgid "Upload image"
+msgstr "Carregar imagem"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+msgid "Yellow"
+msgstr "Amarelo"
+
+#: static_src/ts/components/data_view_components/KanbanBoard.ts:402
+msgid "You do not have permission to move this card."
+msgstr "Você não tem permissão para mover este cartão."
 

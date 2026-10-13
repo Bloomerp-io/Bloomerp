@@ -19,7 +19,8 @@ class TranslationBatch(BaseModel):
     results: list[TranslationResult] = Field(default_factory=list)
 
 
-def create_langchain_model(settings: BloomerpI18nLLMSettings):
+def create_langchain_model(settings: BloomerpI18nLLMSettings) -> object:
+    """Create a translator model, using its default temperature unless overridden."""
     try:
         from langchain.chat_models import init_chat_model
     except ImportError as exc:
@@ -28,7 +29,9 @@ def create_langchain_model(settings: BloomerpI18nLLMSettings):
             "'i18n-llm' extra and install the LangChain integration for your provider."
         ) from exc
 
-    kwargs = {"temperature": settings.temperature}
+    kwargs: dict[str, object] = {}
+    if settings.temperature is not None:
+        kwargs["temperature"] = settings.temperature
     if settings.provider:
         kwargs["model_provider"] = settings.provider
     return init_chat_model(settings.model, **kwargs)

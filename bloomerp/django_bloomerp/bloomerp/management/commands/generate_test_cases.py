@@ -303,6 +303,8 @@ class Command(BaseCommand):
                     RouteType.API: "BloomerpAPIViewTestCase",
                     RouteType.API_MODEL: "BloomerpAPIModelViewTestCase",
                     RouteType.API_DETAIL: "BloomerpAPIDetailViewTestCase",
+                    RouteType.MCP: "BloomerpMcpViewTestCase",
+                    RouteType.MCP_RESOURCE: "BloomerpMcpViewTestCase",
                 }
                 base_class = (
                     "BloomerpE2ETestCase" if e2e else base_classes[route_type]
@@ -737,6 +739,11 @@ class Command(BaseCommand):
         imports: list[tuple[str, str]] | None = None,
         attributes: list[tuple[str, str]] | None = None,
     ) -> str:
+        """Render a route skeleton with the matching HTTP or MCP scenario contract."""
+        scenario_class = (
+            "McpRequestScenario" if base_class == "BloomerpMcpViewTestCase"
+            else "RequestScenario"
+        )
         specialized_request_setup_class = {
             "BloomerpDetailViewTestCase": "ModelRequestScenario",
             "BloomerpModelViewTestCase": "ModelRequestScenario",
@@ -753,7 +760,7 @@ class Command(BaseCommand):
                 "from bloomerp.tests.base import (",
                 f"    {base_class},",
                 "    ExpectedResult,",
-                "    RequestScenario,",
+                f"    {scenario_class},",
                 *(
                     [f"    {specialized_request_setup_class},"]
                     if specialized_request_setup_class
@@ -783,7 +790,8 @@ class Command(BaseCommand):
                 *docstring_lines,
                 *attribute_lines,
                 "",
-                "    def get_test_scenarios(self) -> list[RequestScenario]:",
+                f"    def get_test_scenarios(self) -> list[{scenario_class}]:",
+                '        """Describe the observable request contracts for this endpoint."""',
                 "        # Add only the route scenarios this callable needs.",
                 "        return []",
                 "",

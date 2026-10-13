@@ -17,12 +17,14 @@ from bloomerp.form_behaviors.builtins.transform_text import TRANSFORM_TEXT
 
 from .populate_week_dates import POPULATE_WEEK_DATES
 from .set_o2m_value import SET_O2M_VALUE
+from .set_relative_date import SET_RELATIVE_DATE
 from .set_value import SET_VALUE
 
 BUILTIN_ACTIONS = (
     SET_FIELD_VISIBILITY,
     SET_FIELD_INTERACTION,
     SET_VALUE,
+    SET_RELATIVE_DATE,
     SET_O2M_VALUE,
     POPULATE_WEEK_DATES,
     COPY_FIELD_VALUE,

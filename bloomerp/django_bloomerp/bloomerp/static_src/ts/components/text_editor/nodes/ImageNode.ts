@@ -1,5 +1,9 @@
 import {
     $applyNodeReplacement,
+    $createParagraphNode,
+    $getRoot,
+    $getSelection,
+    $insertNodes,
     ElementNode,
     type DOMConversionMap,
     type DOMExportOutput,
@@ -148,4 +152,13 @@ export class ImageNode extends ElementNode {
 
 export function $createImageNode(src: string, altText?: string, width?: number | null): ImageNode {
     return $applyNodeReplacement(new ImageNode(src, altText, width ?? null));
+}
+
+/** Insert a block image and place the caret in an editable paragraph after it. */
+export function $insertImageNode(image: ImageNode): void {
+    if (!$getSelection()) $getRoot().selectEnd();
+    $insertNodes([image]);
+    const paragraph = $createParagraphNode();
+    image.insertAfter(paragraph);
+    paragraph.selectStart();
 }

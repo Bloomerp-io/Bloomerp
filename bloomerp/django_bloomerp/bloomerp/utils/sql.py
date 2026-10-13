@@ -5,6 +5,12 @@ import pandas as pd
 from typing import Any, List, Dict
 import time
 
+
+def get_active_dialect() -> str:
+    """Return the Django vendor identifier for the connection used to execute SQL."""
+    return connection.vendor
+
+
 class SqlQueryExecutor:
 
     def __init__(self, cache_time: int = 60, cache_id: str = None):

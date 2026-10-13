@@ -1,14 +1,14 @@
 """
 All rights reserved. 
 """
-from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.users.user_list_view_preference import UserListViewPreference
-from django.contrib.contenttypes.models import ContentType
-from bloomerp.models.users.user import AbstractBloomerpUser
-from django.core.cache import cache
 from dataclasses import dataclass
 
+from django.contrib.contenttypes.models import ContentType
+
+from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
@@ -33,6 +33,16 @@ class DataViewFields:
     """
     visible_fields: list[ApplicationField]
     accessible_fields: list[tuple]
+
+    @property
+    def ordered_fields(self) -> list[tuple[ApplicationField, bool]]:
+        """List displayed fields in their saved order, followed by other accessible fields."""
+        visible_ids = {field.id for field in self.visible_fields}
+        return [(field, True) for field in self.visible_fields] + [
+            (field, False)
+            for field, _is_visible in self.accessible_fields
+            if field.id not in visible_ids
+        ]
 
 
 def _sanitize_visible_field_ids(
@@ -112,10 +122,10 @@ def get_data_view_fields(
         is_preference_owner or not configured_visible_field_ids
     )
     if should_apply_defaults:
-        preferred_fields = accessible_fields_qs.exclude(field__in=AUTO_MANAGED_FIELD_NAMES)
+        preferred_fields = accessible_fields_qs.exclude(field__in=AUTO_MANAGED_FIELD_NAMES | {"object_labels", "avatar"})
         default_fields = list(preferred_fields[:5].values_list('id', flat=True))
         if not default_fields:
-            default_fields = list(accessible_fields_qs[:5].values_list('id', flat=True))
+            default_fields = list(accessible_fields_qs.exclude(field__in=['object_labels', 'avatar'])[:5].values_list('id', flat=True))
         visible_field_ids = default_fields
         if is_preference_owner:
             preference.set_visible_field_ids(view_type, default_fields)
@@ -129,11 +139,13 @@ def get_data_view_fields(
         if field_id in accessible_fields_by_id
     ]
     
+    # Avatar stays optional by default, but must remain available to select.
     # Build accessible fields list with visibility flag
     visible_field_ids_set = set(visible_field_ids)
     accessible_fields = [
         (field, field.id in visible_field_ids_set)
         for field in accessible_fields_qs
+        if field.field != "object_labels" or field.id in visible_field_ids_set
     ]
     
     return DataViewFields(

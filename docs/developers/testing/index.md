@@ -59,7 +59,7 @@ Every generator target has a corresponding guide:
 
 | Generator value | Generated base test case | Guide |
 | --- | --- | --- |
-| `views` | `BloomerpViewTestCase` and its model, detail, module, and API variants | [View test cases](view-test-case.md) |
+| `views` | `BloomerpViewTestCase` and its model, detail, module, and API variants; `BloomerpMcpViewTestCase` for MCP-only tools and resources | [View test cases](view-test-case.md), [MCP view test cases](mcp-view-test-case.md) |
 | `components` | `BloomerpComponentTestCase` | [Component test cases](component-test-case.md) |
 | `e2e` | `BloomerpE2ETestCase` | [End-to-end test cases](e2e-test-case.md) |
 | `models` | `BloomerpModelTestCase` | [Model test cases](model-test-case.md) |
@@ -119,6 +119,7 @@ phase.
 - [Behavior action test cases](behavior-action-test-case.md)
 - [Request scenarios](request-test-case.md)
 - [View test cases](view-test-case.md)
+- [MCP view test cases](mcp-view-test-case.md)
 - [Component test cases](component-test-case.md)
 - [Workflow node test cases](workflow-node-test-case.md)
 - [Dataview test cases](dataview-test-case.md)

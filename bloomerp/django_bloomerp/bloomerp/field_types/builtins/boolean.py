@@ -1,5 +1,4 @@
 from bloomerp.field_types.utils.form_field_factories import form
-from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.field_types.lookups import BOOLEAN_LOOKUPS
 from bloomerp.field_types.construction import (
     BLANK_FIELD_OPTION,
@@ -14,7 +13,7 @@ from bloomerp.field_types.registry import (
     FieldTypeDefinition,
     FieldTypeRegistry,
 )
-from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
+from bloomerp.field_types.builtins.display import standard_display_options
 from bloomerp.field_types.utils.widget_factories import widget
 
 BOOLEAN_FIELD = FieldTypeDefinition(
@@ -36,7 +35,7 @@ BOOLEAN_FIELD = FieldTypeDefinition(
     widget_factory=widget(
         forms.CheckboxInput, attrs={"style": "max-width:1.5rem; height:1.5rem"}
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 NULL_BOOLEAN_FIELD = FieldTypeDefinition(
     form_factory=form(forms.NullBooleanField),
@@ -54,7 +53,7 @@ NULL_BOOLEAN_FIELD = FieldTypeDefinition(
             HELP_TEXT_FIELD_OPTION,
         ),
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 

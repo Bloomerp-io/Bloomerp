@@ -11,6 +11,7 @@ from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils.functional import Promise
 from django.utils.translation import override
+from django.views.generic import TemplateView
 
 from bloomerp.config.definition import (
     BloomerpAppI18nSettings,
@@ -110,6 +111,29 @@ class TestI18nConfiguration(SimpleTestCase):
                 "/misc/workspaces/create/",
             )
 
+    def test_plural_route_metadata_preserves_identity_across_languages(self) -> None:
+        """Format plural route names and descriptions without changing route identity."""
+        registry = BloomerpRouteRegistry()
+        with override("en"):
+            registry.register(
+                path="/",
+                name="{model_plural}",
+                description="Browse {model_plural}",
+                url_name="model",
+                route_type="model",
+                models=[Workspace],
+            )(TemplateView)
+
+        route = registry.routes[0]
+        self.assertEqual(route.name, "Workspaces")
+        self.assertEqual(route.description, "Browse Workspaces")
+        for language, label in (("en", "Workspaces"), ("nl", "Werkruimten")):
+            with self.subTest(language=language), override(language):
+                self.assertEqual(route.localized_name, label)
+                self.assertEqual(route.localized_description, f"Browse {label}")
+                self.assertEqual(route.url_name, "workspaces_model")
+                self.assertEqual(route.path, "/misc/workspaces/")
+
     def test_command_calculates_translation_targets_per_app(self):
         english_app = SimpleNamespace(
             label="bloomerp",
@@ -137,8 +161,11 @@ class TestI18nConfiguration(SimpleTestCase):
         self.assertEqual(normalize_language_code("pt_BR"), "pt-br")
         self.assertEqual(catalog_locale("pt-br"), "pt_BR")
 
-    def test_route_localization_translates_template_before_model_formatting(self):
-        model = SimpleNamespace(_meta=SimpleNamespace(verbose_name="Cliente"))
+    def test_route_localization_translates_template_before_model_formatting(self) -> None:
+        """Translate the route template before substituting model metadata."""
+        model = SimpleNamespace(
+            _meta=SimpleNamespace(verbose_name="Cliente", verbose_name_plural="Clientes")
+        )
         route = BloomerpRoute(
             path="/clientes/",
             route_type=RouteType.MODEL,
@@ -159,8 +186,11 @@ class TestI18nConfiguration(SimpleTestCase):
         ):
             self.assertEqual(route.localized_name, "Lista de Cliente")
 
-    def test_route_localization_formats_related_model_metadata_at_runtime(self):
-        model = SimpleNamespace(_meta=SimpleNamespace(verbose_name="Account"))
+    def test_route_localization_formats_related_model_metadata_at_runtime(self) -> None:
+        """Preserve related-model substitutions alongside model metadata."""
+        model = SimpleNamespace(
+            _meta=SimpleNamespace(verbose_name="Account", verbose_name_plural="Accounts")
+        )
         route = BloomerpRoute(
             path="accounts/<int:pk>/contacts/",
             route_type=RouteType.DETAIL,
@@ -305,18 +335,27 @@ class TestI18nConfiguration(SimpleTestCase):
         self.assertIsInstance(TodoStatus.IN_PROGRESS.label, Promise)
         self.assertEqual(ActivityLog._meta.get_field("source").choices, ActivityLogSource.choices)
 
-    def test_static_layout_titles_remain_pydantic_safe_and_translate_when_resolved(self):
+    def test_static_layout_titles_remain_pydantic_safe_and_translate_when_resolved(self) -> None:
+        """Use case: Resolve static layout titles. Expected result: Translate at rendering time."""
         layout = Todo.bloomerp_config.detail_view_settings.get_default_layout()
 
         self.assertIsInstance(layout.rows[0].title, str)
         self.assertEqual(layout.rows[0].title, "Details")
 
-        content_type = SimpleNamespace(model_class=lambda: Todo)
+        def todo_model() -> type[Todo]:
+            """Return the model behind the simulated content type."""
+            return Todo
+
+        def translate_title(message: str) -> str:
+            """Translate the section title without needing a compiled catalog."""
+            return {"Details": "Detalhes"}.get(message, message)
+
+        content_type = SimpleNamespace(model_class=todo_model)
         with (
-            patch("bloomerp.services.sectioned_layout_services.UserPermissionManager"),
+            patch("bloomerp.services.sectioned_layout_services.UserPolicyManager"),
             patch(
                 "bloomerp.services.sectioned_layout_services.gettext",
-                side_effect=lambda message: {"Details": "Detalhes"}.get(message, message),
+                side_effect=translate_title,
             ),
         ):
             rows = resolve_detail_layout_rows(

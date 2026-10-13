@@ -1,4 +1,7 @@
 import BaseComponent from "./BaseComponent";
+import { getShortcutManager } from "../utils/shortcutManager";
+import { formatShortcutForAria, formatShortcutForDisplay, parseShortcut } from "../utils/shortcuts";
+import { t } from "../utils/i18n";
 import { getCookie, setCookie } from "../utils/cookies";
 
 const DEFAULT_START_WIDTH = "320px";
@@ -16,6 +19,9 @@ function parseWidth(value: string | undefined): string {
 
 export default class ResizableDiv extends BaseComponent {
     private handle: HTMLElement | null = null;
+    private unregisterShortcut: (() => void) | null = null;
+    private shortcutHint: HTMLElement | null = null;
+    private expandedWidth = "";
     private pointerDownHandler: ((event: PointerEvent) => void) | null = null;
     private handleDoubleClickHandler: ((event: MouseEvent) => void) | null = null;
     private resizeObserver: ResizeObserver | null = null;
@@ -41,6 +47,7 @@ export default class ResizableDiv extends BaseComponent {
         this.element.style.minWidth = `${MIN_WIDTH}px`;
 
         this.ensureHandle();
+        this.setupToggleShortcut();
         this.reapplyAfterLayout();
         this.setupResizeObserver();
         this.setupHeightFitting();
@@ -87,7 +94,12 @@ export default class ResizableDiv extends BaseComponent {
         this.element.addEventListener("pointerdown", this.pointerDownHandler);
     }
 
+    /** Release resize listeners and the optional panel toggle shortcut. */
     public destroy(): void {
+        this.unregisterShortcut?.();
+        this.unregisterShortcut = null;
+        this.shortcutHint?.remove();
+        this.shortcutHint = null;
         if (this.element && this.pointerDownHandler) {
             this.element.removeEventListener("pointerdown", this.pointerDownHandler);
         }
@@ -116,10 +128,12 @@ export default class ResizableDiv extends BaseComponent {
         this.reapplyAfterLayout();
     }
 
+    /** Apply responsive panel sizing and remember the last nonzero width. */
     private applyWidth(width: string): void {
         if (!this.element) return;
 
         this.currentWidth = width;
+        if (Number.parseFloat(width) > 0) this.expandedWidth = width;
 
         if (!window.matchMedia(DESKTOP_MEDIA_QUERY).matches) {
             this.element.style.width = "";
@@ -212,17 +226,52 @@ export default class ResizableDiv extends BaseComponent {
         return this.element?.dataset.fitToMainBottom === "true";
     }
 
+    /** Collapse the desktop panel or restore its most recent expanded width. */
     private toggleCollapsedWidth(): void {
         if (!this.element) return;
 
+        if (!window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return;
         const currentWidthPx = this.clampWidth(this.element.getBoundingClientRect().width);
         const nextWidth = Math.round(currentWidthPx) <= MIN_WIDTH
-            ? parseWidth(this.element.dataset.startWidth)
+            ? this.expandedWidth || parseWidth(this.element.dataset.startWidth)
             : `${MIN_WIDTH}px`;
 
         this.applyWidth(nextWidth);
         setCookie(this.cookieKey, nextWidth, 30);
     }
+
+    /** Register a scoped toggle and advertise it on the panel's resize handle. */
+    private setupToggleShortcut(): void {
+        this.unregisterShortcut?.();
+        this.shortcutHint?.remove();
+        const shortcut = parseShortcut(this.element.dataset.toggleShortcut || "");
+        if (!shortcut || !this.handle) return;
+        const label = `${t("Toggle side panel")} (${formatShortcutForDisplay(shortcut)})`;
+        this.handle.title = label;
+        this.handle.setAttribute("aria-keyshortcuts", formatShortcutForAria(shortcut));
+        this.shortcutHint = document.createElement("div");
+        this.shortcutHint.className = "absolute right-2 top-2 z-50 w-max rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-900 shadow-sm pointer-events-none";
+        this.shortcutHint.textContent = label;
+        this.shortcutHint.hidden = true;
+        this.handle.appendChild(this.shortcutHint);
+        this.unregisterShortcut = getShortcutManager().register({
+            rootElement: this.handle,
+            shortcut,
+            showHint: this.showShortcutHint,
+            hideHint: this.hideShortcutHint,
+            performAction: this.toggleCollapsedWidth.bind(this),
+        });
+    }
+
+    /** Show the toggle hint while shortcut discovery mode is active. */
+    private showShortcutHint = (): void => {
+        if (this.shortcutHint) this.shortcutHint.hidden = false;
+    };
+
+    /** Hide the toggle hint after shortcut discovery or component cleanup. */
+    private hideShortcutHint = (): void => {
+        if (this.shortcutHint) this.shortcutHint.hidden = true;
+    };
 
     private ensureHandle(): void {
         if (!this.element) return;

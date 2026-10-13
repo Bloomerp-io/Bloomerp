@@ -95,6 +95,11 @@ class BaseDataviewRenderer:
         return set(cls.reserved_query_params)
 
     @classmethod
+    def action_requires_count(cls, action: str) -> bool:
+        """Declare whether an operation needs the total filtered row count."""
+        return True
+
+    @classmethod
     def apply_sorting(cls, queryset, _request, _data_view_fields, _options: object | None = None):
         return queryset, {}
 
@@ -182,10 +187,14 @@ class BaseDataviewRenderer:
         return querystring.urlencode()
 
     def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
+        """Prepare displayed field values through generic hooks and build page context."""
+        from bloomerp.field_types.utils.value_loading import prepare_field_values
+
+        objects = prepare_field_values(pagination.queryset, self.state.render_fields)
         context = dict(self.state.context)
         context.update({
             "content_type_id": self.state.content_type_id,
-            "queryset": pagination.queryset,
+            "queryset": objects,
             "fields": self.state.render_fields,
             "avatar_field": self.state.avatar_field,
             "preference": self.state.preference,

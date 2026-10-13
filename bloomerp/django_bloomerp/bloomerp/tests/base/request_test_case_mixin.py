@@ -108,23 +108,7 @@ class RequestTestCaseMixin:
                 else:
                     self.client.logout()
 
-                request_kwargs = {
-                    "path": self.get_endpoint(
-                        selected_view_name,
-                        setup.view_kwargs,
-                        setup,
-                    ),
-                    "data": setup.data,
-                    "query_params": setup.query_params,
-                    "headers": setup.headers,
-                    "follow": setup.follow,
-                }
-                if setup.content_type:
-                    if setup.method in {"GET", "HEAD", "TRACE"}:
-                        raise ValueError(
-                            f"{setup.method} requests do not support content_type"
-                        )
-                    request_kwargs["content_type"] = setup.content_type
+                request_kwargs = self._get_request_kwargs(setup, selected_view_name)
 
                 response = getattr(self.client, setup.method.lower())(**request_kwargs)
                 self.assertEqual(
@@ -153,6 +137,23 @@ class RequestTestCaseMixin:
                 finally:
                     self.client.logout()
                     transaction.set_rollback(True)
+
+    def _get_request_kwargs(
+        self, setup: RequestScenario, view_name: str
+    ) -> dict[str, Any]:
+        """Build the HTTP request after scenario preparation has finished."""
+        request_kwargs = {
+            "path": self.get_endpoint(view_name, setup.view_kwargs, setup),
+            "data": setup.data,
+            "query_params": setup.query_params,
+            "headers": setup.headers,
+            "follow": setup.follow,
+        }
+        if setup.content_type:
+            if setup.method in {"GET", "HEAD", "TRACE"}:
+                raise ValueError(f"{setup.method} requests do not support content_type")
+            request_kwargs["content_type"] = setup.content_type
+        return request_kwargs
 
     @staticmethod
     def _named_validator(name: str, validator: ResponseValidator) -> ResponseValidator:

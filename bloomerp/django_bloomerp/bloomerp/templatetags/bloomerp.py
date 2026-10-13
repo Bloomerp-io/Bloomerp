@@ -1,10 +1,12 @@
 import json
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Any
 
 import bleach
 from django import template
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.http import HttpRequest
 from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, ObjectModalAction
@@ -23,6 +25,7 @@ import uuid
 from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField
 import uuid
 from django.template.loader import render_to_string
+from django.forms.utils import flatatt
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.config.settings import BLOOMERP_LANGUAGES
 from bloomerp.permissions.manager import (
@@ -60,11 +63,11 @@ ACTIVITY_LOG_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
 @register.simple_tag
 def bloomerp_asset_version() -> str:
-    """Invalidate rebuilt development bundles without changing the release version."""
+    """Invalidate rebuilt development CSS using the current build manifest timestamp."""
     if settings.DEBUG:
         from django.contrib.staticfiles import finders
 
-        entry = finders.find("bloomerp/js/dist/main.js")
+        entry = finders.find("bloomerp/js/dist/manifest.json")
         if entry:
             try:
                 return f"dev-{Path(entry).stat().st_mtime_ns}"
@@ -74,6 +77,28 @@ def bloomerp_asset_version() -> str:
         return version("Bloomerp")
     except PackageNotFoundError:
         return "dev"
+
+
+@register.simple_tag
+def bloomerp_vite_entry() -> str:
+    """Resolve the hashed production entry shared by the page and lazy imports."""
+    from django.contrib.staticfiles import finders
+
+    manifest_path = finders.find("bloomerp/js/dist/manifest.json")
+    message = "Bloomerp's Vite manifest is missing or invalid. Run npm run build:js in bloomerp/static_src."
+    if not manifest_path:
+        raise ImproperlyConfigured(message)
+
+    try:
+        manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+        entry = manifest["ts/entry.ts"]
+        filename = entry["file"]
+        if not entry.get("isEntry") or not isinstance(filename, str) or not filename:
+            raise ValueError("Missing Vite entry filename")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        raise ImproperlyConfigured(message) from error
+
+    return f"bloomerp/js/dist/{filename}"
 
 
 @register.simple_tag
@@ -177,57 +202,6 @@ def percentage(value, arg):
         return 
 
 
-@register.filter
-def getattr_filter(obj, attr):
-    '''
-    Returns the attribute of an object by name.
-    
-    Example usage:
-    {{ object|getattr:"field_name" }}
-    '''
-    try:
-        return getattr(obj, attr, None)
-    except (AttributeError, TypeError):
-        return None
-
-   
-@register.inclusion_tag('snippets/workspace_item.html')
-def workspace_item(item:dict):
-    '''
-    Returns a workspace item.
-
-    Example usage:
-    {% workspace_item item %}
-    '''
-    # generate random id for each item
-    item['id'] = uuid.uuid4()
-
-    return {'item': item}
-
-
-@register.inclusion_tag('components/bookmark.html')
-def render_bookmark(object:Model, user:AbstractBloomerpUser, size:int, target:str):
-    '''
-    Returns a bookmark object.
-
-    Example usage:
-    {% render_bookmark object user size target %}
-    '''
-    # Get the content_type_id and object_id from the request
-    content_type_id = ContentType.objects.get_for_model(object).pk
-    
-    # Check if the bookmark allready exists
-    bookmarked = Bookmark.objects.filter(user=user, content_type_id=content_type_id, object_id=object.pk).exists()
-
-    return {
-        'bookmarked': bookmarked,
-        'content_type_id': content_type_id,
-        'object_id': object.pk,
-        'target' : target,
-        'size': size
-    }
-
-
 @register.inclusion_tag('snippets/avatar.html')
 def avatar(object:Model, avatar_attribute:str='avatar', size:int=30, class_name=''):
     '''
@@ -271,17 +245,6 @@ def generate_uuid(context):
     return str(uuid.uuid4())
 
 
-@register.simple_tag(takes_context=True)
-def load_icon(context:dict, icon:str, size:int=30, cls:str|None=None):
-    """Load's an icon"""
-    base = "cotton/icons/{}.html"
-
-    try:
-        return render_to_string(base.format(icon), context={"size":size, "class":cls})
-    except:
-        return "Icon not found"
-
-
 @register.filter
 def detail_view_url(object:Model):
     '''
@@ -300,42 +263,6 @@ def detail_view_url(object:Model):
         except Exception:
             return ""
 
-
-@register.filter
-def delete_view_url(object:Model):
-    """
-    Returns the delete url of an object.
-
-    Example usage:
-    {{ object|delete_view_url }}
-    """
-    try:
-        return reverse(get_delete_view_url(object.__class__), kwargs={'pk': object.pk})
-    except Exception:
-        return ""
-
-
-@register.filter
-def get_nested_attribute(obj, attribute_path: str):
-    """Get a nested attribute from an object.
-
-    Args:
-        obj (object): The object to get the attribute from.
-        attribute_path (str): The path to the attribute.
-
-    Returns:
-        object: The value of the attribute.
-
-    Example usage:
-    {{ object|get_nested_attribute:'attribute1.attribute2.attribute3' }}
-    """
-    try:
-        for attr in attribute_path.split('.'):
-            obj = getattr(obj, attr)
-        return obj
-    except AttributeError:
-        return None
-    
     
 @register.inclusion_tag('inclusion_tags/dataview_value.html')
 def render_dataview_value(
@@ -344,9 +271,9 @@ def render_dataview_value(
     user: AbstractBloomerpUser,
     row_index:int=0,
     column_index:int=0,
-    url:str=None,
+    url: str | None = None,
     split_view_enabled: bool = False,
-):
+) -> dict[str, Any]:
     """Renders a data table value
 
     Args:
@@ -370,8 +297,14 @@ def render_dataview_value(
     else:
         value = ""
     
+    data_value = value
+    if can_view and application_field.get_field_type().id in {"CharField", "ChoiceField"}:
+        # Display labels can be localized; filters still need the stored choice key.
+        data_value = getattr(object, application_field.field, None)
+
     return {
         "value": value,
+        "data_value": data_value,
         "object": object,
         "is_field_type": FIELD_TYPE_REGISTRY.template_context(application_field.get_field_type()),
         "application_field_id" : application_field.id,
@@ -418,20 +351,6 @@ def render_object_preview_value(
         context["preview_field_error_message"] = "Preview is not available for this field."
         return context
     
-
-@register.simple_tag
-def get_icon(name, size=16, **kwargs):
-    """
-    Renders an icon from the cotton/icons folder.
-    
-    Example usage:
-    {% get_icon name="list" size="16" %}
-    """
-    try:
-        return mark_safe(render_to_string(f"cotton/icons/{name}.html", {'size': size, **kwargs}))
-    except template.TemplateDoesNotExist:
-        return ""
-
 
 @register.filter
 def make_list_by_comma(value: str):
@@ -486,36 +405,21 @@ def parse_icon_value(value):
     return parse_icon_value_service(value)
 
 
-@register.simple_tag
-def should_render_action(
-    action:ObjectAction|ObjectHTMLAction,
-    object:Model,
-    request:HttpRequest,
-) -> bool:
-    """Decides whether an action should render
-
-    Args:
-        action (ObjectAction): the action object
-        object (Model): the objec 
-        request (HttpRequest): the request object
-
-    Returns:
-        bool: whether the action should render or not.
-    """
-    try:
-        return action.should_render_func(request, object)
-    except:
-        return False
-    
 
 @register.simple_tag
 def render_object_action(
-    action:ObjectAction|ObjectHTMLAction,
+    action:ObjectAction|ObjectHTMLAction|ObjectModalAction,
     object:Model,
     request:HttpRequest,
     content_type_id:int|None=None,
-):
-    if not should_render_action(action, object, request):
+) -> str:
+    """Render an authorized action with its response target and escaped button attributes."""
+    try:
+        should_render_action = action.should_render_func(request, object)
+    except:
+        should_render_action = False
+    
+    if not should_render_action:
         return ""
 
     if isinstance(action, ObjectHTMLAction):
@@ -555,15 +459,9 @@ def render_object_action(
     if content_type_id is None:
         content_type_id = ContentType.objects.get_for_model(object).pk
 
-    return format_html(
-        (
-            '<button class="btn btn-xs btn-{}" '
-            'hx-post="{}" '
-            'hx-target="#object-actions-target" '
-            "hx-vals='{{\"csrfmiddlewaretoken\": \"{}\"}}'>{}</button>"
-        ),
-        action.style,
-        reverse(
+    attrs = {
+        "class": f"btn btn-xs btn-{action.style}",
+        "hx-post": reverse(
             "components_objects_actions",
             kwargs={
                 "content_type_id": content_type_id,
@@ -571,9 +469,11 @@ def render_object_action(
                 "action_id": action.id,
             },
         ),
-        get_token(request),
-        gettext(action.label),
-    )
+        "hx-vals": json.dumps({"csrfmiddlewaretoken": get_token(request)}),
+        **(action.button_attrs or {}),
+        "hx-target": action.target,
+    }
+    return format_html("<button{}>{}</button>", flatatt(attrs), gettext(action.label))
     
 @register.simple_tag
 def can_manage_preference_object(user:AbstractBloomerpUser, object:BasePreference) -> bool:

@@ -1,3 +1,10 @@
+import Phone from "./components/communication/Phone";
+import Conversation from './components/communication/Conversation';
+import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
+import ArtifactPicker from './components/agent/ArtifactPicker';
+import ColoredChoices from './components/ColoredChoices';
+import MappingWidget from './components/MappingWidget';
+import MailboxSettings from './components/widgets/MailboxSettings';
 /**
  * Bloomerp Main TypeScript Entry Point
  * 
@@ -50,6 +57,7 @@ import ForeignFieldDataViewContainer from './components/data_view_components/For
 import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
 import ShortcutTooltip from './components/ShortcutTooltip';
+import DropdownKeyboard from './components/DropdownKeyboard';
 import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
 import BehaviorBuilder from './components/inputs/BehaviorBuilder';
 import FocusOnForm from './components/FocusOnForm';
@@ -71,13 +79,24 @@ import { SelectPreference } from './components/SelectPreference';
 import ThemeProvider from './components/theme/ThemeProvider';
 import MarkdownCodeBlock from './components/MarkdownCodeBlock';
 import { loadTranslations } from './utils/i18n';
+import { setupLanguageSwitch } from './utils/languageSwitch';
 import { FileBrowser } from './components/data_view_components/FileBrowser';
+import { initBrowserAgent } from './utils/agent';
+import AgentChat from './components/agent/AgentChat';
+import MessagingPanel from './components/communication/MessagingPanel';
+
 
 Object.assign(window, { showMessage });
+initBrowserAgent();
+setupLanguageSwitch();
 
 // Register components here
+registerComponent('bloomerp:artifact-picker', ArtifactPicker);
 registerComponent('modal', Modal);
 registerComponent('drawer', Drawer);
+registerComponent('bloomerp:agent-chat', AgentChat);
+registerComponent('bloomerp:messaging-panel', MessagingPanel);
+registerComponent('bloomerp:im-conversation', Conversation);
 registerComponent('sidebar', Sidebar);
 registerComponent('breadcrumb', Breadcrumb);
 registerComponent('resizable-div', ResizableDiv);
@@ -169,7 +188,11 @@ registerComponent('workspace-tile-canvas', Canvas);
 registerComponent('sidebar-item', SidebarItem)
 registerComponent('focus-in', FocusIn)
 registerComponent('shortcut-tooltip', ShortcutTooltip);
+registerComponent('dropdown-keyboard', DropdownKeyboard);
 registerComponent('ordered-field-select', OrderedFieldSelect);
+registerComponent('mapping-widget', MappingWidget);
+registerComponent('mailbox-settings', MailboxSettings);
+registerComponent('colored-choices', ColoredChoices);
 registerComponent('behavior-builder', BehaviorBuilder);
 
 registerComponent('focus-on-form', FocusOnForm);
@@ -185,7 +208,10 @@ loadTranslations()
     .catch((error) => console.warn('Could not load the translation catalog', error))
     .finally(() => {
         // Components may synchronously render translated frontend labels.
+        registerComponent("bloomerp:phone", Phone);
         setupComponentAutoInit();
         initMessagesWebsocket();
         SetupAnimationListener();
     });
+
+registerComponent("reference-attachments", ReferenceAttachments);

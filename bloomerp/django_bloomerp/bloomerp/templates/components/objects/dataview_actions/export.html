@@ -1,3 +1,4 @@
+{% load i18n %}
 <div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
     <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
         <button
@@ -10,7 +11,7 @@
             hx-swap="innerHTML"
         >
             <i class="fa-solid fa-download"></i>
-            Export
+            {% translate "Export" %}
         </button>
     </c-ui.shortcut_tooltip>
 </div>

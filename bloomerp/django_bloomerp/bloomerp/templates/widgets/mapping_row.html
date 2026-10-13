@@ -1,0 +1,13 @@
+{% load i18n %}
+<div data-mapping-row class="flex items-center gap-1.5">
+    <input type="hidden" name="{{ widget.name }}__rows" value="{{ row.index }}">
+    <div data-mapping-key class="min-w-0 flex-1">{{ row.left }}</div>
+    <div data-mapping-value class="min-w-0 flex-1">{{ row.right }}</div>
+    {% if widget.allow_adding_groups %}
+    <div class="flex shrink-0 items-center gap-0.5">
+        <button type="button" data-mapping-up class="w-4 h-4 text-xs text-gray-400 hover:text-primary disabled:opacity-30 disabled:cursor-default" aria-label="{% translate 'Move mapping up' %}" title="{% translate 'Move mapping up' %}">↑</button>
+        <button type="button" data-mapping-down class="w-4 h-4 text-xs text-gray-400 hover:text-primary disabled:opacity-30 disabled:cursor-default" aria-label="{% translate 'Move mapping down' %}" title="{% translate 'Move mapping down' %}">↓</button>
+        <button type="button" data-mapping-remove class="shrink-0 text-gray-400 hover:text-danger-dark px-1 py-1 text-sm" aria-label="Remove mapping">×</button>
+    </div>
+    {% endif %}
+</div>

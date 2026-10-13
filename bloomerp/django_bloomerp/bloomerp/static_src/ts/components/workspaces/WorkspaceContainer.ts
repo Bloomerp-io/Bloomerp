@@ -44,6 +44,19 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         });
     }
 
+    /** Let embedded data views own read-mode clicks instead of refocusing their tile. */
+    protected override onClick(event: MouseEvent): void {
+        const target = event.target as HTMLElement | null;
+        if (!this.editMode && target?.closest(`[${componentIdentifier}="dataview-container"]`)) {
+            const tile = target.closest<HTMLElement>(this.getItemSelector());
+            if (tile) {
+                this.focusedItemIndex = Number.parseInt(tile.dataset.itemIndex ?? "0", 10);
+            }
+            return;
+        }
+        super.onClick(event);
+    }
+
     protected override shouldApplyFocusedItemClass(): boolean {
         return true;
     }
@@ -172,6 +185,7 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
         }
     }
 
+    /** Reload tiles sequentially with requests owned by their individual DOM elements. */
     private async reloadWorkspaceTiles(filterParams: URLSearchParams): Promise<void> {
         if (!this.element) return;
 
@@ -202,6 +216,8 @@ export default class WorkspaceContainer extends BaseSectionedLayoutContainer<Wor
                 try {
                     // eslint-disable-next-line no-await-in-loop
                     await htmx.ajax("get", renderUrl, {
+                        // Keep replaced workspaces out of HTMX's shared body request queue.
+                        source: tileElement,
                         target: tileElement,
                         swap: "outerHTML",
                         values: this.buildTileRenderValues({

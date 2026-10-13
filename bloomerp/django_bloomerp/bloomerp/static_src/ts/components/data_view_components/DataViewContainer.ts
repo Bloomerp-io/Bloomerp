@@ -8,6 +8,7 @@ import ObjectCRUDViewContainer from "../detail_view_components/ObjectCRUDViewCon
 import { getModal } from "@/utils/modals";
 import { insertSkeleton } from "@/utils/animations";
 import { RenderedFilters } from '../filters/RenderedFilters';
+import { parseInitialFilters } from '../filters/definition';
 
 
 
@@ -43,6 +44,7 @@ export class DataViewContainer extends BaseComponent {
     private selectedObjectIds: Set<string> = new Set();
     private createObjectModalLoaded: boolean = false;
 
+    /** Bind data-view controls without stealing focus when loaded inside a workspace tile. */
     public initialize(): void {
         this.element?.addEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
         this.baseUrl = this.element?.dataset.baseUrl;
@@ -54,7 +56,7 @@ export class DataViewContainer extends BaseComponent {
                 if (this.element) this.renderedFilters?.syncEditor(this.element, filters);
                 this.filter({ filter: JSON.stringify(filters) }, false);
             });
-            this.renderedFilters.restore(new URL(this.fullPath || this.baseUrl || location.href, location.origin).searchParams.get('filter'));
+            this.restoreEffectiveFilters();
         }
         this.searchInput = this.element?.querySelector(`#data-view-search-input-${this.contentTypeId}`) ?? null;
         this.splitViewEnabled = this.element?.dataset.splitViewEnabled === 'True';
@@ -63,8 +65,9 @@ export class DataViewContainer extends BaseComponent {
         // Setup target
         this.setDataviewTarget();
 
-        // Focus on search input
-        this.focusSearchInput();
+        if (!this.element?.closest(`[${componentIdentifier}="workspace-tile"]`)) {
+            this.focusSearchInput();
+        }
 
         
         this.setupKeydownListeners();
@@ -197,6 +200,16 @@ export class DataViewContainer extends BaseComponent {
         return { replace: nextUrl };
     }
 
+    /** Restore badges from the server response, never rejected raw JSON inputs. */
+    private restoreEffectiveFilters(): void {
+        const marker = this.element?.querySelector<HTMLElement>('[data-effective-json-filters]');
+        if (!marker) return;
+        const json = marker.dataset.effectiveJsonFilters ?? '[]';
+        this.renderedFilters?.restore(json, true);
+        if (this.element) this.renderedFilters?.syncEditor(this.element, parseInitialFilters(json));
+    }
+
+    /** Refresh the retained dataview controls after a new data-section response. */
     private handleAfterSwap(event: Event): void {
         if (!(event instanceof CustomEvent)) return;
 
@@ -206,6 +219,7 @@ export class DataViewContainer extends BaseComponent {
         const responseUrl = event.detail?.xhr?.responseURL;
         if (!responseUrl) return;
 
+        this.restoreEffectiveFilters();
         this.fullPath = new URL(responseUrl, window.location.origin).toString();
         if (this.element) this.element.dataset.url = this.fullPath;
 

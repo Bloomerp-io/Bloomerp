@@ -1,5 +1,4 @@
 from bloomerp.field_types.utils.form_field_factories import form
-from bloomerp.field_types.display_options import LABEL_OPTION
 from bloomerp.field_types.lookups import (
     DATE_LOOKUPS,
     NUMERIC_LOOKUPS,
@@ -22,7 +21,7 @@ from bloomerp.field_types.registry import (
     FieldTypeDefinition,
     FieldTypeRegistry,
 )
-from bloomerp.field_types.builtins.display import BEHAVIORS_DISPLAY_OPTION
+from bloomerp.field_types.builtins.display import standard_display_options
 
 DATE_FIELD = FieldTypeDefinition(
     form_factory=form(forms.DateField),
@@ -44,7 +43,7 @@ DATE_FIELD = FieldTypeDefinition(
         attrs={"type": "date"},
         format="%Y-%m-%d",
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 WEEK_FIELD = FieldTypeDefinition(
@@ -58,7 +57,7 @@ WEEK_FIELD = FieldTypeDefinition(
     ),
     widget_factory=widget(WeekWidget, attrs={}),
     form_factory=form(WeekFormField, virtual=False),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 DATE_TIME_FIELD = FieldTypeDefinition(
@@ -81,7 +80,7 @@ DATE_TIME_FIELD = FieldTypeDefinition(
         attrs={"type": "datetime-local"},
         format="%Y-%m-%dT%H:%M:%S",
     ),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 TIME_FIELD = FieldTypeDefinition(
@@ -93,7 +92,7 @@ TIME_FIELD = FieldTypeDefinition(
     lookups=tuple(TIME_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
     widget_factory=widget(forms.widgets.TimeInput, attrs={}),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 DURATION_FIELD = FieldTypeDefinition(
@@ -104,7 +103,7 @@ DURATION_FIELD = FieldTypeDefinition(
     label="Duration Field",
     lookups=tuple(NUMERIC_LOOKUPS),
     construction=FieldConstruction(defaults={}, options=tuple(COMMON_FIELD_OPTIONS)),
-    display_options=(LABEL_OPTION, BEHAVIORS_DISPLAY_OPTION),
+    display_options=standard_display_options,
 )
 
 
