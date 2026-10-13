@@ -36,6 +36,7 @@ from bloomerp.widgets.icon_picker_widget import IconPickerWidget
 from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
 from bloomerp.widgets.select_widget import InputSelectWidget
 from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
+from bloomerp.widgets.url_widget import URLWidget
 from django.db import models
 from django_countries.fields import CountryField
 from bloomerp.field_types.registry import (
@@ -188,6 +189,7 @@ EMAIL_FIELD = FieldTypeDefinition(
 )
 URL_FIELD = FieldTypeDefinition(
     id="URLField",
+    widget_factory=widget(URLWidget),
     icon="fa-solid fa-link",
     model_field_cls=models.URLField,
     label="URL Field",
