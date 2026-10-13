@@ -54,7 +54,9 @@ const buildResult = await build({
                     remove(id: string): void { const item = this.items.find((item: TestItem): boolean => item.getLayoutItemId() === id); if (item) this.removeItem(item); }
                     getItemEditorModal(): any {
                         const element = document.getElementById('field-display-option-modal');
-                        return {element, open(): void { element.dataset.open = 'true'; }};
+                        return {element, open(): void { element.dataset.open = 'true'; },
+                            /** Mirror modal closure so failed loads cannot refresh unsaved editor content. */
+                            close(): void { element.dataset.open = 'false'; element.dispatchEvent(new CustomEvent('bloomerp:modal-closed')); }};
                     }
                 }
                 registerComponent('test-item', TestItem);
@@ -78,7 +80,7 @@ interface PendingSave { payload: {layout: {rows: Array<{items: Array<{id: string
 interface Fixture { dom: JSDOM; w: DOMWindow; container: Container; saves: PendingSave[]; editors: string[]; click(id: string): void; close(): void; }
 
 /** Mount real layout/item classes, retaining manual control over save completion. */
-async function fixture(workspace: boolean = false): Promise<Fixture> {
+async function fixture(workspace: boolean = false, rejectEditor: boolean = false): Promise<Fixture> {
     const dom = new JSDOM('<!doctype html><body><form><section data-layout-save-url="/save/" data-layout=\'{"rows":[{"columns":2,"items":[]}]}\'><div data-layout-root><div data-layout-row data-row-columns="2"><div data-layout-grid></div></div></div><div data-layout-available-items-list></div></section></form><div id="field-display-option-modal"><div id="field-display-option-modal-body"></div></div></body>', {
         url: 'https://layout.test', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: new VirtualConsole(),
     });
@@ -95,7 +97,10 @@ async function fixture(workspace: boolean = false): Promise<Fixture> {
     w.eval(code);
     const api = (w as DOMWindow & {LayoutFixture: {TestContainer: new (element: HTMLElement) => Container; TestWorkspace: new (element: HTMLElement) => Container; htmx: {ajax(method: string, url: string): Promise<void>}}}).LayoutFixture;
     /** Observe editor requests without a network or a replacement save implementation. */
-    api.htmx.ajax = async (_method: string, url: string): Promise<void> => { editors.push(url); };
+    api.htmx.ajax = async (_method: string, url: string): Promise<void> => {
+        editors.push(url);
+        if (rejectEditor) { rejectEditor = false; throw new Error('Settings GET failed'); }
+    };
     const ContainerClass = workspace ? api.TestWorkspace : api.TestContainer;
     const container = new ContainerClass(w.document.querySelector('section')!);
     container.initialize(); if (!workspace) container.toggleEditMode();
@@ -132,6 +137,8 @@ test('failed layout save leaves settings unopened and can be retried', async ():
         f.container.select('42'); await tick(); f.click('42'); await tick();
         assert.equal(f.saves.length, 1); f.saves[0].finish(false); await tick();
         assert.equal(f.editors.length, 0);
+        assert.equal(f.w.document.querySelector('[data-message-type="error"]')?.getAttribute('data-message-text'), 'Unable to save the layout. Please try again before editing settings.');
+        assert.notEqual(f.w.document.getElementById('field-display-option-modal')!.dataset.open, 'true');
         f.click('42'); await tick(); assert.equal(f.saves.length, 2);
         f.saves[1].finish(); await tick(); assert.deepEqual(f.editors, ['/settings/42/']);
     } finally { f.close(); }
@@ -263,3 +270,23 @@ test(`a failed refresh recovers before opening settings for ${clickedId} without
     } finally { f.close(); }
 });
 }
+
+
+test('failed settings GET reports a load error after a successful save and preserves retryable progress', async (): Promise<void> => {
+    const f = await fixture(false, true);
+    try {
+        f.container.select('42'); await tick();
+        const item = f.w.document.querySelector('[data-layout-item-id="42"]')!;
+        item.setAttribute('data-layout-item-config', '{"label":"Keep my label"}');
+        f.click('42'); await tick(); f.saves[0].finish(); await tick();
+        assert.equal(f.w.document.querySelector('[data-message-type="error"]')?.getAttribute('data-message-text'), 'Unable to load field settings. Please try again.');
+        assert.equal(f.w.document.getElementById('field-display-option-modal')!.dataset.open, 'false');
+        assert.equal(f.w.document.querySelector('[data-layout-item-id="42"]'), item, 'A failed editor load must not rerender the saved field');
+        assert.equal(f.saves[0].payload.layout.rows[0].items[0].config.label, 'Keep my label');
+        assert.equal(item.querySelector('[data-layout-edit-item]')!.hasAttribute('aria-busy'), false);
+        f.click('42'); await tick(); f.saves[1].finish(); await tick();
+        assert.deepEqual(f.editors, ['/settings/42/', '/settings/42/']);
+        assert.equal(f.w.document.getElementById('field-display-option-modal')!.dataset.open, 'true');
+        assert.equal(f.saves[1].payload.layout.rows[0].items[0].config.label, 'Keep my label');
+    } finally { f.close(); }
+});

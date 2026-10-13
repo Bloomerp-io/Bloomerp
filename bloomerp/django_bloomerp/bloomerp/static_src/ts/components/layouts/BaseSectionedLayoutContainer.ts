@@ -481,7 +481,17 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
             }
             this.activeItemEditorId = itemId;
             modal.open();
-            await htmx.ajax("get", url, { target: modalBody, swap: "innerHTML" });
+            try {
+                await htmx.ajax("get", url, { target: modalBody, swap: "innerHTML" });
+            } catch {
+                if (request === this.itemEditorRequest && this.element?.isConnected
+                    && this.activeItemEditorId === itemId) {
+                    // No settings were loaded, so closing must not refresh the saved field.
+                    this.activeItemEditorId = null;
+                    modal.close();
+                    showMessage(t("Unable to load field settings. Please try again."), MessageType.ERROR);
+                }
+            }
         } catch {
             if (request === this.itemEditorRequest && this.element?.isConnected) {
                 this.reportLayoutSaveFailure();
