@@ -14,6 +14,7 @@
     "build:clean": "rimraf ../static/bloomerp/css/dist ../static/bloomerp/js/dist",
     "build:tailwind": "cross-env NODE_ENV=production tailwindcss --postcss -i ./src/styles.css -o ../static/bloomerp/css/dist/styles.css --minify",
     "build:js": "tsc && vite build",
+    "test:text-editor-links": "node --experimental-strip-types --test ts/components/text_editor/utils/linkBehavior.test.ts",
     "test:sdk": "node --experimental-transform-types --test ts/sdk/sdk.test.ts",
     "test:foreign-field": "node --experimental-strip-types --test ts/components/widgets/ForeignFieldWidget.test.ts",
     "test:theme": "node --experimental-strip-types --test ts/components/theme/theme.test.ts ts/components/theme/neutralHighlights.test.ts",
