@@ -15,6 +15,7 @@
     data-preference-id="{{ preference.pk }}"
     class="flex flex-col"
     bloomerp-component="{{ component_id | default:'dataview-container' }}"
+    data-view-mode="{{ preference.view_mode }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
 
     {% if component_args %}
@@ -43,6 +44,8 @@
         </div>
 
         <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+            <button type="button" class="btn btn-secondary btn-sm hidden" data-detail-drawer-trigger
+                bloomerp-open-drawer="dataview-detail-drawer-{{ content_type_id }}" aria-label="{% translate 'Open selected details' %}" title="{% translate 'Open selected details' %}"><i class="fa fa-columns" aria-hidden="true"></i></button>
             {% for rendered_action in rendered_dataview_actions %}
                 {{ rendered_action|safe }}
             {% endfor %}
@@ -169,6 +172,16 @@
 {% endif %}
 
 {% if not is_data_section_request %}
+    <c-ui.drawer id="dataview-detail-drawer-{{ content_type_id }}" :backdrop="True" :portal_to_body="True" data-dataview-detail-drawer
+        class="{{ detail_drawer_class }}"
+        panel_class="flex flex-col {{ detail_drawer_panel_class }}"
+        panel_style="width: min(100vw, 64rem); max-width: 100vw; {{ detail_drawer_panel_style }}">
+        <div class="flex justify-end border-b border-gray-200 p-2">
+            <button type="button" class="btn btn-ghost btn-sm" bloomerp-close-drawer="dataview-detail-drawer-{{ content_type_id }}" aria-label="{% translate 'Close details' %}"><i class="fa fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <div id="drawer-detail-pane-{{ content_type_id }}" data-drawer-detail-pane class="min-h-0 flex-1 overflow-auto"></div>
+    </c-ui.drawer>
+
     <!-- Context Menu Dropdown -->
     <div id="data-table-{{ content_type_id }}-context-menu" class="hidden fixed bg-white shadow-lg rounded-xl border border-gray-200 z-50 min-w-[160px]">
         <ul class="py-1">

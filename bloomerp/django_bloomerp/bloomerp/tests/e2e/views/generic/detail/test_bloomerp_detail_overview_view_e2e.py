@@ -143,6 +143,129 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
             ),
         ]
 
+    def test_detail_drawer(self) -> None:
+        """Run the drawer journey with an independent authenticated browser session."""
+        scenario = E2ERequestScenario(
+            name="Drawer mode reuses detail tabs and retains selection across result updates",
+            user=self.admin_user, prepare=self.prepare_drawer_view,
+            url=reverse(get_list_view_url(Todo)),
+            actions=[E2EAction(name="Use the shared detail drawer", execute=self.use_detail_drawer)],
+        )
+        self._run_request_scenario(scenario, scenario.name)
+
+    def prepare_drawer_view(self) -> None:
+        """Prepare a normal table so the browser must select Drawer through settings."""
+        self.prepare_split_view()
+        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference, {"content_type_id": ContentType.objects.get_for_model(Todo).pk},
+        )
+        preference.view_mode = "normal"
+        preference.default_filters.clear()
+        preference.save()
+
+    def use_detail_drawer(self) -> None:
+        """Exercise mode switching, tabs, comments, drafts, filters, close, and replacement."""
+        root = self.page.locator('[data-model-list-page] > [bloomerp-component]')
+        path = root.get_attribute('data-base-url')
+        root.get_by_role('button', name='Display', exact=True).click()
+        options = root.locator('[bloomerp-component="dataview-display-options"]')
+        for mode in ['split', 'normal', 'drawer']:
+            with self.expect_response_for(path, method="GET"):
+                options.get_by_label('View mode', exact=True).select_option(mode)
+            expect(root).to_have_attribute('data-view-mode', mode)
+            self.page.wait_for_load_state('networkidle')
+        root.get_by_role('button', name='Display', exact=True).click()
+        original_url = self.page.url
+        cell = root.locator(f'td[data-object-id="{self.split_todo.pk}"][data-application-field-name="title"]')
+        with self.expect_response_for(self.split_todo.get_absolute_url(), method="GET"):
+            cell.dblclick()
+        drawer = self.page.locator(f'#dataview-detail-drawer-{ContentType.objects.get_for_model(Todo).pk}')
+        pane = drawer.locator('[data-drawer-detail-pane]')
+        expect(drawer).to_be_visible()
+        expect(drawer).to_have_attribute('data-backdrop', 'true')
+        self.assertTrue(drawer.evaluate("element => element.parentElement === document.body"))
+        viewport = self.page.viewport_size
+        backdrop = drawer.bounding_box()
+        self.assertAlmostEqual(backdrop['x'], 0, delta=1)
+        self.assertAlmostEqual(backdrop['y'], 0, delta=1)
+        self.assertAlmostEqual(backdrop['width'], viewport['width'], delta=1)
+        self.assertAlmostEqual(backdrop['height'], viewport['height'], delta=1)
+        self.assertEqual(self.page.evaluate("document.elementFromPoint(60, 200).id"), drawer.get_attribute('id'))
+        self.assertLessEqual(drawer.locator(':scope > [data-drawer-panel]').bounding_box()['width'], 1025)
+        expect(pane.locator('[data-tab-strip]')).to_be_visible()
+        expect(pane.locator('#resizable-div-detail-aside')).to_be_visible()
+        self.page.wait_for_load_state('networkidle')
+        pane.get_by_role('button', name='Documents', exact=True).click()
+        files = pane.locator('[data-folder-tab-item]').filter(has_text='Files')
+        with self.expect_response_for(files.get_attribute('href'), method="GET"):
+            files.click()
+        expect(pane.locator('[data-tab-strip]')).to_be_visible()
+        self.page.wait_for_load_state('networkidle')
+        with self.expect_response_for(self.split_todo.get_absolute_url(), method="GET"):
+            pane.get_by_role('tab', name='Details', exact=True).click()
+        self.page.wait_for_load_state('networkidle')
+        comments = pane.locator('[data-detail-sidebar-view="comments"]')
+        with self.expect_response_for(comments.get_attribute('hx-get'), method="GET"):
+            comments.click()
+        form = pane.locator(f'#comment-form-{self.split_todo.pk}')
+        form.get_by_role('textbox', name='Comment', exact=True).fill('Comment from drawer')
+        form.get_by_role('textbox', name='Comment', exact=True).press('Enter')
+        expect(form.locator('[name=comment]')).to_have_value(re.compile('.*Comment from drawer.*'))
+        with self.expect_response_for(form.get_attribute('hx-post'), method="POST"):
+            form.get_by_role('textbox', name='Comment', exact=True).press('ControlOrMeta+Enter')
+        expect(pane.get_by_text('Comment from drawer', exact=True)).to_be_visible()
+        self.page.wait_for_load_state('networkidle')
+        activity = pane.locator('[data-detail-sidebar-view="activity"]')
+        with self.expect_response_for(activity.get_attribute('hx-get'), method="GET"):
+            activity.click()
+        self.page.wait_for_load_state('networkidle')
+        pane.locator('#id_title').fill('Saved drawer title')
+        with self.expect_response_for(self.split_todo.get_absolute_url(), method="POST") as saved:
+            pane.get_by_role('button', name='Save', exact=True).click()
+        self.assertEqual(saved.value.status, 200)
+        self.split_todo.refresh_from_db()
+        self.assertEqual(self.split_todo.title, 'Saved drawer title')
+        expect(pane.locator('[data-tab-strip]')).to_be_visible()
+        self.page.wait_for_load_state('networkidle')
+        pane.locator('#id_title').fill('Unsaved drawer edit')
+        drawer.click(position={'x': 1, 'y': 100})
+        expect(drawer).to_be_hidden()
+        with self.expect_response_for(path, method="GET"):
+            root.locator('input[name="q"]').fill('Split tabs second')
+        expect(pane.locator('#id_title')).to_have_value('Unsaved drawer edit')
+        root.get_by_role('button', name='Filter', exact=True).click()
+        editor = root.locator('[data-filter-host-editor] [bloomerp-component="unified-filter-container"]:visible')
+        condition = editor.locator('.filter-condition').first
+        condition.get_by_label('Field', exact=True).select_option(label='Title')
+        condition.get_by_label('Lookup', exact=True).select_option('contains')
+        condition.locator('.filter-value-editor input:not([type="hidden"])').fill('second')
+        with self.expect_response_for(path, method="GET"):
+            editor.get_by_role('button', name='Apply', exact=True).click()
+        expect(pane.locator('#id_title')).to_have_value('Unsaved drawer edit')
+        root.get_by_role('button', name='Open selected details', exact=True).click()
+        expect(drawer).to_be_visible()
+        expect(pane.locator('#id_title')).to_have_value('Unsaved drawer edit')
+        self.assertEqual(self.page.url.split('?')[0], original_url.split('?')[0])
+        self.page.keyboard.press('Escape')
+        expect(drawer).to_be_hidden()
+        with self.expect_response_for(self.second_split_todo.get_absolute_url(), method="GET"):
+            root.locator(f'td[data-object-id="{self.second_split_todo.pk}"][data-application-field-name="title"]').dblclick()
+        expect(drawer).to_be_visible()
+        expect(pane.locator('#id_title')).to_have_value(self.second_split_todo.title)
+        expect(pane.locator('[data-detail-view-grid]')).to_have_count(1)
+        pane.locator('#id_title').focus()
+        self.page.keyboard.press('Escape')
+        expect(drawer).to_be_hidden()
+        expect(root.locator(f'td[data-object-id="{self.second_split_todo.pk}"][data-application-field-name="title"]')).to_be_focused()
+        root.get_by_role('button', name='Open selected details', exact=True).click()
+        expect(drawer).to_be_visible()
+        drawer.get_by_role('button', name='Close details', exact=True).click()
+        expect(drawer).to_be_hidden()
+        self.page.wait_for_load_state('networkidle')
+        self.page.reload()
+        expect(root).to_have_attribute('data-view-mode', 'drawer')
+        expect(root.locator('[data-dataview-detail-drawer]')).to_be_hidden()
+
     def title_is_focused(self) -> None:
         """Check the fragment causes real browser focus on the title editor."""
         expect(self.page.locator('[name="title"]')).to_be_focused()

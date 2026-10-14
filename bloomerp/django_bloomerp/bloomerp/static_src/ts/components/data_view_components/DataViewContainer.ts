@@ -1,4 +1,5 @@
 import htmx from "htmx.org";
+import { Drawer } from "../Drawer";
 import BaseComponent, { getComponent, componentIdentifier, initComponents } from "../BaseComponent";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
@@ -613,6 +614,7 @@ export class DataViewContainer extends BaseComponent {
         }
     }
 
+    /** Refresh list presentation after the selected display preference changes. */
     private bindDisplayOptionsCallback(): void {
         const displayOptionsElement = this.element?.querySelector<HTMLElement>(
             '[bloomerp-component="dataview-display-options"]'
@@ -621,6 +623,16 @@ export class DataViewContainer extends BaseComponent {
 
         if (displayOptionsElement.dataset.viewType && this.element) {
             this.element.dataset.viewType = displayOptionsElement.dataset.viewType;
+        }
+        if (this.element) {
+            this.element.dataset.viewMode = displayOptionsElement.dataset.viewMode ?? 'normal';
+            if (this.element.dataset.viewMode !== 'drawer') {
+                this.element.querySelector<HTMLElement>('[data-detail-drawer-trigger]')?.classList.add('hidden');
+                const drawer = this.element.querySelector<HTMLElement>('[data-dataview-detail-drawer]');
+                if (drawer && !drawer.classList.contains('hidden')) (getComponent(drawer) as Drawer)?.close();
+                const pane = drawer?.querySelector<HTMLElement>('[data-drawer-detail-pane]');
+                if (pane?.firstElementChild) htmx.swap(pane, '', { swapStyle: 'innerHTML', swapDelay: 0, settleDelay: 0 });
+            }
         }
         if (displayOptionsElement.dataset.splitViewEnabled && this.element) {
             this.element.dataset.splitViewEnabled = displayOptionsElement.dataset.splitViewEnabled;

@@ -75,7 +75,7 @@ class HtmxMixin(GetPreferenceMixin):
             return False
 
         htmx_target = getattr(self.request.htmx, 'target', None)
-        return htmx_target not in {'data-table-detail-pane', 'split-view-detail-content'}
+        return htmx_target not in {'data-table-detail-pane', 'split-view-detail-content'} and not (htmx_target or '').startswith('drawer-detail-')
 
     def _build_breadcrumb_items(self, context: dict) -> list[dict]:
         items: list[dict] = [
@@ -161,12 +161,15 @@ class HtmxMixin(GetPreferenceMixin):
 
         base_template_name = self.template_name
         htmx_target = getattr(self.request.htmx, 'target', None)
-        embedded_detail_view = bool(self.request.htmx) and htmx_target in {
-            'data-table-detail-pane', 'split-view-detail-content',
-        }
+        embedded_detail_view = bool(self.request.htmx) and (
+            htmx_target in {'data-table-detail-pane', 'split-view-detail-content'}
+            or (htmx_target or '').startswith('drawer-detail-')
+        )
         context['embedded_detail_view'] = embedded_detail_view
         context['detail_content_id'] = (
-            'split-view-detail-content' if embedded_detail_view else self.htmx_detail_target
+            (htmx_target.replace('drawer-detail-pane-', 'drawer-detail-content-', 1)
+             if htmx_target.startswith('drawer-') else 'split-view-detail-content')
+            if embedded_detail_view else self.htmx_detail_target
         )
         context['detail_push_url'] = 'false' if embedded_detail_view else 'true'
 
@@ -201,7 +204,7 @@ class HtmxMixin(GetPreferenceMixin):
             htmx_target = getattr(self.request.htmx, 'target', None)
 
             if not self.should_include_htmx_addendum():
-                if is_detail_request and htmx_target == 'data-table-detail-pane':
+                if is_detail_request and (htmx_target == 'data-table-detail-pane' or (htmx_target or '').startswith('drawer-detail-pane-')):
                     context['include_detail_content'] = base_template_name
                     context['template_name'] = self.base_detail_template
                     self.template_name = self.base_detail_template

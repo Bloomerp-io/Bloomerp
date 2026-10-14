@@ -1,3 +1,7 @@
+from importlib import import_module
+
+from django.db import connections, models
+from django.db.migrations.state import ModelState, ProjectState
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from unittest.mock import patch
@@ -21,6 +25,37 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
         self.owner = get_user_model().objects.create_user(username='owner')
         self.other_user = get_user_model().objects.create_user(username='recipient')
         self.content_type = ContentType.objects.get_for_model(Todo)
+
+    def test_view_mode_migration_round_trip(self) -> None:
+        """Exercise schema and data conversion in an isolated SQLite database."""
+        alias = "drawer_migration"
+        connections.databases[alias] = {**connections.databases["default"], "ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
+        connection = connections[alias]
+        connection.connect()
+        state = ProjectState()
+        state.add_model(ModelState("bloomerp", "UserListViewPreference", [
+            ("id", models.AutoField(primary_key=True)),
+            ("split_view_enabled", models.BooleanField(default=False)),
+        ]))
+        old_model = state.apps.get_model("bloomerp", "UserListViewPreference")
+        migration = import_module("bloomerp.migrations.0093_list_view_mode").Migration("0093_list_view_mode", "bloomerp")
+        try:
+            with connection.schema_editor() as editor:
+                editor.create_model(old_model)
+            old_model.objects.using(alias).create(split_view_enabled=False)
+            old_model.objects.using(alias).create(split_view_enabled=True)
+            with connection.schema_editor() as editor:
+                migrated = migration.apply(state.clone(), editor)
+            new_model = migrated.apps.get_model("bloomerp", "UserListViewPreference")
+            self.assertEqual(list(new_model.objects.using(alias).order_by("pk").values_list("view_mode", flat=True)), ["normal", "split"])
+            new_model.objects.using(alias).create(view_mode="drawer")
+            with connection.schema_editor() as editor:
+                migration.unapply(state.clone(), editor)
+            self.assertEqual(list(old_model.objects.using(alias).order_by("pk").values_list("split_view_enabled", flat=True)), [False, True, False])
+        finally:
+            connection.close()
+            del connections[alias]
+            del connections.databases[alias]
 
     def get_test_scenarios(self) -> list[ModelScenario[UserListViewPreference]]:
         """Cover default views and ownership rules using live application models."""

@@ -116,6 +116,8 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
             return "#main-content"
 
         htmx_target = getattr(getattr(self.request, "htmx", None), "target", None)
+        if (htmx_target or "").startswith("drawer-detail-"):
+            return "#" + htmx_target.replace("drawer-detail-pane-", "drawer-detail-content-", 1)
         if htmx_target == "data-table-detail-pane":
             return "#split-view-detail-content"
         if htmx_target == "split-view-detail-content":
