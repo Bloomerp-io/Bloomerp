@@ -116,6 +116,52 @@ class TestFieldDisplayOptionsComponent(BloomerpComponentTestCase):
         }
         self.status.save(update_fields=["meta"])
 
+    def _remove_status(self, scenario: RequestScenario) -> None:
+        """Simulate a field added locally but not yet saved in its owner."""
+        self.preference.layout = FieldLayout(
+            rows=[LayoutRow(columns=1, items=[LayoutItem(id=self.title_field.pk)])]
+        ).model_dump(mode="json")
+        self.preference.save(update_fields=["layout"])
+
+    def _persist_new_status(self, scenario: RequestScenario) -> None:
+        """Save a newly inserted field through the real layout endpoint first."""
+        from django.urls import reverse
+
+        self._remove_status(scenario)
+        self.client.force_login(self.admin_user)
+        response = self.client.post(
+            reverse("components_save_layout_object", kwargs={
+                "content_type_id": ContentType.objects.get_for_model(self.preference).pk,
+                "object_id": self.preference.pk,
+            }),
+            data={
+                "target_content_type_id": self.status.content_type_id,
+                "layout": FieldLayout(rows=[LayoutRow(columns=1, items=[
+                    LayoutItem(id=self.title_field.pk), LayoutItem(id=self.status.pk),
+                ])]).model_dump(mode="json"),
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def _new_settings_saved(self, response: HttpResponse) -> bool:
+        """Reload the owner and confirm the new item's display settings survive."""
+        self.preference.refresh_from_db()
+        item = next(item for row in self.preference.layout_obj.rows for item in row.items
+                    if str(item.id) == str(self.status.pk))
+        return item.config == {
+            "label": "Updated progress", "choice_colors": {"completed": "#00ff00"},
+        }
+
+    def _still_absent(self, response: HttpResponse) -> bool:
+        """Verify a rejected edit never creates an item or claims a successful save."""
+        self.preference.refresh_from_db()
+        return (
+            all(str(item.id) != str(self.status.pk)
+                for row in self.preference.layout_obj.rows for item in row.items)
+            and b"Display options saved" not in response.content
+        )
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover the editor on both layout owners and graceful schema changes."""
         status_kwargs = {"application_field_id": self.status.pk}
@@ -128,6 +174,26 @@ class TestFieldDisplayOptionsComponent(BloomerpComponentTestCase):
             self.does_not_contain_text('value="retired"'),
         ]
         return [
+            *[
+                RequestScenario(
+                    name=f"Missing field {method} conflicts without implicit creation",
+                    method=method,
+                    user=self.admin_user,
+                    view_kwargs=status_kwargs,
+                    query_params=self._params(),
+                    data=self._post_data('{"completed":"#00ff00"}') if method == "POST" else None,
+                    prepare=self._remove_status,
+                    expected=ExpectedResult(status_code=409, response_validators=self._still_absent),
+                )
+                for method in ("GET", "POST")
+            ],
+            RequestScenario(
+                name="New field settings persist after saving the layout",
+                method="POST", user=self.admin_user, view_kwargs=status_kwargs,
+                data=self._post_data('{"completed":"#00ff00"}'),
+                prepare=self._persist_new_status,
+                expected=ExpectedResult(response_validators=self._new_settings_saved),
+            ),
             RequestScenario(
                 name="Detail layout restores current colors",
                 user=self.admin_user,

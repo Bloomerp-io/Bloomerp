@@ -21,6 +21,7 @@ import {
 import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./utils/wordSelector";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 import { promptImageUpload } from "./utils/imageBehavior";
+import { promptLinkInsert } from "./utils/linkPicker";
 import { promptHtmlInsert } from "./utils/htmlBehavior";
 import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
 
@@ -152,7 +153,22 @@ function handleObjectReference(textEditor: BloomerpTextEditor): void { textEdito
 /** Supply readable object search to the slash menu. */
 function objectReferenceSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("object"); }
 
+/** Open the link form after the toolbar restores the editor's selection. */
+function handleLink(textEditor: BloomerpTextEditor): void {
+    /** Defer modal focus until the toolbar's click handler has finished. */
+    function openLink(): void {
+        if (textEditor.editor) promptLinkInsert(textEditor.editor, textEditor.element);
+    }
+    queueMicrotask(openLink);
+}
+
 export let ACTIONS: Record<string, Action> = {
+    link: {
+        /** Resolve the named-link action label. */
+        get label(): string { return _("Link"); },
+        icon: "fa-solid fa-link",
+        handler: handleLink,
+    },
     template: {
         /** Resolve the shared template command label. */
         get label(): string { return _("Template"); },

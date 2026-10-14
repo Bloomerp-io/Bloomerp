@@ -1,0 +1,9 @@
+{% load i18n %}
+<div class="relative w-full" bloomerp-component="url-widget">
+    <input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+    <button type="button" data-open-url disabled
+        class="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r text-gray-500 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40 disabled:cursor-not-allowed"
+        aria-label="{% translate 'Open URL in a new tab' %}" title="{% translate 'Open URL in a new tab' %}">
+        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+    </button>
+</div>

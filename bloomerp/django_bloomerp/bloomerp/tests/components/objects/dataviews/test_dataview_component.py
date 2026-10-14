@@ -14,6 +14,7 @@ from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
+from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleCondition, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
@@ -133,6 +134,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         return set_fields
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Exercise rendering, filtering, and permission-aware field choices."""
         for i in range(10):
             planet = self.PlanetModel.objects.create(name=f"Planet {i}")
             country = self.CountryModel.objects.create(name=f"Country {i}", planet=planet)
@@ -457,9 +459,42 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 )
             )
         ]
-        
+
+        request_scenarios.extend(
+            [
+                RequestScenario(
+                    name="Avatar is selectable without being a default visible column",
+                    user=self.admin_user,
+                    view_kwargs=kwargs,
+                    expected=ExpectedResult(
+                        response_validators=self.avatar_available_but_not_selected
+                    ),
+                ),
+                RequestScenario(
+                    name="Avatar is omitted when the viewer lacks avatar field permission",
+                    user=self.normal_user,
+                    view_kwargs=kwargs,
+                    prepare=self.grant_view_without_avatar,
+                    expected=ExpectedResult(
+                        response_validators=self.avatar_unavailable
+                    ),
+                ),
+                RequestScenario(
+                    name="Models without avatar do not gain an avatar choice",
+                    user=self.admin_user,
+                    view_kwargs={
+                        "content_type_id": ContentType.objects.get_for_model(
+                            TodoLabel
+                        ).pk
+                    },
+                    expected=ExpectedResult(
+                        response_validators=self.avatar_unavailable
+                    ),
+                ),
+            ]
+        )
         return request_scenarios
-    
+
     def set_policies(self, policies:list[AccessRule], global_permissions:list[BloomerpPermission]):
         def _set_policies(scenario:RequestScenario):
             for policy in policies:
@@ -472,4 +507,40 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 )
 
         return _set_policies
-    
+
+    def avatar_available_but_not_selected(self, response: HttpResponse) -> bool:
+        """Keep avatar discoverable in display options without adding it by default."""
+        fields = response.context["fields"]
+        avatar_choices = [
+            (field, selected)
+            for field, selected in fields.accessible_fields
+            if field.field == "avatar"
+        ]
+        return (
+            len(avatar_choices) == 1
+            and not avatar_choices[0][1]
+            and response.context["avatar_field"] is None
+        )
+
+    def avatar_unavailable(self, response: HttpResponse) -> bool:
+        """Do not expose an unsupported or permission-denied avatar field."""
+        return all(
+            field.field != "avatar"
+            for field, _selected in response.context["fields"].accessible_fields
+        )
+
+    def grant_view_without_avatar(self, _scenario: RequestScenario) -> None:
+        """Give access to customer rows and one business field, but not avatars."""
+        field = ApplicationField.get_by_field(self.CustomerModel, "first_name")
+        PolicyManager.create_policy(
+            self.CustomerModel,
+            field_permissions={field: [BloomerpPermission.VIEW]},
+            global_permissions=[BloomerpPermission.VIEW],
+            row_permissions=[
+                RowPolicyRuleContent(
+                    connector="AND",
+                    permissions=[BloomerpPermission.VIEW],
+                    conditions=[],
+                )
+            ],
+        ).assign_user(self.normal_user)

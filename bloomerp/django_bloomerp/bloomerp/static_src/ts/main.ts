@@ -1,3 +1,4 @@
+import URLWidget from "./components/widgets/URLWidget";
 import Phone from "./components/communication/Phone";
 import Conversation from './components/communication/Conversation';
 import ChatComposer from './components/ChatComposer';
@@ -155,6 +156,7 @@ registerComponent('dropdown-input', DropdownInput);
 registerComponent('selectable-cards', SelectableCards);
 
 // Form widgets
+registerComponent('url-widget', URLWidget);
 registerComponent('foreign-field-widget', ForeignFieldWidget);
 registerComponent('list-filter-widget', ListFilterWidget);
 registerComponent('one-to-many-field-widget', OneToManyFieldWidget);

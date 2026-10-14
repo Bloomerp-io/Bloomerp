@@ -3,16 +3,25 @@ import json
 
 from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
+from django.http import HttpResponse
 
 from bloomerp.filters.definition import Filter, FilterCondition
-from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
-from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.models.workspaces.workspace import Workspace
-from bloomerp.tests.base import BloomerpComponentTestCase, ExpectedResult, RequestScenario
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileFilter, FieldConfig
+from bloomerp.tests.base import (
+    BloomerpComponentTestCase,
+    ExpectedResult,
+    RequestScenario,
+)
+from bloomerp.workspaces.analytics_tile.model import (
+    AnalyticsTileConfig,
+    AnalyticsTileFilter,
+    FieldConfig,
+)
+from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
 
 
 class TestRenderLayoutItemComponent(BloomerpComponentTestCase):
@@ -126,4 +135,99 @@ class TestRenderLayoutItemComponent(BloomerpComponentTestCase):
             ]),
             self.tile_scenario('Clearing dataview filters restores all rows', ['David', 'Daniel', 'Emma'], tile=self.dataview_tile, groups=[]),
             self.tile_scenario('Clearing filters restores all names', ['David', 'Daniel', 'Emma'], groups=[]),
+        ]
+
+
+class TestRenderFieldSettingsComponent(BloomerpComponentTestCase):
+    """Keep settings controls available before a newly added field is persisted."""
+
+    view_name = "components_render_layout_item"
+    auto_create_customers = False
+
+    def setUp(self) -> None:
+        """Prepare a create layout with one existing field and one available field."""
+        from bloomerp.models import Todo
+        from bloomerp.models.forms.form import Form
+
+        super().setUp()
+        self.status = ApplicationField.get_for_model(Todo).get(field="status")
+        title = ApplicationField.get_for_model(Todo).get(field="title")
+        self.owner = Form.objects.create(
+            name="Settings rendering", content_type=self.status.content_type,
+            layout={"rows": [{"columns": 1, "items": [{"id": title.pk}]}]},
+        )
+        self.owner_content_type = ContentType.objects.get_for_model(Form)
+        self.title = title
+        from bloomerp.models.users.user_object_layout_preference import (
+            UserObjectLayoutPreference,
+        )
+
+        self.preference = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user, name="Detail settings rendering",
+            content_type=self.status.content_type, layout=self.owner.layout,
+        )
+        self.todo = Todo.objects.create(title="Render settings")
+
+    def _settings_url(self, response: HttpResponse) -> bool:
+        """Verify the returned gear points at the authorized owner and field."""
+        from django.urls import reverse
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        button = soup.select_one("[data-layout-edit-item]")
+        self.assertIsNotNone(button)
+        url = button["data-layout-edit-url"]
+        self.assertIn(f"layout_object_id={response.wsgi_request.GET['layout_object_id']}", url)
+        self.assertIn(f"layout_object_content_type_id={response.wsgi_request.resolver_match.kwargs['content_type_id']}", url)
+        self.assertTrue(url.startswith(reverse(
+            "components_field_display_options",
+            kwargs={"application_field_id": response.context["item"].id},
+        )))
+        return True
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        """Cover existing and unsaved fields, missing owners, and access denial."""
+        params = {
+            "target_content_type_id": self.status.content_type_id,
+            "layout_object_id": self.owner.pk,
+        }
+        route = {"content_type_id": self.owner_content_type.pk}
+        return [
+            *[
+                RequestScenario(
+                    name=f"Detail field {field.field} has settings control", user=self.admin_user,
+                    view_kwargs={"content_type_id": ContentType.objects.get_for_model(self.preference).pk},
+                    query_params={**params, "layout_object_id": self.preference.pk,
+                                  "object_id": self.todo.pk, "field_id": field.pk},
+                    expected=ExpectedResult(response_validators=self._settings_url),
+                )
+                for field in (self.title, self.status)
+            ],
+            RequestScenario(
+                name="Existing field includes settings control", user=self.admin_user,
+                view_kwargs=route, query_params={**params, "field_id": self.title.pk},
+                expected=ExpectedResult(response_validators=self._settings_url),
+            ),
+            RequestScenario(
+                name="New field includes settings before persistence", user=self.admin_user,
+                view_kwargs=route, query_params={**params, "field_id": self.status.pk},
+                expected=ExpectedResult(response_validators=self._settings_url),
+            ),
+            RequestScenario(
+                name="No owner omits unusable settings control", user=self.admin_user,
+                view_kwargs=route, query_params={
+                    "target_content_type_id": self.status.content_type_id,
+                    "field_id": self.status.pk,
+                },
+                expected=ExpectedResult(response_validators=self.does_not_contain_text("data-layout-edit-item")),
+            ),
+            RequestScenario(
+                name="Deleted owner is rejected", user=self.admin_user,
+                view_kwargs=route, query_params={**params, "field_id": self.status.pk, "layout_object_id": "00000000-0000-0000-0000-000000000001"},
+                expected=ExpectedResult(status_code=404),
+            ),
+            RequestScenario(
+                name="Unpermitted new field is denied", user=self.normal_user,
+                view_kwargs=route, query_params={**params, "field_id": self.status.pk},
+                expected=ExpectedResult(status_code=403),
+            ),
         ]

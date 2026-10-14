@@ -3,6 +3,7 @@ import json
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.urls import reverse
 
@@ -45,6 +46,7 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         customer = self.CustomerModel
         planet = self.PlanetModel
         return [
+            *self.get_avatar_scenarios(),
             ModelRequestScenario(
                 name="Create form shows field help text",
                 description="UC: A field has help text.\nExpected Result: The create form displays it below the field.",
@@ -504,3 +506,129 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         self.first_layout.refresh_from_db()
         self.second_layout.refresh_from_db()
         return not self.first_layout.selected and self.second_layout.selected
+
+
+    def get_avatar_scenarios(self) -> list[ModelRequestScenario]:
+        """Cover header avatar uploads independently of create-layout fields."""
+        return [
+            ModelRequestScenario(
+                name="Create layout without avatar renders one hidden upload input",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                prepare=self.prepare_permitted_avatar_layout,
+                expected=ExpectedResult(response_validators=self.hidden_avatar_input_renders),
+            ),
+            ModelRequestScenario(
+                name="Create upload persists an avatar omitted from the layout",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                prepare=self.prepare_permitted_avatar_upload,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=self.created_avatar_was_saved,
+                ),
+            ),
+            ModelRequestScenario(
+                name="Create layout does not expose an avatar without add permission",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                prepare=self.prepare_denied_avatar_layout,
+                expected=ExpectedResult(response_validators=self.avatar_input_is_absent),
+            ),
+            ModelRequestScenario(
+                name="Forged create avatar upload cannot bypass field permissions",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                method="POST",
+                prepare=self.prepare_denied_avatar_upload,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("Permission denied for fields: avatar"),
+                    self.no_customer_created,
+                ]),
+            ),
+        ]
+
+    def configure_avatar_free_layout(self) -> None:
+        """Select a create layout containing only the required customer fields."""
+        UserObjectLayoutPreference.objects.filter(
+            user=self.normal_user, content_type=self.content_type
+        ).delete()
+        UserObjectLayoutPreference.objects.create(
+            user=self.normal_user,
+            content_type=self.content_type,
+            selected=True,
+            layout={"rows": [{"columns": 3, "items": [
+                {"id": self.fields_by_name[name].pk}
+                for name in ("first_name", "last_name", "age")
+            ]}]},
+        )
+
+    def prepare_permitted_avatar_layout(self, _scenario: ModelRequestScenario) -> None:
+        """Allow customer and avatar creation with no avatar layout item."""
+        self.grant_policy(
+            ["first_name", "last_name", "age", "avatar"], [self.basic_rule()]
+        )
+        self.configure_avatar_free_layout()
+
+    def prepare_denied_avatar_layout(self, scenario: ModelRequestScenario) -> None:
+        """Allow customer creation while withholding avatar field access."""
+        self.grant_basic_create_policy(scenario)
+        self.configure_avatar_free_layout()
+
+    def prepare_permitted_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Upload a valid avatar through the header on a permitted create request."""
+        self.prepare_permitted_avatar_layout(scenario)
+        self.set_avatar_upload_data(scenario)
+
+    def prepare_denied_avatar_upload(self, scenario: ModelRequestScenario) -> None:
+        """Forge a valid avatar upload on an otherwise permitted create request."""
+        self.prepare_denied_avatar_layout(scenario)
+        self.set_avatar_upload_data(scenario)
+
+    def set_avatar_upload_data(self, scenario: ModelRequestScenario) -> None:
+        """Supply required customer values and a valid single-pixel GIF upload."""
+        self.uploaded_avatar_bytes = (
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00"
+            b"\xff\xff\xff,\x00\x00\x00\x00\x01\x00\x01\x00"
+            b"\x00\x02\x02D\x01\x00;"
+        )
+        scenario.data = {
+            "first_name": "Allowed",
+            "last_name": "Avatar",
+            "age": 30,
+            "avatar": SimpleUploadedFile(
+                "header-avatar.gif", self.uploaded_avatar_bytes, content_type="image/gif"
+            ),
+        }
+
+    def hidden_avatar_input_renders(self, response: HttpResponse) -> bool:
+        """Check that the permitted avatar is outside the layout and inside the form."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        inputs = soup.select(
+            'input[type="file"][name="avatar"][data-reference-avatar-input]'
+        )
+        layout_ids = {
+            str(item.id) for row in response.context["layout"].rows for item in row.items
+        }
+        return (
+            str(self.fields_by_name["avatar"].pk) not in layout_ids
+            and len(inputs) == 1
+            and inputs[0].has_attr("hidden")
+            and inputs[0].has_attr("data-reference-avatar-input")
+            and inputs[0].find_parent("form") is not None
+            and inputs[0].find_parent("form").get("hx-post") == response.request["PATH_INFO"]
+        )
+
+    def avatar_input_is_absent(self, response: HttpResponse) -> bool:
+        """Check that header controls do not expose a denied avatar upload."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        return soup.select_one('input[type="file"][name="avatar"]') is None
+
+    def created_avatar_was_saved(self, _response: HttpResponse) -> bool:
+        """Verify the created customer references the exact uploaded avatar bytes."""
+        customer = self.CustomerModel.objects.get()
+        if not customer.avatar or not customer.avatar.storage.exists(customer.avatar.name):
+            return False
+        with customer.avatar.open("rb") as avatar:
+            return avatar.read() == self.uploaded_avatar_bytes
