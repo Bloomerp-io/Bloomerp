@@ -21,7 +21,7 @@ from .base import AgentModel
 from .fields import AgentJSONField
 
 if TYPE_CHECKING:
-    from bloomerp.agents.runtime import AgentRuntimeEvent
+    from bloomerp.agents.runtime import AgentRuntimeEvent, AgentRuntimeTextDeltaEvent
 
     from .ai_run_attempt import AIRunAttempt
     from .ai_run_event import AIRunEvent
@@ -200,7 +200,11 @@ class AIRun(AgentModel):
 
     def leased_attempt(self, token: UUID) -> AIRunAttempt:
         """Validate a live executor token while the caller holds the run lock."""
-        attempt = self.attempts.filter(lease_token=token, status="running").first()
+        attempt = (
+            self.attempts.select_for_update()
+            .filter(lease_token=token, status="running")
+            .first()
+        )
         if (
             attempt is None
             or attempt.lease_expires_at <= timezone.now()
@@ -228,16 +232,32 @@ class AIRun(AgentModel):
 
     def progress_snapshot(self) -> dict[str, Any] | None:
         """Restore the latest observable stage without including arguments, results or checkpoints."""
-        event = self.events.filter(
-            event_type__in=["tool.started", "tool.outcome", "text.delta", "run.paused", "approval.decided"]
-        ).order_by("-sequence").first()
+        event = (
+            self.events.filter(
+                event_type__in=[
+                    "tool.started",
+                    "tool.outcome",
+                    "text.delta",
+                    "run.paused",
+                    "approval.decided",
+                ]
+            )
+            .order_by("-sequence")
+            .first()
+        )
         if event is None:
             return None
         data = event.payload.get("data", {})
         return {
             "sequence": event.sequence,
             "event_type": event.event_type,
-            "payload": {"data": {key: data[key] for key in ("tool_title", "status", "wait_kind") if key in data}},
+            "payload": {
+                "data": {
+                    key: data[key]
+                    for key in ("tool_title", "status", "wait_kind")
+                    if key in data
+                }
+            },
         }
 
     def append_event(
@@ -322,52 +342,123 @@ class AIRun(AgentModel):
             run.save()
             return run.append_event("run.failed", {"data": {"error": run.error}})
 
+    def _persist_text_delta(
+        self, event: AgentRuntimeTextDeltaEvent, *, lease_token: UUID
+    ) -> AIRunEvent:
+        """Fence and append validated text under conversation/run/attempt locks.
+
+        This private path changes only content and update stamps. Unchanged row
+        fields already satisfy their database constraints; generic saves retain
+        full immutable-field and model validation for every other operation.
+        """
+        from .ai_message import AIMessage
+        from .ai_run_event import AIRunEvent
+
+        with self.locked() as run:
+            attempt = run.leased_attempt(lease_token)
+            if event.run_id != run.pk or event.attempt_id != attempt.pk:
+                raise ValidationError("Runtime event belongs to another execution")
+            database = run._state.db
+            message = (
+                AIMessage.objects.using(database)
+                .select_for_update()
+                .filter(pk=event.message_id)
+                .first()
+            )
+            if message is None:
+                message = run.conversation.append_message(
+                    message_id=event.message_id,
+                    run=run,
+                    role="assistant",
+                    content=MessageContent(root=[]),
+                    status="streaming",
+                )
+                # append_message may also return an existing idempotent row.
+                # Re-read it under its own lock before mutating any content.
+                message = (
+                    AIMessage.objects.using(database)
+                    .select_for_update()
+                    .get(pk=message.pk)
+                )
+            if (
+                message.run_id != run.pk
+                or message.conversation_id != run.conversation_id
+                or message.role != "assistant"
+                or message.status != "streaming"
+            ):
+                raise ValidationError("Invalid runtime message identity")
+            blocks = message.content_blocks
+            if event.block_index < 0 or event.block_index > len(blocks):
+                raise ValidationError("Text blocks must arrive in order")
+            if event.block_index == len(blocks):
+                blocks.append({"type": "text", "format": event.format, "text": ""})
+            block = blocks[event.block_index]
+            if block["type"] != "text" or block["format"] != event.format:
+                raise ValidationError("Text format changed within a block")
+            block["text"] += event.text
+            message.content_blocks = blocks
+            # Reuse the checked, locked run for clean()'s provenance check. Retain
+            # clean(), including any approval-block ownership checks in mixed text.
+            message.run = run
+            message.full_clean(
+                exclude={
+                    field.name
+                    for field in message._meta.fields
+                    if field.name != "content_blocks"
+                },
+                validate_unique=False,
+                validate_constraints=False,
+            )
+            # The narrow writes preserve Model.save signals and automatic update
+            # timestamps/stamps without rewriting unrelated or immutable columns.
+            super(AgentModel, message).save(
+                using=database,
+                update_fields=["content_blocks", "datetime_updated", "updated_by"],
+            )
+            super(AgentModel, run).save(
+                using=database, update_fields=["datetime_updated", "updated_by"]
+            )
+            sequence = (run.events.aggregate(last=Max("sequence"))["last"] or 0) + 1
+            stored = AIRunEvent(
+                run=run,
+                attempt=attempt,
+                sequence=sequence,
+                event_type="text.delta",
+                payload={
+                    "message_id": str(message.pk),
+                    "text": event.text,
+                    "data": {"block_index": event.block_index, "format": event.format},
+                },
+            )
+            # Both FKs are locked records from the fenced execution. Still run
+            # field/schema and clean() ownership validation; DB constraints arbitrate
+            # UUID/sequence uniqueness and positive sequence under the run lock.
+            stored.full_clean(
+                exclude={"run", "attempt"},
+                validate_unique=False,
+                validate_constraints=False,
+            )
+            super(AgentModel, stored).save(using=database, force_insert=True)
+            return stored
+
     def apply_runtime_event(
         self, event: AgentRuntimeEvent, *, lease_token: UUID
     ) -> AIRunEvent:
         """Persist fenced progress, text, usage, checkpoints and terminal state atomically."""
-        from .ai_message import AIMessage
-
+        if event.kind == "text.delta":
+            return self._persist_text_delta(event, lease_token=lease_token)
         with self.locked() as run:
             attempt = run.leased_attempt(lease_token)
             if event.run_id != run.pk or event.attempt_id != attempt.pk:
                 raise ValidationError("Runtime event belongs to another execution")
             kind = event.kind
             payload = {"data": {}}
-            if kind == "text.delta":
-                message = AIMessage.objects.filter(pk=event.message_id).first()
-                if message is None:
-                    message = run.conversation.append_message(
-                        message_id=event.message_id,
-                        run=run,
-                        role="assistant",
-                        content=MessageContent(root=[]),
-                        status="streaming",
-                    )
-                if (
-                    message.run_id != run.pk
-                    or message.role != "assistant"
-                    or message.status != "streaming"
-                ):
-                    raise ValidationError("Invalid runtime message identity")
-                blocks = message.content_blocks
-                if event.block_index > len(blocks):
-                    raise ValidationError("Text blocks must arrive in order")
-                if event.block_index == len(blocks):
-                    blocks.append({"type": "text", "format": event.format, "text": ""})
-                if blocks[event.block_index]["format"] != event.format:
-                    raise ValidationError("Text format changed within a block")
-                blocks[event.block_index]["text"] += event.text
-                message.content_blocks = blocks
-                message.save()
-                payload = {
-                    "message_id": str(message.pk),
-                    "text": event.text,
-                    "data": {"block_index": event.block_index, "format": event.format},
-                }
-            elif kind == "tool.started":
+            if kind == "tool.started":
                 tool = run.tool_calls.get(pk=event.tool_call_id)
-                if tool.status != "running" or tool.first_dispatch_attempt_id != attempt.pk:
+                if (
+                    tool.status != "running"
+                    or tool.first_dispatch_attempt_id != attempt.pk
+                ):
                     raise ValidationError("Tool is not executing")
                 payload = {
                     "tool_call_id": str(tool.pk),
@@ -384,10 +475,15 @@ class AIRun(AgentModel):
                         "tool_identifier": tool.tool_identifier,
                         "tool_title": tool.display_title(),
                         "artifacts": [
-                            {"id": str(link.artifact_id), "created_at": artifact_message.datetime_created.isoformat()}
+                            {
+                                "id": str(link.artifact_id),
+                                "created_at": artifact_message.datetime_created.isoformat(),
+                            }
                             for artifact_message in run.conversation.messages.filter(
                                 artifact_links__artifact__created_by_tool_call=tool
-                            ).prefetch_related("artifact_links").all()
+                            )
+                            .prefetch_related("artifact_links")
+                            .all()
                             for link in artifact_message.artifact_links.all()
                         ],
                         "approvals": [
