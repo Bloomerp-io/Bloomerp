@@ -35,6 +35,9 @@
     {% if foreign_field_widget_id %}
         <input type="hidden" name="foreign_field_widget_id" value="{{ foreign_field_widget_id }}">
     {% endif %}
+    {% if data_view_create_id %}
+        <input type="hidden" name="data_view_create_id" value="{{ data_view_create_id }}">
+    {% endif %}
     {% for field_name, value in hidden_initial_fields %}
         <input type="hidden" name="{{ field_name }}" value="{{ value }}">
     {% endfor %}

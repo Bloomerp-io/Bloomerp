@@ -292,5 +292,6 @@ TWILIO_PROVIDER = VoIPProviderDefinition(
         for kind in ("voice", "sms", "call_status", "message_status")
     },
     browser_driver="twilio",
+    max_assigned_users=10,
     operation_errors=(TwilioException, RequestException, ValueError),
 )

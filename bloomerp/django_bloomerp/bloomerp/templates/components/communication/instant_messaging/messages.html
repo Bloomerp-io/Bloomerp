@@ -1,7 +1,8 @@
 {% load i18n %}
-    <div class="im-messages" data-activity-token="{{ activity_token }}" role="log" aria-label="{% translate 'Conversation messages' %}">
+{% translate "Conversation messages" as messages_label %}
+    <c-ui.chat.container data-activity-token="{{ activity_token }}" :label="messages_label">
         {% for row in rows %}
             {% if row.template %}{% include row.template with call=row.activity %}{% else %}
             <c-features.instant_messaging.message :row="row" :conversation="conversation" :thread_root="thread_root" />{% endif %}
         {% empty %}<p class="im-empty">{% translate 'No messages yet.' %}</p>{% endfor %}
-    </div>
+    </c-ui.chat.container>

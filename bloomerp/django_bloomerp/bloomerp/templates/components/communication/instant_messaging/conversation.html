@@ -19,11 +19,7 @@
     {% include "components/communication/instant_messaging/messages.html" %}
     <form class="im-composer-wrap" data-send-form action="{% url 'components_im_send_message' conversation.pk %}" method="post">{% csrf_token %}
         <div class="im-quote-preview" data-quote-preview hidden><span data-quote-text></span><button type="button" class="im-icon-button text-primary-800" data-cancel-quote aria-label="{% translate 'Cancel quoted reply' %}">×</button></div>
-        <div class="im-composer bg-white">
-            {% translate 'Write a message…' as placeholder %}
-            <c-ui.inputs.text_editor :name="editor_name" :compact="True" :include_toolbar="True" :placeholder="placeholder" />
-            <div class="im-composer-bottom"><span>{% if can_send %}{% translate 'Ctrl/⌘ + Enter to send' %}{% else %}{% translate 'Sending is unavailable for this conversation.' %}{% endif %}</span><button type="submit" class="im-send" {% if not can_send %}disabled{% endif %} aria-label="{% translate 'Send message' %}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button></div>
-        </div>
+        <c-ui.chat.composer :name="editor_name" disabled="{% if not can_send %}true{% endif %}" />
         <p data-send-error role="alert" hidden></p>
     </form>
 </section>

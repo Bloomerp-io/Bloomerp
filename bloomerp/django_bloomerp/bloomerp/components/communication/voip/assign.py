@@ -3,6 +3,8 @@
 from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
@@ -35,7 +37,11 @@ def assign_number(request: HttpRequest, number_id: UUID) -> HttpResponse:
         return HttpResponse(status=400)
     if len(users) != len(ids):
         return HttpResponse(_("Select active staff users."), status=400)
-    number.assigned_users.set(users)
+    try:
+        with transaction.atomic():
+            number.assigned_users.set(users)
+    except ValidationError as error:
+        return HttpResponse("; ".join(error.messages), status=400)
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
     revoked = number.conversations.values("pk")

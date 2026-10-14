@@ -1,4 +1,4 @@
-{% load bloomerp %}
+{% load bloomerp i18n %}
 
 <div 
     bloomerp-component="dataview-display-options"
@@ -6,6 +6,7 @@
     data-preference-id="{{ preference.id }}"
     data-preference-url="{% url 'components_update_dataview_preference' content_type_id=content_type_id %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
     data-view-type="{{ preference.view_type }}"
+    data-view-mode="{{ preference.view_mode }}"
     data-split-view-enabled="{{ preference.split_view_enabled }}"
     class="max-h-[60vh] overflow-y-auto"
 >
@@ -25,25 +26,14 @@
 
 
     <div class="space-y-3 mb-4">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-sm text-gray-600">
-                <span>Split view</span>
-            </div>
-            <button 
-                type="button"
-                class="relative inline-flex w-40 justify-center px-2 py-1 rounded-xl transition-all duration-200 {% if preference.split_view_enabled %}bg-primary-100 text-primary-600 ring-1 ring-primary-500{% else %}bg-base text-light hover:bg-gray-200 hover:text-gray-700{% endif %}"
-                data-display-options-submit
-                data-display-options-values='{"split_view_enabled": "{% if preference.split_view_enabled %}false{% else %}true{% endif %}"}'
-                title="{% if preference.split_view_enabled %}Disable split view{% else %}Enable split view{% endif %}"
-            >
-                {% if preference.split_view_enabled %}
-                <c-icons.sidebar_right_selected size="16"/>
-                {% else %}
-                <c-icons.sidebar_right size="16"/>
-                {% endif %}
-            </button>
-        </div>
-
+        <form class="flex items-center justify-between gap-3" data-display-options-form>
+            <label for="view-mode-{{ content_type_id }}" class="text-sm text-gray-600">{% translate "View mode" %}</label>
+            <select id="view-mode-{{ content_type_id }}" name="view_mode" class="select select-sm w-40 bg-base border-0">
+                {% for value, label in preference.ViewMode.choices %}
+                <option value="{{ value }}" {% if preference.view_mode == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
 
         {% if dataview_options_form %}
         <form

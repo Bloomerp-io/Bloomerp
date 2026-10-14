@@ -437,12 +437,13 @@ export default class DetailTabs extends BaseComponent {
         htmx.process(tab);
     }
 
+    /** Keep newly created and edited tabs scoped to their enclosing detail frame. */
     private applyHtmxNavigation(link: HTMLAnchorElement): void {
         if (this.isInternalUrl(link.getAttribute('href') || '')) {
             link.setAttribute('hx-get', link.getAttribute('href') || '');
             link.setAttribute('hx-swap', 'innerHTML');
-            link.setAttribute('hx-target', '#detail-view-content');
-            link.setAttribute('hx-push-url', 'true');
+            link.setAttribute('hx-target', this.element.dataset.detailContentTarget || '#detail-view-content');
+            link.setAttribute('hx-push-url', this.element.dataset.detailPushUrl || 'true');
         } else {
             for (const attribute of ['hx-get', 'hx-swap', 'hx-target', 'hx-push-url']) {
                 link.removeAttribute(attribute);

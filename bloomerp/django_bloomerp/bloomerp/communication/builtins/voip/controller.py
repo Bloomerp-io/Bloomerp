@@ -248,6 +248,12 @@ class VoIPController:
             sender = chat.participants.get(user=self.user, left_at__isnull=True)
             existing = chat.messages.filter(sender=sender, client_id=client_id).first()
             if existing:
+                if existing.status == "pending":
+                    raise ValidationError(
+                        _("Delivery could not be confirmed. Do not resend until its status is known.")
+                    )
+                if existing.status == "failed":
+                    raise ValidationError(_("This message could not be delivered."))
                 return existing
             sequence = (chat.messages.aggregate(last=Max("sequence"))["last"] or 0) + 1
             message = IMMessage.objects.create(

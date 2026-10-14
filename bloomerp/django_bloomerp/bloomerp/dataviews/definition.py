@@ -234,7 +234,7 @@ class BaseDataview(BaseModel):
     is_default: bool = True
     display_fields: list[str] = Field(default_factory=list)
     default_filters: dict[str, str | list[str]] = Field(default_factory=dict)
-    split_view_enabled: bool = False
+    view_mode: Literal["normal", "split", "drawer"] = "normal"
 
     @classmethod
     def option_field_names(cls) -> list[str]:

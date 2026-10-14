@@ -3,7 +3,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
-from django.utils.module_loading import import_string
+from bloomerp.utils.callables import resolve_hook
 from django.views.decorators.http import require_http_methods
 from bloomerp.communication.builtins.instant_messaging.registry import (
     IM_PROVIDER_REGISTRY,
@@ -35,6 +35,6 @@ def create_group(request: HttpRequest) -> HttpResponse:
     )
     if action is None:
         return HttpResponse(status=400)
-    if not import_string(action.permission_resolver)(request):
+    if not resolve_hook(action.permission_resolver)(request):
         raise PermissionDenied
-    return import_string(action.handler)(request, provider, action)
+    return resolve_hook(action.handler)(request, provider, action)

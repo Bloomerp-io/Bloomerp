@@ -150,6 +150,7 @@ class VoIPProviderDefinition:
     browser_driver: str = ""
     operation_errors: tuple[type[Exception], ...] = (ValueError,)
     max_sms_length: int = 1600
+    max_assigned_users: int | None = None
 
     def create_adapter(self, context: VoIPContext) -> BaseVoIPAdapter:
         """Construct a server-side adapter from freshly resolved secrets."""

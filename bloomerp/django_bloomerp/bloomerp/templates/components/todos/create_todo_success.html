@@ -1,0 +1,3 @@
+{% for message in messages %}
+    <c-ui.message text="{{ message | safe }}" :type="message.tags" :duration="10" />
+{% endfor %}

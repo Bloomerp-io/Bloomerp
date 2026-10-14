@@ -59,6 +59,22 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Return the permission, layout, persistence, and activity scenarios."""
         customer_kwargs = {"pk": self.customer.pk}
         return [
+            ModelRequestScenario(
+                name="Split view opens the detail tab frame without page addendum",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                view_kwargs=customer_kwargs,
+                headers={"HX-Request": "true", "HX-Target": "data-table-detail-pane"},
+                expected=ExpectedResult(response_validators=self.split_view_frame_renders),
+            ),
+            ModelRequestScenario(
+                name="Split view tab navigation returns only the requested content",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                view_kwargs=customer_kwargs,
+                headers={"HX-Request": "true", "HX-Target": "split-view-detail-content"},
+                expected=ExpectedResult(response_validators=self.split_view_content_renders),
+            ),
             *self.get_attachment_scenarios(),
             *self.get_avatar_scenarios(),
             ModelRequestScenario(
@@ -260,6 +276,37 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 expected=ExpectedResult(status_code=302, response_validators=self.todo_activity_was_recorded),
             ),
         ]
+
+    def split_view_frame_renders(self, response: HttpResponse) -> bool:
+        """Check embedded tabs, sidebar actions, and save targets without global chrome."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        tabs = soup.select_one('[bloomerp-component="detail-tabs"]')
+        links = soup.select('[data-tab-link][hx-get], [data-folder-tab-item][hx-get]')
+        form = soup.select_one('form[hx-post]')
+        return bool(
+            tabs and links and form
+            and soup.select_one('#split-view-detail-content')
+            and form.get('hx-target') == '#split-view-detail-content'
+            and all(
+                link.get('hx-target') == '#split-view-detail-content'
+                and link.get('hx-push-url') == 'false'
+                for link in links
+            )
+            and soup.select_one('#resizable-div-detail-aside #object-sidesection')
+            and soup.select_one('[data-detail-sidebar-view="activity"]')
+            and soup.select_one('[data-detail-sidebar-view="comments"]')
+            and soup.select_one('#detail-todo-modal')
+            and not soup.select_one('#htmx-addendum')
+        )
+
+    def split_view_content_renders(self, response: HttpResponse) -> bool:
+        """Check tab fragments preserve their save target without nesting frames."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        form = soup.select_one('form[hx-post]')
+        return bool(
+            form and form.get('hx-target') == '#split-view-detail-content'
+            and not soup.select_one('[data-detail-view-grid], #htmx-addendum')
+        )
 
     def prepare_editor_shared_layout(self, scenario: ModelRequestScenario) -> None:
         """Give a record editor a shared layout that they cannot edit."""

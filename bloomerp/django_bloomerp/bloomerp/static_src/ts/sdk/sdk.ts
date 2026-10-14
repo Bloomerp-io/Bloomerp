@@ -2313,13 +2313,13 @@ export interface UserListViewPreference {
   shared_with_groups: Array<number>;
   shared_with_users: Array<number>;
   source_object: number | null;
-  split_view_enabled: boolean;
   user: number;
+  view_mode: string;
   view_type: string;
 }
 
 export type UserListViewPreferenceId = number;
-export type UserListViewPreferenceFieldName = "content_type" | "default_filters" | "display_fields" | "id" | "initial_default" | "name" | "options" | "selected" | "shared_with_groups" | "shared_with_users" | "source_object" | "split_view_enabled" | "user" | "view_type";
+export type UserListViewPreferenceFieldName = "content_type" | "default_filters" | "display_fields" | "id" | "initial_default" | "name" | "options" | "selected" | "shared_with_groups" | "shared_with_users" | "source_object" | "user" | "view_mode" | "view_type";
 
 export interface UserListViewPreferenceCreate {
   content_type: number;
@@ -2332,8 +2332,8 @@ export interface UserListViewPreferenceCreate {
   shared_with_groups?: Array<number>;
   shared_with_users?: Array<number>;
   source_object?: number | null;
-  split_view_enabled?: boolean;
   user: number;
+  view_mode?: string;
   view_type?: string;
 }
 
@@ -2352,8 +2352,8 @@ export const userListViewPreferencesFields: Record<UserListViewPreferenceFieldNa
   "shared_with_groups": {"name": "shared_with_groups", "title": "Shared With Groups", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "Group", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
   "shared_with_users": {"name": "shared_with_users", "title": "Shared With Users", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
   "source_object": {"name": "source_object", "title": "Source Object", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "UserListViewPreference", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "split_view_enabled": {"name": "split_view_enabled", "title": "Split View Enabled", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "view_mode": {"name": "view_mode", "title": "View Mode", "fieldType": "CharField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "normal", "label": "Normal"}, {"value": "split", "label": "Split view"}, {"value": "drawer", "label": "Drawer"}]},
   "view_type": {"name": "view_type", "title": "View Type", "fieldType": "CharField", "dbFieldType": "varchar(50)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "table", "label": "Table"}, {"value": "kanban", "label": "Kanban"}, {"value": "card", "label": "Card"}, {"value": "calendar", "label": "Calendar"}, {"value": "gantt", "label": "Gantt"}, {"value": "pivot_table", "label": "Pivot"}, {"value": "file_browser", "label": "File Browser"}]},
 } as const;
 

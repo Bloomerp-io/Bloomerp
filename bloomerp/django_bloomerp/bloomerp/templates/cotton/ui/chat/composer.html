@@ -1,0 +1,14 @@
+{% comment %}
+Shared rich-text composer inside a caller-owned form. Parameters: name, label,
+placeholder, disabled, include_toolbar, class. Slot: content above the editor.
+Submission remains owned by the form's HTMX attributes or controller.
+{% endcomment %}
+{% load i18n %}
+<c-vars name="body_html" label="" placeholder="" disabled="" include_toolbar="True" class="" />
+{% translate "Message" as default_label %}
+{% translate "Write a message…" as default_placeholder %}
+<div class="im-composer bg-white {{ class }}" bloomerp-component="chat-composer" data-editor-label="{{ label|default:default_label }}">
+    {{ slot }}
+    <c-ui.inputs.text_editor :name="name" :compact="True" :include_toolbar="include_toolbar" :placeholder="placeholder|default:default_placeholder" />
+    <div class="im-composer-bottom"><span>{% if disabled == 'true' %}{% translate 'Sending is unavailable for this conversation.' %}{% else %}{% translate 'Ctrl/⌘ + Enter to send' %}{% endif %}</span><button type="submit" class="im-send" data-chat-send {% if disabled == 'true' %}disabled{% endif %} aria-label="{% translate 'Send message' %}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button></div>
+</div>
