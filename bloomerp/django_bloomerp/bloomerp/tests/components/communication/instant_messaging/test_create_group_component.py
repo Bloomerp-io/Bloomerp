@@ -2,6 +2,7 @@
 from unittest.mock import patch
 from dataclasses import replace
 from django.http import HttpRequest
+from bloomerp.utils.callables import resolve_hook
 from bloomerp.communication.builtins.instant_messaging.definition import (
     IMCreationAction,
     IMProviderDefinition,
@@ -210,6 +211,15 @@ class TestCreateGroupComponent(BloomerpComponentTestCase):
                     ),
                 ),
                 RequestScenario(
+                    name="Direct callable creation and permission hooks are supported",
+                    user=self.admin_user,
+                    prepare=self.prepare_callable_action,
+                    query_params={"provider": "example", "action": "example_action"},
+                    expected=ExpectedResult(
+                        response_validators=[self.contains_text("example:example_action")]
+                    ),
+                ),
+                RequestScenario(
                     name="Provider metadata selects an alternate creation handler",
                     user=self.admin_user,
                     prepare=self.prepare_alternate_action,
@@ -242,4 +252,22 @@ class TestCreateGroupComponent(BloomerpComponentTestCase):
         )
         self.enterContext(
             patch.dict(IM_PROVIDER_REGISTRY._registry, {"example": provider})
+        )
+
+    def prepare_callable_action(self, scenario: RequestScenario) -> None:
+        """Register direct creation and permission functions alongside string-based actions."""
+        self.prepare_alternate_action(scenario)
+        provider = IM_PROVIDER_REGISTRY.get("example")
+        action = replace(
+            provider.creation_actions[0],
+            handler=alternate_creation,
+            permission_resolver=resolve_hook(
+                provider.creation_actions[0].permission_resolver
+            ),
+        )
+        self.enterContext(
+            patch.dict(
+                IM_PROVIDER_REGISTRY._registry,
+                {"example": replace(provider, creation_actions=(action,))},
+            )
         )

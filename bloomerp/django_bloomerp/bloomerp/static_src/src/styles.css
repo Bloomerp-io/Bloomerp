@@ -2105,7 +2105,7 @@ html.dark [data-workflow-node-item]:hover {
 .im-own .im-message-actions { justify-content: flex-end; }
 .im-message-actions button { border: 0; padding: 0; background: none; color: var(--im-accent); font-size: inherit; }
 .im-quoted { display: block; width: 100%; text-align: left; border: 0; border-left: 2px solid var(--im-accent); padding: 7px 9px; border-radius: 3px; margin-bottom: 8px; font-size: 11px; line-height: 1.5; color: #626c79; }
-.im-composer-wrap { padding: 12px 17px 0; border-top: 1px solid var(--im-line); }
+.im-composer-wrap { padding: 12px 17px; border-top: 1px solid var(--im-line); }
 .im-composer { border: 1px solid #e3e5eb; border-radius: 13px; padding: 12px; }
 .im-composer textarea { resize: none; width: 100%; border: 0; background: none; font: inherit; color: inherit; font-size: 13px; padding: 0; box-shadow: none; }
 .im-composer-bottom { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
@@ -2128,9 +2128,8 @@ html.dark [data-workflow-node-item]:hover {
 .im-reactions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .im-reaction { border: 1px solid var(--im-line); border-radius: 12px; padding: 3px 8px; font-size: 12px; }
 .im-attachment { padding-top: 8px; font-size: 12px; }
-.im-conversation-content .im-composer-wrap { padding-bottom: 12px; }
 
-.im-conversation-content .im-composer [bloomerp-component="bloomerp-text-editor"] { min-height: 80px; }
+.im-composer [bloomerp-component="bloomerp-text-editor"] { min-height: 80px; }
 
 .im-unread-filter { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: var(--im-muted); font-size: 12px; }
 .im-unread-filter input { accent-color: var(--im-accent); }
@@ -2151,6 +2150,13 @@ html.dark [data-workflow-node-item]:hover {
 
 [data-reference-kind="object"][role="link"] { cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 [data-reference-kind="object"][tabindex="0"]:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: 2px; border-radius: 2px; }
+
+/* Extend only the list page's split panel through the page's right padding. */
+[data-model-list-page] > [bloomerp-component] > #data-view-data-section > [data-split-view-container] {
+    width: calc(100% + 1rem);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
 
 .im-emoji-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; padding: .5rem; }
 .im-emoji-picker button { font-size: 1.25rem; border-radius: .5rem; padding: .35rem; }

@@ -2,13 +2,18 @@ import htmx from "htmx.org";
 import BaseComponent, { getComponent, componentIdentifier, initComponents } from "../BaseComponent";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
-import { getLocalStorageValue, setLocalStorageValue } from "@/utils/localStorage";
 import { DataViewDisplayOptions } from "./DisplayOptions";
 import ObjectCRUDViewContainer from "../detail_view_components/ObjectCRUDViewContainer";
 import { getModal } from "@/utils/modals";
 import { insertSkeleton } from "@/utils/animations";
 import { RenderedFilters } from '../filters/RenderedFilters';
+import showMessage from '@/utils/messages';
+import { MessageType } from '../UiMessage';
 
+interface DataViewCreatedDetail {
+    data_view_create_id: string;
+    messages?: { text: string; type: MessageType }[];
+}
 
 
 export class DataViewContainer extends BaseComponent {
@@ -41,7 +46,21 @@ export class DataViewContainer extends BaseComponent {
     private bulkActionCompleteHandler: ((event: Event) => void) | null = null;
     private addButtonClickHandler: ((event: MouseEvent) => void) | null = null;
     private selectedObjectIds: Set<string> = new Set();
-    private createObjectModalLoaded: boolean = false;
+    private createRequestId: string | null = null;
+    private createModalId: string | null = null;
+    private createFormUrl: string | null = null;
+
+    /** Show save feedback immediately, close the owning dialog, and refresh its list. */
+    private handleObjectCreated = (event: Event): void => {
+        const detail = (event as CustomEvent<DataViewCreatedDetail>).detail;
+        if (!this.createRequestId || detail?.data_view_create_id !== this.createRequestId) return;
+        this.createRequestId = null;
+        if (this.createModalId) getModal(this.createModalId)?.close();
+        for (const message of detail.messages ?? []) {
+            showMessage(message.text, message.type, 10);
+        }
+        this.refresh();
+    };
 
     /** Bind data-view controls without stealing focus when loaded inside a workspace tile. */
     public initialize(): void {
@@ -72,7 +91,6 @@ export class DataViewContainer extends BaseComponent {
         this.setupKeydownListeners();
 
         this.setupSplitViewFocusTargets();
-        this.setupSplitViewResize();
 
         // Setup search
         this.element.querySelector(`#data-view-search-input-${this.contentTypeId}`)?.addEventListener('input', (event) => {
@@ -89,6 +107,8 @@ export class DataViewContainer extends BaseComponent {
         this.bindDisplayOptionsCallback();
 
         this.setupAddButton();
+
+        document.body.addEventListener('bloomerp:data-view-object-created', this.handleObjectCreated);
 
         // Setup bulk checkbox listeners
         this.addBulkListeners();
@@ -141,7 +161,9 @@ export class DataViewContainer extends BaseComponent {
 
         baseUrl.searchParams.delete('page');
 
-        insertSkeleton(this.target);
+        const listPane = this.splitViewEnabled ? this.getSplitViewListPane() : null;
+        const loadingTarget = listPane?.querySelector<HTMLElement>("[data-resizable-div-panel]") ?? listPane ?? this.target;
+        insertSkeleton(loadingTarget);
         this.applyUrl(baseUrl, pushHistory);
     }
 
@@ -173,6 +195,7 @@ export class DataViewContainer extends BaseComponent {
         this.applyUrl(requestUrl, false);
     }
 
+    /** Request the updated list section with the appropriate browser history update. */
     private applyUrl(url: URL, pushHistory: boolean = true): void {
         this.fullPath = url.toString();
         if (this.element) this.element.dataset.url = this.fullPath;
@@ -213,7 +236,6 @@ export class DataViewContainer extends BaseComponent {
 
         this.installCellClickOverrides();
         this.setupSplitViewFocusTargets();
-        this.setupSplitViewResize();
         this.syncBulkCheckboxes();
     }
 
@@ -249,6 +271,7 @@ export class DataViewContainer extends BaseComponent {
         addButton.addEventListener('click', this.addButtonClickHandler);
     }
 
+    /** Reuse this list's unfinished form or load a fresh form after successful creation. */
     private handleAddButtonClick(event: MouseEvent): void {
         event.preventDefault();
 
@@ -261,17 +284,25 @@ export class DataViewContainer extends BaseComponent {
         const target = targetSelector ? document.querySelector<HTMLElement>(targetSelector) : null;
         const modal = modalId ? getModal(modalId) : null;
 
+        if (addButton) modal?.setOpener(addButton);
         modal?.open();
 
-        if (!createUrl || !target || this.createObjectModalLoaded) return;
+        if (!createUrl || !target) return;
+
+        const existingRequestId = target.querySelector<HTMLInputElement>('[name="data_view_create_id"]')?.value;
+        if (this.createRequestId && existingRequestId === this.createRequestId && this.createFormUrl === createUrl) return;
+
+        this.createRequestId = crypto.randomUUID();
+        this.createModalId = modalId ?? null;
+        this.createFormUrl = createUrl;
+        const requestUrl = new URL(createUrl, window.location.origin);
+        requestUrl.searchParams.set('data_view_create_id', this.createRequestId);
 
         insertSkeleton(target);
 
-        void htmx.ajax('get', createUrl, {
+        void htmx.ajax('get', requestUrl.toString(), {
             target,
             swap: 'innerHTML',
-        }).then(() => {
-            this.createObjectModalLoaded = true;
         }).catch((error) => {
             console.error('Failed to load create object modal:', error);
         });
@@ -568,61 +599,6 @@ export class DataViewContainer extends BaseComponent {
         return getComponent(el) as ObjectCRUDViewContainer | null;
     }
 
-    private setupSplitViewResize(): void {
-        if (!this.splitViewEnabled || !this.element) return;
-
-        const container = this.element.querySelector<HTMLElement>('[data-split-view-container]');
-        const listPane = this.element.querySelector<HTMLElement>('[data-split-view-list-pane]');
-        const divider = this.element.querySelector<HTMLElement>('[data-split-view-divider]');
-
-        if (!container || !listPane || !divider) return;
-
-        const storageKey = `bloomerp_dataview_split_width_${this.contentTypeId ?? "default"}`;
-        const minWidth = 260;
-
-        const clampWidth = (width: number): number => {
-            const maxWidth = Math.max(minWidth, container.clientWidth - minWidth);
-            return Math.min(Math.max(width, minWidth), maxWidth);
-        };
-
-        const applyWidth = (width: number, store: boolean = false): void => {
-            const clamped = clampWidth(width);
-            listPane.style.width = `${clamped}px`;
-            listPane.style.flexBasis = `${clamped}px`;
-            if (store) {
-                setLocalStorageValue(storageKey, clamped);
-            }
-        };
-
-        const storedWidth = getLocalStorageValue<number | null>(storageKey, null);
-        if (storedWidth !== null) {
-            applyWidth(storedWidth);
-        }
-
-        divider.addEventListener("pointerdown", (event: PointerEvent) => {
-            event.preventDefault();
-            const startX = event.clientX;
-            const startWidth = listPane.getBoundingClientRect().width;
-
-            const onMove = (moveEvent: PointerEvent): void => {
-                const delta = moveEvent.clientX - startX;
-                applyWidth(startWidth + delta);
-            };
-
-            const onUp = (): void => {
-                document.removeEventListener("pointermove", onMove);
-                document.removeEventListener("pointerup", onUp);
-                const finalWidth = listPane.getBoundingClientRect().width;
-                setLocalStorageValue(storageKey, clampWidth(finalWidth));
-            };
-
-            document.addEventListener("pointermove", onMove);
-            document.addEventListener("pointerup", onUp);
-        });
-    }
-    
-
-
     /**
      * Hides the filtered badge from the applied filter section.
      * 
@@ -690,7 +666,10 @@ export class DataViewContainer extends BaseComponent {
         this.target = this.element?.querySelector<HTMLElement>('#data-view-data-section') ?? null;
     }
 
+    /** Release the list controls and listeners owned by this container. */
     public destroy(): void {
+        document.body.removeEventListener('bloomerp:data-view-object-created', this.handleObjectCreated);
+        this.createRequestId = null;
         this.renderedFilters?.destroy();
         this.renderedFilters = undefined;
         this.element?.removeEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);

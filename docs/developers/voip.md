@@ -29,6 +29,18 @@ Use **Reconfigure connection** to edit provider settings or rotate credentials. 
 
 The definition also supplies purchase notice/pricing, configuration and callback help, account identity and immutable fields, callback labels, expected transport exceptions, SMS length limit, webhook handlers and browser driver. `account_id_field` is restored from the saved external account ID during reconfiguration; blank secrets retain encrypted values. Carrier adapters resolve callback URLs from their own configuration. Shared controllers do not require Twilio's public URL field or regulatory references.
 
+`max_assigned_users` optionally limits a line's staff assignments. It defaults to
+`None` (no limit); Twilio declares `10` to match its simultaneous browser dial
+limit. M2M additions enforce the configured limit for detail forms, assignment
+components and reverse user relations. This validation does not reconcile
+conversation membership or inbox rows.
+
+IM definitions accept typed callables or dotted import paths for selection,
+creation, permission, start, send, action, identity-label and timeline hooks.
+The callable aliases and `IMSendHandler` protocol in the IM definition document
+the required arguments and return values. `resolve_hook` supports either form;
+import paths are resolved lazily to avoid circular imports.
+
 Callback routes require the selected adapter to authenticate the request before dispatching to provider-owned protocol handlers. The default adapter rejects requests. Twilio handlers live under `communication/builtins/voip/builtins/twilio_webhooks/` and retain exact-URL signature and account checks. Browser token responses select a driver declared by the provider; `static_src/ts/communication/voip/` holds the neutral device/session contract and shipped driver registry. Twilio SDK state, events and outgoing parameters stay inside its driver; the shared Phone component owns the UI lifecycle. Unsupported drivers fail closed.
 
 `IMProviderDefinition.creation_actions` declares provider-owned creation flows. Each `IMCreationAction` supplies a stable key, translated label, icon, importable handler and permission resolver. The recipient picker renders authorized actions beneath that provider's heading using the shared dropdown submenu. The shared creation endpoint requires explicit provider/action values and repeats authorization for GET and POST; an undeclared action is rejected. Bloomerp declares staff-group creation; Phone, WhatsApp and Slack currently declare none.

@@ -70,11 +70,12 @@ class HtmxMixin(GetPreferenceMixin):
         return self.htmx_include_addendum
 
     def should_include_htmx_addendum(self) -> bool:
+        """Keep embedded split-view responses free of global page updates."""
         if not self.get_htmx_include_addendum():
             return False
 
         htmx_target = getattr(self.request.htmx, 'target', None)
-        return htmx_target != 'data-table-detail-pane'
+        return htmx_target not in {'data-table-detail-pane', 'split-view-detail-content'}
 
     def _build_breadcrumb_items(self, context: dict) -> list[dict]:
         items: list[dict] = [
@@ -150,6 +151,7 @@ class HtmxMixin(GetPreferenceMixin):
         return items
 
     def get_context_data(self, **kwargs:Any) -> dict:
+        """Select full-page, embedded detail-frame, or content-only rendering."""
         import random
         try:
             context = super().get_context_data(**kwargs)
@@ -158,6 +160,15 @@ class HtmxMixin(GetPreferenceMixin):
             context = {}
 
         base_template_name = self.template_name
+        htmx_target = getattr(self.request.htmx, 'target', None)
+        embedded_detail_view = bool(self.request.htmx) and htmx_target in {
+            'data-table-detail-pane', 'split-view-detail-content',
+        }
+        context['embedded_detail_view'] = embedded_detail_view
+        context['detail_content_id'] = (
+            'split-view-detail-content' if embedded_detail_view else self.htmx_detail_target
+        )
+        context['detail_push_url'] = 'false' if embedded_detail_view else 'true'
 
         # Check if we should add the detail view layout
         if isinstance(self.is_detail_view, bool):
@@ -190,8 +201,13 @@ class HtmxMixin(GetPreferenceMixin):
             htmx_target = getattr(self.request.htmx, 'target', None)
 
             if not self.should_include_htmx_addendum():
-                context['template_name'] = base_template_name
-                self.template_name = base_template_name
+                if is_detail_request and htmx_target == 'data-table-detail-pane':
+                    context['include_detail_content'] = base_template_name
+                    context['template_name'] = self.base_detail_template
+                    self.template_name = self.base_detail_template
+                else:
+                    context['template_name'] = base_template_name
+                    self.template_name = base_template_name
                 context["rand_int"] = random.randint(0,10000)
                 context["route_title"] = self._resolve_route_title()
                 context["breadcrumbs"] = self._build_breadcrumb_items(context)

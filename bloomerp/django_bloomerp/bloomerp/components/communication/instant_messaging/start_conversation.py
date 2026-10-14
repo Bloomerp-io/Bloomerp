@@ -21,7 +21,7 @@ from .conversation import render_conversation
 def start_conversation(request: HttpRequest) -> HttpResponse:
     """Create or reuse an internal direct chat and return its reusable fragment."""
     from django.shortcuts import render
-    from django.utils.module_loading import import_string
+    from bloomerp.utils.callables import resolve_hook
     from bloomerp.communication.builtins.instant_messaging.registry import (
         IM_PROVIDER_REGISTRY,
     )
@@ -61,7 +61,7 @@ def start_conversation(request: HttpRequest) -> HttpResponse:
             )
             response["Cache-Control"] = "private, no-store"
             return response
-        chat = import_string(provider.start_handler)(request.user, selected)
+        chat = resolve_hook(provider.start_handler)(request.user, selected)
     except (ValueError, ValidationError):
         return HttpResponse(status=400)
     response = render_conversation(request, chat.pk)

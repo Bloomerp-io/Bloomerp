@@ -1,5 +1,6 @@
 import Phone from "./components/communication/Phone";
 import Conversation from './components/communication/Conversation';
+import ChatComposer from './components/ChatComposer';
 import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
 import ArtifactPicker from './components/agent/ArtifactPicker';
 import ColoredChoices from './components/ColoredChoices';
@@ -97,6 +98,7 @@ registerComponent('drawer', Drawer);
 registerComponent('bloomerp:agent-chat', AgentChat);
 registerComponent('bloomerp:messaging-panel', MessagingPanel);
 registerComponent('bloomerp:im-conversation', Conversation);
+registerComponent('chat-composer', ChatComposer);
 registerComponent('sidebar', Sidebar);
 registerComponent('breadcrumb', Breadcrumb);
 registerComponent('resizable-div', ResizableDiv);

@@ -51,9 +51,9 @@ def conversation_identity(conversation: IMConversation, user_id: Any) -> dict[st
             avatar = person.user.avatar.url if person.user.avatar else ""
         else:
             if provider and provider.identity_label_resolver:
-                from django.utils.module_loading import import_string
+                from bloomerp.utils.callables import resolve_hook
 
-                name = import_string(provider.identity_label_resolver)(
+                name = resolve_hook(provider.identity_label_resolver)(
                     person.identity, user_id
                 )
             address = person.identity.address

@@ -1,43 +1,18 @@
-<div id="comments-section-{{ object.id }}" class="flex flex-col gap-4 xl:h-full xl:min-h-0">
-    <c-ui.chat.container class="pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+{% load i18n %}
+<div id="comments-section-{{ object.id }}" class="im-theme flex flex-col xl:h-full xl:min-h-0">
+    <c-ui.chat.container class="xl:min-h-0">
         {% for comment in comments %}
-            <c-ui.chat.message
-                id="comment-{{ comment.pk }}"
+            <c-ui.chat.message id="comment-{{ comment.pk }}"
                 highlight="{% if comment.pk|stringformat:'s' == highlighted_comment_id %}true{% endif %}"
                 sender="{{ comment.created_by.get_full_name|default:comment.created_by|default:'Unknown' }}"
-                :message="comment.content"
-                :datetime="comment.datetime_created"
-                side="{% if comment.created_by == request.user %}right{% else %}left{% endif %}"
-                background="{% if comment.created_by == request.user %}primary{% else %}secondary{% endif %}"
-            />
+                :message="comment.content" :datetime="comment.datetime_created"
+                side="{% if comment.created_by == request.user %}right{% else %}left{% endif %}" />
         {% endfor %}
     </c-ui.chat.container>
-
-    <div class="shrink-0 p-2 border border-gray-200 rounded-xl flex flex-col" id="comment-form-{{ object.id }}">
-        <form 
-            hx-post="{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}"
-            hx-target="#comments-section-{{ object.id }}"
-            bloomerp-component="focus-on-form"
-            >
-            {% csrf_token %}
-            <c-ui.inputs.text_editor 
-                placeholder="" 
-                disabled="" 
-                styling="" 
-                name="comment" 
-                include_toolbar="false" 
-                height="4rem"
-            />
-
-            <div class="flex justify-between">
-                <div>
-
-                </div>
-
-                <button class="btn btn-xs btn-primary">
-                    <i class="fa fa-paper-plane"></i>
-                </button>    
-            </div>
-        </form>
-    </div>
+    <form id="comment-form-{{ object.id }}" class="im-composer-wrap" hx-post="{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}"
+        hx-target="#comments-section-{{ object.id }}" hx-sync="this:drop" hx-disabled-elt="find [data-chat-send]">
+        {% csrf_token %}
+        {% translate "Comment" as comment_label %}
+        <c-ui.chat.composer name="comment" :label="comment_label" />
+    </form>
 </div>

@@ -1,11 +1,14 @@
 import json
+from typing import Any
 
+from django.contrib.messages import get_messages
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
 from bloomerp.forms.model_form import bloomerp_modelform_factory
+from bloomerp.forms.model_form import BloomerpModelForm
 from bloomerp.router import router
 from bloomerp.utils.models import get_create_view_url, get_detail_view_url
 from bloomerp.utils.requests import render_blank_form
@@ -59,18 +62,25 @@ class CreateObjectComponentView(BloomerpCreateView):
     def get_full_form_url(self) -> str | None:
         return reverse(get_create_view_url(self.model))
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Preserve the originating widget or data view across validation responses."""
         context = super().get_context_data(**kwargs)
         context["foreign_field_widget_id"] = (
             self.request.POST.get("foreign_field_widget_id")
             or self.request.GET.get("foreign_field_widget_id")
             or ""
         )
+        context["data_view_create_id"] = (
+            self.request.POST.get("data_view_create_id")
+            or self.request.GET.get("data_view_create_id")
+            or ""
+        )
         return context
 
-    def form_valid(self, form):
+    def form_valid(self, form: BloomerpModelForm) -> HttpResponse:
+        """Save the object and notify the caller while preserving other create flows."""
         response = super().form_valid(form)
-        if not self.request.htmx:
+        if not self.request.htmx or form.errors:
             return response
 
         # This code is here to ensure that the foreign key widget
@@ -97,6 +107,18 @@ class CreateObjectComponentView(BloomerpCreateView):
             return redirect(self.request.POST.get("next"))
 
         htmx_response = HttpResponse(status=204)
+        data_view_create_id = self.request.POST.get("data_view_create_id")
+        if data_view_create_id:
+            htmx_response["HX-Trigger"] = json.dumps({
+                "bloomerp:data-view-object-created": {
+                    "data_view_create_id": data_view_create_id,
+                    "messages": [
+                        {"text": str(message), "type": message.level_tag}
+                        for message in get_messages(self.request)
+                    ],
+                },
+            })
+            return htmx_response
         htmx_response["HX-Refresh"] = "true"
         return htmx_response
 

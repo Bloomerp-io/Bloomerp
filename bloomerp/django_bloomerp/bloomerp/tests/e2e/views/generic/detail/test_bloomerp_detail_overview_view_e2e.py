@@ -1,6 +1,21 @@
-from playwright.sync_api import expect
+import re
 
+from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
+from playwright.sync_api import Route, expect
+
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.project_management.todo import Todo
+from bloomerp.models.project_management.todo_label import TodoLabel
+from bloomerp.models.communication.instant_messaging import IMConversation, IMConversationParticipant
+from bloomerp.communication.builtins.instant_messaging.controller import IMController
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.models.users.user_detail_view_tabs_preference import (
+    UserDetailViewTabItem,
+    UserDetailViewTabsPreference,
+)
+from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.utils.models import get_list_view_url
 from bloomerp.tests.base import (
     E2EAction,
     E2ERequestScenario,
@@ -9,8 +24,33 @@ from bloomerp.tests.base import e2e_test_case as e2e_test_cases
 
 
 class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
+    def test_create_todo_modal_closes_after_save(self) -> None:
+        """Verify the object's todo action saves without navigating inside the dialog."""
+        self.todo_owner = TodoLabel.objects.create(name="Todo owner", color="#112233")
+        scenario = E2ERequestScenario(
+            name="Object-linked todo saves and closes its modal",
+            user=self.admin_user,
+            url=self.todo_owner.get_absolute_url(),
+            actions=[E2EAction(name="Save a todo in the dialog", execute=self.save_todo_in_modal)],
+        )
+        self._run_request_scenario(scenario, scenario.name)
+
+    def save_todo_in_modal(self) -> None:
+        """Assert modal closure, immediate feedback, object linkage, and a stable page."""
+        original_url = self.page.url
+        self.page.get_by_role('button', name='Create Todo', exact=True).click()
+        modal = self.page.locator('#detail-todo-modal')
+        expect(modal).to_be_visible()
+        modal.locator('[name="title"]').fill('Todo from object dialog')
+        modal.locator('button[type="submit"]:visible').first.click()
+        expect(modal).to_be_hidden()
+        expect(self.page.locator('.message-container').filter(has_text='Object successfully created')).to_be_visible()
+        self.assertEqual(self.page.url, original_url)
+        todo = Todo.objects.get(title='Todo from object dialog')
+        self.assertEqual(todo.content_object, self.todo_owner)
+
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
-        """Cover overview editing and browser fragment-to-field focus."""
+        """Cover overview editing, fragment focus, and embedded tab navigation."""
         todo = Todo.objects.create(title="Hello world")
 
         return [
@@ -68,8 +108,349 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
                     )
                 ],
             ),
+            E2ERequestScenario(
+                name="Split view navigates folder tabs and saves without leaving the list",
+                user=self.admin_user,
+                prepare=self.prepare_split_view,
+                url=reverse(get_list_view_url(Todo)),
+                actions=[
+                    E2EAction(name="Open an object in split view", execute=self.open_split_view_object),
+                    E2EAction(name="Use activity and comments in the right sidebar", execute=self.use_split_view_sidebar),
+                    E2EAction(name="Navigate to a folder tab", execute=self.open_split_view_files),
+                    E2EAction(name="Return to Details and save", execute=self.save_split_view_object),
+                    E2EAction(name="Resize the first object's sidebar", execute=self.resize_split_view_sidebar),
+                    E2EAction(name="Open another object", execute=self.open_second_split_view_object),
+                    E2EAction(name="Resize the replacement object's sidebar", execute=self.resize_split_view_sidebar),
+                ],
+            ),
+            E2ERequestScenario(
+                name="Split divider retains its width across pagination, search, and filters",
+                user=self.admin_user,
+                prepare=self.prepare_split_width_view,
+                url=f"{reverse(get_list_view_url(Todo))}?q=Width+retention&sort=title&direction=asc",
+                actions=[
+                    E2EAction(name="Open the selected record", execute=self.open_split_view_object, validators=self.assert_legacy_split_width),
+                    E2EAction(name="Resize and refresh the list", execute=self.refresh_list_with_open_detail),
+                    E2EAction(name="Keep sizing limits and custom styling at smaller widths", execute=self.check_split_resize_options),
+                ],
+            ),
+            E2ERequestScenario(
+                name="Shared composer sends IM messages through the conversation controller",
+                user=self.admin_user,
+                prepare=self.prepare_shared_chat,
+                url=todo.get_absolute_url(),
+                actions=[E2EAction(name="Send with the shared keyboard shortcut", execute=self.send_shared_chat_message)],
+            ),
         ]
 
     def title_is_focused(self) -> None:
         """Check the fragment causes real browser focus on the title editor."""
         expect(self.page.locator('[name="title"]')).to_be_focused()
+
+    def prepare_split_view(self) -> None:
+        """Enable a title table and put the Files tab in a test folder."""
+        self.page.set_viewport_size({"width": 1920, "height": 1080})
+        self.split_todo = Todo.objects.create(title="Split tabs original")
+        self.second_split_todo = Todo.objects.create(title="Split tabs second")
+        content_type = ContentType.objects.get_for_model(Todo)
+        manager = PreferenceManager(self.admin_user)
+        preference = manager.get_or_create_selected(
+            UserListViewPreference, scope={"content_type_id": content_type.pk},
+        )
+        preference.view_type = "table"
+        preference.split_view_enabled = True
+        preference.display_fields = {"table": [ApplicationField.get_by_field(Todo, "title").pk]}
+        preference.save()
+        tabs = manager.get_or_create_selected(
+            UserDetailViewTabsPreference, scope={"content_type_id": content_type.pk},
+        )
+        folder = UserDetailViewTabItem.objects.create(
+            preference=tabs, name="Documents", url=None, position=100,
+        )
+        files_tab = tabs.items.get(name="Files")
+        files_tab.parent = folder
+        files_tab.save()
+
+    def open_split_view_object(self) -> None:
+        """Open the first record and verify tabs render alongside the list."""
+        self.split_list_url = self.page.url
+        self.split_breadcrumbs = self.page.locator('#htmx-addendum').inner_text()
+        cell = self.page.locator(
+            f'td[data-object-id="{self.split_todo.pk}"][data-application-field-name="title"]'
+        )
+        expect(cell).to_be_visible(timeout=15000)
+        with self.expect_response_for(self.split_todo.get_absolute_url(), method="GET") as response:
+            cell.dblclick()
+        self.assertEqual(response.value.status, 200)
+        expect(self.page.locator('[data-split-view-detail-pane] [data-tab-strip]')).to_be_visible()
+
+    def use_split_view_sidebar(self) -> None:
+        """Post a comment and switch back to Activity without replacing the detail frame."""
+        pane = self.page.locator('[data-split-view-detail-pane]')
+        sidebar = pane.locator('#resizable-div-detail-aside')
+        expect(sidebar).to_be_visible()
+        expect(sidebar.locator('#object-sidesection')).not_to_contain_text('Loading activity...')
+        button = sidebar.locator('[data-detail-sidebar-view="comments"]')
+        with self.expect_response_for(button.get_attribute('hx-get'), method="GET") as response:
+            button.click()
+        self.assertEqual(response.value.status, 200)
+        form = sidebar.locator(f'#comment-form-{self.split_todo.pk}')
+        editor = form.get_by_role('textbox', name='Comment', exact=True)
+        editor.fill('Comment from split view')
+        editor.press('Enter')
+        expect(form.locator('[name="comment"]')).to_have_value(re.compile('.*Comment from split view.*'))
+        self.page.route('**/components/comments/**', self.reject_comment_submission)
+        with self.expect_response_for(form.get_attribute('hx-post'), method="POST"):
+            editor.press('ControlOrMeta+Enter')
+        expect(form.locator('[name="comment"]')).to_have_value(re.compile('.*Comment from split view.*'))
+        expect(form.locator('[data-chat-send]')).to_be_enabled()
+        self.page.unroute('**/components/comments/**', self.reject_comment_submission)
+        with self.expect_response_for(form.get_attribute('hx-post'), method="POST"):
+            editor.press('ControlOrMeta+Enter')
+        expect(sidebar.get_by_text('Comment from split view', exact=True)).to_be_visible()
+        button = sidebar.locator('[data-detail-sidebar-view="activity"]')
+        with self.expect_response_for(button.get_attribute('hx-get'), method="GET"):
+            button.click()
+        expect(sidebar.locator(f'#comments-section-{self.split_todo.pk}')).to_have_count(0)
+        expect(pane.locator('[data-tab-strip]')).to_be_visible()
+        self.assertEqual(self.page.url, self.split_list_url)
+        self.assertEqual(self.page.locator('#htmx-addendum').inner_text(), self.split_breadcrumbs)
+
+        frame = pane.locator('[data-detail-view-grid]').bounding_box()
+        pane_box = pane.bounding_box()
+        tabs = pane.locator('[data-tab-strip]').bounding_box()
+        sidebar_box = sidebar.bounding_box()
+        self.assertIsNotNone(frame)
+        self.assertIsNotNone(pane_box)
+        self.assertIsNotNone(tabs)
+        self.assertIsNotNone(sidebar_box)
+        self.assertAlmostEqual(frame['x'], pane_box['x'], delta=1)
+        self.assertAlmostEqual(frame['width'], pane_box['width'], delta=1)
+        main_content = self.page.locator('#main-content').bounding_box()
+        self.assertIsNotNone(main_content)
+        self.assertAlmostEqual(
+            pane_box['x'] + pane_box['width'],
+            main_content['x'] + main_content['width'],
+            delta=1,
+        )
+        self.assertAlmostEqual(tabs['x'] + tabs['width'], sidebar_box['x'], delta=1)
+        expect(pane).to_have_css('border-top-width', '1px')
+        expect(pane).to_have_css('border-bottom-width', '1px')
+        expect(self.page.locator('[data-split-view-list-pane]')).to_have_css('border-top-width', '0px')
+        expect(self.page.locator('[data-split-view-list-pane]')).to_have_css('border-bottom-width', '0px')
+
+    def open_split_view_files(self) -> None:
+        """Load a folder's Files tab without updating the browser's list route."""
+        pane = self.page.locator('[data-split-view-detail-pane]')
+        pane.get_by_role('button', name='Documents', exact=True).click()
+        link = pane.locator('[data-folder-tab-item]').filter(has_text='Files')
+        path = link.get_attribute('href')
+        with self.expect_response_for(path, method="GET"):
+            link.click()
+        expect(pane.locator('#split-view-detail-content [bloomerp-component="dataview-container"]')).to_be_visible()
+        expect(pane.locator('[data-tab-strip]')).to_be_visible()
+        self.assertEqual(self.page.url, self.split_list_url)
+        self.assertEqual(self.page.locator('#htmx-addendum').inner_text(), self.split_breadcrumbs)
+
+    def save_split_view_object(self) -> None:
+        """Save after navigating back to Details and keep the surrounding tabs."""
+        pane = self.page.locator('[data-split-view-detail-pane]')
+        with self.expect_response_for(self.split_todo.get_absolute_url(), method="GET"):
+            pane.get_by_role('tab', name='Details', exact=True).click()
+        pane.locator('#id_title').fill('Split tabs updated')
+        with self.expect_response_for(self.split_todo.get_absolute_url(), method="POST"):
+            pane.get_by_role('button', name='Save', exact=True).click()
+        self.split_todo.refresh_from_db()
+        self.assertEqual(self.split_todo.title, 'Split tabs updated')
+        expect(pane.locator('[data-tab-strip]')).to_be_visible()
+        self.assertEqual(self.page.url, self.split_list_url)
+
+    def open_second_split_view_object(self) -> None:
+        """Replace the embedded object and its tabs without nesting detail frames."""
+        with self.expect_response_for(self.second_split_todo.get_absolute_url(), method="GET"):
+            self.page.locator(
+                f'td[data-object-id="{self.second_split_todo.pk}"][data-application-field-name="title"]'
+            ).dblclick()
+        pane = self.page.locator('[data-split-view-detail-pane]')
+        expect(pane.locator('#id_title')).to_have_value('Split tabs second')
+        expect(pane.locator('[data-tab-strip]')).to_have_count(1)
+        self.assertEqual(self.page.url, self.split_list_url)
+
+    def resize_split_view_sidebar(self) -> None:
+        """Drag the visible sidebar handle and verify its width actually changes."""
+        pane = self.page.locator('[data-split-view-detail-pane]')
+        expect(pane).not_to_have_class(re.compile(r'.*\bhtmx-settling\b.*'))
+        expect(pane.locator('.htmx-settling')).to_have_count(0)
+        sidebar = pane.locator('#resizable-div-detail-aside')
+        expect(sidebar).to_have_css('position', 'relative')
+        handle = sidebar.locator('[data-resizable-div-handle]')
+        handle_box = handle.bounding_box()
+        sidebar_box = sidebar.bounding_box()
+        self.assertIsNotNone(handle_box)
+        self.assertIsNotNone(sidebar_box)
+        x = handle_box['x'] + handle_box['width'] / 2
+        y = handle_box['y'] + 80
+        self.page.mouse.move(x, y)
+        self.page.mouse.down()
+        self.page.mouse.move(x + 60, y, steps=8)
+        self.page.mouse.up()
+        resized_box = sidebar.bounding_box()
+        self.assertIsNotNone(resized_box)
+        self.assertAlmostEqual(resized_box['width'], sidebar_box['width'] - 60, delta=2)
+
+    def refresh_list_with_open_detail(self) -> None:
+        """Keep unsaved detail edits and the sidebar when list results exclude the object."""
+        root = self.page.locator('[data-model-list-page] > [bloomerp-component]')
+        path = root.get_attribute('data-base-url')
+        pane = root.locator('[data-split-view-detail-pane]')
+        self.resize_split_view_list()
+        initial_title = self.second_split_todo.title
+        pane.locator('#id_title').fill('Unsaved split view edit')
+        with self.expect_response_for(path, method="GET"):
+            root.locator('[data-testid="data-view-pagination"]').get_by_role('button', name='Next', exact=True).click()
+        expect(pane.locator('#id_title')).to_have_value('Unsaved split view edit')
+        self.assert_split_view_list_width()
+        expect(root.locator(f'[data-split-view-list-pane] td[data-object-id="{self.second_split_todo.pk}"]')).to_have_count(0)
+
+        with self.expect_response_for(path, method="GET"):
+            root.locator('input[name="q"]').fill('Width retention')
+        expect(pane.locator('#id_title')).to_have_value('Unsaved split view edit')
+        self.assert_split_view_list_width()
+        root.get_by_role('button', name='Filter', exact=True).click()
+        editor = root.locator('[data-filter-host-editor] [bloomerp-component="unified-filter-container"]:visible')
+        condition = editor.locator('.filter-condition').first
+        condition.get_by_label('Field', exact=True).select_option(label='Title')
+        condition.get_by_label('Lookup', exact=True).select_option('contains')
+        condition.locator('.filter-value-editor input:not([type="hidden"])').fill('record 00')
+        with self.expect_response_for(path, method="GET") as response:
+            editor.get_by_role('button', name='Apply', exact=True).click()
+        self.assertEqual(response.value.status, 200)
+        expect(root.locator('[data-split-view-list-pane] td[data-application-field-name="title"]')).to_have_count(1)
+        expect(pane.locator('#id_title')).to_have_value('Unsaved split view edit')
+        self.assert_split_view_list_width()
+        expect(pane.locator('[data-tab-strip]')).to_have_count(1)
+        expect(pane.locator('#resizable-div-detail-aside')).to_be_visible()
+        self.second_split_todo.refresh_from_db()
+        self.assertEqual(self.second_split_todo.title, initial_title)
+
+    def prepare_split_width_view(self) -> None:
+        """Prepare an independent list refresh journey without unrelated tab interactions."""
+        self.page.set_viewport_size({"width": 1920, "height": 1080})
+        self.split_todo = Todo.objects.create(title='Width retention 000 selected')
+        self.second_split_todo = self.split_todo
+        Todo.objects.bulk_create([
+            Todo(title=f"Width retention record {index:02d}") for index in range(30)
+        ])
+        content_type = ContentType.objects.get_for_model(Todo)
+        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference, scope={"content_type_id": content_type.pk},
+        )
+        preference.view_type = 'table'
+        preference.split_view_enabled = True
+        preference.display_fields = {'table': [ApplicationField.get_by_field(Todo, 'title').pk]}
+        preference.save()
+        preference.default_filters.clear()
+        self.context.add_init_script(
+            f"if (localStorage.getItem('bloomerp_dataview_split_width_{content_type.pk}') === null) "
+            f"localStorage.setItem('bloomerp_dataview_split_width_{content_type.pk}', '420');"
+        )
+
+    def resize_split_view_list(self) -> None:
+        """Move the main split divider away from its default position."""
+        divider = self.page.locator('[data-model-list-page] [data-split-view-list-pane] > [data-resizable-div-handle]')
+        box = divider.bounding_box()
+        self.assertIsNotNone(box)
+        x = box['x'] + box['width'] / 2
+        y = box['y'] + 80
+        self.page.mouse.move(x, y)
+        self.page.mouse.down()
+        self.page.mouse.move(x + 60, y, steps=8)
+        self.page.mouse.up()
+        pane = self.page.locator('[data-model-list-page] [data-split-view-list-pane]')
+        pane_box = pane.bounding_box()
+        self.assertIsNotNone(pane_box)
+        self.split_list_width = pane_box['width']
+
+    def drag_split_divider_to(self, x: float) -> None:
+        """Drag the reusable list-pane handle to a horizontal viewport coordinate."""
+        handle = self.page.locator('[data-model-list-page] [data-split-view-list-pane] > [data-resizable-div-handle]')
+        box = handle.bounding_box()
+        self.assertIsNotNone(box)
+        y = box['y'] + 80
+        self.page.mouse.move(box['x'] + box['width'] / 2, y)
+        self.page.mouse.down()
+        self.page.mouse.move(x + box['width'] / 2, y, steps=8)
+        self.page.mouse.up()
+
+    def check_split_resize_options(self) -> None:
+        """Check size limits, custom handle styling, small screens, and reload persistence."""
+        container = self.page.locator('[data-model-list-page] [data-split-view-container]')
+        pane = container.locator('[data-split-view-list-pane]')
+        expect(pane).to_have_attribute('bloomerp-component', 'resizable-div')
+        expect(pane.locator('[data-resizable-div-handle]')).to_have_css('width', '4px')
+        expect(pane.locator('[data-resizable-div-handle] > [aria-hidden="true"]')).to_be_hidden()
+        box = container.bounding_box()
+        self.assertIsNotNone(box)
+        self.drag_split_divider_to(box['x'] + box['width'] - 100)
+        pane_box = pane.bounding_box()
+        self.assertIsNotNone(pane_box)
+        self.assertAlmostEqual(pane_box['width'], box['width'] - 264, delta=2)
+        self.drag_split_divider_to(box['x'] + 100)
+        expect(pane).to_have_css('width', '260px')
+        pane.locator('[data-resizable-div-handle]').dblclick(position={'x': 2, 'y': 80})
+        expect(pane).to_have_css('width', '260px')
+
+        self.page.set_viewport_size({'width': 1100, 'height': 900})
+        box = container.bounding_box()
+        self.assertIsNotNone(box)
+        self.drag_split_divider_to(box['x'] + 300)
+        expect(pane).to_have_css('width', '300px')
+        self.page.set_viewport_size({'width': 1920, 'height': 1080})
+        self.page.reload()
+        expect(self.page.locator('[data-model-list-page] [data-split-view-list-pane]')).to_have_css('width', '300px')
+
+    def assert_legacy_split_width(self) -> None:
+        """Verify the reusable panel reads the existing numeric local-storage width."""
+        expect(self.page.locator('[data-model-list-page] [data-split-view-list-pane]')).to_have_css('width', '420px')
+
+    def reject_comment_submission(self, route: Route) -> None:
+        """Simulate a failed comment request so draft retention can be checked."""
+        if route.request.method == 'POST':
+            route.fulfill(status=503, body='Comment service unavailable')
+        else:
+            route.continue_()
+
+    def prepare_shared_chat(self) -> None:
+        """Create a native conversation reachable through the floating messages panel."""
+        self.shared_chat = IMConversation.objects.create(kind='group', name='Shared composer chat')
+        IMConversationParticipant.objects.create(conversation=self.shared_chat, user=self.admin_user)
+        IMConversationParticipant.objects.create(conversation=self.shared_chat, user=self.normal_user)
+        IMController(self.admin_user).send_message(self.shared_chat.pk, '<p>Initial chat message</p>', 'shared-composer-initial')
+
+    def send_shared_chat_message(self) -> None:
+        """Send via Cmd/Ctrl+Enter and verify the IM controller acknowledgement and bubble."""
+        self.page.get_by_role('button', name='Open messages', exact=True).click()
+        row = self.page.locator(f'#im-conversations [data-conversation-id="{self.shared_chat.pk}"]')
+        expect(row).to_be_visible(timeout=15000)
+        with self.expect_response_for(row.get_attribute('hx-get'), method='GET') as loaded:
+            row.click()
+        self.assertEqual(loaded.value.status, 200)
+        chat = self.page.locator('#im-conversation-host')
+        editor = chat.get_by_role('textbox', name='Message', exact=True)
+        editor.fill('IM composer message')
+        editor.press('Enter')
+        with self.expect_response_for(reverse('components_im_send_message', kwargs={'conversation_id': self.shared_chat.pk}), method='POST') as response:
+            editor.press('ControlOrMeta+Enter')
+        self.assertEqual(response.value.status, 200)
+        expect(chat.locator('[data-message-body]').get_by_text('IM composer message', exact=True)).to_be_visible()
+        self.assertEqual(self.shared_chat.messages.count(), 2)
+        expect(editor).to_be_empty()
+
+    def assert_split_view_list_width(self) -> None:
+        """Verify list refreshes keep the divider position after HTMX settles."""
+        section = self.page.locator('[data-model-list-page] #data-view-data-section')
+        expect(section).not_to_have_class(re.compile(r'.*\bhtmx-settling\b.*'))
+        pane = section.locator('[data-split-view-list-pane]')
+        box = pane.bounding_box()
+        self.assertIsNotNone(box)
+        self.assertAlmostEqual(box['width'], self.split_list_width, delta=1)
