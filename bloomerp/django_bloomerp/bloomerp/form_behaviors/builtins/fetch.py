@@ -263,7 +263,7 @@ def fetch_config_form_factory(
     class FetchForm(forms.Form):
         """Configure scalar, bulk-populate, or existing-row fetch behavior."""
 
-        refresh_fields = ("mode", "model", "target_column")
+        refresh_fields = ("mode", "model", "target_column", "value_source")
         mode = forms.ChoiceField(
             choices=(
                 ("populate", "Populate collection"),
@@ -277,6 +277,15 @@ def fetch_config_form_factory(
             widget=ForeignFieldWidget(
                 model=ContentType, attrs={"class": "input w-full"}
             ),
+        )
+        value_source = forms.ChoiceField(
+            label="Value to copy",
+            choices=(
+                ("field", "Field from matching record"),
+                ("record", "Matching record itself"),
+            ),
+            required=False,
+            initial="field",
         )
         filters = forms.JSONField(
             required=False,
@@ -322,6 +331,9 @@ def fetch_config_form_factory(
             elif mode not in {"populate", "per_row"}:
                 mode = "populate"
             if is_collection:
+                self.fields["value_source"].widget = forms.HiddenInput()
+                self.fields["value_source"].disabled = True
+                self.initial["value_source"] = "field"
                 self.initial["mode"] = mode
             if mode == "populate":
                 self.fields["fetch"].choices = (("all", "All matching records"),)
@@ -360,6 +372,19 @@ def fetch_config_form_factory(
             if content_type is None or content_type.model_class() is None:
                 return
             source_model = content_type.model_class()
+            record_compatible = (
+                mode == "value"
+                and target.field_type == FIELD_TYPE_REGISTRY.FOREIGN_KEY.id
+                and target.get_related_model() is source_model
+            )
+            if not record_compatible:
+                self.fields["value_source"].choices = (
+                    ("field", "Field from matching record"),
+                )
+            if record_compatible and self.initial.get("value_source") == "record":
+                self.fields["column"].widget = forms.HiddenInput()
+                self.fields["column"].disabled = True
+                self.initial["column"] = None
             self.fields["filters"].widget = FilterWidget(
                 model=source_model, include_controls=False
             )
@@ -388,6 +413,17 @@ def fetch_config_form_factory(
             fetch = cleaned.get("fetch")
             if not cleaned.get("write_policy"):
                 cleaned["write_policy"] = "if_empty" if mode == "populate" else "always"
+            value_source = cleaned.get("value_source") or "field"
+            cleaned["value_source"] = value_source
+            if value_source == "record" and (
+                mode != "value"
+                or target.field_type != FIELD_TYPE_REGISTRY.FOREIGN_KEY.id
+                or target.get_related_model() is not source_model
+            ):
+                self.add_error(
+                    "value_source",
+                    "Selecting the matching record requires a relation target pointing to the source model.",
+                )
             if mode == "populate":
                 if fetch != "all":
                     self.add_error(
@@ -430,7 +466,7 @@ def fetch_config_form_factory(
                         )
                     else:
                         cleaned["source_columns"] = resolved
-            else:
+            elif value_source != "record":
                 column = cleaned.get("column")
                 destination = (
                     cleaned.get("target_column") if mode == "per_row" else target
@@ -511,8 +547,11 @@ def fetch(
             return BehaviorResult()
     if mode == "per_row" and not current_rows:
         return BehaviorResult()
+    use_record = mode == "value" and config.get("value_source") == "record"
     fields = (
-        tuple(reference.field for reference in config["source_columns"].values())
+        ()
+        if use_record
+        else tuple(reference.field for reference in config["source_columns"].values())
         if mode == "populate"
         else (config["source_column"].field,)
     )
@@ -583,7 +622,11 @@ def fetch(
         return BehaviorResult(
             values=(FieldValueUpdate(field=context.target_field, value=rows),)
         )
-    value = _record_value(result[0], fields[0])
+    value = (
+        serialize_form_value(result[0].pk)
+        if use_record
+        else _record_value(result[0], fields[0])
+    )
     return (
         BehaviorResult()
         if context.target_value == value

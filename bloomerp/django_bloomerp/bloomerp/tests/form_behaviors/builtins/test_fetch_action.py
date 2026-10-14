@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any
 from unittest.mock import patch
 
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -16,17 +17,22 @@ from bloomerp.form_behaviors.definition import (
     BehaviorContext,
     BehaviorMessage,
     BehaviorResult,
+    FieldValueUpdate,
     FormBehavior,
 )
 from bloomerp.form_behaviors.execution import BehaviorExecutor
-from bloomerp.form_behaviors.utils import clean_action_config
+from bloomerp.form_behaviors.utils import action_config_form, clean_action_config
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
 from bloomerp.permissions.manager import UserPolicyManager
-from bloomerp.tests.base import BloomerpBehaviorActionTestCase
+from bloomerp.tests.base import (
+    BehaviorActionScenario,
+    BloomerpBehaviorActionTestCase,
+    ExpectedBehaviorActionException,
+)
 from bloomerp.tests.utils.dynamic_models import create_test_models
 
 
@@ -137,6 +143,230 @@ class TestFetchAction(BloomerpBehaviorActionTestCase):
         self.rate_model.objects.create(
             currency="EUR", effective_at=date(2026, 1, 1), rate=Decimal("1.0000")
         )
+
+    def _record_config(self) -> dict[str, Any]:
+        """Select a work-order record using the current invoice name input."""
+        return {
+            "model": self.work_order_model._meta.label_lower,
+            "value_source": "record",
+            "filters": self._filters("name", "{{ object.name }}"),
+            "fetch": "first",
+            "order_by": "name",
+            "write_policy": "always",
+        }
+
+    def _record_context(self, current: str | None = None) -> BehaviorContext:
+        """Build a draft whose source lookup matches the selected work order."""
+        return BehaviorContext(
+            values={"name": "Selected", "work_order": current},
+            listener_field="name",
+            target_field="work_order",
+        )
+
+    def get_test_scenarios(self) -> list[BehaviorActionScenario]:
+        """Describe record identity assignment, ordering, policies, and validation."""
+        listener = self._field("name")
+        target = self._field("work_order")
+        config = self._record_config()
+        other = self.work_order_model.objects.get(name="Other")
+        selected_result = BehaviorResult(
+            values=(FieldValueUpdate(field="work_order", value=str(self.work_order.pk)),),
+        )
+        return [
+            BehaviorActionScenario(
+                name="Select the filtered record itself into a UUID relation",
+                context=self._record_context(),
+                config=config, listener=listener, target=target,
+                expected_result=selected_result,
+            ),
+            BehaviorActionScenario(
+                name="Select the first matching record alphabetically",
+                context=self._record_context(),
+                config={**config, "filters": []},
+                listener=listener, target=target,
+                expected_result=BehaviorResult(
+                    values=(FieldValueUpdate(field="work_order", value=str(other.pk)),),
+                ),
+            ),
+            BehaviorActionScenario(
+                name="Select the last matching record alphabetically",
+                context=self._record_context(),
+                config={**config, "filters": [], "fetch": "last"},
+                listener=listener, target=target,
+                expected_result=selected_result,
+            ),
+            BehaviorActionScenario(
+                name="Replace an existing selection under the always policy",
+                context=self._record_context(str(other.pk)),
+                config=config, listener=listener, target=target,
+                expected_result=selected_result,
+            ),
+            BehaviorActionScenario(
+                name="Preserve an existing selection under the empty-only policy",
+                context=self._record_context(str(other.pk)),
+                config={**config, "write_policy": "if_empty"},
+                listener=listener, target=target, expected_result=BehaviorResult(),
+            ),
+            BehaviorActionScenario(
+                name="Leave an existing selection unchanged when no record matches",
+                context=self._record_context(str(other.pk)),
+                config={**config, "filters": self._filters("name", "Missing")},
+                listener=listener, target=target, expected_result=BehaviorResult(),
+            ),
+            BehaviorActionScenario(
+                name="Avoid updating an already selected matching record",
+                context=self._record_context(str(self.work_order.pk)),
+                config=config, listener=listener, target=target,
+                expected_result=BehaviorResult(),
+            ),
+            BehaviorActionScenario(
+                name="Reject a source model different from the relation target",
+                context=self._record_context(),
+                config={**config, "model": self.product_model._meta.label_lower},
+                listener=listener, target=target,
+                expected_exception=ExpectedBehaviorActionException(ValidationError),
+            ),
+            BehaviorActionScenario(
+                name="Reject record selection into a scalar text target",
+                context=BehaviorContext(
+                    values={"name": "Selected", "currency": ""},
+                    listener_field="name", target_field="currency",
+                ),
+                config=config, listener=listener, target=self._field("currency"),
+                expected_exception=ExpectedBehaviorActionException(ValidationError),
+            ),
+            BehaviorActionScenario(
+                name="Keep source column mandatory for existing field-copy configurations",
+                context=self._context("exchange_rate"),
+                config={**self._scalar_config(), "column": None},
+                listener=listener, target=self._field("exchange_rate"),
+                expected_exception=ExpectedBehaviorActionException(
+                    ValidationError, message_regex="Select a source column",
+                ),
+            ),
+        ]
+
+    def test_record_lookup_respects_accessible_rows(self) -> None:
+        """
+        Use case: A record lookup matches both permitted and inaccessible rows.
+        Expected result: Only permitted rows participate in first-record selection.
+        """
+        # 1. Restrict the lookup to a record that sorts after an inaccessible row.
+        with patch.object(
+            UserPolicyManager, "get_accessible_queryset",
+            return_value=self.work_order_model.objects.filter(pk=self.work_order.pk),
+        ):
+            # 2. Execute through configuration binding and the authorized lookup.
+            result = FETCH.run(
+                self._record_context(),
+                {**self._record_config(), "filters": []},
+                listener=self._field("name"), target=self._field("work_order"),
+                user=self.admin_user,
+            )
+        # 3. Confirm the inaccessible alphabetically first row was not returned.
+        self.assertEqual(result.values[0].value, str(self.work_order.pk))
+
+    def test_record_lookup_denies_unreadable_order_field(self) -> None:
+        """
+        Use case: Record selection orders by a field the user cannot read.
+        Expected result: The action returns a permission message and no identity.
+        """
+        # 1. Deny access to the explicit ordering field.
+        with patch.object(UserPolicyManager, "has_field_permission", return_value=False):
+            # 2. Attempt to select the matching record.
+            result = FETCH.run(
+                self._record_context(), self._record_config(),
+                listener=self._field("name"), target=self._field("work_order"),
+                user=self.normal_user,
+            )
+        # 3. Verify no record identity was disclosed.
+        self.assertEqual(result.values, ())
+        self.assertEqual(result.messages[0].type, "danger")
+
+    def test_record_lookup_without_policies_returns_no_identity(self) -> None:
+        """
+        Use case: A normal user without grants attempts a record lookup.
+        Expected result: No record identity is disclosed even without source columns.
+        """
+        # 1. Remove order and filters to exercise row authorization alone.
+        config = {**self._record_config(), "order_by": None, "filters": []}
+        # 2. Run the lookup as a normal user with no applicable policies.
+        result = FETCH.run(
+            self._record_context(), config,
+            listener=self._field("name"), target=self._field("work_order"),
+            user=self.normal_user,
+        )
+        # 3. Confirm the source model cannot disclose an identity.
+        self.assertEqual(result.values, ())
+
+    def test_record_editor_hides_source_column(self) -> None:
+        """
+        Use case: A compatible relation target selects the matching record itself.
+        Expected result: The editor offers record selection and hides source columns.
+        """
+        # 1. Render the same configuration form used by the behavior builder.
+        form = action_config_form(
+            FETCH, self._field("name"), self._field("work_order"),
+            self._record_config(),
+        )
+        # 2. Verify the record option is offered and has no column requirement.
+        self.assertIn(
+            ("record", "Matching record itself"),
+            form.fields["value_source"].choices,
+        )
+        self.assertTrue(form.fields["column"].widget.is_hidden)
+        self.assertTrue(form.fields["column"].disabled)
+        self.assertIn("value_source", form.refresh_fields)
+
+    def test_record_executor_updates_draft_without_saving(self) -> None:
+        """
+        Use case: A saved layout fetches a matching record into a relation field.
+        Expected result: The executor returns a valid identity without saving a draft.
+        """
+        # 1. Save a layout with an on-change record-selection action.
+        owner = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            name="Select matching work order",
+            content_type=ContentType.objects.get_for_model(self.invoice_model),
+            layout=FieldLayout(rows=[
+                LayoutRow(columns=2, items=[
+                    LayoutItem(id="name", config={
+                        "behaviors": BehaviorConfig(behaviors=[
+                            FormBehavior(id="select-work-order", actions=[
+                                BehaviorAction(
+                                    action="fetch", target_field="work_order",
+                                    config=self._record_config(),
+                                ),
+                            ]),
+                        ]).to_storage(),
+                    }),
+                    LayoutItem(id="work_order"),
+                ]),
+            ]).model_dump(mode="json"),
+        )
+        # 2. Execute with the listener's current unsaved form value.
+        result = BehaviorExecutor(owner, self.admin_user).evaluate(
+            "name", {"name": "Selected", "work_order": None},
+        )
+        # 3. Verify relation validation succeeded without persisting an invoice.
+        self.assertEqual(result.values[0].value, str(self.work_order.pk))
+        self.assertEqual(self.invoice_model.objects.count(), 0)
+
+    def test_anonymous_record_lookup_returns_no_identity(self) -> None:
+        """
+        Use case: An anonymous caller tries selecting a source record.
+        Expected result: No record identity is disclosed without authenticated access.
+        """
+        # 1. Use record mode without any field reads.
+        config = {**self._record_config(), "order_by": None, "filters": []}
+        # 2. Run against the anonymous user's accessible queryset.
+        result = FETCH.run(
+            self._record_context(), config,
+            listener=self._field("name"), target=self._field("work_order"),
+            user=AnonymousUser(),
+        )
+        # 3. Confirm no identity was returned.
+        self.assertEqual(result.values, ())
 
     def _field(self, name: str) -> ApplicationField:
         """Resolve an invoice field used by an action or layout."""
