@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from django.http import HttpResponse
 from django.utils.translation import gettext_lazy
 
-from bloomerp.models.project_management.todo_label import TodoLabel
+from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
@@ -55,9 +55,11 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
             ),
             ModelRequestScenario(
                 name="Multiword plural keeps existing capitalization conventions",
-                model=TodoLabel,
+                model=Initiative,
                 user=self.admin_user,
-                expected=ExpectedResult(response_validators=self.has_title("Todo Labels")),
+                prepare=self.use_multiword_plural,
+                cleanup=self.restore_plural,
+                expected=ExpectedResult(response_validators=self.has_title("Project Initiatives")),
             ),
             ModelRequestScenario(
                 name="Lazy plural is translated in the request language",
@@ -107,5 +109,12 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
         self.plural_patch.start()
 
     def restore_plural(self, scenario: RequestScenario) -> None:
-        """Restore model metadata after the irregular-plural request."""
+        """Restore model metadata after a customized-plural request."""
         self.plural_patch.stop()
+
+    def use_multiword_plural(self, scenario: RequestScenario) -> None:
+        """Give an API-enabled model a multiword plural for capitalization coverage."""
+        self.plural_patch = patch.object(
+            Initiative._meta, "verbose_name_plural", gettext_lazy("Project Initiatives")
+        )
+        self.plural_patch.start()

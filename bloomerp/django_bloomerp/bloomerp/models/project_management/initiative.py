@@ -62,13 +62,6 @@ class Initiative(BloomerpModel):
                     ],
                 ),
                 LayoutRow(
-                    title=gettext_noop("Labels"),
-                    columns=1,
-                    items=[
-                        LayoutItem(id="labels", colspan=1),
-                    ],
-                ),
-                LayoutRow(
                     title=gettext_noop("Todos"),
                     columns=1,
                     items=[
@@ -181,13 +174,6 @@ class Initiative(BloomerpModel):
         null=True,
         related_name="owned_initiatives",
         verbose_name=_("Owner"),
-    )
-    labels = models.ManyToManyField(
-        "bloomerp.TodoLabel",
-        blank=True,
-        related_name="initiatives",
-        verbose_name=_("Labels"),
-        help_text=_("Labels assigned to the initiative"),
     )
     parent = models.ForeignKey(
         "self",

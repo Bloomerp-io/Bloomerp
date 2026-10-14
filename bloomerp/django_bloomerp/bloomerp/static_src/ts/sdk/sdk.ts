@@ -1442,7 +1442,6 @@ export interface Initiative {
   datetime_updated: string;
   description: string | null;
   id: string;
-  labels: Array<string>;
   name: string;
   object_labels: unknown;
   owner: number | null;
@@ -1454,12 +1453,11 @@ export interface Initiative {
 }
 
 export type InitiativeId = string;
-export type InitiativeFieldName = "completed_at" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "labels" | "name" | "object_labels" | "owner" | "parent" | "start_date" | "status" | "target_date" | "updated_by";
+export type InitiativeFieldName = "completed_at" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "name" | "object_labels" | "owner" | "parent" | "start_date" | "status" | "target_date" | "updated_by";
 
 export interface InitiativeCreate {
   created_by?: number | null;
   description?: string | null;
-  labels?: Array<string>;
   name: string;
   owner?: number | null;
   parent?: string | null;
@@ -1479,7 +1477,6 @@ export const initiativesFields: Record<InitiativeFieldName, BloomerpFieldMetadat
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "description": {"name": "description", "title": "Description", "fieldType": "TextField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "labels": {"name": "labels", "title": "Labels", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "TodoLabel", "editable": true, "requiredOnCreate": false, "tsType": "Array<string>", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "owner": {"name": "owner", "title": "Owner", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
@@ -2018,7 +2015,6 @@ export interface Todo {
   effort: number;
   id: string;
   initiative: string | null;
-  labels: Array<string>;
   object_id: string | null;
   object_labels: unknown;
   priority: string;
@@ -2030,7 +2026,7 @@ export interface Todo {
 }
 
 export type TodoId = string;
-export type TodoFieldName = "assigned_to" | "content" | "content_type" | "created_by" | "datetime_completed" | "datetime_created" | "datetime_updated" | "effort" | "id" | "initiative" | "labels" | "object_id" | "object_labels" | "priority" | "requested_by" | "required_by" | "status" | "title" | "updated_by";
+export type TodoFieldName = "assigned_to" | "content" | "content_type" | "created_by" | "datetime_completed" | "datetime_created" | "datetime_updated" | "effort" | "id" | "initiative" | "object_id" | "object_labels" | "priority" | "requested_by" | "required_by" | "status" | "title" | "updated_by";
 
 export interface TodoCreate {
   assigned_to?: number | null;
@@ -2039,7 +2035,6 @@ export interface TodoCreate {
   created_by?: number | null;
   effort?: number;
   initiative?: string | null;
-  labels?: Array<string>;
   object_id?: string | null;
   priority?: string;
   requested_by?: number | null;
@@ -2063,7 +2058,6 @@ export const todosFields: Record<TodoFieldName, BloomerpFieldMetadata> = {
   "effort": {"name": "effort", "title": "Effort", "fieldType": "IntegerField", "dbFieldType": "integer", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": [{"value": 1, "label": "XS"}, {"value": 2, "label": "S"}, {"value": 4, "label": "M"}, {"value": 8, "label": "L"}, {"value": 16, "label": "XL"}]},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "initiative": {"name": "initiative", "title": "Initiative", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "Initiative", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
-  "labels": {"name": "labels", "title": "Labels", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "TodoLabel", "editable": true, "requiredOnCreate": false, "tsType": "Array<string>", "choices": null},
   "object_id": {"name": "object_id", "title": "Object ID", "fieldType": "CharField", "dbFieldType": "varchar(36)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "priority": {"name": "priority", "title": "Priority", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "urgent", "label": "Urgent"}, {"value": "high", "label": "High"}, {"value": "medium", "label": "Medium"}, {"value": "low", "label": "Low"}]},
@@ -2080,50 +2074,6 @@ export const todosPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowe
 export class TodoApi extends ModelApi<Todo, TodoId, TodoCreate, TodoUpdate, TodoQuery, TodoFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/todos/");
-  }
-}
-
-export interface TodoLabel {
-  color: string;
-  created_by: number | null;
-  datetime_created: string;
-  datetime_updated: string;
-  id: string;
-  name: string;
-  object_labels: unknown;
-  updated_by: number | null;
-}
-
-export type TodoLabelId = string;
-export type TodoLabelFieldName = "color" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "name" | "object_labels" | "updated_by";
-
-export interface TodoLabelCreate {
-  color: string;
-  created_by?: number | null;
-  name: string;
-  updated_by?: number | null;
-}
-
-export type TodoLabelUpdate = Partial<TodoLabelCreate>;
-export type TodoLabelQuery = Partial<Record<TodoLabelFieldName | `${TodoLabelFieldName}__${string}`, QueryValue | QueryValue[]>>;
-
-export const todoLabelsFields: Record<TodoLabelFieldName, BloomerpFieldMetadata> = {
-  "color": {"name": "color", "title": "Color", "fieldType": "CharField", "dbFieldType": "varchar(7)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
-  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
-  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
-  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
-  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
-} as const;
-
-export const todoLabelsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
-export const todoLabelsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
-
-export class TodoLabelApi extends ModelApi<TodoLabel, TodoLabelId, TodoLabelCreate, TodoLabelUpdate, TodoLabelQuery, TodoLabelFieldName> {
-  constructor(client: BloomerpHttpClient) {
-    super(client, "/api/todo_labels/");
   }
 }
 
@@ -2901,12 +2851,6 @@ export class BloomerpSdk {
         publicAccess: todosPublicAccess,
         fields: todosFields,
       },
-      todoLabels: {
-        endpoint: "/api/todo_labels/",
-        capabilities: todoLabelsCapabilities,
-        publicAccess: todoLabelsPublicAccess,
-        fields: todoLabelsFields,
-      },
       users: {
         endpoint: "/api/users/",
         capabilities: usersCapabilities,
@@ -3006,7 +2950,6 @@ export class BloomerpSdk {
   public readonly sqlQueries: SqlQueryApi;
   public readonly tiles: TileApi;
   public readonly todos: TodoApi;
-  public readonly todoLabels: TodoLabelApi;
   public readonly users: UserApi;
   public readonly userDetailViewTabsPreferences: UserDetailViewTabsPreferenceApi;
   public readonly userInboxPreferences: UserInboxPreferenceApi;
@@ -3053,7 +2996,6 @@ export class BloomerpSdk {
     this.sqlQueries = new SqlQueryApi(this.client);
     this.tiles = new TileApi(this.client);
     this.todos = new TodoApi(this.client);
-    this.todoLabels = new TodoLabelApi(this.client);
     this.users = new UserApi(this.client);
     this.userDetailViewTabsPreferences = new UserDetailViewTabsPreferenceApi(this.client);
     this.userInboxPreferences = new UserInboxPreferenceApi(this.client);

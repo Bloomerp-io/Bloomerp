@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from django.test import SimpleTestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
-from bloomerp.models.project_management.todo_label import TodoLabel
+from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.tests.base import (
     BloomerpAPIViewTestCase,
     BloomerpMcpViewTestCase,
@@ -24,7 +24,7 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
 
     def extendedSetup(self) -> None:
         """Use the same model identity supplied by shared object artifacts."""
-        self.model_label = TodoLabel._meta.label
+        self.model_label = Initiative._meta.label
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover canonical mutations, access checks, and API discovery."""
@@ -41,7 +41,7 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
                 data={
                     "model_label": self.model_label,
                     "operation": "create",
-                    "data": {"name": "Backend", "color": "#000000"},
+                    "data": {"name": "Backend", "description": "Backend initiative"},
                 },
                 expected=ExpectedResult(
                     status_code=201,
@@ -105,7 +105,10 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
                 data={
                     "model_label": self.model_label,
                     "operation": "create",
-                    "data": {"name": "Unauthorized", "color": "#000000"},
+                    "data": {
+                        "name": "Unauthorized",
+                        "description": "Backend initiative",
+                    },
                 },
                 expected=ExpectedResult(
                     status_code=403,
@@ -127,32 +130,32 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
         ]
 
     def unauthorized_object_absent(self, response: HttpResponse) -> bool:
-        """Verify denied write requests leave no unauthorized label in storage."""
-        return not TodoLabel.objects.filter(name="Unauthorized").exists()
+        """Verify denied write requests leave no unauthorized initiative in storage."""
+        return not Initiative.objects.filter(name="Unauthorized").exists()
 
-    def create_label(self, **overrides: Any) -> TodoLabel:
-        """Create a reusable label fixture with supplied field overrides."""
-        values = {"name": "Backend", "color": "#000000"}
+    def create_initiative(self, **overrides: Any) -> Initiative:
+        """Create a reusable initiative fixture with supplied field overrides."""
+        values = {"name": "Backend", "description": "Backend initiative"}
         values.update(overrides)
-        return TodoLabel.objects.create(**values)
+        return Initiative.objects.create(**values)
 
     def prepare_update(self, scenario: RequestScenario) -> None:
         """Prepare a direct update using a shared model-label identity."""
-        self.label = self.create_label(name="Before")
+        self.initiative = self.create_initiative(name="Before")
         scenario.data = {
             "model_label": self.model_label,
             "operation": "update",
-            "object_id": str(self.label.pk),
+            "object_id": str(self.initiative.pk),
             "data": {"name": "Updated"},
         }
 
     def prepare_delete(self, scenario: RequestScenario) -> None:
         """Prepare a direct deletion using a shared model-label identity."""
-        self.label = self.create_label()
+        self.initiative = self.create_initiative()
         scenario.data = {
             "model_label": self.model_label,
             "operation": "delete",
-            "object_id": str(self.label.pk),
+            "object_id": str(self.initiative.pk),
         }
 
     def object_was_created(self, response: HttpResponse) -> bool:
@@ -160,22 +163,22 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
         payload = response.json()
         return (
             payload.get("operation") == "create"
-            and TodoLabel.objects.filter(pk=payload["object"]["id"]).exists()
+            and Initiative.objects.filter(pk=payload["object"]["id"]).exists()
         )
 
     def object_was_updated(self, response: HttpResponse) -> bool:
-        """Verify the response and persistent label contain the requested update."""
-        self.label.refresh_from_db()
+        """Verify the response and persistent initiative contain the requested update."""
+        self.initiative.refresh_from_db()
         return (
             response.json()["object"]["name"] == "Updated"
-            and self.label.name == "Updated"
+            and self.initiative.name == "Updated"
         )
 
     def object_was_deleted(self, response: HttpResponse) -> bool:
-        """Verify the requested label was deleted and its identity is returned."""
+        """Verify the requested initiative was deleted and its identity is returned."""
         return (
-            response.json().get("object_id") == str(self.label.pk)
-            and not TodoLabel.objects.filter(pk=self.label.pk).exists()
+            response.json().get("object_id") == str(self.initiative.pk)
+            and not Initiative.objects.filter(pk=self.initiative.pk).exists()
         )
 
     @staticmethod
@@ -204,16 +207,16 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
 
     def test_mutate_with_shared_model_label(self) -> None:
         """Create, update, and delete directly with the identity used by object artifacts."""
-        identity = {"model_label": TodoLabel._meta.label.lower()}
+        identity = {"model_label": Initiative._meta.label.lower()}
         response = self.canonical_request(
             {
                 **identity,
                 "operation": "create",
-                "data": {"name": "Canonical", "color": "#123456"},
+                "data": {"name": "Canonical", "description": "Initial description"},
             }
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["model_label"], TodoLabel._meta.label)
+        self.assertEqual(response.data["model_label"], Initiative._meta.label)
         object_id = response.data["object"]["id"]
         response = self.canonical_request(
             {
@@ -224,31 +227,31 @@ class TestAssistantMutationView(BloomerpAPIViewTestCase):
             }
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(TodoLabel.objects.get(pk=object_id).name, "Updated by label")
+        self.assertEqual(Initiative.objects.get(pk=object_id).name, "Updated by label")
         response = self.canonical_request(
             {**identity, "operation": "delete", "object_id": object_id}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(TodoLabel.objects.filter(pk=object_id).exists())
+        self.assertFalse(Initiative.objects.filter(pk=object_id).exists())
 
     def test_model_label_preserves_write_denial(self) -> None:
         """A shared model label grants no write access to a normal user."""
         response = self.canonical_request(
             {
-                "model_label": TodoLabel._meta.label,
+                "model_label": Initiative._meta.label,
                 "operation": "create",
-                "data": {"name": "Denied by label", "color": "#123456"},
+                "data": {"name": "Denied by label", "description": "Initial description"},
             },
             admin=False,
         )
         self.assertEqual(response.status_code, 403)
-        self.assertFalse(TodoLabel.objects.filter(name="Denied by label").exists())
+        self.assertFalse(Initiative.objects.filter(name="Denied by label").exists())
 
     def test_legacy_resource_with_model_label_is_rejected(self) -> None:
         """Reject obsolete keys even when a valid model label is also supplied."""
         response = self.canonical_request(
             {
-                "model_label": TodoLabel._meta.label,
+                "model_label": Initiative._meta.label,
                 "resource": "users",
                 "operation": "create",
                 "data": {},
@@ -267,23 +270,26 @@ class TestAssistantMutationMcpView(BloomerpMcpViewTestCase):
         """Persist object payloads and reject JSON strings before dispatching writes."""
         return [
             McpRequestScenario(
-                name="Creates a label with an object payload over MCP",
+                name="Creates an initiative with an object payload over MCP",
                 user=self.admin_user,
                 arguments={
-                    "model_label": TodoLabel._meta.label,
+                    "model_label": Initiative._meta.label,
                     "operation": "create",
-                    "data": {"name": "MCP label", "color": "#123456"},
+                    "data": {
+                        "name": "MCP initiative",
+                        "description": "Initial description",
+                    },
                 },
                 expected=ExpectedResult(
-                    response_validators=[self.mcp_is_error(False), self.label_created],
+                    response_validators=[self.mcp_is_error(False), self.initiative_created],
                 ),
             ),
             McpRequestScenario(
-                name="Updates a label with an object payload over MCP",
+                name="Updates an initiative with an object payload over MCP",
                 user=self.admin_user,
                 prepare=self.prepare_update,
                 expected=ExpectedResult(
-                    response_validators=[self.mcp_is_error(False), self.label_updated],
+                    response_validators=[self.mcp_is_error(False), self.initiative_updated],
                 ),
             ),
             McpRequestScenario(
@@ -291,18 +297,20 @@ class TestAssistantMutationMcpView(BloomerpMcpViewTestCase):
                 user=self.admin_user,
                 prepare=self.prepare_string_update,
                 expected=ExpectedResult(
-                    response_validators=[self.mcp_is_error(), self.label_unchanged],
+                    response_validators=[self.mcp_is_error(), self.initiative_unchanged],
                 ),
             ),
         ]
 
     def prepare_update(self, scenario: McpRequestScenario) -> None:
-        """Create the target label and supply native object arguments."""
-        self.label = TodoLabel.objects.create(name="Before", color="#123456")
+        """Create the target initiative and supply native object arguments."""
+        self.initiative = Initiative.objects.create(
+            name="Before", description="Initial description"
+        )
         scenario.arguments = {
-            "model_label": TodoLabel._meta.label,
+            "model_label": Initiative._meta.label,
             "operation": "update",
-            "object_id": str(self.label.pk),
+            "object_id": str(self.initiative.pk),
             "data": {"name": "Updated over MCP"},
         }
 
@@ -311,27 +319,29 @@ class TestAssistantMutationMcpView(BloomerpMcpViewTestCase):
         self.prepare_update(scenario)
         scenario.arguments["data"] = '{"name": "Updated over MCP"}'
 
-    def label_created(self, response: HttpResponse) -> bool:
+    def initiative_created(self, response: HttpResponse) -> bool:
         """Confirm the tool returned an object that was saved through the generated API."""
         payload = response.json()["result"]["structuredContent"]
-        return TodoLabel.objects.filter(
-            pk=payload["object"]["id"], name="MCP label", color="#123456"
+        return Initiative.objects.filter(
+            pk=payload["object"]["id"],
+            name="MCP initiative",
+            description="Initial description",
         ).exists()
 
-    def label_updated(self, response: HttpResponse) -> bool:
-        """Confirm a partial update persisted and returned the requested label name."""
-        self.label.refresh_from_db()
+    def initiative_updated(self, response: HttpResponse) -> bool:
+        """Confirm a partial update persisted and returned the requested initiative name."""
+        self.initiative.refresh_from_db()
         return (
-            self.label.name == "Updated over MCP"
+            self.initiative.name == "Updated over MCP"
             and response.json()["result"]["structuredContent"]["object"]["name"]
-            == self.label.name
+            == self.initiative.name
         )
 
-    def label_unchanged(self, response: HttpResponse) -> bool:
+    def initiative_unchanged(self, response: HttpResponse) -> bool:
         """Confirm schema validation rejected the string without changing the target."""
-        self.label.refresh_from_db()
+        self.initiative.refresh_from_db()
         error_text = response.json()["result"]["content"][0]["text"]
-        return self.label.name == "Before" and "object" in error_text
+        return self.initiative.name == "Before" and "object" in error_text
 
 
 class AssistantModelIdentityTests(SimpleTestCase):
@@ -359,7 +369,7 @@ class AssistantModelIdentityTests(SimpleTestCase):
         from bloomerp.views.api.mutations import AssistantMutationRequestSerializer
 
         serializer = AssistantMutationRequestSerializer(
-            data={"resource": "todo_labels", "operation": "create", "data": {}}
+            data={"resource": "initiatives", "operation": "create", "data": {}}
         )
         self.assertFalse(serializer.is_valid())
         self.assertIn("resource", serializer.errors)
@@ -378,8 +388,8 @@ class AssistantModelIdentityTests(SimpleTestCase):
             with self.subTest(serializer=serializer_class.__name__):
                 serializer = serializer_class(
                     data={
-                        "model_label": "bloomerp.TodoLabel",
-                        "resource": "todo_labels",
+                        "model_label": "bloomerp.Initiative",
+                        "resource": "initiatives",
                         "object_id": "42",
                     }
                 )

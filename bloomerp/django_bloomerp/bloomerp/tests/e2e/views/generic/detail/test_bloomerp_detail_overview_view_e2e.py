@@ -4,29 +4,32 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from playwright.sync_api import Route, expect
 
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.project_management.todo import Todo
-from bloomerp.models.project_management.todo_label import TodoLabel
-from bloomerp.models.communication.instant_messaging import IMConversation, IMConversationParticipant
 from bloomerp.communication.builtins.instant_messaging.controller import IMController
-from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.communication.instant_messaging import (
+    IMConversation,
+    IMConversationParticipant,
+)
+from bloomerp.models.project_management.initiative import Initiative
+from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.users.user_detail_view_tabs_preference import (
     UserDetailViewTabItem,
     UserDetailViewTabsPreference,
 )
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.utils.models import get_list_view_url
 from bloomerp.tests.base import (
     E2EAction,
     E2ERequestScenario,
 )
 from bloomerp.tests.base import e2e_test_case as e2e_test_cases
+from bloomerp.utils.models import get_list_view_url
 
 
 class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
     def test_create_todo_modal_closes_after_save(self) -> None:
         """Verify the object's todo action saves without navigating inside the dialog."""
-        self.todo_owner = TodoLabel.objects.create(name="Todo owner", color="#112233")
+        self.todo_owner = Initiative.objects.create(name="Todo owner")
         scenario = E2ERequestScenario(
             name="Object-linked todo saves and closes its modal",
             user=self.admin_user,

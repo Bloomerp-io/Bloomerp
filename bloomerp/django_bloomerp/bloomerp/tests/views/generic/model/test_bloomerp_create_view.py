@@ -1,28 +1,48 @@
 import json
+from typing import Any
 
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
-from bloomerp.models import ApplicationField, FieldPolicy, Policy, RowPolicy, RowPolicyRule
+from bloomerp.models import (
+    ApplicationField,
+    FieldPolicy,
+    Policy,
+    RowPolicy,
+    RowPolicyRule,
+)
+from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.project_management.todo import Todo, TodoPriority, TodoStatus
-from bloomerp.models.project_management.todo_label import TodoLabel
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
 from bloomerp.models.workspaces.sidebar import Sidebar
-from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleContent
+from bloomerp.permissions.definition import (
+    AccessRule,
+    BloomerpPermission,
+    RowPolicyRuleContent,
+)
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base.request_test_case_mixin import ExpectedResult
-from bloomerp.tests.base.view_test_case import BloomerpModelViewTestCase, ModelRequestScenario, RequestScenario
+from bloomerp.tests.base.view_test_case import (
+    BloomerpModelViewTestCase,
+    ModelRequestScenario,
+    RequestScenario,
+)
 
 
-def overridden_create_view(_request, *args, **kwargs):
+def overridden_create_view(
+    _request: HttpRequest, *args: Any, **kwargs: Any
+) -> HttpResponse:
+    """Provide a full-page create override for the modal redirect scenario."""
     return HttpResponse("overridden")
 
 
@@ -186,8 +206,8 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
             RequestScenario(
                 name="Modal redirects to an overridden full create view",
                 description="UC: A model overrides its generated create route.\nExpected Result: Opening the modal responds with HX-Redirect to that route.",
-                view_name="todo_label_component", user=self.admin_user, headers={"hx-request": "true"},
-                prepare=self.override_customer_create_route, cleanup=self.restore_customer_create_route,
+                view_name="initiative_component", user=self.admin_user, headers={"hx-request": "true"},
+                prepare=self.override_initiative_create_route, cleanup=self.restore_initiative_create_route,
                 expected=ExpectedResult(response_validators=self.component_override_redirected),
             ),
             RequestScenario(
@@ -277,11 +297,20 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
             )
         ]
 
-    def get_endpoint(self, view_name, kwargs, setup=None):
+    def get_endpoint(
+        self,
+        view_name: str,
+        kwargs: dict[str, Any] | None,
+        setup: RequestScenario | None = None,
+    ) -> str:
+        """Resolve create and layout component aliases alongside generated model routes."""
         if view_name == "customer_component":
             return reverse("components_create_object", kwargs={"content_type_id": self.content_type.pk})
-        if view_name == "todo_label_component":
-            return reverse("components_create_object", kwargs={"content_type_id": ContentType.objects.get_for_model(TodoLabel).pk})
+        if view_name == "initiative_component":
+            return reverse(
+                "components_create_object",
+                kwargs={"content_type_id": ContentType.objects.get_for_model(Initiative).pk},
+            )
         if view_name == "available_create_items":
             owner_type = ContentType.objects.get_for_model(UserObjectLayoutPreference)
             return reverse("components_available_layout_items", kwargs={"content_type_id": owner_type.pk}) + f"?layout_mode=create&target_content_type_id={self.content_type.pk}"
@@ -435,33 +464,68 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         created = self.CustomerModel.objects.get()
         return created.last_name == "Peeters" and created.country == self.belgium
 
-    def foreign_widget_trigger_is_correct(self, response):
+    def foreign_widget_trigger_is_correct(self, response: HttpResponse) -> bool:
+        """Verify modal creation reports the new initiative to its foreign-field widget."""
         trigger = json.loads(response["HX-Trigger"])
         event = trigger["bloomerp:foreign-field-object-created"]
-        label = TodoLabel.objects.get(name="Created From Widget")
-        return "HX-Refresh" not in response and event.items() >= {"foreign_field_widget_id": "widget-123", "content_type_id": ContentType.objects.get_for_model(TodoLabel).pk, "object_id": str(label.pk), "object_label": "Created From Widget"}.items()
+        initiative = Initiative.objects.get(name="Created From Widget")
+        return "HX-Refresh" not in response and event.items() >= {
+            "foreign_field_widget_id": "widget-123",
+            "content_type_id": ContentType.objects.get_for_model(Initiative).pk,
+            "object_id": str(initiative.pk),
+            "object_label": "Created From Widget",
+        }.items()
 
-    def add_component_next(self, scenario):
-        self.component_url = reverse("components_create_object", kwargs={"content_type_id": ContentType.objects.get_for_model(TodoLabel).pk})
+    def add_component_next(self, scenario: RequestScenario) -> None:
+        """Send save-and-create-next submissions back to the initiative modal."""
+        self.component_url = reverse(
+            "components_create_object",
+            kwargs={"content_type_id": ContentType.objects.get_for_model(Initiative).pk},
+        )
         scenario.data["next"] = self.component_url
 
-    def component_redirect_is_correct(self, response):
-        return response.headers.get("Location") == self.component_url and "HX-Refresh" not in response and TodoLabel.objects.filter(name="Modal label").count() == 1
+    def component_redirect_is_correct(self, response: HttpResponse) -> bool:
+        """Confirm modal creation persists one initiative and redirects without refresh."""
+        return (
+            response.headers.get("Location") == self.component_url
+            and "HX-Refresh" not in response
+            and Initiative.objects.filter(name="Modal initiative").count() == 1
+        )
 
-    def todo_label_created(self, response):
-        return response.headers.get("HX-Refresh") == "true" and TodoLabel.objects.filter(name="Backend", color="#000000").exists()
+    def initiative_created(self, response: HttpResponse) -> bool:
+        """Confirm successful modal creation stores initiative fields and refreshes its host."""
+        return (
+            response.headers.get("HX-Refresh") == "true"
+            and Initiative.objects.filter(
+                name="Backend", description="Backend initiative"
+            ).exists()
+        )
 
-    def override_customer_create_route(self, _scenario):
+    def override_initiative_create_route(self, _scenario: RequestScenario) -> None:
+        """Temporarily replace Initiative's generated create route with a full-page view."""
         self.saved_routes = router.routes.copy()
         self.saved_templates = router._model_route_templates.copy()
-        router.register(path="create", route_type="model", name="Create Todo Label Override", url_name="add", models=TodoLabel, override=True)(overridden_create_view)
+        router.register(
+            path="create",
+            route_type="model",
+            name="Create Initiative Override",
+            url_name="add",
+            models=Initiative,
+            override=True,
+        )(overridden_create_view)
 
-    def restore_customer_create_route(self, _scenario):
+    def restore_initiative_create_route(self, _scenario: RequestScenario) -> None:
+        """Restore generated routes after exercising the initiative create override."""
         router.routes = self.saved_routes
         router._model_route_templates = self.saved_templates
 
-    def component_override_redirected(self, response):
-        route = next(route for route in router.get_routes_by_model(TodoLabel) if route.base_url_name == "add")
+    def component_override_redirected(self, response: HttpResponse) -> bool:
+        """Verify the modal delegates to the initiative's overridden full-page create route."""
+        route = next(
+            route
+            for route in router.get_routes_by_model(Initiative)
+            if route.base_url_name == "add"
+        )
         return response.headers.get("HX-Redirect") == reverse(route.url_name)
 
     def available_items_are_permission_scoped(self, response):

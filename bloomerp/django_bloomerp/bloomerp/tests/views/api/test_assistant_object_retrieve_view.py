@@ -2,7 +2,7 @@
 from django.http import HttpResponse
 
 from bloomerp.filters.definition import FilterCondition
-from bloomerp.models.project_management.todo_label import TodoLabel
+from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base import (
@@ -60,9 +60,11 @@ class TestAssistantObjectRetrieveView(BloomerpAPIViewTestCase):
 
     def prepare_readable_object(self, scenario: RequestScenario) -> None:
         """Create an artifact target with a row grant and a restricted field set."""
-        self.label = TodoLabel.objects.create(name="Current name", color="#123456")
+        self.initiative = Initiative.objects.create(
+            name="Current name", description="Initial description"
+        )
         policy = PolicyManager.create_policy(
-            model_or_content_type=TodoLabel,
+            model_or_content_type=Initiative,
             field_permissions={
                 "id": [BloomerpPermission.VIEW],
                 "name": [BloomerpPermission.VIEW],
@@ -72,7 +74,7 @@ class TestAssistantObjectRetrieveView(BloomerpAPIViewTestCase):
                     permissions=[BloomerpPermission.VIEW],
                     conditions=[
                         FilterCondition(
-                            field_path="id", lookup_id="equals", value=str(self.label.pk)
+                            field_path="id", lookup_id="equals", value=str(self.initiative.pk)
                         )
                     ],
                 )
@@ -80,20 +82,22 @@ class TestAssistantObjectRetrieveView(BloomerpAPIViewTestCase):
         )
         PolicyManager.assign(policy, self.normal_user)
         scenario.query_params = {
-            "model_label": TodoLabel._meta.label,
-            "object_id": str(self.label.pk),
+            "model_label": Initiative._meta.label,
+            "object_id": str(self.initiative.pk),
         }
 
     def prepare_hidden_object(self, scenario: RequestScenario) -> None:
         """Point the artifact at a row outside an otherwise valid read policy."""
         self.prepare_readable_object(scenario)
-        hidden_label = TodoLabel.objects.create(name="Hidden", color="#654321")
-        scenario.query_params["object_id"] = str(hidden_label.pk)
+        hidden_initiative = Initiative.objects.create(
+            name="Hidden", description="Hidden description"
+        )
+        scenario.query_params["object_id"] = str(hidden_initiative.pk)
 
     def object_was_retrieved(self, response: HttpResponse) -> bool:
         """Verify the shared model-label identity and exact readable fields."""
         return response.json() == {
-            "model_label": TodoLabel._meta.label,
-            "object_id": str(self.label.pk),
-            "object": {"id": str(self.label.pk), "name": "Current name"},
+            "model_label": Initiative._meta.label,
+            "object_id": str(self.initiative.pk),
+            "object": {"id": str(self.initiative.pk), "name": "Current name"},
         }

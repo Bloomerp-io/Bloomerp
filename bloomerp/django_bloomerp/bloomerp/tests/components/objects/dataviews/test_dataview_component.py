@@ -14,9 +14,14 @@ from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
-from bloomerp.models.project_management.todo_label import TodoLabel
+from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
-from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleCondition, RowPolicyRuleContent
+from bloomerp.permissions.definition import (
+    AccessRule,
+    BloomerpPermission,
+    RowPolicyRuleCondition,
+    RowPolicyRuleContent,
+)
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import (
@@ -484,7 +489,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                     user=self.admin_user,
                     view_kwargs={
                         "content_type_id": ContentType.objects.get_for_model(
-                            TodoLabel
+                            Initiative
                         ).pk
                     },
                     expected=ExpectedResult(

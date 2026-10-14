@@ -98,7 +98,7 @@ class Todo(BloomerpModel):
                         "effort",
                         "assigned_to",
                         "required_by",
-                        "labels",
+                        "object_labels",
                     ],
                     group_by_field="status",
                     sort_field="priority",
@@ -118,7 +118,6 @@ class Todo(BloomerpModel):
                                 LayoutItem(id="status", colspan=1),
                                 LayoutItem(id="priority", colspan=1),
                                 LayoutItem(id="effort", colspan=1),
-                                LayoutItem(id="labels", colspan=1),
                                 LayoutItem(id="initiative", colspan=1),
                                 LayoutItem(id="content", colspan=4),
                             ],
@@ -404,12 +403,6 @@ class Todo(BloomerpModel):
         choices=TodoStatus.choices,
         default=TodoStatus.BACKLOG,
         verbose_name=_("Status")
-        )
-    labels = models.ManyToManyField(
-        'bloomerp.TodoLabel',
-        blank=True,
-        help_text=_("Labels assigned to the todo"),
-        verbose_name=_("Labels")
         )
     initiative = models.ForeignKey(
         'bloomerp.Initiative',
