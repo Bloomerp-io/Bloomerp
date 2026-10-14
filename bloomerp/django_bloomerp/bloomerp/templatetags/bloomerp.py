@@ -6,8 +6,8 @@ from typing import Any
 import bleach
 from django import template
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.db.models import Model
+from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured, ObjectDoesNotExist
+from django.db.models import ForeignKey, Model
 from django.http import HttpRequest
 from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, ObjectModalAction
 from bloomerp.models.users.base_preference import BasePreference
@@ -263,6 +263,17 @@ def detail_view_url(object:Model):
             return ""
 
     
+def _foreign_preview_target(obj: Model, application_field: ApplicationField) -> Model | None:
+    """Resolve only an existing concrete foreign-key target, never collections or labels."""
+    try:
+        if not isinstance(application_field._get_model_field(), ForeignKey):
+            return None
+        related = getattr(obj, application_field.field, None)
+    except (FieldDoesNotExist, ObjectDoesNotExist):
+        return None
+    return related if isinstance(related, Model) and related.pk is not None else None
+
+
 @register.inclusion_tag('inclusion_tags/dataview_value.html')
 def render_dataview_value(
     object: Model,
@@ -297,6 +308,12 @@ def render_dataview_value(
         value = ""
     
     data_value = value
+    foreign_preview = None
+    if can_view and value is not None and (not isinstance(value, str) or value != ""):
+        foreign_preview = _foreign_preview_target(object, application_field)
+        if foreign_preview is not None:
+            # Preserve trusted rendered links; escape plain relation labels.
+            value = format_html("{}", value)
     if can_view and application_field.get_field_type().id in {"CharField", "ChoiceField"}:
         # Display labels can be localized; filters still need the stored choice key.
         data_value = getattr(object, application_field.field, None)
@@ -313,6 +330,11 @@ def render_dataview_value(
         "application_field" : application_field,
         "split_view_enabled": split_view_enabled,
         "value_content_type_id": application_field.related_model_id,
+        "foreign_preview_object_id": foreign_preview.pk if foreign_preview is not None else None,
+        "foreign_preview_content_type_id": (
+            ContentType.objects.get_for_model(foreign_preview).pk
+            if foreign_preview is not None else None
+        ),
         "object_string": (
             ""
             if getattr(object, FIELD_ACCESS_CONTROLLED_ANNOTATION, False)

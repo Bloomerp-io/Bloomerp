@@ -7,6 +7,7 @@ from django.db.models import Model
 from django.http import HttpResponse
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY, FieldTypeDefinition
+from bloomerp.filters.definition import FilterCondition
 from bloomerp.models import ApplicationField
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
@@ -80,6 +81,11 @@ class TestObjectPreviewComponent(BloomerpComponentTestCase):
             RequestScenario(
                 name="Denied fields have neither values nor copy controls", user=self.normal_user,
                 view_kwargs=route, prepare=self._grant_name_only,
+                expected=ExpectedResult(response_validators=self._denied_fields),
+            ),
+            RequestScenario(
+                name="A field granted on another row remains denied on this object", user=self.normal_user,
+                view_kwargs=route, prepare=self._grant_other_row_description,
                 expected=ExpectedResult(response_validators=self._denied_fields),
             ),
             RequestScenario(
@@ -165,6 +171,20 @@ class TestObjectPreviewComponent(BloomerpComponentTestCase):
             user=self.normal_user, content_type=self.content_type,
             name="Restricted layout", selected=True, layout=self.layout,
         )
+
+    def _grant_other_row_description(self, scenario: RequestScenario) -> None:
+        """Grant the description only on another row, retaining access to this object's name."""
+        self._grant_name_only(scenario)
+        PolicyManager.create_policy(
+            model_or_content_type=self.CustomerModel,
+            field_permissions={"description": [BloomerpPermission.VIEW]},
+            row_permissions=[RowPolicyRuleContent(
+                connector="AND", permissions=[BloomerpPermission.VIEW],
+                conditions=[FilterCondition(
+                    field_path="first_name", lookup_id="equals", value="OTHER-ROW",
+                )],
+            )],
+        ).assign_user(self.normal_user)
 
     def _denied_fields(self, response: HttpResponse) -> bool:
         """Check restricted HTML contains no hidden values, links, or copy metadata."""
