@@ -29,10 +29,6 @@ export default class Conversation extends BaseComponent {
         this.socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/communication/conversation/${this.element.dataset.conversationId}/`);
         this.socket.addEventListener('message', this.onNotification);
         this.socket.addEventListener('close', this.onSocketClosed, { signal: this.lifecycle.signal });
-        const editor = this.element.querySelector<HTMLElement>('[contenteditable]');
-        editor?.setAttribute('role', 'textbox');
-        editor?.setAttribute('aria-multiline', 'true');
-        editor?.setAttribute('aria-label', this.element.dataset.editorLabel || 'Message');
         document.addEventListener('visibilitychange', this.scheduleRead, { signal: this.lifecycle.signal });
         window.addEventListener('focus', this.scheduleRead, { signal: this.lifecycle.signal });
         this.visibilityObserver = new MutationObserver(this.scheduleRead);
@@ -49,18 +45,13 @@ export default class Conversation extends BaseComponent {
         return node ? getComponent(node) as BloomerpTextEditor : null;
     }
 
-    /** Submit with the keyboard without interfering with editor Enter behavior. */
+    /** Handle group-name keyboard edits independently from composer submission. */
     private onKeyDown = (event: KeyboardEvent): void => {
         if (event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-group-name]')) {
             event.preventDefault();
             void this.onGroupNameChange(event);
             event.target.blur();
             return;
-        }
-        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-            event.preventDefault();
-            const button = this.element.querySelector<HTMLButtonElement>('.im-send');
-            if (button && !button.disabled) this.element.querySelector<HTMLFormElement>('[data-send-form]')?.requestSubmit();
         }
     };
 

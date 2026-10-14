@@ -64,6 +64,32 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
         validate.__name__ = getattr(validator, "__name__", "preference_matches")
         return validate
 
+    def test_view_mode_scenarios(self) -> None:
+        """Verify each selectable mode persists and unknown values are rejected."""
+        scenarios = [
+            RequestScenario(
+                name=f"Persist {mode} view mode", method="POST", user=self.admin_user,
+                view_kwargs=self.view_kwargs, data={"view_mode": mode},
+                expected=ExpectedResult(response_validators=self._mode_is_saved(mode)),
+            )
+            for mode in UserListViewPreference.ViewMode.values
+        ]
+        scenarios.append(RequestScenario(
+            name="Reject an unknown view mode", method="POST", user=self.admin_user,
+            view_kwargs=self.view_kwargs, data={"view_mode": "unknown"},
+            expected=ExpectedResult(status_code=400),
+        ))
+        for scenario in scenarios:
+            with self.subTest(name=scenario.name):
+                self._run_request_scenario(scenario, scenario.name)
+
+    def _mode_is_saved(self, mode: str) -> Callable[[HttpResponse], bool]:
+        """Build a validator for the saved three-way view preference."""
+        def validate(_response: HttpResponse) -> bool:
+            """Read the persisted mode after the endpoint completes."""
+            return self._preference().view_mode == mode
+        return validate
+
     def _spy_on_kanban_form_factory(self, _scenario: RequestScenario) -> None:
         self.form_factory_patcher = patch.object(
             KanbanDataView,

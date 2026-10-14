@@ -12,7 +12,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal, Mapping
+from collections.abc import Callable, Iterable
+from typing import Any, Literal, Mapping, Protocol, Required, TYPE_CHECKING, TypedDict
+from uuid import UUID
+
+from django.http import HttpRequest, HttpResponse
+
+if TYPE_CHECKING:
+    from bloomerp.models.base_bloomerp_model import BloomerpModel
+    from bloomerp.models.users.user import AbstractBloomerpUser
+    from bloomerp.models.communication.instant_messaging import (
+        IMConversation, IMIdentity, IMMessage,
+    )
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -262,13 +273,57 @@ class IMSelectionPage:
     next_cursor: str | None = None
 
 
+type IMSelectionResolver = Callable[
+    ["AbstractBloomerpUser", dict[str, str], str, str], IMSelectionPage
+]
+type IMStartHandler = Callable[
+    ["AbstractBloomerpUser", dict[str, str]], "IMConversation"
+]
+
+
+class IMConversationActions(TypedDict, total=False):
+    """Describe composer availability and optional calling controls for a conversation."""
+
+    can_send: Required[bool]
+    can_call: bool
+    business_number: str
+
+
+type IMActionsResolver = Callable[
+    ["AbstractBloomerpUser", "IMConversation"], IMConversationActions
+]
+type IMIdentityLabelResolver = Callable[["IMIdentity", int | UUID], str]
+type IMTimelineResolver = Callable[
+    ["AbstractBloomerpUser", "IMConversation"], Iterable["BloomerpModel"]
+]
+type IMCreationHandler = Callable[
+    [HttpRequest, "IMProviderDefinition", "IMCreationAction"], HttpResponse
+]
+type IMPermissionResolver = Callable[[HttpRequest], bool]
+
+
+class IMSendHandler(Protocol):
+    """Define the keyword-capable contract for provider-owned message submission."""
+
+    def __call__(
+        self,
+        user: AbstractBloomerpUser,
+        conversation_id: UUID,
+        html: str,
+        client_id: str,
+        **kwargs: Any,
+    ) -> IMMessage:
+        """Send validated editor content through the provider's authorized transport."""
+        ...
+
+
 @dataclass(frozen=True)
 class IMSelectionStep:
     """Declare a dependent selection resolved server-side by a typed function."""
 
     key: str
     label: str
-    resolver: str
+    resolver: IMSelectionResolver | str
     searchable: bool = False
 
 
@@ -276,7 +331,7 @@ class IMSelectionStep:
 class IMTimelineSource:
     """Register a separate activity source and its shared timeline renderer."""
 
-    resolver: str
+    resolver: IMTimelineResolver | str
     template: str
 
 
@@ -287,8 +342,8 @@ class IMCreationAction:
     key: str
     label: str
     icon: str
-    handler: str
-    permission_resolver: str
+    handler: IMCreationHandler | str
+    permission_resolver: IMPermissionResolver | str
 
 
 @dataclass(frozen=True)
@@ -310,10 +365,10 @@ class IMProviderDefinition:
     planned_capabilities: IMCapabilities = field(default_factory=IMCapabilities)
     selection_steps: tuple[IMSelectionStep, ...] = ()
     creation_actions: tuple[IMCreationAction, ...] = ()
-    start_handler: str = ""
-    send_handler: str = ""
-    actions_resolver: str = ""
-    identity_label_resolver: str = ""
+    start_handler: IMStartHandler | str = ""
+    send_handler: IMSendHandler | str = ""
+    actions_resolver: IMActionsResolver | str = ""
+    identity_label_resolver: IMIdentityLabelResolver | str = ""
     timeline_sources: tuple[IMTimelineSource, ...] = ()
     internal: bool = False
     transport_ready: bool = False

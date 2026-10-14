@@ -1,12 +1,28 @@
+import json
+
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404
-from django.urls import reverse
+from django.shortcuts import get_object_or_404, render
 
 from bloomerp.components.objects.crud.create_update import CreateObjectComponentView
+from bloomerp.forms.model_form import BloomerpModelForm
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.router import router
-from bloomerp.utils.models import get_detail_base_view_url
+
+
+class _CreateTodoForObjectView(CreateObjectComponentView):
+    """Keep object-linked todo creation inside its dialog until the save succeeds."""
+
+    def form_valid(self, form: BloomerpModelForm) -> HttpResponse:
+        """Close the todo dialog after saving and deliver the queued success feedback."""
+        response = super().form_valid(form)
+        if not self.request.htmx or form.errors:
+            return response
+        response = render(self.request, "components/todos/create_todo_success.html")
+        response["HX-Trigger"] = json.dumps({
+            "bloomerp:close-modal": {"modalId": "detail-todo-modal"},
+        })
+        return response
 
 
 @router.register(
@@ -34,10 +50,9 @@ def create_todo_for_object(
     query_params["content_type_id"] = str(content_type_id)
     query_params["content_type"] = str(content_type_id)
     query_params["object_id"] = str(object_id)
-    query_params["next"] = reverse(get_detail_base_view_url(ContentType.objects.get_for_id(content_type_id).model_class()) + "_todos", kwargs={"pk": object_id})
     request.GET = query_params
     
-    return CreateObjectComponentView.as_view()(
+    return _CreateTodoForObjectView.as_view()(
         request,
         content_type_id=todo_content_type.pk,
     )

@@ -3,6 +3,7 @@ import { getShortcutManager } from "../utils/shortcutManager";
 import { formatShortcutForAria, formatShortcutForDisplay, parseShortcut } from "../utils/shortcuts";
 import { t } from "../utils/i18n";
 import { getCookie, setCookie } from "../utils/cookies";
+import { getLocalStorageValue, setLocalStorageValue } from "../utils/localStorage";
 
 const DEFAULT_START_WIDTH = "320px";
 const MIN_WIDTH = 0;
@@ -12,6 +13,7 @@ const HANDLE_SELECTOR = "[data-resizable-div-handle]";
 const PANEL_SELECTOR = "[data-resizable-div-panel]";
 const MAIN_SELECTOR = "#main";
 
+/** Resolve a configured or stored width, using the standard panel default. */
 function parseWidth(value: string | undefined): string {
     const width = value?.trim();
     return width || DEFAULT_START_WIDTH;
@@ -26,25 +28,37 @@ export default class ResizableDiv extends BaseComponent {
     private handleDoubleClickHandler: ((event: MouseEvent) => void) | null = null;
     private resizeObserver: ResizeObserver | null = null;
     private resizeHandler: (() => void) | null = null;
-    private cookieKey = "";
+    private storageKey = "";
     private currentWidth = "";
     private resizeFrom: "left" | "right" = "left";
+    private dragCleanup: (() => void) | null = null;
+    /** Reconcile widths only when this panel participated in an HTMX swap. */
+    private readonly settleHandler = (event: Event): void => this.handleSettle(event);
+    /** Release this instance before HTMX removes its root element. */
+    private readonly cleanupHandler = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
 
-    /** Restore panel size and expand a deep-linked detail sidebar. */
+    /** Restore configured sizing and persistence, then bind this panel's resize interaction. */
     public initialize(): void {
         if (!this.element) return;
 
         const id = this.element.dataset.id?.trim() || this.element.id || "default";
         this.resizeFrom = this.element.dataset.resizeFrom === "right" ? "right" : "left";
-        this.cookieKey = `bloomerp_resizable_div_width_v3_${id}`;
-        this.currentWidth = parseWidth(getCookie(this.cookieKey) || this.element.dataset.startWidth);
+        this.storageKey = this.element.dataset.storageKey || `bloomerp_resizable_div_width_v3_${id}`;
+        const localWidth = this.element.dataset.storage === "local"
+            ? getLocalStorageValue<number | null>(this.storageKey, null) : null;
+        const storedWidth = this.element.dataset.storage === "local"
+            ? localWidth !== null && Number.isFinite(localWidth) ? `${localWidth}px` : undefined
+            : getCookie(this.storageKey);
+        this.currentWidth = parseWidth(storedWidth || this.element.dataset.startWidth);
         if (this.element.dataset.forceOpen === "true" && Number.parseFloat(this.currentWidth) === 0) {
             this.currentWidth = parseWidth(this.element.dataset.startWidth);
-            setCookie(this.cookieKey, this.currentWidth, 30);
+            this.saveWidth(this.currentWidth);
         }
 
         this.applyWidth(this.currentWidth);
-        this.element.style.minWidth = `${MIN_WIDTH}px`;
+        this.element.style.minWidth = `${this.numberOption("minWidth", MIN_WIDTH)}px`;
 
         this.ensureHandle();
         this.setupToggleShortcut();
@@ -52,16 +66,20 @@ export default class ResizableDiv extends BaseComponent {
         this.setupResizeObserver();
         this.setupHeightFitting();
 
-        this.pointerDownHandler = (event: PointerEvent) => {
+        /** Start a drag owned by this panel and release any interrupted prior drag. */
+        this.pointerDownHandler = (event: PointerEvent): void => {
             if (!this.element) return;
             const target = event.target;
             if (!(target instanceof Element) || !target.closest(HANDLE_SELECTOR)) return;
+            if (target.closest(HANDLE_SELECTOR)?.closest('[bloomerp-component="resizable-div"]') !== this.element) return;
+            this.dragCleanup?.();
 
             event.preventDefault();
             event.stopPropagation();
             const startX = event.clientX;
             const startWidthPx = this.element.getBoundingClientRect().width;
 
+            /** Follow the pointer using the configured resize edge and sizing limits. */
             const onMove = (moveEvent: PointerEvent): void => {
                 if (!this.element) return;
 
@@ -72,17 +90,22 @@ export default class ResizableDiv extends BaseComponent {
                 this.applyWidth(`${nextWidth}px`);
             };
 
+            /** Persist the final width and release all drag resources. */
             const onUp = (): void => {
                 if (this.element) {
                     const width = `${Math.round(this.clampWidth(this.element.getBoundingClientRect().width))}px`;
                     this.applyWidth(width);
-                    setCookie(this.cookieKey, width, 30);
+                    this.saveWidth(width);
                 }
-
+                this.dragCleanup?.();
+            };
+            /** Stop this drag, including when the panel is removed during a request. */
+            this.dragCleanup = (): void => {
                 document.body.classList.remove("select-none");
                 document.body.style.cursor = "";
                 document.removeEventListener("pointermove", onMove);
                 document.removeEventListener("pointerup", onUp);
+                this.dragCleanup = null;
             };
 
             document.body.classList.add("select-none");
@@ -92,10 +115,15 @@ export default class ResizableDiv extends BaseComponent {
         };
 
         this.element.addEventListener("pointerdown", this.pointerDownHandler);
+        this.element.addEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
+        document.body.addEventListener("htmx:afterSettle", this.settleHandler);
     }
 
     /** Release resize listeners and the optional panel toggle shortcut. */
     public destroy(): void {
+        this.dragCleanup?.();
+        this.element?.removeEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
+        document.body.removeEventListener("htmx:afterSettle", this.settleHandler);
         this.unregisterShortcut?.();
         this.unregisterShortcut = null;
         this.shortcutHint?.remove();
@@ -119,11 +147,12 @@ export default class ResizableDiv extends BaseComponent {
         this.pointerDownHandler = null;
         this.handleDoubleClickHandler = null;
         this.currentWidth = "";
-        this.cookieKey = "";
+        this.storageKey = "";
         this.resizeFrom = "left";
         super.destroy();
     }
 
+    /** Reconcile layout when the panel or its descendants have changed. */
     public onAfterSwap(): void {
         this.reapplyAfterLayout();
     }
@@ -135,7 +164,7 @@ export default class ResizableDiv extends BaseComponent {
         this.currentWidth = width;
         if (Number.parseFloat(width) > 0) this.expandedWidth = width;
 
-        if (!window.matchMedia(DESKTOP_MEDIA_QUERY).matches) {
+        if (!this.isResizableLayout()) {
             this.element.style.width = "";
             this.element.style.flexBasis = "";
             this.element.style.maxWidth = "";
@@ -144,9 +173,11 @@ export default class ResizableDiv extends BaseComponent {
 
         const numericWidth = Number.parseFloat(width);
         const unit = width.replace(String(numericWidth), "").trim();
-        const nextWidth = Number.isFinite(numericWidth) && unit === "px"
-            ? `${this.clampWidth(numericWidth)}px`
-            : width;
+        const pixelWidth = unit === "%"
+            ? (this.getResizeContainer()?.clientWidth ?? window.innerWidth) * numericWidth / 100
+            : numericWidth;
+        const nextWidth = Number.isFinite(pixelWidth) && (unit === "px" || unit === "%")
+            ? `${this.clampWidth(pixelWidth)}px` : width;
 
         this.element.style.width = nextWidth;
         this.element.style.flexBasis = nextWidth;
@@ -163,11 +194,44 @@ export default class ResizableDiv extends BaseComponent {
         });
     }
 
+    /** Clamp the panel while reserving configured space for its neighboring pane. */
     private clampWidth(width: number): number {
         const container = this.getResizeContainer();
         const containerWidth = container?.getBoundingClientRect().width || window.innerWidth;
-        const maxWidth = Math.max(MIN_WIDTH, containerWidth * MAX_WIDTH_RATIO);
-        return Math.min(Math.max(width, MIN_WIDTH), maxWidth);
+        const minWidth = this.numberOption("minWidth", MIN_WIDTH);
+        const maxWidth = Math.max(minWidth, Math.min(
+            containerWidth * this.numberOption("maxWidthRatio", MAX_WIDTH_RATIO),
+            containerWidth - this.numberOption("minRemainingWidth", 0),
+        ));
+        return Math.min(Math.max(width, minWidth), maxWidth);
+    }
+
+    /** Read a nonnegative sizing option without accepting invalid numeric values. */
+    private numberOption(name: string, fallback: number): number {
+        const value = Number(this.element?.dataset[name] ?? fallback);
+        return Number.isFinite(value) && value >= 0 ? value : fallback;
+    }
+
+    /** Keep split panes resizable at every viewport size when requested. */
+    private isResizableLayout(): boolean {
+        return this.element?.dataset.responsive?.toLowerCase() === "false" || window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+    }
+
+    /** Persist pixel widths in the selected storage backend, preserving legacy keys. */
+    private saveWidth(width: string): void {
+        if (this.element?.dataset.storage === "local") {
+            setLocalStorageValue(this.storageKey, Number.parseFloat(width));
+        } else {
+            setCookie(this.storageKey, width, 30);
+        }
+    }
+
+    /** Restore inline sizing after HTMX settles replacement panel attributes. */
+    private handleSettle(event: Event): void {
+        const target = event instanceof CustomEvent ? event.detail?.target : null;
+        if (!this.element?.isConnected || !(target instanceof HTMLElement) || !target.contains(this.element)) return;
+        this.applyWidth(this.currentWidth);
+        this.fitHeightToMainBottom();
     }
 
     private setupResizeObserver(): void {
@@ -226,18 +290,18 @@ export default class ResizableDiv extends BaseComponent {
         return this.element?.dataset.fitToMainBottom === "true";
     }
 
-    /** Collapse the desktop panel or restore its most recent expanded width. */
+    /** Collapse an eligible panel or restore its most recent expanded width. */
     private toggleCollapsedWidth(): void {
         if (!this.element) return;
 
-        if (!window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return;
+        if (!this.isResizableLayout() || this.numberOption("minWidth", MIN_WIDTH) > 0) return;
         const currentWidthPx = this.clampWidth(this.element.getBoundingClientRect().width);
         const nextWidth = Math.round(currentWidthPx) <= MIN_WIDTH
             ? this.expandedWidth || parseWidth(this.element.dataset.startWidth)
             : `${MIN_WIDTH}px`;
 
         this.applyWidth(nextWidth);
-        setCookie(this.cookieKey, nextWidth, 30);
+        this.saveWidth(nextWidth);
     }
 
     /** Register a scoped toggle and advertise it on the panel's resize handle. */
@@ -273,10 +337,15 @@ export default class ResizableDiv extends BaseComponent {
         if (this.shortcutHint) this.shortcutHint.hidden = true;
     };
 
+    /** Create the drag handle with optional instance-specific handle and line styling. */
     private ensureHandle(): void {
         if (!this.element) return;
 
-        this.element.querySelectorAll(HANDLE_SELECTOR).forEach((existingHandle) => existingHandle.remove());
+        for (const existingHandle of this.element.querySelectorAll<HTMLElement>(HANDLE_SELECTOR)) {
+            if (existingHandle.closest('[bloomerp-component="resizable-div"]') === this.element) {
+                existingHandle.remove();
+            }
+        }
 
         const panel = this.element.querySelector<HTMLElement>(PANEL_SELECTOR);
         panel?.classList.add("relative");
@@ -285,7 +354,7 @@ export default class ResizableDiv extends BaseComponent {
         }
 
         const handle = document.createElement("div");
-        handle.className = [
+        handle.className = this.element.dataset.handleClass || [
             "absolute",
             this.resizeFrom === "right" ? "right-0" : "left-0",
             "top-0",
@@ -301,7 +370,7 @@ export default class ResizableDiv extends BaseComponent {
         handle.setAttribute("data-resizable-div-handle", "true");
 
         const handleLine = document.createElement("div");
-        handleLine.className = [
+        handleLine.className = this.element.dataset.handleLineClass || [
             "pointer-events-none",
             "absolute",
             "inset-y-0",
@@ -315,7 +384,8 @@ export default class ResizableDiv extends BaseComponent {
         handleLine.setAttribute("aria-hidden", "true");
         handle.appendChild(handleLine);
 
-        this.handleDoubleClickHandler = (event: MouseEvent) => {
+        /** Toggle collapsible panels without affecting a parent component. */
+        this.handleDoubleClickHandler = (event: MouseEvent): void => {
             event.preventDefault();
             event.stopPropagation();
             this.toggleCollapsedWidth();

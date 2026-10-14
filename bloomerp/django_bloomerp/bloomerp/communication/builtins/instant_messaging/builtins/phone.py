@@ -1,6 +1,9 @@
 """Built-in phone directory and carrier-backed conversation operations."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING
+from uuid import UUID
 from django.apps import apps
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -16,6 +19,7 @@ from ..definition import (
     BaseIMAdapter,
     IMCapabilities,
     IMConnectionValidation,
+    IMConversationActions,
     IMDeliveryResult,
     IMOutboundMessage,
     IMProviderDefinition,
@@ -24,6 +28,14 @@ from ..definition import (
     IMSelectionStep,
     IMTimelineSource,
 )
+
+if TYPE_CHECKING:
+    from bloomerp.models.communication.instant_messaging import (
+        IMConversation,
+        IMIdentity,
+        IMMessage,
+    )
+    from bloomerp.models.communication.voip import PhoneCall
 
 
 def source_recipient(user: AbstractBloomerpUser, token: str) -> tuple[Any, str, str]:
@@ -150,7 +162,7 @@ def business_numbers(
 
 
 @transaction.atomic
-def start_phone(user: AbstractBloomerpUser, selected: dict[str, str]) -> Any:
+def start_phone(user: AbstractBloomerpUser, selected: dict[str, str]) -> IMConversation:
     """Create or reuse a line/address chat and enroll its active assigned staff."""
     from bloomerp.models.communication.instant_messaging import (
         IMConversation,
@@ -197,7 +209,9 @@ def start_phone(user: AbstractBloomerpUser, selected: dict[str, str]) -> Any:
     return chat
 
 
-def phone_actions(user: AbstractBloomerpUser, chat: Any) -> dict[str, Any]:
+def phone_actions(
+    user: AbstractBloomerpUser, chat: IMConversation
+) -> IMConversationActions:
     """Resolve current line capabilities without making provider HTTP requests."""
     number = (
         VoIPAccessManager(user)
@@ -216,7 +230,7 @@ def phone_actions(user: AbstractBloomerpUser, chat: Any) -> dict[str, Any]:
     }
 
 
-def call_timeline(user: AbstractBloomerpUser, chat: Any) -> list[Any]:
+def call_timeline(user: AbstractBloomerpUser, chat: IMConversation) -> list[PhoneCall]:
     """Project authorized call records into the shared conversation timeline."""
     return list(
         VoIPAccessManager(user)
@@ -228,11 +242,11 @@ def call_timeline(user: AbstractBloomerpUser, chat: Any) -> list[Any]:
 
 def send_phone_message(
     user: AbstractBloomerpUser,
-    conversation_id: Any,
+    conversation_id: UUID,
     html: str,
     client_id: str,
     **kwargs: Any,
-) -> Any:
+) -> IMMessage:
     """Delegate text submission to the telephony service with line authorization."""
     from bloomerp.communication.builtins.voip.controller import VoIPController
 
@@ -253,41 +267,7 @@ class PhoneAdapter(BaseIMAdapter):
         raise NotImplementedError("Use the phone conversation send handler")
 
 
-PHONE_IM_PROVIDER = IMProviderDefinition(
-    key="phone",
-    display_name=_("Phone"),
-    icon="fa-solid fa-phone",
-    address_field="phone",
-    adapter_class=PhoneAdapter,
-    internal=True,
-    transport_ready=True,
-    selection_steps=(
-        IMSelectionStep(
-            "recipient_id",
-            _("Phone recipients"),
-            "bloomerp.communication.builtins.instant_messaging.builtins.phone.phone_recipients",
-            searchable=True,
-        ),
-        IMSelectionStep(
-            "number_id",
-            _("Business number"),
-            "bloomerp.communication.builtins.instant_messaging.builtins.phone.business_numbers",
-        ),
-    ),
-    start_handler="bloomerp.communication.builtins.instant_messaging.builtins.phone.start_phone",
-    send_handler="bloomerp.communication.builtins.instant_messaging.builtins.phone.send_phone_message",
-    actions_resolver="bloomerp.communication.builtins.instant_messaging.builtins.phone.phone_actions",
-    identity_label_resolver="bloomerp.communication.builtins.instant_messaging.builtins.phone.phone_identity_label",
-    timeline_sources=(
-        IMTimelineSource(
-            "bloomerp.communication.builtins.instant_messaging.builtins.phone.call_timeline",
-            "components/communication/voip/call_card.html",
-        ),
-    ),
-)
-
-
-def phone_identity_label(identity: Any, user_id: Any) -> str:
+def phone_identity_label(identity: IMIdentity, user_id: int | UUID) -> str:
     """Resolve source labels per viewer without leaking another user's CRM visibility."""
     from django.contrib.auth import get_user_model
 
@@ -314,3 +294,37 @@ def phone_identity_label(identity: Any, user_id: Any) -> str:
         if str(getattr(obj, source.field_name, "")) == identity.address:
             return str(obj)
     return identity.address
+
+
+PHONE_IM_PROVIDER = IMProviderDefinition(
+    key="phone",
+    display_name=_("Phone"),
+    icon="fa-solid fa-phone",
+    address_field="phone",
+    adapter_class=PhoneAdapter,
+    internal=True,
+    transport_ready=True,
+    selection_steps=(
+        IMSelectionStep(
+            "recipient_id",
+            _("Phone recipients"),
+            phone_recipients,
+            searchable=True,
+        ),
+        IMSelectionStep(
+            "number_id",
+            _("Business number"),
+            business_numbers,
+        ),
+    ),
+    start_handler=start_phone,
+    send_handler=send_phone_message,
+    actions_resolver=phone_actions,
+    identity_label_resolver=phone_identity_label,
+    timeline_sources=(
+        IMTimelineSource(
+            call_timeline,
+            "components/communication/voip/call_card.html",
+        ),
+    ),
+)

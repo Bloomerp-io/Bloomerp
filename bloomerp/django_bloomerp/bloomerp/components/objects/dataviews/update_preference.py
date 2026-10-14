@@ -89,9 +89,15 @@ def _change_data_view_options(
     return None
 
 
-def _change_split_view(preference: UserListViewPreference, post_data) -> HttpResponse | None:
-    preference.split_view_enabled = str(post_data["split_view_enabled"]).lower() == "true"
-    preference.save(update_fields=["split_view_enabled"])
+def _change_view_mode(preference: UserListViewPreference, post_data: QueryDict) -> HttpResponse | None:
+    """Validate the detail presentation mode, accepting legacy split submissions."""
+    mode = post_data.get("view_mode")
+    if mode is None:
+        mode = "split" if post_data.get("split_view_enabled", "").lower() == "true" else "normal"
+    if mode not in UserListViewPreference.ViewMode.values:
+        return HttpResponse("Invalid view mode", status=400)
+    preference.view_mode = mode
+    preference.save(update_fields=["view_mode"])
     return None
 
 
@@ -156,8 +162,8 @@ def _get_preference_operation(post_data: QueryDict) -> str | None:
         return "field_order"
     if "view_type" in post_data:
         return "change_type"
-    if "split_view_enabled" in post_data:
-        return "split_view"
+    if "view_mode" in post_data or "split_view_enabled" in post_data:
+        return "view_mode"
     if "dataview_options_view_type" in post_data:
         return "opt"
     if "toggle_field_id" in post_data:
@@ -197,8 +203,8 @@ def update_dataview_preference(request: HttpRequest, content_type_id: int) -> Ht
     match operation:
         case "change_type":
             error_response = _change_data_view_type(preference, request.POST)
-        case "split_view":
-            error_response = _change_split_view(preference, request.POST)
+        case "view_mode":
+            error_response = _change_view_mode(preference, request.POST)
         case "opt":
             state = _build_dataview_state(request, content_type_id, preference)
             if isinstance(state, HttpResponse):

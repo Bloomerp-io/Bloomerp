@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils.module_loading import import_string
+from bloomerp.utils.callables import resolve_hook
 from urllib.parse import urlencode
 from django.views.decorators.http import require_GET
 
@@ -41,7 +41,7 @@ def recipients(request: HttpRequest) -> HttpResponse:
                     + urlencode({"provider": provider.key, "action": action.key}),
                 }
                 for action in provider.creation_actions
-                if import_string(action.permission_resolver)(request)
+                if resolve_hook(action.permission_resolver)(request)
             ]
             if not provider.selection_steps:
                 if actions:

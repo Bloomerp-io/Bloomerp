@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import Any
 from uuid import uuid4
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import connection
 from django.db.migrations.exceptions import IrreversibleError
@@ -656,3 +657,149 @@ class TestTodoLabelMigration(BaseBloomerpTestCaseWithModels):
                 self.assertEqual(tile.schema["initial_query_params"], query)
                 self.assertEqual(Label.objects.count(), 0)
                 tile.delete()
+
+    def test_merge_migration_keeps_both_branch_operations(self) -> None:
+        """Require one graph leaf containing both independent migrations without new operations."""
+        with override_settings(MIGRATION_MODULES={}):
+            loader = MigrationLoader(None)
+        key = ("bloomerp", "0094_merge_list_view_mode_todo_labels")
+        branches = {
+            ("bloomerp", "0093_list_view_mode"),
+            ("bloomerp", "0093_migrate_todo_labels"),
+        }
+        merge = loader.disk_migrations[key]
+        self.assertEqual(set(merge.dependencies), branches)
+        self.assertEqual(merge.operations, [])
+        self.assertEqual(loader.detect_conflicts(), {})
+        self.assertEqual(len(loader.graph.leaf_nodes("bloomerp")), 1)
+        plan = loader.graph.forwards_plan(loader.graph.leaf_nodes("bloomerp")[0])
+        self.assertIn(key, plan)
+        for branch in branches:
+            self.assertLess(plan.index(branch), plan.index(key))
+        merged_state = loader.project_state(key)
+        preference_fields = merged_state.models[
+            ("bloomerp", "userlistviewpreference")
+        ].fields
+        self.assertIn("view_mode", preference_fields)
+        self.assertNotIn("split_view_enabled", preference_fields)
+        self.assertNotIn(("bloomerp", "todolabel"), merged_state.models)
+        for model_name in ("todo", "initiative"):
+            self.assertNotIn(
+                "labels", merged_state.models[("bloomerp", model_name)].fields
+            )
+
+    def test_merge_preserves_data_when_upgrading_from_either_branch(self) -> None:
+        """Apply each sibling first in isolation, retaining split preferences and both label joins."""
+        from django.db import connections
+
+        branches = ("0093_list_view_mode", "0093_migrate_todo_labels")
+        for first in branches:
+            with self.subTest(first=first):
+                alias = "todo_label_merge"
+                connections.databases[alias] = {
+                    **connections.databases["default"],
+                    "ENGINE": "django.db.backends.sqlite3",
+                    "NAME": ":memory:",
+                }
+                isolated = connections[alias]
+                isolated.connect()
+                try:
+                    state = self.before.clone()
+                    with isolated.schema_editor() as editor:
+                        for model in state.apps.get_models():
+                            if model._meta.managed and not model._meta.proxy:
+                                editor.create_model(model)
+                    owner = (
+                        state.apps.get_model(settings.AUTH_USER_MODEL)
+                        .objects.using(alias)
+                        .create(username="merge-owner")
+                    )
+                    content_types = state.apps.get_model(
+                        "contenttypes", "ContentType"
+                    ).objects.using(alias)
+                    todo_type = content_types.create(app_label="bloomerp", model="todo")
+                    initiative_type = content_types.create(
+                        app_label="bloomerp", model="initiative"
+                    )
+                    preferences = state.apps.get_model(
+                        "bloomerp", "UserListViewPreference"
+                    ).objects.using(alias)
+                    preferences.create(
+                        user_id=owner.pk,
+                        content_type_id=todo_type.pk,
+                        name="Normal",
+                        split_view_enabled=False,
+                    )
+                    preferences.create(
+                        user_id=owner.pk,
+                        content_type_id=todo_type.pk,
+                        name="Split",
+                        split_view_enabled=True,
+                    )
+                    legacy = (
+                        state.apps.get_model("bloomerp", "TodoLabel")
+                        .objects.using(alias)
+                        .create(name="Preserved", color="#123456")
+                    )
+                    todo_model = state.apps.get_model("bloomerp", "Todo")
+                    initiative_model = state.apps.get_model("bloomerp", "Initiative")
+                    todo = todo_model.objects.using(alias).create(
+                        title="Todo remains labelled"
+                    )
+                    initiative = initiative_model.objects.using(alias).create(
+                        name="Initiative remains labelled"
+                    )
+                    todo_model._meta.get_field(
+                        "labels"
+                    ).remote_field.through.objects.using(alias).create(
+                        todo_id=todo.pk, todolabel_id=legacy.pk
+                    )
+                    initiative_model._meta.get_field(
+                        "labels"
+                    ).remote_field.through.objects.using(alias).create(
+                        initiative_id=initiative.pk, todolabel_id=legacy.pk
+                    )
+                    order = [
+                        first,
+                        *[name for name in branches if name != first],
+                        "0094_merge_list_view_mode_todo_labels",
+                    ]
+                    for name in order:
+                        migration = import_module(
+                            f"bloomerp.migrations.{name}"
+                        ).Migration(name, "bloomerp")
+                        with isolated.schema_editor() as editor:
+                            state = migration.apply(state, editor)
+                    preferences = state.apps.get_model(
+                        "bloomerp", "UserListViewPreference"
+                    ).objects.using(alias)
+                    self.assertEqual(
+                        dict(preferences.values_list("name", "view_mode")),
+                        {"Normal": "normal", "Split": "split"},
+                    )
+                    shared = (
+                        state.apps.get_model("bloomerp", "Label")
+                        .objects.using(alias)
+                        .get(name="Preserved")
+                    )
+                    assignments = state.apps.get_model(
+                        "bloomerp", "ObjectLabel"
+                    ).objects.using(alias)
+                    self.assertEqual(
+                        set(
+                            assignments.values_list(
+                                "content_type_id", "object_id", "label_id"
+                            )
+                        ),
+                        {
+                            (todo_type.pk, str(todo.pk), shared.pk),
+                            (initiative_type.pk, str(initiative.pk), shared.pk),
+                        },
+                    )
+                    self.assertNotIn(
+                        "bloomerp_todo_label", isolated.introspection.table_names()
+                    )
+                finally:
+                    isolated.close()
+                    del connections[alias]
+                    del connections.databases[alias]

@@ -1,13 +1,8 @@
 {% comment %}
-Chat container component.
-
-Parameters:
-- class: Additional classes for the chat list
-
-Slots:
-- default: Chat messages
+Shared scrollable chat timeline. Parameters: class, label. Slot: messages.
+Additional HTML attributes are forwarded to the timeline.
 {% endcomment %}
-
-<div class="space-y-4 {{ class|default:'' }}">
-    {{ slot }}
-</div>
+{% load i18n %}
+<c-vars class="" label="" />
+{% translate "Messages" as default_label %}
+<div class="im-messages {{ class }}" role="log" aria-label="{{ label|default:default_label }}" {{ attrs }}>{{ slot }}</div>

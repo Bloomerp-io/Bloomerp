@@ -69,7 +69,26 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
         default=DATAVIEW_REGISTRY.get("table").key,
         verbose_name=_("View Type"),
     )
-    split_view_enabled = models.BooleanField(default=False, verbose_name=_("Split View Enabled"))
+    class ViewMode(models.TextChoices):
+        """Choose how opening a record presents its details."""
+        NORMAL = "normal", _("Normal")
+        SPLIT = "split", _("Split view")
+        DRAWER = "drawer", _("Drawer")
+
+    view_mode = models.CharField(
+        max_length=10, choices=ViewMode.choices, default=ViewMode.NORMAL,
+        verbose_name=_("View mode"),
+    )
+
+    @property
+    def split_view_enabled(self) -> bool:
+        """Expose the legacy split flag for existing template and config callers."""
+        return self.view_mode == self.ViewMode.SPLIT
+
+    @split_view_enabled.setter
+    def split_view_enabled(self, enabled: bool) -> None:
+        """Translate legacy assignments to the saved view mode."""
+        self.view_mode = self.ViewMode.SPLIT if enabled else self.ViewMode.NORMAL
     
     # Visible field IDs per view type (list of ApplicationField IDs in order)
     display_fields = models.JSONField(default=get_default_display_fields, verbose_name=_("Display Fields"))
@@ -158,7 +177,7 @@ class UserListViewPreference(DefaultFiltersMixin, BaseViewPreference):
                     name=data_view.name,
                     selected=data_view.is_default,
                     view_type=data_view.view_type,
-                    split_view_enabled=data_view.split_view_enabled,
+                    view_mode=data_view.view_mode,
                     display_fields=display_fields,
                     options=options,
                 )

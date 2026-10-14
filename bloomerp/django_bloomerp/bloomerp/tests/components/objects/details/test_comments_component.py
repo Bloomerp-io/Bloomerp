@@ -27,9 +27,21 @@ class TestCommentsComponent(BloomerpComponentTestCase):
         )
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Verify highlighting and existing object permission enforcement."""
+        """Verify shared chat markup, highlighting, and object permission enforcement."""
         kwargs = {"content_type_id": self.content_type.pk, "object_id": str(self.todo.pk)}
         return [
+            RequestScenario(
+                name="Comments use the shared bubble and composer without IM actions",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('class="im-message im-own'),
+                    self.contains_text('bloomerp-component="chat-composer"'),
+                    self.contains_text('name="comment"'),
+                    self.contains_text('data-chat-send'),
+                    self.does_not_contain_text('data-quote-message'),
+                ]),
+            ),
             RequestScenario(
                 name="Linked comment receives a highlight ring",
                 user=self.admin_user,

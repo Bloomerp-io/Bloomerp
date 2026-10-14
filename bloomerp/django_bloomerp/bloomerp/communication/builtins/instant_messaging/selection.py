@@ -2,7 +2,7 @@
 
 from typing import Any
 from django.core.exceptions import ValidationError, PermissionDenied
-from django.utils.module_loading import import_string
+from bloomerp.utils.callables import resolve_hook
 from django.utils.translation import gettext as _
 from bloomerp.models.users.user import AbstractBloomerpUser
 from .definition import (
@@ -26,7 +26,7 @@ def resolve_steps(
         value = submitted.get(step.key, "")
         if cursor and not value:
             selected["_cursor"] = cursor
-        page = import_string(step.resolver)(
+        page = resolve_hook(step.resolver)(
             user, selected, "" if value else query, value
         )
         selected.pop("_cursor", None)

@@ -1,3 +1,4 @@
+<div data-model-list-page>
 <div
 	hx-get="{% url 'components_dataview' content_type_id=content_type_id %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
 	hx-headers='{"X-Bloomerp-Sync-Url": "true"}'
@@ -6,4 +7,5 @@
 	hx-swap="outerHTML"
 	hx-animation="dot-dot-dot"
 >
+</div>
 </div>

@@ -1,38 +1,18 @@
 {% comment %}
-Chat message component.
-
-Parameters:
-- avatar: Avatar image URL. If omitted, initials are shown.
-- sender: Sender display name
-- message: Message text
-- datetime: Message datetime. Rendered as a relative time.
-- side: Message side, "left" or "right". Default is "left".
-- background: Bubble background, "primary" or "secondary". Default is "secondary".
-- variant: Alias for background.
-- id: Optional anchor for linking to the message.
-- highlight: If true, pulse a primary ring around the message bubble.
-- class: Additional classes for the message row
+Shared chat bubble. Parameters: sender, message, datetime, side (left/right),
+id, highlight, class. Slots: default (rich content), actions, reactions.
+Additional attributes are forwarded to the article.
 {% endcomment %}
-
-<article id="{{ id|default:'' }}" class="flex min-w-0 gap-3 {% if side == 'right' %}flex-row-reverse{% endif %} {{ class|default:'' }}">
-    <div class="shrink-0">
-        <c-ui.avatar
-            object=""
-            url="{{ avatar }}"
-            initials="{{ sender|default:'?'|slice:':2'|upper }}"
-            size="36px"
-            class_name="h-9 w-9 rounded-full object-cover"
-        />
+{% load i18n %}
+<c-vars sender="" message="" datetime="" side="left" id="" highlight="false" class="" background="" variant="" />
+<article {% if id %}id="{{ id }}"{% endif %} class="im-message{% if side == 'right' %} im-own{% endif %} {{ class }}" {{ attrs }}>
+    <div class="im-message-author">{{ sender }}</div>
+    <div class="im-bubble {% if side == 'right' or background == 'primary' or variant == 'primary' %}bg-primary-50{% else %}bg-base{% endif %} {% if highlight == 'true' %}ring-4 ring-primary-500 animate-pulse{% endif %}">
+        {% if slot %}{{ slot }}{% else %}<div data-message-body data-text-editor-body>{{ message|safe }}</div>{% endif %}
     </div>
-    <div class="min-w-0 flex-1 {% if side == 'right' %}text-right{% endif %}">
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm {% if side == 'right' %}justify-end{% endif %}">
-            <span class="font-semibold text-gray-900">{{ sender }}</span>
-            {% if datetime %}
-                <time datetime="{{ datetime|date:'c' }}" class="text-xs text-gray-400">{{ datetime|timesince }} ago</time>
-            {% endif %}
-        </div>
-        <div class="mt-1 inline-block max-w-full rounded-md px-3 py-2 text-left text-sm leading-6 {% if background == 'primary' or variant == 'primary' %}bg-primary-600 text-white{% else %}bg-gray-50 text-gray-700{% endif %} {% if highlight == 'true' %}ring-4 ring-primary-500 animate-pulse{% endif %}">
-            {{ message|safe }}
-        </div>
+    <div class="im-message-actions">
+        {% if datetime %}<time datetime="{{ datetime|date:'c' }}">{{ datetime|date:"M j, H:i" }}</time>{% endif %}
+        {{ actions }}
     </div>
+    {{ reactions }}
 </article>

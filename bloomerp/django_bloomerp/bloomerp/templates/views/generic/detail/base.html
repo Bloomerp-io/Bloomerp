@@ -22,6 +22,8 @@
 				data-save-url="{% url 'components_detail_tabs_preference' %}"
 				data-item-modal-url="{% url 'components_detail_tabs_item_modal' %}"
 				data-tab-strip
+				data-detail-content-target="#{{ detail_content_id|default:'detail-view-content' }}"
+				data-detail-push-url="{{ detail_push_url|default:'true' }}"
 				class="sticky top-0 z-40 flex shrink-0 border-b border-gray-200 bg-white"
 			>
 				<div class="relative min-w-0 flex-1 overflow-x-auto no-scrollbar bg-white" style="overflow-y: visible;" data-tabs-strip-container>
@@ -51,7 +53,7 @@
 											data-item-name="{{ tab.name }}"
 											data-item-url="{{ tab.url }}"
 											data-tab-active="{% if tab.is_active %}true{% else %}false{% endif %}"
-											{% if not tab.is_external %}hx-get="{{ tab.href }}" hx-swap="innerHTML" hx-target="#detail-view-content" hx-push-url="true"{% endif %}
+											{% if not tab.is_external %}hx-get="{{ tab.href }}" hx-swap="innerHTML" hx-target="#{{ detail_content_id|default:'detail-view-content' }}" hx-push-url="{{ detail_push_url|default:'true' }}"{% endif %}
 											class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
 										>{{ tab.name }}</a>
 									{% empty %}
@@ -74,7 +76,7 @@
 									data-tab-link
 									role="tab"
 									aria-selected="{% if item.is_active %}true{% else %}false{% endif %}"
-									{% if not item.is_external %}hx-get="{{ item.href }}" hx-swap="innerHTML" hx-target="#detail-view-content" hx-push-url="true"{% endif %}
+									{% if not item.is_external %}hx-get="{{ item.href }}" hx-swap="innerHTML" hx-target="#{{ detail_content_id|default:'detail-view-content' }}" hx-push-url="{{ detail_push_url|default:'true' }}"{% endif %}
 									class="block h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-gray-50"
 								>{{ item.name }}</a>
 							</li>
@@ -99,7 +101,7 @@
 			<!--End Card Tabs-->
 
 			<!--Content-->
-			<div id="detail-view-content" class="min-w-0 p-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+			<div id="{{ detail_content_id|default:'detail-view-content' }}" class="min-w-0 p-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
 				{% block content %}
 					{% if include_detail_content %}
 						{% include include_detail_content %}
@@ -183,7 +185,7 @@
 						hx-swap="innerHTML"
 						class="mt-8 flex animate-fade-in flex-col overflow-hidden border-t border-gray-200 pt-4 xl:min-h-0 xl:flex-1"
 						>
-						<div id="object-sidesection" class="p-4 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+						<div id="object-sidesection" class="xl:min-h-0 xl:flex-1 xl:overflow-hidden">
 							<!-- Activity log will load here -->
 							<div class="text-center text-gray-500">
 								Loading activity...
@@ -194,7 +196,7 @@
 			</div>
 		</aside>
 	</c-ui.resizable_div>
-	<!--End Side section-->	
+	<!--End Side section-->
 </div>
 
 <c-ui.modal 

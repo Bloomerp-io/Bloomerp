@@ -7,13 +7,16 @@ Parameters:
 - backdrop : whether to show the modal-style backdrop (default: True)
 - backdrop_click_close : close drawer when clicking backdrop (default: True)
 - portal_to_body : render outside ancestor stacking contexts while open (default: False)
+- class, style : custom overlay styling
+- panel_class, panel_style : custom panel styling
 - slot : main content of the drawer
 {% endcomment %}
 
+<c-vars id="" side="right" size="md" portal_to_body="False" class="" style="" panel_class="" panel_style="" backdrop="True" backdrop_click_close="True" lock_scroll="True" />
 <div
     id="{{ id }}"
-    class="fixed inset-0 z-[90] hidden items-stretch
-        {% with backdrop_value=backdrop|default:True %}
+    class="fixed inset-0 z-[90] hidden items-stretch {{ class }}
+        {% with backdrop_value=backdrop %}
             {% if backdrop_value == False or backdrop_value == 'False' or backdrop_value == 'false' %}
                 bg-transparent
             {% else %}
@@ -26,17 +29,20 @@ Parameters:
             justify-end
         {% endif %}
     "
+    style="{{ style }}"
+    {{ attrs }}
     bloomerp-component="drawer"
     data-portal-to-body="{{ portal_to_body|default:False|lower }}"
     data-side="{{ side|default:'right' }}"
-    data-backdrop="{{ backdrop|default:True|lower }}"
-    data-backdrop-click-close="{{ backdrop_click_close|default:True|lower }}"
+    data-backdrop="{{ backdrop|lower }}"
+    data-lock-scroll="{{ lock_scroll|lower }}"
+    data-backdrop-click-close="{{ backdrop_click_close|lower }}"
 >
     <div
         id="{{ id }}-panel"
         data-drawer-panel
         class="
-            h-full bg-white shadow-xl overflow-y-auto
+            {{ panel_class }} h-full bg-white shadow-xl overflow-y-auto
             {% if size == 'sm' %}
                 max-w-sm w-full
             {% elif size == 'lg' %}
@@ -55,7 +61,7 @@ Parameters:
                 translate-x-full
             {% endif %}
         "
-        onclick="event.stopPropagation()"
+        style="{{ panel_style }}"
     >
         {{ slot }}
     </div>

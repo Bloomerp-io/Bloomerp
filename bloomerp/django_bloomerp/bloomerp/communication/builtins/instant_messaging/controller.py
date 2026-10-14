@@ -286,11 +286,11 @@ class IMController:
         if chat is None:
             raise PermissionDenied
         from .registry import IM_PROVIDER_REGISTRY
-        from django.utils.module_loading import import_string
+        from bloomerp.utils.callables import resolve_hook
 
         provider = IM_PROVIDER_REGISTRY.get(chat.provider_key)
         if provider and provider.send_handler:
-            return import_string(provider.send_handler)(
+            return resolve_hook(provider.send_handler)(
                 self.user,
                 conversation_id,
                 html,

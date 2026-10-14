@@ -12,11 +12,21 @@ Parameters:
 - toggle_shortcut (str, optional): Keyboard shortcut for collapsing and reopening the panel.
 - resize_from (str, optional): Edge used as the resize handle: "left" (default) or "right".
 - class (str, optional): Additional classes to add to the resizable div. Default is "".
+- style (str, optional): Custom inline styling for this instance.
+- handle_class (str, optional): Replace the resize handle's default CSS classes.
+- handle_line_class (str, optional): Replace the handle line's default CSS classes.
+- min_width (number, optional): Minimum panel width in pixels. Default is 0.
+- min_remaining_width (number, optional): Reserve this many pixels for the neighboring pane.
+- max_width_ratio (number, optional): Maximum fraction of the container width. Default is 0.75.
+- responsive (bool, optional): Stack below the desktop breakpoint unless false.
+- storage (str, optional): Persist in "cookie" (default) or "local" storage.
+- storage_key (str, optional): Override the storage key, including an existing local-storage key.
 
 Slots:
 - default: 
 {% endcomment %}
 
+<c-vars id="" start_width="" fit_to_main_bottom="false" force_open="" toggle_shortcut="" resize_from="left" class="" style="" handle_class="" handle_line_class="" min_width="0" min_remaining_width="0" max_width_ratio="0.75" responsive="true" storage="cookie" storage_key="" />
 
 <div 
     bloomerp-component="resizable-div"
@@ -26,8 +36,18 @@ Slots:
     data-fit-to-main-bottom="{{ fit_to_main_bottom|default:'false' }}"
     data-toggle-shortcut="{{ toggle_shortcut|default:'' }}"
     data-resize-from="{{ resize_from|default:'left' }}"
-    class="{{ class }}"
+    data-min-width="{{ min_width }}"
+    data-min-remaining-width="{{ min_remaining_width }}"
+    data-max-width-ratio="{{ max_width_ratio }}"
+    data-responsive="{{ responsive }}"
+    data-storage="{{ storage }}"
+    data-storage-key="{{ storage_key }}"
+    data-handle-class="{{ handle_class }}"
+    data-handle-line-class="{{ handle_line_class }}"
+    class="relative {{ class }}"
+    style="{{ style }}"
     id="resizable-div-{{ id }}"
+    {{ attrs }}
     >
     {{ slot }}
 </div>

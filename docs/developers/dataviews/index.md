@@ -124,7 +124,7 @@ startup rather than when a user opens a collection view.
 
 Fields added by a `BaseDataview` subclass are persisted in
 `UserListViewPreference.options`. Common fields such as `name`, `is_default`,
-`display_fields`, `default_filters`, and `split_view_enabled` are model-default
+`display_fields`, `default_filters`, and `view_mode` (`normal`, `split`, or `drawer`) are model-default
 settings and are not persisted as view-specific options.
 
 ### Form factory contract
@@ -368,3 +368,17 @@ Extend `BloomerpDataviewTestCase` to verify the universal registration contract,
 then add focused tests for configuration or renderer behavior. Use component
 tests for renderer-operation endpoints and end-to-end tests only for browser
 interaction. See [Dataview test cases](../testing/dataview-test-case.md).
+
+### Detail view mode
+
+List preferences save `view_mode` as `normal`, `split`, or `drawer`. The Display
+menu exposes these through a select. `view_type` still selects the result layout
+(table, board, calendar, etc.). Migration `0093_list_view_mode` preserves the old
+split flag and supports rollback. Developer-configured default dataviews also
+use `view_mode`; the file browser defaults to `split`.
+
+Drawer mode reuses the detail tabs, activity, comments, and form-save targets.
+Its host stays outside the refreshed results section, retaining the selected
+object and draft edits across pagination, search, and filters. The modal drawer
+has a backdrop and a maximum width of 64rem. After closing it, “Open selected
+details” reopens the retained content without another object request.

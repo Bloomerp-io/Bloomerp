@@ -92,7 +92,7 @@ def render_conversation(request: HttpRequest, conversation_id: UUID) -> HttpResp
                 and not message.deleted_at,
             }
         )
-    from django.utils.module_loading import import_string
+    from bloomerp.utils.callables import resolve_hook
     from bloomerp.communication.builtins.instant_messaging.registry import (
         IM_PROVIDER_REGISTRY,
     )
@@ -102,10 +102,10 @@ def render_conversation(request: HttpRequest, conversation_id: UUID) -> HttpResp
         "can_send": chat.provider_key == "internal" and chat.status != "archived"
     }
     if provider and provider.actions_resolver:
-        actions = import_string(provider.actions_resolver)(request.user, chat)
+        actions = resolve_hook(provider.actions_resolver)(request.user, chat)
     if provider and root is None:
         for source in provider.timeline_sources:
-            for activity in import_string(source.resolver)(request.user, chat):
+            for activity in resolve_hook(source.resolver)(request.user, chat):
                 rows.append({"activity": activity, "template": source.template})
     rows.sort(key=timeline_order)
     from django.core import signing

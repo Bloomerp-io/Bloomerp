@@ -26,6 +26,7 @@ export class Drawer extends BaseComponent {
     private placeholder: Comment | null = null;
     private animationTimer: ReturnType<typeof setTimeout> | null = null;
     private previousBodyOverflow: string | null = null;
+    private returnFocus: HTMLElement | null = null;
 
 
     private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -33,6 +34,7 @@ export class Drawer extends BaseComponent {
 
     private triggerHandlers: Array<{ element: EventTarget; handler: EventListener }> = [];
 
+    /** Bind drawer controls and release them when its owning view is replaced. */
     public initialize(): void {
         if (!this.element) {
             console.warn('Drawer component: element is null');
@@ -45,6 +47,7 @@ export class Drawer extends BaseComponent {
             return;
         }
 
+        this.element.addEventListener('htmx:beforeCleanupElement', this.onCleanup);
         this.syncElements();
 
         if (!this.panelElement) {
@@ -152,7 +155,8 @@ export class Drawer extends BaseComponent {
         return this.side === 'left' ? '-translate-x-full' : 'translate-x-full';
     }
 
-    public open(): void {
+    /** Open the panel and remember the originating cell or control for focus restoration. */
+    public open(returnFocus?: HTMLElement): void {
         if (!this.element) return;
         this.syncElements();
 
@@ -161,14 +165,21 @@ export class Drawer extends BaseComponent {
             return;
         }
 
+        if (this.backdropElement.classList.contains('hidden')) {
+            this.returnFocus = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+        }
         if (this.animationTimer) clearTimeout(this.animationTimer);
         // Escape the main content's stacking context so the backdrop covers navigation.
         if (this.element.dataset.portalToBody === 'true' && !this.placeholder && this.element.parentElement !== document.body) {
             this.placeholder = document.createComment('drawer');
             this.element.before(this.placeholder);
+            this.placeholder.parentElement?.addEventListener('htmx:beforeCleanupElement', this.onCleanup);
             document.body.appendChild(this.element);
         }
-        this.previousBodyOverflow ??= document.body.style.overflow;
+        if (this.element.dataset.lockScroll !== 'false') {
+            this.previousBodyOverflow ??= document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+        }
         this.backdropElement.classList.remove('hidden');
         this.backdropElement.classList.add('flex');
 
@@ -181,9 +192,9 @@ export class Drawer extends BaseComponent {
             this.panelElement?.classList.add('translate-x-0');
         }, 10);
 
-        document.body.style.overflow = 'hidden';
     }
 
+    /** Close the panel and return keyboard focus to its connected originating control. */
     public close(): void {
         this.syncElements();
 
@@ -201,11 +212,15 @@ export class Drawer extends BaseComponent {
             this.backdropElement?.classList.remove('flex');
             this.backdropElement?.classList.add('hidden');
             this.restorePosition();
+            if (this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+            this.returnFocus = null;
         }, 200);
     }
 
+    /** Return a portaled drawer to its owner and restore the prior scrolling state. */
     private restorePosition(): void {
         if (this.placeholder) {
+            this.placeholder.parentElement?.removeEventListener('htmx:beforeCleanupElement', this.onCleanup);
             if (this.placeholder.isConnected) this.placeholder.replaceWith(this.element);
             else this.element.remove();
             this.placeholder = null;
@@ -216,7 +231,15 @@ export class Drawer extends BaseComponent {
         }
     }
 
-    public destroy(): void {
+    /** Release the drawer when HTMX removes it or the view owning its portal. */
+    private onCleanup = (event: Event): void => {
+        if (event.target === this.element || event.target === this.placeholder?.parentElement) this.destroy();
+    };
+
+    /** Release timers, global controls, and any portal created by this drawer. */
+    public override destroy(): void {
+        this.returnFocus = null;
+        this.element?.removeEventListener('htmx:beforeCleanupElement', this.onCleanup);
         if (this.animationTimer) clearTimeout(this.animationTimer);
         this.backdropElement?.classList.remove('flex');
         this.backdropElement?.classList.add('hidden');
@@ -230,5 +253,6 @@ export class Drawer extends BaseComponent {
         }
 
         this.clearTriggerHandlers();
+        super.destroy();
     }
 }

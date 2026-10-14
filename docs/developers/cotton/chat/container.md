@@ -1,20 +1,12 @@
 # `c-ui.chat.container`
 
-- Tag: `<c-ui.chat.container />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/chat/container.html`
+Shared scrollable message log for comments and instant messaging. Use inside an
+`im-theme` ancestor to apply the shared chat styling.
 
-## Description
+| Parameter | Description |
+| --- | --- |
+| `class` | Additional classes for the log. |
+| `label` | Accessible log label; defaults to translated “Messages”. |
 
-Chat container component.
-
-## Parameters
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `class` | - | Additional classes for the chat list |
-
-## Slots
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `default` | - | Chat messages |
+The default slot holds messages. Additional attributes, including activity
+tracking attributes, are forwarded to the log.

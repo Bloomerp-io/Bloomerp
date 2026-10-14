@@ -16,6 +16,21 @@ from bloomerp.communication.builtins.instant_messaging.registry import IM_PROVID
 class TestIMContracts(SimpleTestCase):
     """Exercise pure contracts that do not belong to request or model scenarios."""
 
+    def test_extension_hook_accepts_callable_and_import_path(self) -> None:
+        """Resolve both supported hook forms to the same executable function."""
+        from bloomerp.utils.callables import resolve_hook
+        from bloomerp.utils.rich_text import format_content
+
+        for hook in (format_content, "bloomerp.utils.rich_text.format_content"):
+            self.assertEqual(resolve_hook(hook)("<p>Hello</p>", "plain"), "Hello")
+
+    def test_extension_hook_rejects_non_callable_import(self) -> None:
+        """Fail clearly when an extension points a hook at a data object."""
+        from bloomerp.utils.callables import resolve_hook
+
+        with self.assertRaisesRegex(TypeError, "must resolve to a callable"):
+            resolve_hook("bloomerp.utils.rich_text.TAGS")
+
     def test_registry_rejects_ambiguous_identifiers(self) -> None:
         """Use case: Extensions register aliases that collide with stored keys.
         Expected result: Both lookup paths stay unambiguous and duplicates fail.

@@ -1,4 +1,5 @@
-import BaseComponent from "../BaseComponent";
+import BaseComponent, { getComponent } from "../BaseComponent";
+import { Drawer } from "../Drawer";
 import htmx from "htmx.org";
 
 export abstract class BaseDataViewCell extends BaseComponent {
@@ -156,23 +157,30 @@ export abstract class BaseDataViewCell extends BaseComponent {
         })
     }
 
+    /** Open the shared drawer or use the split pane according to the saved view mode. */
     private resolveDefaultTarget(): string | HTMLElement {
-        if (!this.element) return "#main-content";
-
-        const container = this.element.closest<HTMLElement>('[data-split-view-enabled]');
-        const splitViewEnabled = container?.dataset.splitViewEnabled === "True";
-        if (!splitViewEnabled || !container) return "#main-content";
-
-        const detailPane = container.querySelector<HTMLElement>('[data-split-view-detail-pane]');
-        return detailPane ?? "#main-content";
+        const container = this.element?.closest<HTMLElement>('[data-view-mode]');
+        if (container?.dataset.viewMode === 'drawer') {
+            container.querySelector<HTMLElement>('[data-detail-drawer-trigger]')?.classList.remove('hidden');
+            const drawer = container.querySelector<HTMLElement>('[data-dataview-detail-drawer]');
+            const pane = drawer?.querySelector<HTMLElement>('[data-drawer-detail-pane]');
+            if (!this.element.hasAttribute('tabindex')) this.element.tabIndex = -1;
+            if (drawer) (getComponent(drawer) as Drawer)?.open(this.element);
+            return pane ?? '#main-content';
+        }
+        if (container?.dataset.viewMode === 'split') {
+            return container.querySelector<HTMLElement>('[data-split-view-detail-pane]') ?? '#main-content';
+        }
+        return '#main-content';
     }
 
+    /** Embedded detail navigation keeps the list URL unchanged. */
     private shouldPushUrl(target: string | HTMLElement): boolean {
         if (typeof target === "string") {
             return target === "#main-content";
         }
 
-        const detailPane = target.closest<HTMLElement>('[data-split-view-detail-pane]');
+        const detailPane = target.closest<HTMLElement>('[data-split-view-detail-pane], [data-drawer-detail-pane]');
         if (detailPane) return false;
 
         const mainContent = document.getElementById("main-content");

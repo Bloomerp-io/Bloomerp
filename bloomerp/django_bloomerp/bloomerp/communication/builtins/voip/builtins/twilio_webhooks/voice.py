@@ -4,6 +4,7 @@ from bloomerp.models.communication.voip import VoIPConnection
 
 from uuid import UUID
 import re
+import logging
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
@@ -93,7 +94,17 @@ def voice(request: HttpRequest, connection: VoIPConnection) -> HttpResponse:
 
         if chat:
             transaction.on_commit(partial(notify_conversation, chat.pk))
-        users = list(number.assigned_users.filter(is_active=True, is_staff=True)[:10])
+        from ..twilio import TWILIO_PROVIDER
+
+        users = list(number.assigned_users.filter(is_active=True, is_staff=True))
+        limit = TWILIO_PROVIDER.max_assigned_users
+        if limit is not None and len(users) > limit:
+            logging.getLogger(__name__).warning(
+                "Twilio line %s exceeds its assignment limit; rejecting inbound call.",
+                number.pk,
+            )
+            response.reject(reason="busy")
+            return HttpResponse(str(response), content_type="application/xml")
         if not users or not connection.settings.get("browser_calling"):
             response.reject(reason="busy")
         else:

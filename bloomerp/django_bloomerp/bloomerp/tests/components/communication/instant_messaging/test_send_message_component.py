@@ -3,6 +3,7 @@ from uuid import uuid4
 from unittest.mock import patch
 
 from django.http import HttpResponse
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from bloomerp.communication.builtins.instant_messaging.controller import IMController
@@ -48,6 +49,47 @@ class TestSendMessageComponent(VoIPFixtures, BloomerpComponentTestCase):
         """Submit plain text beyond the carrier limit before any network dispatch."""
         self.prepare_sms_at_limit(scenario)
         scenario.data["body_html"] = f"<p>{self.sms_body}x</p>"
+
+    def prepare_pending_sms_retry(self, scenario: RequestScenario) -> None:
+        """Retry an unchanged draft after an uncertain carrier timeout."""
+        self.prepare_sms(scenario)
+        self.sms_adapter.send_sms.side_effect = TimeoutError("Carrier response lost")
+        with self.assertRaises(ValidationError):
+            IMController(self.normal_user).send_message(
+                self.chat.pk, scenario.data["body_html"], scenario.data["client_id"]
+            )
+
+    def prepare_accepted_sms_retry(self, scenario: RequestScenario) -> None:
+        """Retry a carrier-accepted message without dispatching it twice."""
+        self.prepare_sms(scenario)
+        IMController(self.normal_user).send_message(
+            self.chat.pk, scenario.data["body_html"], scenario.data["client_id"]
+        )
+
+    def prepare_failed_sms_retry(self, scenario: RequestScenario) -> None:
+        """Keep a confirmed delivery failure from acknowledging a retry as successful."""
+        self.prepare_pending_sms_retry(scenario)
+        message = self.chat.messages.get()
+        message.status = "failed"
+        message.save(update_fields=["status"])
+
+    def validate_pending_sms_retry(self, response: HttpResponse) -> bool:
+        """Keep the unresolved message and its identifier without another carrier request."""
+        self.sms_adapter.send_sms.assert_called_once()
+        message = self.chat.messages.get()
+        return (
+            message.status == "pending"
+            and message.client_id == "send-test"
+            and "could not be confirmed" in response.json()["error"]
+        )
+
+    def validate_failed_sms_retry(self, response: HttpResponse) -> bool:
+        """Preserve the failed message and report its failure without redelivery."""
+        self.sms_adapter.send_sms.assert_called_once()
+        return (
+            self.chat.messages.get().status == "failed"
+            and "could not be delivered" in response.json()["error"]
+        )
 
     def validate_sms(self, response: HttpResponse) -> bool:
         """Verify persistence and carrier delivery use the same plain-text body."""
@@ -172,6 +214,33 @@ class TestSendMessageComponent(VoIPFixtures, BloomerpComponentTestCase):
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover successful sending and rejected requests using generated scenarios."""
         return [
+            RequestScenario(
+                name="Uncertain SMS retry remains an error without redelivery",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.prepare_pending_sms_retry,
+                expected=ExpectedResult(
+                    status_code=400,
+                    response_validators=[self.validate_pending_sms_retry],
+                ),
+            ),
+            RequestScenario(
+                name="Accepted SMS retry acknowledges the existing message",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.prepare_accepted_sms_retry,
+                expected=ExpectedResult(response_validators=[self.validate_sms]),
+            ),
+            RequestScenario(
+                name="Failed SMS retry reports delivery failure",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.prepare_failed_sms_retry,
+                expected=ExpectedResult(
+                    status_code=400,
+                    response_validators=[self.validate_failed_sms_retry],
+                ),
+            ),
             RequestScenario(
                 name="SMS sends plain text from editor markup",
                 method="POST",

@@ -10,6 +10,7 @@ Run `./scripts.sh document-cotton-components` to regenerate these docs.
 - [`c-ui.breadcrumb.body`](breadcrumb/body.md)
 - [`c-ui.breadcrumb.item`](breadcrumb/item.md)
 - [`c-ui.center_page_element`](center_page_element.md)
+- [`c-ui.chat.composer`](chat/composer.md)
 - [`c-ui.chat.container`](chat/container.md)
 - [`c-ui.chat.message`](chat/message.md)
 - [`c-ui.container`](container.md)
