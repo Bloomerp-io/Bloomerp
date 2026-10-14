@@ -14,7 +14,7 @@ from django.http import QueryDict
 from django.test import TestCase
 
 from bloomerp.form_fields.one_to_many_field import OneToManyCleanedData, OneToManyField
-from bloomerp.models import ApplicationField, Initiative, Todo, TodoLabel
+from bloomerp.models import ApplicationField
 from bloomerp.models.agents import AIAgent, AIAgentAccess
 from bloomerp.tests.base import (
     BloomerpFormFieldTestCase,
@@ -188,24 +188,22 @@ class AgentAccessInlineTests(BloomerpFormFieldTestCase[OneToManyField], TestCase
             [column.field for column in widget.get_columns()], ["groups", "name"]
         )
 
-    def test_todo_single_label_still_uses_list_binding(self) -> None:
-        """Verify the working to-do label path retains its normal QueryDict selection list."""
-        label = TodoLabel.objects.create(name="Reference", color="#123456")
+    def test_single_group_still_uses_list_binding(self) -> None:
+        """Retain the normal QueryDict selection list for a direct many-to-many form."""
         data = QueryDict(mutable=True)
-        data.setlist("labels", [str(label.pk)])
-        form = forms.modelform_factory(Todo, fields=["labels"])(data=data)
+        data.setlist("groups", [str(self.group.pk)])
+        form = forms.modelform_factory(AIAgentAccess, fields=["groups"])(data=data)
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(list(form.cleaned_data["labels"]), [label])
+        self.assertEqual(list(form.cleaned_data["groups"]), [self.group])
 
-    def test_label_binding_has_same_single_value_requirement_as_users(self) -> None:
-        """Show that nested labels also require list-shaped values at child-form binding."""
-        label = TodoLabel.objects.create(name="Nested reference", color="#123456")
-        form_class = forms.modelform_factory(Todo, fields=["labels"])
-        scalar_row = {"labels": str(label.pk)}
+    def test_group_binding_has_same_single_value_requirement_as_users(self) -> None:
+        """Require list-shaped selections for another child-form many-to-many field."""
+        form_class = forms.modelform_factory(AIAgentAccess, fields=["groups"])
+        scalar_row = {"groups": str(self.group.pk)}
         broken = form_class(data=scalar_row)
         self.assertFalse(broken.is_valid())
-        self.assertIn("Enter a list of values.", broken.errors["labels"])
-        already_list = form_class(data={"labels": [str(label.pk)]})
+        self.assertIn("Enter a list of values.", broken.errors["groups"])
+        already_list = form_class(data={"groups": [str(self.group.pk)]})
         self.assertTrue(already_list.is_valid(), already_list.errors)
         fixed = form_class(
             data=OneToManyField._row_form_data(scalar_row, form_class.base_fields)
@@ -228,64 +226,42 @@ class AgentAccessInlineTests(BloomerpFormFieldTestCase[OneToManyField], TestCase
             self.field.clean(rows)
         self.assertFalse(self.agent.access.exists())
 
-    def test_existing_nested_todo_single_label_old_and_new_binding(self) -> None:
-        """Compare the initiative's nested label path and preserve existing child identity."""
-        initiative = Initiative.objects.create(name="Nested reference")
-        todo = Todo.objects.create(title="Existing row", initiative=initiative)
-        label = TodoLabel.objects.create(name="One label", color="#123456")
-        todo.labels.add(label)
-        application_field = ApplicationField.objects.create(
-            content_type=ContentType.objects.get_for_model(Initiative),
-            field="todos",
-            field_type="OneToManyField",
-            related_model=ContentType.objects.get_for_model(Todo),
+    def test_existing_nested_access_single_group_old_and_new_binding(self) -> None:
+        """Preserve a nested child's identity while normalizing and clearing its relation."""
+        grant = AIAgentAccess.objects.create(
+            model=self.agent, name="Existing row"
         )
-        for name in ("title", "status", "priority", "labels"):
-            ApplicationField.objects.create(
-                content_type=ContentType.objects.get_for_model(Todo),
-                field=name,
-                field_type=Todo._meta.get_field(name).get_internal_type(),
-            )
-        widget = OneToManyFieldWidget(
-            attrs={
-                "related_model": Todo,
-                "parent_model": Initiative,
-                "layout_config": {
-                    "inline_fields": ["title", "status", "priority", "labels"]
-                },
-            }
-        )
-        field = OneToManyField(application_field=application_field, widget=widget)
-        field.bind_parent(initiative)
+        grant.groups.add(self.group)
         data = QueryDict(mutable=True)
         data.update(
             {
-                "todos__0__id": str(todo.pk),
-                "todos__0__title": "Changed title",
-                "todos__0__status": todo.status,
-                "todos__0__priority": todo.priority,
+                "access__0__id": str(grant.pk),
+                "access__0__name": "Changed name",
+                "access__0__users": "",
             }
         )
-        data.setlist("todos__0__labels", [str(label.pk)])
-        rows = widget.value_from_datadict(data, {}, "todos")
-        self.assertEqual(rows[0]["labels"], str(label.pk))
+        data.setlist("access__0__groups", [str(self.group.pk)])
+        rows = self.widget.value_from_datadict(data, {}, "access")
+        self.assertEqual(rows[0]["groups"], str(self.group.pk))
         with (
             patch.object(
                 OneToManyField, "_row_form_data", staticmethod(legacy_row_form_data)
             ),
             self.assertRaisesMessage(ValidationError, "Enter a list of values"),
         ):
-            field.clean(rows)
-        todo.refresh_from_db()
-        self.assertEqual(todo.title, "Existing row")
-        field.clean(rows).save(initiative)
-        todo.refresh_from_db()
-        self.assertEqual(todo.title, "Changed title")
-        self.assertEqual(list(todo.labels.all()), [label])
-        self.assertEqual(initiative.todos.count(), 1)
-        data["todos__0__labels"] = ""
-        field.clean(widget.value_from_datadict(data, {}, "todos")).save(initiative)
-        self.assertFalse(todo.labels.exists())
+            self.field.clean(rows)
+        grant.refresh_from_db()
+        self.assertEqual(grant.name, "Existing row")
+        self.field.clean(rows).save(self.agent)
+        grant.refresh_from_db()
+        self.assertEqual(grant.name, "Changed name")
+        self.assertEqual(list(grant.groups.all()), [self.group])
+        self.assertEqual(self.agent.access.count(), 1)
+        data["access__0__groups"] = ""
+        self.field.clean(
+            self.widget.value_from_datadict(data, {}, "access")
+        ).save(self.agent)
+        self.assertFalse(grant.groups.exists())
 
     def test_normalization_preserves_non_multiple_choice_values(self) -> None:
         """Keep JSON arrays, uploads, booleans, integers, and foreign keys unchanged."""

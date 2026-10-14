@@ -3,8 +3,10 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
 
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.project_management.todo_label import TodoLabel
-from bloomerp.models.users.user_object_layout_preference import UserObjectLayoutPreference
+from bloomerp.models.project_management.initiative import Initiative
+from bloomerp.models.users.user_object_layout_preference import (
+    UserObjectLayoutPreference,
+)
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
@@ -20,7 +22,7 @@ class TestCreateObjectComponentViewComponent(BloomerpComponentTestCase):
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Verify modal targets and rendering with stale saved layout entries."""
-        kwargs = {"content_type_id": ContentType.objects.get_for_model(TodoLabel).pk}
+        kwargs = {"content_type_id": ContentType.objects.get_for_model(Initiative).pk}
         customer_kwargs = {"content_type_id": ContentType.objects.get_for_model(self.CustomerModel).pk}
         validators = [
             self.contains_text('hx-target="closest [data-modal-body]"'),
@@ -94,7 +96,7 @@ class TestCreateObjectComponentViewComponent(BloomerpComponentTestCase):
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
         field = ApplicationField.objects.get(content_type=content_type, field="first_name")
         other_field = ApplicationField.objects.get(
-            content_type=ContentType.objects.get_for_model(TodoLabel), field="name",
+            content_type=ContentType.objects.get_for_model(Initiative), field="name",
         )
         self.layout_preference = PreferenceManager(self.admin_user).get_or_create_selected(
             UserObjectLayoutPreference, scope={"content_type_id": content_type.pk},

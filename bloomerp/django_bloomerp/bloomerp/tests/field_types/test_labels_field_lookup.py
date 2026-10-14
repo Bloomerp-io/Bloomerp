@@ -104,7 +104,10 @@ class TestLabelsFieldLookup(BaseBloomerpTestCaseWithModels):
         )
         self.assertEqual(self.CustomerModel().object_labels, [])
         self.assertFalse(Todo._meta.get_field("object_labels").concrete)
-        self.assertTrue(Todo._meta.get_field("labels").many_to_many)
+        self.assertEqual(
+            ApplicationField.get_by_field(Todo, "object_labels").get_field_type().id,
+            "BloomerpLabelsField",
+        )
 
     def test_label_conditions_compose_as_all_selected(self) -> None:
         """Two AND conditions can require both labels on the same parent record."""

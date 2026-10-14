@@ -4,20 +4,28 @@ from unittest.mock import patch
 from django.db import models
 from django.utils import timezone
 
-from bloomerp.models.project_management.todo import Todo
-from bloomerp.models.project_management.todo_label import TodoLabel
+from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from bloomerp.tests.utils.dynamic_models import create_test_models
-from bloomerp.filters.manager import ModelFilterManager
 
 
 class TestFilterModelRegressions(BaseBloomerpTestCaseWithModels):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
+        """Create independent models for scalar, nested, and many-to-many filters."""
         super().setUpClass()
         models_by_name = create_test_models(
             app_label="bloomerp",
             model_defs={
+                "FilterRegressionTag": {
+                    "name": models.CharField(max_length=100),
+                },
+                "FilterRegressionTask": {
+                    "title": models.CharField(max_length=100),
+                    "tags": models.ManyToManyField(
+                        "FilterRegressionTag", blank=True, related_name="tasks"
+                    ),
+                },
                 "FilterRegressionEvent": {
                     "starts_at": models.DateTimeField(),
                     "starts_on": models.DateField(),
@@ -38,6 +46,8 @@ class TestFilterModelRegressions(BaseBloomerpTestCaseWithModels):
         )
         cls.EventModel = models_by_name["FilterRegressionEvent"]
         cls.EmployeeModel = models_by_name["FilterRegressionEmployee"]
+        cls.TagModel = models_by_name["FilterRegressionTag"]
+        cls.TaskModel = models_by_name["FilterRegressionTask"]
 
     def create_event(self, starts_on, hour=9, **kwargs):
         return self.EventModel.objects.create(
@@ -55,34 +65,36 @@ class TestFilterModelRegressions(BaseBloomerpTestCaseWithModels):
             expected_ids,
         )
 
-    def test_many_to_many_labels_filter_by_id(self):
-        backend = TodoLabel.objects.create(name="Backend", color="#000000")
-        frontend = TodoLabel.objects.create(name="Frontend", color="#ffffff")
-        backend_todo = Todo.objects.create(title="Fix labels filter")
-        backend_todo.labels.add(backend)
-        frontend_todo = Todo.objects.create(title="Polish filters UI")
-        frontend_todo.labels.add(frontend)
-        both_todo = Todo.objects.create(title="Ship both")
-        both_todo.labels.add(backend, frontend)
+    def test_many_to_many_relations_filter_by_id(self) -> None:
+        """Match a selected related ID without losing records with other relations."""
+        backend = self.TagModel.objects.create(name="Backend")
+        frontend = self.TagModel.objects.create(name="Frontend")
+        backend_task = self.TaskModel.objects.create(title="Fix relation filter")
+        backend_task.tags.add(backend)
+        frontend_task = self.TaskModel.objects.create(title="Polish filters UI")
+        frontend_task.tags.add(frontend)
+        both_task = self.TaskModel.objects.create(title="Ship both")
+        both_task.tags.add(backend, frontend)
 
         self.assert_filtered_ids(
-            Todo,
-            {"labels": [str(backend.id)]},
-            [backend_todo.id, both_todo.id],
+            self.TaskModel,
+            {"tags": [str(backend.id)]},
+            [backend_task.id, both_task.id],
         )
 
-    def test_many_to_many_labels_support_exact_lookup_alias(self):
-        backend = TodoLabel.objects.create(name="Backend", color="#000000")
-        frontend = TodoLabel.objects.create(name="Frontend", color="#ffffff")
-        backend_todo = Todo.objects.create(title="Fix labels filter")
-        backend_todo.labels.add(backend)
-        frontend_todo = Todo.objects.create(title="Polish filters UI")
-        frontend_todo.labels.add(frontend)
+    def test_many_to_many_relations_support_exact_lookup_alias(self) -> None:
+        """Accept the legacy exact alias for many-to-many relation selections."""
+        backend = self.TagModel.objects.create(name="Backend")
+        frontend = self.TagModel.objects.create(name="Frontend")
+        backend_task = self.TaskModel.objects.create(title="Fix relation filter")
+        backend_task.tags.add(backend)
+        frontend_task = self.TaskModel.objects.create(title="Polish filters UI")
+        frontend_task.tags.add(frontend)
 
         self.assert_filtered_ids(
-            Todo,
-            {"labels__exact": [str(backend.id)]},
-            [backend_todo.id],
+            self.TaskModel,
+            {"tags__exact": [str(backend.id)]},
+            [backend_task.id],
         )
 
     @patch("bloomerp.field_types.lookups.timezone.localdate", return_value=date(2026, 5, 18))

@@ -5,8 +5,8 @@ from django.conf import settings
 from django.urls import reverse
 from playwright.sync_api import expect
 
+from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.project_management.todo import Todo
-from bloomerp.models.project_management.todo_label import TodoLabel
 from bloomerp.tests import base
 from bloomerp.tests.base import E2EAction, E2ERequestScenario
 from bloomerp.utils.models import get_list_view_url
@@ -17,9 +17,8 @@ class TestInternationalizationE2E(base.BloomerpE2ETestCase):
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
         """Describe localized detail, list, and navigation contracts as browser scenarios."""
-        todo = Todo.objects.create(title='Customer-authored title', assigned_to=self.admin_user, content='<p>Customer-authored content</p>')
-        label = TodoLabel.objects.create(name='Customer-authored label', color='#123456')
-        todo.labels.add(label)
+        initiative = Initiative.objects.create(name='Customer-authored initiative')
+        todo = Todo.objects.create(title='Customer-authored title', assigned_to=self.admin_user, content='<p>Customer-authored content</p>', initiative=initiative)
         scenarios: list[E2ERequestScenario] = []
         for language, target in [('nl', 'fr'), ('fr', 'nl')]:
             scenarios.append(E2ERequestScenario(
@@ -68,10 +67,10 @@ class TestInternationalizationE2E(base.BloomerpE2ETestCase):
         hide = 'Opmaakwerkbalk verbergen' if language == 'nl' else 'Masquer la barre de mise en forme'
         editor.get_by_role('button', name=hide, exact=True).click()
         expect(hidden_input).to_have_value(content)
-        relation = self.page.locator('[bloomerp-component="foreign-field-widget"][data-field-name="labels"]')
-        remove = 'Customer-authored label verwijderen' if language == 'nl' else 'Supprimer Customer-authored label'
+        relation = self.page.locator('[bloomerp-component="foreign-field-widget"][data-field-name="initiative"]')
+        remove = 'Customer-authored initiative verwijderen' if language == 'nl' else 'Supprimer Customer-authored initiative'
         expect(relation.get_by_role('button', name=remove, exact=True)).to_be_visible()
-        relation.locator('input[type="text"]').fill('zzqa_no_such_label')
+        relation.locator('input[type="text"]').fill('zzqa_no_such_initiative')
         dropdown = self.page.locator('.foreign-field-dropdown:visible')
         expect(dropdown.get_by_text('Geen resultaten' if language == 'nl' else 'Aucun résultat', exact=True)).to_be_visible()
         expect(dropdown.get_by_text('Nieuw aanmaken' if language == 'nl' else 'Créer', exact=True)).to_be_visible()
