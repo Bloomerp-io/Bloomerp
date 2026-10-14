@@ -7,11 +7,15 @@ from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from pydantic import TypeAdapter
 
+from bloomerp.dataviews.card.config import CardDataView
 from bloomerp.dataviews.definition import BaseDataview, DataviewTypeDefinition
+from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.communication.label import Label
+from bloomerp.models.communication.object_label import ObjectLabel
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.project_management.initiative import Initiative
@@ -549,3 +553,148 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 )
             ],
         ).assign_user(self.normal_user)
+
+
+class TestDataviewObjectLabelsComponent(BloomerpComponentTestCase):
+    """Keep shared labels selectable and rendered only with field permission."""
+
+    view_name = "components_dataview"
+    auto_create_customers = False
+
+    def extendedSetup(self) -> None:
+        """Create labeled and unlabeled rows using the shared assignment model."""
+        self.labeled_customer = self.create_customer("Labeled", "Customer", 30)
+        self.create_customer("Unlabeled", "Customer", 30)
+        self.content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        self.label_field = ApplicationField.get_by_field(
+            self.CustomerModel, "object_labels"
+        )
+        for name, color in [("Urgent <review>", "#facc15"), ("Customer care", "#123456")]:
+            label = Label.objects.create(name=name, color=color)
+            ObjectLabel.objects.create(
+                content_type=self.content_type,
+                object_id=str(self.labeled_customer.pk),
+                label=label,
+            )
+
+    def grant_field_access(self, *, labels: bool) -> Callable[[RequestScenario], None]:
+        """Prepare ordinary-user row access with an explicit label-field grant."""
+        def prepare(scenario: RequestScenario) -> None:
+            """Assign only the requested fields to the scenario's authenticated user."""
+            fields = {"first_name": [BloomerpPermission.VIEW]}
+            if labels:
+                fields["object_labels"] = [BloomerpPermission.VIEW]
+            PolicyManager.create_policy(
+                self.CustomerModel,
+                access_rule=AccessRule(
+                    row_permissions=[
+                        RowPolicyRuleContent(
+                            connector="AND",
+                            permissions=[BloomerpPermission.VIEW],
+                            conditions=[],
+                        )
+                    ],
+                    field_permissions=fields,
+                ),
+                global_permissions=[BloomerpPermission.VIEW],
+            ).assign_user(scenario.user)
+        return prepare
+
+    def select_labels(self, config: BaseDataview) -> Callable[[RequestScenario], None]:
+        """Select the virtual label field using persisted display preferences."""
+        def prepare(scenario: RequestScenario) -> None:
+            """Save the same field selection and options used by the display controls."""
+            preference = PreferenceManager(scenario.user).get_or_create_selected(
+                UserListViewPreference, scenario.view_kwargs
+            )
+            name_field = ApplicationField.get_by_field(self.CustomerModel, "first_name")
+            preference.view_type = config.view_type
+            preference.options = {config.view_type: config.dump_options()}
+            preference.set_visible_field_ids(
+                config.view_type, [name_field.pk, self.label_field.pk]
+            )
+            preference.save(update_fields=["view_type", "options", "display_fields"])
+        return prepare
+
+    def labels_available_but_not_selected(self, response: HttpResponse) -> bool:
+        """Offer labels in the rendered controls without adding a default column."""
+        fields = response.context["fields"]
+        html = response.content.decode()
+        return (
+            (self.label_field, False) in fields.accessible_fields
+            and self.label_field not in fields.visible_fields
+            and f'data-field-id="{self.label_field.pk}"' in html
+            and '"toggle_field_id": "' + str(self.label_field.pk) + '"' in html
+        )
+
+    def labels_rendered(self, response: HttpResponse) -> bool:
+        """Render both escaped colored badges and preserve the unlabeled row."""
+        fields = response.context["fields"]
+        html = response.content.decode()
+        return (
+            (self.label_field, True) in fields.accessible_fields
+            and self.label_field in fields.visible_fields
+            and "Urgent &lt;review&gt;" in html
+            and "Customer care" in html
+            and "background-color: #facc15; color: #111827" in html
+            and "background-color: #123456; color: #ffffff" in html
+            and "Unlabeled" in html
+            and "Urgent <review>" not in html
+        )
+
+    def labels_unavailable(self, response: HttpResponse) -> bool:
+        """Exclude denied labels from both field controls and selected row content."""
+        fields = response.context["fields"]
+        html = response.content.decode()
+        return (
+            all(field != self.label_field for field, _selected in fields.accessible_fields)
+            and self.label_field not in fields.visible_fields
+            and f'data-field-id="{self.label_field.pk}"' not in html
+            and "Customer care" not in html
+            and "Urgent" not in html
+            and "Unlabeled" in html
+        )
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        """Cover discovery, multiple renderer types, and denied saved selections."""
+        kwargs = {"content_type_id": self.content_type.pk}
+        scenarios = [
+            RequestScenario(
+                name="Object labels are selectable without becoming a default column",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                expected=ExpectedResult(
+                    response_validators=self.labels_available_but_not_selected
+                ),
+            ),
+            RequestScenario(
+                name="An ordinary user can select permitted object labels",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=self.grant_field_access(labels=True),
+                expected=ExpectedResult(
+                    response_validators=self.labels_available_but_not_selected
+                ),
+            ),
+            RequestScenario(
+                name="Saved object labels are hidden without field permission",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=[
+                    self.grant_field_access(labels=False),
+                    self.select_labels(TableDataView()),
+                ],
+                expected=ExpectedResult(response_validators=self.labels_unavailable),
+            ),
+        ]
+        for config in [TableDataView(), CardDataView(), KanbanDataView(group_by_field="age")]:
+            scenarios.append(
+                RequestScenario(
+                    name=f"Selected object labels render as badges in {config.view_type}",
+                    user=self.admin_user,
+                    view_kwargs=kwargs,
+                    prepare=self.select_labels(config),
+                    expected=ExpectedResult(response_validators=self.labels_rendered),
+                )
+            )
+        return scenarios
