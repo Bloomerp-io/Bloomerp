@@ -60,6 +60,12 @@ class ObjectPreviewTooltipManager {
         };
     }
 
+    /** Identify interactions inside the body-mounted preview, including nested icons and links. */
+    public contains(target: Node): boolean {
+        return !!this.tooltipEl && !this.tooltipEl.classList.contains("hidden") && this.tooltipEl.contains(target);
+    }
+
+    /** Dismiss the active preview and cancel its pending hover timers. */
     public hide(): void {
         this.clearTimers();
         this.activePreviewKey = null;
@@ -151,6 +157,7 @@ class ObjectPreviewTooltipManager {
         }
     }
 
+    /** Create the reusable hover panel and bind its preview-only interactions once. */
     private ensureTooltip(): HTMLDivElement {
         if (this.tooltipEl && this.tooltipContentEl) {
             return this.tooltipEl;
@@ -175,11 +182,36 @@ class ObjectPreviewTooltipManager {
             this.scheduleHide();
         });
 
+        tooltip.addEventListener("click", this.copyValue);
+
         document.body.appendChild(tooltip);
         this.tooltipEl = tooltip;
         this.tooltipContentEl = content;
         return tooltip;
     }
+
+    /** Copy only the rendered field value and report clipboard failures without closing the preview. */
+    private copyValue = async (event: MouseEvent): Promise<void> => {
+        if (!(event.target instanceof Element)) return;
+        const button = event.target.closest<HTMLButtonElement>("[data-preview-copy]");
+        if (!button || !this.tooltipEl?.contains(button)) return;
+        const field = button.closest<HTMLElement>("[data-preview-field]");
+        const value = field?.querySelector<HTMLElement>("[data-preview-value]");
+        const status = field?.querySelector<HTMLElement>("[data-preview-copy-status]");
+        if (!value || button.disabled) return;
+
+        event.preventDefault();
+        button.disabled = true;
+        if (status) status.textContent = "";
+        try {
+            await navigator.clipboard.writeText((value.innerText ?? value.textContent ?? "").trim());
+            if (status) status.textContent = "Copied";
+        } catch {
+            if (status) status.textContent = "Could not copy. Select and copy the value manually.";
+        } finally {
+            button.disabled = false;
+        }
+    };
 
     private setLoading(): void {
         if (!this.tooltipContentEl) return;
@@ -255,4 +287,9 @@ export function attachObjectPreviewTooltip(options: ObjectPreviewTooltipOptions)
 
 export function hideObjectPreviewTooltip(): void {
     objectPreviewTooltipManager.hide();
+}
+
+/** Let widgets recognize preview clicks without stopping link or clipboard event propagation. */
+export function isObjectPreviewTarget(target: Node): boolean {
+    return objectPreviewTooltipManager.contains(target);
 }

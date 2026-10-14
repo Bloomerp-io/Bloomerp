@@ -33,11 +33,10 @@ from bloomerp.permissions.manager import (
     field_access_annotation_name,
 )
 from bloomerp.services.sectioned_layout_services import (
-    build_crud_layout_field_context,
     dump_layout_json as dump_layout_json_service,
-    get_object_field_value,
 )
 from bloomerp.widgets.icon_picker_widget import parse_icon_value as parse_icon_value_service
+from bloomerp.utils.rich_text import sanitize_html
 
 register = template.Library()
 
@@ -330,26 +329,29 @@ def render_object_preview_value(
         can_view: bool = False,
         can_edit: bool = False,
         colspan: int = 1,
-        ):
-    """Renders a detail value inside an object preview without failing the whole preview."""
+        ) -> dict[str, Any]:
+    """Render an authorized preview value without inputs or cross-field failures."""
     context = {
         "application_field": application_field,
         "colspan": colspan,
         "preview_field_error_message": None,
     }
 
+    if not can_view:
+        return {"can_view": False}
+
+    context["can_view"] = True
     try:
-        detail_context = build_crud_layout_field_context(
-            application_field=application_field,
-            value=get_object_field_value(obj=object, application_field=application_field),
-            can_edit=can_edit,
-        )
-        detail_context["colspan"] = colspan
-        detail_context["preview_field_error_message"] = None
-        return detail_context
+        field_type = application_field.get_field_type()
+        value = field_type.render_value(application_field, object)
+        # These legacy renderers return HTML as ordinary strings. Other strings
+        # stay autoescaped; format_html-based renderers retain their SafeData.
+        if value is not None and field_type.id in {"TextField", "EmailField", "URLField", "FileField"}:
+            value = mark_safe(sanitize_html(str(value)))
+        context["value"] = value
     except Exception:
         context["preview_field_error_message"] = "Preview is not available for this field."
-        return context
+    return context
     
 
 @register.filter
