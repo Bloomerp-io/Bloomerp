@@ -1,21 +1,28 @@
 import re
 from typing import Any
 
-from django.db import models
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 from pydantic import BaseModel
+
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.model_fields.code_field import CodeField
+from bloomerp.model_fields.text_editor_field import TextEditorField
 from bloomerp.models import BloomerpModel, FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.model_fields.text_editor_field import TextEditorField
-from django.utils.translation import gettext_lazy as _, gettext_noop
-from bloomerp.models.definition import BloomerpModelConfig, DetailViewSettings
-from bloomerp.models.document_templates.document_template_styling import (
-    DocumentTemplateStyling,
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    ModelViewSettings,
 )
 from bloomerp.models.document_templates.document_template_header import (
     DocumentTemplateHeader,
+)
+from bloomerp.models.document_templates.document_template_styling import (
+    DocumentTemplateStyling,
 )
 
 
@@ -104,6 +111,21 @@ class DocumentTemplate(BloomerpModel):
         db_table = "bloomerp_document_template"
 
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Document templates"),
+                    display_fields=[
+                        "name",
+                        "page_size",
+                        "page_orientation",
+                        "include_page_numbers",
+                        "datetime_updated",
+                    ],
+                    sort_field="name",
+                )
+            ],
+        ),
         detail_view_settings=DetailViewSettings(
             layouts=[
                 FieldLayout(
