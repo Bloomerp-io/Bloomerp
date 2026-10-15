@@ -261,9 +261,10 @@ export class Modal extends BaseComponent {
         this.containerElement.classList.remove(...Object.values(MODAL_SIZE_CLASSES));
         this.containerElement.classList.add(MODAL_SIZE_CLASSES[size]);
         this.containerElement.classList.toggle('h-full', size === 'full');
+        this.containerElement.classList.toggle('h-[60vh]', size === 'lg');
         this.containerElement.classList.toggle('rounded-none', size === 'full');
-        this.modalBodyElement.classList.toggle('flex-1', size === 'full');
-        this.modalBodyElement.classList.toggle('max-h-96', size !== 'full');
+        this.modalBodyElement.classList.toggle('flex-1', size === 'full' || size === 'lg');
+        this.modalBodyElement.classList.toggle('max-h-96', size !== 'full' && size !== 'lg');
     }
 
     /** Toggle fullscreen while retaining the configured size and body padding. */
