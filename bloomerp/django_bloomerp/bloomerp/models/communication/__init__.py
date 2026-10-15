@@ -56,3 +56,13 @@ __all__ += ["IMIdentitySource"]
 from .instant_messaging.im_conversation_activity import IMConversationActivity
 
 __all__ += ["IMConversationActivity"]
+
+from .conferencing import (
+    ConferenceRoom, ConferenceSession, ConferenceParticipant,
+    ConferenceAttendance, ConferenceWebhookReceipt,
+)
+
+__all__ += [
+    "ConferenceRoom", "ConferenceSession", "ConferenceParticipant",
+    "ConferenceAttendance", "ConferenceWebhookReceipt",
+]

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 20:10+0000\n"
+"POT-Creation-Date: 2026-10-15 11:22+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -80,6 +80,11 @@ msgstr "%(field)s (%(model)s)"
 msgid "%(name)s cannot be previewed here."
 msgstr "%(name)s ne peut pas être prévisualisé ici."
 
+#: signals/voip_assignment_signals.py:46
+#, python-format
+msgid "%(provider)s lines allow at most %(limit)s assigned users."
+msgstr "Les lignes %(provider)s permettent d’affecter au maximum %(limit)s utilisateurs."
+
 #: templates/views/auth/login.html:59
 #, python-format
 msgid "%(provider_name)s login requires django-allauth and provider setup"
@@ -140,10 +145,21 @@ msgstr "Une URL est requise."
 msgid "A brief snippet or summary of the inbox item content."
 msgstr "Un bref extrait ou résumé du contenu de l’élément de la boîte de réception."
 
+#: communication/builtins/conferencing/controller.py:174
+#: components/communication/instant_messaging/start_call.py:40
+msgid "A call is already open. Use Join call in the conversation."
+msgstr "Un appel est déjà en cours. Utilisez « Rejoindre l’appel » dans la conversation."
+
 # | msgid "A name and scope identifier are required."
-#: communication/builtins/voip/controller.py:304
+#: communication/builtins/voip/controller.py:323
 msgid "A call request identifier is required."
 msgstr "Un identifiant de demande d’appel est requis."
+
+# | msgid "A folder's system identity cannot be changed after creation."
+# | msgid "A node's kind cannot be changed."
+#: models/communication/conferencing/conference_attendance.py:72
+msgid "A closed attendance cannot be reopened."
+msgstr "Une présence clôturée ne peut pas être rouverte."
 
 msgctxt "bloomerp:module:description"
 msgid "A collection of miscellaneous features and tools that don't fit into other specific modules."
@@ -168,7 +184,7 @@ msgstr "Une description de la politique de contrôle d’accès."
 msgid "A descriptive name for the edge."
 msgstr "Un nom descriptif pour l’arête."
 
-#: bloomerp.initiative.description models/project_management/initiative.py:159
+#: bloomerp.initiative.description models/project_management/initiative.py:152
 msgid "A detailed description of the initiative"
 msgstr "Le nom de l’initiative"
 
@@ -205,9 +221,15 @@ msgstr "Un nom et un identifiant de portée sont requis."
 msgid "A node's kind cannot be changed."
 msgstr "Le type d’un nœud ne peut pas être modifié."
 
-#: communication/builtins/voip/controller.py:108
+#: communication/builtins/voip/controller.py:109
 msgid "A provider number changed its address. Reconcile the line before synchronizing."
 msgstr "Un numéro du fournisseur a changé d’adresse. Réconciliez la ligne avant de la synchroniser."
+
+# | msgid "A name and scope identifier are required."
+# | msgid "A call request identifier is required."
+#: communication/builtins/conferencing/controller.py:134
+msgid "A valid call mode and request identifier are required."
+msgstr "Un mode d’appel et un identifiant de requête valides sont requis."
 
 #: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:25
 msgid "A3"
@@ -279,11 +301,19 @@ msgstr ""
 "Clé API fournie. Ce serveur ne prend pas en charge la vérification de l’authentification ; "
 "l’accès reste non vérifié."
 
+# | msgid "API Key"
+# | msgid "API key"
+#: communication/builtins/voip/builtins/telnyx.py:34
+msgid "API v2 key"
+msgstr "Clé API v2"
+
 #: bloomerp.airunattempt.status
 msgid "Abandoned"
 msgstr "Abandonné"
 
-#: bloomerp.immessage.status models/communication/instant_messaging/im_message.py:50
+#: bloomerp.conferenceparticipant.invitation_status bloomerp.immessage.status
+#: models/communication/conferencing/conference_participant.py:19
+#: models/communication/instant_messaging/im_message.py:50
 msgid "Accepted"
 msgstr "Accepté"
 
@@ -338,7 +368,7 @@ msgid "Account"
 msgstr "Compte"
 
 # | msgid "Account"
-#: communication/builtins/voip/builtins/twilio.py:25
+#: communication/builtins/voip/builtins/twilio.py:30
 msgid "Account SID"
 msgstr "SID du compte"
 
@@ -372,15 +402,22 @@ msgstr "ID de l’action"
 msgid "Actions"
 msgstr "Actions"
 
-#: bloomerp.emailaccount.status bloomerp.imconnection.status bloomerp.voipconnection.status
-#: bloomerp.voipnumber.is_active bloomerp.workflow.active models/automation/workflow.py:199
+#: communication/builtins/voip/builtins/telnyx.py:128
+msgid "Activate the TeXML application and configure its SIP subdomain to receive only your connections."
+msgstr ""
+"Activez l’application TeXML et configurez son sous-domaine SIP pour ne recevoir que vos "
+"connexions."
+
+#: bloomerp.conferencesession.status bloomerp.emailaccount.status bloomerp.imconnection.status
+#: bloomerp.voipconnection.status bloomerp.voipnumber.is_active bloomerp.workflow.active
+#: models/automation/workflow.py:199 models/communication/conferencing/conference_session.py:23
 #: models/communication/email_account.py:37 models/communication/instant_messaging/im_connection.py:32
 #: models/communication/voip/voip_connection.py:130 models/communication/voip/voip_number.py:107
 msgid "Active"
 msgstr "Actif"
 
 #: bloomerp.user.detail_sidebar_view_preference models/users/user.py:69
-#: templates/views/generic/detail/base.html:134
+#: templates/views/generic/detail/base.html:136
 msgid "Activity"
 msgstr "Activité"
 
@@ -484,6 +521,20 @@ msgstr "Champ d’adresse"
 msgid "Admin"
 msgstr "Page d’administration"
 
+# | msgid "Admin page"
+# | msgid "Admin"
+#: templates/components/communication/calling/controls.html:8
+#, fuzzy
+msgid "Admit"
+msgstr "Page d’administration"
+
+# | msgid "Admin page"
+# | msgid "Admin"
+#: bloomerp.conferenceadmission.status models/communication/conferencing/conference_admission.py:18
+#, fuzzy
+msgid "Admitted"
+msgstr "Page d’administration"
+
 #: workspaces/analytics_tile/model.py:224
 msgid "Advanced formatting"
 msgstr "Mise en forme avancée"
@@ -513,7 +564,7 @@ msgstr "Version de l’agent"
 
 msgctxt "bloomerp:route:name"
 msgid "Agent browser connection"
-msgstr "Connexion du navigateur de l’agent"
+msgstr "Connexion navigateur de l’agent"
 
 # | msgid "API Keys"
 # | msgid "API Key Details"
@@ -611,12 +662,16 @@ msgstr "Toujours"
 msgid "An action to perform"
 msgstr "Une action à effectuer"
 
+#: models/communication/conferencing/conference_session.py:113
+msgid "An active or ended call must have a start time."
+msgstr "Un appel en cours ou terminé doit avoir une heure de début."
+
 # | msgid "An item is required."
 #: models/communication/instant_messaging/im_message_reaction.py:42
 msgid "An emoji is required."
 msgstr "Un emoji est requis."
 
-#: models/project_management/initiative.py:271
+#: models/project_management/initiative.py:257
 msgid "An initiative cannot be its own parent or a descendant."
 msgstr "Une initiative ne peut pas être son propre parent ni l’un de ses descendants."
 
@@ -627,10 +682,6 @@ msgstr "Un élément est requis."
 #: bloomerp.tile.type workspaces/registry.py:46
 msgid "Analytics Tile"
 msgstr "Tuile analytique"
-
-#: templates/components/communication/messaging_panel.html:21
-msgid "Answer"
-msgstr "Répondre"
 
 #: bloomerp.aiagent.provider
 msgid "Anthropic"
@@ -685,11 +736,16 @@ msgstr "Approuvé"
 msgid "Archive"
 msgstr "Archiver"
 
-#: bloomerp.aiconversation.status bloomerp.imconversation.status
+#: bloomerp.aiconversation.status bloomerp.conferenceroom.archived bloomerp.imconversation.status
+#: models/communication/conferencing/conference_room.py:21
 #: models/communication/instant_messaging/im_conversation.py:67
 #: templates/cotton/features/agent/body.html:76
 msgid "Archived"
 msgstr "Archivée"
+
+#: models/communication/conferencing/conference_session.py:117
+msgid "Archived rooms cannot start new sessions."
+msgstr "Les salles archivées ne peuvent pas démarrer de nouvelles sessions."
 
 #: templates/cotton/features/agent/body.html:13 templates/cotton/features/agent/body.html:107
 msgid "Archived — restore this conversation to send a message."
@@ -723,11 +779,20 @@ msgstr "Demander à BloomAI"
 msgid "Ask anything about your workspace…"
 msgstr "Posez n’importe quelle question sur votre espace de travail…"
 
+#: templates/views/communication/conferencing/meeting.html:16
+#, fuzzy
+msgid "Ask to join"
+msgstr "Demander à rejoindre"
+
+#: communication/builtins/voip/builtins/telnyx.py:133
+msgid "Assign an outbound voice profile to the TeXML application."
+msgstr "Attribuez un profil vocal sortant à l’application TeXML."
+
 #: bloomerp.imconversation.assigned_team
 msgid "Assigned Team"
 msgstr "Équipe assignée"
 
-#: bloomerp.imconversation.assigned_to bloomerp.todo.assigned_to models/project_management/todo.py:380
+#: bloomerp.imconversation.assigned_to bloomerp.todo.assigned_to models/project_management/todo.py:346
 msgid "Assigned To"
 msgstr "Assigné à"
 
@@ -736,7 +801,7 @@ msgstr "Assigné à"
 msgid "Assigned staff"
 msgstr "Personnel affecté"
 
-#: components/communication/voip/assign.py:47
+#: components/communication/voip/assign.py:53
 msgid "Assignments saved."
 msgstr "Affectations enregistrées."
 
@@ -745,7 +810,7 @@ msgid "Assistant"
 msgstr "Assistant"
 
 #: templates/components/communication/emails/email_editor.html:178
-#: templates/mixins/bloomerp_layout_form_mixin.html:60
+#: templates/mixins/bloomerp_layout_form_mixin.html:63
 msgid "Attach"
 msgstr "Joindre"
 
@@ -765,9 +830,14 @@ msgstr "Les pièces jointes n’appartiennent pas à cet objet et à ce champ."
 msgid "Attempt"
 msgstr "Tentative"
 
+#: bloomerp.conferencesession.initial_media_mode
+#: models/communication/conferencing/conference_session.py:29
+msgid "Audio"
+msgstr "Audio"
+
 # | msgid "Oauth Scopes"
 # | msgid "OAuth Scopes"
-#: communication/builtins/voip/builtins/twilio.py:26
+#: communication/builtins/voip/builtins/twilio.py:31
 msgid "Auth token"
 msgstr "Jeton d’authentification"
 
@@ -821,7 +891,7 @@ msgstr "Modules disponibles"
 #: bloomerp.inboxfolder.avatar bloomerp.inboxitem.avatar bloomerp.savedfilter.avatar
 #: bloomerp.sqlquery.avatar bloomerp.tile.avatar bloomerp.user.avatar
 #: bloomerp.userinboxpreference.avatar models/mixins/avatar_model_mixin.py:12
-#: templates/mixins/bloomerp_layout_form_mixin.html:61
+#: templates/mixins/bloomerp_layout_form_mixin.html:64
 msgid "Avatar"
 msgstr "Avatar"
 
@@ -837,8 +907,8 @@ msgstr "Moyenne"
 msgid "Awaiting approval"
 msgstr "En attente d’approbation"
 
-#: templates/mixins/bloomerp_layout_form_mixin.html:101
-#: templates/mixins/bloomerp_layout_form_mixin.html:165 templates/views/base_wizard.html:62
+#: templates/mixins/bloomerp_layout_form_mixin.html:104
+#: templates/mixins/bloomerp_layout_form_mixin.html:168 templates/views/base_wizard.html:66
 msgid "Back"
 msgstr "Retour"
 
@@ -851,7 +921,7 @@ msgid "Back to chat"
 msgstr "Retour au chat"
 
 # | msgid "ai conversation"
-#: templates/components/communication/instant_messaging/conversation.html:18
+#: templates/components/communication/instant_messaging/conversation.html:21
 msgid "Back to conversation"
 msgstr "Retour à la conversation"
 
@@ -860,12 +930,12 @@ msgid "Back to editor"
 msgstr "Retour à l’éditeur"
 
 # | msgid "Back to chat"
-#: templates/components/communication/messaging_panel.html:9
+#: templates/components/communication/messaging_panel.html:10
 msgid "Back to search"
 msgstr "Retour à la recherche"
 
 #: bloomerp.initiative.status bloomerp.todo.status models/project_management/initiative.py:26
-#: models/project_management/todo.py:55
+#: models/project_management/todo.py:50
 msgid "Backlog"
 msgstr "Backlog"
 
@@ -945,15 +1015,42 @@ msgstr "Bas"
 msgid "Bottom margin of the header in inches."
 msgstr "Marge inférieure de l'en-tête en pouces."
 
+#: bloomerp.conferenceadmission.browser_key
+#, fuzzy
+msgid "Browser Key"
+msgstr "Clé du navigateur"
+
 # | msgid "No workflow graph was available for this execution."
-#: communication/builtins/voip/controller.py:302
+#: communication/builtins/voip/controller.py:321
 msgid "Browser calling is unavailable for this line."
 msgstr "Les appels via le navigateur ne sont pas disponibles pour cette ligne."
 
+# | msgid "No workflow graph was available for this execution."
+# | msgid "Browser calling is unavailable for this line."
+#: communication/builtins/conferencing/controller.py:301
+msgid "Browser calling is unavailable for this provider."
+msgstr "Les appels depuis le navigateur ne sont pas disponibles pour ce fournisseur."
+
 # | msgid "Free Variables"
-#: components/communication/voip/browser_token.py:33
+#: components/communication/voip/browser_token.py:34 components/communication/voip/browser_token.py:37
 msgid "Browser calling is unavailable."
 msgstr "Les appels via le navigateur ne sont pas disponibles."
+
+# | msgid "Save the account configuration, then validate and synchronize its numbers. Browser calling
+# also requires a Voice API key and a TwiML application."
+#: communication/builtins/voip/builtins/twilio.py:276
+msgid "Browser calling requires a Voice API key and a TwiML application."
+msgstr "Les appels depuis le navigateur nécessitent une clé Voice API et une application TwiML."
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Agent browser connection"
+#: communication/builtins/voip/builtins/telnyx.py:38
+msgid "Browser credential connection ID"
+msgstr "ID de connexion des identifiants du navigateur"
+
+#: communication/builtins/voip/builtins/telnyx.py:258
+msgid "Browser voice calls using dashboard-purchased Telnyx numbers."
+msgstr "Appels vocaux depuis le navigateur avec des numéros Telnyx achetés via le tableau de bord."
 
 #: bloomerp.airun.budgets
 msgid "Budgets"
@@ -994,7 +1091,7 @@ msgid "Bulk Upload {model}"
 msgstr "Importation en masse de {model}"
 
 # | msgid "Row actions"
-#: templates/components/objects/dataview.html:166
+#: templates/components/objects/dataview.html:194
 msgid "Bulk actions"
 msgstr "Actions groupées"
 
@@ -1007,7 +1104,8 @@ msgid "Business line"
 msgstr "Ligne professionnelle"
 
 #: bloomerp.imconversation.voip_number bloomerp.phonecall.number
-#: communication/builtins/instant_messaging/builtins/phone.py:267
+#: communication/builtins/instant_messaging/builtins/phone.py:338
+#: communication/builtins/voip/actions.py:168
 #: models/communication/instant_messaging/im_conversation.py:28
 #: models/communication/voip/phone_call.py:28
 msgid "Business number"
@@ -1031,7 +1129,8 @@ msgstr "Calendrier"
 
 # | msgid "Call API"
 #: bloomerp.phonecallevent.call models/communication/voip/phone_call_event.py:13
-#: templates/components/communication/instant_messaging/conversation.html:16
+#: templates/components/communication/calling/controls.html:2
+#: templates/components/communication/calling/controls.html:25
 msgid "Call"
 msgstr "Appeler"
 
@@ -1039,14 +1138,32 @@ msgstr "Appeler"
 msgid "Call API"
 msgstr "API d’appel"
 
-#: templates/views/communication/reconfigure_voip_connection.html:15
+#: templates/components/communication/calling/controls.html:34
+msgid "Call controls"
+msgstr "Commandes d’appel"
+
+#: communication/builtins/voip/builtins/twilio.py:288
 msgid "Call status URL"
 msgstr "URL de statut de l’appel"
+
+# | msgid "No workflow graph was available for this execution."
+# | msgid "SMS is unavailable or the request identifier is invalid."
+#: components/communication/instant_messaging/start_call.py:41
+msgid "Calling is unavailable or the request is invalid."
+msgstr "Les appels ne sont pas disponibles ou la requête n’est pas valide."
 
 # | msgid "Detailed run logging is still available."
 #: components/communication/voip/start_call.py:32
 msgid "Calling is unavailable."
 msgstr "Les appels ne sont pas disponibles."
+
+#: templates/components/communication/calling/controls.html:16
+msgid "Camera"
+msgstr "Caméra"
+
+#: templates/components/communication/calling/controls.html:42
+msgid "Camera off"
+msgstr "Caméra désactivée"
 
 # | msgid "Canceled"
 #: templates/cotton/features/agent/body.html:67
@@ -1058,7 +1175,7 @@ msgid "Cancel Requested At"
 msgstr "Date de la demande d’annulation"
 
 # | msgid "Cancel Requested At"
-#: templates/components/communication/instant_messaging/conversation.html:21
+#: templates/components/communication/instant_messaging/conversation.html:24
 msgid "Cancel quoted reply"
 msgstr "Annuler la réponse citée"
 
@@ -1068,10 +1185,13 @@ msgid "Canceled"
 msgstr "Annulé"
 
 #: bloomerp.aiapproval.status bloomerp.airun.status bloomerp.airunattempt.status
-#: bloomerp.aitoolcall.status bloomerp.fileextraction.status bloomerp.todo.status
+#: bloomerp.aitoolcall.status bloomerp.conferenceparticipant.invitation_status
+#: bloomerp.conferencesession.status bloomerp.fileextraction.status bloomerp.todo.status
 #: bloomerp.workflowrun.status bloomerp.workflowrunstep.status models/automation/workflow_run.py:112
-#: models/automation/workflow_run_step.py:10 models/files/file_extraction.py:177
-#: models/project_management/todo.py:60
+#: models/automation/workflow_run_step.py:10
+#: models/communication/conferencing/conference_participant.py:22
+#: models/communication/conferencing/conference_session.py:25 models/files/file_extraction.py:177
+#: models/project_management/todo.py:55
 msgid "Cancelled"
 msgstr "Annulé"
 
@@ -1128,7 +1248,7 @@ msgstr ""
 " compte."
 
 # | msgid "Copy first value"
-#: forms/communication/im_connection.py:67
+#: forms/communication/im_connection.py:67 forms/communication/voip_number.py:46
 msgid "Check this value."
 msgstr "Vérifiez cette valeur."
 
@@ -1149,11 +1269,11 @@ msgid "Choice Field"
 msgstr "Champ de choix"
 
 # | msgid "Choice Field"
-#: field_types/builtins/text.py:84
+#: field_types/builtins/text.py:85
 msgid "Choice colors"
 msgstr "Couleurs des choix"
 
-#: field_types/builtins/text.py:87
+#: field_types/builtins/text.py:88
 msgid "Choose a color for each value. Colors for removed choices are ignored."
 msgstr "Choisissez une couleur pour chaque valeur. Les couleurs des choix supprimés sont ignorées."
 
@@ -1162,7 +1282,7 @@ msgid "Choose a configured mapping key."
 msgstr "Choisissez une clé de correspondance configurée."
 
 # | msgid "The label"
-#: templates/cotton/features/instant_messaging/message.html:18
+#: templates/cotton/features/instant_messaging/message.html:15
 msgid "Choose a reaction"
 msgstr "Choisir une réaction"
 
@@ -1200,9 +1320,15 @@ msgid "Choose the type of email account you want to connect."
 msgstr "Choisissez le type de compte e-mail que vous souhaitez connecter."
 
 # | msgid "Copy first value"
-#: field_types/builtins/text.py:54 form_fields/mapping_field.py:38
+#: field_types/builtins/text.py:55 form_fields/mapping_field.py:38
 msgid "Choose value"
 msgstr "Choisir une valeur"
+
+# | msgid "Choose the provider for this AI agent."
+#: communication/builtins/conferencing/sharing.py:175
+#, fuzzy
+msgid "Choose whether to admit this guest."
+msgstr "Choisissez le fournisseur de cet agent IA."
 
 #: workspaces/dataview_tile/form.py:43
 msgid "Choose which actions will be rendered in the toolbar."
@@ -1222,6 +1348,11 @@ msgstr "Effacer la couleur de l’icône"
 msgid "Client Id"
 msgstr "ID client"
 
+# | msgid "Client request identifier"
+#: bloomerp.conferencesession.client_id models/communication/conferencing/conference_session.py:64
+msgid "Client request ID"
+msgstr "ID de requête client"
+
 #: bloomerp.phonecall.client_id models/communication/voip/phone_call.py:49
 msgid "Client request identifier"
 msgstr "Identifiant de requête client"
@@ -1239,6 +1370,12 @@ msgstr "Fermer"
 msgid "Close assistant"
 msgstr "Fermer l’assistant"
 
+# | msgid "Details"
+# | msgid "Core Details"
+#: templates/components/objects/dataview.html:180
+msgid "Close details"
+msgstr "Fermer les détails"
+
 # | msgid "Parent"
 # | msgid "Parent Message"
 #: templates/components/communication/render_inbox_item.html:10
@@ -1247,13 +1384,17 @@ msgstr "Fermer le message"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
-#: templates/components/communication/messaging_panel.html:6
+#: templates/components/communication/messaging_panel.html:7
 msgid "Close messages"
 msgstr "Fermer les messages"
 
 #: bloomerp.form.closes_at models/forms/form.py:132
 msgid "Closes At"
 msgstr "Se termine à"
+
+#: templates/components/communication/calling/controls.html:35
+msgid "Closing this tab keeps you in the call. Keep your original Bloomerp tab open."
+msgstr "Fermer cet onglet ne vous fera pas quitter l’appel. Gardez votre onglet Bloomerp d’origine ouvert."
 
 #: models/forms/form.py:143
 msgid "Closing time must be after opening time."
@@ -1275,8 +1416,7 @@ msgstr "Empreinte du code"
 msgid "Collect"
 msgstr "Collecte"
 
-#: bloomerp.label.color bloomerp.sidebaritem.color bloomerp.todolabel.color
-#: models/project_management/todo_label.py:40 models/workspaces/sidebar_item.py:83
+#: bloomerp.label.color bloomerp.sidebaritem.color models/workspaces/sidebar_item.py:83
 #: workspaces/analytics_tile/model.py:105
 msgid "Color"
 msgstr "Couleur"
@@ -1303,6 +1443,7 @@ msgstr "Ordre séparé par des virgules pour les valeurs textuelles de l'axe X, 
 
 # | msgid "Comments"
 #: bloomerp.comment models/communication/comment.py:19
+#: templates/components/objects/details/comments.html:15
 msgid "Comment"
 msgstr "Commentaires"
 
@@ -1314,6 +1455,9 @@ msgstr "Redirection vers le détail du commentaire"
 #: bloomerp.aiartifact.comments bloomerp.aiconversation.comments bloomerp.aimessage.comments
 #: bloomerp.aimessageartifact.comments bloomerp.airun.comments bloomerp.airunattempt.comments
 #: bloomerp.airunevent.comments bloomerp.aitoolcall.comments bloomerp.apikey.comments bloomerp.comment
+#: bloomerp.conferenceadmission.comments bloomerp.conferenceattendance.comments
+#: bloomerp.conferenceparticipant.comments bloomerp.conferenceroom.comments
+#: bloomerp.conferencesession.comments bloomerp.conferencewebhookreceipt.comments
 #: bloomerp.documenttemplate.comments bloomerp.documenttemplateheader.comments
 #: bloomerp.documenttemplatestyling.comments bloomerp.emailaccount.comments
 #: bloomerp.emaildraft.comments bloomerp.fileextraction.comments bloomerp.filenode.comments
@@ -1326,10 +1470,10 @@ msgstr "Redirection vers le détail du commentaire"
 #: bloomerp.inboxfolder.comments bloomerp.inboxitem.comments bloomerp.initiative.comments
 #: bloomerp.mcpconnection.comments bloomerp.mcpintegration.comments bloomerp.phonecall.comments
 #: bloomerp.phonecallevent.comments bloomerp.savedfilter.comments bloomerp.sqlquery.comments
-#: bloomerp.tile.comments bloomerp.todo.comments bloomerp.todolabel.comments
-#: bloomerp.user.detail_sidebar_view_preference bloomerp.userinboxpreference.comments
-#: bloomerp.voipconnection.comments bloomerp.voipnumber.comments models/communication/comment.py:20
-#: models/users/user.py:70 templates/views/generic/detail/base.html:144
+#: bloomerp.tile.comments bloomerp.todo.comments bloomerp.user.detail_sidebar_view_preference
+#: bloomerp.userinboxpreference.comments bloomerp.voipconnection.comments bloomerp.voipnumber.comments
+#: models/communication/comment.py:20 models/users/user.py:70
+#: templates/views/generic/detail/base.html:146
 msgid "Comments"
 msgstr "Commentaires"
 
@@ -1342,7 +1486,7 @@ msgid "Complete the agent details first."
 msgstr "Complétez d’abord les détails de l’agent."
 
 # | msgid "Authentication configuration"
-#: views/communication/create_voip_connection.py:152
+#: views/communication/create_voip_connection.py:156
 msgid "Complete the connection configuration."
 msgstr "Complétez la configuration de la connexion."
 
@@ -1350,11 +1494,11 @@ msgstr "Complétez la configuration de la connexion."
 #: bloomerp.aitoolcall.status bloomerp.initiative.status bloomerp.phonecall.status bloomerp.todo.status
 #: bloomerp.workflowrunstep.status models/automation/workflow_run_step.py:8
 #: models/communication/voip/phone_call.py:65 models/project_management/initiative.py:30
-#: models/project_management/todo.py:59 templates/inbox_items/workflow_run.html:14
+#: models/project_management/todo.py:54 templates/inbox_items/workflow_run.html:14
 msgid "Completed"
 msgstr "Terminé"
 
-#: bloomerp.initiative.completed_at models/project_management/initiative.py:175
+#: bloomerp.initiative.completed_at models/project_management/initiative.py:168
 msgid "Completed At"
 msgstr "Terminé le"
 
@@ -1365,6 +1509,78 @@ msgstr "Pourcentage d’avancement"
 #: bloomerp.workflownode.sub_type
 msgid "Compute"
 msgstr "Calcul"
+
+# | msgid "Preference"
+# | msgid "Preference name"
+#: bloomerp.conferenceattendance models/communication/conferencing/conference_attendance.py:41
+msgid "Conference attendance"
+msgstr "Présence à la conférence"
+
+#: bloomerp.conferenceattendance models/communication/conferencing/conference_attendance.py:42
+msgid "Conference attendances"
+msgstr "Présences à la conférence"
+
+# | msgid "Phone call"
+#: templates/components/communication/conferencing/session_card.html:4
+msgid "Conference call"
+msgstr "Appel en conférence"
+
+#: communication/builtins/conferencing/im.py:139
+#, python-format
+msgid "Conference call: %(status)s"
+msgstr "Appel en conférence : %(status)s"
+
+# | msgid "im conversation participant"
+#: bloomerp.conferenceparticipant models/communication/conferencing/conference_participant.py:53
+msgid "Conference participant"
+msgstr "Participant à la conférence"
+
+# | msgid "im conversation participants"
+#: bloomerp.conferenceparticipant models/communication/conferencing/conference_participant.py:54
+msgid "Conference participants"
+msgstr "Participants à la conférence"
+
+# | msgid "Preference"
+# | msgid "Preference name"
+#: bloomerp.conferenceroom models/communication/conferencing/conference_room.py:24
+msgid "Conference room"
+msgstr "Salle de conférence"
+
+#: bloomerp.conferenceroom models/communication/conferencing/conference_room.py:25
+msgid "Conference rooms"
+msgstr "Salles de conférence"
+
+#: bloomerp.conferencesession models/communication/conferencing/conference_session.py:70
+msgid "Conference session"
+msgstr "Session de conférence"
+
+# | msgid "AI conversations"
+# | msgid "Conversations"
+#: bloomerp.conferencesession models/communication/conferencing/conference_session.py:71
+msgid "Conference sessions"
+msgstr "Sessions de conférence"
+
+#: bloomerp.conferencewebhookreceipt models/communication/conferencing/conference_webhook_receipt.py:31
+msgid "Conference webhook receipt"
+msgstr "Réception du webhook de conférence"
+
+#: bloomerp.conferencewebhookreceipt models/communication/conferencing/conference_webhook_receipt.py:32
+msgid "Conference webhook receipts"
+msgstr "Réceptions du webhook de conférence"
+
+# | msgid "Detailed run logging is still available."
+# | msgid "Calling is unavailable."
+#: components/communication/conferencing/join.py:34
+msgid "Conferencing is unavailable."
+msgstr "La conférence est indisponible."
+
+# | msgid "Detailed run logging is still available."
+# | msgid "Calling is unavailable."
+# | msgid "Conferencing is unavailable."
+#: communication/builtins/conferencing/meetings.py:60
+#, fuzzy
+msgid "Conferencing is unavailable. Please retry."
+msgstr "La conférence est indisponible."
 
 #: bloomerp.airun.config_snapshot
 msgid "Config Snapshot"
@@ -1390,7 +1606,7 @@ msgid "Configure carrier accounts and business numbers."
 msgstr "Configurez les comptes opérateur et les numéros professionnels."
 
 # | msgid "Configure account"
-#: views/communication/create_voip_connection.py:133
+#: views/communication/create_voip_connection.py:137
 msgid "Configure connection"
 msgstr "Configurer la connexion"
 
@@ -1410,6 +1626,16 @@ msgstr ""
 #: views/agents/create_mcp_integration.py:167
 msgid "Configure server"
 msgstr "Configurer le serveur"
+
+#: communication/builtins/voip/builtins/telnyx.py:268
+msgid ""
+"Configure the TeXML application Voice URL and status callback with these URLs using POST. Enable "
+"its SIP subdomain for only your connections. SMS and number purchasing are not supported by this "
+"integration."
+msgstr ""
+"Configurez l’URL vocale de l’application TeXML et le rappel de statut avec ces URL en utilisant "
+"POST. Activez son sous-domaine SIP uniquement pour vos connexions. L’envoi de SMS et l’achat de "
+"numéros ne sont pas pris en charge par cette intégration."
 
 #: views/workspaces/create_tile.py:165
 msgid "Configure the details of your tile and preview what it looks like."
@@ -1459,7 +1685,7 @@ msgid "Connection interrupted. The response may be incomplete."
 msgstr "Connexion interrompue. La réponse est peut-être incomplète."
 
 # | msgid "Connection Mode"
-#: communication/builtins/voip/definition.py:61
+#: communication/builtins/voip/definition.py:65
 msgid "Connection name"
 msgstr "Nom de la connexion"
 
@@ -1473,7 +1699,7 @@ msgid "Consumed Message Sequence"
 msgstr "Séquence des messages consommés"
 
 #: bloomerp.comment.content bloomerp.filenode.content bloomerp.todo.content
-#: models/communication/comment.py:42 models/project_management/todo.py:426
+#: models/communication/comment.py:42 models/project_management/todo.py:392
 msgid "Content"
 msgstr "Contenu"
 
@@ -1499,7 +1725,7 @@ msgstr "Contenu sécurisé"
 #: bloomerp.userobjectlayoutpreference.content_type models/access_control/field_policy.py:29
 #: models/access_control/row_policy.py:21 models/application_field.py:46
 #: models/audit/activity_log.py:62 models/communication/comment.py:31 models/forms/form.py:85
-#: models/project_management/todo.py:463 models/users/base_view_preference.py:24
+#: models/project_management/todo.py:423 models/users/base_view_preference.py:24
 #: models/users/bookmark.py:26 models/users/user_detail_view_tabs_preference.py:47
 msgid "Content Type"
 msgstr "Type de contenu"
@@ -1524,7 +1750,7 @@ msgstr "Type de contenu"
 msgid "Content type required"
 msgstr "Type de contenu requis"
 
-#: templates/views/base_wizard.html:75
+#: templates/views/base_wizard.html:81
 msgid "Continue"
 msgstr "Continuer"
 
@@ -1535,9 +1761,11 @@ msgstr "Continuer avec %(provider_name)s"
 
 # | msgid "Conversation Type"
 #: bloomerp.aiartifact.conversation bloomerp.aimessage.conversation bloomerp.airun.conversation
-#: bloomerp.imconversationactivity.conversation bloomerp.imconversationparticipant.conversation
-#: bloomerp.immessage.conversation bloomerp.inboxitem.item_type bloomerp.phonecall.conversation
+#: bloomerp.conferenceroom.conversation bloomerp.imconversationactivity.conversation
+#: bloomerp.imconversationparticipant.conversation bloomerp.immessage.conversation
+#: bloomerp.inboxitem.item_type bloomerp.phonecall.conversation
 #: communication/builtins/instant_messaging/presentation.py:44
+#: models/communication/conferencing/conference_room.py:19
 #: models/communication/instant_messaging/im_conversation_activity.py:14
 #: models/communication/voip/phone_call.py:36 templates/cotton/features/agent/body.html:101
 msgid "Conversation"
@@ -1555,6 +1783,12 @@ msgid ""
 msgstr ""
 "Politique d’approbation des appels d’outils pour la conversation. Elle peut être modifiée pendant"
 " une conversation ; les approbations en attente nécessitent toujours une décision."
+
+# | msgid "Conversation Type"
+# | msgid "Conversation"
+#: communication/builtins/conferencing/im.py:68
+msgid "Conversation call"
+msgstr "Appel de conversation"
 
 # | msgid "Conversation History"
 #: templates/cotton/features/agent/body.html:45
@@ -1589,13 +1823,14 @@ msgstr "Copié"
 msgid "Copy"
 msgstr "Copier"
 
-#: templates/models/todo/copy_git_branch_name.html:6
-msgid "Copy branch name"
-msgstr "Copier le nom de la branche"
-
 #: templates/cotton/ui/inputs/one_to_many/column_actions.html:30
 msgid "Copy first value"
 msgstr "Copier la première valeur"
+
+#: templates/components/communication/calling/controls.html:15
+#, fuzzy
+msgid "Copy meeting link"
+msgstr "Copier le lien de la réunion"
 
 # | msgid "Details"
 #: models/document_templates/document_template.py:113 models/forms/form.py:27
@@ -1607,7 +1842,7 @@ msgid "Could not load attachments. Please try again."
 msgstr "Impossible de charger les pièces jointes. Veuillez réessayer."
 
 # | msgid "Could not load attachments. Please try again."
-#: templates/components/communication/messaging_panel.html:34
+#: templates/components/communication/messaging_panel.html:43
 msgid "Could not load messages. Please try again."
 msgstr "Impossible de charger les messages. Veuillez réessayer."
 
@@ -1625,7 +1860,7 @@ msgid "Country Field"
 msgstr "Champ pays"
 
 # | msgid "Country Field"
-#: forms/communication/voip_number.py:13
+#: communication/builtins/voip/builtins/twilio.py:60
 msgid "Country code"
 msgstr "Indicatif du pays"
 
@@ -1661,7 +1896,7 @@ msgctxt "bloomerp:route:name"
 msgid "Create Tile"
 msgstr "Créer une tuile"
 
-#: templates/views/generic/detail/base.html:157
+#: templates/views/generic/detail/base.html:159
 msgid "Create Todo"
 msgstr "Créer une tâche"
 
@@ -1733,7 +1968,7 @@ msgstr "Créer une autre connexion"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Agent browser connection"
-#: views/communication/create_voip_connection.py:144
+#: views/communication/create_voip_connection.py:148
 msgid "Create connection"
 msgstr "Créer une connexion"
 
@@ -1749,7 +1984,7 @@ msgid "Create default"
 msgstr "Créer par défaut"
 
 # | msgid "Create Todo"
-#: templates/components/communication/instant_messaging/create_group.html:9
+#: templates/components/communication/instant_messaging/create_group.html:11
 msgid "Create group"
 msgstr "Créer un groupe"
 
@@ -1773,7 +2008,7 @@ msgstr "Créez les lignes affichées à l’ouverture du formulaire."
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Create user"
-#: templates/views/communication/create_voip_number.html:24
+#: templates/views/communication/create_voip_number.html:52
 msgid "Create selected number"
 msgstr "Créer le numéro sélectionné"
 
@@ -1793,7 +2028,10 @@ msgstr "Créer {model}"
 #: bloomerp.aiartifact.created_by bloomerp.aiconversation.created_by bloomerp.aimessage.created_by
 #: bloomerp.aimessageartifact.created_by bloomerp.airun.created_by bloomerp.airunattempt.created_by
 #: bloomerp.airunevent.created_by bloomerp.aitoolcall.created_by bloomerp.apikey.created_by
-#: bloomerp.comment.created_by bloomerp.documenttemplate.created_by
+#: bloomerp.comment.created_by bloomerp.conferenceadmission.created_by
+#: bloomerp.conferenceattendance.created_by bloomerp.conferenceparticipant.created_by
+#: bloomerp.conferenceroom.created_by bloomerp.conferencesession.created_by
+#: bloomerp.conferencewebhookreceipt.created_by bloomerp.documenttemplate.created_by
 #: bloomerp.documenttemplateheader.created_by bloomerp.documenttemplatestyling.created_by
 #: bloomerp.emailaccount.created_by bloomerp.emaildraft.created_by bloomerp.fileextraction.created_by
 #: bloomerp.filenode.created_by bloomerp.filereference.created_by bloomerp.form.created_by
@@ -1807,9 +2045,9 @@ msgstr "Créer {model}"
 #: bloomerp.label.created_by bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by
 #: bloomerp.phonecall.created_by bloomerp.phonecallevent.created_by bloomerp.policy.created_by
 #: bloomerp.savedfilter.created_by bloomerp.sqlquery.created_by bloomerp.tile.created_by
-#: bloomerp.todo.created_by bloomerp.todolabel.created_by bloomerp.userinboxpreference.created_by
-#: bloomerp.voipconnection.created_by bloomerp.voipnumber.created_by bloomerp.workflow.created_by
-#: bloomerp.workflownode.created_by models/mixins/user_stamp_model_mixin.py:20
+#: bloomerp.todo.created_by bloomerp.userinboxpreference.created_by bloomerp.voipconnection.created_by
+#: bloomerp.voipnumber.created_by bloomerp.workflow.created_by bloomerp.workflownode.created_by
+#: models/mixins/user_stamp_model_mixin.py:20
 msgid "Created By"
 msgstr "Créé par"
 
@@ -1835,7 +2073,7 @@ msgid "Credentials must map strings to strings."
 msgstr "Les identifiants doivent associer des chaînes à des chaînes."
 
 # | msgid "Ready to send."
-#: templates/components/communication/instant_messaging/conversation.html:25
+#: templates/cotton/ui/chat/composer.html:13
 msgid "Ctrl/⌘ + Enter to send"
 msgstr "Ctrl/⌘ + Entrée pour envoyer"
 
@@ -1892,7 +2130,7 @@ msgstr "Vue de données"
 msgid "Data view updated"
 msgstr "Vue de données mise à jour"
 
-#: bloomerp.todo.datetime_completed models/project_management/todo.py:433
+#: bloomerp.todo.datetime_completed models/project_management/todo.py:399
 msgid "Date Completed"
 msgstr "Date et heure d’achèvement"
 
@@ -1924,6 +2162,9 @@ msgstr "Champ de date et d’heure"
 #: bloomerp.airunattempt.datetime_created bloomerp.airunevent.datetime_created
 #: bloomerp.aitoolcall.datetime_created bloomerp.apikey.datetime_created
 #: bloomerp.bookmark.datetime_created bloomerp.comment.datetime_created
+#: bloomerp.conferenceadmission.datetime_created bloomerp.conferenceattendance.datetime_created
+#: bloomerp.conferenceparticipant.datetime_created bloomerp.conferenceroom.datetime_created
+#: bloomerp.conferencesession.datetime_created bloomerp.conferencewebhookreceipt.datetime_created
 #: bloomerp.documenttemplate.datetime_created bloomerp.documenttemplateheader.datetime_created
 #: bloomerp.documenttemplatestyling.datetime_created bloomerp.emailaccount.datetime_created
 #: bloomerp.emaildraft.datetime_created bloomerp.fileextraction.datetime_created
@@ -1940,7 +2181,7 @@ msgstr "Champ de date et d’heure"
 #: bloomerp.mcpintegration.datetime_created bloomerp.phonecall.datetime_created
 #: bloomerp.phonecallevent.datetime_created bloomerp.policy.datetime_created
 #: bloomerp.savedfilter.datetime_created bloomerp.sqlquery.datetime_created
-#: bloomerp.tile.datetime_created bloomerp.todo.datetime_created bloomerp.todolabel.datetime_created
+#: bloomerp.tile.datetime_created bloomerp.todo.datetime_created
 #: bloomerp.userinboxpreference.datetime_created bloomerp.voipconnection.datetime_created
 #: bloomerp.voipnumber.datetime_created bloomerp.workflow.datetime_created
 #: bloomerp.workflownode.datetime_created bloomerp.workflowrun.datetime_created
@@ -1959,7 +2200,10 @@ msgstr "Date et heure de réception"
 #: bloomerp.aimessageartifact.datetime_updated bloomerp.airun.datetime_updated
 #: bloomerp.airunattempt.datetime_updated bloomerp.airunevent.datetime_updated
 #: bloomerp.aitoolcall.datetime_updated bloomerp.apikey.datetime_updated
-#: bloomerp.comment.datetime_updated bloomerp.documenttemplate.datetime_updated
+#: bloomerp.comment.datetime_updated bloomerp.conferenceadmission.datetime_updated
+#: bloomerp.conferenceattendance.datetime_updated bloomerp.conferenceparticipant.datetime_updated
+#: bloomerp.conferenceroom.datetime_updated bloomerp.conferencesession.datetime_updated
+#: bloomerp.conferencewebhookreceipt.datetime_updated bloomerp.documenttemplate.datetime_updated
 #: bloomerp.documenttemplateheader.datetime_updated bloomerp.documenttemplatestyling.datetime_updated
 #: bloomerp.emailaccount.datetime_updated bloomerp.emaildraft.datetime_updated
 #: bloomerp.fileextraction.datetime_updated bloomerp.filenode.datetime_updated
@@ -1976,11 +2220,10 @@ msgstr "Date et heure de réception"
 #: bloomerp.phonecall.datetime_updated bloomerp.phonecallevent.datetime_updated
 #: bloomerp.policy.datetime_updated bloomerp.savedfilter.datetime_updated
 #: bloomerp.sqlquery.datetime_updated bloomerp.tile.datetime_updated bloomerp.todo.datetime_updated
-#: bloomerp.todolabel.datetime_updated bloomerp.userinboxpreference.datetime_updated
-#: bloomerp.voipconnection.datetime_updated bloomerp.voipnumber.datetime_updated
-#: bloomerp.workflow.datetime_updated bloomerp.workflownode.datetime_updated
-#: bloomerp.workflowrun.datetime_updated bloomerp.workflowrunstep.datetime_updated
-#: models/mixins/timestamp_model_mixin.py:10
+#: bloomerp.userinboxpreference.datetime_updated bloomerp.voipconnection.datetime_updated
+#: bloomerp.voipnumber.datetime_updated bloomerp.workflow.datetime_updated
+#: bloomerp.workflownode.datetime_updated bloomerp.workflowrun.datetime_updated
+#: bloomerp.workflowrunstep.datetime_updated models/mixins/timestamp_model_mixin.py:10
 msgid "Datetime Updated"
 msgstr "Date et heure de mise à jour"
 
@@ -2011,6 +2254,21 @@ msgstr "Décidé par"
 #: bloomerp.applicationfield.field_type
 msgid "Decimal Field"
 msgstr "Champ décimal"
+
+# | msgid "Time Field"
+# | msgid "Timeline"
+# | msgid "Declined"
+#: templates/components/communication/calling/controls.html:8
+#, fuzzy
+msgid "Decline"
+msgstr "Refusée"
+
+# | msgid "Time Field"
+# | msgid "Timeline"
+#: bloomerp.conferenceparticipant.invitation_status
+#: models/communication/conferencing/conference_participant.py:20
+msgid "Declined"
+msgstr "Refusée"
 
 #: bloomerp.aiagent.provider
 msgid "DeepSeek"
@@ -2098,7 +2356,7 @@ msgstr "Supprimé le"
 msgid "Delivered"
 msgstr "Distribué"
 
-#: communication/builtins/voip/controller.py:263
+#: communication/builtins/voip/controller.py:253 communication/builtins/voip/controller.py:282
 msgid "Delivery could not be confirmed. Do not resend until its status is known."
 msgstr ""
 "La livraison n’a pas pu être confirmée. Ne renvoyez pas le message tant que son statut n’est pas "
@@ -2123,7 +2381,7 @@ msgstr "Trier par ordre décroissant"
 
 #: bloomerp.form.description bloomerp.initiative.description bloomerp.policy.description
 #: bloomerp.tile.description models/access_control/policy.py:77 models/forms/form.py:74
-#: models/project_management/initiative.py:158 models/workspaces/tile.py:40
+#: models/project_management/initiative.py:151 models/workspaces/tile.py:40
 msgid "Description"
 msgstr "Description"
 
@@ -2168,7 +2426,7 @@ msgid "Detailed run logging is still available."
 msgstr "La journalisation détaillée de l’exécution est toujours disponible."
 
 #: models/automation/workflow.py:38 models/forms/form_submission.py:40
-#: models/project_management/initiative.py:45 models/project_management/todo.py:147
+#: models/project_management/initiative.py:45 models/project_management/todo.py:114
 #: models/users/user_detail_view_tabs_preference.py:369
 msgid "Details"
 msgstr "Détails"
@@ -2176,6 +2434,11 @@ msgstr "Détails"
 msgctxt "bloomerp:route:name"
 msgid "Details"
 msgstr "Détails"
+
+#: communication/builtins/instant_messaging/builtins/phone.py:362
+#, fuzzy
+msgid "Dial"
+msgstr "Appeler"
 
 msgctxt "bloomerp:route:description"
 msgid "Different document templates"
@@ -2201,12 +2464,16 @@ msgstr "Désactivé"
 msgid "Disconnected — waiting for connection"
 msgstr "Déconnecté — en attente de connexion"
 
+#: templates/components/communication/calling/controls.html:12
+msgid "Dismiss"
+msgstr "Fermer"
+
 # | msgid "Display Fields"
 #: templates/components/objects/dataview_actions/display_options.html:9
 msgid "Display"
 msgstr "Affichage"
 
-#: bloomerp.userlistviewpreference.display_fields models/users/user_list_view_preference.py:75
+#: bloomerp.userlistviewpreference.display_fields models/users/user_list_view_preference.py:94
 msgid "Display Fields"
 msgstr "Champs à afficher"
 
@@ -2218,6 +2485,12 @@ msgstr "Nom d’affichage"
 #: templates/widgets/mailbox_mapping.html:6
 msgid "Display label and settings"
 msgstr "Libellé et paramètres d’affichage"
+
+# | msgid "Display Name"
+#: bloomerp.conferenceparticipant.display_name_snapshot
+#: models/communication/conferencing/conference_participant.py:39
+msgid "Display name"
+msgstr "Nom d’affichage"
 
 #: bloomerp.aiagent.name models/agents/ai_agent.py:170
 msgid "Display name shown in the chat agent selector."
@@ -2364,6 +2637,10 @@ msgstr "Brouillon"
 msgid "Drag a record onto the timeline to schedule it."
 msgstr "Faites glisser un enregistrement sur la chronologie pour le planifier."
 
+#: bloomerp.userlistviewpreference.view_mode models/users/user_list_view_preference.py:76
+msgid "Drawer"
+msgstr "Volet latéral"
+
 #: templates/components/ui/sidebar/content.html:27
 msgid "Drop a link here or create your first item."
 msgstr "Déposez un lien ici ou créez votre premier élément."
@@ -2377,7 +2654,7 @@ msgstr "Déposez ici un enregistrement non planifié."
 msgid "Drop fields here"
 msgstr "Déposez les champs ici"
 
-#: bloomerp.todo.status models/project_management/todo.py:61 templates/views/workflows/builder.html:42
+#: bloomerp.todo.status models/project_management/todo.py:56 templates/views/workflows/builder.html:42
 msgid "Duplicate"
 msgstr "Dupliqué"
 
@@ -2441,11 +2718,11 @@ msgstr "Les références de l’éditeur nécessitent un ID d’occurrence."
 msgid "Effective Preference"
 msgstr "Préférence effective"
 
-#: bloomerp.todo.effort models/project_management/todo.py:416
+#: bloomerp.todo.effort models/project_management/todo.py:382
 msgid "Effort"
 msgstr "Effort"
 
-#: bloomerp.inboxitem.item_type models/users/user.py:154 templates/views/generic/detail/base.html:161
+#: bloomerp.inboxitem.item_type models/users/user.py:154 templates/views/generic/detail/base.html:163
 msgid "Email"
 msgstr "E-mail"
 
@@ -2522,9 +2799,15 @@ msgid "Enable Logging"
 msgstr "Activer la journalisation"
 
 # | msgid "Enable Logging"
-#: templates/components/communication/messaging_panel.html:21
-msgid "Enable phone"
-msgstr "Activer le téléphone"
+#: templates/components/communication/messaging_panel.html:18
+msgid "Enable incoming calls"
+msgstr "Activer les appels entrants"
+
+# | msgid "Enable Logging"
+# | msgid "Enable phone"
+#: templates/components/communication/calling/controls.html:17
+msgid "Enable sound"
+msgstr "Activer le son"
 
 # | msgid "Sync Enabled"
 #: bloomerp.aiagent.enabled bloomerp.mcpintegration.enabled models/agents/ai_agent.py:197
@@ -2556,10 +2839,6 @@ msgstr ""
 "Mot de passe ou mot de passe d’application chiffré utilisé par les fournisseurs prenant en charge"
 " l’authentification SMTP/IMAP directe."
 
-#: templates/components/communication/messaging_panel.html:21
-msgid "End call"
-msgstr "Terminer l’appel"
-
 # | msgid "Date Field"
 #: dataviews/calendar/config.py:57
 msgid "End date field"
@@ -2570,7 +2849,24 @@ msgstr "Champ de date"
 msgid "End field"
 msgstr "Champ de code"
 
-#: bloomerp.phonecall.ended_at models/communication/voip/phone_call.py:75
+# | msgid "For every tool"
+#: templates/components/communication/calling/controls.html:19
+msgid "End for everyone"
+msgstr "Terminer pour tout le monde"
+
+# | msgid "Reason"
+#: bloomerp.conferencesession.end_reason models/communication/conferencing/conference_session.py:67
+msgid "End reason"
+msgstr "Motif de fin"
+
+# | msgid "Ended at"
+#: bloomerp.conferencesession.status models/communication/conferencing/conference_session.py:24
+msgid "Ended"
+msgstr "Terminée"
+
+#: bloomerp.conferencesession.ended_at bloomerp.phonecall.ended_at
+#: models/communication/conferencing/conference_session.py:66
+#: models/communication/voip/phone_call.py:75
 msgid "Ended at"
 msgstr "Terminé le"
 
@@ -2585,6 +2881,15 @@ msgstr "URL du point de terminaison"
 #: bloomerp.workflownode.sub_type
 msgid "Enrich Data"
 msgstr "Enrichir les données"
+
+#: communication/builtins/conferencing/sharing.py:134
+#, fuzzy
+msgid "Enter a name of up to 255 characters."
+msgstr "Saisissez un nom de 255 caractères maximum."
+
+#: communication/builtins/voip/builtins/telnyx.py:141
+msgid "Enter a valid Telnyx Ed25519 public key."
+msgstr "Saisissez une clé publique Ed25519 Telnyx valide."
 
 #: form_fields/mapping_field.py:77
 msgid "Enter a valid mapping row."
@@ -2604,13 +2909,22 @@ msgstr ""
 msgid "Enter agent settings and provider credentials."
 msgstr "Saisissez les paramètres de l’agent et les identifiants du fournisseur."
 
+# | msgid "Enter an international phone number."
+#: communication/builtins/instant_messaging/builtins/phone.py:201
+#: communication/builtins/voip/actions.py:158
+#, fuzzy
+msgid "Enter an international phone number including the country code."
+msgstr "Saisissez un numéro de téléphone international."
+
 #: models/communication/voip/voip_number.py:99
 msgid "Enter an international phone number."
 msgstr "Saisissez un numéro de téléphone international."
 
-#: communication/builtins/voip/controller.py:232
-msgid "Enter between 1 and 1600 characters."
-msgstr "Saisissez entre 1 et 1 600 caractères."
+# | msgid "Enter between 1 and 1600 characters."
+#: communication/builtins/voip/controller.py:243
+#, python-format
+msgid "Enter between 1 and %(limit)s characters."
+msgstr "Saisissez entre 1 et %(limit)s caractères."
 
 #: views/agents/reconfigure_ai_agent.py:125
 msgid "Enter credentials for the selected provider."
@@ -2651,6 +2965,12 @@ msgstr "Erreur"
 msgid "Error Code"
 msgstr "Code d’erreur"
 
+# | msgid "Event Type"
+#: bloomerp.conferencewebhookreceipt.event_id
+#: models/communication/conferencing/conference_webhook_receipt.py:19
+msgid "Event ID"
+msgstr "ID de l’événement"
+
 #: bloomerp.airunevent.event_type
 msgid "Event Type"
 msgstr "Type d’événement"
@@ -2659,6 +2979,12 @@ msgstr "Type d’événement"
 #: bloomerp.phonecallevent.event_id models/communication/voip/phone_call_event.py:17
 msgid "Event identifier"
 msgstr "Identifiant de l’événement"
+
+# | msgid "Event Type"
+#: bloomerp.conferencewebhookreceipt.event_type
+#: models/communication/conferencing/conference_webhook_receipt.py:20
+msgid "Event type"
+msgstr "Type d’événement"
 
 #: templates/components/forms/initial_data_value.html:26
 msgid "Every row gets this child field value."
@@ -2738,11 +3064,13 @@ msgid "Extract Field"
 msgstr "Extraire un champ"
 
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
+#: bloomerp.conferencesession.status bloomerp.conferencewebhookreceipt.status
 #: bloomerp.fileextraction.status bloomerp.immessage.status bloomerp.phonecall.status
 #: bloomerp.workflowrun.status bloomerp.workflowrunstep.status models/automation/workflow_run.py:111
-#: models/automation/workflow_run_step.py:9 models/communication/instant_messaging/im_message.py:54
-#: models/communication/voip/phone_call.py:69 models/files/file_extraction.py:174
-#: templates/inbox_items/workflow_run.html:19
+#: models/automation/workflow_run_step.py:9 models/communication/conferencing/conference_session.py:26
+#: models/communication/conferencing/conference_webhook_receipt.py:16
+#: models/communication/instant_messaging/im_message.py:54 models/communication/voip/phone_call.py:69
+#: models/files/file_extraction.py:174 templates/inbox_items/workflow_run.html:19
 msgid "Failed"
 msgstr "Échec"
 
@@ -2886,7 +3214,10 @@ msgstr "Nom de fichier"
 #: bloomerp.aiartifact.files bloomerp.aiconversation.files bloomerp.aimessage.files
 #: bloomerp.aimessageartifact.files bloomerp.airun.files bloomerp.airunattempt.files
 #: bloomerp.airunevent.files bloomerp.aitoolcall.files bloomerp.apikey.files
-#: bloomerp.applicationfield.field_type bloomerp.documenttemplate.files
+#: bloomerp.applicationfield.field_type bloomerp.conferenceadmission.files
+#: bloomerp.conferenceattendance.files bloomerp.conferenceparticipant.files
+#: bloomerp.conferenceroom.files bloomerp.conferencesession.files
+#: bloomerp.conferencewebhookreceipt.files bloomerp.documenttemplate.files
 #: bloomerp.documenttemplateheader.files bloomerp.documenttemplatestyling.files
 #: bloomerp.emailaccount.files bloomerp.emaildraft.files bloomerp.fileextraction.files
 #: bloomerp.filenode.files bloomerp.filereference.files bloomerp.form.files
@@ -2898,9 +3229,9 @@ msgstr "Nom de fichier"
 #: bloomerp.inboxitem.files bloomerp.initiative.files bloomerp.mcpconnection.files
 #: bloomerp.mcpintegration.files bloomerp.phonecall.files bloomerp.phonecallevent.files
 #: bloomerp.savedfilter.files bloomerp.sqlquery.files bloomerp.tile.files bloomerp.todo.files
-#: bloomerp.todolabel.files bloomerp.userinboxpreference.files bloomerp.voipconnection.files
-#: bloomerp.voipnumber.files dataviews/file_browser/renderer.py:141
-#: dataviews/file_browser/renderer.py:189 templates/mixins/bloomerp_layout_form_mixin.html:65
+#: bloomerp.userinboxpreference.files bloomerp.voipconnection.files bloomerp.voipnumber.files
+#: dataviews/file_browser/renderer.py:141 dataviews/file_browser/renderer.py:189
+#: templates/mixins/bloomerp_layout_form_mixin.html:68
 msgid "Files"
 msgstr "Fichiers"
 
@@ -3081,6 +3412,7 @@ msgid "Generate"
 msgstr "Générer"
 
 #: bloomerp.workflownode.sub_type
+#, fuzzy
 msgid "Generate PDF"
 msgstr "Générer un PDF"
 
@@ -3148,6 +3480,7 @@ msgstr "Groupes"
 
 # | msgid "Groups"
 # | msgid "Group by"
+#: communication/builtins/instant_messaging/builtins/staff_groups.py:33
 #: templates/components/communication/instant_messaging/group_members.html:5
 msgid "Group name"
 msgstr "Nom du groupe"
@@ -3230,13 +3563,19 @@ msgstr "Aidez-moi à comprendre cette page"
 msgid "Hex color code for the sidebar item (e.g. #FF5733)."
 msgstr "Code couleur hexadécimal de l'élément de la barre latérale (par ex. #FF5733)."
 
-#: bloomerp.todo.priority models/project_management/todo.py:40
+#: bloomerp.todo.priority models/project_management/todo.py:35
 msgid "High"
 msgstr "Élevée"
 
-#: views/mixins/htmx_mixin.py:55 views/mixins/htmx_mixin.py:82
+#: views/mixins/htmx_mixin.py:55 views/mixins/htmx_mixin.py:83
 msgid "Home"
 msgstr "Accueil"
+
+# | msgid "Imap Host"
+# | msgid "IMAP Host"
+#: bloomerp.conferenceparticipant.role models/communication/conferencing/conference_participant.py:14
+msgid "Host"
+msgstr "Hôte"
 
 #: templates/cotton/features/dataviews/gant.html:34
 msgid "Hour"
@@ -3258,7 +3597,9 @@ msgstr "Intervention humaine"
 #: bloomerp.aiartifact.id bloomerp.aiconversation.id bloomerp.aimessage.id
 #: bloomerp.aimessageartifact.id bloomerp.airun.id bloomerp.airunattempt.id bloomerp.airunevent.id
 #: bloomerp.aitoolcall.id bloomerp.apikey.id bloomerp.applicationfield.id bloomerp.bookmark.id
-#: bloomerp.comment.id bloomerp.documenttemplate.id bloomerp.documenttemplateheader.id
+#: bloomerp.comment.id bloomerp.conferenceadmission.id bloomerp.conferenceattendance.id
+#: bloomerp.conferenceparticipant.id bloomerp.conferenceroom.id bloomerp.conferencesession.id
+#: bloomerp.conferencewebhookreceipt.id bloomerp.documenttemplate.id bloomerp.documenttemplateheader.id
 #: bloomerp.documenttemplatestyling.id bloomerp.emailaccount.id bloomerp.emaildraft.id
 #: bloomerp.fieldpolicy.id bloomerp.fileextraction.id bloomerp.filenode.id bloomerp.filereference.id
 #: bloomerp.form.id bloomerp.formsubmission.id bloomerp.imauthorization.id bloomerp.imconnection.id
@@ -3271,7 +3612,7 @@ msgstr "Intervention humaine"
 #: bloomerp.phonecall.id bloomerp.phonecallevent.id bloomerp.policy.id bloomerp.rowpolicy.id
 #: bloomerp.rowpolicyrule.id bloomerp.rowpolicyrulepermission.id bloomerp.savedfilter.id
 #: bloomerp.sidebar.id bloomerp.sidebaritem.id bloomerp.sqlquery.id bloomerp.tag.id bloomerp.tile.id
-#: bloomerp.todo.id bloomerp.todolabel.id bloomerp.user.id bloomerp.userdetailviewtabitem.id
+#: bloomerp.todo.id bloomerp.user.id bloomerp.userdetailviewtabitem.id
 #: bloomerp.userdetailviewtabspreference.id bloomerp.userinboxpreference.id
 #: bloomerp.userlistviewpreference.id bloomerp.userobjectlayoutpreference.id bloomerp.voipconnection.id
 #: bloomerp.voipnumber.id bloomerp.workflow.id bloomerp.workflowedge.id bloomerp.workflownode.id
@@ -3365,13 +3706,18 @@ msgstr "L’identité est associée à un autre fournisseur."
 msgid "If Condition"
 msgstr "Condition « si »"
 
-#: forms/communication/voip_number.py:47
+#: communication/builtins/voip/builtins/twilio.py:90
 msgid "If required for this number, enter an approved Twilio regulatory bundle."
 msgstr "Si cela est requis pour ce numéro, saisissez un dossier réglementaire Twilio approuvé."
 
-#: forms/communication/voip_number.py:39
+#: communication/builtins/voip/builtins/twilio.py:82
 msgid "If required for this number, enter the address registered in Twilio."
 msgstr "Si cela est requis pour ce numéro, saisissez l’adresse enregistrée auprès de Twilio."
+
+#: bloomerp.conferencewebhookreceipt.status
+#: models/communication/conferencing/conference_webhook_receipt.py:15
+msgid "Ignored"
+msgstr "Ignoré"
 
 #: bloomerp.applicationfield.field_type
 msgid "Image Field"
@@ -3382,11 +3728,11 @@ msgid "Image of the header."
 msgstr "Image de l'en-tête."
 
 #: bloomerp.initiative.status bloomerp.todo.status models/project_management/initiative.py:28
-#: models/project_management/todo.py:57
+#: models/project_management/todo.py:52
 msgid "In Progress"
 msgstr "En cours"
 
-#: bloomerp.todo.status models/project_management/todo.py:58
+#: bloomerp.todo.status models/project_management/todo.py:53
 msgid "In Review"
 msgstr "En révision"
 
@@ -3500,6 +3846,12 @@ msgstr "Charge utile initiale"
 msgid "Initial data"
 msgstr "Données initiales"
 
+# | msgid "Initial Payload"
+#: bloomerp.conferencesession.initial_media_mode
+#: models/communication/conferencing/conference_session.py:56
+msgid "Initial media mode"
+msgstr "Mode média initial"
+
 #: bloomerp.form.initial_payload models/forms/form.py:90
 msgid "Initial payload for the form"
 msgstr "Charge utile initiale du formulaire"
@@ -3520,14 +3872,14 @@ msgstr "Lignes initiales"
 msgid "Initiated By"
 msgstr "Déclenché par"
 
-#: bloomerp.initiative bloomerp.todo.initiative models/project_management/initiative.py:137
-#: models/project_management/todo.py:454
+#: bloomerp.initiative bloomerp.todo.initiative models/project_management/initiative.py:130
+#: models/project_management/todo.py:414
 msgid "Initiative"
 msgstr "Initiative"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Initiatives"
-#: bloomerp.initiative models/project_management/initiative.py:138
+#: bloomerp.initiative models/project_management/initiative.py:131
 msgid "Initiatives"
 msgstr "Initiatives"
 
@@ -3652,6 +4004,23 @@ msgstr "Règles d’approbation des outils invalides."
 msgid "Invalid uploaded file."
 msgstr "Fichier téléversé invalide."
 
+# | msgid "staff status"
+#: bloomerp.conferenceparticipant.invitation_status
+#: models/communication/conferencing/conference_participant.py:44
+msgid "Invitation status"
+msgstr "Statut de l’invitation"
+
+#: bloomerp.conferenceparticipant.invitation_status
+#: models/communication/conferencing/conference_participant.py:18
+msgid "Invited"
+msgstr "Invité"
+
+# | msgid "Ended at"
+#: bloomerp.conferenceparticipant.invited_at
+#: models/communication/conferencing/conference_participant.py:49
+msgid "Invited at"
+msgstr "Invité le"
+
 #: bloomerp.imendpoint.is_active
 msgid "Is Active"
 msgstr "Actif"
@@ -3729,9 +4098,39 @@ msgstr "Élément mis à jour"
 msgid "JSON Field"
 msgstr "Champ JSON"
 
+# | msgid "Phone call"
+#: templates/components/communication/calling/controls.html:11
+#: templates/components/communication/conferencing/session_card.html:7
+msgid "Join call"
+msgstr "Rejoindre l’appel"
+
+#: templates/views/communication/conferencing/meeting.html:7
+#: templates/views/communication/conferencing/meeting.html:19
+#, fuzzy
+msgid "Join meeting"
+msgstr "Rejoindre la réunion"
+
+#, fuzzy
+msgctxt "bloomerp:route:name"
+msgid "Join meeting"
+msgstr "Rejoindre la réunion"
+
 #: bloomerp.imconversationparticipant.joined_at
 msgid "Joined At"
+msgstr "Rejoint le"
+
+# | msgid "Joined At"
+#: bloomerp.conferenceattendance.joined_at
+#: models/communication/conferencing/conference_attendance.py:36
+msgid "Joined at"
 msgstr "A rejoint le"
+
+# | msgid "Phone call"
+# | msgid "Join call"
+#: templates/views/communication/conferencing/meeting.html:12
+#, fuzzy
+msgid "Joining as"
+msgstr "Rejoindre l’appel"
 
 #: workspaces/analytics_tile/model.py:317
 msgid "KPI"
@@ -3758,35 +4157,20 @@ msgstr "Préfixe de la clé"
 msgid "Kind"
 msgstr "Type"
 
-#: bloomerp.todo.effort models/project_management/todo.py:49
+#: bloomerp.todo.effort models/project_management/todo.py:44
 msgid "L"
 msgstr "L"
 
 #: bloomerp.objectlabel.label bloomerp.voipnumber.name field_types/display_options.py:50
-#: forms/communication/voip_number.py:33 models/communication/voip/voip_number.py:106
+#: forms/communication/voip_number.py:59 models/communication/voip/voip_number.py:106
 #: templates/widgets/mailbox_settings.html:6 workspaces/analytics_tile/model.py:73
 msgid "Label"
 msgstr "Étiquette"
 
-# | msgid "Details"
-#: models/project_management/todo_label.py:15
-msgid "Label Details"
-msgstr "Détails"
-
-#: bloomerp.applicationfield.field_type bloomerp.initiative.labels bloomerp.todo.labels
-#: models/project_management/initiative.py:65 models/project_management/initiative.py:189
-#: models/project_management/todo.py:445 templates/mixins/bloomerp_layout_form_mixin.html:64
+#: bloomerp.applicationfield.field_type templates/mixins/bloomerp_layout_form_mixin.html:67
 #: workspaces/analytics_tile/model.py:384
 msgid "Labels"
 msgstr "Étiquettes"
-
-#: bloomerp.initiative.labels models/project_management/initiative.py:190
-msgid "Labels assigned to the initiative"
-msgstr "Étiquettes attribuées à l’initiative"
-
-#: bloomerp.todo.labels models/project_management/todo.py:444
-msgid "Labels assigned to the todo"
-msgstr "Étiquettes attribuées à la tâche"
 
 #: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:30
 msgid "Landscape"
@@ -3887,9 +4271,20 @@ msgstr ""
 "boîte mail principale si votre fournisseur l’exige. Les réponses seront toujours envoyées à "
 "l’expéditeur affiché, sauf si une adresse de réponse est spécifiée."
 
+# | msgid "Phone call"
+#: templates/components/communication/calling/controls.html:18
+msgid "Leave call"
+msgstr "Quitter l’appel"
+
 #: templates/components/communication/instant_messaging/group_members.html:36
 msgid "Leave group"
 msgstr "Quitter le groupe"
+
+# | msgid "Leave group"
+#: bloomerp.conferenceattendance.leave_reason
+#: models/communication/conferencing/conference_attendance.py:38
+msgid "Leave reason"
+msgstr "Motif du départ"
 
 #: workspaces/analytics_tile/model.py:200
 msgid "Left"
@@ -3897,6 +4292,11 @@ msgstr "Gauche"
 
 #: bloomerp.imconversationparticipant.left_at
 msgid "Left At"
+msgstr "A quitté le"
+
+# | msgid "Left At"
+#: bloomerp.conferenceattendance.left_at models/communication/conferencing/conference_attendance.py:37
+msgid "Left at"
 msgstr "A quitté le"
 
 #: bloomerp.documenttemplateheader.margin_left models/document_templates/document_template_header.py:42
@@ -3988,6 +4388,29 @@ msgstr "Liste de vos espaces de travail"
 msgid "List view preference"
 msgstr "Préférence d’affichage en liste"
 
+# | msgid "im identity"
+#: bloomerp.conferenceattendance.livekit_identity
+#: models/communication/conferencing/conference_attendance.py:28
+msgid "LiveKit identity"
+msgstr "Identité LiveKit"
+
+# | msgid "ai artifacts"
+# | msgid "4 participants"
+#: bloomerp.conferenceattendance.livekit_participant_sid
+#: models/communication/conferencing/conference_attendance.py:34
+msgid "LiveKit participant SID"
+msgstr "SID du participant LiveKit"
+
+#: bloomerp.conferencesession.livekit_room_sid
+#: models/communication/conferencing/conference_session.py:53
+msgid "LiveKit room SID"
+msgstr "SID de la salle LiveKit"
+
+#: bloomerp.conferencesession.livekit_room_name
+#: models/communication/conferencing/conference_session.py:45
+msgid "LiveKit room name"
+msgstr "Nom de la salle LiveKit"
+
 #: templates/components/objects/dataview_calendar_events.html:53
 #: templates/cotton/features/agent/body.html:122
 msgid "Load more"
@@ -4035,7 +4458,7 @@ msgstr "Chargement..."
 msgid "Loading…"
 msgstr "Chargement…"
 
-#: forms/communication/voip_number.py:19
+#: communication/builtins/voip/builtins/twilio.py:66
 msgid "Local"
 msgstr "Local"
 
@@ -4047,11 +4470,11 @@ msgstr "Connexion"
 msgid "Login to Your Account"
 msgstr "Connectez-vous à votre compte"
 
-#: bloomerp.todo.priority models/project_management/todo.py:42
+#: bloomerp.todo.priority models/project_management/todo.py:37
 msgid "Low"
 msgstr "Faible"
 
-#: bloomerp.todo.effort models/project_management/todo.py:48
+#: bloomerp.todo.effort models/project_management/todo.py:43
 msgid "M"
 msgstr "M"
 
@@ -4077,7 +4500,7 @@ msgstr "Intégrations MCP"
 
 msgctxt "bloomerp:route:name"
 msgid "MCP OAuth callback"
-msgstr "Rappel OAuth MCP"
+msgstr "Callback OAuth MCP"
 
 msgctxt "bloomerp:route:name"
 msgid "MCP OAuth client metadata"
@@ -4193,11 +4616,6 @@ msgstr "Marge supérieure"
 msgid "Margin of the document template in inches."
 msgstr "Marge du modèle de document en pouces."
 
-# | msgid "Todo marked as completed."
-#: models/project_management/todo.py:136
-msgid "Mark as Completed"
-msgstr "Marquer comme terminée"
-
 #: bloomerp.form.max_submissions models/forms/form.py:114
 msgid "Max Submissions"
 msgstr "Nombre maximal de soumissions"
@@ -4259,9 +4677,26 @@ msgstr ""
 "Nombre total maximal de jetons d’entrée et de sortie pour toutes les tentatives d’une même "
 "exécution. Laissez vide pour ne pas imposer de limite de jetons par exécution."
 
-#: bloomerp.todo.priority models/project_management/todo.py:41
+#: bloomerp.todo.priority models/project_management/todo.py:36
 msgid "Medium"
 msgstr "Moyenne"
+
+# | msgid "Settings"
+#: communication/builtins/conferencing/meetings.py:51
+#, fuzzy
+msgid "Meeting"
+msgstr "Paramètres"
+
+#: bloomerp.conferenceadmission models/communication/conferencing/conference_admission.py:44
+#, fuzzy
+msgid "Meeting admission"
+msgstr "Admission à la réunion"
+
+# | msgid "Permissions"
+#: bloomerp.conferenceadmission models/communication/conferencing/conference_admission.py:45
+#, fuzzy
+msgid "Meeting admissions"
+msgstr "Autorisations"
 
 # | msgid "Content Type"
 # | msgid "Channel Type"
@@ -4283,6 +4718,7 @@ msgstr "Fusionner les branches"
 #: bloomerp.aimessageartifact.message bloomerp.airun.trigger_type bloomerp.immessageattachment.message
 #: bloomerp.immessagereaction.message
 #: templates/components/communication/instant_messaging/conversation.html:2
+#: templates/cotton/ui/chat/composer.html:8
 msgid "Message"
 msgstr "Parent"
 
@@ -4297,14 +4733,15 @@ msgstr "Envoyer un message à BloomAI"
 # | msgid "Parent Message"
 # | msgid "Message"
 #: templates/components/communication/instant_messaging/conversations.html:7
-#: templates/cotton/features/instant_messaging/message.html:6
+#: templates/cotton/features/instant_messaging/message.html:4
 #: templates/cotton/features/instant_messaging/quote.html:3
 msgid "Message deleted"
 msgstr "Message supprimé"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
-#: bloomerp.inboxfolder.type templates/components/communication/messaging_panel.html:5
+#: bloomerp.inboxfolder.type templates/components/communication/messaging_panel.html:6
+#: templates/cotton/ui/chat/container.html:7
 msgid "Messages"
 msgstr "Parent"
 
@@ -4316,6 +4753,10 @@ msgstr "Méta"
 msgid "Metadata"
 msgstr "Métadonnées"
 
+#: templates/components/communication/calling/controls.html:13
+msgid "Microphone"
+msgstr "Microphone"
+
 #: dataviews/pivot_table/config.py:126
 msgid "Minimum"
 msgstr "Minimum"
@@ -4324,7 +4765,9 @@ msgctxt "bloomerp:module:name"
 msgid "Miscellaneous"
 msgstr "Divers"
 
-#: bloomerp.phonecall.status models/communication/voip/phone_call.py:67
+#: bloomerp.conferenceparticipant.invitation_status bloomerp.phonecall.status
+#: models/communication/conferencing/conference_participant.py:21
+#: models/communication/voip/phone_call.py:67
 msgid "Missed"
 msgstr "Manqué"
 
@@ -4332,7 +4775,7 @@ msgstr "Manqué"
 msgid "Missing object ID or content type ID"
 msgstr "ID d’objet ou ID de type de contenu manquant"
 
-#: forms/communication/voip_number.py:20
+#: communication/builtins/voip/builtins/twilio.py:67
 msgid "Mobile"
 msgstr "Mobile"
 
@@ -4413,10 +4856,6 @@ msgstr "Déplacer l’association vers le haut"
 msgid "Move up"
 msgstr "Déplacer vers le haut"
 
-#: templates/components/communication/messaging_panel.html:21
-msgid "Mute / unmute"
-msgstr "Couper / réactiver le son"
-
 #: bloomerp.imconversationparticipant.muted_until
 msgid "Muted Until"
 msgstr "Désactivé jusqu’à"
@@ -4430,27 +4869,29 @@ msgid "My workspaces"
 msgstr "Mes espaces de travail"
 
 #: bloomerp.aiagent.name bloomerp.aiagentaccess.name bloomerp.apikey.name
-#: bloomerp.documenttemplate.name bloomerp.documenttemplateheader.name
-#: bloomerp.documenttemplatestyling.name bloomerp.emailaccount.name bloomerp.fieldpolicy.name
-#: bloomerp.filenode.name bloomerp.form.name bloomerp.imconnection.name bloomerp.imconversation.name
-#: bloomerp.imendpoint.name bloomerp.inbox.name bloomerp.inboxfolder.name bloomerp.initiative.name
-#: bloomerp.label.name bloomerp.mcpintegration.name bloomerp.policy.name bloomerp.rowpolicy.name
-#: bloomerp.savedfilter.name bloomerp.sidebar.name bloomerp.sidebaritem.name bloomerp.sqlquery.name
-#: bloomerp.tile.name bloomerp.todolabel.name bloomerp.userdetailviewtabitem.name
-#: bloomerp.userdetailviewtabspreference.name bloomerp.userlistviewpreference.name
-#: bloomerp.userobjectlayoutpreference.name bloomerp.voipconnection.name bloomerp.workflow.name
-#: bloomerp.workflowedge.name bloomerp.workflownode.name bloomerp.workspace.name
-#: components/files/actions/rename_form.py:10 models/access_control/field_policy.py:35
-#: models/access_control/policy.py:71 models/access_control/row_policy.py:28
-#: models/agents/ai_agent.py:169 models/agents/ai_agent_access.py:26 models/agents/mcp_server.py:43
-#: models/api/api_key.py:93 models/automation/workflow.py:189 models/automation/workflow_edge.py:23
-#: models/automation/workflow_node.py:54 models/communication/email_account.py:110
-#: models/communication/voip/voip_connection.py:119 models/document_templates/document_template.py:135
+#: bloomerp.conferenceadmission.display_name bloomerp.documenttemplate.name
+#: bloomerp.documenttemplateheader.name bloomerp.documenttemplatestyling.name
+#: bloomerp.emailaccount.name bloomerp.fieldpolicy.name bloomerp.filenode.name bloomerp.form.name
+#: bloomerp.imconnection.name bloomerp.imconversation.name bloomerp.imendpoint.name bloomerp.inbox.name
+#: bloomerp.inboxfolder.name bloomerp.initiative.name bloomerp.label.name bloomerp.mcpintegration.name
+#: bloomerp.policy.name bloomerp.rowpolicy.name bloomerp.savedfilter.name bloomerp.sidebar.name
+#: bloomerp.sidebaritem.name bloomerp.sqlquery.name bloomerp.tile.name
+#: bloomerp.userdetailviewtabitem.name bloomerp.userdetailviewtabspreference.name
+#: bloomerp.userlistviewpreference.name bloomerp.userobjectlayoutpreference.name
+#: bloomerp.voipconnection.name bloomerp.workflow.name bloomerp.workflowedge.name
+#: bloomerp.workflownode.name bloomerp.workspace.name components/files/actions/rename_form.py:10
+#: models/access_control/field_policy.py:35 models/access_control/policy.py:71
+#: models/access_control/row_policy.py:28 models/agents/ai_agent.py:169
+#: models/agents/ai_agent_access.py:26 models/agents/mcp_server.py:43 models/api/api_key.py:93
+#: models/automation/workflow.py:189 models/automation/workflow_edge.py:23
+#: models/automation/workflow_node.py:54 models/communication/conferencing/conference_admission.py:31
+#: models/communication/email_account.py:110 models/communication/voip/voip_connection.py:119
+#: models/document_templates/document_template.py:135
 #: models/document_templates/document_template_header.py:23
 #: models/document_templates/document_template_styling.py:24 models/forms/form.py:69
-#: models/project_management/initiative.py:152 models/project_management/todo_label.py:36
-#: models/users/base_preference.py:100 models/users/user_detail_view_tabs_preference.py:533
-#: models/workspaces/sidebar_item.py:49 models/workspaces/sql_query.py:30 models/workspaces/tile.py:34
+#: models/project_management/initiative.py:145 models/users/base_preference.py:100
+#: models/users/user_detail_view_tabs_preference.py:533 models/workspaces/sidebar_item.py:49
+#: models/workspaces/sql_query.py:30 models/workspaces/tile.py:34
 #: templates/components/workspaces/tiles/builders/link_items.html:38
 #: templates/components/workspaces/tiles/builders/links.html:42
 #: templates/components/workspaces/tiles/builders/links.html:84 templates/dataviews/files.html:41
@@ -4512,7 +4953,7 @@ msgid "New activity"
 msgstr "Nouvelle activité"
 
 # | msgid "AI conversation"
-#: templates/components/communication/messaging_panel.html:13
+#: templates/components/communication/messaging_panel.html:23
 #: templates/cotton/features/agent/body.html:46
 msgid "New conversation"
 msgstr "Nouvelle conversation"
@@ -4522,7 +4963,7 @@ msgid "New email"
 msgstr "Nouvel e-mail"
 
 # | msgid "No grouping"
-#: templates/components/communication/instant_messaging/recipients.html:3
+#: communication/builtins/instant_messaging/builtins/bloomerp.py:133
 msgid "New group"
 msgstr "Nouveau groupe"
 
@@ -4671,11 +5112,11 @@ msgstr "Aucun élément correspondant."
 
 # | msgid "ai messages"
 #: templates/components/communication/instant_messaging/conversations.html:7
-#: templates/components/communication/instant_messaging/messages.html:6
+#: templates/components/communication/instant_messaging/messages.html:7
 msgid "No messages yet."
 msgstr "Aucun message pour le moment."
 
-#: templates/views/communication/create_voip_number.html:31
+#: templates/views/communication/create_voip_number.html:61
 msgid "No numbers were found. Try another search."
 msgstr "Aucun numéro trouvé. Essayez une autre recherche."
 
@@ -4711,7 +5152,7 @@ msgstr "Aucun enregistrement planifié."
 msgid "No sections"
 msgstr "Aucune section"
 
-#: templates/views/generic/detail/base.html:58
+#: templates/views/generic/detail/base.html:60
 msgid "No tabs in folder"
 msgstr "Aucun onglet dans le dossier"
 
@@ -4754,6 +5195,15 @@ msgstr "Uniquement les paramètres non secrets du fournisseur."
 msgid "None"
 msgstr "Aucun"
 
+#: bloomerp.userlistviewpreference.view_mode models/users/user_list_view_preference.py:74
+msgid "Normal"
+msgstr "Normal"
+
+#: bloomerp.conferenceadmission.status models/communication/conferencing/conference_admission.py:19
+#, fuzzy
+msgid "Not admitted"
+msgstr "Non admis"
+
 #: bloomerp.inboxitem.item_type
 msgid "Notification"
 msgstr "Notification"
@@ -4787,16 +5237,23 @@ msgid "Number Of Users"
 msgstr "Nombre d’utilisateurs"
 
 # | msgid "im connections"
-#: forms/communication/voip_number.py:25
+#: communication/builtins/voip/builtins/twilio.py:71
 msgid "Number contains"
 msgstr "Le numéro contient"
 
-#: views/communication/create_voip_number.py:84
-msgid "Number search failed. Check the connection and country availability."
-msgstr "La recherche de numéros a échoué. Vérifiez la connexion et la disponibilité dans le pays."
+# | msgid "No workflow graph was available for this execution."
+# | msgid "Sending is unavailable for this conversation."
+#: communication/builtins/voip/controller.py:162
+msgid "Number provisioning is unavailable for this provider."
+msgstr "Le provisionnement de numéros n’est pas disponible pour ce fournisseur."
+
+# | msgid "Number search failed. Check the connection and country availability."
+#: views/communication/create_voip_number.py:100
+msgid "Number search failed. Check the connection and provider availability."
+msgstr "La recherche de numéros a échoué. Vérifiez la connexion et la disponibilité du fournisseur."
 
 # | msgid "Number"
-#: forms/communication/voip_number.py:17
+#: communication/builtins/voip/builtins/twilio.py:63
 msgid "Number type"
 msgstr "Type de numéro"
 
@@ -4850,7 +5307,7 @@ msgstr "Objet"
 
 #: bloomerp.activitylog.object_id bloomerp.bookmark.object_id bloomerp.comment.object_id
 #: bloomerp.todo.object_id models/audit/activity_log.py:66 models/communication/comment.py:35
-#: models/project_management/todo.py:471 models/users/bookmark.py:28
+#: models/project_management/todo.py:431 models/users/bookmark.py:28
 msgid "Object ID"
 msgstr "ID de l’objet"
 
@@ -4875,6 +5332,9 @@ msgstr "Identifiant de l'objet"
 #: bloomerp.aimessageartifact.object_labels bloomerp.airun.object_labels
 #: bloomerp.airunattempt.object_labels bloomerp.airunevent.object_labels
 #: bloomerp.aitoolcall.object_labels bloomerp.apikey.object_labels
+#: bloomerp.conferenceadmission.object_labels bloomerp.conferenceattendance.object_labels
+#: bloomerp.conferenceparticipant.object_labels bloomerp.conferenceroom.object_labels
+#: bloomerp.conferencesession.object_labels bloomerp.conferencewebhookreceipt.object_labels
 #: bloomerp.documenttemplate.object_labels bloomerp.documenttemplateheader.object_labels
 #: bloomerp.documenttemplatestyling.object_labels bloomerp.emailaccount.object_labels
 #: bloomerp.emaildraft.object_labels bloomerp.fileextraction.object_labels
@@ -4890,9 +5350,9 @@ msgstr "Identifiant de l'objet"
 #: bloomerp.mcpconnection.object_labels bloomerp.mcpintegration.object_labels
 #: bloomerp.phonecall.object_labels bloomerp.phonecallevent.object_labels
 #: bloomerp.savedfilter.object_labels bloomerp.sqlquery.object_labels bloomerp.tile.object_labels
-#: bloomerp.todo.object_labels bloomerp.todolabel.object_labels
-#: bloomerp.userinboxpreference.object_labels bloomerp.voipconnection.object_labels
-#: bloomerp.voipnumber.object_labels models/base_bloomerp_model.py:27
+#: bloomerp.todo.object_labels bloomerp.userinboxpreference.object_labels
+#: bloomerp.voipconnection.object_labels bloomerp.voipnumber.object_labels
+#: models/base_bloomerp_model.py:27
 msgid "Object labels"
 msgstr "Libellés de l'objet"
 
@@ -4901,12 +5361,14 @@ msgid "Object no longer available"
 msgstr "L’objet n’est plus disponible"
 
 # | msgid "Object"
-#: templates/dataviews/files.html:41 templates/mixins/bloomerp_layout_form_mixin.html:63
+#: templates/dataviews/files.html:41 templates/mixins/bloomerp_layout_form_mixin.html:66
 msgid "Objects"
 msgstr "Objets"
 
 # | msgid "Occurrence Id"
-#: bloomerp.phonecallevent.occurred_at models/communication/voip/phone_call_event.py:19
+#: bloomerp.conferencewebhookreceipt.occurred_at bloomerp.phonecallevent.occurred_at
+#: models/communication/conferencing/conference_webhook_receipt.py:21
+#: models/communication/voip/phone_call_event.py:19
 msgid "Occurred at"
 msgstr "Survenu le"
 
@@ -4958,6 +5420,10 @@ msgstr "Champ utilisateur un-à-un"
 msgid "Only files can be attached to messages."
 msgstr "Seuls les fichiers peuvent être joints aux messages."
 
+#: models/communication/conferencing/conference_session.py:106
+msgid "Only finished sessions must have an end time."
+msgstr "Seules les sessions terminées doivent avoir une heure de fin."
+
 #: services/email_composer_services.py:155
 msgid "Only model fields can be used in email templates."
 msgstr "Seuls les champs du modèle peuvent être utilisés dans les modèles d’e-mail."
@@ -4971,15 +5437,31 @@ msgstr "Uniquement si vide"
 msgid "Open"
 msgstr "Ouverte"
 
+#: templates/widgets/url_widget.html:6
+msgid "Open URL in a new tab"
+msgstr "Ouvrir l’URL dans un nouvel onglet"
+
+# | msgid "End call"
+#: templates/components/communication/calling/controls.html:10
+msgid "Open call"
+msgstr "Ouvrir l’appel"
+
 # | msgid "Parent"
 # | msgid "Parent Message"
-#: templates/components/communication/messaging_panel.html:6
+#: templates/components/communication/messaging_panel.html:7
 msgid "Open messages"
 msgstr "Ouvrir les messages"
 
 #: templates/inbox_items/workflow_run.html:52
 msgid "Open object"
 msgstr "Ouvrir l’objet"
+
+# | msgid "API Keys"
+# | msgid "API Key Details"
+# | msgid "Agent details"
+#: templates/components/objects/dataview.html:48
+msgid "Open selected details"
+msgstr "Ouvrir les détails sélectionnés"
 
 #: templates/inbox_items/workflow_run.html:102
 msgid "Open workflow run"
@@ -5071,7 +5553,7 @@ msgstr "Champ facultatif autoréférencé dont l’enregistrement associé préc
 msgid "Optional space-separated OAuth scopes; a server challenge takes precedence."
 msgstr "Portées OAuth facultatives, séparées par des espaces ; un défi du serveur est prioritaire."
 
-#: bloomerp.userlistviewpreference.options models/users/user_list_view_preference.py:76
+#: bloomerp.userlistviewpreference.options models/users/user_list_view_preference.py:95
 msgid "Options"
 msgstr "Options"
 
@@ -5153,7 +5635,7 @@ msgstr "Présentation du profil"
 
 #: bloomerp.aiconversation.owner bloomerp.imconversationparticipant.role bloomerp.initiative.owner
 #: models/communication/instant_messaging/im_conversation_participant.py:35
-#: models/project_management/initiative.py:183
+#: models/project_management/initiative.py:176
 msgid "Owner"
 msgstr "Propriétaire"
 
@@ -5185,7 +5667,7 @@ msgid "Parent"
 msgstr "Parent"
 
 # | msgid "Initiative"
-#: bloomerp.initiative.parent models/project_management/initiative.py:198
+#: bloomerp.initiative.parent models/project_management/initiative.py:184
 msgid "Parent Initiative"
 msgstr "Initiative parente"
 
@@ -5198,9 +5680,20 @@ msgstr "Identifiant de l'appel parent"
 msgid "Parent folder"
 msgstr "Dossier parent"
 
-#: bloomerp.immessagereaction.participant bloomerp.imthreadreadposition.participant
+#: bloomerp.conferenceadmission.participant bloomerp.conferenceattendance.participant
+#: bloomerp.conferenceparticipant.role bloomerp.immessagereaction.participant
+#: bloomerp.imthreadreadposition.participant
+#: models/communication/conferencing/conference_attendance.py:25
+#: models/communication/conferencing/conference_participant.py:15
 msgid "Participant"
 msgstr "Participant"
+
+# | msgid "Participant"
+#: communication/builtins/instant_messaging/builtins/staff_groups.py:35
+#: communication/builtins/instant_messaging/builtins/staff_groups.py:52
+#: templates/components/communication/calling/controls.html:26
+msgid "Participants"
+msgstr "Participants"
 
 #: bloomerp.emailaccount.password models/communication/email_account.py:137
 msgid "Password"
@@ -5218,14 +5711,17 @@ msgstr "Charge utile"
 
 # | msgid "Sort ascending"
 # | msgid "Ascending"
-#: bloomerp.aiapproval.status bloomerp.immessage.status bloomerp.mcpconnection.status
+#: bloomerp.aiapproval.status bloomerp.conferencesession.status
+#: bloomerp.conferencewebhookreceipt.status bloomerp.immessage.status bloomerp.mcpconnection.status
 #: bloomerp.phonecall.status models/agents/mcp_connection.py:45
+#: models/communication/conferencing/conference_session.py:21
+#: models/communication/conferencing/conference_webhook_receipt.py:13
 #: models/communication/instant_messaging/im_message.py:49 models/communication/voip/phone_call.py:61
 msgid "Pending"
 msgstr "En attente"
 
-#: templates/mixins/bloomerp_layout_form_mixin.html:62
-#: tests/views/generic/model/test_bloomerp_list_view.py:105
+#: templates/mixins/bloomerp_layout_form_mixin.html:65
+#: tests/views/generic/model/test_bloomerp_list_view.py:107
 msgid "People"
 msgstr "Personnes"
 
@@ -5261,7 +5757,7 @@ msgstr ""
 "Les connexions personnelles nécessitent un utilisateur ; les connexions partagées ne doivent être"
 " associées à aucun utilisateur."
 
-#: communication/builtins/instant_messaging/builtins/phone.py:252
+#: communication/builtins/instant_messaging/builtins/phone.py:323
 msgid "Phone"
 msgstr "Téléphone"
 
@@ -5273,7 +5769,7 @@ msgstr "Champ de numéro de téléphone"
 msgid "Phone call"
 msgstr "Appel téléphonique"
 
-#: communication/builtins/voip/controller.py:400
+#: communication/builtins/voip/controller.py:419
 #, python-format
 msgid "Phone call: %(status)s · %(seconds)s seconds"
 msgstr "Appel téléphonique : %(status)s · %(seconds)s secondes"
@@ -5299,12 +5795,12 @@ msgstr ""
 "connexion de messagerie instantanée."
 
 # | msgid "Phone Number Field"
-#: bloomerp.voipnumber.number models/communication/voip/voip_number.py:52
-#: models/communication/voip/voip_number.py:95
+#: bloomerp.voipnumber.number communication/builtins/voip/actions.py:154
+#: models/communication/voip/voip_number.py:52 models/communication/voip/voip_number.py:95
 msgid "Phone number"
 msgstr "Numéro de téléphone"
 
-#: communication/builtins/voip/actions.py:66
+#: communication/builtins/voip/actions.py:76
 msgid "Phone number synchronization queued."
 msgstr "La synchronisation du numéro de téléphone a été mise en file d’attente."
 
@@ -5314,12 +5810,12 @@ msgid "Phone numbers"
 msgstr "Numéros de téléphone"
 
 # | msgid "Phone Number Field"
-#: communication/builtins/voip/actions.py:68
+#: communication/builtins/voip/actions.py:78
 msgid "Phone numbers synchronized."
 msgstr "Numéros de téléphone synchronisés."
 
 # | msgid "Add at least one recipient."
-#: communication/builtins/instant_messaging/builtins/phone.py:261
+#: communication/builtins/instant_messaging/builtins/phone.py:332
 msgid "Phone recipients"
 msgstr "Destinataires téléphoniques"
 
@@ -5344,7 +5840,9 @@ msgstr "Tableau croisé"
 #: bloomerp.aiartifact.pk bloomerp.aiconversation.pk bloomerp.aimessage.pk
 #: bloomerp.aimessageartifact.pk bloomerp.airun.pk bloomerp.airunattempt.pk bloomerp.airunevent.pk
 #: bloomerp.aitoolcall.pk bloomerp.apikey.pk bloomerp.applicationfield.pk bloomerp.bookmark.pk
-#: bloomerp.comment.pk bloomerp.documenttemplate.pk bloomerp.documenttemplateheader.pk
+#: bloomerp.comment.pk bloomerp.conferenceadmission.pk bloomerp.conferenceattendance.pk
+#: bloomerp.conferenceparticipant.pk bloomerp.conferenceroom.pk bloomerp.conferencesession.pk
+#: bloomerp.conferencewebhookreceipt.pk bloomerp.documenttemplate.pk bloomerp.documenttemplateheader.pk
 #: bloomerp.documenttemplatestyling.pk bloomerp.emailaccount.pk bloomerp.emaildraft.pk
 #: bloomerp.fieldpolicy.pk bloomerp.fileextraction.pk bloomerp.filenode.pk bloomerp.filereference.pk
 #: bloomerp.form.pk bloomerp.formsubmission.pk bloomerp.imauthorization.pk bloomerp.imconnection.pk
@@ -5357,7 +5855,7 @@ msgstr "Tableau croisé"
 #: bloomerp.phonecall.pk bloomerp.phonecallevent.pk bloomerp.policy.pk bloomerp.rowpolicy.pk
 #: bloomerp.rowpolicyrule.pk bloomerp.rowpolicyrulepermission.pk bloomerp.savedfilter.pk
 #: bloomerp.sidebar.pk bloomerp.sidebaritem.pk bloomerp.sqlquery.pk bloomerp.tag.pk bloomerp.tile.pk
-#: bloomerp.todo.pk bloomerp.todolabel.pk bloomerp.user.pk bloomerp.userdetailviewtabitem.pk
+#: bloomerp.todo.pk bloomerp.user.pk bloomerp.userdetailviewtabitem.pk
 #: bloomerp.userdetailviewtabspreference.pk bloomerp.userinboxpreference.pk
 #: bloomerp.userlistviewpreference.pk bloomerp.userobjectlayoutpreference.pk bloomerp.voipconnection.pk
 #: bloomerp.voipnumber.pk bloomerp.workflow.pk bloomerp.workflowedge.pk bloomerp.workflownode.pk
@@ -5547,11 +6045,29 @@ msgstr "Aperçu indisponible"
 msgid "Previous Revision"
 msgstr "Révision précédente"
 
-#: bloomerp.todo.priority models/project_management/todo.py:408
+#: bloomerp.todo.priority models/project_management/todo.py:374
 msgid "Priority"
 msgstr "Priorité"
 
-#: templates/views/base_wizard.html:79
+# | msgid "Processing..."
+#: bloomerp.conferencewebhookreceipt.status
+#: models/communication/conferencing/conference_webhook_receipt.py:14
+msgid "Processed"
+msgstr "Traité"
+
+#: bloomerp.conferencewebhookreceipt.processed_at
+#: models/communication/conferencing/conference_webhook_receipt.py:28
+msgid "Processed at"
+msgstr "Traité le"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "message status"
+#: bloomerp.conferencewebhookreceipt.status
+#: models/communication/conferencing/conference_webhook_receipt.py:23
+msgid "Processing status"
+msgstr "État du traitement"
+
+#: templates/views/base_wizard.html:85
 msgid "Processing..."
 msgstr "Traitement..."
 
@@ -5562,6 +6078,12 @@ msgstr "Profil"
 msgctxt "bloomerp:route:name"
 msgid "Profile"
 msgstr "Profil"
+
+# | msgid "Initiative"
+# | msgid "Parent Initiative"
+#: tests/views/generic/model/test_bloomerp_list_view.py:118
+msgid "Project Initiatives"
+msgstr "Initiatives de projet"
 
 #: views/access_control/create_policy.py:332
 msgid "Properties and one-to-many fields cannot be used in row policies."
@@ -5659,6 +6181,11 @@ msgstr "Identifiants du fournisseur"
 msgid "Provider default"
 msgstr "Valeur par défaut du fournisseur"
 
+#: views/communication/create_voip_number.py:150
+#, python-format
+msgid "Provider error code: %(code)s."
+msgstr "Code d’erreur du fournisseur : %(code)s."
+
 # | msgid "Provider Call Id"
 #: templates/widgets/mailbox_mapping.html:5
 msgid "Provider mailbox"
@@ -5679,6 +6206,12 @@ msgstr "Identifiant du numéro chez le fournisseur"
 #: views/agents/create_ai_agent.py:84
 msgid "Provider parameters"
 msgstr "Paramètres du fournisseur"
+
+# | msgid "Provider"
+# | msgid "Provider Endpoint"
+#: templates/views/communication/create_voip_number.html:51
+msgid "Provider pricing"
+msgstr "Tarifs du fournisseur"
 
 #: views/communication/create_email_account.py:227
 msgid "Provider required"
@@ -5716,28 +6249,30 @@ msgstr ""
 "Fournit un accès rapide à une collection de liens internes ou externes, permettant aux "
 "utilisateurs d’accéder efficacement aux ressources fréquemment utilisées."
 
-#: forms/communication/voip_number.py:51
-msgid "Provision this number and accept the applicable Twilio charges."
-msgstr "Provisionnez ce numéro et acceptez les frais Twilio applicables."
+# | msgid "Provision this number and accept the applicable Twilio charges."
+#: forms/communication/voip_number.py:61
+msgid "Provision this number and accept the applicable provider charges."
+msgstr "Provisionnez ce numéro et acceptez les frais applicables du fournisseur."
 
-#: views/communication/create_voip_number.py:124
+# | msgid "Provisioning could not be confirmed. Synchronize before retrying; check number availability
+# and any required address or regulatory bundle in Twilio."
+#: views/communication/create_voip_number.py:147
 msgid ""
 "Provisioning could not be confirmed. Synchronize before retrying; check number availability and "
-"any required address or regulatory bundle in Twilio."
+"the provider requirements."
 msgstr ""
 "La confirmation du provisionnement n’a pas pu être obtenue. Synchronisez avant de réessayer ; "
-"vérifiez la disponibilité du numéro ainsi que toute adresse ou tout dossier réglementaire requis "
-"dans Twilio."
+"vérifiez la disponibilité du numéro et les exigences du fournisseur."
 
 #: bloomerp.form.public_embed_enabled models/forms/form.py:108
 msgid "Public Embed Enabled"
 msgstr "Intégration publique activée"
 
-#: communication/builtins/voip/builtins/twilio.py:38
+#: communication/builtins/voip/builtins/telnyx.py:45 communication/builtins/voip/builtins/twilio.py:43
 msgid "Public HTTPS URL"
 msgstr "URL HTTPS publique"
 
-#: communication/builtins/voip/builtins/twilio.py:40
+#: communication/builtins/voip/builtins/twilio.py:45
 msgid "Public base URL of this Bloomerp instance for Twilio callbacks."
 msgstr "URL de base publique de cette instance Bloomerp pour les rappels Twilio."
 
@@ -5764,7 +6299,7 @@ msgstr "Requête requise"
 msgid "Queued"
 msgstr "En attente"
 
-#: templates/cotton/features/instant_messaging/message.html:14
+#: templates/cotton/features/instant_messaging/message.html:11
 msgid "Quote"
 msgstr "Citer"
 
@@ -5772,7 +6307,7 @@ msgstr "Citer"
 msgid "Raw Meta Data"
 msgstr "Métadonnées brutes"
 
-#: templates/cotton/features/instant_messaging/message.html:19
+#: templates/cotton/features/instant_messaging/message.html:16
 msgid "React with"
 msgstr "Réagir avec"
 
@@ -5998,7 +6533,7 @@ msgid "Request Timeout (Seconds)"
 msgstr "Délai d’expiration de la requête (secondes)"
 
 #: bloomerp.fileextraction.requested_by bloomerp.todo.requested_by models/files/file_extraction.py:188
-#: models/project_management/todo.py:391
+#: models/project_management/todo.py:357
 msgid "Requested By"
 msgstr "Demandé par"
 
@@ -6010,7 +6545,7 @@ msgstr "Requis"
 msgid "Required Approver"
 msgstr "Approbateur requis"
 
-#: bloomerp.todo.required_by models/project_management/todo.py:400
+#: bloomerp.todo.required_by models/project_management/todo.py:366
 msgid "Required By"
 msgstr "Requis pour"
 
@@ -6030,8 +6565,8 @@ msgstr "Authentification requise"
 msgid "Requires Review"
 msgstr "Révision requise"
 
-#: templates/mixins/bloomerp_layout_form_mixin.html:107
-#: templates/mixins/bloomerp_layout_form_mixin.html:171 templates/views/base_wizard.html:50
+#: templates/mixins/bloomerp_layout_form_mixin.html:110
+#: templates/mixins/bloomerp_layout_form_mixin.html:174 templates/views/base_wizard.html:52
 msgid "Reset"
 msgstr "Réinitialiser"
 
@@ -6063,6 +6598,12 @@ msgstr "Résolue"
 #: bloomerp.oauthaccesstoken.resource bloomerp.oauthauthorizationcode.resource
 msgid "Resource"
 msgstr "Ressource"
+
+# | msgid "Ended at"
+#: bloomerp.conferenceparticipant.responded_at
+#: models/communication/conferencing/conference_participant.py:50
+msgid "Responded at"
+msgstr "Répondu le"
 
 #: templates/cotton/features/agent/body.html:36
 msgid "Response stopped."
@@ -6104,12 +6645,12 @@ msgid "Review the agent details."
 msgstr "Vérifiez les détails de l’agent."
 
 # | msgid "Authentication configuration"
-#: views/communication/create_voip_connection.py:173
+#: views/communication/create_voip_connection.py:177
 msgid "Review the connection configuration."
 msgstr "Veuillez vérifier la configuration de la connexion."
 
 #: views/agents/create_ai_agent.py:161 views/agents/create_mcp_integration.py:311
-#: views/agents/reconfigure_ai_agent.py:98 views/communication/create_voip_connection.py:77
+#: views/agents/reconfigure_ai_agent.py:98 views/communication/create_voip_connection.py:81
 msgid "Review the highlighted fields."
 msgstr "Vérifiez les champs mis en évidence."
 
@@ -6140,13 +6681,20 @@ msgstr "Droite"
 msgid "Right margin of the header in inches."
 msgstr "Marge droite de l’en-tête en pouces."
 
-#: bloomerp.phonecall.status models/communication/voip/phone_call.py:63
+#: bloomerp.conferencesession.status bloomerp.phonecall.status
+#: models/communication/conferencing/conference_session.py:22
+#: models/communication/voip/phone_call.py:63
 msgid "Ringing"
 msgstr "En sonnerie"
 
-#: bloomerp.aimessage.role bloomerp.imconversationparticipant.role
+#: bloomerp.aimessage.role bloomerp.conferenceparticipant.role bloomerp.imconversationparticipant.role
+#: models/communication/conferencing/conference_participant.py:41
 msgid "Role"
 msgstr "Rôle"
+
+#: bloomerp.conferencesession.room models/communication/conferencing/conference_session.py:42
+msgid "Room"
+msgstr "Salle"
 
 #: components/files/actions/move_file.py:41
 msgid "Root"
@@ -6238,19 +6786,19 @@ msgstr "En cours"
 msgid "Running tool"
 msgstr "Exécution de l’outil"
 
-#: bloomerp.todo.effort models/project_management/todo.py:47
+#: bloomerp.todo.effort models/project_management/todo.py:42
 msgid "S"
 msgstr "S"
 
-#: templates/views/communication/create_voip_number.html:15
+#: templates/views/communication/create_voip_number.html:33
 msgid "SMS"
 msgstr "SMS"
 
-#: templates/views/communication/reconfigure_voip_connection.html:14
+#: communication/builtins/voip/builtins/twilio.py:287
 msgid "SMS URL"
 msgstr "URL SMS"
 
-#: communication/builtins/voip/controller.py:229
+#: communication/builtins/voip/controller.py:238
 msgid "SMS does not support quoted replies or threads."
 msgstr "Les SMS ne prennent pas en charge les réponses citées ni les fils de discussion."
 
@@ -6260,11 +6808,11 @@ msgid "SMS enabled"
 msgstr "SMS activés"
 
 # | msgid "No workflow graph was available for this execution."
-#: communication/builtins/voip/controller.py:226
+#: communication/builtins/voip/controller.py:235
 msgid "SMS is unavailable or the request identifier is invalid."
 msgstr "Les SMS sont indisponibles ou l’identifiant de la demande n’est pas valide."
 
-#: communication/builtins/voip/builtins/twilio.py:208
+#: communication/builtins/voip/builtins/twilio.py:269
 msgid "SMS, browser calls and synchronized call history."
 msgstr "SMS, appels depuis le navigateur et historique des appels synchronisé."
 
@@ -6316,8 +6864,8 @@ msgstr "HTML nettoyé de l’éditeur ; le corps contient le texte consultable."
 #: components/ui/sidebar.py:264 components/ui/sidebar.py:273
 #: templates/components/forms/initial_data.html:37 templates/components/preferences/select.html:78
 #: templates/components/workspaces/tiles/builders/link_items.html:64
-#: templates/cotton/features/agent/body.html:66 templates/mixins/bloomerp_layout_form_mixin.html:117
-#: templates/mixins/bloomerp_layout_form_mixin.html:181
+#: templates/cotton/features/agent/body.html:66 templates/mixins/bloomerp_layout_form_mixin.html:120
+#: templates/mixins/bloomerp_layout_form_mixin.html:184
 msgid "Save"
 msgstr "Enregistrer"
 
@@ -6335,8 +6883,8 @@ msgstr ""
 msgid "Save account"
 msgstr "Enregistrer le compte"
 
-#: templates/mixins/bloomerp_layout_form_mixin.html:129
-#: templates/mixins/bloomerp_layout_form_mixin.html:200
+#: templates/mixins/bloomerp_layout_form_mixin.html:132
+#: templates/mixins/bloomerp_layout_form_mixin.html:203
 msgid "Save and Create New"
 msgstr "Enregistrer et créer nouveau"
 
@@ -6373,13 +6921,11 @@ msgstr ""
 "Enregistrez la configuration du compte en tant que brouillon. La vérification du fournisseur et "
 "la messagerie ne sont pas encore activées."
 
+# | msgid "Save the account configuration, then validate and synchronize its numbers. Browser calling
+# also requires a Voice API key and a TwiML application."
 #: templates/views/communication/create_voip_connection/configuration.html:4
-msgid ""
-"Save the account configuration, then validate and synchronize its numbers. Browser calling also "
-"requires a Voice API key and a TwiML application."
-msgstr ""
-"Enregistrez la configuration du compte, puis validez et synchronisez ses numéros. Les appels "
-"depuis le navigateur nécessitent également une clé Voice API et une application TwiML."
+msgid "Save the account configuration, then validate and synchronize its numbers."
+msgstr "Enregistrez la configuration du compte, puis validez et synchronisez ses numéros."
 
 #: workspaces/analytics_tile/model.py:148
 msgid "Scatter"
@@ -6403,7 +6949,7 @@ msgid "Scope"
 msgstr "Portée"
 
 #: bloomerp.initiative.status bloomerp.todo.status models/project_management/initiative.py:27
-#: models/project_management/todo.py:56
+#: models/project_management/todo.py:51
 msgid "Scoped"
 msgstr "Cadré"
 
@@ -6417,7 +6963,7 @@ msgstr "Autorisations"
 msgid "Search"
 msgstr "Rechercher"
 
-#: templates/views/communication/create_voip_number.html:29
+#: templates/views/communication/create_voip_number.html:59
 msgid "Search again to select an available number."
 msgstr "Effectuez une nouvelle recherche pour sélectionner un numéro disponible."
 
@@ -6426,7 +6972,8 @@ msgstr "Effectuez une nouvelle recherche pour sélectionner un numéro disponibl
 msgid "Search attachments"
 msgstr "Rechercher des pièces jointes"
 
-#: templates/views/communication/create_voip_number.html:5
+#: templates/views/communication/create_voip_number.html:7
+#: templates/views/communication/create_voip_number.html:16
 msgid "Search available numbers"
 msgstr "Rechercher des numéros disponibles"
 
@@ -6450,12 +6997,12 @@ msgstr "Rechercher des champs"
 msgid "Search inbox"
 msgstr "Rechercher dans la boîte de réception"
 
-#: templates/components/communication/messaging_panel.html:26
+#: templates/components/communication/messaging_panel.html:35
 msgid "Search messages and people"
 msgstr "Rechercher des messages et des personnes"
 
 # | msgid "Search messages and people"
-#: templates/components/communication/messaging_panel.html:25
+#: templates/components/communication/messaging_panel.html:34
 msgid "Search messages and people…"
 msgstr "Rechercher des messages et des personnes…"
 
@@ -6463,11 +7010,11 @@ msgstr "Rechercher des messages et des personnes…"
 msgid "Search or type a command"
 msgstr "Rechercher ou saisir une commande"
 
-#: templates/components/communication/messaging_panel.html:16
+#: templates/components/communication/messaging_panel.html:26
 msgid "Search people and phone numbers"
 msgstr "Rechercher des personnes et des numéros de téléphone"
 
-#: templates/components/communication/messaging_panel.html:16
+#: templates/components/communication/messaging_panel.html:26
 msgid "Search people and phone numbers…"
 msgstr "Rechercher des personnes et des numéros de téléphone…"
 
@@ -6499,7 +7046,7 @@ msgid "Select Inbox"
 msgstr "Sélectionner une boîte de réception"
 
 # | msgid "Please select an email provider first."
-#: views/communication/create_voip_connection.py:119
+#: views/communication/create_voip_connection.py:123
 msgid "Select a VoIP provider first."
 msgstr "Sélectionnez d’abord un fournisseur VoIP."
 
@@ -6531,7 +7078,7 @@ msgid "Select a matching IM connection."
 msgstr "Sélectionnez une connexion de messagerie instantanée correspondante."
 
 # | msgid "Select provider"
-#: templates/views/communication/create_voip_number.html:10
+#: templates/views/communication/create_voip_number.html:23
 msgid "Select a phone number"
 msgstr "Sélectionnez un numéro de téléphone"
 
@@ -6555,7 +7102,7 @@ msgstr ""
 " diagramme de Gantt."
 
 # | msgid "Delete value"
-#: components/communication/voip/assign.py:37
+#: components/communication/voip/assign.py:39
 msgid "Select active staff users."
 msgstr "Sélectionnez des utilisateurs actifs du personnel."
 
@@ -6570,7 +7117,7 @@ msgid "Select an AI provider to continue."
 msgstr "Sélectionnez un fournisseur d’IA pour continuer."
 
 # | msgid "Select an email before replying."
-#: communication/builtins/instant_messaging/builtins/phone.py:63
+#: communication/builtins/instant_messaging/builtins/phone.py:79
 msgid "Select an available phone recipient."
 msgstr "Sélectionnez un destinataire téléphonique disponible."
 
@@ -6610,7 +7157,7 @@ msgid "Select or enter a query for your analytics tile"
 msgstr "Sélectionnez ou saisissez une requête pour votre tuile d’analytique"
 
 #: views/agents/create_ai_agent.py:235 views/communication/create_email_account.py:360
-#: views/communication/create_voip_connection.py:126
+#: views/communication/create_voip_connection.py:130
 msgid "Select provider"
 msgstr "Sélectionner un fournisseur"
 
@@ -6628,7 +7175,7 @@ msgid "Select shared inbox"
 msgstr "Sélectionner une boîte de réception partagée"
 
 # | msgid "user detail view tabs preference"
-#: templates/views/generic/detail/base.html:94
+#: templates/views/generic/detail/base.html:96
 msgid "Select tabs preference"
 msgstr "Sélectionner une préférence d’onglets"
 
@@ -6695,8 +7242,7 @@ msgstr "Envoyer un message à l’utilisateur"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
-#: templates/components/communication/instant_messaging/conversation.html:25
-#: templates/cotton/features/agent/body.html:141
+#: templates/cotton/features/agent/body.html:141 templates/cotton/ui/chat/composer.html:13
 msgid "Send message"
 msgstr "Envoyer le message"
 
@@ -6719,7 +7265,7 @@ msgid "Sending endpoint"
 msgstr "Point de terminaison d’envoi"
 
 # | msgid "No workflow graph was available for this execution."
-#: templates/components/communication/instant_messaging/conversation.html:25
+#: templates/cotton/ui/chat/composer.html:13
 msgid "Sending is unavailable for this conversation."
 msgstr "L’envoi n’est pas disponible pour cette conversation."
 
@@ -6755,15 +7301,35 @@ msgstr "Sortie sérialisée produite par l’exécution de ce nœud du workflow.
 msgid "Server configuration"
 msgstr "Configuration du serveur"
 
+# | msgid "Permission"
+#: bloomerp.conferenceadmission.session bloomerp.conferenceparticipant.session
+#: models/communication/conferencing/conference_participant.py:29
+msgid "Session"
+msgstr "Session"
+
 #: bloomerp.imconnection.settings models/forms/form.py:37
+#: templates/components/communication/messaging_panel.html:14
 #: templates/cotton/features/document_templates/builder.html:83
 msgid "Settings"
 msgstr "Paramètres"
+
+#: bloomerp.conferencesession.share_token
+#, fuzzy
+msgid "Share Token"
+msgstr "Jeton de partage"
 
 # | msgid "Preference"
 # | msgid "Base Preference"
 #: templates/components/preferences/select.html:38
 msgid "Share preference"
+msgstr "Partager la préférence"
+
+# | msgid "Preference"
+# | msgid "Base Preference"
+# | msgid "Share preference"
+#: templates/components/communication/calling/controls.html:14
+#, fuzzy
+msgid "Share screen"
 msgstr "Partager la préférence"
 
 # | msgid "Shared with"
@@ -6987,9 +7553,14 @@ msgstr "Étendues OAuth séparées par des espaces demandées pour ce compte."
 msgid "Specific permissions for this user."
 msgstr "Autorisations spécifiques pour cet utilisateur."
 
-#: bloomerp.userlistviewpreference.split_view_enabled models/users/user_list_view_preference.py:72
+#: bloomerp.userlistviewpreference.split_view_enabled
 msgid "Split View Enabled"
 msgstr "Vue fractionnée activée"
+
+# | msgid "Split View Enabled"
+#: bloomerp.userlistviewpreference.view_mode models/users/user_list_view_preference.py:75
+msgid "Split view"
+msgstr "Vue fractionnée"
 
 #: bloomerp.aiagent.internal_resources models/agents/ai_agent.py:153
 msgid ""
@@ -7015,11 +7586,11 @@ msgstr "Empilé"
 msgid "Stacks multiple Y-axis series when supported by the selected chart type."
 msgstr "Empile plusieurs séries sur l’axe Y lorsque le type de graphique sélectionné le permet."
 
-#: communication/builtins/instant_messaging/builtins/bloomerp.py:111
+#: communication/builtins/instant_messaging/builtins/bloomerp.py:142
 msgid "Staff"
 msgstr "Personnel"
 
-#: bloomerp.initiative.start_date models/project_management/initiative.py:164
+#: bloomerp.initiative.start_date models/project_management/initiative.py:157
 msgid "Start Date"
 msgstr "Date de début"
 
@@ -7033,6 +7604,23 @@ msgstr "Échéance de début"
 msgid "Start Node"
 msgstr "Nœud de départ"
 
+#: templates/components/communication/conferencing/start_meeting.html:3
+#, fuzzy
+msgid "Start a meeting on your own, then share its link to invite others."
+msgstr "Démarrez une réunion seul, puis partagez son lien pour inviter d’autres personnes."
+
+# | msgid "Start Date"
+# | msgid "Started at"
+#: templates/components/communication/instant_messaging/conversation.html:16
+msgid "Start audio call"
+msgstr "Démarrer un appel audio"
+
+# | msgid "Start Date"
+#: communication/builtins/voip/actions.py:200
+#, fuzzy
+msgid "Start chat"
+msgstr "Date de début"
+
 # | msgid "Status Field"
 #: dataviews/gant/config.py:60
 msgid "Start field"
@@ -7042,6 +7630,14 @@ msgstr "Champ de statut"
 msgid "Start from scratch"
 msgstr "Commencer de zéro"
 
+# | msgid "Start Date"
+# | msgid "Start Deadline"
+#: communication/builtins/instant_messaging/builtins/bloomerp.py:126
+#: templates/components/communication/conferencing/start_meeting.html:4
+#, fuzzy
+msgid "Start meeting"
+msgstr "Échéance de début"
+
 #: templates/components/objects/dataview_gant_rows.html:58
 msgid "Start or end date is missing."
 msgstr "La date de début ou de fin est manquante."
@@ -7049,6 +7645,12 @@ msgstr "La date de début ou de fin est manquante."
 #: templates/components/search/global_search.html:144
 msgid "Start typing to search."
 msgstr "Commencez à taper pour effectuer une recherche."
+
+# | msgid "Status Field"
+# | msgid "Start field"
+#: templates/components/communication/instant_messaging/conversation.html:17
+msgid "Start video call"
+msgstr "Démarrer un appel vidéo"
 
 # | msgid "Start Date"
 #: bloomerp.airunattempt.started_at bloomerp.aitoolcall.started_at bloomerp.fileextraction.started_at
@@ -7058,7 +7660,9 @@ msgid "Started At"
 msgstr "Démarré le"
 
 # | msgid "Start Date"
-#: bloomerp.phonecall.started_at models/communication/voip/phone_call.py:74
+#: bloomerp.conferencesession.started_at bloomerp.phonecall.started_at
+#: models/communication/conferencing/conference_session.py:65
+#: models/communication/voip/phone_call.py:74
 msgid "Started at"
 msgstr "Commencé le"
 
@@ -7073,15 +7677,16 @@ msgstr "Statut"
 
 #: bloomerp.aiapproval.status bloomerp.aiconversation.status bloomerp.aimessage.status
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
-#: bloomerp.emailaccount.status bloomerp.fileextraction.status bloomerp.imconnection.status
-#: bloomerp.imconversation.status bloomerp.immessage.status bloomerp.initiative.status
-#: bloomerp.mcpconnection.status bloomerp.phonecall.status bloomerp.phonecallevent.status
-#: bloomerp.todo.status bloomerp.voipconnection.status bloomerp.workflowrun.status
-#: bloomerp.workflowrunstep.status models/automation/workflow_run.py:407
-#: models/automation/workflow_run_step.py:45 models/communication/email_account.py:127
+#: bloomerp.conferenceadmission.status bloomerp.conferencesession.status bloomerp.emailaccount.status
+#: bloomerp.fileextraction.status bloomerp.imconnection.status bloomerp.imconversation.status
+#: bloomerp.immessage.status bloomerp.initiative.status bloomerp.mcpconnection.status
+#: bloomerp.phonecall.status bloomerp.phonecallevent.status bloomerp.todo.status
+#: bloomerp.voipconnection.status bloomerp.workflowrun.status bloomerp.workflowrunstep.status
+#: models/automation/workflow_run.py:407 models/automation/workflow_run_step.py:45
+#: models/communication/conferencing/conference_session.py:62 models/communication/email_account.py:127
 #: models/communication/voip/phone_call.py:57 models/communication/voip/phone_call_event.py:18
 #: models/communication/voip/voip_connection.py:125 models/files/file_extraction.py:194
-#: models/project_management/initiative.py:148 models/project_management/todo.py:439
+#: models/project_management/initiative.py:141 models/project_management/todo.py:405
 msgid "Status"
 msgstr "Statut"
 
@@ -7100,6 +7705,12 @@ msgstr "Restez connecté pendant deux semaines avant de devoir vous autoriser à
 #: templates/cotton/features/agent/body.html:140
 msgid "Stop"
 msgstr "Arrêter"
+
+# | msgid "Stopping…"
+#: templates/components/communication/calling/controls.html:14
+#, fuzzy
+msgid "Stop sharing"
+msgstr "Arrêt…"
 
 #: templates/cotton/features/agent/body.html:35
 msgid "Stopping…"
@@ -7124,7 +7735,7 @@ msgstr "Ensembles de styles pouvant être appliqués au modèle de document."
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Initiatives"
-#: models/project_management/initiative.py:85
+#: models/project_management/initiative.py:78
 msgid "Sub Initiatives"
 msgstr "Sous-initiatives"
 
@@ -7216,7 +7827,7 @@ msgid "Synchronization"
 msgstr "Synchronisation"
 
 # | msgid "Authorization failed. Reconnect to continue."
-#: communication/builtins/voip/actions.py:61
+#: communication/builtins/voip/actions.py:71
 msgid "Synchronization failed. Check the connection configuration."
 msgstr "Échec de la synchronisation. Vérifiez la configuration de la connexion."
 
@@ -7234,11 +7845,11 @@ msgstr "Synchroniser l’historique"
 msgid "Synchronize phone numbers"
 msgstr "Synchroniser les numéros de téléphone"
 
-#: communication/builtins/voip/controller.py:156
+#: communication/builtins/voip/controller.py:157
 msgid "Synchronize the connection and select an available number first."
 msgstr "Synchronisez la connexion et sélectionnez d’abord un numéro disponible."
 
-#: views/communication/create_voip_number.py:57
+#: views/communication/create_voip_number.py:75
 msgid "Synchronize this connection before searching for numbers."
 msgstr "Synchronisez cette connexion avant de rechercher des numéros."
 
@@ -7259,13 +7870,48 @@ msgstr "Tableau"
 msgid "Target Content Type"
 msgstr "Type de contenu cible"
 
-#: bloomerp.initiative.target_date models/project_management/initiative.py:169
+#: bloomerp.initiative.target_date models/project_management/initiative.py:162
 msgid "Target Date"
 msgstr "Date cible"
 
 #: bloomerp.tag.target_object_id
 msgid "Target Object Id"
 msgstr "ID de l’objet cible"
+
+#: communication/builtins/voip/builtins/telnyx.py:42
+msgid "TeXML SIP subdomain"
+msgstr "Sous-domaine SIP TeXML"
+
+# | msgid "Voice URL"
+#: communication/builtins/voip/builtins/telnyx.py:271
+msgid "TeXML Voice URL"
+msgstr "URL vocale TeXML"
+
+# | msgid "application field"
+# | msgid "TwiML application SID"
+#: communication/builtins/voip/builtins/telnyx.py:36
+msgid "TeXML application ID"
+msgstr "ID d’application TeXML"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "MCP OAuth callback"
+#: communication/builtins/voip/builtins/telnyx.py:272
+msgid "TeXML status callback"
+msgstr "Rappel d’état TeXML"
+
+#: bloomerp.voipconnection.provider communication/builtins/voip/builtins/telnyx.py:256
+msgid "Telnyx"
+msgstr "Telnyx"
+
+# | msgid "Account"
+# | msgid "Account SID"
+#: communication/builtins/voip/builtins/telnyx.py:33
+msgid "Telnyx account ID"
+msgstr "ID du compte Telnyx"
+
+#: communication/builtins/voip/builtins/telnyx.py:79
+msgid "Telnyx rejected the request. Check account access and connection settings."
+msgstr "Telnyx a rejeté la requête. Vérifiez les accès au compte et les paramètres de connexion."
 
 #: bloomerp.documenttemplate.template models/document_templates/document_template.py:142
 msgid "Template"
@@ -7300,12 +7946,16 @@ msgstr "Texte qui vient après la valeur"
 msgid "Text that comes before the value"
 msgstr "Texte qui vient avant la valeur"
 
-#: bloomerp.todo.object_id models/project_management/todo.py:470
+#: bloomerp.todo.object_id models/project_management/todo.py:430
 msgid "The ID of the related object"
 msgstr "Le nom de la tâche"
 
+#: models/communication/conferencing/conference_session.py:156
+msgid "The LiveKit room SID is immutable once assigned."
+msgstr "Le SID de la salle LiveKit ne peut plus être modifié une fois attribué."
+
 # | msgid "This account is inactive."
-#: communication/builtins/voip/builtins/twilio.py:66
+#: communication/builtins/voip/builtins/twilio.py:112
 msgid "The Twilio account is not active."
 msgstr "Le compte Twilio n’est pas actif."
 
@@ -7333,13 +7983,17 @@ msgstr "L’agent n’a pas pu être enregistré. Vérifiez son nom et ses param
 msgid "The calendar period to show."
 msgstr "La période du calendrier à afficher."
 
+#: components/communication/conferencing/end.py:32
+msgid "The call is closed locally. Retry to confirm media cleanup."
+msgstr "L’appel est fermé localement. Réessayez pour confirmer le nettoyage des médias."
+
 #: workspaces/analytics_tile/model.py:298
 msgid "The columns of the table"
 msgstr "Les colonnes du tableau"
 
 # | msgid "The row policy configuration could not be read. Please review step
 # 2 and try again."
-#: views/communication/create_voip_connection.py:170
+#: views/communication/create_voip_connection.py:174
 msgid "The connection could not be saved. Check its settings."
 msgstr "Impossible d’enregistrer la connexion. Vérifiez ses paramètres."
 
@@ -7347,7 +8001,7 @@ msgstr "Impossible d’enregistrer la connexion. Vérifiez ses paramètres."
 msgid "The content type (model) this field belongs to."
 msgstr "Le type de contenu (modèle) auquel appartient ce champ."
 
-#: bloomerp.todo.content_type models/project_management/todo.py:464
+#: bloomerp.todo.content_type models/project_management/todo.py:424
 msgid "The content type of the related object"
 msgstr "Le type de contenu (modèle) auquel appartient ce champ."
 
@@ -7367,11 +8021,11 @@ msgstr "La date et l’heure après lesquelles le formulaire n’acceptera plus 
 msgid "The date and time from which the form will accept submissions."
 msgstr "La date et l’heure à partir desquelles le formulaire acceptera les réponses."
 
-#: bloomerp.todo.datetime_completed models/project_management/todo.py:432
+#: bloomerp.todo.datetime_completed models/project_management/todo.py:398
 msgid "The date and time when the todo was completed"
 msgstr "La date et l’heure auxquelles la tâche a été terminée"
 
-#: bloomerp.todo.required_by models/project_management/todo.py:401
+#: bloomerp.todo.required_by models/project_management/todo.py:367
 msgid "The date by which the todo is required"
 msgstr "La date à laquelle la tâche doit être terminée"
 
@@ -7411,7 +8065,7 @@ msgstr "Le premier panneau de la barre latérale de la vue détaillée à affich
 msgid "The direction used for table sorting."
 msgstr "Le champ à utiliser pour l’axe X du graphique."
 
-#: bloomerp.todo.effort models/project_management/todo.py:413
+#: bloomerp.todo.effort models/project_management/todo.py:379
 msgid "The effort required for the todo"
 msgstr "L’effort requis pour la tâche"
 
@@ -7474,11 +8128,16 @@ msgctxt "bloomerp:route:description"
 msgid "The homepage for the {module} module."
 msgstr "La page d’accueil du module {module}."
 
+#: templates/views/communication/conferencing/meeting.html:8
+#, fuzzy
+msgid "The host will admit you before you can enter the meeting."
+msgstr "L’organisateur vous admettra avant que vous puissiez rejoindre la réunion."
+
 #: bloomerp.workflowrunstep.action_id models/automation/workflow_run_step.py:37
 msgid "The identifier of the action being executed in this step."
 msgstr "L’identifiant de l’action exécutée lors de cette étape."
 
-#: bloomerp.todo.initiative models/project_management/todo.py:453
+#: bloomerp.todo.initiative models/project_management/todo.py:413
 msgid "The initiative this todo belongs to"
 msgstr "L’initiative à laquelle cette tâche appartient"
 
@@ -7491,6 +8150,12 @@ msgstr "Impossible d’enregistrer l’intégration. Vérifiez ses paramètres."
 #: workspaces/analytics_tile/model.py:74
 msgid "The label"
 msgstr "Le libellé"
+
+# | msgid "No workflow graph was available for this execution."
+# | msgid "SMS is unavailable or the request identifier is invalid."
+#: components/communication/instant_messaging/start_call.py:50
+msgid "The media service is unavailable. Retry with the same request identifier."
+msgstr "Le service multimédia est indisponible. Réessayez avec le même identifiant de requête."
 
 #: forms/widgets.py:18
 msgid "The name given to the widget"
@@ -7512,7 +8177,7 @@ msgstr "Le nom du champ."
 msgid "The name of the form"
 msgstr "Le nom du formulaire"
 
-#: bloomerp.initiative.name models/project_management/initiative.py:153
+#: bloomerp.initiative.name models/project_management/initiative.py:146
 msgid "The name of the initiative"
 msgstr "Le nom de l’initiative"
 
@@ -7520,7 +8185,7 @@ msgstr "Le nom de l’initiative"
 msgid "The name of the row-level access control policy."
 msgstr "Le nom de la stratégie de contrôle d’accès au niveau de la ligne."
 
-#: bloomerp.todo.title models/project_management/todo.py:420
+#: bloomerp.todo.title models/project_management/todo.py:386
 msgid "The name of the todo"
 msgstr "Le nom de la tâche"
 
@@ -7603,7 +8268,7 @@ msgid "The parameters for the workflow node."
 msgstr "Les paramètres du nœud de workflow."
 
 # | msgid "The name of the initiative"
-#: bloomerp.initiative.parent models/project_management/initiative.py:199
+#: bloomerp.initiative.parent models/project_management/initiative.py:185
 msgid "The parent initiative of this initiative"
 msgstr "L’initiative parente de cette initiative"
 
@@ -7611,7 +8276,11 @@ msgstr "L’initiative parente de cette initiative"
 msgid "The parent must be an existing folder."
 msgstr "Le dossier parent doit déjà exister."
 
-#: communication/builtins/instant_messaging/builtins/phone.py:53
+#: models/communication/conferencing/conference_attendance.py:66
+msgid "The participant SID is immutable once assigned."
+msgstr "Le SID du participant ne peut plus être modifié une fois attribué."
+
+#: communication/builtins/instant_messaging/builtins/phone.py:69
 msgid "The phone number has changed. Select the recipient again."
 msgstr "Le numéro de téléphone a changé. Sélectionnez à nouveau le destinataire."
 
@@ -7619,7 +8288,7 @@ msgstr "Le numéro de téléphone a changé. Sélectionnez à nouveau le destina
 msgid "The primary value"
 msgstr "La valeur principale"
 
-#: bloomerp.todo.priority models/project_management/todo.py:405
+#: bloomerp.todo.priority models/project_management/todo.py:371
 msgid "The priority of the todo"
 msgstr "La priorité de la tâche"
 
@@ -7652,7 +8321,7 @@ msgstr "L’enregistrement référencé doit exister."
 msgid "The registered subtype of the workflow node."
 msgstr "Le sous-type enregistré du nœud de workflow."
 
-#: models/project_management/todo.py:511
+#: models/project_management/todo.py:471
 msgid "The related object does not exist"
 msgstr "L’objet associé n’existe pas"
 
@@ -7690,6 +8359,10 @@ msgstr "Le port de sortie sélectionné n’est pas disponible sur le nœud sour
 msgid "The sequence number of this step within the workflow run."
 msgstr "Le numéro de séquence de cette étape dans l’exécution du workflow."
 
+#: models/communication/conferencing/conference_session.py:147
+msgid "The session cannot return to an earlier state."
+msgstr "La session ne peut pas revenir à un état antérieur."
+
 #: workspaces/analytics_tile/model.py:113
 msgid "The size"
 msgstr "La taille"
@@ -7726,13 +8399,18 @@ msgstr "Le type du nœud du workflow."
 msgid "The type of tile"
 msgstr "Le type de tuile"
 
-#: bloomerp.todo.assigned_to models/project_management/todo.py:381
+#: bloomerp.todo.assigned_to models/project_management/todo.py:347
 msgid "The user to whom the todo is assigned"
 msgstr "L’utilisateur auquel la tâche est assignée"
 
-#: bloomerp.todo.requested_by models/project_management/todo.py:392
+#: bloomerp.todo.requested_by models/project_management/todo.py:358
 msgid "The user who requested the todo"
 msgstr "L’utilisateur qui a demandé la tâche"
+
+#: communication/builtins/conferencing/sharing.py:144
+#, fuzzy
+msgid "The waiting room is full. Please try again later."
+msgstr "La salle d’attente est pleine. Veuillez réessayer plus tard."
 
 #: views/communication/create_email_account.py:406
 msgid "The wizard data is incomplete. Please review the account details."
@@ -7754,6 +8432,13 @@ msgstr "Thème"
 msgid "This account is inactive."
 msgstr "Ce compte est inactif."
 
+# | msgid "No workflow graph was available for this execution."
+# | msgid "Browser calling is unavailable for this line."
+#: communication/builtins/conferencing/controller.py:228
+#: components/communication/conferencing/join.py:28
+msgid "This call is not available to join."
+msgstr "Cet appel ne peut pas être rejoint."
+
 #: components/communication/emails/new_email.py:78
 msgid "This email account has an unsupported provider."
 msgstr "Ce compte de messagerie utilise un fournisseur non pris en charge."
@@ -7774,6 +8459,23 @@ msgstr "Cela inclut les outils qui peuvent modifier des données."
 #: templates/components/files/preview.html:50
 msgid "This is a partial preview. Download the file to see all data."
 msgstr "Il s’agit d’un aperçu partiel. Téléchargez le fichier pour voir toutes les données."
+
+#: communication/builtins/conferencing/sharing.py:202
+#, fuzzy
+msgid "This meeting is full."
+msgstr "Cette réunion est complète."
+
+# | msgid "Object no longer available"
+# | msgid "This selection is no longer available."
+#: communication/builtins/conferencing/sharing.py:80
+#, fuzzy
+msgid "This meeting link is no longer available."
+msgstr "Cette sélection n’est plus disponible."
+
+# | msgid "MCP credentials could not be decrypted."
+#: communication/builtins/voip/controller.py:256
+msgid "This message could not be delivered."
+msgstr "Ce message n’a pas pu être distribué."
 
 #: templates/views/generic/detail/delete.html:10
 msgid "This object cannot be deleted because protected related objects still reference it."
@@ -7805,7 +8507,7 @@ msgstr "Ce fournisseur n’utilise pas de numéro VoIP."
 msgid "This provider's messaging transport is not available yet."
 msgstr "Le transport de messagerie de ce fournisseur n’est pas encore disponible."
 
-#: templates/views/communication/create_voip_number.html:22
+#: communication/builtins/voip/builtins/twilio.py:279
 msgid ""
 "This provisions a paid number on your Twilio account. Availability and any required regulatory "
 "approval are checked by Twilio."
@@ -7813,7 +8515,12 @@ msgstr ""
 "Cette opération provisionne un numéro payant sur votre compte Twilio. Twilio vérifie sa "
 "disponibilité et les éventuelles autorisations réglementaires requises."
 
-#: views/communication/create_voip_number.py:117
+# | msgid "This account is inactive."
+#: communication/builtins/conferencing/controller.py:162
+msgid "This room is archived."
+msgstr "Cette salle est archivée."
+
+#: views/communication/create_voip_number.py:133
 msgid "This selection has expired or is invalid. Search for the number again."
 msgstr "Cette sélection a expiré ou n’est pas valide. Recherchez à nouveau le numéro."
 
@@ -7836,7 +8543,7 @@ msgid "This value is not supported by the selected provider."
 msgstr "Cette valeur n’est pas prise en charge par le fournisseur sélectionné."
 
 # | msgid "Activity logging is not enabled for this model."
-#: models/users/user_list_view_preference.py:345
+#: models/users/user_list_view_preference.py:364
 msgid "This view type is not available for the selected model."
 msgstr "Ce type de vue n’est pas disponible pour le modèle sélectionné."
 
@@ -7847,8 +8554,8 @@ msgid_plural "This will delete %(count)s objects in total, including related rec
 msgstr[0] "Cela supprimera %(count)s objet au total, y compris les enregistrements liés."
 msgstr[1] "Cela supprimera %(count)s objets au total, y compris les enregistrements liés."
 
-#: templates/components/communication/instant_messaging/conversation.html:18
-#: templates/cotton/features/instant_messaging/message.html:15
+#: templates/components/communication/instant_messaging/conversation.html:21
+#: templates/cotton/features/instant_messaging/message.html:12
 msgid "Thread"
 msgstr "Fil de discussion"
 
@@ -7881,7 +8588,7 @@ msgid "Time Field"
 msgstr "Champ horaire"
 
 # | msgid "Time Field"
-#: models/project_management/initiative.py:56 models/project_management/todo.py:168
+#: models/project_management/initiative.py:56 models/project_management/todo.py:134
 msgid "Timeline"
 msgstr "Chronologie"
 
@@ -7899,9 +8606,9 @@ msgstr "Horodatage"
 msgid "Timestamp when the inbox item was received by its source system."
 msgstr "Horodatage auquel l’élément de la boîte de réception a été reçu par son système source."
 
-#: bloomerp.aiconversation.title bloomerp.applicationfield.title bloomerp.inboxitem.title
-#: bloomerp.todo.title models/communication/inbox/inbox_item.py:90
-#: models/project_management/todo.py:421
+#: bloomerp.aiconversation.title bloomerp.applicationfield.title bloomerp.conferenceroom.title
+#: bloomerp.inboxitem.title bloomerp.todo.title models/communication/conferencing/conference_room.py:12
+#: models/communication/inbox/inbox_item.py:90 models/project_management/todo.py:387
 msgid "Title"
 msgstr "Titre"
 
@@ -7922,7 +8629,7 @@ msgstr "Aujourd’hui"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Todos"
-#: bloomerp.todo models/project_management/todo.py:103
+#: bloomerp.todo models/project_management/todo.py:81
 msgid "Todo"
 msgstr "Tâches"
 
@@ -7931,24 +8638,8 @@ msgid "Todo Count"
 msgstr "Nombre de tâches à faire"
 
 # | msgctxt "bloomerp:route:name"
-# | msgid "Todo Labels"
-#: bloomerp.todolabel models/project_management/todo_label.py:28
-msgid "Todo Label"
-msgstr "Étiquettes de tâches"
-
-# | msgctxt "bloomerp:route:name"
-# | msgid "Todo Labels"
-#: bloomerp.todolabel models/project_management/todo_label.py:29
-msgid "Todo Labels"
-msgstr "Étiquettes de tâches"
-
-#: models/project_management/todo.py:91
-msgid "Todo marked as completed."
-msgstr "Tâche marquée comme terminée."
-
-# | msgctxt "bloomerp:route:name"
 # | msgid "Todos"
-#: bloomerp.todo models/project_management/initiative.py:72 models/project_management/todo.py:104
+#: bloomerp.todo models/project_management/initiative.py:65 models/project_management/todo.py:82
 msgid "Todos"
 msgstr "Tâches"
 
@@ -7972,7 +8663,7 @@ msgstr "Date d’expiration du jeton"
 msgid "Token Hash"
 msgstr "Hachage du jeton"
 
-#: forms/communication/voip_number.py:21
+#: communication/builtins/voip/builtins/twilio.py:68
 msgid "Toll-free"
 msgstr "Numéro gratuit"
 
@@ -8087,28 +8778,24 @@ msgid "Trigger Type"
 msgstr "Type de déclencheur"
 
 # | msgid "application field"
-#: communication/builtins/voip/builtins/twilio.py:34
+#: communication/builtins/voip/builtins/twilio.py:39
 msgid "TwiML application SID"
 msgstr "SID de l’application TwiML"
 
-#: bloomerp.voipconnection.provider communication/builtins/voip/builtins/twilio.py:206
+#: bloomerp.voipconnection.provider communication/builtins/voip/builtins/twilio.py:267
 msgid "Twilio"
 msgstr "Twilio"
 
 # | msgid "email address"
-#: forms/communication/voip_number.py:36
+#: communication/builtins/voip/builtins/twilio.py:80
 msgid "Twilio address SID"
 msgstr "SID de l’adresse Twilio"
 
-#: templates/views/communication/create_voip_number.html:22
-msgid "Twilio pricing"
-msgstr "Tarifs Twilio"
-
-#: forms/communication/voip_number.py:44
+#: communication/builtins/voip/builtins/twilio.py:88
 msgid "Twilio regulatory bundle SID"
 msgstr "SID du dossier réglementaire Twilio"
 
-#: forms/communication/voip_number.py:14
+#: communication/builtins/voip/builtins/twilio.py:61
 msgid "Two-letter country code, for example BE or US."
 msgstr "Code pays à deux lettres, par exemple BE ou US."
 
@@ -8136,6 +8823,11 @@ msgstr "URL vers laquelle pointe l’élément de la barre latérale."
 #: bloomerp.applicationfield.field_type
 msgid "UUID Field"
 msgstr "Champ UUID"
+
+#: communication/builtins/conferencing/meetings.py:57
+#, fuzzy
+msgid "Unable to start this meeting."
+msgstr "Impossible de démarrer cette réunion."
 
 # | msgid "Assigned To"
 #: dataviews/file_browser/renderer.py:151 dataviews/file_browser/renderer.py:153
@@ -8165,7 +8857,7 @@ msgstr ""
 "Emoji Unicode, y compris les séquences avec des tons de peau/ZWJ, ou clé d’emoji personnalisé du "
 "fournisseur."
 
-#: communication/builtins/voip/controller.py:29
+#: communication/builtins/voip/controller.py:28
 msgid "Unknown carrier provider."
 msgstr "Opérateur inconnu."
 
@@ -8174,7 +8866,7 @@ msgstr "Opérateur inconnu."
 msgid "Unknown conversation provider."
 msgstr "Fournisseur de conversation inconnu."
 
-#: templates/components/communication/messaging_panel.html:28
+#: templates/components/communication/messaging_panel.html:37
 msgid "Unread only"
 msgstr "Non lus uniquement"
 
@@ -8222,7 +8914,10 @@ msgstr "Mettre à jour cette tuile"
 #: bloomerp.aiartifact.updated_by bloomerp.aiconversation.updated_by bloomerp.aimessage.updated_by
 #: bloomerp.aimessageartifact.updated_by bloomerp.airun.updated_by bloomerp.airunattempt.updated_by
 #: bloomerp.airunevent.updated_by bloomerp.aitoolcall.updated_by bloomerp.apikey.updated_by
-#: bloomerp.comment.updated_by bloomerp.documenttemplate.updated_by
+#: bloomerp.comment.updated_by bloomerp.conferenceadmission.updated_by
+#: bloomerp.conferenceattendance.updated_by bloomerp.conferenceparticipant.updated_by
+#: bloomerp.conferenceroom.updated_by bloomerp.conferencesession.updated_by
+#: bloomerp.conferencewebhookreceipt.updated_by bloomerp.documenttemplate.updated_by
 #: bloomerp.documenttemplateheader.updated_by bloomerp.documenttemplatestyling.updated_by
 #: bloomerp.emailaccount.updated_by bloomerp.emaildraft.updated_by bloomerp.fileextraction.updated_by
 #: bloomerp.filenode.updated_by bloomerp.filereference.updated_by bloomerp.form.updated_by
@@ -8236,9 +8931,9 @@ msgstr "Mettre à jour cette tuile"
 #: bloomerp.label.updated_by bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by
 #: bloomerp.phonecall.updated_by bloomerp.phonecallevent.updated_by bloomerp.policy.updated_by
 #: bloomerp.savedfilter.updated_by bloomerp.sqlquery.updated_by bloomerp.tile.updated_by
-#: bloomerp.todo.updated_by bloomerp.todolabel.updated_by bloomerp.userinboxpreference.updated_by
-#: bloomerp.voipconnection.updated_by bloomerp.voipnumber.updated_by bloomerp.workflow.updated_by
-#: bloomerp.workflownode.updated_by models/mixins/user_stamp_model_mixin.py:27
+#: bloomerp.todo.updated_by bloomerp.userinboxpreference.updated_by bloomerp.voipconnection.updated_by
+#: bloomerp.voipnumber.updated_by bloomerp.workflow.updated_by bloomerp.workflownode.updated_by
+#: models/mixins/user_stamp_model_mixin.py:27
 msgid "Updated By"
 msgstr "Mis à jour par"
 
@@ -8272,7 +8967,7 @@ msgstr "Téléversé le"
 msgid "Uploading…"
 msgstr "Téléversement en cours…"
 
-#: bloomerp.todo.priority models/project_management/todo.py:39
+#: bloomerp.todo.priority models/project_management/todo.py:34
 msgid "Urgent"
 msgstr "Urgent"
 
@@ -8284,13 +8979,23 @@ msgstr "Utilisation"
 msgid "Use Bloomerp MCP tools with your existing account permissions."
 msgstr "Utilisez les outils MCP de Bloomerp avec les autorisations de votre compte existant."
 
-#: templates/views/communication/reconfigure_voip_connection.html:11
+#: communication/builtins/voip/builtins/twilio.py:283
 msgid ""
 "Use HTTP POST. Set the TwiML application and number Voice URL, the number Messaging URL, and the "
 "incoming call status callback to these addresses."
 msgstr ""
 "Utilisez HTTP POST. Configurez l’URL Voice de l’application TwiML et du numéro, l’URL Messaging "
 "du numéro ainsi que l’URL de rappel de statut des appels entrants avec ces adresses."
+
+#: communication/builtins/voip/builtins/telnyx.py:265
+msgid ""
+"Use a dedicated TeXML application with an outbound voice profile, and a separate browser "
+"credential connection without an outbound voice profile. Buy numbers in Telnyx, assign them to "
+"the TeXML application, then synchronize."
+msgstr ""
+"Utilisez une application TeXML dédiée avec un profil vocal sortant, ainsi qu’une connexion "
+"d’identifiants de navigateur distincte sans profil vocal sortant. Achetez des numéros dans "
+"Telnyx, attribuez-les à l’application TeXML, puis synchronisez."
 
 #: forms/agents/ai_agent.py:338
 msgid "Use an HTTP endpoint without credentials, query parameters, or fragments."
@@ -8299,6 +9004,15 @@ msgstr "Utilisez un point de terminaison HTTP sans identifiants, paramètres de 
 #: models/agents/mcp_server.py:94
 msgid "Use an HTTP(S) endpoint without credentials, query parameters, or fragments."
 msgstr "Utilisez un point de terminaison HTTP(S) sans identifiants, paramètres de requête ni fragments."
+
+#: communication/builtins/voip/builtins/telnyx.py:110
+msgid ""
+"Use an active browser credential connection without an outbound voice profile and with SIP URI "
+"calling set to internal. Attach the outbound profile only to the TeXML application."
+msgstr ""
+"Utilisez une connexion d’identifiants de navigateur active sans profil vocal sortant et avec les "
+"appels par URI SIP définis sur « interne ». Associez le profil sortant uniquement à l’application"
+" TeXML."
 
 # | msgctxt "bloomerp:route:description"
 # | msgid "Create a new email account"
@@ -8349,14 +9063,16 @@ msgstr ""
 "Utilisé uniquement pour l’accès aux outils sélectionnés. Laissez vide pour n’autoriser aucun "
 "outil intégré. Les noms indisponibles sont conservés, mais ne peuvent pas être exécutés."
 
-#: bloomerp.aimessage.role bloomerp.bookmark.user bloomerp.emaildraft.user
-#: bloomerp.imauthorization.user bloomerp.imconversationparticipant.user bloomerp.inbox.user
-#: bloomerp.mcpconnection.user bloomerp.mention.user bloomerp.oauthaccesstoken.user
-#: bloomerp.oauthauthorizationcode.user bloomerp.sidebar.user bloomerp.user
-#: bloomerp.userdetailviewtabspreference.user bloomerp.userinboxpreference.user
-#: bloomerp.userlistviewpreference.user bloomerp.userobjectlayoutpreference.user
-#: bloomerp.workspace.user models/communication/inbox/user_inbox_preference.py:24
-#: models/users/base_preference.py:106 models/users/bookmark.py:21 models/users/user.py:163
+#: bloomerp.aimessage.role bloomerp.bookmark.user bloomerp.conferenceadmission.user
+#: bloomerp.conferenceparticipant.user bloomerp.emaildraft.user bloomerp.imauthorization.user
+#: bloomerp.imconversationparticipant.user bloomerp.inbox.user bloomerp.mcpconnection.user
+#: bloomerp.mention.user bloomerp.oauthaccesstoken.user bloomerp.oauthauthorizationcode.user
+#: bloomerp.sidebar.user bloomerp.user bloomerp.userdetailviewtabspreference.user
+#: bloomerp.userinboxpreference.user bloomerp.userlistviewpreference.user
+#: bloomerp.userobjectlayoutpreference.user bloomerp.workspace.user
+#: models/communication/conferencing/conference_participant.py:37
+#: models/communication/inbox/user_inbox_preference.py:24 models/users/base_preference.py:106
+#: models/users/bookmark.py:21 models/users/user.py:163
 msgid "User"
 msgstr "Utilisateur"
 
@@ -8421,7 +9137,7 @@ msgid "Username"
 msgstr "Nom d’utilisateur"
 
 #: bloomerp.aiagentaccess.users bloomerp.policy.users bloomerp.user models/access_control/policy.py:101
-#: models/agents/ai_agent_access.py:48 models/project_management/todo.py:160 models/users/user.py:164
+#: models/agents/ai_agent_access.py:48 models/project_management/todo.py:126 models/users/user.py:164
 msgid "Users"
 msgstr "Utilisateurs"
 
@@ -8487,6 +9203,11 @@ msgstr ""
 "faites pivoter les valeurs via set_credentials ; les données en texte brut ne sont jamais "
 "stockées ici."
 
+#: bloomerp.conferencesession.initial_media_mode
+#: models/communication/conferencing/conference_session.py:30
+msgid "Video"
+msgstr "Vidéo"
+
 # | msgid "View row"
 #: models/files/file_node.py:89
 msgid "View"
@@ -8506,7 +9227,9 @@ msgid "View deleted data"
 msgstr "Voir les données supprimées"
 
 # | msgid "View row"
-#: dataviews/calendar/config.py:65
+#: bloomerp.userlistviewpreference.view_mode dataviews/calendar/config.py:65
+#: models/users/user_list_view_preference.py:80
+#: templates/cotton/features/dataviews/display_options.html:30
 msgid "View mode"
 msgstr "Afficher la ligne"
 
@@ -8585,19 +9308,19 @@ msgstr "Numéro VoIP"
 msgid "VoIP numbers"
 msgstr "Numéros VoIP"
 
-#: templates/views/communication/create_voip_number.html:15
+#: templates/views/communication/create_voip_number.html:34
 msgid "Voice"
 msgstr "Voix"
 
-#: communication/builtins/voip/builtins/twilio.py:28
+#: communication/builtins/voip/builtins/twilio.py:33
 msgid "Voice API key SID"
 msgstr "SID de la clé API vocale"
 
-#: communication/builtins/voip/builtins/twilio.py:31
+#: communication/builtins/voip/builtins/twilio.py:36
 msgid "Voice API key secret"
 msgstr "Secret de la clé API vocale"
 
-#: templates/views/communication/reconfigure_voip_connection.html:13
+#: communication/builtins/voip/builtins/twilio.py:286
 msgid "Voice URL"
 msgstr "URL vocale"
 
@@ -8614,7 +9337,8 @@ msgstr "Attendre"
 msgid "Wait Condition"
 msgstr "Condition d’attente"
 
-#: bloomerp.airun.status
+#: bloomerp.airun.status bloomerp.conferenceadmission.status
+#: models/communication/conferencing/conference_admission.py:17
 msgid "Waiting"
 msgstr "En attente"
 
@@ -8626,14 +9350,30 @@ msgstr "En attente d’une réponse…"
 msgid "Waiting for approval"
 msgstr "En attente d’approbation"
 
+# | msgid "Waiting for a response…"
+#: templates/components/communication/calling/controls.html:30
+msgid "Waiting for participants…"
+msgstr "En attente des participants…"
+
 #: templates/cotton/features/agent/body.html:32
 msgid "Waiting for your approval…"
 msgstr "En attente de votre approbation…"
+
+# | msgid "Waiting"
+#: templates/components/communication/calling/controls.html:7
+#: templates/components/communication/calling/controls.html:33
+#, fuzzy
+msgid "Waiting to join"
+msgstr "En attente"
 
 # | msgid "Loading more…"
 #: templates/cotton/features/agent/body.html:33
 msgid "Waiting to resume…"
 msgstr "En attente de reprise…"
+
+#: communication/builtins/voip/builtins/telnyx.py:35
+msgid "Webhook Ed25519 public key"
+msgstr "Clé publique Ed25519 du webhook"
 
 #: dataviews/calendar/config.py:21 templates/cotton/features/dataviews/gant.html:33
 msgid "Week"
@@ -8786,7 +9526,7 @@ msgstr ""
 "d’un angle différent."
 
 # | msgid "Write your message"
-#: templates/components/communication/instant_messaging/conversation.html:23
+#: templates/cotton/ui/chat/composer.html:9
 msgid "Write a message…"
 msgstr "Écrire un message…"
 
@@ -8810,11 +9550,11 @@ msgstr "Libellé de l’axe X"
 msgid "X-axis order"
 msgstr "Ordre de l’axe X"
 
-#: bloomerp.todo.effort models/project_management/todo.py:50
+#: bloomerp.todo.effort models/project_management/todo.py:45
 msgid "XL"
 msgstr "XL"
 
-#: bloomerp.todo.effort models/project_management/todo.py:46
+#: bloomerp.todo.effort models/project_management/todo.py:41
 msgid "XS"
 msgstr "XS"
 
@@ -8846,7 +9586,8 @@ msgstr "Oui"
 msgid "Yesterday"
 msgstr "Hier"
 
-#: templates/cotton/features/instant_messaging/message.html:4
+#: templates/components/communication/calling/controls.html:42
+#: templates/cotton/features/instant_messaging/message.html:3
 msgid "You"
 msgstr "Vous"
 
@@ -8859,9 +9600,13 @@ msgstr "Vous êtes sur le point de supprimer <span class=\"font-semibold\">%(obj
 msgid "You can attach up to 20 items."
 msgstr "Vous pouvez joindre jusqu’à 20 éléments."
 
-#: models/project_management/todo.py:89
-msgid "You do not have permission to mark this todo as completed."
-msgstr "Vous n’avez pas l’autorisation de marquer cette tâche comme terminée."
+# | msgid "Groups"
+# | msgid "Group by"
+# | msgid "Group name"
+#: templates/views/communication/conferencing/meeting.html:14
+#, fuzzy
+msgid "Your name"
+msgstr "Nom du groupe"
 
 #: templates/cotton/features/agent/body.html:22
 msgid "Your selected model is unavailable. Choose another model for your next message."
@@ -9023,11 +9768,11 @@ msgstr "activités de conversation de messagerie instantanée"
 
 #: bloomerp.imconversationparticipant
 msgid "im conversation participant"
-msgstr "participant à la conversation de messagerie instantanée"
+msgstr "participant à une conversation de messagerie instantanée"
 
 #: bloomerp.imconversationparticipant
 msgid "im conversation participants"
-msgstr "participants à la conversation de messagerie instantanée"
+msgstr "participants à une conversation de messagerie instantanée"
 
 #: bloomerp.imconversation
 msgid "im conversations"
@@ -9115,7 +9860,7 @@ msgstr "mentions"
 
 msgctxt "bloomerp:route:name"
 msgid "message status"
-msgstr "statut du message"
+msgstr "état du message"
 
 #: views/communication/create_email_account.py:100
 msgid "name@example.com"
@@ -9207,6 +9952,10 @@ msgid "voice"
 msgstr "voix"
 
 msgctxt "bloomerp:route:name"
+msgid "webhook"
+msgstr "webhook"
+
+msgctxt "bloomerp:route:name"
 msgid "workspace"
 msgstr "espace de travail"
 
@@ -9229,10 +9978,6 @@ msgstr "Relation {related_model_plural} pour {model}"
 #~ msgid "3D Chart"
 #~ msgstr "Graphique 3D"
 
-# | msgid "ai artifacts"
-#~ msgid "4 participants"
-#~ msgstr "artefacts IA"
-
 #~ msgid "Absolute URL Model Mixin"
 #~ msgstr "Mixin de modèle d’URL absolue"
 
@@ -9247,6 +9992,9 @@ msgstr "Relation {related_model_plural} pour {model}"
 
 #~ msgid "All clear now. I’ll update the project this afternoon."
 #~ msgstr "Tout est clair maintenant. Je mettrai le projet à jour cet après-midi."
+
+#~ msgid "Answer"
+#~ msgstr "Répondre"
 
 #~ msgid "Args"
 #~ msgstr "Arguments"
@@ -9338,6 +10086,9 @@ msgstr "Relation {related_model_plural} pour {model}"
 #~ msgid "Content Layout Model Mixins"
 #~ msgstr "Mixins du modèle de mise en page du contenu"
 
+#~ msgid "Copy branch name"
+#~ msgstr "Copier le nom de la branche"
+
 # | msgid "Create folder"
 #~ msgid "Delete folder"
 #~ msgstr "Créer un dossier"
@@ -9419,6 +10170,16 @@ msgstr "Relation {related_model_plural} pour {model}"
 #~ msgid "I’ve added the notes in the project channel."
 #~ msgstr "J’ai ajouté les notes dans le canal du projet."
 
+# | msgid "Details"
+#~ msgid "Label Details"
+#~ msgstr "Détails"
+
+#~ msgid "Labels assigned to the initiative"
+#~ msgstr "Étiquettes attribuées à l’initiative"
+
+#~ msgid "Labels assigned to the todo"
+#~ msgstr "Étiquettes attribuées à la tâche"
+
 #~ msgid "Let’s keep all launch feedback here. How does the messaging panel feel?"
 #~ msgstr "Gardons ici tous les retours sur le lancement. Que pensez-vous du panneau de messagerie ?"
 
@@ -9430,6 +10191,10 @@ msgstr "Relation {related_model_plural} pour {model}"
 
 #~ msgid "Map"
 #~ msgstr "Carte"
+
+# | msgid "Todo marked as completed."
+#~ msgid "Mark as Completed"
+#~ msgstr "Marquer comme terminée"
 
 # | msgid "Action"
 #~ msgid "Mention"
@@ -9443,6 +10208,9 @@ msgstr "Relation {related_model_plural} pour {model}"
 # | msgid "Modules"
 #~ msgid "Module"
 #~ msgstr "Modules"
+
+#~ msgid "Mute / unmute"
+#~ msgstr "Couper / réactiver le son"
 
 #~ msgid "Nice! I’ll take a look after lunch."
 #~ msgstr "Super ! Je regarderai ça après déjeuner."
@@ -9578,6 +10346,22 @@ msgstr "Relation {related_model_plural} pour {model}"
 #~ msgid "TinyMCE Content Generator"
 #~ msgstr "Générateur de contenu TinyMCE"
 
+# | msgctxt "bloomerp:route:name"
+# | msgid "Todo Labels"
+#~ msgid "Todo Label"
+#~ msgstr "Étiquettes de tâches"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Todo Labels"
+#~ msgid "Todo Labels"
+#~ msgstr "Étiquettes de tâches"
+
+#~ msgid "Todo marked as completed."
+#~ msgstr "Tâche marquée comme terminée."
+
+#~ msgid "Twilio pricing"
+#~ msgstr "Tarifs Twilio"
+
 #~ msgid "UUID Model Mixin"
 #~ msgstr "Mixin de modèle UUID"
 
@@ -9640,6 +10424,9 @@ msgstr "Relation {related_model_plural} pour {model}"
 #~ "Oui, la nouvelle mise en page est superbe. Je"
 #~ " vous enverrai les derniers détails cet après-"
 #~ "midi."
+
+#~ msgid "You do not have permission to mark this todo as completed."
+#~ msgstr "Vous n’avez pas l’autorisation de marquer cette tâche comme terminée."
 
 #~ msgid "application fields"
 #~ msgstr "champs d’application"

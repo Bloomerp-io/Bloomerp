@@ -1,0 +1,5 @@
+{% load i18n %}
+<div class="p-4 space-y-3">
+    <p class="text-sm text-gray-500">{% translate 'Start a meeting on your own, then share its link to invite others.' %}</p>
+    <button type="button" class="btn btn-primary" data-call-action="start" data-start-url="{{ start_url }}" data-media-mode="video"><i class="fa-solid fa-video" aria-hidden="true"></i> {% translate 'Start meeting' %}</button>
+</div>

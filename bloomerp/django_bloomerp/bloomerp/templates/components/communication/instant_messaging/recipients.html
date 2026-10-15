@@ -3,7 +3,7 @@
 <div data-im-provider="{{ group.provider.key }}">
 <c-ui.dropdown.title>{{ group.provider.display_name }}</c-ui.dropdown.title>
 {% for action in group.actions %}
-<c-ui.dropdown.submenu :text="action.definition.label" :icon="action.definition.icon" :id="action.id" width="w-80">
+<c-ui.dropdown.submenu :text="action.definition.label" :icon="action.definition.icon" :id="action.id" class="im-recipient im-recipient-action" width="w-80">
     <div hx-get="{{ action.url }}" hx-trigger="load" hx-swap="innerHTML settle:0ms"></div>
 </c-ui.dropdown.submenu>
 {% endfor %}

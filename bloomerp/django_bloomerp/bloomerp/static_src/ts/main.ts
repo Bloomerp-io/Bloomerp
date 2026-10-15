@@ -1,5 +1,6 @@
+import MeetingLobby from './components/communication/MeetingLobby';
+import Calling from "./components/communication/Calling";
 import URLWidget from "./components/widgets/URLWidget";
-import Phone from "./components/communication/Phone";
 import Conversation from './components/communication/Conversation';
 import ChatComposer from './components/ChatComposer';
 import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
@@ -93,6 +94,7 @@ initBrowserAgent();
 setupLanguageSwitch();
 
 // Register components here
+registerComponent('bloomerp:meeting-lobby', MeetingLobby);
 registerComponent('bloomerp:artifact-picker', ArtifactPicker);
 registerComponent('modal', Modal);
 registerComponent('drawer', Drawer);
@@ -212,7 +214,7 @@ loadTranslations()
     .catch((error) => console.warn('Could not load the translation catalog', error))
     .finally(() => {
         // Components may synchronously render translated frontend labels.
-        registerComponent("bloomerp:phone", Phone);
+        registerComponent("bloomerp:calling", Calling);
         setupComponentAutoInit();
         initMessagesWebsocket();
         SetupAnimationListener();

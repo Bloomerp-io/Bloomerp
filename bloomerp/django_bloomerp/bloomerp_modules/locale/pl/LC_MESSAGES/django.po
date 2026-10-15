@@ -1,0 +1,6220 @@
+# Polish translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-10-15 09:21+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: pl\n"
+"Language-Team: pl <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : "
+"2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: bloomerp_modules.customerreceipt.payment_method bloomerp_modules.vendorpayment.payment_method
+#, fuzzy
+msgid "ACH"
+msgstr "ACH"
+
+#: bloomerp_modules.salesforecast.source
+#, fuzzy
+msgid "AI"
+msgstr "AI"
+
+#: bloomerp_modules.attendancerecord.status
+#, fuzzy
+msgid "Absent"
+msgstr "Nieobecny"
+
+#: bloomerp_modules.offer.status
+#, fuzzy
+msgid "Accepted"
+msgstr "Zaakceptowana"
+
+#: bloomerp_modules.account bloomerp_modules.accountbalance.account bloomerp_modules.activity.account
+#: bloomerp_modules.budget.account bloomerp_modules.contact.account
+#: bloomerp_modules.gltransaction.account bloomerp_modules.journalentryline.account
+#: bloomerp_modules.lead.account bloomerp_modules.opportunity.account
+#, fuzzy
+msgid "Account"
+msgstr "Konto"
+
+#: bloomerp_modules.accountbalance
+#, fuzzy
+msgid "Account Balance"
+msgstr "Saldo konta"
+
+#: bloomerp_modules.accountbalance
+#, fuzzy
+msgid "Account Balances"
+msgstr "Salda kont"
+
+#: bloomerp_modules.account.account_code
+#, fuzzy
+msgid "Account Code"
+msgstr "Kod konta"
+
+#: bloomerp_modules.account.account_name bloomerp_modules.bankaccount.account_name
+#: bloomerp_modules.crmaccount.account_name
+#, fuzzy
+msgid "Account Name"
+msgstr "Nazwa konta"
+
+#: bloomerp_modules.bankaccount.account_number
+#, fuzzy
+msgid "Account Number"
+msgstr "Numer konta"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Account Subtype"
+msgstr "Podtyp konta"
+
+#: bloomerp_modules.account.account_type bloomerp_modules.bankaccount.account_type
+#: bloomerp_modules.crmaccount.account_type
+#, fuzzy
+msgid "Account Type"
+msgstr "Typ konta"
+
+#: bloomerp_modules.budget.account
+#, fuzzy
+msgid "Account this budget applies to"
+msgstr "Konto, którego dotyczy ten budżet"
+
+#: bloomerp_modules.account
+#, fuzzy
+msgid "Accounts"
+msgstr "Konta"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Accounts Payable"
+msgstr "Zobowiązania"
+
+#: bloomerp_modules.vendor.email
+#, fuzzy
+msgid "Accounts Payable Email"
+msgstr "E-mail działu zobowiązań"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Accounts Receivable"
+msgstr "Należności"
+
+#: bloomerp_modules.leavepolicy.accrual_rate
+#, fuzzy
+msgid "Accrual Rate"
+msgstr "Współczynnik naliczania"
+
+#: bloomerp_modules.budget.status bloomerp_modules.customer.status bloomerp_modules.employee.active
+#: bloomerp_modules.employee.status bloomerp_modules.employeecontract.status
+#: bloomerp_modules.equipment.status bloomerp_modules.performancecycle.status
+#: bloomerp_modules.person.status bloomerp_modules.vendor.status
+#, fuzzy
+msgid "Active"
+msgstr "Aktywny"
+
+#: bloomerp_modules.activity
+#, fuzzy
+msgid "Activities"
+msgstr "Aktywności"
+
+#: bloomerp_modules.activity
+#, fuzzy
+msgid "Activity"
+msgstr "Aktywność"
+
+#: bloomerp_modules.activity.activity_type
+#, fuzzy
+msgid "Activity Type"
+msgstr "Typ aktywności"
+
+#: bloomerp_modules.productioncost.valuation_method
+#, fuzzy
+msgid "Actual"
+msgstr "Rzeczywisty"
+
+#: bloomerp_modules.budget.actual_amount
+#, fuzzy
+msgid "Actual Amount"
+msgstr "Rzeczywista kwota"
+
+#: bloomerp_modules.maintenanceworkorder.actual_end_date
+#: bloomerp_modules.manufacturingorder.actual_end_date
+#, fuzzy
+msgid "Actual End Date"
+msgstr "Rzeczywista data zakończenia"
+
+#: bloomerp_modules.manufacturingorderoperation.actual_end_time
+#, fuzzy
+msgid "Actual End Time"
+msgstr "Rzeczywista godzina zakończenia"
+
+#: bloomerp_modules.manufacturingorderoperation.run_time_minutes_actual
+#, fuzzy
+msgid "Actual Run Time (Minutes)"
+msgstr "Rzeczywisty czas pracy (minuty)"
+
+#: bloomerp_modules.manufacturingorderoperation.setup_time_minutes_actual
+#, fuzzy
+msgid "Actual Setup Time (Minutes)"
+msgstr "Rzeczywisty czas przygotowania (minuty)"
+
+#: bloomerp_modules.maintenanceworkorder.actual_start_date
+#: bloomerp_modules.manufacturingorder.actual_start_date
+#, fuzzy
+msgid "Actual Start Date"
+msgstr "Rzeczywista data rozpoczęcia"
+
+#: bloomerp_modules.manufacturingorderoperation.actual_start_time
+#, fuzzy
+msgid "Actual Start Time"
+msgstr "Rzeczywista godzina rozpoczęcia"
+
+#: bloomerp_modules.budget.actual_amount
+#, fuzzy
+msgid "Actual amount spent/received"
+msgstr "Rzeczywista kwota wydana/otrzymana"
+
+#: bloomerp_modules.budget.notes
+#, fuzzy
+msgid "Additional notes about this budget"
+msgstr "Dodatkowe uwagi dotyczące tego budżetu"
+
+#: bloomerp_modules.contact.address bloomerp_modules.officelocation.address
+#: bloomerp_modules.warehouse.address
+#, fuzzy
+msgid "Address"
+msgstr "Adres"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Adjusting Journal"
+msgstr "Dziennik korygujący"
+
+#: bloomerp_modules.gltransaction.transaction_type bloomerp_modules.journalentry.source_document_type
+#, fuzzy
+msgid "Adjustment"
+msgstr "Korekta"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Afghanistan"
+msgstr "Afganistan"
+
+#: bloomerp_modules.candidate.source
+#, fuzzy
+msgid "Agency"
+msgstr "Agencja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Albania"
+msgstr "Albania"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Algeria"
+msgstr "Algieria"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "All the models related to sales and leads"
+msgstr "Wszystkie modele związane ze sprzedażą i potencjalnymi klientami"
+
+#: bloomerp_modules.account.allow_manual_posting
+#, fuzzy
+msgid "Allow Manual Posting"
+msgstr "Zezwalaj na ręczne księgowanie"
+
+#: bloomerp_modules.person.person_type
+#, fuzzy
+msgid "Alumni"
+msgstr "Absolwent"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "American Samoa"
+msgstr "Samoa Amerykańskie"
+
+#: bloomerp_modules.customerreceipt.amount bloomerp_modules.opportunity.amount
+#: bloomerp_modules.vendorpayment.amount
+#, fuzzy
+msgid "Amount"
+msgstr "Kwota"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Andorra"
+msgstr "Andora"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Angola"
+msgstr "Angola"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Anguilla"
+msgstr "Anguilla"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Antarctica"
+msgstr "Antarktyda"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Antigua and Barbuda"
+msgstr "Antigua i Barbuda"
+
+#: bloomerp_modules.application bloomerp_modules.hiringdecision.application
+#: bloomerp_modules.interview.application bloomerp_modules.offer.application
+#, fuzzy
+msgid "Application"
+msgstr "Aplikacja"
+
+#: bloomerp_modules.application
+#, fuzzy
+msgid "Applications"
+msgstr "Aplikacje"
+
+#: bloomerp_modules.application.applied_date
+#, fuzzy
+msgid "Applied Date"
+msgstr "Data złożenia aplikacji"
+
+#: bloomerp_modules.budget.status bloomerp_modules.journalentry.status
+#: bloomerp_modules.leaverequest.status bloomerp_modules.offerapproval.status
+#, fuzzy
+msgid "Approved"
+msgstr "Zatwierdzono"
+
+#: bloomerp_modules.journalentry.approved_by bloomerp_modules.leaverequest.approved_by
+#, fuzzy
+msgid "Approved By"
+msgstr "Zatwierdzone przez"
+
+#: bloomerp_modules.journalentry.approved_date
+#, fuzzy
+msgid "Approved Date"
+msgstr "Data zatwierdzenia"
+
+#: bloomerp_modules.offerapproval.approver
+#, fuzzy
+msgid "Approver"
+msgstr "Zatwierdzający"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Argentina"
+msgstr "Argentyna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Armenia"
+msgstr "Armenia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Aruba"
+msgstr "Aruba"
+
+#: bloomerp_modules.accountbalance.as_of_date bloomerp_modules.leavebalance.as_of_date
+#, fuzzy
+msgid "As Of Date"
+msgstr "Na dzień"
+
+#: bloomerp_modules.account.account_type
+#, fuzzy
+msgid "Asset"
+msgstr "Aktywa"
+
+#: bloomerp_modules.activity.assigned_to bloomerp_modules.lead.assigned_to
+#, fuzzy
+msgid "Assigned To"
+msgstr "Przypisano do"
+
+#: bloomerp_modules.employee.team
+#, fuzzy
+msgid "Assigned team"
+msgstr "Przypisany zespół"
+
+#: bloomerp_modules.onboardingtaskassignment.assignee
+#, fuzzy
+msgid "Assignee"
+msgstr "Osoba przypisana"
+
+#: bloomerp_modules.employee.user
+#, fuzzy
+msgid "Associated user account for login"
+msgstr "Powiązane konto użytkownika do logowania"
+
+#: bloomerp_modules.attendancerecord.attendance_date
+#, fuzzy
+msgid "Attendance Date"
+msgstr "Data obecności"
+
+#: bloomerp_modules.attendancerecord
+#, fuzzy
+msgid "Attendance Record"
+msgstr "Rejestr obecności"
+
+#: bloomerp_modules.attendancerecord
+#, fuzzy
+msgid "Attendance Records"
+msgstr "Rejestry obecności"
+
+#: bloomerp_modules.qualitycontrolplanline.test_type bloomerp_modules.qualityinspectionresult.test_type
+#, fuzzy
+msgid "Attribute"
+msgstr "Atrybut"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Australia"
+msgstr "Australia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Austria"
+msgstr "Austria"
+
+#: bloomerp_modules.journal.auto_numbering
+#, fuzzy
+msgid "Auto Numbering"
+msgstr "Automatyczna numeracja"
+
+#: bloomerp_modules.account.avatar bloomerp_modules.accountbalance.avatar
+#: bloomerp_modules.activity.avatar bloomerp_modules.application.avatar
+#: bloomerp_modules.attendancerecord.avatar bloomerp_modules.bankaccount.avatar
+#: bloomerp_modules.billofmaterial.avatar bloomerp_modules.billofmaterialline.avatar
+#: bloomerp_modules.budget.avatar bloomerp_modules.candidate.avatar bloomerp_modules.contact.avatar
+#: bloomerp_modules.costcenter.avatar bloomerp_modules.costrate.avatar
+#: bloomerp_modules.crmaccount.avatar bloomerp_modules.customer.avatar
+#: bloomerp_modules.customerinvoice.avatar bloomerp_modules.customerinvoiceline.avatar
+#: bloomerp_modules.customerreceipt.avatar bloomerp_modules.department.avatar
+#: bloomerp_modules.employee.avatar bloomerp_modules.employeecontract.avatar
+#: bloomerp_modules.equipment.avatar bloomerp_modules.exitinterview.avatar
+#: bloomerp_modules.exitreason.avatar bloomerp_modules.fiscalperiod.avatar
+#: bloomerp_modules.gltransaction.avatar bloomerp_modules.goal.avatar
+#: bloomerp_modules.goalprogress.avatar bloomerp_modules.hiringdecision.avatar
+#: bloomerp_modules.hrcostcenter.avatar bloomerp_modules.interview.avatar
+#: bloomerp_modules.interviewfeedback.avatar bloomerp_modules.jobopening.avatar
+#: bloomerp_modules.jobtitle.avatar bloomerp_modules.journal.avatar
+#: bloomerp_modules.journalentry.avatar bloomerp_modules.journalentryline.avatar
+#: bloomerp_modules.lead.avatar bloomerp_modules.leavebalance.avatar
+#: bloomerp_modules.leavepolicy.avatar bloomerp_modules.leaverequest.avatar
+#: bloomerp_modules.leavetype.avatar bloomerp_modules.location.avatar
+#: bloomerp_modules.maintenanceplan.avatar bloomerp_modules.maintenancerequest.avatar
+#: bloomerp_modules.maintenanceworkorder.avatar bloomerp_modules.manufacturingorder.avatar
+#: bloomerp_modules.manufacturingordercomponent.avatar
+#: bloomerp_modules.manufacturingorderoperation.avatar bloomerp_modules.masterproductionschedule.avatar
+#: bloomerp_modules.mrprun.avatar bloomerp_modules.nonconformancereport.avatar
+#: bloomerp_modules.offboardingprocess.avatar bloomerp_modules.offer.avatar
+#: bloomerp_modules.offerapproval.avatar bloomerp_modules.officelocation.avatar
+#: bloomerp_modules.onboardingprocess.avatar bloomerp_modules.onboardingtask.avatar
+#: bloomerp_modules.onboardingtaskassignment.avatar bloomerp_modules.operation.avatar
+#: bloomerp_modules.opportunity.avatar bloomerp_modules.opportunitystage.avatar
+#: bloomerp_modules.overtimerule.avatar bloomerp_modules.peerfeedback.avatar
+#: bloomerp_modules.performancecycle.avatar bloomerp_modules.performancereview.avatar
+#: bloomerp_modules.person.avatar bloomerp_modules.plannedorder.avatar bloomerp_modules.product.avatar
+#: bloomerp_modules.productioncost.avatar bloomerp_modules.productionmove.avatar
+#: bloomerp_modules.productiontimeentry.avatar bloomerp_modules.publicholiday.avatar
+#: bloomerp_modules.qualitycontrolplan.avatar bloomerp_modules.qualitycontrolplanline.avatar
+#: bloomerp_modules.qualityinspection.avatar bloomerp_modules.qualityinspectionresult.avatar
+#: bloomerp_modules.reviewquestion.avatar bloomerp_modules.reviewresponse.avatar
+#: bloomerp_modules.routing.avatar bloomerp_modules.routingoperation.avatar
+#: bloomerp_modules.salesforecast.avatar bloomerp_modules.team.avatar bloomerp_modules.timeentry.avatar
+#: bloomerp_modules.unitofmeasure.avatar bloomerp_modules.vendor.avatar
+#: bloomerp_modules.vendorinvoice.avatar bloomerp_modules.vendorinvoiceline.avatar
+#: bloomerp_modules.vendorpayment.avatar bloomerp_modules.warehouse.avatar
+#: bloomerp_modules.workcenter.avatar bloomerp_modules.workcentercalendar.avatar
+#: bloomerp_modules.workschedule.avatar
+#, fuzzy
+msgid "Avatar"
+msgstr "Awatar"
+
+#: bloomerp_modules.productioncost.valuation_method
+#, fuzzy
+msgid "Average"
+msgstr "Średnia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Azerbaijan"
+msgstr "Azerbejdżan"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "BOM & Routings"
+msgstr "BOM-y i marszruty"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bahamas (The)"
+msgstr "Bahamy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bahrain"
+msgstr "Bahrajn"
+
+#: bloomerp_modules.leavebalance.balance
+#, fuzzy
+msgid "Balance"
+msgstr "Saldo"
+
+#: bloomerp_modules.bankaccount.opening_balance
+#, fuzzy
+msgid "Balance at the start of the current fiscal year"
+msgstr "Saldo na początku bieżącego roku obrotowego"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bangladesh"
+msgstr "Bangladesz"
+
+#: bloomerp_modules.account.bank_account bloomerp_modules.bankaccount
+#: bloomerp_modules.customerreceipt.bank_account bloomerp_modules.vendorpayment.bank_account
+#, fuzzy
+msgid "Bank Account"
+msgstr "Rachunek bankowy"
+
+#: bloomerp_modules.bankaccount
+#, fuzzy
+msgid "Bank Accounts"
+msgstr "Rachunki bankowe"
+
+#: bloomerp_modules.bankaccount.bank_name
+#, fuzzy
+msgid "Bank Name"
+msgstr "Nazwa banku"
+
+#: bloomerp_modules.account.bank_account
+#, fuzzy
+msgid "Bank account associated to this account"
+msgstr "Rachunek bankowy powiązany z tym kontem"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Barbados"
+msgstr "Barbados"
+
+#: bloomerp_modules.gltransaction.batch_number
+#, fuzzy
+msgid "Batch Number"
+msgstr "Numer partii"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Belarus"
+msgstr "Białoruś"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Belgium"
+msgstr "Belgia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Belize"
+msgstr "Belize"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Benin"
+msgstr "Benin"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bermuda"
+msgstr "Bermudy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bhutan"
+msgstr "Bhutan"
+
+#: bloomerp_modules.billofmaterial bloomerp_modules.billofmaterialline.bom
+#: bloomerp_modules.manufacturingorder.bom
+#, fuzzy
+msgid "Bill of Material"
+msgstr "Zestawienie materiałowe"
+
+#: bloomerp_modules.billofmaterialline
+#, fuzzy
+msgid "Bill of Material Line"
+msgstr "Pozycja zestawienia materiałowego"
+
+#: bloomerp_modules.billofmaterialline
+#, fuzzy
+msgid "Bill of Material Lines"
+msgstr "Pozycje zestawienia materiałowego"
+
+#: bloomerp_modules.crmaccount.billing_address bloomerp_modules.customer.billing_address
+#, fuzzy
+msgid "Billing Address"
+msgstr "Adres rozliczeniowy"
+
+#: bloomerp_modules.customer.email
+#, fuzzy
+msgid "Billing Email"
+msgstr "E-mail do rozliczeń"
+
+#: bloomerp_modules.customer.phone
+#, fuzzy
+msgid "Billing Phone"
+msgstr "Telefon do rozliczeń"
+
+#: bloomerp_modules.billofmaterial
+#, fuzzy
+msgid "Bills of Material"
+msgstr "Zestawienia materiałowe"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Bills of Materials and Routings"
+msgstr "Zestawienia materiałowe i marszruty"
+
+#: bloomerp_modules.goal.status bloomerp_modules.onboardingtaskassignment.status
+#, fuzzy
+msgid "Blocked"
+msgstr "Zablokowany"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bolivia"
+msgstr "Boliwia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bonaire, Sint Eustatius and Saba"
+msgstr "Bonaire, Sint Eustatius i Saba"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bosnia and Herzegovina"
+msgstr "Bośnia i Hercegowina"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Botswana"
+msgstr "Botswana"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bouvet Island"
+msgstr "Wyspa Bouveta"
+
+#: bloomerp_modules.bankaccount.branch
+#, fuzzy
+msgid "Branch"
+msgstr "Oddział"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Brazil"
+msgstr "Brazylia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "British Indian Ocean Territory"
+msgstr "Brytyjskie Terytorium Oceanu Indyjskiego"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Brunei"
+msgstr "Brunei"
+
+#: bloomerp_modules.budget
+#, fuzzy
+msgid "Budget"
+msgstr "Budżet"
+
+#: bloomerp_modules.budget.budget_code
+#, fuzzy
+msgid "Budget Code"
+msgstr "Kod budżetu"
+
+#: bloomerp_modules.budget.budget_name
+#, fuzzy
+msgid "Budget Name"
+msgstr "Nazwa budżetu"
+
+#: bloomerp_modules.budget.budget_type
+#, fuzzy
+msgid "Budget Type"
+msgstr "Typ budżetu"
+
+#: bloomerp_modules.budget.budget_version
+#, fuzzy
+msgid "Budget Version"
+msgstr "Wersja budżetu"
+
+#: bloomerp_modules.budget.budgeted_amount
+#, fuzzy
+msgid "Budgeted Amount"
+msgstr "Kwota budżetowana"
+
+#: bloomerp_modules.budget.budgeted_amount
+#, fuzzy
+msgid "Budgeted amount for this account and period"
+msgstr "Kwota budżetowana dla tego konta i okresu"
+
+#: bloomerp_modules.budget
+#, fuzzy
+msgid "Budgets"
+msgstr "Budżety"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Bulgaria"
+msgstr "Bułgaria"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Burkina Faso"
+msgstr "Burkina Faso"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Burundi"
+msgstr "Burundi"
+
+#: bloomerp_modules.crmaccount bloomerp_modules.customer.crm_account
+#: bloomerp_modules.vendor.crm_account
+#, fuzzy
+msgid "CRM Account"
+msgstr "Konto CRM"
+
+#: bloomerp_modules.crmaccount
+#, fuzzy
+msgid "CRM Accounts"
+msgstr "Konta CRM"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cabo Verde"
+msgstr "Cabo Verde"
+
+#: bloomerp_modules.productioncost.calculated_at
+#, fuzzy
+msgid "Calculated At"
+msgstr "Data obliczenia"
+
+#: bloomerp_modules.workcenter.calendar
+#, fuzzy
+msgid "Calendar"
+msgstr "Kalendarz"
+
+#: bloomerp_modules.fiscalperiod.quarter
+#, fuzzy
+msgid "Calendar quarter containing the period"
+msgstr "Kwartał kalendarzowy obejmujący okres"
+
+#: bloomerp_modules.activity.activity_type
+#, fuzzy
+msgid "Call"
+msgstr "Rozmowa telefoniczna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cambodia"
+msgstr "Kambodża"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cameroon"
+msgstr "Kamerun"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Canada"
+msgstr "Kanada"
+
+#: bloomerp_modules.customerinvoice.status bloomerp_modules.interview.status
+#: bloomerp_modules.journalentry.status bloomerp_modules.leaverequest.status
+#: bloomerp_modules.maintenancerequest.status bloomerp_modules.maintenanceworkorder.status
+#: bloomerp_modules.manufacturingorder.status bloomerp_modules.offboardingprocess.status
+#: bloomerp_modules.onboardingprocess.status bloomerp_modules.plannedorder.status
+#: bloomerp_modules.vendorinvoice.status
+#, fuzzy
+msgid "Cancelled"
+msgstr "Anulowano"
+
+#: bloomerp_modules.application.candidate bloomerp_modules.candidate
+#: bloomerp_modules.person.person_type
+#, fuzzy
+msgid "Candidate"
+msgstr "Kandydat"
+
+#: bloomerp_modules.candidate
+#, fuzzy
+msgid "Candidates"
+msgstr "Kandydaci"
+
+#: bloomerp_modules.workcenter.capacity_units
+#, fuzzy
+msgid "Capacity Units"
+msgstr "Jednostki wydajności"
+
+#: bloomerp_modules.budget.budget_type
+#, fuzzy
+msgid "Capital Budget"
+msgstr "Budżet kapitałowy"
+
+#: bloomerp_modules.customerreceipt.payment_method bloomerp_modules.vendorpayment.payment_method
+#, fuzzy
+msgid "Card"
+msgstr "Karta"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Cash Disbursements Journal"
+msgstr "Dziennik wypłat gotówkowych"
+
+#: bloomerp_modules.budget.budget_type
+#, fuzzy
+msgid "Cash Flow Budget"
+msgstr "Budżet przepływów pieniężnych"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Cash Receipts Journal"
+msgstr "Dziennik wpływów gotówkowych"
+
+#: bloomerp_modules.leavetype.category bloomerp_modules.onboardingtask.category
+#: bloomerp_modules.reviewquestion.category bloomerp_modules.unitofmeasure.category
+#, fuzzy
+msgid "Category"
+msgstr "Kategoria"
+
+#: bloomerp_modules.maintenancerequest.cause
+#, fuzzy
+msgid "Cause"
+msgstr "Przyczyna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cayman Islands"
+msgstr "Kajmany"
+
+#: bloomerp_modules.workcenter.work_center_type
+#, fuzzy
+msgid "Cell"
+msgstr "Gniazdo produkcyjne"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Central African Republic"
+msgstr "Republika Środkowoafrykańska"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Chad"
+msgstr "Czad"
+
+#: bloomerp_modules.customerreceipt.payment_method bloomerp_modules.vendorpayment.payment_method
+#, fuzzy
+msgid "Check"
+msgstr "Czek"
+
+#: bloomerp_modules.attendancerecord.check_in
+#, fuzzy
+msgid "Check In"
+msgstr "Wejście"
+
+#: bloomerp_modules.attendancerecord.check_out
+#, fuzzy
+msgid "Check Out"
+msgstr "Wyjście"
+
+#: bloomerp_modules.bankaccount.account_type
+#, fuzzy
+msgid "Checking"
+msgstr "Rachunek bieżący"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Chile"
+msgstr "Chile"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "China"
+msgstr "Chiny"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Christmas Island"
+msgstr "Wyspa Bożego Narodzenia"
+
+#: bloomerp_modules.officelocation.city
+#, fuzzy
+msgid "City"
+msgstr "Miasto"
+
+#: bloomerp_modules.crmaccount.account_type
+#, fuzzy
+msgid "Classification of the account relationship"
+msgstr "Klasyfikacja relacji z kontem"
+
+#: bloomerp_modules.productiontimeentry.time_type
+#, fuzzy
+msgid "Cleanup"
+msgstr "Sprzątanie"
+
+#: bloomerp_modules.opportunity.close_date
+#, fuzzy
+msgid "Close Date"
+msgstr "Data zamknięcia"
+
+#: bloomerp_modules.budget.status bloomerp_modules.fiscalperiod.status
+#: bloomerp_modules.jobopening.status bloomerp_modules.nonconformancereport.status
+#: bloomerp_modules.performancecycle.status
+#, fuzzy
+msgid "Closed"
+msgstr "Zamknięte"
+
+#: bloomerp_modules.fiscalperiod.closed_by
+#, fuzzy
+msgid "Closed By"
+msgstr "Zamknięte przez"
+
+#: bloomerp_modules.fiscalperiod.closed_date
+#, fuzzy
+msgid "Closed Date"
+msgstr "Data zamknięcia"
+
+#: bloomerp_modules.accountbalance.closing_balance
+#, fuzzy
+msgid "Closing Balance"
+msgstr "Saldo końcowe"
+
+#: bloomerp_modules.jobopening.closing_date
+#, fuzzy
+msgid "Closing Date"
+msgstr "Data zamknięcia"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Closing Journal"
+msgstr "Dziennik zamknięcia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cocos (Keeling) Islands"
+msgstr "Wyspy Kokosowe (Keelinga)"
+
+#: bloomerp_modules.billofmaterial.code bloomerp_modules.costcenter.code
+#: bloomerp_modules.department.code bloomerp_modules.equipment.code bloomerp_modules.exitreason.code
+#: bloomerp_modules.hrcostcenter.code bloomerp_modules.jobtitle.code bloomerp_modules.leavetype.code
+#: bloomerp_modules.location.code bloomerp_modules.officelocation.code bloomerp_modules.operation.code
+#: bloomerp_modules.product.code bloomerp_modules.routing.code bloomerp_modules.warehouse.code
+#: bloomerp_modules.workcenter.code
+#, fuzzy
+msgid "Code"
+msgstr "Kod"
+
+#: bloomerp_modules.crmaccount.rating
+#, fuzzy
+msgid "Cold"
+msgstr "Niska"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Colombia"
+msgstr "Kolumbia"
+
+#: bloomerp_modules.account.comments bloomerp_modules.accountbalance.comments
+#: bloomerp_modules.activity.comments bloomerp_modules.application.comments
+#: bloomerp_modules.attendancerecord.comments bloomerp_modules.bankaccount.comments
+#: bloomerp_modules.billofmaterial.comments bloomerp_modules.billofmaterialline.comments
+#: bloomerp_modules.budget.comments bloomerp_modules.candidate.comments
+#: bloomerp_modules.contact.comments bloomerp_modules.costcenter.comments
+#: bloomerp_modules.costrate.comments bloomerp_modules.crmaccount.comments
+#: bloomerp_modules.customer.comments bloomerp_modules.customerinvoice.comments
+#: bloomerp_modules.customerinvoiceline.comments bloomerp_modules.customerreceipt.comments
+#: bloomerp_modules.department.comments bloomerp_modules.employee.comments
+#: bloomerp_modules.employeecontract.comments bloomerp_modules.equipment.comments
+#: bloomerp_modules.exitinterview.comments bloomerp_modules.exitreason.comments
+#: bloomerp_modules.fiscalperiod.comments bloomerp_modules.gltransaction.comments
+#: bloomerp_modules.goal.comments bloomerp_modules.goalprogress.comments
+#: bloomerp_modules.hiringdecision.comments bloomerp_modules.hrcostcenter.comments
+#: bloomerp_modules.interview.comments bloomerp_modules.interviewfeedback.comments
+#: bloomerp_modules.jobopening.comments bloomerp_modules.jobtitle.comments
+#: bloomerp_modules.journal.comments bloomerp_modules.journalentry.comments
+#: bloomerp_modules.journalentryline.comments bloomerp_modules.lead.comments
+#: bloomerp_modules.leavebalance.comments bloomerp_modules.leavepolicy.comments
+#: bloomerp_modules.leaverequest.comments bloomerp_modules.leavetype.comments
+#: bloomerp_modules.location.comments bloomerp_modules.maintenanceplan.comments
+#: bloomerp_modules.maintenancerequest.comments bloomerp_modules.maintenanceworkorder.comments
+#: bloomerp_modules.manufacturingorder.comments bloomerp_modules.manufacturingordercomponent.comments
+#: bloomerp_modules.manufacturingorderoperation.comments
+#: bloomerp_modules.masterproductionschedule.comments bloomerp_modules.mrprun.comments
+#: bloomerp_modules.nonconformancereport.comments bloomerp_modules.offboardingprocess.comments
+#: bloomerp_modules.offer.comments bloomerp_modules.offerapproval.comments
+#: bloomerp_modules.officelocation.comments bloomerp_modules.onboardingprocess.comments
+#: bloomerp_modules.onboardingtask.comments bloomerp_modules.onboardingtaskassignment.comments
+#: bloomerp_modules.operation.comments bloomerp_modules.opportunity.comments
+#: bloomerp_modules.opportunitystage.comments bloomerp_modules.overtimerule.comments
+#: bloomerp_modules.peerfeedback.comments bloomerp_modules.performancecycle.comments
+#: bloomerp_modules.performancereview.comments bloomerp_modules.person.comments
+#: bloomerp_modules.plannedorder.comments bloomerp_modules.product.comments
+#: bloomerp_modules.productioncost.comments bloomerp_modules.productionmove.comments
+#: bloomerp_modules.productiontimeentry.comments bloomerp_modules.publicholiday.comments
+#: bloomerp_modules.qualitycontrolplan.comments bloomerp_modules.qualitycontrolplanline.comments
+#: bloomerp_modules.qualityinspection.comments bloomerp_modules.qualityinspectionresult.comments
+#: bloomerp_modules.reviewquestion.comments bloomerp_modules.reviewresponse.comments
+#: bloomerp_modules.routing.comments bloomerp_modules.routingoperation.comments
+#: bloomerp_modules.salesforecast.comments bloomerp_modules.team.comments
+#: bloomerp_modules.timeentry.comments bloomerp_modules.unitofmeasure.comments
+#: bloomerp_modules.vendor.comments bloomerp_modules.vendorinvoice.comments
+#: bloomerp_modules.vendorinvoiceline.comments bloomerp_modules.vendorpayment.comments
+#: bloomerp_modules.warehouse.comments bloomerp_modules.workcenter.comments
+#: bloomerp_modules.workcentercalendar.comments bloomerp_modules.workschedule.comments
+#, fuzzy
+msgid "Comments"
+msgstr "Komentarze"
+
+#: bloomerp_modules.budget.committed_amount
+#, fuzzy
+msgid "Committed Amount"
+msgstr "Kwota zobowiązań"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Comoros"
+msgstr "Komory"
+
+#: bloomerp_modules.lead.company_name
+#, fuzzy
+msgid "Company Name"
+msgstr "Nazwa firmy"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Complete HR system"
+msgstr "Kompletny system HR"
+
+#: bloomerp_modules.activity.completed bloomerp_modules.goal.status bloomerp_modules.interview.status
+#: bloomerp_modules.maintenancerequest.status bloomerp_modules.manufacturingorderoperation.status
+#: bloomerp_modules.mrprun.status bloomerp_modules.offboardingprocess.status
+#: bloomerp_modules.onboardingprocess.status bloomerp_modules.onboardingtaskassignment.status
+#: bloomerp_modules.performancereview.status
+#, fuzzy
+msgid "Completed"
+msgstr "Zakończone"
+
+#: bloomerp_modules.activity.completed_at bloomerp_modules.onboardingtaskassignment.completed_at
+#, fuzzy
+msgid "Completed At"
+msgstr "Data ukończenia"
+
+#: bloomerp_modules.billofmaterialline.component bloomerp_modules.manufacturingordercomponent.component
+#, fuzzy
+msgid "Component"
+msgstr "Komponent"
+
+#: bloomerp_modules.productionmove.move_type
+#, fuzzy
+msgid "Component Issue"
+msgstr "Wydanie komponentu"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Congo"
+msgstr "Kongo"
+
+#: bloomerp_modules.activity.contact bloomerp_modules.contact bloomerp_modules.lead.contact
+#, fuzzy
+msgid "Contact"
+msgstr "Kontakt"
+
+#: bloomerp_modules.lead.status
+#, fuzzy
+msgid "Contacted"
+msgstr "Skontaktowano się"
+
+#: bloomerp_modules.contact
+#, fuzzy
+msgid "Contacts"
+msgstr "Kontakty"
+
+#: bloomerp_modules.employeecontract.contract_type
+#, fuzzy
+msgid "Contract Type"
+msgstr "Typ umowy"
+
+#: bloomerp_modules.employee.employment_type bloomerp_modules.employeecontract.contract_type
+#: bloomerp_modules.person.person_type
+#, fuzzy
+msgid "Contractor"
+msgstr "Kontraktor"
+
+#: bloomerp_modules.qualitycontrolplanline.control_plan
+#, fuzzy
+msgid "Control Plan"
+msgstr "Plan kontroli"
+
+#: bloomerp_modules.lead.status bloomerp_modules.plannedorder.status
+#, fuzzy
+msgid "Converted"
+msgstr "Skonwertowany"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cook Islands"
+msgstr "Wyspy Cooka"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Core CRM"
+msgstr "Podstawowy CRM"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Core CRM records such as accounts and contacts"
+msgstr "Podstawowe rekordy CRM, takie jak konta i kontakty"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Core HR structures and organizational data"
+msgstr "Podstawowe struktury HR i dane organizacyjne"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Core People"
+msgstr "Podstawowe kadry"
+
+#: bloomerp_modules.nonconformancereport.corrective_action
+#, fuzzy
+msgid "Corrective Action"
+msgstr "Działanie korygujące"
+
+#: bloomerp_modules.budget.cost_center bloomerp_modules.costcenter
+#: bloomerp_modules.costrate.cost_center bloomerp_modules.department.cost_center
+#: bloomerp_modules.employee.cost_center bloomerp_modules.gltransaction.cost_center
+#: bloomerp_modules.journalentryline.cost_center
+#, fuzzy
+msgid "Cost Center"
+msgstr "Centrum kosztów"
+
+#: bloomerp_modules.costcenter bloomerp_modules.hrcostcenter
+#, fuzzy
+msgid "Cost Centers"
+msgstr "Centra kosztów"
+
+#: bloomerp_modules.productioncost.cost_per_unit
+#, fuzzy
+msgid "Cost Per Unit"
+msgstr "Koszt jednostkowy"
+
+#: bloomerp_modules.costrate
+#, fuzzy
+msgid "Cost Rate"
+msgstr "Stawka kosztowa"
+
+#: bloomerp_modules.costrate
+#, fuzzy
+msgid "Cost Rates"
+msgstr "Stawki kosztowe"
+
+#: bloomerp_modules.employee.cost_center
+#, fuzzy
+msgid "Cost center for employee expenses"
+msgstr "Centrum kosztów dla wydatków pracowniczych"
+
+#: bloomerp_modules.gltransaction.cost_center
+#, fuzzy
+msgid "Cost center for tracking"
+msgstr "Centrum kosztów do ewidencji"
+
+#: bloomerp_modules.journalentryline.cost_center
+#, fuzzy
+msgid "Cost center for tracking purposes"
+msgstr "Centrum kosztów do celów ewidencyjnych"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Cost of Goods Sold"
+msgstr "Koszt własny sprzedaży"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Costa Rica"
+msgstr "Kostaryka"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Costing & Analytics"
+msgstr "Kalkulacja kosztów i analityka"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Costing and Analytics"
+msgstr "Kalkulacja kosztów i analityka"
+
+#: bloomerp_modules.contact.country bloomerp_modules.officelocation.country
+#, fuzzy
+msgid "Country"
+msgstr "Kraj"
+
+#: bloomerp_modules.account.created_by bloomerp_modules.accountbalance.created_by
+#: bloomerp_modules.activity.created_by bloomerp_modules.application.created_by
+#: bloomerp_modules.attendancerecord.created_by bloomerp_modules.bankaccount.created_by
+#: bloomerp_modules.billofmaterial.created_by bloomerp_modules.billofmaterialline.created_by
+#: bloomerp_modules.budget.created_by bloomerp_modules.candidate.created_by
+#: bloomerp_modules.contact.created_by bloomerp_modules.costcenter.created_by
+#: bloomerp_modules.costrate.created_by bloomerp_modules.crmaccount.created_by
+#: bloomerp_modules.customer.created_by bloomerp_modules.customerinvoice.created_by
+#: bloomerp_modules.customerinvoiceline.created_by bloomerp_modules.customerreceipt.created_by
+#: bloomerp_modules.department.created_by bloomerp_modules.employee.created_by
+#: bloomerp_modules.employeecontract.created_by bloomerp_modules.equipment.created_by
+#: bloomerp_modules.exitinterview.created_by bloomerp_modules.exitreason.created_by
+#: bloomerp_modules.fiscalperiod.created_by bloomerp_modules.gltransaction.created_by
+#: bloomerp_modules.goal.created_by bloomerp_modules.goalprogress.created_by
+#: bloomerp_modules.hiringdecision.created_by bloomerp_modules.hrcostcenter.created_by
+#: bloomerp_modules.interview.created_by bloomerp_modules.interviewfeedback.created_by
+#: bloomerp_modules.jobopening.created_by bloomerp_modules.jobtitle.created_by
+#: bloomerp_modules.journal.created_by bloomerp_modules.journalentry.created_by
+#: bloomerp_modules.journalentryline.created_by bloomerp_modules.lead.created_by
+#: bloomerp_modules.leavebalance.created_by bloomerp_modules.leavepolicy.created_by
+#: bloomerp_modules.leaverequest.created_by bloomerp_modules.leavetype.created_by
+#: bloomerp_modules.location.created_by bloomerp_modules.maintenanceplan.created_by
+#: bloomerp_modules.maintenancerequest.created_by bloomerp_modules.maintenanceworkorder.created_by
+#: bloomerp_modules.manufacturingorder.created_by
+#: bloomerp_modules.manufacturingordercomponent.created_by
+#: bloomerp_modules.manufacturingorderoperation.created_by
+#: bloomerp_modules.masterproductionschedule.created_by bloomerp_modules.mrprun.created_by
+#: bloomerp_modules.nonconformancereport.created_by bloomerp_modules.offboardingprocess.created_by
+#: bloomerp_modules.offer.created_by bloomerp_modules.offerapproval.created_by
+#: bloomerp_modules.officelocation.created_by bloomerp_modules.onboardingprocess.created_by
+#: bloomerp_modules.onboardingtask.created_by bloomerp_modules.onboardingtaskassignment.created_by
+#: bloomerp_modules.operation.created_by bloomerp_modules.opportunity.created_by
+#: bloomerp_modules.opportunitystage.created_by bloomerp_modules.overtimerule.created_by
+#: bloomerp_modules.peerfeedback.created_by bloomerp_modules.performancecycle.created_by
+#: bloomerp_modules.performancereview.created_by bloomerp_modules.person.created_by
+#: bloomerp_modules.plannedorder.created_by bloomerp_modules.product.created_by
+#: bloomerp_modules.productioncost.created_by bloomerp_modules.productionmove.created_by
+#: bloomerp_modules.productiontimeentry.created_by bloomerp_modules.publicholiday.created_by
+#: bloomerp_modules.qualitycontrolplan.created_by bloomerp_modules.qualitycontrolplanline.created_by
+#: bloomerp_modules.qualityinspection.created_by bloomerp_modules.qualityinspectionresult.created_by
+#: bloomerp_modules.reviewquestion.created_by bloomerp_modules.reviewresponse.created_by
+#: bloomerp_modules.routing.created_by bloomerp_modules.routingoperation.created_by
+#: bloomerp_modules.salesforecast.created_by bloomerp_modules.team.created_by
+#: bloomerp_modules.timeentry.created_by bloomerp_modules.unitofmeasure.created_by
+#: bloomerp_modules.vendor.created_by bloomerp_modules.vendorinvoice.created_by
+#: bloomerp_modules.vendorinvoiceline.created_by bloomerp_modules.vendorpayment.created_by
+#: bloomerp_modules.warehouse.created_by bloomerp_modules.workcenter.created_by
+#: bloomerp_modules.workcentercalendar.created_by bloomerp_modules.workschedule.created_by
+#, fuzzy
+msgid "Created By"
+msgstr "Utworzone przez"
+
+#: bloomerp_modules.account.normal_balance bloomerp_modules.bankaccount.account_type
+#: bloomerp_modules.gltransaction.transaction_type
+#, fuzzy
+msgid "Credit"
+msgstr "Ma"
+
+#: bloomerp_modules.gltransaction.credit_amount bloomerp_modules.journalentryline.credit_amount
+#, fuzzy
+msgid "Credit Amount"
+msgstr "Kwota po stronie Ma"
+
+#: bloomerp_modules.customer.credit_limit
+#, fuzzy
+msgid "Credit Limit"
+msgstr "Limit kredytowy"
+
+#: bloomerp_modules.accountbalance.credit_total
+#, fuzzy
+msgid "Credit Total"
+msgstr "Suma po stronie Ma"
+
+#: bloomerp_modules.gltransaction.credit_amount
+#, fuzzy
+msgid "Credit amount"
+msgstr "Kwota po stronie Ma"
+
+#: bloomerp_modules.journalentryline.credit_amount
+#, fuzzy
+msgid "Credit amount for this line"
+msgstr "Kwota Ma dla tej pozycji"
+
+#: bloomerp_modules.maintenancerequest.priority
+#, fuzzy
+msgid "Critical"
+msgstr "Krytyczny"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Croatia"
+msgstr "Chorwacja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cuba"
+msgstr "Kuba"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Curaçao"
+msgstr "Curaçao"
+
+#: bloomerp_modules.account.currency bloomerp_modules.accountbalance.currency
+#: bloomerp_modules.bankaccount.currency bloomerp_modules.budget.currency
+#: bloomerp_modules.customer.currency bloomerp_modules.customerinvoice.currency
+#: bloomerp_modules.customerreceipt.currency bloomerp_modules.employeecontract.currency
+#: bloomerp_modules.gltransaction.currency bloomerp_modules.journalentry.currency
+#: bloomerp_modules.journalentryline.currency bloomerp_modules.offer.currency
+#: bloomerp_modules.vendor.currency bloomerp_modules.vendorinvoice.currency
+#: bloomerp_modules.vendorpayment.currency
+#, fuzzy
+msgid "Currency"
+msgstr "Waluta"
+
+#: bloomerp_modules.account.currency
+#, fuzzy
+msgid "Currency used by this account"
+msgstr "Waluta używana przez to konto"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Current Asset"
+msgstr "Aktywa obrotowe"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Current Liability"
+msgstr "Zobowiązania krótkoterminowe"
+
+#: bloomerp_modules.employee.status
+#, fuzzy
+msgid "Current employment status"
+msgstr "Aktualny status zatrudnienia"
+
+#: bloomerp_modules.crmaccount.account_type bloomerp_modules.customer
+#: bloomerp_modules.customerinvoice.customer bloomerp_modules.customerreceipt.customer
+#, fuzzy
+msgid "Customer"
+msgstr "Klient"
+
+#: bloomerp_modules.customer.customer_code
+#, fuzzy
+msgid "Customer Code"
+msgstr "Kod klienta"
+
+#: bloomerp_modules.customerinvoice
+#, fuzzy
+msgid "Customer Invoice"
+msgstr "Faktura dla klienta"
+
+#: bloomerp_modules.customerinvoiceline
+#, fuzzy
+msgid "Customer Invoice Line"
+msgstr "Pozycja faktury dla klienta"
+
+#: bloomerp_modules.customerinvoiceline
+#, fuzzy
+msgid "Customer Invoice Lines"
+msgstr "Pozycje faktury dla klienta"
+
+#: bloomerp_modules.customerinvoice
+#, fuzzy
+msgid "Customer Invoices"
+msgstr "Faktury dla klientów"
+
+#: bloomerp_modules.customer.customer_name
+#, fuzzy
+msgid "Customer Name"
+msgstr "Nazwa klienta"
+
+#: bloomerp_modules.customerreceipt
+#, fuzzy
+msgid "Customer Receipt"
+msgstr "Potwierdzenie wpłaty od klienta"
+
+#: bloomerp_modules.customerreceipt
+#, fuzzy
+msgid "Customer Receipts"
+msgstr "Potwierdzenia wpłat od klientów"
+
+#: bloomerp_modules.customerinvoice.customer_reference
+#, fuzzy
+msgid "Customer Reference"
+msgstr "Numer referencyjny klienta"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Customer Relationship Management"
+msgstr "Zarządzanie relacjami z klientami"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Customer management, invoicing, collections."
+msgstr "Zarządzanie klientami, fakturowanie, windykacja."
+
+#: bloomerp_modules.customer
+#, fuzzy
+msgid "Customers"
+msgstr "Klienci"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Cyprus"
+msgstr "Cypr"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Czechia"
+msgstr "Czechy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Côte d'Ivoire"
+msgstr "Wybrzeże Kości Słoniowej"
+
+#: bloomerp_modules.publicholiday.date
+#, fuzzy
+msgid "Date"
+msgstr "Data"
+
+#: bloomerp_modules.nonconformancereport.date_reported
+#, fuzzy
+msgid "Date Reported"
+msgstr "Data zgłoszenia"
+
+#: bloomerp_modules.employee.hire_date
+#, fuzzy
+msgid "Date employment started"
+msgstr "Data rozpoczęcia zatrudnienia"
+
+#: bloomerp_modules.person.date_of_birth
+#, fuzzy
+msgid "Date of Birth"
+msgstr "Data urodzenia"
+
+#: bloomerp_modules.employee.date_of_birth
+#, fuzzy
+msgid "Date of birth"
+msgstr "Data urodzenia"
+
+#: bloomerp_modules.journalentry.entry_date
+#, fuzzy
+msgid "Date of the journal entry"
+msgstr "Data zapisu księgowego"
+
+#: bloomerp_modules.gltransaction.transaction_date
+#, fuzzy
+msgid "Date of the transaction"
+msgstr "Data transakcji"
+
+#: bloomerp_modules.journalentry.document_date
+#, fuzzy
+msgid "Date shown on the source document"
+msgstr "Data na dokumencie źródłowym"
+
+#: bloomerp_modules.journalentry.approved_date
+#, fuzzy
+msgid "Date when entry was approved"
+msgstr "Data zatwierdzenia wpisu"
+
+#: bloomerp_modules.journalentry.posted_date
+#, fuzzy
+msgid "Date when entry was posted"
+msgstr "Data zaksięgowania wpisu"
+
+#: bloomerp_modules.journalentry.posting_date
+#, fuzzy
+msgid "Date when entry was posted to ledger"
+msgstr "Data zaksięgowania wpisu w księdze"
+
+#: bloomerp_modules.fiscalperiod.closed_date
+#, fuzzy
+msgid "Date when period was closed"
+msgstr "Data zamknięcia okresu"
+
+#: bloomerp_modules.gltransaction.posting_date
+#, fuzzy
+msgid "Date when transaction was posted"
+msgstr "Data zaksięgowania transakcji"
+
+#: bloomerp_modules.account.datetime_created bloomerp_modules.accountbalance.datetime_created
+#: bloomerp_modules.activity.datetime_created bloomerp_modules.application.datetime_created
+#: bloomerp_modules.attendancerecord.datetime_created bloomerp_modules.bankaccount.datetime_created
+#: bloomerp_modules.billofmaterial.datetime_created
+#: bloomerp_modules.billofmaterialline.datetime_created bloomerp_modules.budget.datetime_created
+#: bloomerp_modules.candidate.datetime_created bloomerp_modules.contact.datetime_created
+#: bloomerp_modules.costcenter.datetime_created bloomerp_modules.costrate.datetime_created
+#: bloomerp_modules.crmaccount.datetime_created bloomerp_modules.customer.datetime_created
+#: bloomerp_modules.customerinvoice.datetime_created
+#: bloomerp_modules.customerinvoiceline.datetime_created
+#: bloomerp_modules.customerreceipt.datetime_created bloomerp_modules.department.datetime_created
+#: bloomerp_modules.employee.datetime_created bloomerp_modules.employeecontract.datetime_created
+#: bloomerp_modules.equipment.datetime_created bloomerp_modules.exitinterview.datetime_created
+#: bloomerp_modules.exitreason.datetime_created bloomerp_modules.fiscalperiod.datetime_created
+#: bloomerp_modules.gltransaction.datetime_created bloomerp_modules.goal.datetime_created
+#: bloomerp_modules.goalprogress.datetime_created bloomerp_modules.hiringdecision.datetime_created
+#: bloomerp_modules.hrcostcenter.datetime_created bloomerp_modules.interview.datetime_created
+#: bloomerp_modules.interviewfeedback.datetime_created bloomerp_modules.jobopening.datetime_created
+#: bloomerp_modules.jobtitle.datetime_created bloomerp_modules.journal.datetime_created
+#: bloomerp_modules.journalentry.datetime_created bloomerp_modules.journalentryline.datetime_created
+#: bloomerp_modules.lead.datetime_created bloomerp_modules.leavebalance.datetime_created
+#: bloomerp_modules.leavepolicy.datetime_created bloomerp_modules.leaverequest.datetime_created
+#: bloomerp_modules.leavetype.datetime_created bloomerp_modules.location.datetime_created
+#: bloomerp_modules.maintenanceplan.datetime_created
+#: bloomerp_modules.maintenancerequest.datetime_created
+#: bloomerp_modules.maintenanceworkorder.datetime_created
+#: bloomerp_modules.manufacturingorder.datetime_created
+#: bloomerp_modules.manufacturingordercomponent.datetime_created
+#: bloomerp_modules.manufacturingorderoperation.datetime_created
+#: bloomerp_modules.masterproductionschedule.datetime_created bloomerp_modules.mrprun.datetime_created
+#: bloomerp_modules.nonconformancereport.datetime_created
+#: bloomerp_modules.offboardingprocess.datetime_created bloomerp_modules.offer.datetime_created
+#: bloomerp_modules.offerapproval.datetime_created bloomerp_modules.officelocation.datetime_created
+#: bloomerp_modules.onboardingprocess.datetime_created bloomerp_modules.onboardingtask.datetime_created
+#: bloomerp_modules.onboardingtaskassignment.datetime_created
+#: bloomerp_modules.operation.datetime_created bloomerp_modules.opportunity.datetime_created
+#: bloomerp_modules.opportunitystage.datetime_created bloomerp_modules.overtimerule.datetime_created
+#: bloomerp_modules.peerfeedback.datetime_created bloomerp_modules.performancecycle.datetime_created
+#: bloomerp_modules.performancereview.datetime_created bloomerp_modules.person.datetime_created
+#: bloomerp_modules.plannedorder.datetime_created bloomerp_modules.product.datetime_created
+#: bloomerp_modules.productioncost.datetime_created bloomerp_modules.productionmove.datetime_created
+#: bloomerp_modules.productiontimeentry.datetime_created
+#: bloomerp_modules.publicholiday.datetime_created bloomerp_modules.qualitycontrolplan.datetime_created
+#: bloomerp_modules.qualitycontrolplanline.datetime_created
+#: bloomerp_modules.qualityinspection.datetime_created
+#: bloomerp_modules.qualityinspectionresult.datetime_created
+#: bloomerp_modules.reviewquestion.datetime_created bloomerp_modules.reviewresponse.datetime_created
+#: bloomerp_modules.routing.datetime_created bloomerp_modules.routingoperation.datetime_created
+#: bloomerp_modules.salesforecast.datetime_created bloomerp_modules.team.datetime_created
+#: bloomerp_modules.timeentry.datetime_created bloomerp_modules.unitofmeasure.datetime_created
+#: bloomerp_modules.vendor.datetime_created bloomerp_modules.vendorinvoice.datetime_created
+#: bloomerp_modules.vendorinvoiceline.datetime_created bloomerp_modules.vendorpayment.datetime_created
+#: bloomerp_modules.warehouse.datetime_created bloomerp_modules.workcenter.datetime_created
+#: bloomerp_modules.workcentercalendar.datetime_created bloomerp_modules.workschedule.datetime_created
+#, fuzzy
+msgid "Datetime Created"
+msgstr "Data i godzina utworzenia"
+
+#: bloomerp_modules.account.datetime_updated bloomerp_modules.accountbalance.datetime_updated
+#: bloomerp_modules.activity.datetime_updated bloomerp_modules.application.datetime_updated
+#: bloomerp_modules.attendancerecord.datetime_updated bloomerp_modules.bankaccount.datetime_updated
+#: bloomerp_modules.billofmaterial.datetime_updated
+#: bloomerp_modules.billofmaterialline.datetime_updated bloomerp_modules.budget.datetime_updated
+#: bloomerp_modules.candidate.datetime_updated bloomerp_modules.contact.datetime_updated
+#: bloomerp_modules.costcenter.datetime_updated bloomerp_modules.costrate.datetime_updated
+#: bloomerp_modules.crmaccount.datetime_updated bloomerp_modules.customer.datetime_updated
+#: bloomerp_modules.customerinvoice.datetime_updated
+#: bloomerp_modules.customerinvoiceline.datetime_updated
+#: bloomerp_modules.customerreceipt.datetime_updated bloomerp_modules.department.datetime_updated
+#: bloomerp_modules.employee.datetime_updated bloomerp_modules.employeecontract.datetime_updated
+#: bloomerp_modules.equipment.datetime_updated bloomerp_modules.exitinterview.datetime_updated
+#: bloomerp_modules.exitreason.datetime_updated bloomerp_modules.fiscalperiod.datetime_updated
+#: bloomerp_modules.gltransaction.datetime_updated bloomerp_modules.goal.datetime_updated
+#: bloomerp_modules.goalprogress.datetime_updated bloomerp_modules.hiringdecision.datetime_updated
+#: bloomerp_modules.hrcostcenter.datetime_updated bloomerp_modules.interview.datetime_updated
+#: bloomerp_modules.interviewfeedback.datetime_updated bloomerp_modules.jobopening.datetime_updated
+#: bloomerp_modules.jobtitle.datetime_updated bloomerp_modules.journal.datetime_updated
+#: bloomerp_modules.journalentry.datetime_updated bloomerp_modules.journalentryline.datetime_updated
+#: bloomerp_modules.lead.datetime_updated bloomerp_modules.leavebalance.datetime_updated
+#: bloomerp_modules.leavepolicy.datetime_updated bloomerp_modules.leaverequest.datetime_updated
+#: bloomerp_modules.leavetype.datetime_updated bloomerp_modules.location.datetime_updated
+#: bloomerp_modules.maintenanceplan.datetime_updated
+#: bloomerp_modules.maintenancerequest.datetime_updated
+#: bloomerp_modules.maintenanceworkorder.datetime_updated
+#: bloomerp_modules.manufacturingorder.datetime_updated
+#: bloomerp_modules.manufacturingordercomponent.datetime_updated
+#: bloomerp_modules.manufacturingorderoperation.datetime_updated
+#: bloomerp_modules.masterproductionschedule.datetime_updated bloomerp_modules.mrprun.datetime_updated
+#: bloomerp_modules.nonconformancereport.datetime_updated
+#: bloomerp_modules.offboardingprocess.datetime_updated bloomerp_modules.offer.datetime_updated
+#: bloomerp_modules.offerapproval.datetime_updated bloomerp_modules.officelocation.datetime_updated
+#: bloomerp_modules.onboardingprocess.datetime_updated bloomerp_modules.onboardingtask.datetime_updated
+#: bloomerp_modules.onboardingtaskassignment.datetime_updated
+#: bloomerp_modules.operation.datetime_updated bloomerp_modules.opportunity.datetime_updated
+#: bloomerp_modules.opportunitystage.datetime_updated bloomerp_modules.overtimerule.datetime_updated
+#: bloomerp_modules.peerfeedback.datetime_updated bloomerp_modules.performancecycle.datetime_updated
+#: bloomerp_modules.performancereview.datetime_updated bloomerp_modules.person.datetime_updated
+#: bloomerp_modules.plannedorder.datetime_updated bloomerp_modules.product.datetime_updated
+#: bloomerp_modules.productioncost.datetime_updated bloomerp_modules.productionmove.datetime_updated
+#: bloomerp_modules.productiontimeentry.datetime_updated
+#: bloomerp_modules.publicholiday.datetime_updated bloomerp_modules.qualitycontrolplan.datetime_updated
+#: bloomerp_modules.qualitycontrolplanline.datetime_updated
+#: bloomerp_modules.qualityinspection.datetime_updated
+#: bloomerp_modules.qualityinspectionresult.datetime_updated
+#: bloomerp_modules.reviewquestion.datetime_updated bloomerp_modules.reviewresponse.datetime_updated
+#: bloomerp_modules.routing.datetime_updated bloomerp_modules.routingoperation.datetime_updated
+#: bloomerp_modules.salesforecast.datetime_updated bloomerp_modules.team.datetime_updated
+#: bloomerp_modules.timeentry.datetime_updated bloomerp_modules.unitofmeasure.datetime_updated
+#: bloomerp_modules.vendor.datetime_updated bloomerp_modules.vendorinvoice.datetime_updated
+#: bloomerp_modules.vendorinvoiceline.datetime_updated bloomerp_modules.vendorpayment.datetime_updated
+#: bloomerp_modules.warehouse.datetime_updated bloomerp_modules.workcenter.datetime_updated
+#: bloomerp_modules.workcentercalendar.datetime_updated bloomerp_modules.workschedule.datetime_updated
+#, fuzzy
+msgid "Datetime Updated"
+msgstr "Data i godzina aktualizacji"
+
+#: bloomerp_modules.account.normal_balance bloomerp_modules.gltransaction.transaction_type
+#, fuzzy
+msgid "Debit"
+msgstr "Debet"
+
+#: bloomerp_modules.gltransaction.debit_amount bloomerp_modules.journalentryline.debit_amount
+#, fuzzy
+msgid "Debit Amount"
+msgstr "Kwota debetu"
+
+#: bloomerp_modules.accountbalance.debit_total
+#, fuzzy
+msgid "Debit Total"
+msgstr "Suma debetów"
+
+#: bloomerp_modules.gltransaction.debit_amount
+#, fuzzy
+msgid "Debit amount"
+msgstr "Kwota debetu"
+
+#: bloomerp_modules.journalentryline.debit_amount
+#, fuzzy
+msgid "Debit amount for this line"
+msgstr "Kwota debetu dla tej pozycji"
+
+#: bloomerp_modules.hiringdecision.decided_at bloomerp_modules.offerapproval.decided_at
+#, fuzzy
+msgid "Decided At"
+msgstr "Data podjęcia decyzji"
+
+#: bloomerp_modules.hiringdecision.decided_by
+#, fuzzy
+msgid "Decided By"
+msgstr "Decyzję podjął"
+
+#: bloomerp_modules.hiringdecision.decision
+#, fuzzy
+msgid "Decision"
+msgstr "Decyzja"
+
+#: bloomerp_modules.offer.status
+#, fuzzy
+msgid "Declined"
+msgstr "Odrzucona"
+
+#: bloomerp_modules.journal.default_currency
+#, fuzzy
+msgid "Default Currency"
+msgstr "Domyślna waluta"
+
+#: bloomerp_modules.onboardingtask.default_due_days
+#, fuzzy
+msgid "Default Due Days"
+msgstr "Domyślna liczba dni do terminu"
+
+#: bloomerp_modules.account.tax_code
+#, fuzzy
+msgid "Default Tax Code"
+msgstr "Domyślny kod podatkowy"
+
+#: bloomerp_modules.product.default_warehouse
+#, fuzzy
+msgid "Default Warehouse"
+msgstr "Domyślny magazyn"
+
+#: bloomerp_modules.account.tax_code
+#, fuzzy
+msgid "Default tax code for transactions posted to the account"
+msgstr "Domyślny kod podatkowy dla transakcji księgowanych na tym koncie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Democratic Republic of the Congo"
+msgstr "Demokratyczna Republika Konga"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Denmark"
+msgstr "Dania"
+
+#: bloomerp_modules.budget.department bloomerp_modules.contact.department bloomerp_modules.department
+#: bloomerp_modules.employee.department bloomerp_modules.gltransaction.department
+#: bloomerp_modules.jobopening.department bloomerp_modules.journalentryline.department
+#: bloomerp_modules.team.department
+#, fuzzy
+msgid "Department"
+msgstr "Dział"
+
+#: bloomerp_modules.gltransaction.department
+#, fuzzy
+msgid "Department for tracking"
+msgstr "Dział do śledzenia"
+
+#: bloomerp_modules.journalentryline.department
+#, fuzzy
+msgid "Department for tracking purposes"
+msgstr "Dział do celów śledzenia"
+
+#: bloomerp_modules.employee.department
+#, fuzzy
+msgid "Department or team name"
+msgstr "Nazwa działu lub zespołu"
+
+#: bloomerp_modules.department
+#, fuzzy
+msgid "Departments"
+msgstr "Działy"
+
+#: bloomerp_modules.account.description bloomerp_modules.costcenter.description
+#: bloomerp_modules.customerinvoiceline.description bloomerp_modules.department.description
+#: bloomerp_modules.exitreason.description bloomerp_modules.gltransaction.description
+#: bloomerp_modules.goal.description bloomerp_modules.hrcostcenter.description
+#: bloomerp_modules.jobopening.description bloomerp_modules.jobtitle.description
+#: bloomerp_modules.journal.description bloomerp_modules.journalentry.description
+#: bloomerp_modules.journalentryline.description bloomerp_modules.maintenancerequest.description
+#: bloomerp_modules.mrprun.description bloomerp_modules.nonconformancereport.description
+#: bloomerp_modules.onboardingtask.description bloomerp_modules.operation.description
+#: bloomerp_modules.opportunity.description bloomerp_modules.performancecycle.description
+#: bloomerp_modules.product.description bloomerp_modules.routing.description
+#: bloomerp_modules.team.description bloomerp_modules.vendorinvoiceline.description
+#: bloomerp_modules.workcentercalendar.description bloomerp_modules.workschedule.description
+#, fuzzy
+msgid "Description"
+msgstr "Opis"
+
+#: bloomerp_modules.journal.description
+#, fuzzy
+msgid "Description of the journal purpose"
+msgstr "Opis przeznaczenia dziennika"
+
+#: bloomerp_modules.gltransaction.description bloomerp_modules.journalentry.description
+#, fuzzy
+msgid "Description of the transaction"
+msgstr "Opis transakcji"
+
+#: bloomerp_modules.journalentryline.description
+#, fuzzy
+msgid "Description of this line item"
+msgstr "Opis tej pozycji"
+
+#: bloomerp_modules.manufacturingordercomponent.location_destination
+#, fuzzy
+msgid "Destination Location"
+msgstr "Lokalizacja docelowa"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Detailed account classification"
+msgstr "Szczegółowa klasyfikacja konta"
+
+#: bloomerp_modules.account.description
+#, fuzzy
+msgid "Detailed description of the account"
+msgstr "Szczegółowy opis konta"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Djibouti"
+msgstr "Dżibuti"
+
+#: bloomerp_modules.journalentry.document_date
+#, fuzzy
+msgid "Document Date"
+msgstr "Data dokumentu"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Dominica"
+msgstr "Dominika"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Dominican Republic"
+msgstr "Dominikana"
+
+#: bloomerp_modules.maintenanceworkorder.status bloomerp_modules.manufacturingorder.status
+#, fuzzy
+msgid "Done"
+msgstr "Zakończono"
+
+#: bloomerp_modules.productiontimeentry.time_type
+#, fuzzy
+msgid "Downtime"
+msgstr "Przestój"
+
+#: bloomerp_modules.budget.status bloomerp_modules.customerinvoice.status
+#: bloomerp_modules.employeecontract.status bloomerp_modules.jobopening.status
+#: bloomerp_modules.journalentry.status bloomerp_modules.maintenanceworkorder.status
+#: bloomerp_modules.manufacturingorder.status bloomerp_modules.mrprun.status
+#: bloomerp_modules.offer.status bloomerp_modules.performancereview.status
+#: bloomerp_modules.vendorinvoice.status
+#, fuzzy
+msgid "Draft"
+msgstr "Szkic"
+
+#: bloomerp_modules.activity.due_date bloomerp_modules.customerinvoice.due_date
+#: bloomerp_modules.journalentry.due_date bloomerp_modules.journalentryline.due_date
+#: bloomerp_modules.onboardingtaskassignment.due_date bloomerp_modules.plannedorder.due_date
+#: bloomerp_modules.vendorinvoice.due_date
+#, fuzzy
+msgid "Due Date"
+msgstr "Termin"
+
+#: bloomerp_modules.productiontimeentry.duration_minutes
+#, fuzzy
+msgid "Duration (Minutes)"
+msgstr "Czas trwania (minuty)"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Ecuador"
+msgstr "Ekwador"
+
+#: bloomerp_modules.costrate.effective_from
+#, fuzzy
+msgid "Effective From"
+msgstr "Obowiązuje od"
+
+#: bloomerp_modules.costrate.effective_to
+#, fuzzy
+msgid "Effective To"
+msgstr "Obowiązuje do"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Egypt"
+msgstr "Egipt"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "El Salvador"
+msgstr "Salwador"
+
+#: bloomerp_modules.activity.activity_type bloomerp_modules.candidate.email
+#: bloomerp_modules.contact.email bloomerp_modules.lead.email bloomerp_modules.lead.lead_source
+#: bloomerp_modules.person.email
+#, fuzzy
+msgid "Email"
+msgstr "E-mail"
+
+#: bloomerp_modules.attendancerecord.employee bloomerp_modules.employee
+#: bloomerp_modules.employeecontract.employee bloomerp_modules.goal.employee
+#: bloomerp_modules.leavebalance.employee bloomerp_modules.leaverequest.employee
+#: bloomerp_modules.offboardingprocess.employee bloomerp_modules.onboardingprocess.employee
+#: bloomerp_modules.peerfeedback.employee bloomerp_modules.performancereview.employee
+#: bloomerp_modules.person.person_type bloomerp_modules.productiontimeentry.employee
+#: bloomerp_modules.timeentry.employee
+#, fuzzy
+msgid "Employee"
+msgstr "Pracownik"
+
+#: bloomerp_modules.employeecontract
+#, fuzzy
+msgid "Employee Contract"
+msgstr "Umowa o pracę"
+
+#: bloomerp_modules.employeecontract
+#, fuzzy
+msgid "Employee Contracts"
+msgstr "Umowy o pracę"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Employee Management"
+msgstr "Zarządzanie pracownikami"
+
+#: bloomerp_modules.employee.job_title
+#, fuzzy
+msgid "Employee role or title"
+msgstr "Stanowisko lub tytuł pracownika"
+
+#: bloomerp_modules.employee
+#, fuzzy
+msgid "Employees"
+msgstr "Pracownicy"
+
+#: bloomerp_modules.employee.status
+#, fuzzy
+msgid "Employment Status"
+msgstr "Status zatrudnienia"
+
+#: bloomerp_modules.employee.employment_type
+#, fuzzy
+msgid "Employment Type"
+msgstr "Rodzaj zatrudnienia"
+
+#: bloomerp_modules.employeecontract.end_date bloomerp_modules.fiscalperiod.end_date
+#: bloomerp_modules.leaverequest.end_date bloomerp_modules.offboardingprocess.end_date
+#: bloomerp_modules.performancecycle.end_date
+#, fuzzy
+msgid "End Date"
+msgstr "Data zakończenia"
+
+#: bloomerp_modules.productiontimeentry.end_time bloomerp_modules.workschedule.end_time
+#, fuzzy
+msgid "End Time"
+msgstr "Godzina zakończenia"
+
+#: bloomerp_modules.employeecontract.end_date
+#, fuzzy
+msgid "End date of the contract"
+msgstr "Data zakończenia umowy"
+
+#: bloomerp_modules.fiscalperiod.end_date
+#, fuzzy
+msgid "End date of the fiscal period"
+msgstr "Data zakończenia okresu rozliczeniowego"
+
+#: bloomerp_modules.journalentry.entry_date
+#, fuzzy
+msgid "Entry Date"
+msgstr "Data księgowania"
+
+#: bloomerp_modules.journalentry.entry_number
+#, fuzzy
+msgid "Entry Number"
+msgstr "Numer zapisu"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Equatorial Guinea"
+msgstr "Gwinea Równikowa"
+
+#: bloomerp_modules.equipment bloomerp_modules.maintenanceplan.equipment
+#: bloomerp_modules.maintenancerequest.equipment bloomerp_modules.maintenanceworkorder.equipment
+#, fuzzy
+msgid "Equipment"
+msgstr "Wyposażenie"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Equipment and Maintenance"
+msgstr "Wyposażenie i konserwacja"
+
+#: bloomerp_modules.account.account_type
+#, fuzzy
+msgid "Equity"
+msgstr "Kapitał własny"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Eritrea"
+msgstr "Erytrea"
+
+#: bloomerp_modules.lead.estimated_value
+#, fuzzy
+msgid "Estimated Value"
+msgstr "Szacowana wartość"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Estonia"
+msgstr "Estonia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Eswatini"
+msgstr "Eswatini"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Ethiopia"
+msgstr "Etiopia"
+
+#: bloomerp_modules.lead.lead_source
+#, fuzzy
+msgid "Event"
+msgstr "Wydarzenie"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Everything related to accounting"
+msgstr "Wszystko związane z księgowością"
+
+#: bloomerp_modules.customerinvoice.exchange_rate bloomerp_modules.gltransaction.exchange_rate
+#: bloomerp_modules.journalentry.exchange_rate bloomerp_modules.journalentryline.exchange_rate
+#: bloomerp_modules.vendorinvoice.exchange_rate
+#, fuzzy
+msgid "Exchange Rate"
+msgstr "Kurs wymiany"
+
+#: bloomerp_modules.exitinterview
+#, fuzzy
+msgid "Exit Interview"
+msgstr "Rozmowa końcowa"
+
+#: bloomerp_modules.exitinterview
+#, fuzzy
+msgid "Exit Interviews"
+msgstr "Rozmowy końcowe"
+
+#: bloomerp_modules.exitreason bloomerp_modules.offboardingprocess.exit_reason
+#, fuzzy
+msgid "Exit Reason"
+msgstr "Powód odejścia"
+
+#: bloomerp_modules.exitreason
+#, fuzzy
+msgid "Exit Reasons"
+msgstr "Powody odejścia"
+
+#: bloomerp_modules.lead.expected_close_date bloomerp_modules.opportunity.expected_close_date
+#, fuzzy
+msgid "Expected Close Date"
+msgstr "Przewidywana data zamknięcia"
+
+#: bloomerp_modules.account.account_type
+#, fuzzy
+msgid "Expense"
+msgstr "Koszt"
+
+#: bloomerp_modules.vendorinvoiceline.expense_account
+#, fuzzy
+msgid "Expense Account"
+msgstr "Konto kosztowe"
+
+#: bloomerp_modules.employeecontract.status
+#, fuzzy
+msgid "Expired"
+msgstr "Wygasła"
+
+#: bloomerp_modules.gltransaction.reference_number
+#, fuzzy
+msgid "External reference number"
+msgstr "Zewnętrzny numer referencyjny"
+
+#: bloomerp_modules.journalentry.reference_number
+#, fuzzy
+msgid "External reference number (invoice, receipt, etc.)"
+msgstr "Zewnętrzny numer referencyjny (faktura, paragon itp.)"
+
+#: bloomerp_modules.qualityinspectionresult.result
+#, fuzzy
+msgid "Fail"
+msgstr "Niezaliczony"
+
+#: bloomerp_modules.mrprun.status bloomerp_modules.qualityinspection.status
+#, fuzzy
+msgid "Failed"
+msgstr "Niepowodzenie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Falkland Islands (Malvinas)"
+msgstr "Falklandy (Malwiny)"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Faroe Islands"
+msgstr "Wyspy Owcze"
+
+#: bloomerp_modules.peerfeedback.feedback
+#, fuzzy
+msgid "Feedback"
+msgstr "Informacja zwrotna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Fiji"
+msgstr "Fidżi"
+
+#: bloomerp_modules.account.files bloomerp_modules.accountbalance.files bloomerp_modules.activity.files
+#: bloomerp_modules.application.files bloomerp_modules.attendancerecord.files
+#: bloomerp_modules.bankaccount.files bloomerp_modules.billofmaterial.files
+#: bloomerp_modules.billofmaterialline.files bloomerp_modules.budget.files
+#: bloomerp_modules.candidate.files bloomerp_modules.contact.files bloomerp_modules.costcenter.files
+#: bloomerp_modules.costrate.files bloomerp_modules.crmaccount.files bloomerp_modules.customer.files
+#: bloomerp_modules.customerinvoice.files bloomerp_modules.customerinvoiceline.files
+#: bloomerp_modules.customerreceipt.files bloomerp_modules.department.files
+#: bloomerp_modules.employee.files bloomerp_modules.employeecontract.files
+#: bloomerp_modules.equipment.files bloomerp_modules.exitinterview.files
+#: bloomerp_modules.exitreason.files bloomerp_modules.fiscalperiod.files
+#: bloomerp_modules.gltransaction.files bloomerp_modules.goal.files bloomerp_modules.goalprogress.files
+#: bloomerp_modules.hiringdecision.files bloomerp_modules.hrcostcenter.files
+#: bloomerp_modules.interview.files bloomerp_modules.interviewfeedback.files
+#: bloomerp_modules.jobopening.files bloomerp_modules.jobtitle.files bloomerp_modules.journal.files
+#: bloomerp_modules.journalentry.files bloomerp_modules.journalentryline.files
+#: bloomerp_modules.lead.files bloomerp_modules.leavebalance.files bloomerp_modules.leavepolicy.files
+#: bloomerp_modules.leaverequest.files bloomerp_modules.leavetype.files bloomerp_modules.location.files
+#: bloomerp_modules.maintenanceplan.files bloomerp_modules.maintenancerequest.files
+#: bloomerp_modules.maintenanceworkorder.files bloomerp_modules.manufacturingorder.files
+#: bloomerp_modules.manufacturingordercomponent.files
+#: bloomerp_modules.manufacturingorderoperation.files bloomerp_modules.masterproductionschedule.files
+#: bloomerp_modules.mrprun.files bloomerp_modules.nonconformancereport.files
+#: bloomerp_modules.offboardingprocess.files bloomerp_modules.offer.files
+#: bloomerp_modules.offerapproval.files bloomerp_modules.officelocation.files
+#: bloomerp_modules.onboardingprocess.files bloomerp_modules.onboardingtask.files
+#: bloomerp_modules.onboardingtaskassignment.files bloomerp_modules.operation.files
+#: bloomerp_modules.opportunity.files bloomerp_modules.opportunitystage.files
+#: bloomerp_modules.overtimerule.files bloomerp_modules.peerfeedback.files
+#: bloomerp_modules.performancecycle.files bloomerp_modules.performancereview.files
+#: bloomerp_modules.person.files bloomerp_modules.plannedorder.files bloomerp_modules.product.files
+#: bloomerp_modules.productioncost.files bloomerp_modules.productionmove.files
+#: bloomerp_modules.productiontimeentry.files bloomerp_modules.publicholiday.files
+#: bloomerp_modules.qualitycontrolplan.files bloomerp_modules.qualitycontrolplanline.files
+#: bloomerp_modules.qualityinspection.files bloomerp_modules.qualityinspectionresult.files
+#: bloomerp_modules.reviewquestion.files bloomerp_modules.reviewresponse.files
+#: bloomerp_modules.routing.files bloomerp_modules.routingoperation.files
+#: bloomerp_modules.salesforecast.files bloomerp_modules.team.files bloomerp_modules.timeentry.files
+#: bloomerp_modules.unitofmeasure.files bloomerp_modules.vendor.files
+#: bloomerp_modules.vendorinvoice.files bloomerp_modules.vendorinvoiceline.files
+#: bloomerp_modules.vendorpayment.files bloomerp_modules.warehouse.files
+#: bloomerp_modules.workcenter.files bloomerp_modules.workcentercalendar.files
+#: bloomerp_modules.workschedule.files
+#, fuzzy
+msgid "Files"
+msgstr "Pliki"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Finance"
+msgstr "Finanse"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Financial management module of the application"
+msgstr "Moduł finansowy aplikacji"
+
+#: bloomerp_modules.productionmove.move_type
+#, fuzzy
+msgid "Finished Good Receipt"
+msgstr "Przyjęcie wyrobu gotowego"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Finland"
+msgstr "Finlandia"
+
+#: bloomerp_modules.candidate.first_name bloomerp_modules.contact.first_name
+#: bloomerp_modules.employee.first_name bloomerp_modules.person.first_name
+#, fuzzy
+msgid "First Name"
+msgstr "Imię"
+
+#: bloomerp_modules.employee.first_name
+#, fuzzy
+msgid "First name of the employee"
+msgstr "Imię pracownika"
+
+#: bloomerp_modules.accountbalance.fiscal_period bloomerp_modules.budget.fiscal_period
+#: bloomerp_modules.fiscalperiod bloomerp_modules.gltransaction.fiscal_period
+#, fuzzy
+msgid "Fiscal Period"
+msgstr "Okres obrachunkowy"
+
+#: bloomerp_modules.fiscalperiod
+#, fuzzy
+msgid "Fiscal Periods"
+msgstr "Okresy obrachunkowe"
+
+#: bloomerp_modules.fiscalperiod.fiscal_year
+#, fuzzy
+msgid "Fiscal Year"
+msgstr "Rok obrachunkowy"
+
+#: bloomerp_modules.accountbalance.fiscal_period
+#, fuzzy
+msgid "Fiscal period for this balance"
+msgstr "Okres obrachunkowy dla tego salda"
+
+#: bloomerp_modules.budget.fiscal_period
+#, fuzzy
+msgid "Fiscal period for this budget"
+msgstr "Okres obrachunkowy dla tego budżetu"
+
+#: bloomerp_modules.gltransaction.fiscal_period
+#, fuzzy
+msgid "Fiscal period when transaction was posted"
+msgstr "Okres obrachunkowy, w którym zaksięgowano transakcję"
+
+#: bloomerp_modules.fiscalperiod.fiscal_year
+#, fuzzy
+msgid "Fiscal year this period belongs to"
+msgstr "Rok obrachunkowy, do którego należy ten okres"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Fixed Asset"
+msgstr "Aktywa trwałe"
+
+#: bloomerp_modules.employeecontract.contract_type
+#, fuzzy
+msgid "Fixed Term"
+msgstr "Czas określony"
+
+#: bloomerp_modules.masterproductionschedule.source
+#, fuzzy
+msgid "Forecast"
+msgstr "Prognoza"
+
+#: bloomerp_modules.budget.forecast_amount
+#, fuzzy
+msgid "Forecast Amount"
+msgstr "Prognozowana kwota"
+
+#: bloomerp_modules.salesforecast.forecast_date
+#, fuzzy
+msgid "Forecast Date"
+msgstr "Data prognozy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "France"
+msgstr "Francja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "French Guiana"
+msgstr "Gujana Francuska"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "French Polynesia"
+msgstr "Polinezja Francuska"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "French Southern Territories"
+msgstr "Francuskie Terytoria Południowe"
+
+#: bloomerp_modules.maintenanceplan.frequency_type
+#, fuzzy
+msgid "Frequency Type"
+msgstr "Typ częstotliwości"
+
+#: bloomerp_modules.maintenanceplan.frequency_value
+#, fuzzy
+msgid "Frequency Value"
+msgstr "Wartość częstotliwości"
+
+#: bloomerp_modules.productionmove.location_from
+#, fuzzy
+msgid "From Location"
+msgstr "Lokalizacja początkowa"
+
+#: bloomerp_modules.employee.employment_type
+#, fuzzy
+msgid "Full Time"
+msgstr "Pełny etat"
+
+#: bloomerp_modules.manufacturingordercomponent.status
+#, fuzzy
+msgid "Fully Issued"
+msgstr "Wydano w całości"
+
+#: bloomerp_modules.gltransaction
+#, fuzzy
+msgid "GL Transaction"
+msgstr "Transakcja księgi głównej"
+
+#: bloomerp_modules.gltransaction
+#, fuzzy
+msgid "GL Transactions"
+msgstr "Transakcje księgi głównej"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Gabon"
+msgstr "Gabon"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Gambia"
+msgstr "Gambia"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "General Journal"
+msgstr "Dziennik ogólny"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "General ledger"
+msgstr "Księga główna"
+
+#: bloomerp_modules.accountbalance.account bloomerp_modules.gltransaction.account
+#, fuzzy
+msgid "General ledger account"
+msgstr "Konto księgi głównej"
+
+#: bloomerp_modules.journalentryline.account
+#, fuzzy
+msgid "General ledger account for this line"
+msgstr "Konto księgi głównej dla tej pozycji"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Georgia"
+msgstr "Gruzja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Germany"
+msgstr "Niemcy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Ghana"
+msgstr "Ghana"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Gibraltar"
+msgstr "Gibraltar"
+
+#: bloomerp_modules.goal bloomerp_modules.goalprogress.goal
+#, fuzzy
+msgid "Goal"
+msgstr "Cel"
+
+#: bloomerp_modules.goalprogress
+#, fuzzy
+msgid "Goal Progress"
+msgstr "Postęp realizacji celu"
+
+#: bloomerp_modules.goalprogress
+#, fuzzy
+msgid "Goal Progress Updates"
+msgstr "Aktualizacje postępu realizacji celów"
+
+#: bloomerp_modules.goal
+#, fuzzy
+msgid "Goals"
+msgstr "Cele"
+
+#: bloomerp_modules.qualityinspection.reference_type
+#, fuzzy
+msgid "Goods Receipt"
+msgstr "Przyjęcie towaru"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Greece"
+msgstr "Grecja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Greenland"
+msgstr "Grenlandia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Grenada"
+msgstr "Grenada"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Guadeloupe"
+msgstr "Gwadelupa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Guam"
+msgstr "Guam"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Guatemala"
+msgstr "Gwatemala"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Guernsey"
+msgstr "Guernsey"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Guinea"
+msgstr "Gwinea"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Guinea-Bissau"
+msgstr "Gwinea Bissau"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Guyana"
+msgstr "Gujana"
+
+#: bloomerp_modules.hrcostcenter
+#, fuzzy
+msgid "HR Cost Center"
+msgstr "Centrum kosztów HR"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Haiti"
+msgstr "Haiti"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Heard Island and McDonald Islands"
+msgstr "Wyspy Heard i McDonalda"
+
+#: bloomerp_modules.lead.priority bloomerp_modules.maintenancerequest.priority
+#: bloomerp_modules.manufacturingorder.priority
+#, fuzzy
+msgid "High"
+msgstr "Wysoki"
+
+#: bloomerp_modules.hiringdecision.decision bloomerp_modules.interviewfeedback.recommendation
+#, fuzzy
+msgid "Hire"
+msgstr "Zatrudnić"
+
+#: bloomerp_modules.employee.hire_date
+#, fuzzy
+msgid "Hire Date"
+msgstr "Data zatrudnienia"
+
+#: bloomerp_modules.application.status bloomerp_modules.candidate.status
+#, fuzzy
+msgid "Hired"
+msgstr "Zatrudniony"
+
+#: bloomerp_modules.hiringdecision
+#, fuzzy
+msgid "Hiring Decision"
+msgstr "Decyzja rekrutacyjna"
+
+#: bloomerp_modules.hiringdecision
+#, fuzzy
+msgid "Hiring Decisions"
+msgstr "Decyzje rekrutacyjne"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Hiring and applicant tracking"
+msgstr "Rekrutacja i śledzenie kandydatów"
+
+#: bloomerp_modules.hiringdecision.decision bloomerp_modules.interviewfeedback.recommendation
+#, fuzzy
+msgid "Hold"
+msgstr "Wstrzymać"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Honduras"
+msgstr "Honduras"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Hong Kong"
+msgstr "Hongkong"
+
+#: bloomerp_modules.crmaccount.rating
+#, fuzzy
+msgid "Hot"
+msgstr "Gorący"
+
+#: bloomerp_modules.workcenter.hourly_rate
+#, fuzzy
+msgid "Hourly Rate"
+msgstr "Stawka godzinowa"
+
+#: bloomerp_modules.timeentry.hours
+#, fuzzy
+msgid "Hours"
+msgstr "Godziny"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Human Resources"
+msgstr "Zasoby ludzkie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Hungary"
+msgstr "Węgry"
+
+#: bloomerp_modules.bankaccount.iban
+#, fuzzy
+msgid "IBAN"
+msgstr "IBAN"
+
+#: bloomerp_modules.account.id bloomerp_modules.accountbalance.id bloomerp_modules.activity.id
+#: bloomerp_modules.application.id bloomerp_modules.attendancerecord.id bloomerp_modules.bankaccount.id
+#: bloomerp_modules.billofmaterial.id bloomerp_modules.billofmaterialline.id bloomerp_modules.budget.id
+#: bloomerp_modules.candidate.id bloomerp_modules.contact.id bloomerp_modules.costcenter.id
+#: bloomerp_modules.costrate.id bloomerp_modules.crmaccount.id bloomerp_modules.customer.id
+#: bloomerp_modules.customerinvoice.id bloomerp_modules.customerinvoiceline.id
+#: bloomerp_modules.customerreceipt.id bloomerp_modules.department.id bloomerp_modules.employee.id
+#: bloomerp_modules.employeecontract.id bloomerp_modules.equipment.id bloomerp_modules.exitinterview.id
+#: bloomerp_modules.exitreason.id bloomerp_modules.fiscalperiod.id bloomerp_modules.gltransaction.id
+#: bloomerp_modules.goal.id bloomerp_modules.goalprogress.id bloomerp_modules.hiringdecision.id
+#: bloomerp_modules.hrcostcenter.id bloomerp_modules.interview.id bloomerp_modules.interviewfeedback.id
+#: bloomerp_modules.jobopening.id bloomerp_modules.jobtitle.id bloomerp_modules.journal.id
+#: bloomerp_modules.journalentry.id bloomerp_modules.journalentryline.id bloomerp_modules.lead.id
+#: bloomerp_modules.leavebalance.id bloomerp_modules.leavepolicy.id bloomerp_modules.leaverequest.id
+#: bloomerp_modules.leavetype.id bloomerp_modules.location.id bloomerp_modules.maintenanceplan.id
+#: bloomerp_modules.maintenancerequest.id bloomerp_modules.maintenanceworkorder.id
+#: bloomerp_modules.manufacturingorder.id bloomerp_modules.manufacturingordercomponent.id
+#: bloomerp_modules.manufacturingorderoperation.id bloomerp_modules.masterproductionschedule.id
+#: bloomerp_modules.mrprun.id bloomerp_modules.nonconformancereport.id
+#: bloomerp_modules.offboardingprocess.id bloomerp_modules.offer.id bloomerp_modules.offerapproval.id
+#: bloomerp_modules.officelocation.id bloomerp_modules.onboardingprocess.id
+#: bloomerp_modules.onboardingtask.id bloomerp_modules.onboardingtaskassignment.id
+#: bloomerp_modules.operation.id bloomerp_modules.opportunity.id bloomerp_modules.opportunitystage.id
+#: bloomerp_modules.overtimerule.id bloomerp_modules.peerfeedback.id
+#: bloomerp_modules.performancecycle.id bloomerp_modules.performancereview.id
+#: bloomerp_modules.person.id bloomerp_modules.plannedorder.id bloomerp_modules.product.id
+#: bloomerp_modules.productioncost.id bloomerp_modules.productionmove.id
+#: bloomerp_modules.productiontimeentry.id bloomerp_modules.publicholiday.id
+#: bloomerp_modules.qualitycontrolplan.id bloomerp_modules.qualitycontrolplanline.id
+#: bloomerp_modules.qualityinspection.id bloomerp_modules.qualityinspectionresult.id
+#: bloomerp_modules.reviewquestion.id bloomerp_modules.reviewresponse.id bloomerp_modules.routing.id
+#: bloomerp_modules.routingoperation.id bloomerp_modules.salesforecast.id bloomerp_modules.team.id
+#: bloomerp_modules.timeentry.id bloomerp_modules.unitofmeasure.id bloomerp_modules.vendor.id
+#: bloomerp_modules.vendorinvoice.id bloomerp_modules.vendorinvoiceline.id
+#: bloomerp_modules.vendorpayment.id bloomerp_modules.warehouse.id bloomerp_modules.workcenter.id
+#: bloomerp_modules.workcentercalendar.id bloomerp_modules.workschedule.id
+#, fuzzy
+msgid "ID"
+msgstr "ID"
+
+#: bloomerp_modules.journalentry.source_document_id
+#, fuzzy
+msgid "ID of the source document"
+msgstr "ID dokumentu źródłowego"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Iceland"
+msgstr "Islandia"
+
+#: bloomerp_modules.nonconformancereport.status
+#, fuzzy
+msgid "In Analysis"
+msgstr "W analizie"
+
+#: bloomerp_modules.goal.status bloomerp_modules.maintenancerequest.status
+#: bloomerp_modules.maintenanceworkorder.status bloomerp_modules.manufacturingorder.status
+#: bloomerp_modules.manufacturingorderoperation.status bloomerp_modules.offboardingprocess.status
+#: bloomerp_modules.onboardingprocess.status bloomerp_modules.onboardingtaskassignment.status
+#: bloomerp_modules.qualityinspection.status
+#, fuzzy
+msgid "In Progress"
+msgstr "W toku"
+
+#: bloomerp_modules.performancereview.status
+#, fuzzy
+msgid "In Review"
+msgstr "W trakcie przeglądu"
+
+#: bloomerp_modules.customer.status bloomerp_modules.equipment.status bloomerp_modules.person.status
+#: bloomerp_modules.vendor.status
+#, fuzzy
+msgid "Inactive"
+msgstr "Nieaktywny"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "India"
+msgstr "Indie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Indonesia"
+msgstr "Indonezja"
+
+#: bloomerp_modules.crmaccount.industry
+#, fuzzy
+msgid "Industry"
+msgstr "Branża"
+
+#: bloomerp_modules.location.location_type
+#, fuzzy
+msgid "Input"
+msgstr "Wejście"
+
+#: bloomerp_modules.qualityinspectionresult.inspection
+#, fuzzy
+msgid "Inspection"
+msgstr "Inspekcja"
+
+#: bloomerp_modules.qualityinspection.inspection_date
+#, fuzzy
+msgid "Inspection Date"
+msgstr "Data inspekcji"
+
+#: bloomerp_modules.qualityinspection.inspector
+#, fuzzy
+msgid "Inspector"
+msgstr "Inspektor"
+
+#: bloomerp_modules.employee.employment_type bloomerp_modules.employeecontract.contract_type
+#, fuzzy
+msgid "Intern"
+msgstr "Stażysta"
+
+#: bloomerp_modules.application.status bloomerp_modules.interview
+#: bloomerp_modules.interviewfeedback.interview
+#, fuzzy
+msgid "Interview"
+msgstr "Rozmowa kwalifikacyjna"
+
+#: bloomerp_modules.interviewfeedback
+#, fuzzy
+msgid "Interview Feedback"
+msgstr "Informacja zwrotna z rozmowy kwalifikacyjnej"
+
+#: bloomerp_modules.interview.interview_type
+#, fuzzy
+msgid "Interview Type"
+msgstr "Rodzaj rozmowy kwalifikacyjnej"
+
+#: bloomerp_modules.exitinterview.interviewer bloomerp_modules.interview.interviewer
+#, fuzzy
+msgid "Interviewer"
+msgstr "Osoba przeprowadzająca rozmowę"
+
+#: bloomerp_modules.candidate.status
+#, fuzzy
+msgid "Interviewing"
+msgstr "W trakcie rozmowy kwalifikacyjnej"
+
+#: bloomerp_modules.interview
+#, fuzzy
+msgid "Interviews"
+msgstr "Rozmowy kwalifikacyjne"
+
+#: bloomerp_modules.customerinvoiceline.invoice bloomerp_modules.journalentry.source_document_type
+#: bloomerp_modules.vendorinvoiceline.invoice
+#, fuzzy
+msgid "Invoice"
+msgstr "Faktura"
+
+#: bloomerp_modules.customerinvoice.invoice_date bloomerp_modules.vendorinvoice.invoice_date
+#, fuzzy
+msgid "Invoice Date"
+msgstr "Data faktury"
+
+#: bloomerp_modules.customerinvoice.invoice_number bloomerp_modules.vendorinvoice.invoice_number
+#, fuzzy
+msgid "Invoice Number"
+msgstr "Numer faktury"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Iran"
+msgstr "Iran"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Iraq"
+msgstr "Irak"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Ireland"
+msgstr "Irlandia"
+
+#: bloomerp_modules.account.is_active bloomerp_modules.bankaccount.is_active
+#: bloomerp_modules.billofmaterial.is_active bloomerp_modules.costcenter.is_active
+#: bloomerp_modules.crmaccount.is_active bloomerp_modules.customer.is_active
+#: bloomerp_modules.department.is_active bloomerp_modules.exitreason.is_active
+#: bloomerp_modules.hrcostcenter.is_active bloomerp_modules.jobtitle.is_active
+#: bloomerp_modules.journal.is_active bloomerp_modules.leavetype.is_active
+#: bloomerp_modules.location.is_active bloomerp_modules.maintenanceplan.is_active
+#: bloomerp_modules.officelocation.is_active bloomerp_modules.onboardingtask.is_active
+#: bloomerp_modules.overtimerule.is_active bloomerp_modules.product.is_active
+#: bloomerp_modules.publicholiday.is_active bloomerp_modules.qualitycontrolplan.is_active
+#: bloomerp_modules.reviewquestion.is_active bloomerp_modules.routing.is_active
+#: bloomerp_modules.team.is_active bloomerp_modules.vendor.is_active
+#: bloomerp_modules.workcenter.is_active bloomerp_modules.workschedule.is_active
+#, fuzzy
+msgid "Is Active"
+msgstr "Aktywny"
+
+#: bloomerp_modules.fiscalperiod.is_adjusting_period
+#, fuzzy
+msgid "Is Adjusting Period"
+msgstr "Czy okres korygujący"
+
+#: bloomerp_modules.warehouse.is_default
+#, fuzzy
+msgid "Is Default"
+msgstr "Domyślny"
+
+#: bloomerp_modules.masterproductionschedule.is_firm
+#, fuzzy
+msgid "Is Firm"
+msgstr "Czy wiążący"
+
+#: bloomerp_modules.opportunitystage.is_lost
+#, fuzzy
+msgid "Is Lost Stage"
+msgstr "Czy etap przegrany"
+
+#: bloomerp_modules.billofmaterialline.is_phantom
+#, fuzzy
+msgid "Is Phantom"
+msgstr "Czy pozycja fantomowa"
+
+#: bloomerp_modules.account.is_system_account
+#, fuzzy
+msgid "Is System Account"
+msgstr "Konto systemowe"
+
+#: bloomerp_modules.opportunitystage.is_won
+#, fuzzy
+msgid "Is Won Stage"
+msgstr "Czy etap wygrany"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Isle of Man"
+msgstr "Wyspa Man"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Israel"
+msgstr "Izrael"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Italy"
+msgstr "Włochy"
+
+#: bloomerp_modules.vendorinvoiceline.item_code
+#, fuzzy
+msgid "Item Code"
+msgstr "Kod pozycji"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Jamaica"
+msgstr "Jamajka"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Japan"
+msgstr "Japonia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Jersey"
+msgstr "Jersey"
+
+#: bloomerp_modules.candidate.source
+#, fuzzy
+msgid "Job Board"
+msgstr "Tablica ogłoszeń o pracę"
+
+#: bloomerp_modules.application.job_opening bloomerp_modules.jobopening
+#, fuzzy
+msgid "Job Opening"
+msgstr "Oferta pracy"
+
+#: bloomerp_modules.jobopening
+#, fuzzy
+msgid "Job Openings"
+msgstr "Oferty pracy"
+
+#: bloomerp_modules.contact.title bloomerp_modules.employee.job_title
+#: bloomerp_modules.jobopening.job_title bloomerp_modules.jobtitle
+#, fuzzy
+msgid "Job Title"
+msgstr "Stanowisko"
+
+#: bloomerp_modules.jobtitle
+#, fuzzy
+msgid "Job Titles"
+msgstr "Stanowiska"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Jordan"
+msgstr "Jordania"
+
+#: bloomerp_modules.journal bloomerp_modules.journalentry.journal
+#, fuzzy
+msgid "Journal"
+msgstr "Dziennik"
+
+#: bloomerp_modules.journal.journal_code
+#, fuzzy
+msgid "Journal Code"
+msgstr "Kod dziennika"
+
+#: bloomerp_modules.journalentry
+#, fuzzy
+msgid "Journal Entries"
+msgstr "Zapisy księgowe"
+
+#: bloomerp_modules.customerinvoice.journal_entry bloomerp_modules.customerreceipt.journal_entry
+#: bloomerp_modules.journalentry bloomerp_modules.journalentryline.journal_entry
+#: bloomerp_modules.vendorinvoice.journal_entry bloomerp_modules.vendorpayment.journal_entry
+#, fuzzy
+msgid "Journal Entry"
+msgstr "Zapis księgowy"
+
+#: bloomerp_modules.gltransaction.journal_entry_line bloomerp_modules.journalentryline
+#, fuzzy
+msgid "Journal Entry Line"
+msgstr "Pozycja zapisu księgowego"
+
+#: bloomerp_modules.journalentryline
+#, fuzzy
+msgid "Journal Entry Lines"
+msgstr "Pozycje zapisów księgowych"
+
+#: bloomerp_modules.journal.journal_name
+#, fuzzy
+msgid "Journal Name"
+msgstr "Nazwa dziennika"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Journal Type"
+msgstr "Typ dziennika"
+
+#: bloomerp_modules.journal
+#, fuzzy
+msgid "Journals"
+msgstr "Dzienniki"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Kazakhstan"
+msgstr "Kazachstan"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Kenya"
+msgstr "Kenia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Kiribati"
+msgstr "Kiribati"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Kuwait"
+msgstr "Kuwejt"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Kyrgyzstan"
+msgstr "Kirgistan"
+
+#: bloomerp_modules.costrate.rate_type bloomerp_modules.workcenter.work_center_type
+#, fuzzy
+msgid "Labor"
+msgstr "Robocizna"
+
+#: bloomerp_modules.productioncost.labor_cost
+#, fuzzy
+msgid "Labor Cost"
+msgstr "Koszt robocizny"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Laos"
+msgstr "Laos"
+
+#: bloomerp_modules.maintenanceplan.last_maintenance_date
+#, fuzzy
+msgid "Last Maintenance Date"
+msgstr "Data ostatniej konserwacji"
+
+#: bloomerp_modules.candidate.last_name bloomerp_modules.contact.last_name
+#: bloomerp_modules.employee.last_name bloomerp_modules.person.last_name
+#, fuzzy
+msgid "Last Name"
+msgstr "Nazwisko"
+
+#: bloomerp_modules.bankaccount.last_reconciled_balance
+#, fuzzy
+msgid "Last Reconciled Balance"
+msgstr "Saldo ostatniego uzgodnienia"
+
+#: bloomerp_modules.bankaccount.last_reconciled_date
+#, fuzzy
+msgid "Last Reconciled Date"
+msgstr "Data ostatniego uzgodnienia"
+
+#: bloomerp_modules.employee.last_name
+#, fuzzy
+msgid "Last name of the employee"
+msgstr "Nazwisko pracownika"
+
+#: bloomerp_modules.attendancerecord.status
+#, fuzzy
+msgid "Late"
+msgstr "Spóźnienie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Latvia"
+msgstr "Łotwa"
+
+#: bloomerp_modules.lead bloomerp_modules.opportunity.lead bloomerp_modules.opportunity.source
+#, fuzzy
+msgid "Lead"
+msgstr "Potencjalny klient"
+
+#: bloomerp_modules.lead.lead_name
+#, fuzzy
+msgid "Lead Name"
+msgstr "Nazwa potencjalnego klienta"
+
+#: bloomerp_modules.lead.lead_source
+#, fuzzy
+msgid "Lead Source"
+msgstr "Źródło potencjalnego klienta"
+
+#: bloomerp_modules.product.lead_time_days
+#, fuzzy
+msgid "Lead Time (Days)"
+msgstr "Czas realizacji (dni)"
+
+#: bloomerp_modules.lead
+#, fuzzy
+msgid "Leads"
+msgstr "Potencjalni klienci"
+
+#: bloomerp_modules.attendancerecord.status
+#, fuzzy
+msgid "Leave"
+msgstr "Urlop"
+
+#: bloomerp_modules.leavebalance
+#, fuzzy
+msgid "Leave Balance"
+msgstr "Saldo urlopowe"
+
+#: bloomerp_modules.leavebalance
+#, fuzzy
+msgid "Leave Balances"
+msgstr "Salda urlopowe"
+
+#: bloomerp_modules.leavepolicy
+#, fuzzy
+msgid "Leave Policies"
+msgstr "Zasady urlopowe"
+
+#: bloomerp_modules.leavepolicy
+#, fuzzy
+msgid "Leave Policy"
+msgstr "Zasada urlopowa"
+
+#: bloomerp_modules.leaverequest
+#, fuzzy
+msgid "Leave Request"
+msgstr "Wniosek urlopowy"
+
+#: bloomerp_modules.leaverequest
+#, fuzzy
+msgid "Leave Requests"
+msgstr "Wnioski urlopowe"
+
+#: bloomerp_modules.leavebalance.leave_type bloomerp_modules.leavepolicy.leave_type
+#: bloomerp_modules.leaverequest.leave_type bloomerp_modules.leavetype
+#, fuzzy
+msgid "Leave Type"
+msgstr "Rodzaj urlopu"
+
+#: bloomerp_modules.leavetype
+#, fuzzy
+msgid "Leave Types"
+msgstr "Rodzaje urlopu"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Lebanon"
+msgstr "Liban"
+
+#: bloomerp_modules.crmaccount.account_name
+#, fuzzy
+msgid "Legal or trading name of the account"
+msgstr "Prawna lub handlowa nazwa konta"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Lesotho"
+msgstr "Lesotho"
+
+#: bloomerp_modules.jobtitle.level
+#, fuzzy
+msgid "Level"
+msgstr "Poziom"
+
+#: bloomerp_modules.account.account_type
+#, fuzzy
+msgid "Liability"
+msgstr "Zobowiązanie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Liberia"
+msgstr "Liberia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Libya"
+msgstr "Libia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Liechtenstein"
+msgstr "Liechtenstein"
+
+#: bloomerp_modules.customerinvoiceline.line_number bloomerp_modules.gltransaction.line_number
+#: bloomerp_modules.journalentryline.line_number bloomerp_modules.vendorinvoiceline.line_number
+#, fuzzy
+msgid "Line Number"
+msgstr "Numer wiersza"
+
+#: bloomerp_modules.customerinvoiceline.line_total bloomerp_modules.vendorinvoiceline.line_total
+#, fuzzy
+msgid "Line Total"
+msgstr "Suma wiersza"
+
+#: bloomerp_modules.journalentryline.reference_number
+#, fuzzy
+msgid "Line-specific reference number"
+msgstr "Numer referencyjny wiersza"
+
+#: bloomerp_modules.employeecontract.employee
+#, fuzzy
+msgid "Link to employee"
+msgstr "Powiąż z pracownikiem"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Lithuania"
+msgstr "Litwa"
+
+#: bloomerp_modules.interview.location bloomerp_modules.location
+#, fuzzy
+msgid "Location"
+msgstr "Lokalizacja"
+
+#: bloomerp_modules.location.location_type
+#, fuzzy
+msgid "Location Type"
+msgstr "Typ lokalizacji"
+
+#: bloomerp_modules.location
+#, fuzzy
+msgid "Locations"
+msgstr "Lokalizacje"
+
+#: bloomerp_modules.accountbalance.is_locked bloomerp_modules.fiscalperiod.status
+#, fuzzy
+msgid "Locked"
+msgstr "Zablokowane"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Long Term Liability"
+msgstr "Zobowiązanie długoterminowe"
+
+#: bloomerp_modules.opportunity.status
+#, fuzzy
+msgid "Lost"
+msgstr "Przegrana"
+
+#: bloomerp_modules.product.tracking_method
+#, fuzzy
+msgid "Lot"
+msgstr "Partia"
+
+#: bloomerp_modules.manufacturingordercomponent.lot_number
+#: bloomerp_modules.nonconformancereport.lot_number bloomerp_modules.productionmove.lot_number
+#: bloomerp_modules.qualityinspection.lot_number
+#, fuzzy
+msgid "Lot Number"
+msgstr "Numer partii"
+
+#: bloomerp_modules.lead.priority bloomerp_modules.maintenancerequest.priority
+#: bloomerp_modules.manufacturingorder.priority
+#, fuzzy
+msgid "Low"
+msgstr "Niski"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Luxembourg"
+msgstr "Luksemburg"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "MPS and MRP"
+msgstr "MPS i MRP"
+
+#: bloomerp_modules.mrprun bloomerp_modules.plannedorder.mrp_run
+#, fuzzy
+msgid "MRP Run"
+msgstr "Uruchomienie MRP"
+
+#: bloomerp_modules.mrprun
+#, fuzzy
+msgid "MRP Runs"
+msgstr "Uruchomienia MRP"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Macao"
+msgstr "Makau"
+
+#: bloomerp_modules.costrate.rate_type bloomerp_modules.workcenter.work_center_type
+#, fuzzy
+msgid "Machine"
+msgstr "Maszyna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Madagascar"
+msgstr "Madagaskar"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Maintenance"
+msgstr "Utrzymanie ruchu"
+
+#: bloomerp_modules.maintenanceplan bloomerp_modules.maintenanceworkorder.maintenance_plan
+#, fuzzy
+msgid "Maintenance Plan"
+msgstr "Plan utrzymania ruchu"
+
+#: bloomerp_modules.maintenanceplan
+#, fuzzy
+msgid "Maintenance Plans"
+msgstr "Plany utrzymania ruchu"
+
+#: bloomerp_modules.maintenancerequest bloomerp_modules.maintenanceworkorder.maintenance_request
+#, fuzzy
+msgid "Maintenance Request"
+msgstr "Zgłoszenie konserwacji"
+
+#: bloomerp_modules.maintenancerequest
+#, fuzzy
+msgid "Maintenance Requests"
+msgstr "Zgłoszenia konserwacji"
+
+#: bloomerp_modules.maintenanceworkorder
+#, fuzzy
+msgid "Maintenance Work Order"
+msgstr "Zlecenie prac konserwacyjnych"
+
+#: bloomerp_modules.maintenanceworkorder
+#, fuzzy
+msgid "Maintenance Work Orders"
+msgstr "Zlecenia prac konserwacyjnych"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Malawi"
+msgstr "Malawi"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Malaysia"
+msgstr "Malezja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Maldives"
+msgstr "Malediwy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Mali"
+msgstr "Mali"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Malta"
+msgstr "Malta"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Manage employee data"
+msgstr "Zarządzaj danymi pracowników"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Manage your customer relationships effectively."
+msgstr "Skutecznie zarządzaj relacjami z klientami."
+
+#: bloomerp_modules.department.manager
+#, fuzzy
+msgid "Manager"
+msgstr "Kierownik"
+
+#: bloomerp_modules.masterproductionschedule.source bloomerp_modules.salesforecast.source
+#, fuzzy
+msgid "Manual"
+msgstr "Ręczny"
+
+#: bloomerp_modules.product.type
+#, fuzzy
+msgid "Manufactured"
+msgstr "Wytwarzany"
+
+#: bloomerp_modules.equipment.manufacturer
+#, fuzzy
+msgid "Manufacturer"
+msgstr "Producent"
+
+#: bloomerp_modules.plannedorder.order_type
+#, fuzzy
+msgid "Manufacturing"
+msgstr "Produkcja"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Manufacturing"
+msgstr "Produkcja"
+
+#: bloomerp_modules.manufacturingorder bloomerp_modules.manufacturingordercomponent.manufacturing_order
+#: bloomerp_modules.manufacturingorderoperation.manufacturing_order
+#: bloomerp_modules.productioncost.manufacturing_order
+#: bloomerp_modules.productionmove.manufacturing_order
+#: bloomerp_modules.qualityinspection.reference_type
+#, fuzzy
+msgid "Manufacturing Order"
+msgstr "Zlecenie produkcyjne"
+
+#: bloomerp_modules.manufacturingordercomponent
+#, fuzzy
+msgid "Manufacturing Order Component"
+msgstr "Składnik zlecenia produkcyjnego"
+
+#: bloomerp_modules.manufacturingordercomponent
+#, fuzzy
+msgid "Manufacturing Order Components"
+msgstr "Składniki zlecenia produkcyjnego"
+
+#: bloomerp_modules.manufacturingorderoperation
+#: bloomerp_modules.productiontimeentry.manufacturing_order_operation
+#, fuzzy
+msgid "Manufacturing Order Operation"
+msgstr "Operacja zlecenia produkcyjnego"
+
+#: bloomerp_modules.manufacturingorderoperation
+#, fuzzy
+msgid "Manufacturing Order Operations"
+msgstr "Operacje zlecenia produkcyjnego"
+
+#: bloomerp_modules.manufacturingorder
+#, fuzzy
+msgid "Manufacturing Orders"
+msgstr "Zlecenia produkcyjne"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Manufacturing Orders and Execution"
+msgstr "Zlecenia produkcyjne i realizacja"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Manufacturing module for Bloomerp"
+msgstr "Moduł produkcyjny dla Bloomerp"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Marshall Islands"
+msgstr "Wyspy Marshalla"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Martinique"
+msgstr "Martynika"
+
+#: bloomerp_modules.budget.budget_type
+#, fuzzy
+msgid "Master Budget"
+msgstr "Budżet główny"
+
+#: bloomerp_modules.masterproductionschedule
+#, fuzzy
+msgid "Master Production Schedule"
+msgstr "Główny plan produkcji"
+
+#: bloomerp_modules.masterproductionschedule
+#, fuzzy
+msgid "Master Production Schedules"
+msgstr "Główne plany produkcji"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Master data"
+msgstr "Dane podstawowe"
+
+#: bloomerp_modules.productioncost.material_cost
+#, fuzzy
+msgid "Material Cost"
+msgstr "Koszt materiałów"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Mauritania"
+msgstr "Mauretania"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Mauritius"
+msgstr "Mauritius"
+
+#: bloomerp_modules.leavepolicy.max_balance
+#, fuzzy
+msgid "Max Balance"
+msgstr "Maksymalne saldo"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Mayotte"
+msgstr "Majotta"
+
+#: bloomerp_modules.qualitycontrolplanline.test_type bloomerp_modules.qualityinspectionresult.test_type
+#, fuzzy
+msgid "Measurement"
+msgstr "Pomiar"
+
+#: bloomerp_modules.lead.priority
+#, fuzzy
+msgid "Medium"
+msgstr "Średni"
+
+#: bloomerp_modules.activity.activity_type
+#, fuzzy
+msgid "Meeting"
+msgstr "Spotkanie"
+
+#: bloomerp_modules.maintenanceplan.frequency_type
+#, fuzzy
+msgid "Meter Based"
+msgstr "Na podstawie wskazań licznika"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Mexico"
+msgstr "Meksyk"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Micronesia"
+msgstr "Mikronezja"
+
+#: bloomerp_modules.employee.middle_name bloomerp_modules.person.middle_name
+#, fuzzy
+msgid "Middle Name"
+msgstr "Drugie imię"
+
+#: bloomerp_modules.employee.middle_name
+#, fuzzy
+msgid "Middle name of the employee"
+msgstr "Drugie imię pracownika"
+
+#: bloomerp_modules.overtimerule.minimum_hours
+#, fuzzy
+msgid "Minimum Hours"
+msgstr "Minimalna liczba godzin"
+
+#: bloomerp_modules.contact.mobile_phone
+#, fuzzy
+msgid "Mobile Phone"
+msgstr "Telefon komórkowy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Moldova"
+msgstr "Mołdawia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Monaco"
+msgstr "Monako"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Mongolia"
+msgstr "Mongolia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Montenegro"
+msgstr "Czarnogóra"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Montserrat"
+msgstr "Montserrat"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Morocco"
+msgstr "Maroko"
+
+#: bloomerp_modules.productionmove.move_date
+#, fuzzy
+msgid "Move Date"
+msgstr "Data przeniesienia"
+
+#: bloomerp_modules.routingoperation.move_time_minutes
+#, fuzzy
+msgid "Move Time (Minutes)"
+msgstr "Czas przemieszczenia (minuty)"
+
+#: bloomerp_modules.productionmove.move_type
+#, fuzzy
+msgid "Move Type"
+msgstr "Typ przeniesienia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Mozambique"
+msgstr "Mozambik"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Myanmar"
+msgstr "Mjanma"
+
+#: bloomerp_modules.costcenter.name bloomerp_modules.department.name bloomerp_modules.equipment.name
+#: bloomerp_modules.exitreason.name bloomerp_modules.hrcostcenter.name
+#: bloomerp_modules.leavepolicy.name bloomerp_modules.leavetype.name bloomerp_modules.location.name
+#: bloomerp_modules.maintenanceplan.name bloomerp_modules.officelocation.name
+#: bloomerp_modules.onboardingtask.name bloomerp_modules.operation.name
+#: bloomerp_modules.overtimerule.name bloomerp_modules.performancecycle.name
+#: bloomerp_modules.product.name bloomerp_modules.publicholiday.name
+#: bloomerp_modules.qualitycontrolplan.name bloomerp_modules.routing.name bloomerp_modules.team.name
+#: bloomerp_modules.unitofmeasure.name bloomerp_modules.warehouse.name bloomerp_modules.workcenter.name
+#: bloomerp_modules.workcentercalendar.name bloomerp_modules.workschedule.name
+#, fuzzy
+msgid "Name"
+msgstr "Nazwa"
+
+#: bloomerp_modules.account.account_name
+#, fuzzy
+msgid "Name of the account"
+msgstr "Nazwa konta"
+
+#: bloomerp_modules.budget.budget_name
+#, fuzzy
+msgid "Name of the budget"
+msgstr "Nazwa budżetu"
+
+#: bloomerp_modules.fiscalperiod.period_name
+#, fuzzy
+msgid "Name of the fiscal period"
+msgstr "Nazwa okresu obrachunkowego"
+
+#: bloomerp_modules.journal.journal_name
+#, fuzzy
+msgid "Name of the journal"
+msgstr "Nazwa dziennika"
+
+#: bloomerp_modules.product.name
+#, fuzzy
+msgid "Name of the product"
+msgstr "Nazwa produktu"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Namibia"
+msgstr "Namibia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Nauru"
+msgstr "Nauru"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Nepal"
+msgstr "Nepal"
+
+#: bloomerp_modules.accountbalance.net_change
+#, fuzzy
+msgid "Net Change"
+msgstr "Zmiana netto"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Netherlands"
+msgstr "Niderlandy"
+
+#: bloomerp_modules.candidate.status bloomerp_modules.lead.status
+#, fuzzy
+msgid "New"
+msgstr "Nowy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "New Caledonia"
+msgstr "Nowa Kaledonia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "New Zealand"
+msgstr "Nowa Zelandia"
+
+#: bloomerp_modules.maintenanceplan.next_due_date
+#, fuzzy
+msgid "Next Due Date"
+msgstr "Następny termin płatności"
+
+#: bloomerp_modules.journal.next_entry_number
+#, fuzzy
+msgid "Next Entry Number"
+msgstr "Następny numer wpisu"
+
+#: bloomerp_modules.opportunity.next_step
+#, fuzzy
+msgid "Next Step"
+msgstr "Następny krok"
+
+#: bloomerp_modules.journal.next_entry_number
+#, fuzzy
+msgid "Next available entry number for auto numbering"
+msgstr "Następny dostępny numer wpisu dla automatycznej numeracji"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Nicaragua"
+msgstr "Nikaragua"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Niger"
+msgstr "Niger"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Nigeria"
+msgstr "Nigeria"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Niue"
+msgstr "Niue"
+
+#: bloomerp_modules.interviewfeedback.recommendation
+#, fuzzy
+msgid "No Hire"
+msgstr "Nie zatrudniać"
+
+#: bloomerp_modules.nonconformancereport
+#, fuzzy
+msgid "Non Conformance Report"
+msgstr "Raport niezgodności"
+
+#: bloomerp_modules.nonconformancereport
+#, fuzzy
+msgid "Non Conformance Reports"
+msgstr "Raporty niezgodności"
+
+#: bloomerp_modules.product.tracking_method
+#, fuzzy
+msgid "None"
+msgstr "Brak"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Norfolk Island"
+msgstr "Wyspa Norfolk"
+
+#: bloomerp_modules.maintenancerequest.priority bloomerp_modules.manufacturingorder.priority
+#, fuzzy
+msgid "Normal"
+msgstr "Normalny"
+
+#: bloomerp_modules.account.normal_balance
+#, fuzzy
+msgid "Normal Balance"
+msgstr "Saldo normalne"
+
+#: bloomerp_modules.account.normal_balance
+#, fuzzy
+msgid "Normal balance side for this account type"
+msgstr "Strona normalnego salda dla tego typu konta"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "North Korea"
+msgstr "Korea Północna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "North Macedonia"
+msgstr "Macedonia Północna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Northern Mariana Islands"
+msgstr "Mariany Północne"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Norway"
+msgstr "Norwegia"
+
+#: bloomerp_modules.goal.status
+#, fuzzy
+msgid "Not Started"
+msgstr "Nie rozpoczęto"
+
+#: bloomerp_modules.activity.notes bloomerp_modules.application.notes
+#: bloomerp_modules.attendancerecord.notes bloomerp_modules.bankaccount.notes
+#: bloomerp_modules.billofmaterial.notes bloomerp_modules.budget.notes bloomerp_modules.candidate.notes
+#: bloomerp_modules.contact.notes bloomerp_modules.customer.notes
+#: bloomerp_modules.customerinvoice.notes bloomerp_modules.customerreceipt.notes
+#: bloomerp_modules.employeecontract.notes bloomerp_modules.equipment.notes
+#: bloomerp_modules.exitinterview.notes bloomerp_modules.fiscalperiod.notes
+#: bloomerp_modules.goalprogress.notes bloomerp_modules.hiringdecision.notes
+#: bloomerp_modules.interview.notes bloomerp_modules.journal.notes bloomerp_modules.journalentry.notes
+#: bloomerp_modules.lead.notes bloomerp_modules.leavepolicy.notes
+#: bloomerp_modules.maintenanceworkorder.notes bloomerp_modules.manufacturingorder.notes
+#: bloomerp_modules.manufacturingorderoperation.notes bloomerp_modules.masterproductionschedule.notes
+#: bloomerp_modules.offboardingprocess.notes bloomerp_modules.offer.notes
+#: bloomerp_modules.offerapproval.notes bloomerp_modules.onboardingprocess.notes
+#: bloomerp_modules.productiontimeentry.notes bloomerp_modules.qualityinspection.notes
+#: bloomerp_modules.qualityinspectionresult.notes bloomerp_modules.salesforecast.notes
+#: bloomerp_modules.timeentry.notes bloomerp_modules.vendor.notes bloomerp_modules.vendorinvoice.notes
+#: bloomerp_modules.vendorpayment.notes
+#, fuzzy
+msgid "Notes"
+msgstr "Notatki"
+
+#: bloomerp_modules.maintenancerequest.number bloomerp_modules.maintenanceworkorder.number
+#: bloomerp_modules.manufacturingorder.number bloomerp_modules.nonconformancereport.number
+#, fuzzy
+msgid "Number"
+msgstr "Numer"
+
+#: bloomerp_modules.workcenter.oee_target_percent
+#, fuzzy
+msgid "OEE Target Percent"
+msgstr "Docelowy procent OEE"
+
+#: bloomerp_modules.account.object_labels bloomerp_modules.accountbalance.object_labels
+#: bloomerp_modules.activity.object_labels bloomerp_modules.application.object_labels
+#: bloomerp_modules.attendancerecord.object_labels bloomerp_modules.bankaccount.object_labels
+#: bloomerp_modules.billofmaterial.object_labels bloomerp_modules.billofmaterialline.object_labels
+#: bloomerp_modules.budget.object_labels bloomerp_modules.candidate.object_labels
+#: bloomerp_modules.contact.object_labels bloomerp_modules.costcenter.object_labels
+#: bloomerp_modules.costrate.object_labels bloomerp_modules.crmaccount.object_labels
+#: bloomerp_modules.customer.object_labels bloomerp_modules.customerinvoice.object_labels
+#: bloomerp_modules.customerinvoiceline.object_labels bloomerp_modules.customerreceipt.object_labels
+#: bloomerp_modules.department.object_labels bloomerp_modules.employee.object_labels
+#: bloomerp_modules.employeecontract.object_labels bloomerp_modules.equipment.object_labels
+#: bloomerp_modules.exitinterview.object_labels bloomerp_modules.exitreason.object_labels
+#: bloomerp_modules.fiscalperiod.object_labels bloomerp_modules.gltransaction.object_labels
+#: bloomerp_modules.goal.object_labels bloomerp_modules.goalprogress.object_labels
+#: bloomerp_modules.hiringdecision.object_labels bloomerp_modules.hrcostcenter.object_labels
+#: bloomerp_modules.interview.object_labels bloomerp_modules.interviewfeedback.object_labels
+#: bloomerp_modules.jobopening.object_labels bloomerp_modules.jobtitle.object_labels
+#: bloomerp_modules.journal.object_labels bloomerp_modules.journalentry.object_labels
+#: bloomerp_modules.journalentryline.object_labels bloomerp_modules.lead.object_labels
+#: bloomerp_modules.leavebalance.object_labels bloomerp_modules.leavepolicy.object_labels
+#: bloomerp_modules.leaverequest.object_labels bloomerp_modules.leavetype.object_labels
+#: bloomerp_modules.location.object_labels bloomerp_modules.maintenanceplan.object_labels
+#: bloomerp_modules.maintenancerequest.object_labels
+#: bloomerp_modules.maintenanceworkorder.object_labels
+#: bloomerp_modules.manufacturingorder.object_labels
+#: bloomerp_modules.manufacturingordercomponent.object_labels
+#: bloomerp_modules.manufacturingorderoperation.object_labels
+#: bloomerp_modules.masterproductionschedule.object_labels bloomerp_modules.mrprun.object_labels
+#: bloomerp_modules.nonconformancereport.object_labels
+#: bloomerp_modules.offboardingprocess.object_labels bloomerp_modules.offer.object_labels
+#: bloomerp_modules.offerapproval.object_labels bloomerp_modules.officelocation.object_labels
+#: bloomerp_modules.onboardingprocess.object_labels bloomerp_modules.onboardingtask.object_labels
+#: bloomerp_modules.onboardingtaskassignment.object_labels bloomerp_modules.operation.object_labels
+#: bloomerp_modules.opportunity.object_labels bloomerp_modules.opportunitystage.object_labels
+#: bloomerp_modules.overtimerule.object_labels bloomerp_modules.peerfeedback.object_labels
+#: bloomerp_modules.performancecycle.object_labels bloomerp_modules.performancereview.object_labels
+#: bloomerp_modules.person.object_labels bloomerp_modules.plannedorder.object_labels
+#: bloomerp_modules.product.object_labels bloomerp_modules.productioncost.object_labels
+#: bloomerp_modules.productionmove.object_labels bloomerp_modules.productiontimeentry.object_labels
+#: bloomerp_modules.publicholiday.object_labels bloomerp_modules.qualitycontrolplan.object_labels
+#: bloomerp_modules.qualitycontrolplanline.object_labels
+#: bloomerp_modules.qualityinspection.object_labels
+#: bloomerp_modules.qualityinspectionresult.object_labels bloomerp_modules.reviewquestion.object_labels
+#: bloomerp_modules.reviewresponse.object_labels bloomerp_modules.routing.object_labels
+#: bloomerp_modules.routingoperation.object_labels bloomerp_modules.salesforecast.object_labels
+#: bloomerp_modules.team.object_labels bloomerp_modules.timeentry.object_labels
+#: bloomerp_modules.unitofmeasure.object_labels bloomerp_modules.vendor.object_labels
+#: bloomerp_modules.vendorinvoice.object_labels bloomerp_modules.vendorinvoiceline.object_labels
+#: bloomerp_modules.vendorpayment.object_labels bloomerp_modules.warehouse.object_labels
+#: bloomerp_modules.workcenter.object_labels bloomerp_modules.workcentercalendar.object_labels
+#: bloomerp_modules.workschedule.object_labels
+#, fuzzy
+msgid "Object labels"
+msgstr "Etykiety obiektów"
+
+#: bloomerp_modules.exitinterview.offboarding_process bloomerp_modules.offboardingprocess
+#, fuzzy
+msgid "Offboarding Process"
+msgstr "Proces offboardingu"
+
+#: bloomerp_modules.offboardingprocess
+#, fuzzy
+msgid "Offboarding Processes"
+msgstr "Procesy offboardingu"
+
+#: bloomerp_modules.application.status bloomerp_modules.offer bloomerp_modules.offerapproval.offer
+#, fuzzy
+msgid "Offer"
+msgstr "Oferta"
+
+#: bloomerp_modules.offerapproval
+#, fuzzy
+msgid "Offer Approval"
+msgstr "Zatwierdzenie oferty"
+
+#: bloomerp_modules.offerapproval
+#, fuzzy
+msgid "Offer Approvals"
+msgstr "Zatwierdzenia ofert"
+
+#: bloomerp_modules.offer.offer_date
+#, fuzzy
+msgid "Offer Date"
+msgstr "Data oferty"
+
+#: bloomerp_modules.candidate.status
+#, fuzzy
+msgid "Offered"
+msgstr "Złożono ofertę"
+
+#: bloomerp_modules.offer
+#, fuzzy
+msgid "Offers"
+msgstr "Oferty"
+
+#: bloomerp_modules.employee.office_location bloomerp_modules.jobopening.location
+#: bloomerp_modules.officelocation bloomerp_modules.publicholiday.location
+#, fuzzy
+msgid "Office Location"
+msgstr "Lokalizacja biura"
+
+#: bloomerp_modules.officelocation
+#, fuzzy
+msgid "Office Locations"
+msgstr "Lokalizacje biur"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Oman"
+msgstr "Oman"
+
+#: bloomerp_modules.customer.status bloomerp_modules.jobopening.status bloomerp_modules.vendor.status
+#, fuzzy
+msgid "On Hold"
+msgstr "Wstrzymane"
+
+#: bloomerp_modules.employee.status
+#, fuzzy
+msgid "On Leave"
+msgstr "Na urlopie"
+
+#: bloomerp_modules.interview.interview_type
+#, fuzzy
+msgid "On-site"
+msgstr "Na miejscu"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Onboarding & Offboarding"
+msgstr "Wdrażanie i offboarding"
+
+#: bloomerp_modules.onboardingprocess bloomerp_modules.onboardingtaskassignment.onboarding_process
+#, fuzzy
+msgid "Onboarding Process"
+msgstr "Proces wdrażania"
+
+#: bloomerp_modules.onboardingprocess
+#, fuzzy
+msgid "Onboarding Processes"
+msgstr "Procesy wdrażania"
+
+#: bloomerp_modules.onboardingtask bloomerp_modules.onboardingtaskassignment.onboarding_task
+#, fuzzy
+msgid "Onboarding Task"
+msgstr "Zadanie wdrożeniowe"
+
+#: bloomerp_modules.onboardingtaskassignment
+#, fuzzy
+msgid "Onboarding Task Assignment"
+msgstr "Przypisanie zadania wdrożeniowego"
+
+#: bloomerp_modules.onboardingtaskassignment
+#, fuzzy
+msgid "Onboarding Task Assignments"
+msgstr "Przypisania zadań wdrożeniowych"
+
+#: bloomerp_modules.onboardingtask
+#, fuzzy
+msgid "Onboarding Tasks"
+msgstr "Zadania wdrożeniowe"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Onboarding and offboarding workflows"
+msgstr "Przepływy pracy związane z wdrażaniem i offboardingiem"
+
+#: bloomerp_modules.fiscalperiod.status bloomerp_modules.jobopening.status
+#: bloomerp_modules.maintenancerequest.status bloomerp_modules.nonconformancereport.status
+#: bloomerp_modules.opportunity.status
+#, fuzzy
+msgid "Open"
+msgstr "Otwarte"
+
+#: bloomerp_modules.account.opening_balance bloomerp_modules.accountbalance.opening_balance
+#: bloomerp_modules.bankaccount.opening_balance
+#, fuzzy
+msgid "Opening Balance"
+msgstr "Saldo początkowe"
+
+#: bloomerp_modules.account.opening_balance
+#, fuzzy
+msgid "Opening balance for the current fiscal year"
+msgstr "Saldo początkowe na bieżący rok obrotowy"
+
+#: bloomerp_modules.jobopening.openings_count
+#, fuzzy
+msgid "Openings Count"
+msgstr "Liczba wakatów"
+
+#: bloomerp_modules.budget.budget_type
+#, fuzzy
+msgid "Operating Budget"
+msgstr "Budżet operacyjny"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Operating Expense"
+msgstr "Koszt operacyjny"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Operating Revenue"
+msgstr "Przychody operacyjne"
+
+#: bloomerp_modules.manufacturingorderoperation.operation bloomerp_modules.operation
+#: bloomerp_modules.qualitycontrolplan.operation bloomerp_modules.routingoperation.operation
+#, fuzzy
+msgid "Operation"
+msgstr "Operacja"
+
+#: bloomerp_modules.operation
+#, fuzzy
+msgid "Operations"
+msgstr "Operacje"
+
+#: bloomerp_modules.opportunity
+#, fuzzy
+msgid "Opportunities"
+msgstr "Szanse sprzedażowe"
+
+#: bloomerp_modules.activity.opportunity bloomerp_modules.opportunity
+#, fuzzy
+msgid "Opportunity"
+msgstr "Szansa sprzedażowa"
+
+#: bloomerp_modules.opportunity.opportunity_name
+#, fuzzy
+msgid "Opportunity Name"
+msgstr "Nazwa szansy sprzedażowej"
+
+#: bloomerp_modules.opportunitystage
+#, fuzzy
+msgid "Opportunity Stage"
+msgstr "Etap szansy sprzedażowej"
+
+#: bloomerp_modules.opportunitystage
+#, fuzzy
+msgid "Opportunity Stages"
+msgstr "Etapy szans sprzedażowych"
+
+#: bloomerp_modules.plannedorder.order_type
+#, fuzzy
+msgid "Order Type"
+msgstr "Typ zamówienia"
+
+#: bloomerp_modules.candidate.source bloomerp_modules.journalentry.source_document_type
+#: bloomerp_modules.leavetype.category
+#, fuzzy
+msgid "Other"
+msgstr "Inne"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Other Expense"
+msgstr "Pozostałe koszty"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Other Revenue"
+msgstr "Pozostałe przychody"
+
+#: bloomerp_modules.location.location_type
+#, fuzzy
+msgid "Output"
+msgstr "Wyjście"
+
+#: bloomerp_modules.customerinvoice.outstanding_amount
+#: bloomerp_modules.vendorinvoice.outstanding_amount
+#, fuzzy
+msgid "Outstanding Amount"
+msgstr "Kwota pozostała do zapłaty"
+
+#: bloomerp_modules.performancereview.overall_rating
+#, fuzzy
+msgid "Overall Rating"
+msgstr "Ocena ogólna"
+
+#: bloomerp_modules.customerinvoice.status bloomerp_modules.vendorinvoice.status
+#, fuzzy
+msgid "Overdue"
+msgstr "Zaległe"
+
+#: bloomerp_modules.costrate.rate_type
+#, fuzzy
+msgid "Overhead"
+msgstr "Koszty ogólne"
+
+#: bloomerp_modules.productioncost.overhead_cost
+#, fuzzy
+msgid "Overhead Cost"
+msgstr "Koszt ogólny"
+
+#: bloomerp_modules.overtimerule
+#, fuzzy
+msgid "Overtime Rule"
+msgstr "Zasada nadgodzin"
+
+#: bloomerp_modules.overtimerule
+#, fuzzy
+msgid "Overtime Rules"
+msgstr "Zasady nadgodzin"
+
+#: bloomerp_modules.onboardingprocess.owner bloomerp_modules.opportunity.assigned_to
+#, fuzzy
+msgid "Owner"
+msgstr "Właściciel"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Owner's Equity"
+msgstr "Kapitał własny właściciela"
+
+#: bloomerp_modules.customerinvoice.status bloomerp_modules.leavetype.category
+#: bloomerp_modules.vendorinvoice.status bloomerp_modules.vendorpayment.status
+#, fuzzy
+msgid "Paid"
+msgstr "Opłacone"
+
+#: bloomerp_modules.customerinvoice.paid_amount bloomerp_modules.vendorinvoice.paid_amount
+#, fuzzy
+msgid "Paid Amount"
+msgstr "Zapłacona kwota"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Pakistan"
+msgstr "Pakistan"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Palau"
+msgstr "Palau"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Palestine"
+msgstr "Palestyna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Panama"
+msgstr "Panama"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Papua New Guinea"
+msgstr "Papua-Nowa Gwinea"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Paraguay"
+msgstr "Paragwaj"
+
+#: bloomerp_modules.mrprun.parameters_json
+#, fuzzy
+msgid "Parameters"
+msgstr "Parametry"
+
+#: bloomerp_modules.account.parent_account
+#, fuzzy
+msgid "Parent Account"
+msgstr "Konto nadrzędne"
+
+#: bloomerp_modules.department.parent_department
+#, fuzzy
+msgid "Parent Department"
+msgstr "Dział nadrzędny"
+
+#: bloomerp_modules.account.parent_account
+#, fuzzy
+msgid "Parent account for hierarchical structure"
+msgstr "Konto nadrzędne dla struktury hierarchicznej"
+
+#: bloomerp_modules.employee.employment_type
+#, fuzzy
+msgid "Part Time"
+msgstr "Niepełny etat"
+
+#: bloomerp_modules.manufacturingordercomponent.status
+#, fuzzy
+msgid "Partially Issued"
+msgstr "Częściowo wydano"
+
+#: bloomerp_modules.customerinvoice.status bloomerp_modules.vendorinvoice.status
+#, fuzzy
+msgid "Partially Paid"
+msgstr "Częściowo opłacone"
+
+#: bloomerp_modules.crmaccount.account_type bloomerp_modules.lead.lead_source
+#, fuzzy
+msgid "Partner"
+msgstr "Partner"
+
+#: bloomerp_modules.qualityinspectionresult.result
+#, fuzzy
+msgid "Pass"
+msgstr "Zaliczone"
+
+#: bloomerp_modules.qualityinspection.status
+#, fuzzy
+msgid "Passed"
+msgstr "Zaliczono"
+
+#: bloomerp_modules.journalentry.source_document_type
+#, fuzzy
+msgid "Payment"
+msgstr "Płatność"
+
+#: bloomerp_modules.vendorpayment.payment_date
+#, fuzzy
+msgid "Payment Date"
+msgstr "Data płatności"
+
+#: bloomerp_modules.customerreceipt.payment_method bloomerp_modules.vendorpayment.payment_method
+#, fuzzy
+msgid "Payment Method"
+msgstr "Metoda płatności"
+
+#: bloomerp_modules.vendorpayment.payment_number
+#, fuzzy
+msgid "Payment Number"
+msgstr "Numer płatności"
+
+#: bloomerp_modules.customer.payment_terms_days bloomerp_modules.vendor.payment_terms_days
+#, fuzzy
+msgid "Payment Terms Days"
+msgstr "Termin płatności (dni)"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Payroll Journal"
+msgstr "Dziennik płac"
+
+#: bloomerp_modules.peerfeedback
+#, fuzzy
+msgid "Peer Feedback"
+msgstr "Informacje zwrotne od współpracowników"
+
+#: bloomerp_modules.manufacturingorderoperation.status bloomerp_modules.offerapproval.status
+#: bloomerp_modules.onboardingtaskassignment.status bloomerp_modules.qualityinspection.status
+#, fuzzy
+msgid "Pending"
+msgstr "Oczekujące"
+
+#: bloomerp_modules.journalentry.status
+#, fuzzy
+msgid "Pending Approval"
+msgstr "Oczekuje na zatwierdzenie"
+
+#: bloomerp_modules.person
+#, fuzzy
+msgid "People"
+msgstr "Osoby"
+
+#: bloomerp_modules.goal.performance_cycle bloomerp_modules.peerfeedback.performance_cycle
+#: bloomerp_modules.performancecycle bloomerp_modules.performancereview.performance_cycle
+#: bloomerp_modules.reviewquestion.performance_cycle
+#, fuzzy
+msgid "Performance Cycle"
+msgstr "Cykl oceny"
+
+#: bloomerp_modules.performancecycle
+#, fuzzy
+msgid "Performance Cycles"
+msgstr "Cykle oceny"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Performance Management"
+msgstr "Zarządzanie efektywnością"
+
+#: bloomerp_modules.performancereview bloomerp_modules.reviewresponse.performance_review
+#, fuzzy
+msgid "Performance Review"
+msgstr "Ocena okresowa"
+
+#: bloomerp_modules.performancereview
+#, fuzzy
+msgid "Performance Reviews"
+msgstr "Oceny okresowe"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Performance cycles, goals, and reviews"
+msgstr "Cykle oceny, cele i oceny okresowe"
+
+#: bloomerp_modules.fiscalperiod.period_code
+#, fuzzy
+msgid "Period Code"
+msgstr "Kod okresu"
+
+#: bloomerp_modules.fiscalperiod.period_name
+#, fuzzy
+msgid "Period Name"
+msgstr "Nazwa okresu"
+
+#: bloomerp_modules.fiscalperiod.period_number
+#, fuzzy
+msgid "Period Number"
+msgstr "Numer okresu"
+
+#: bloomerp_modules.fiscalperiod.period_number
+#, fuzzy
+msgid "Period number within the fiscal year"
+msgstr "Numer okresu w roku obrotowym"
+
+#: bloomerp_modules.employeecontract.contract_type
+#, fuzzy
+msgid "Permanent"
+msgstr "Na czas nieokreślony"
+
+#: bloomerp_modules.candidate.person bloomerp_modules.person
+#, fuzzy
+msgid "Person"
+msgstr "Osoba"
+
+#: bloomerp_modules.person.person_type
+#, fuzzy
+msgid "Person Type"
+msgstr "Typ osoby"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Peru"
+msgstr "Peru"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Philippines"
+msgstr "Filipiny"
+
+#: bloomerp_modules.candidate.phone bloomerp_modules.contact.phone
+#: bloomerp_modules.interview.interview_type bloomerp_modules.lead.lead_source
+#: bloomerp_modules.lead.phone bloomerp_modules.officelocation.phone bloomerp_modules.person.phone
+#, fuzzy
+msgid "Phone"
+msgstr "Telefon"
+
+#: bloomerp_modules.employee.phone
+#, fuzzy
+msgid "Phone Number"
+msgstr "Numer telefonu"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Pitcairn"
+msgstr "Pitcairn"
+
+#: bloomerp_modules.account.pk bloomerp_modules.accountbalance.pk bloomerp_modules.activity.pk
+#: bloomerp_modules.application.pk bloomerp_modules.attendancerecord.pk bloomerp_modules.bankaccount.pk
+#: bloomerp_modules.billofmaterial.pk bloomerp_modules.billofmaterialline.pk bloomerp_modules.budget.pk
+#: bloomerp_modules.candidate.pk bloomerp_modules.contact.pk bloomerp_modules.costcenter.pk
+#: bloomerp_modules.costrate.pk bloomerp_modules.crmaccount.pk bloomerp_modules.customer.pk
+#: bloomerp_modules.customerinvoice.pk bloomerp_modules.customerinvoiceline.pk
+#: bloomerp_modules.customerreceipt.pk bloomerp_modules.department.pk bloomerp_modules.employee.pk
+#: bloomerp_modules.employeecontract.pk bloomerp_modules.equipment.pk bloomerp_modules.exitinterview.pk
+#: bloomerp_modules.exitreason.pk bloomerp_modules.fiscalperiod.pk bloomerp_modules.gltransaction.pk
+#: bloomerp_modules.goal.pk bloomerp_modules.goalprogress.pk bloomerp_modules.hiringdecision.pk
+#: bloomerp_modules.hrcostcenter.pk bloomerp_modules.interview.pk bloomerp_modules.interviewfeedback.pk
+#: bloomerp_modules.jobopening.pk bloomerp_modules.jobtitle.pk bloomerp_modules.journal.pk
+#: bloomerp_modules.journalentry.pk bloomerp_modules.journalentryline.pk bloomerp_modules.lead.pk
+#: bloomerp_modules.leavebalance.pk bloomerp_modules.leavepolicy.pk bloomerp_modules.leaverequest.pk
+#: bloomerp_modules.leavetype.pk bloomerp_modules.location.pk bloomerp_modules.maintenanceplan.pk
+#: bloomerp_modules.maintenancerequest.pk bloomerp_modules.maintenanceworkorder.pk
+#: bloomerp_modules.manufacturingorder.pk bloomerp_modules.manufacturingordercomponent.pk
+#: bloomerp_modules.manufacturingorderoperation.pk bloomerp_modules.masterproductionschedule.pk
+#: bloomerp_modules.mrprun.pk bloomerp_modules.nonconformancereport.pk
+#: bloomerp_modules.offboardingprocess.pk bloomerp_modules.offer.pk bloomerp_modules.offerapproval.pk
+#: bloomerp_modules.officelocation.pk bloomerp_modules.onboardingprocess.pk
+#: bloomerp_modules.onboardingtask.pk bloomerp_modules.onboardingtaskassignment.pk
+#: bloomerp_modules.operation.pk bloomerp_modules.opportunity.pk bloomerp_modules.opportunitystage.pk
+#: bloomerp_modules.overtimerule.pk bloomerp_modules.peerfeedback.pk
+#: bloomerp_modules.performancecycle.pk bloomerp_modules.performancereview.pk
+#: bloomerp_modules.person.pk bloomerp_modules.plannedorder.pk bloomerp_modules.product.pk
+#: bloomerp_modules.productioncost.pk bloomerp_modules.productionmove.pk
+#: bloomerp_modules.productiontimeentry.pk bloomerp_modules.publicholiday.pk
+#: bloomerp_modules.qualitycontrolplan.pk bloomerp_modules.qualitycontrolplanline.pk
+#: bloomerp_modules.qualityinspection.pk bloomerp_modules.qualityinspectionresult.pk
+#: bloomerp_modules.reviewquestion.pk bloomerp_modules.reviewresponse.pk bloomerp_modules.routing.pk
+#: bloomerp_modules.routingoperation.pk bloomerp_modules.salesforecast.pk bloomerp_modules.team.pk
+#: bloomerp_modules.timeentry.pk bloomerp_modules.unitofmeasure.pk bloomerp_modules.vendor.pk
+#: bloomerp_modules.vendorinvoice.pk bloomerp_modules.vendorinvoiceline.pk
+#: bloomerp_modules.vendorpayment.pk bloomerp_modules.warehouse.pk bloomerp_modules.workcenter.pk
+#: bloomerp_modules.workcentercalendar.pk bloomerp_modules.workschedule.pk
+#, fuzzy
+msgid "Pk"
+msgstr "Klucz główny"
+
+#: bloomerp_modules.manufacturingordercomponent.status bloomerp_modules.offboardingprocess.status
+#: bloomerp_modules.onboardingprocess.status bloomerp_modules.performancecycle.status
+#: bloomerp_modules.plannedorder.status
+#, fuzzy
+msgid "Planned"
+msgstr "Zaplanowane"
+
+#: bloomerp_modules.maintenanceworkorder.planned_end_date
+#: bloomerp_modules.manufacturingorder.planned_end_date
+#, fuzzy
+msgid "Planned End Date"
+msgstr "Planowana data zakończenia"
+
+#: bloomerp_modules.manufacturingorderoperation.planned_end_time
+#, fuzzy
+msgid "Planned End Time"
+msgstr "Planowana godzina zakończenia"
+
+#: bloomerp_modules.plannedorder
+#, fuzzy
+msgid "Planned Order"
+msgstr "Zlecenie planowane"
+
+#: bloomerp_modules.plannedorder
+#, fuzzy
+msgid "Planned Orders"
+msgstr "Zlecenia planowane"
+
+#: bloomerp_modules.maintenanceworkorder.planned_start_date
+#: bloomerp_modules.manufacturingorder.planned_start_date
+#, fuzzy
+msgid "Planned Start Date"
+msgstr "Planowana data rozpoczęcia"
+
+#: bloomerp_modules.manufacturingorderoperation.planned_start_time
+#, fuzzy
+msgid "Planned Start Time"
+msgstr "Planowana godzina rozpoczęcia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Poland"
+msgstr "Polska"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Portugal"
+msgstr "Portugalia"
+
+#: bloomerp_modules.customerinvoice.status bloomerp_modules.customerreceipt.status
+#: bloomerp_modules.journalentry.status bloomerp_modules.vendorinvoice.status
+#, fuzzy
+msgid "Posted"
+msgstr "Zaksięgowano"
+
+#: bloomerp_modules.journalentry.posted_by
+#, fuzzy
+msgid "Posted By"
+msgstr "Zaksięgował(a)"
+
+#: bloomerp_modules.jobopening.posted_date bloomerp_modules.journalentry.posted_date
+#, fuzzy
+msgid "Posted Date"
+msgstr "Data zaksięgowania"
+
+#: bloomerp_modules.gltransaction.posting_date bloomerp_modules.journalentry.posting_date
+#, fuzzy
+msgid "Posting Date"
+msgstr "Data księgowania"
+
+#: bloomerp_modules.journal.sequence_prefix
+#, fuzzy
+msgid "Prefix used when numbering entries in this journal"
+msgstr "Prefiks używany do numerowania zapisów w tym dzienniku"
+
+#: bloomerp_modules.attendancerecord.status
+#, fuzzy
+msgid "Present"
+msgstr "Obecny"
+
+#: bloomerp_modules.bankaccount.is_primary
+#, fuzzy
+msgid "Primary Account"
+msgstr "Główne konto"
+
+#: bloomerp_modules.contact.is_primary bloomerp_modules.opportunity.contact
+#, fuzzy
+msgid "Primary Contact"
+msgstr "Główny kontakt"
+
+#: bloomerp_modules.crmaccount.primary_email
+#, fuzzy
+msgid "Primary Email"
+msgstr "Główny adres e-mail"
+
+#: bloomerp_modules.crmaccount.primary_phone
+#, fuzzy
+msgid "Primary Phone"
+msgstr "Główny numer telefonu"
+
+#: bloomerp_modules.employee.phone
+#, fuzzy
+msgid "Primary contact phone"
+msgstr "Główny numer telefonu kontaktowego"
+
+#: bloomerp_modules.crmaccount.industry
+#, fuzzy
+msgid "Primary industry sector"
+msgstr "Główny sektor branżowy"
+
+#: bloomerp_modules.employee.office_location
+#, fuzzy
+msgid "Primary office location"
+msgstr "Główna lokalizacja biura"
+
+#: bloomerp_modules.employee.email
+#, fuzzy
+msgid "Primary work email address"
+msgstr "Główny służbowy adres e-mail"
+
+#: bloomerp_modules.lead.priority bloomerp_modules.maintenancerequest.priority
+#: bloomerp_modules.manufacturingorder.priority
+#, fuzzy
+msgid "Priority"
+msgstr "Priorytet"
+
+#: bloomerp_modules.opportunity.probability bloomerp_modules.opportunitystage.probability
+#, fuzzy
+msgid "Probability (%)"
+msgstr "Prawdopodobieństwo (%)"
+
+#: bloomerp_modules.billofmaterial.product bloomerp_modules.customerinvoiceline.product
+#: bloomerp_modules.manufacturingorder.product bloomerp_modules.masterproductionschedule.product
+#: bloomerp_modules.nonconformancereport.product bloomerp_modules.plannedorder.product
+#: bloomerp_modules.product bloomerp_modules.productionmove.product
+#: bloomerp_modules.qualitycontrolplan.product bloomerp_modules.qualityinspection.product
+#: bloomerp_modules.salesforecast.product
+#, fuzzy
+msgid "Product"
+msgstr "Produkt"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Product & Master data for the manufacturing module"
+msgstr "Dane produktów i dane podstawowe dla modułu produkcyjnego"
+
+#: bloomerp_modules.location.location_type
+#, fuzzy
+msgid "Production"
+msgstr "Produkcja"
+
+#: bloomerp_modules.productioncost
+#, fuzzy
+msgid "Production Cost"
+msgstr "Koszt produkcji"
+
+#: bloomerp_modules.productioncost
+#, fuzzy
+msgid "Production Costs"
+msgstr "Koszty produkcji"
+
+#: bloomerp_modules.manufacturingorder.production_location
+#, fuzzy
+msgid "Production Location"
+msgstr "Miejsce produkcji"
+
+#: bloomerp_modules.productionmove
+#, fuzzy
+msgid "Production Move"
+msgstr "Ruch produkcyjny"
+
+#: bloomerp_modules.productionmove
+#, fuzzy
+msgid "Production Moves"
+msgstr "Ruchy produkcyjne"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Production Planning"
+msgstr "Planowanie produkcji"
+
+#: bloomerp_modules.productiontimeentry
+#, fuzzy
+msgid "Production Time Entries"
+msgstr "Ewidencje czasu produkcji"
+
+#: bloomerp_modules.productiontimeentry
+#, fuzzy
+msgid "Production Time Entry"
+msgstr "Ewidencja czasu produkcji"
+
+#: bloomerp_modules.product
+#, fuzzy
+msgid "Products"
+msgstr "Produkty"
+
+#: bloomerp_modules.goalprogress.progress_percent
+#, fuzzy
+msgid "Progress Percent"
+msgstr "Procent postępu"
+
+#: bloomerp_modules.gltransaction.project_code bloomerp_modules.journalentryline.project_code
+#, fuzzy
+msgid "Project Code"
+msgstr "Kod projektu"
+
+#: bloomerp_modules.gltransaction.project_code
+#, fuzzy
+msgid "Project code for tracking"
+msgstr "Kod projektu do śledzenia"
+
+#: bloomerp_modules.journalentryline.project_code
+#, fuzzy
+msgid "Project code for tracking purposes"
+msgstr "Kod projektu do celów śledzenia"
+
+#: bloomerp_modules.offer.proposed_start_date
+#, fuzzy
+msgid "Proposed Start Date"
+msgstr "Proponowana data rozpoczęcia"
+
+#: bloomerp_modules.crmaccount.account_type
+#, fuzzy
+msgid "Prospect"
+msgstr "Potencjalny klient"
+
+#: bloomerp_modules.publicholiday
+#, fuzzy
+msgid "Public Holiday"
+msgstr "Dzień ustawowo wolny od pracy"
+
+#: bloomerp_modules.publicholiday
+#, fuzzy
+msgid "Public Holidays"
+msgstr "Dni ustawowo wolne od pracy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Puerto Rico"
+msgstr "Portoryko"
+
+#: bloomerp_modules.plannedorder.order_type
+#, fuzzy
+msgid "Purchase"
+msgstr "Zakup"
+
+#: bloomerp_modules.equipment.purchase_date
+#, fuzzy
+msgid "Purchase Date"
+msgstr "Data zakupu"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Purchase Journal"
+msgstr "Dziennik zakupów"
+
+#: bloomerp_modules.vendorinvoice.purchase_order_number
+#, fuzzy
+msgid "Purchase Order Number"
+msgstr "Numer zamówienia zakupu"
+
+#: bloomerp_modules.product.type
+#, fuzzy
+msgid "Purchased"
+msgstr "Kupowany"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Qatar"
+msgstr "Katar"
+
+#: bloomerp_modules.lead.status
+#, fuzzy
+msgid "Qualified"
+msgstr "Zakwalifikowany"
+
+#: bloomerp_modules.qualitycontrolplan
+#, fuzzy
+msgid "Quality Control Plan"
+msgstr "Plan kontroli jakości"
+
+#: bloomerp_modules.qualitycontrolplanline
+#, fuzzy
+msgid "Quality Control Plan Line"
+msgstr "Pozycja planu kontroli jakości"
+
+#: bloomerp_modules.qualitycontrolplanline
+#, fuzzy
+msgid "Quality Control Plan Lines"
+msgstr "Pozycje planu kontroli jakości"
+
+#: bloomerp_modules.qualitycontrolplan
+#, fuzzy
+msgid "Quality Control Plans"
+msgstr "Plany kontroli jakości"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Quality Control Plans and Inspections"
+msgstr "Plany kontroli jakości i inspekcje"
+
+#: bloomerp_modules.qualityinspection
+#, fuzzy
+msgid "Quality Inspection"
+msgstr "Inspekcja jakości"
+
+#: bloomerp_modules.qualityinspectionresult
+#, fuzzy
+msgid "Quality Inspection Result"
+msgstr "Wynik kontroli jakości"
+
+#: bloomerp_modules.qualityinspectionresult
+#, fuzzy
+msgid "Quality Inspection Results"
+msgstr "Wyniki kontroli jakości"
+
+#: bloomerp_modules.qualityinspection
+#, fuzzy
+msgid "Quality Inspections"
+msgstr "Kontrole jakości"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Quality Management"
+msgstr "Zarządzanie jakością"
+
+#: bloomerp_modules.billofmaterial.quantity bloomerp_modules.billofmaterialline.quantity
+#: bloomerp_modules.customerinvoiceline.quantity bloomerp_modules.journalentryline.quantity
+#: bloomerp_modules.masterproductionschedule.quantity bloomerp_modules.plannedorder.quantity
+#: bloomerp_modules.productionmove.quantity bloomerp_modules.salesforecast.quantity
+#: bloomerp_modules.vendorinvoiceline.quantity
+#, fuzzy
+msgid "Quantity"
+msgstr "Ilość"
+
+#: bloomerp_modules.manufacturingordercomponent.quantity_issued
+#, fuzzy
+msgid "Quantity Issued"
+msgstr "Ilość wydana"
+
+#: bloomerp_modules.manufacturingorder.quantity_planned
+#, fuzzy
+msgid "Quantity Planned"
+msgstr "Ilość planowana"
+
+#: bloomerp_modules.manufacturingorder.quantity_produced
+#, fuzzy
+msgid "Quantity Produced"
+msgstr "Ilość wyprodukowana"
+
+#: bloomerp_modules.manufacturingordercomponent.quantity_required
+#, fuzzy
+msgid "Quantity Required"
+msgstr "Ilość wymagana"
+
+#: bloomerp_modules.fiscalperiod.quarter
+#, fuzzy
+msgid "Quarter"
+msgstr "Kwartał"
+
+#: bloomerp_modules.reviewquestion.question_text bloomerp_modules.reviewresponse.question
+#, fuzzy
+msgid "Question"
+msgstr "Pytanie"
+
+#: bloomerp_modules.routingoperation.queue_time_minutes
+#, fuzzy
+msgid "Queue Time (Minutes)"
+msgstr "Czas oczekiwania w kolejce (minuty)"
+
+#: bloomerp_modules.overtimerule.rate_multiplier
+#, fuzzy
+msgid "Rate Multiplier"
+msgstr "Mnożnik stawki"
+
+#: bloomerp_modules.costrate.rate_per_hour
+#, fuzzy
+msgid "Rate Per Hour"
+msgstr "Stawka godzinowa"
+
+#: bloomerp_modules.costrate.rate_type
+#, fuzzy
+msgid "Rate Type"
+msgstr "Typ stawki"
+
+#: bloomerp_modules.journalentry.exchange_rate
+#, fuzzy
+msgid "Rate from the transaction currency to the ledger currency"
+msgstr "Kurs wymiany z waluty transakcji na walutę księgi głównej"
+
+#: bloomerp_modules.crmaccount.rating bloomerp_modules.interviewfeedback.rating
+#: bloomerp_modules.peerfeedback.rating bloomerp_modules.reviewresponse.rating
+#, fuzzy
+msgid "Rating"
+msgstr "Ocena"
+
+#: bloomerp_modules.unitofmeasure.ratio_to_base
+#, fuzzy
+msgid "Ratio to Base"
+msgstr "Przelicznik na jednostkę bazową"
+
+#: bloomerp_modules.leaverequest.reason
+#, fuzzy
+msgid "Reason"
+msgstr "Powód"
+
+#: bloomerp_modules.journalentry.source_document_type
+#, fuzzy
+msgid "Receipt"
+msgstr "Przyjęcie"
+
+#: bloomerp_modules.customerreceipt.receipt_date
+#, fuzzy
+msgid "Receipt Date"
+msgstr "Data przyjęcia"
+
+#: bloomerp_modules.customerreceipt.receipt_number
+#, fuzzy
+msgid "Receipt Number"
+msgstr "Numer pokwitowania"
+
+#: bloomerp_modules.application.status bloomerp_modules.customerreceipt.status
+#, fuzzy
+msgid "Received"
+msgstr "Otrzymano"
+
+#: bloomerp_modules.interviewfeedback.recommendation
+#, fuzzy
+msgid "Recommendation"
+msgstr "Rekomendacja"
+
+#: bloomerp_modules.gltransaction.is_reconciled
+#, fuzzy
+msgid "Reconciled"
+msgstr "Uzgodniono"
+
+#: bloomerp_modules.gltransaction.reconciliation_date
+#, fuzzy
+msgid "Reconciliation Date"
+msgstr "Data uzgodnienia"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Recruitment"
+msgstr "Rekrutacja"
+
+#: bloomerp_modules.journalentry.recurrence_key
+#, fuzzy
+msgid "Recurrence Key"
+msgstr "Klucz cykliczności"
+
+#: bloomerp_modules.journalentry.is_recurring
+#, fuzzy
+msgid "Recurring Entry"
+msgstr "Wpis cykliczny"
+
+#: bloomerp_modules.qualityinspection.reference_id
+#, fuzzy
+msgid "Reference ID"
+msgstr "Identyfikator referencyjny"
+
+#: bloomerp_modules.customerreceipt.reference_number bloomerp_modules.gltransaction.reference_number
+#: bloomerp_modules.journalentry.reference_number bloomerp_modules.journalentryline.reference_number
+#: bloomerp_modules.vendorpayment.reference_number
+#, fuzzy
+msgid "Reference Number"
+msgstr "Numer referencyjny"
+
+#: bloomerp_modules.qualityinspection.reference_type
+#, fuzzy
+msgid "Reference Type"
+msgstr "Typ referencji"
+
+#: bloomerp_modules.journalentry.reversed_by
+#, fuzzy
+msgid "Reference to the entry that reverses this one"
+msgstr "Odniesienie do zapisu, który odwraca ten zapis"
+
+#: bloomerp_modules.candidate.source bloomerp_modules.lead.lead_source
+#: bloomerp_modules.opportunity.source
+#, fuzzy
+msgid "Referral"
+msgstr "Polecenie"
+
+#: bloomerp_modules.hiringdecision.decision
+#, fuzzy
+msgid "Reject"
+msgstr "Odrzuć"
+
+#: bloomerp_modules.application.status bloomerp_modules.candidate.status
+#: bloomerp_modules.leaverequest.status bloomerp_modules.offerapproval.status
+#, fuzzy
+msgid "Rejected"
+msgstr "Odrzucono"
+
+#: bloomerp_modules.maintenanceworkorder.status bloomerp_modules.manufacturingorder.status
+#, fuzzy
+msgid "Released"
+msgstr "Zwolniono"
+
+#: bloomerp_modules.opportunity.source
+#, fuzzy
+msgid "Renewal"
+msgstr "Odnowienie"
+
+#: bloomerp_modules.product.reorder_point_quantity
+#, fuzzy
+msgid "Reorder Point Quantity"
+msgstr "Ilość dla punktu ponownego zamówienia"
+
+#: bloomerp_modules.nonconformancereport.reported_by
+#, fuzzy
+msgid "Reported By"
+msgstr "Zgłoszone przez"
+
+#: bloomerp_modules.maintenancerequest.request_date
+#, fuzzy
+msgid "Request Date"
+msgstr "Data zgłoszenia"
+
+#: bloomerp_modules.leaverequest.status
+#, fuzzy
+msgid "Requested"
+msgstr "Złożono wniosek"
+
+#: bloomerp_modules.maintenancerequest.requested_by
+#, fuzzy
+msgid "Requested By"
+msgstr "Wnioskodawca"
+
+#: bloomerp_modules.journal.requires_approval bloomerp_modules.leavetype.requires_approval
+#, fuzzy
+msgid "Requires Approval"
+msgstr "Wymaga zatwierdzenia"
+
+#: bloomerp_modules.account.requires_reconciliation
+#, fuzzy
+msgid "Requires Reconciliation"
+msgstr "Wymaga uzgodnienia"
+
+#: bloomerp_modules.reviewresponse.response_text
+#, fuzzy
+msgid "Response"
+msgstr "Odpowiedź"
+
+#: bloomerp_modules.qualityinspectionresult.result
+#, fuzzy
+msgid "Result"
+msgstr "Wynik"
+
+#: bloomerp_modules.employee.resume
+#, fuzzy
+msgid "Resume"
+msgstr "CV"
+
+#: bloomerp_modules.application.resume_link
+#, fuzzy
+msgid "Resume Link"
+msgstr "Link do CV"
+
+#: bloomerp_modules.account.account_subtype
+#, fuzzy
+msgid "Retained Earnings"
+msgstr "Zyski zatrzymane"
+
+#: bloomerp_modules.gltransaction.transaction_type
+#, fuzzy
+msgid "Revaluation"
+msgstr "Przeszacowanie"
+
+#: bloomerp_modules.account.account_type
+#, fuzzy
+msgid "Revenue"
+msgstr "Przychody"
+
+#: bloomerp_modules.customerinvoiceline.revenue_account
+#, fuzzy
+msgid "Revenue Account"
+msgstr "Konto przychodów"
+
+#: bloomerp_modules.customerreceipt.status
+#, fuzzy
+msgid "Reversed"
+msgstr "Stornowano"
+
+#: bloomerp_modules.journalentry.reversed_by
+#, fuzzy
+msgid "Reversed By"
+msgstr "Stornowane przez"
+
+#: bloomerp_modules.reviewquestion
+#, fuzzy
+msgid "Review Question"
+msgstr "Pytanie do oceny"
+
+#: bloomerp_modules.reviewquestion
+#, fuzzy
+msgid "Review Questions"
+msgstr "Pytania do oceny"
+
+#: bloomerp_modules.reviewresponse
+#, fuzzy
+msgid "Review Response"
+msgstr "Odpowiedź do oceny"
+
+#: bloomerp_modules.reviewresponse
+#, fuzzy
+msgid "Review Responses"
+msgstr "Odpowiedzi do oceny"
+
+#: bloomerp_modules.interviewfeedback.reviewer bloomerp_modules.peerfeedback.reviewer
+#: bloomerp_modules.performancereview.reviewer
+#, fuzzy
+msgid "Reviewer"
+msgstr "Oceniający"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Romania"
+msgstr "Rumunia"
+
+#: bloomerp_modules.nonconformancereport.root_cause
+#, fuzzy
+msgid "Root Cause"
+msgstr "Przyczyna źródłowa"
+
+#: bloomerp_modules.billofmaterial.routing bloomerp_modules.manufacturingorder.routing
+#: bloomerp_modules.routing bloomerp_modules.routingoperation.routing
+#, fuzzy
+msgid "Routing"
+msgstr "Marszruta"
+
+#: bloomerp_modules.routingoperation
+#, fuzzy
+msgid "Routing Operation"
+msgstr "Operacja marszruty"
+
+#: bloomerp_modules.routingoperation
+#, fuzzy
+msgid "Routing Operations"
+msgstr "Operacje marszruty"
+
+#: bloomerp_modules.routing
+#, fuzzy
+msgid "Routings"
+msgstr "Marszruty"
+
+#: bloomerp_modules.productiontimeentry.time_type
+#, fuzzy
+msgid "Run"
+msgstr "Praca"
+
+#: bloomerp_modules.mrprun.run_date
+#, fuzzy
+msgid "Run Date"
+msgstr "Data uruchomienia"
+
+#: bloomerp_modules.routingoperation.run_time_minutes_per_unit
+#, fuzzy
+msgid "Run Time (Minutes/Unit)"
+msgstr "Czas przebiegu (minuty/jednostkę)"
+
+#: bloomerp_modules.mrprun.status
+#, fuzzy
+msgid "Running"
+msgstr "W toku"
+
+#: bloomerp_modules.gltransaction.running_balance
+#, fuzzy
+msgid "Running Balance"
+msgstr "Saldo narastająco"
+
+#: bloomerp_modules.gltransaction.running_balance
+#, fuzzy
+msgid "Running balance after this transaction"
+msgstr "Saldo narastająco po tej transakcji"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Russia"
+msgstr "Rosja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Rwanda"
+msgstr "Rwanda"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Réunion"
+msgstr "Reunion"
+
+#: bloomerp_modules.bankaccount.swift_code
+#, fuzzy
+msgid "SWIFT Code"
+msgstr "Kod SWIFT"
+
+#: bloomerp_modules.product.safety_stock_quantity
+#, fuzzy
+msgid "Safety Stock Quantity"
+msgstr "Ilość zapasu bezpieczeństwa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saint Barthélemy"
+msgstr "Saint-Barthélemy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saint Helena"
+msgstr "Wyspa Świętej Heleny"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saint Kitts and Nevis"
+msgstr "Saint Kitts i Nevis"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saint Lucia"
+msgstr "Saint Lucia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saint Martin (French part)"
+msgstr "Saint-Martin (część francuska)"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saint Pierre and Miquelon"
+msgstr "Saint-Pierre i Miquelon"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saint Vincent and the Grenadines"
+msgstr "Saint Vincent i Grenadyny"
+
+#: bloomerp_modules.employeecontract.salary bloomerp_modules.offer.salary
+#, fuzzy
+msgid "Salary"
+msgstr "Wynagrodzenie"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Sales"
+msgstr "Sprzedaż"
+
+#: bloomerp_modules.salesforecast
+#, fuzzy
+msgid "Sales Forecast"
+msgstr "Prognoza sprzedaży"
+
+#: bloomerp_modules.salesforecast
+#, fuzzy
+msgid "Sales Forecasts"
+msgstr "Prognozy sprzedaży"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Sales Journal"
+msgstr "Dziennik sprzedaży"
+
+#: bloomerp_modules.customerinvoice.sales_order_number
+#, fuzzy
+msgid "Sales Order Number"
+msgstr "Numer zamówienia sprzedaży"
+
+#: bloomerp_modules.masterproductionschedule.source
+#, fuzzy
+msgid "Sales Orders"
+msgstr "Zamówienia sprzedaży"
+
+#: bloomerp_modules.product.sales_price
+#, fuzzy
+msgid "Sales Price"
+msgstr "Cena sprzedaży"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Samoa"
+msgstr "Samoa"
+
+#: bloomerp_modules.qualitycontrolplanline.sample_size
+#, fuzzy
+msgid "Sample Size"
+msgstr "Wielkość próbki"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "San Marino"
+msgstr "San Marino"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Sao Tome and Principe"
+msgstr "Wyspy Świętego Tomasza i Książęca"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Saudi Arabia"
+msgstr "Arabia Saudyjska"
+
+#: bloomerp_modules.bankaccount.account_type
+#, fuzzy
+msgid "Savings"
+msgstr "Oszczędności"
+
+#: bloomerp_modules.masterproductionschedule.schedule_date
+#, fuzzy
+msgid "Schedule Date"
+msgstr "Data harmonogramu"
+
+#: bloomerp_modules.interview.status bloomerp_modules.vendorpayment.status
+#, fuzzy
+msgid "Scheduled"
+msgstr "Zaplanowano"
+
+#: bloomerp_modules.exitinterview.scheduled_at bloomerp_modules.interview.scheduled_at
+#, fuzzy
+msgid "Scheduled At"
+msgstr "Zaplanowano na"
+
+#: bloomerp_modules.location.location_type bloomerp_modules.productionmove.move_type
+#, fuzzy
+msgid "Scrap"
+msgstr "Odpad"
+
+#: bloomerp_modules.billofmaterialline.scrap_factor_percent
+#, fuzzy
+msgid "Scrap Factor (%)"
+msgstr "Współczynnik odpadu (%)"
+
+#: bloomerp_modules.equipment.status
+#, fuzzy
+msgid "Scrapped"
+msgstr "Złomowany"
+
+#: bloomerp_modules.application.status bloomerp_modules.candidate.status
+#, fuzzy
+msgid "Screening"
+msgstr "Weryfikacja wstępna"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Senegal"
+msgstr "Senegal"
+
+#: bloomerp_modules.offer.status
+#, fuzzy
+msgid "Sent"
+msgstr "Wysłano"
+
+#: bloomerp_modules.billofmaterialline.sequence bloomerp_modules.manufacturingorderoperation.sequence
+#: bloomerp_modules.opportunitystage.sequence bloomerp_modules.qualitycontrolplanline.sequence
+#: bloomerp_modules.routingoperation.sequence
+#, fuzzy
+msgid "Sequence"
+msgstr "Kolejność"
+
+#: bloomerp_modules.journal.sequence_prefix
+#, fuzzy
+msgid "Sequence Prefix"
+msgstr "Prefiks sekwencji"
+
+#: bloomerp_modules.journalentryline.line_number
+#, fuzzy
+msgid "Sequential line number within the entry"
+msgstr "Kolejny numer w wierszu zapisu"
+
+#: bloomerp_modules.journalentry.entry_number
+#, fuzzy
+msgid "Sequential number within the journal"
+msgstr "Kolejny numer w dzienniku"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Serbia"
+msgstr "Serbia"
+
+#: bloomerp_modules.product.tracking_method
+#, fuzzy
+msgid "Serial"
+msgstr "Numer seryjny"
+
+#: bloomerp_modules.equipment.serial_number bloomerp_modules.manufacturingordercomponent.serial_number
+#: bloomerp_modules.productionmove.serial_number
+#, fuzzy
+msgid "Serial Number"
+msgstr "Numer seryjny"
+
+#: bloomerp_modules.product.type
+#, fuzzy
+msgid "Service"
+msgstr "Usługa"
+
+#: bloomerp_modules.productiontimeentry.time_type
+#, fuzzy
+msgid "Setup"
+msgstr "Przygotowanie"
+
+#: bloomerp_modules.routingoperation.setup_time_minutes
+#, fuzzy
+msgid "Setup Time (Minutes)"
+msgstr "Czas przygotowania (minuty)"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Seychelles"
+msgstr "Seszele"
+
+#: bloomerp_modules.crmaccount.shipping_address
+#, fuzzy
+msgid "Shipping Address"
+msgstr "Adres wysyłki"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Shop Floor"
+msgstr "Hala produkcyjna"
+
+#: bloomerp_modules.leavetype.category
+#, fuzzy
+msgid "Sick"
+msgstr "Chorobowe"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Sierra Leone"
+msgstr "Sierra Leone"
+
+#: bloomerp_modules.employeecontract.signed_date
+#, fuzzy
+msgid "Signed Date"
+msgstr "Data podpisania"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Singapore"
+msgstr "Singapur"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Sint Maarten (Dutch part)"
+msgstr "Sint Maarten (część holenderska)"
+
+#: bloomerp_modules.manufacturingorderoperation.status
+#, fuzzy
+msgid "Skipped"
+msgstr "Pominięto"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Slovakia"
+msgstr "Słowacja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Slovenia"
+msgstr "Słowenia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Solomon Islands"
+msgstr "Wyspy Salomona"
+
+#: bloomerp_modules.maintenancerequest.solution
+#, fuzzy
+msgid "Solution"
+msgstr "Rozwiązanie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Somalia"
+msgstr "Somalia"
+
+#: bloomerp_modules.candidate.source bloomerp_modules.masterproductionschedule.source
+#: bloomerp_modules.opportunity.source bloomerp_modules.salesforecast.source
+#, fuzzy
+msgid "Source"
+msgstr "Źródło"
+
+#: bloomerp_modules.manufacturingorder.source_document bloomerp_modules.plannedorder.source_document
+#, fuzzy
+msgid "Source Document"
+msgstr "Dokument źródłowy"
+
+#: bloomerp_modules.journalentry.source_document_id
+#, fuzzy
+msgid "Source Document ID"
+msgstr "Identyfikator dokumentu źródłowego"
+
+#: bloomerp_modules.journalentry.source_document_type
+#, fuzzy
+msgid "Source Document Type"
+msgstr "Typ dokumentu źródłowego"
+
+#: bloomerp_modules.nonconformancereport.source_inspection
+#, fuzzy
+msgid "Source Inspection"
+msgstr "Kontrola źródłowa"
+
+#: bloomerp_modules.manufacturingordercomponent.location_source
+#, fuzzy
+msgid "Source Location"
+msgstr "Lokalizacja źródłowa"
+
+#: bloomerp_modules.journalentry.source_system
+#, fuzzy
+msgid "Source System"
+msgstr "System źródłowy"
+
+#: bloomerp_modules.gltransaction.journal_entry_line
+#, fuzzy
+msgid "Source journal entry line for this transaction"
+msgstr "Wiersz zapisu księgowego źródłowego dla tej transakcji"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "South Africa"
+msgstr "Republika Południowej Afryki"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "South Georgia"
+msgstr "Georgia Południowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "South Korea"
+msgstr "Korea Południowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "South Sudan"
+msgstr "Sudan Południowy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Spain"
+msgstr "Hiszpania"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Sri Lanka"
+msgstr "Sri Lanka"
+
+#: bloomerp_modules.opportunity.stage
+#, fuzzy
+msgid "Stage"
+msgstr "Etap"
+
+#: bloomerp_modules.opportunitystage.stage_name
+#, fuzzy
+msgid "Stage Name"
+msgstr "Nazwa etapu"
+
+#: bloomerp_modules.productioncost.valuation_method
+#, fuzzy
+msgid "Standard"
+msgstr "Standardowa"
+
+#: bloomerp_modules.product.standard_cost
+#, fuzzy
+msgid "Standard Cost"
+msgstr "Koszt standardowy"
+
+#: bloomerp_modules.product.standard_lot_size
+#, fuzzy
+msgid "Standard Lot Size"
+msgstr "Standardowa wielkość partii"
+
+#: bloomerp_modules.employeecontract.start_date bloomerp_modules.fiscalperiod.start_date
+#: bloomerp_modules.leaverequest.start_date bloomerp_modules.offboardingprocess.start_date
+#: bloomerp_modules.onboardingprocess.start_date bloomerp_modules.performancecycle.start_date
+#, fuzzy
+msgid "Start Date"
+msgstr "Data rozpoczęcia"
+
+#: bloomerp_modules.productiontimeentry.start_time bloomerp_modules.workschedule.start_time
+#, fuzzy
+msgid "Start Time"
+msgstr "Godzina rozpoczęcia"
+
+#: bloomerp_modules.employeecontract.start_date
+#, fuzzy
+msgid "Start date of the contract"
+msgstr "Data rozpoczęcia umowy"
+
+#: bloomerp_modules.fiscalperiod.start_date
+#, fuzzy
+msgid "Start date of the fiscal period"
+msgstr "Data rozpoczęcia okresu obrachunkowego"
+
+#: bloomerp_modules.employee.start_week
+#, fuzzy
+msgid "Start week"
+msgstr "Tydzień rozpoczęcia"
+
+#: bloomerp_modules.application.status bloomerp_modules.attendancerecord.status
+#: bloomerp_modules.budget.status bloomerp_modules.candidate.status bloomerp_modules.customer.status
+#: bloomerp_modules.customerinvoice.status bloomerp_modules.customerreceipt.status
+#: bloomerp_modules.employeecontract.status bloomerp_modules.equipment.status
+#: bloomerp_modules.fiscalperiod.status bloomerp_modules.goal.status bloomerp_modules.interview.status
+#: bloomerp_modules.jobopening.status bloomerp_modules.journalentry.status bloomerp_modules.lead.status
+#: bloomerp_modules.leaverequest.status bloomerp_modules.maintenancerequest.status
+#: bloomerp_modules.maintenanceworkorder.status bloomerp_modules.manufacturingorder.status
+#: bloomerp_modules.manufacturingordercomponent.status
+#: bloomerp_modules.manufacturingorderoperation.status bloomerp_modules.mrprun.status
+#: bloomerp_modules.nonconformancereport.status bloomerp_modules.offboardingprocess.status
+#: bloomerp_modules.offer.status bloomerp_modules.offerapproval.status
+#: bloomerp_modules.onboardingprocess.status bloomerp_modules.onboardingtaskassignment.status
+#: bloomerp_modules.opportunity.status bloomerp_modules.performancecycle.status
+#: bloomerp_modules.performancereview.status bloomerp_modules.person.status
+#: bloomerp_modules.plannedorder.status bloomerp_modules.qualityinspection.status
+#: bloomerp_modules.vendor.status bloomerp_modules.vendorinvoice.status
+#: bloomerp_modules.vendorpayment.status
+#, fuzzy
+msgid "Status"
+msgstr "Status"
+
+#: bloomerp_modules.budget.status
+#, fuzzy
+msgid "Status of the budget"
+msgstr "Status budżetu"
+
+#: bloomerp_modules.fiscalperiod.status
+#, fuzzy
+msgid "Status of the fiscal period"
+msgstr "Status okresu obrachunkowego"
+
+#: bloomerp_modules.journalentry.status
+#, fuzzy
+msgid "Status of the journal entry"
+msgstr "Status zapisu księgowego"
+
+#: bloomerp_modules.location.location_type
+#, fuzzy
+msgid "Stock"
+msgstr "Magazyn"
+
+#: bloomerp_modules.activity.subject
+#, fuzzy
+msgid "Subject"
+msgstr "Temat"
+
+#: bloomerp_modules.customerinvoice.subtotal bloomerp_modules.vendorinvoice.subtotal
+#, fuzzy
+msgid "Subtotal"
+msgstr "Suma częściowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Sudan"
+msgstr "Sudan"
+
+#: bloomerp_modules.plannedorder.suggested_start_date
+#, fuzzy
+msgid "Suggested Start Date"
+msgstr "Sugerowana data rozpoczęcia"
+
+#: bloomerp_modules.performancereview.summary
+#, fuzzy
+msgid "Summary"
+msgstr "Podsumowanie"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Supplier bills, payments, vendor credits."
+msgstr "Faktury od dostawców, płatności, noty uznaniowe od dostawców."
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Suriname"
+msgstr "Surinam"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Svalbard and Jan Mayen"
+msgstr "Svalbard i Jan Mayen"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Sweden"
+msgstr "Szwecja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Switzerland"
+msgstr "Szwajcaria"
+
+#: bloomerp_modules.unitofmeasure.symbol
+#, fuzzy
+msgid "Symbol"
+msgstr "Symbol"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Syria"
+msgstr "Syria"
+
+#: bloomerp_modules.salesforecast.source
+#, fuzzy
+msgid "System"
+msgstr "System"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Taiwan"
+msgstr "Tajwan"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Tajikistan"
+msgstr "Tadżykistan"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Tanzania"
+msgstr "Tanzania"
+
+#: bloomerp_modules.goal.target_date
+#, fuzzy
+msgid "Target Date"
+msgstr "Data docelowa"
+
+#: bloomerp_modules.qualitycontrolplanline.target_value
+#, fuzzy
+msgid "Target Value"
+msgstr "Wartość docelowa"
+
+#: bloomerp_modules.activity.activity_type
+#, fuzzy
+msgid "Task"
+msgstr "Zadanie"
+
+#: bloomerp_modules.customerinvoice.tax_amount bloomerp_modules.customerinvoiceline.tax_amount
+#: bloomerp_modules.journalentryline.tax_amount bloomerp_modules.vendorinvoice.tax_amount
+#: bloomerp_modules.vendorinvoiceline.tax_amount
+#, fuzzy
+msgid "Tax Amount"
+msgstr "Kwota podatku"
+
+#: bloomerp_modules.journalentryline.tax_code
+#, fuzzy
+msgid "Tax Code"
+msgstr "Kod podatkowy"
+
+#: bloomerp_modules.customer.tax_number bloomerp_modules.vendor.tax_number
+#, fuzzy
+msgid "Tax Number"
+msgstr "Numer podatkowy"
+
+#: bloomerp_modules.customerinvoiceline.tax_rate bloomerp_modules.journalentryline.tax_rate
+#: bloomerp_modules.vendorinvoiceline.tax_rate
+#, fuzzy
+msgid "Tax Rate"
+msgstr "Stawka podatku"
+
+#: bloomerp_modules.journalentryline.tax_amount
+#, fuzzy
+msgid "Tax amount for this line"
+msgstr "Kwota podatku dla tej pozycji"
+
+#: bloomerp_modules.journalentryline.tax_code
+#, fuzzy
+msgid "Tax code for this line item"
+msgstr "Kod podatkowy dla tej pozycji"
+
+#: bloomerp_modules.employee.team bloomerp_modules.team
+#, fuzzy
+msgid "Team"
+msgstr "Zespół"
+
+#: bloomerp_modules.team.lead
+#, fuzzy
+msgid "Team Lead"
+msgstr "Lider zespołu"
+
+#: bloomerp_modules.team
+#, fuzzy
+msgid "Teams"
+msgstr "Zespoły"
+
+#: bloomerp_modules.employee.status bloomerp_modules.employeecontract.status
+#, fuzzy
+msgid "Terminated"
+msgstr "Zwolniony"
+
+#: bloomerp_modules.qualitycontrolplanline.test_name bloomerp_modules.qualityinspectionresult.test_name
+#, fuzzy
+msgid "Test Name"
+msgstr "Nazwa testu"
+
+#: bloomerp_modules.qualitycontrolplanline.test_type bloomerp_modules.qualityinspectionresult.test_type
+#, fuzzy
+msgid "Test Type"
+msgstr "Rodzaj testu"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Thailand"
+msgstr "Tajlandia"
+
+#: bloomerp_modules.journalentryline.journal_entry
+#, fuzzy
+msgid "The journal entry this line belongs to"
+msgstr "Zapis księgowy, do którego należy ta pozycja"
+
+#: bloomerp_modules.journalentry.journal
+#, fuzzy
+msgid "The journal this entry belongs to"
+msgstr "Dziennik, do którego należy ten zapis"
+
+#: bloomerp_modules.employee.resume
+#, fuzzy
+msgid "The resume"
+msgstr "CV"
+
+#: bloomerp_modules.employee.start_week
+#, fuzzy
+msgid "The week the employee started"
+msgstr "Tydzień rozpoczęcia pracy przez pracownika"
+
+#: bloomerp_modules.maintenanceplan.frequency_type
+#, fuzzy
+msgid "Time Based"
+msgstr "Oparty na czasie"
+
+#: bloomerp_modules.timeentry
+#, fuzzy
+msgid "Time Entries"
+msgstr "Wpisy czasu"
+
+#: bloomerp_modules.timeentry
+#, fuzzy
+msgid "Time Entry"
+msgstr "Wpis czasu"
+
+#: bloomerp_modules.productiontimeentry.time_type
+#, fuzzy
+msgid "Time Type"
+msgstr "Rodzaj czasu"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:description"
+msgid "Time tracking, attendance, and leave management"
+msgstr "Ewidencja czasu pracy, obecności i zarządzanie urlopami"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Time, Attendance & Leave"
+msgstr "Czas pracy, obecność i urlopy"
+
+#: bloomerp_modules.workcentercalendar.timezone
+#, fuzzy
+msgid "Timezone"
+msgstr "Strefa czasowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Timor-Leste"
+msgstr "Timor Wschodni"
+
+#: bloomerp_modules.goal.title bloomerp_modules.jobopening.title bloomerp_modules.jobtitle.title
+#, fuzzy
+msgid "Title"
+msgstr "Tytuł"
+
+#: bloomerp_modules.productionmove.location_to
+#, fuzzy
+msgid "To Location"
+msgstr "Lokalizacja docelowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Togo"
+msgstr "Togo"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Tokelau"
+msgstr "Tokelau"
+
+#: bloomerp_modules.qualitycontrolplanline.tolerance_minus
+#, fuzzy
+msgid "Tolerance Minus"
+msgstr "Tolerancja minus"
+
+#: bloomerp_modules.qualitycontrolplanline.tolerance_plus
+#, fuzzy
+msgid "Tolerance Plus"
+msgstr "Tolerancja plus"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Tonga"
+msgstr "Tonga"
+
+#: bloomerp_modules.customerinvoice.total_amount bloomerp_modules.vendorinvoice.total_amount
+#, fuzzy
+msgid "Total Amount"
+msgstr "Łączna kwota"
+
+#: bloomerp_modules.productioncost.total_cost
+#, fuzzy
+msgid "Total Cost"
+msgstr "Całkowity koszt"
+
+#: bloomerp_modules.journalentry.total_credit
+#, fuzzy
+msgid "Total Credit"
+msgstr "Suma uznań"
+
+#: bloomerp_modules.journalentry.total_debit
+#, fuzzy
+msgid "Total Debit"
+msgstr "Suma obciążeń"
+
+#: bloomerp_modules.journalentry.total_credit
+#, fuzzy
+msgid "Total credit amount for this entry"
+msgstr "Łączna kwota uznań dla tego zapisu"
+
+#: bloomerp_modules.journalentry.total_debit
+#, fuzzy
+msgid "Total debit amount for this entry"
+msgstr "Łączna kwota obciążeń dla tego zapisu"
+
+#: bloomerp_modules.product.tracking_method
+#, fuzzy
+msgid "Tracking Method"
+msgstr "Metoda śledzenia"
+
+#: bloomerp_modules.gltransaction.transaction_date
+#, fuzzy
+msgid "Transaction Date"
+msgstr "Data transakcji"
+
+#: bloomerp_modules.gltransaction.transaction_type
+#, fuzzy
+msgid "Transaction Type"
+msgstr "Typ transakcji"
+
+#: bloomerp_modules.gltransaction.transaction_type bloomerp_modules.journalentry.source_document_type
+#, fuzzy
+msgid "Transfer"
+msgstr "Przelew"
+
+#, fuzzy
+msgctxt "bloomerp_modules:module:name"
+msgid "Treasury"
+msgstr "Zarządzanie środkami pieniężnymi"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Trinidad and Tobago"
+msgstr "Trynidad i Tobago"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Tunisia"
+msgstr "Tunezja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Turkmenistan"
+msgstr "Turkmenistan"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Turks and Caicos Islands"
+msgstr "Turks i Caicos"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Tuvalu"
+msgstr "Tuvalu"
+
+#: bloomerp_modules.product.type
+#, fuzzy
+msgid "Type"
+msgstr "Typ"
+
+#: bloomerp_modules.account.account_type
+#, fuzzy
+msgid "Type of account (Asset, Liability, Equity, Revenue, Expense)"
+msgstr "Typ konta (Aktywa, Zobowiązania, Kapitał własny, Przychody, Koszty)"
+
+#: bloomerp_modules.budget.budget_type
+#, fuzzy
+msgid "Type of budget"
+msgstr "Typ budżetu"
+
+#: bloomerp_modules.employee.employment_type
+#, fuzzy
+msgid "Type of employment"
+msgstr "Rodzaj zatrudnienia"
+
+#: bloomerp_modules.journal.journal_type
+#, fuzzy
+msgid "Type of journal (General, Sales, Purchase, Cash, etc.)"
+msgstr "Rodzaj dziennika (Ogólny, Sprzedaż, Zakup, Kasa itp.)"
+
+#: bloomerp_modules.journalentry.source_document_type
+#, fuzzy
+msgid "Type of source document"
+msgstr "Typ dokumentu źródłowego"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Türkiye"
+msgstr "Turcja"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Uganda"
+msgstr "Uganda"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Ukraine"
+msgstr "Ukraina"
+
+#: bloomerp_modules.account.account_code
+#, fuzzy
+msgid "Unique account code or number"
+msgstr "Unikalny kod lub numer konta"
+
+#: bloomerp_modules.budget.budget_code
+#, fuzzy
+msgid "Unique code for the budget"
+msgstr "Unikalny kod budżetu"
+
+#: bloomerp_modules.fiscalperiod.period_code
+#, fuzzy
+msgid "Unique code for the fiscal period"
+msgstr "Unikalny kod okresu obrachunkowego"
+
+#: bloomerp_modules.journal.journal_code
+#, fuzzy
+msgid "Unique identifier for the journal"
+msgstr "Unikalny identyfikator dziennika"
+
+#: bloomerp_modules.customerinvoiceline.unit_price bloomerp_modules.journalentryline.unit_price
+#: bloomerp_modules.vendorinvoiceline.unit_price
+#, fuzzy
+msgid "Unit Price"
+msgstr "Cena jednostkowa"
+
+#: bloomerp_modules.billofmaterialline.uom bloomerp_modules.manufacturingorder.uom
+#: bloomerp_modules.manufacturingordercomponent.uom bloomerp_modules.product.uom
+#: bloomerp_modules.productionmove.uom bloomerp_modules.unitofmeasure
+#, fuzzy
+msgid "Unit of Measure"
+msgstr "Jednostka miary"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "United Arab Emirates"
+msgstr "Zjednoczone Emiraty Arabskie"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "United Kingdom"
+msgstr "Zjednoczone Królestwo"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "United States Minor Outlying Islands"
+msgstr "Dalekie Wyspy Mniejsze Stanów Zjednoczonych"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "United States of America"
+msgstr "Stany Zjednoczone Ameryki"
+
+#: bloomerp_modules.unitofmeasure
+#, fuzzy
+msgid "Units of Measure"
+msgstr "Jednostki miary"
+
+#: bloomerp_modules.leavetype.category
+#, fuzzy
+msgid "Unpaid"
+msgstr "Niepłatny"
+
+#: bloomerp_modules.lead.status
+#, fuzzy
+msgid "Unqualified"
+msgstr "Niezakwalifikowany"
+
+#: bloomerp_modules.goalprogress.update_date
+#, fuzzy
+msgid "Update Date"
+msgstr "Data aktualizacji"
+
+#: bloomerp_modules.account.updated_by bloomerp_modules.accountbalance.updated_by
+#: bloomerp_modules.activity.updated_by bloomerp_modules.application.updated_by
+#: bloomerp_modules.attendancerecord.updated_by bloomerp_modules.bankaccount.updated_by
+#: bloomerp_modules.billofmaterial.updated_by bloomerp_modules.billofmaterialline.updated_by
+#: bloomerp_modules.budget.updated_by bloomerp_modules.candidate.updated_by
+#: bloomerp_modules.contact.updated_by bloomerp_modules.costcenter.updated_by
+#: bloomerp_modules.costrate.updated_by bloomerp_modules.crmaccount.updated_by
+#: bloomerp_modules.customer.updated_by bloomerp_modules.customerinvoice.updated_by
+#: bloomerp_modules.customerinvoiceline.updated_by bloomerp_modules.customerreceipt.updated_by
+#: bloomerp_modules.department.updated_by bloomerp_modules.employee.updated_by
+#: bloomerp_modules.employeecontract.updated_by bloomerp_modules.equipment.updated_by
+#: bloomerp_modules.exitinterview.updated_by bloomerp_modules.exitreason.updated_by
+#: bloomerp_modules.fiscalperiod.updated_by bloomerp_modules.gltransaction.updated_by
+#: bloomerp_modules.goal.updated_by bloomerp_modules.goalprogress.updated_by
+#: bloomerp_modules.hiringdecision.updated_by bloomerp_modules.hrcostcenter.updated_by
+#: bloomerp_modules.interview.updated_by bloomerp_modules.interviewfeedback.updated_by
+#: bloomerp_modules.jobopening.updated_by bloomerp_modules.jobtitle.updated_by
+#: bloomerp_modules.journal.updated_by bloomerp_modules.journalentry.updated_by
+#: bloomerp_modules.journalentryline.updated_by bloomerp_modules.lead.updated_by
+#: bloomerp_modules.leavebalance.updated_by bloomerp_modules.leavepolicy.updated_by
+#: bloomerp_modules.leaverequest.updated_by bloomerp_modules.leavetype.updated_by
+#: bloomerp_modules.location.updated_by bloomerp_modules.maintenanceplan.updated_by
+#: bloomerp_modules.maintenancerequest.updated_by bloomerp_modules.maintenanceworkorder.updated_by
+#: bloomerp_modules.manufacturingorder.updated_by
+#: bloomerp_modules.manufacturingordercomponent.updated_by
+#: bloomerp_modules.manufacturingorderoperation.updated_by
+#: bloomerp_modules.masterproductionschedule.updated_by bloomerp_modules.mrprun.updated_by
+#: bloomerp_modules.nonconformancereport.updated_by bloomerp_modules.offboardingprocess.updated_by
+#: bloomerp_modules.offer.updated_by bloomerp_modules.offerapproval.updated_by
+#: bloomerp_modules.officelocation.updated_by bloomerp_modules.onboardingprocess.updated_by
+#: bloomerp_modules.onboardingtask.updated_by bloomerp_modules.onboardingtaskassignment.updated_by
+#: bloomerp_modules.operation.updated_by bloomerp_modules.opportunity.updated_by
+#: bloomerp_modules.opportunitystage.updated_by bloomerp_modules.overtimerule.updated_by
+#: bloomerp_modules.peerfeedback.updated_by bloomerp_modules.performancecycle.updated_by
+#: bloomerp_modules.performancereview.updated_by bloomerp_modules.person.updated_by
+#: bloomerp_modules.plannedorder.updated_by bloomerp_modules.product.updated_by
+#: bloomerp_modules.productioncost.updated_by bloomerp_modules.productionmove.updated_by
+#: bloomerp_modules.productiontimeentry.updated_by bloomerp_modules.publicholiday.updated_by
+#: bloomerp_modules.qualitycontrolplan.updated_by bloomerp_modules.qualitycontrolplanline.updated_by
+#: bloomerp_modules.qualityinspection.updated_by bloomerp_modules.qualityinspectionresult.updated_by
+#: bloomerp_modules.reviewquestion.updated_by bloomerp_modules.reviewresponse.updated_by
+#: bloomerp_modules.routing.updated_by bloomerp_modules.routingoperation.updated_by
+#: bloomerp_modules.salesforecast.updated_by bloomerp_modules.team.updated_by
+#: bloomerp_modules.timeentry.updated_by bloomerp_modules.unitofmeasure.updated_by
+#: bloomerp_modules.vendor.updated_by bloomerp_modules.vendorinvoice.updated_by
+#: bloomerp_modules.vendorinvoiceline.updated_by bloomerp_modules.vendorpayment.updated_by
+#: bloomerp_modules.warehouse.updated_by bloomerp_modules.workcenter.updated_by
+#: bloomerp_modules.workcentercalendar.updated_by bloomerp_modules.workschedule.updated_by
+#, fuzzy
+msgid "Updated By"
+msgstr "Zaktualizowane przez"
+
+#: bloomerp_modules.opportunity.source
+#, fuzzy
+msgid "Upsell"
+msgstr "Sprzedaż dodatkowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Uruguay"
+msgstr "Urugwaj"
+
+#: bloomerp_modules.employee.user
+#, fuzzy
+msgid "User Account"
+msgstr "Konto użytkownika"
+
+#: bloomerp_modules.journalentry.approved_by
+#, fuzzy
+msgid "User who approved this entry"
+msgstr "Użytkownik, który zatwierdził ten zapis"
+
+#: bloomerp_modules.fiscalperiod.closed_by
+#, fuzzy
+msgid "User who closed this period"
+msgstr "Użytkownik, który zamknął ten okres"
+
+#: bloomerp_modules.journalentry.posted_by
+#, fuzzy
+msgid "User who posted this entry"
+msgstr "Użytkownik, który zaksięgował ten zapis"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Uzbekistan"
+msgstr "Uzbekistan"
+
+#: bloomerp_modules.billofmaterial.valid_from
+#, fuzzy
+msgid "Valid From"
+msgstr "Obowiązuje od"
+
+#: bloomerp_modules.billofmaterial.valid_to
+#, fuzzy
+msgid "Valid To"
+msgstr "Obowiązuje do"
+
+#: bloomerp_modules.productioncost.valuation_method
+#, fuzzy
+msgid "Valuation Method"
+msgstr "Metoda wyceny"
+
+#: bloomerp_modules.qualityinspectionresult.value_numeric
+#, fuzzy
+msgid "Value Numeric"
+msgstr "Wartość liczbowa"
+
+#: bloomerp_modules.qualityinspectionresult.value_text
+#, fuzzy
+msgid "Value Text"
+msgstr "Wartość tekstowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Vanuatu"
+msgstr "Vanuatu"
+
+#: bloomerp_modules.budget.variance_amount
+#, fuzzy
+msgid "Variance Amount"
+msgstr "Kwota odchylenia"
+
+#: bloomerp_modules.budget.variance_percentage
+#, fuzzy
+msgid "Variance Percentage"
+msgstr "Odchylenie procentowe"
+
+#: bloomerp_modules.budget.variance_percentage
+#, fuzzy
+msgid "Variance as percentage of budget"
+msgstr "Odchylenie jako procent budżetu"
+
+#: bloomerp_modules.budget.variance_amount
+#, fuzzy
+msgid "Variance between budget and actual"
+msgstr "Odchylenie między budżetem a wartością rzeczywistą"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Vatican City"
+msgstr "Watykan"
+
+#: bloomerp_modules.crmaccount.account_type bloomerp_modules.vendor
+#: bloomerp_modules.vendorinvoice.vendor bloomerp_modules.vendorpayment.vendor
+#, fuzzy
+msgid "Vendor"
+msgstr "Dostawca"
+
+#: bloomerp_modules.vendor.address
+#, fuzzy
+msgid "Vendor Address"
+msgstr "Adres dostawcy"
+
+#: bloomerp_modules.vendor.vendor_code
+#, fuzzy
+msgid "Vendor Code"
+msgstr "Kod dostawcy"
+
+#: bloomerp_modules.vendorinvoice
+#, fuzzy
+msgid "Vendor Invoice"
+msgstr "Faktura dostawcy"
+
+#: bloomerp_modules.vendorinvoiceline
+#, fuzzy
+msgid "Vendor Invoice Line"
+msgstr "Pozycja faktury dostawcy"
+
+#: bloomerp_modules.vendorinvoiceline
+#, fuzzy
+msgid "Vendor Invoice Lines"
+msgstr "Pozycje faktury dostawcy"
+
+#: bloomerp_modules.vendorinvoice
+#, fuzzy
+msgid "Vendor Invoices"
+msgstr "Faktury dostawców"
+
+#: bloomerp_modules.vendor.vendor_name
+#, fuzzy
+msgid "Vendor Name"
+msgstr "Nazwa dostawcy"
+
+#: bloomerp_modules.vendorpayment
+#, fuzzy
+msgid "Vendor Payment"
+msgstr "Płatność na rzecz dostawcy"
+
+#: bloomerp_modules.vendorpayment
+#, fuzzy
+msgid "Vendor Payments"
+msgstr "Płatności na rzecz dostawców"
+
+#: bloomerp_modules.vendor.phone
+#, fuzzy
+msgid "Vendor Phone"
+msgstr "Telefon dostawcy"
+
+#: bloomerp_modules.vendorinvoice.vendor_reference
+#, fuzzy
+msgid "Vendor Reference"
+msgstr "Numer referencyjny dostawcy"
+
+#: bloomerp_modules.vendor
+#, fuzzy
+msgid "Vendors"
+msgstr "Dostawcy"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Venezuela"
+msgstr "Wenezuela"
+
+#: bloomerp_modules.billofmaterial.version
+#, fuzzy
+msgid "Version"
+msgstr "Wersja"
+
+#: bloomerp_modules.interview.interview_type
+#, fuzzy
+msgid "Video"
+msgstr "Wideo"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Vietnam"
+msgstr "Wietnam"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Virgin Islands (British)"
+msgstr "Brytyjskie Wyspy Dziewicze"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Virgin Islands (U.S.)"
+msgstr "Wyspy Dziewicze Stanów Zjednoczonych"
+
+#: bloomerp_modules.vendorpayment.status
+#, fuzzy
+msgid "Voided"
+msgstr "Unieważniono"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Wallis and Futuna"
+msgstr "Wallis i Futuna"
+
+#: bloomerp_modules.location.warehouse bloomerp_modules.manufacturingorder.warehouse
+#: bloomerp_modules.warehouse
+#, fuzzy
+msgid "Warehouse"
+msgstr "Magazyn"
+
+#: bloomerp_modules.warehouse
+#, fuzzy
+msgid "Warehouses"
+msgstr "Magazyny"
+
+#: bloomerp_modules.crmaccount.rating
+#, fuzzy
+msgid "Warm"
+msgstr "Ciepły"
+
+#: bloomerp_modules.lead.lead_source
+#, fuzzy
+msgid "Web"
+msgstr "Internet"
+
+#: bloomerp_modules.candidate.source bloomerp_modules.crmaccount.website
+#, fuzzy
+msgid "Website"
+msgstr "Witryna internetowa"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Western Sahara"
+msgstr "Sahara Zachodnia"
+
+#: bloomerp_modules.account.requires_reconciliation
+#, fuzzy
+msgid "Whether activity on this account should be reconciled"
+msgstr "Czy operacje na tym koncie powinny być uzgadniane"
+
+#: bloomerp_modules.journal.auto_numbering
+#, fuzzy
+msgid "Whether entries are automatically numbered"
+msgstr "Czy zapisy są numerowane automatycznie"
+
+#: bloomerp_modules.journal.requires_approval
+#, fuzzy
+msgid "Whether entries in this journal require approval"
+msgstr "Czy zapisy w tym dzienniku wymagają zatwierdzenia"
+
+#: bloomerp_modules.account.is_active
+#, fuzzy
+msgid "Whether the account is active"
+msgstr "Czy konto jest aktywne"
+
+#: bloomerp_modules.employee.active
+#, fuzzy
+msgid "Whether the employee is currently active"
+msgstr "Czy pracownik jest obecnie aktywny"
+
+#: bloomerp_modules.journal.is_active
+#, fuzzy
+msgid "Whether the journal is active"
+msgstr "Czy dziennik jest aktywny"
+
+#: bloomerp_modules.account.is_system_account
+#, fuzzy
+msgid "Whether this is a system-controlled account"
+msgstr "Czy jest to konto zarządzane przez system"
+
+#: bloomerp_modules.fiscalperiod.is_adjusting_period
+#, fuzzy
+msgid "Whether this is an adjusting period"
+msgstr "Czy jest to okres korekt"
+
+#: bloomerp_modules.account.allow_manual_posting
+#, fuzzy
+msgid "Whether users can post directly to this account"
+msgstr "Czy użytkownicy mogą księgować bezpośrednio na tym koncie"
+
+#: bloomerp_modules.customerreceipt.payment_method bloomerp_modules.vendorpayment.payment_method
+#, fuzzy
+msgid "Wire"
+msgstr "Przelew bankowy"
+
+#: bloomerp_modules.opportunity.status
+#, fuzzy
+msgid "Won"
+msgstr "Wygrana"
+
+#: bloomerp_modules.costrate.work_center bloomerp_modules.equipment.work_center
+#: bloomerp_modules.manufacturingorderoperation.work_center bloomerp_modules.operation.work_center
+#: bloomerp_modules.workcenter
+#, fuzzy
+msgid "Work Center"
+msgstr "Centrum robocze"
+
+#: bloomerp_modules.workcentercalendar
+#, fuzzy
+msgid "Work Center Calendar"
+msgstr "Kalendarz centrum roboczego"
+
+#: bloomerp_modules.workcentercalendar
+#, fuzzy
+msgid "Work Center Calendars"
+msgstr "Kalendarze centrów roboczych"
+
+#: bloomerp_modules.workcenter.work_center_type
+#, fuzzy
+msgid "Work Center Type"
+msgstr "Typ centrum roboczego"
+
+#: bloomerp_modules.workcenter
+#, fuzzy
+msgid "Work Centers"
+msgstr "Centra robocze"
+
+#: bloomerp_modules.timeentry.work_date
+#, fuzzy
+msgid "Work Date"
+msgstr "Data pracy"
+
+#: bloomerp_modules.workschedule.work_days
+#, fuzzy
+msgid "Work Days"
+msgstr "Dni robocze"
+
+#: bloomerp_modules.employee.email
+#, fuzzy
+msgid "Work Email"
+msgstr "Służbowy adres e-mail"
+
+#: bloomerp_modules.workschedule
+#, fuzzy
+msgid "Work Schedule"
+msgstr "Harmonogram pracy"
+
+#: bloomerp_modules.workschedule
+#, fuzzy
+msgid "Work Schedules"
+msgstr "Harmonogramy pracy"
+
+#: bloomerp_modules.timeentry.work_type
+#, fuzzy
+msgid "Work Type"
+msgstr "Rodzaj pracy"
+
+#: bloomerp_modules.fiscalperiod.is_year_end
+#, fuzzy
+msgid "Year End Period"
+msgstr "Okres zamknięcia roku"
+
+#: bloomerp_modules.accountbalance.year_to_date_balance
+#, fuzzy
+msgid "Year To Date Balance"
+msgstr "Saldo od początku roku"
+
+#: bloomerp_modules.accountbalance.year_to_date_credit
+#, fuzzy
+msgid "Year To Date Credit"
+msgstr "Kredyt od początku roku"
+
+#: bloomerp_modules.accountbalance.year_to_date_debit
+#, fuzzy
+msgid "Year To Date Debit"
+msgstr "Debet od początku roku"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Yemen"
+msgstr "Jemen"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Zambia"
+msgstr "Zambia"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Zimbabwe"
+msgstr "Zimbabwe"
+
+#: bloomerp_modules.contact.country
+#, fuzzy
+msgid "Åland Islands"
+msgstr "Wyspy Alandzkie"
+

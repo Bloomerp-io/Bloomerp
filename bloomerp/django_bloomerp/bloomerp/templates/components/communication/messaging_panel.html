@@ -1,5 +1,6 @@
 {% load i18n static %}
 {% if request.user.is_authenticated %}
+{% include "components/communication/calling/controls.html" %}
 <div bloomerp-component="bloomerp:messaging-panel" class="im-theme">
     {% static 'bloomerp/img/messaging-header-logo.png' as messaging_logo %}
     <c-ui.floating_panel panel_id="im-messaging-panel" title="{% translate 'Messages' %}" :logo="messaging_logo"
@@ -12,9 +13,9 @@
                         <c-slot name="trigger_html">
                             <button type="button" x-ref="trigger" aria-label="{% translate 'Settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
                         </c-slot>
-                        <button type="button" role="menuitem" data-phone-action="enable" @click="$dispatch('dropdown-close')" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-primary-800 transition-colors hover:bg-primary-50 focus:bg-primary-50">
+                        <button type="button" role="menuitem" data-call-action="enable" @click="$dispatch('dropdown-close')" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-primary-800 transition-colors hover:bg-primary-50 focus:bg-primary-50">
                             <i class="fa-solid fa-phone w-4" aria-hidden="true"></i>
-                            <span>{% translate 'Enable phone' %}</span>
+                            <span>{% translate 'Enable incoming calls' %}</span>
                         </button>
                     </c-ui.dropdown.body>
                     <c-ui.dropdown.body width="w-80" :fixed="True">
@@ -27,13 +28,6 @@
                         <div id="im-recipient-results" class="im-recipient-results" hx-get="{% url 'components_im_recipients' %}" hx-trigger="load"></div>
                     </c-ui.dropdown.body>
         </c-slot>
-        <div bloomerp-component="bloomerp:phone" data-connections-url="{% url 'components_voip_browser_connections' %}" class="im-phone-controls flex-wrap items-center gap-2 border-b border-gray-200 p-3">
-            {% csrf_token %}
-            <button class="btn btn-primary btn-sm" data-phone-action="answer" hidden>{% translate 'Answer' %}</button>
-            <button class="btn btn-secondary btn-sm" data-phone-action="mute" hidden>{% translate 'Mute / unmute' %}</button>
-            <button class="btn btn-secondary btn-sm" data-phone-action="hangup" hidden>{% translate 'End call' %}</button>
-            <span class="text-sm text-primary-800" data-phone-status role="status"></span>
-        </div>
         <div data-list-view class="im-list-view">
             <div class="im-search-wrap"><form id="im-conversation-search-form" hx-get="{% url 'components_im_conversations' %}" hx-trigger="submit, input delay:300ms" hx-target="#im-conversations" hx-sync="this:replace">
                 <div class="im-search-row">

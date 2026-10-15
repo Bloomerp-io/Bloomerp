@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-12 20:10+0000\n"
+"POT-Creation-Date: 2026-10-15 11:22+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: pt\n"
@@ -55,7 +55,7 @@ msgstr "Adicionar filtro"
 msgid "Add group"
 msgstr "Adicionar grupo"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:350
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:364
 msgid "Add row below"
 msgstr "Adicionar linha abaixo"
 
@@ -67,6 +67,12 @@ msgstr "Todos os objetos"
 #: static_src/ts/components/filters/RenderedFilters.ts:135
 msgid "All rows"
 msgstr "Todas as linhas"
+
+#: static_src/ts/components/communication/Calling.ts:88
+msgid "Allow pop-ups to open the call tab. Your call controls are available here."
+msgstr ""
+"Permita a abertura de pop-ups para abrir a aba da chamada. Os controles da chamada estão "
+"disponíveis aqui."
 
 #: static_src/ts/components/filters/FilterContainer.ts:69
 msgid "Apply"
@@ -90,34 +96,40 @@ msgstr "Nome do comportamento"
 msgid "Blue"
 msgstr "Azul"
 
-#: static_src/ts/components/text_editor/actions.ts:206
+#: static_src/ts/components/text_editor/actions.ts:222
 msgid "Bullet List"
 msgstr "Lista com marcadores"
 
-#: static_src/ts/components/communication/Phone.ts:147
+#: static_src/ts/components/communication/Calling.ts:358
+msgid "Call disconnected"
+msgstr "Chamada desconectada"
+
+#: static_src/ts/components/communication/Calling.ts:136
+#: static_src/ts/components/communication/Calling.ts:346
 msgid "Call ended"
 msgstr "Chamada terminada"
 
-#: static_src/ts/components/communication/Phone.ts:51
-#: static_src/ts/components/communication/Phone.ts:141
+#: static_src/ts/components/communication/Calling.ts:359
 msgid "Call in progress"
 msgstr "Chamada em curso"
 
-#: static_src/ts/components/communication/Phone.ts:154
-msgid "Calling failed. Check microphone permission, connection settings and line access."
-msgstr ""
-"Falha ao efetuar a chamada. Verifique as permissões do microfone, as definições de ligação e o "
-"acesso à linha."
+#: static_src/ts/components/communication/Calling.ts:173
+msgid "Call not connected"
+msgstr "Chamada não conectada"
 
-#: static_src/ts/components/communication/Phone.ts:58
-msgid "Calling is unavailable. Check your connection and line access."
-msgstr "Não é possível efetuar chamadas. Verifique a ligação e o acesso à linha."
+#: static_src/ts/components/communication/Calling.ts:369
+msgid "Calling failed. Check your connection and access, then try again."
+msgstr "Não foi possível fazer a chamada. Verifique sua conexão e seu acesso e tente novamente."
 
-#: static_src/ts/components/communication/Phone.ts:107
-msgid "Calling…"
-msgstr "A ligar…"
+#: static_src/ts/components/communication/Calling.ts:174
+msgid "Calling is unavailable."
+msgstr "As chamadas estão indisponíveis."
 
-#: static_src/ts/components/text_editor/actions.ts:218
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:48
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: static_src/ts/components/text_editor/actions.ts:234
 msgid "Checklist"
 msgstr "Lista de verificação"
 
@@ -129,7 +141,7 @@ msgstr "Limpar"
 msgid "Close"
 msgstr "Fechar"
 
-#: static_src/ts/components/text_editor/actions.ts:165
+#: static_src/ts/components/text_editor/actions.ts:181
 msgid "Code Block"
 msgstr "Bloco de código"
 
@@ -150,6 +162,11 @@ msgstr "Grupo de condições"
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:263
 msgid "Conditions"
 msgstr "Condições"
+
+#: static_src/ts/components/communication/MeetingLobby.ts:44
+#, fuzzy
+msgid "Connection interrupted. Retrying…"
+msgstr "Conexão interrompida. Tentando novamente…"
 
 #: static_src/ts/components/filters/api.ts:24
 msgid "Could not load filter options. Please try again."
@@ -183,7 +200,7 @@ msgstr "Os anexos do rascunho não podem exceder 20 MB no total."
 msgid "Draft saved."
 msgstr "Rascunho salvo."
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:351
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:365
 msgid "Drag row"
 msgstr "Arrastar linha"
 
@@ -202,6 +219,10 @@ msgstr "Introduza uma única chave de campo."
 #: static_src/ts/components/inbox/EmailRecipients.ts:136
 msgid "Enter a valid email address or remove the invalid recipient."
 msgstr "Digite um endereço de e-mail válido ou remova o destinatário inválido."
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:67
+msgid "Enter a valid http, https, mailto, or tel URL."
+msgstr "Insira um URL http, https, mailto ou tel válido."
 
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
@@ -248,43 +269,85 @@ msgstr "Cinza"
 msgid "Green"
 msgstr "Verde"
 
-#: static_src/ts/components/text_editor/actions.ts:252
+#: static_src/ts/components/text_editor/actions.ts:268
 msgid "HTML"
 msgstr "HTML"
 
-#: static_src/ts/components/text_editor/actions.ts:171
+#: static_src/ts/components/text_editor/actions.ts:187
 msgid "Heading 1"
 msgstr "Título 1"
 
-#: static_src/ts/components/text_editor/actions.ts:177
+#: static_src/ts/components/text_editor/actions.ts:193
 msgid "Heading 2"
 msgstr "Título 2"
 
-#: static_src/ts/components/text_editor/actions.ts:183
+#: static_src/ts/components/text_editor/actions.ts:199
 msgid "Heading 3"
 msgstr "Título 3"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:386
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:387
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:389
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:390
 msgid "Hide formatting toolbar"
 msgstr "Ocultar barra de ferramentas de formatação"
 
-#: static_src/ts/components/text_editor/actions.ts:189
+#: static_src/ts/components/text_editor/actions.ts:205
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Image"
 msgstr "Imagem"
 
-#: static_src/ts/components/communication/Phone.ts:122
+#: static_src/ts/components/communication/Calling.ts:334
+#: static_src/ts/components/communication/Calling.ts:351
 msgid "Incoming call"
 msgstr "Chamada recebida"
+
+#: static_src/ts/components/communication/Calling.ts:300
+msgid "Incoming calling is unavailable."
+msgstr "As chamadas recebidas estão indisponíveis."
+
+#: static_src/ts/components/communication/Calling.ts:319
+msgid "Incoming calling is unavailable. Check your connection and access."
+msgstr "As chamadas recebidas estão indisponíveis. Verifique sua conexão e seu acesso."
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:24
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:55
+msgid "Insert link"
+msgstr "Inserir link"
+
+#: static_src/ts/components/communication/Calling.ts:365
+msgid "Invalid call endpoint."
+msgstr "Endpoint de chamada inválido."
 
 #: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
 msgid "Invalid row policy"
 msgstr "Política de linhas inválida"
 
+#: static_src/ts/components/communication/Calling.ts:182
+msgid "Joining call…"
+msgstr "Entrando na chamada…"
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:453
 msgid "Label could not be created"
 msgstr "Não foi possível criar a etiqueta"
+
+#: static_src/ts/components/communication/Calling.ts:104
+msgid "Leave or dismiss the current call first."
+msgstr "Saia da chamada atual ou dispense-a primeiro."
+
+#: static_src/ts/components/communication/Calling.ts:117
+msgid "Leave the current call first."
+msgstr "Saia da chamada atual primeiro."
+
+#: static_src/ts/components/text_editor/actions.ts:168
+msgid "Link"
+msgstr "Link"
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:40
+msgid "Link URL"
+msgstr "URL do link"
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:39
+msgid "Link name"
+msgstr "Nome do link"
 
 #: static_src/ts/components/filters/SavedFilters.ts:152
 msgid "Loading saved filters…"
@@ -304,7 +367,12 @@ msgstr "Pesquisa"
 msgid "Match conditions"
 msgstr "Condições de correspondência"
 
-#: static_src/ts/components/text_editor/actions.ts:196
+#: static_src/ts/components/communication/Calling.ts:166
+#, fuzzy
+msgid "Meeting link copied"
+msgstr "Link da reunião copiado"
+
+#: static_src/ts/components/text_editor/actions.ts:212
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Mention"
 msgstr "Menção"
@@ -315,10 +383,6 @@ msgstr "Menção"
 msgid "Mention suggestions"
 msgstr "Sugestões de menção"
 
-#: static_src/ts/components/communication/Phone.ts:51
-msgid "Microphone muted"
-msgstr "Microfone silenciado"
-
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
 msgstr "Mover ação para baixo"
@@ -327,9 +391,9 @@ msgstr "Mover ação para baixo"
 msgid "Move action up"
 msgstr "Mover ação para cima"
 
-#: static_src/ts/components/communication/Phone.ts:92
-msgid "No authorized voice lines are available"
-msgstr "Não há linhas de voz autorizadas disponíveis"
+#: static_src/ts/components/communication/Calling.ts:306
+msgid "No incoming call accounts are available"
+msgstr "Não há contas disponíveis para chamadas recebidas"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
@@ -362,7 +426,7 @@ msgstr "Nenhuma linha"
 msgid "No saved filters yet."
 msgstr "Ainda não há filtros guardados."
 
-#: static_src/ts/components/text_editor/actions.ts:212
+#: static_src/ts/components/text_editor/actions.ts:228
 msgid "Numbered List"
 msgstr "Lista numerada"
 
@@ -370,7 +434,7 @@ msgstr "Lista numerada"
 msgid "OR"
 msgstr "OU"
 
-#: static_src/ts/components/text_editor/actions.ts:201
+#: static_src/ts/components/text_editor/actions.ts:217
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Object"
 msgstr "Objeto"
@@ -407,9 +471,13 @@ msgstr "Preferência"
 msgid "Purple"
 msgstr "Roxo"
 
-#: static_src/ts/components/communication/Phone.ts:92
+#: static_src/ts/components/communication/Calling.ts:306
 msgid "Ready for incoming calls"
 msgstr "Pronto para receber chamadas"
+
+#: static_src/ts/components/communication/Calling.ts:359
+msgid "Reconnecting…"
+msgstr "Reconectando…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Red"
@@ -436,7 +504,7 @@ msgstr "Remover grupo"
 msgid "Remove recipient"
 msgstr "Remover destinatário"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:352
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:366
 msgid "Remove row"
 msgstr "Remover linha"
 
@@ -444,7 +512,7 @@ msgstr "Remover linha"
 msgid "Remove {label}"
 msgstr "Remover {label}"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:349
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:363
 msgid "Row title"
 msgstr "Título da linha"
 
@@ -538,16 +606,20 @@ msgstr "Mostrar todos os campos"
 msgid "Show Required Only"
 msgstr "Mostrar apenas os obrigatórios"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:407
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:408
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:410
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:411
 msgid "Show formatting toolbar"
 msgstr "Mostrar barra de ferramentas de formatação"
+
+#: static_src/ts/components/communication/Calling.ts:109
+msgid "Starting call…"
+msgstr "Iniciando chamada…"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:52
 msgid "Suggested email addresses"
 msgstr "Endereços de e-mail sugeridos"
 
-#: static_src/ts/components/text_editor/actions.ts:224
+#: static_src/ts/components/text_editor/actions.ts:240
 msgid "Table"
 msgstr "Tabela"
 
@@ -555,7 +627,7 @@ msgstr "Tabela"
 msgid "Teal"
 msgstr "Verde-azulado"
 
-#: static_src/ts/components/text_editor/actions.ts:158
+#: static_src/ts/components/text_editor/actions.ts:174
 #: static_src/ts/components/text_editor/utils/templatePicker.ts:30
 msgid "Template"
 msgstr "Modelo"
@@ -563,6 +635,11 @@ msgstr "Modelo"
 #: static_src/ts/components/PermissionsTable.ts:339
 msgid "The filter editor is not ready."
 msgstr "O editor de filtros não está pronto."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "The host did not admit you."
+msgstr "O anfitrião não permitiu sua entrada."
 
 #: static_src/ts/components/filters/ConditionEditor.ts:112
 msgid "The saved filter field is unavailable."
@@ -572,17 +649,30 @@ msgstr "O campo do filtro guardado não está disponível."
 msgid "The saved filter lookup could not be restored."
 msgstr "Não foi possível restaurar a consulta do filtro guardado."
 
+#: static_src/ts/components/communication/Calling.ts:184
+msgid "This call has ended."
+msgstr "Esta chamada foi encerrada."
+
 #: static_src/ts/components/filters/FilterContainer.ts:183
 msgid "This editor accepts one condition group per rule."
 msgstr "Este editor aceita um grupo de condições por regra."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "This meeting is no longer available."
+msgstr "Esta reunião não está mais disponível."
 
 #: static_src/ts/utils/modals.ts:43
 msgid "Toggle fullscreen"
 msgstr "Ativar/desativar ecrã inteiro"
 
-#: static_src/ts/components/ResizableDiv.ts:249
+#: static_src/ts/components/ResizableDiv.ts:313
 msgid "Toggle side panel"
 msgstr "Alternar painel lateral"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:492
+msgid "Unable to load field settings. Please try again."
+msgstr "Não foi possível carregar as configurações do campo. Tente novamente."
 
 #: static_src/ts/components/widgets/ForeignFieldWidget.ts:209
 msgid "Unable to load this form. Close the dialog and try again."
@@ -597,9 +687,28 @@ msgstr "Não foi possível carregar o mosaico."
 msgid "Unable to move card. Please try again."
 msgstr "Não foi possível mover o cartão. Tente novamente."
 
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:206
+msgid "Unable to refresh field settings. Please try again."
+msgstr "Não foi possível atualizar as configurações do campo. Tente novamente."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:26
+#: static_src/ts/components/communication/MeetingLobby.ts:29
+#, fuzzy
+msgid "Unable to request admission."
+msgstr "Não foi possível solicitar a entrada."
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:955
+msgid "Unable to save the layout. Please try again before editing settings."
+msgstr "Não foi possível salvar o layout. Tente novamente antes de editar as configurações."
+
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:164
 msgid "Upload image"
 msgstr "Carregar imagem"
+
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "Waiting for the host to admit you…"
+msgstr "Aguardando o anfitrião permitir sua entrada…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
 msgid "Yellow"
@@ -608,4 +717,31 @@ msgstr "Amarelo"
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:402
 msgid "You do not have permission to move this card."
 msgstr "Você não tem permissão para mover este cartão."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "You have been admitted. You can now join."
+msgstr "Sua entrada foi permitida. Agora você pode participar."
+
+#: static_src/ts/components/communication/Calling.ts:249
+msgid "You left the call"
+msgstr "Você saiu da chamada"
+
+#~ msgid "Calling failed. Check microphone permission, connection settings and line access."
+#~ msgstr ""
+#~ "Falha ao efetuar a chamada. Verifique as permissões"
+#~ " do microfone, as definições de ligação e o "
+#~ "acesso à linha."
+
+#~ msgid "Calling is unavailable. Check your connection and line access."
+#~ msgstr "Não é possível efetuar chamadas. Verifique a ligação e o acesso à linha."
+
+#~ msgid "Calling…"
+#~ msgstr "A ligar…"
+
+#~ msgid "Microphone muted"
+#~ msgstr "Microfone silenciado"
+
+#~ msgid "No authorized voice lines are available"
+#~ msgstr "Não há linhas de voz autorizadas disponíveis"
 
