@@ -1,3 +1,4 @@
+
 from collections.abc import Mapping
 from datetime import date
 from typing import Any
@@ -5,6 +6,7 @@ from typing import Any
 from django import forms
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.clear_value import public_empty_value
@@ -29,30 +31,34 @@ def populate_week_dates_config_form_factory(
 ) -> type[forms.Form]:
     """Build source-week and related-date choices for the selected collection."""
     if target is None:
-        raise forms.ValidationError("Select a collection target first.")
+        raise forms.ValidationError(_("Select a collection target first."))
     Model = target.get_model()
 
     fields = {}
 
     fields["write_policy"] = WritePolicyField(
+        label=_('Write policy'),
         allowed=("if_empty", "replace"),
         default="if_empty",
     )
 
     fields["source"] = forms.ModelChoiceField(
+        label=_('Source'),
         queryset=ApplicationField.get_for_model(Model).filter(
             field_type=FIELD_TYPE_REGISTRY.WEEK_FIELD.id
         )
     )
 
     fields["column"] = forms.ModelChoiceField(
+        label=_('Column'),
         queryset=ApplicationField.get_for_model(
             target.get_related_model()  # Assuming that it is a O2M which has been validated before
         ).filter(field_type=FIELD_TYPE_REGISTRY.DATE_FIELD.id)
     )
 
     fields["days"] = forms.TypedChoiceField(
-        choices=((5, "Monday–Friday"), (7, "Monday–Sunday")),
+        label=_('Days'),
+        choices=((5, _("Monday–Friday")), (7, _("Monday–Sunday"))),
         coerce=int,
         initial=5,
     )
@@ -67,19 +73,19 @@ def populate_week_dates(
 ) -> BehaviorResult:
     """Generate dated collection values from the configured source week."""
     if config["source"].field not in context.values:
-        raise forms.ValidationError("The source week is missing from the draft.")
+        raise forms.ValidationError(_("The source week is missing from the draft."))
     week = normalize_week_value(context.values[config["source"].field])
     date_column = config["column"].field
     if not week:
         return BehaviorResult()
     if date_column in {"id", "DELETE"}:
         raise forms.ValidationError(
-            "Choose a date column, not row identity or deletion."
+            _("Choose a date column, not row identity or deletion.")
         )
     current = collection_rows(context.target_value)
     if current and config["write_policy"] == "if_empty":
         return BehaviorResult()
-    
+
     generated_dates = [
         date.fromisocalendar(week.year, week.week, day).isoformat()
         for day in range(1, config["days"] + 1)
@@ -121,8 +127,8 @@ def get_week_date_targets(
 
 POPULATE_WEEK_DATES = BehaviorActionDefinition(
     id="populate_week_dates",
-    label="Populate dates from week",
-    description="Generate five or seven dated rows from the source ISO week.",
+    label=_("Populate dates from week"),
+    description=_("Generate five or seven dated rows from the source ISO week."),
     requires_target_field=True,
     execute=populate_week_dates,
     config_form_factory=populate_week_dates_config_form_factory,

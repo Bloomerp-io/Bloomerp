@@ -1,5 +1,6 @@
 """Tests for one fetch action across scalar, collection, and per-row targets."""
 
+import json
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -9,6 +10,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.translation import get_language, override
 
 from bloomerp.form_behaviors.builtins.fetch import FETCH
 from bloomerp.form_behaviors.definition import (
@@ -34,6 +36,7 @@ from bloomerp.tests.base import (
     ExpectedBehaviorActionException,
 )
 from bloomerp.tests.utils.dynamic_models import create_test_models
+from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
 
 
 class TestFetchAction(BloomerpBehaviorActionTestCase):
@@ -367,6 +370,47 @@ class TestFetchAction(BloomerpBehaviorActionTestCase):
         )
         # 3. Confirm no identity was returned.
         self.assertEqual(result.values, ())
+
+    def _translate_for_language(self, message: str) -> str:
+        """Identify the language used when each lazy message is resolved."""
+        return f"{get_language()}:{message}"
+
+    def test_behavior_metadata_uses_the_active_language(self) -> None:
+        """
+        Use case: The same registered behavior is rendered in different languages.
+        Expected result: UI text follows the active language while stored IDs stay stable.
+        """
+        # 1. Render real action forms and widget catalogs using a localized catalog.
+        listener = self._field("name")
+        widget = BehaviorBuilderWidget(
+            source_field={"id": str(listener.pk)},
+            field_catalog=[{"id": listener.pk}, {"id": self._field("work_order").pk}],
+        )
+        with patch(
+            "django.utils.translation._trans.gettext",
+            side_effect=self._translate_for_language,
+        ):
+            for language in ("nl", "de"):
+                with self.subTest(language=language), override(language):
+                    # 2. Resolve lazy labels during JSON serialization and HTML rendering.
+                    context = widget.get_context("behaviors", None, None)
+                    actions = json.loads(context["widget"]["actions_json"])
+                    fetch = next(action for action in actions if action["id"] == "fetch")
+                    form = action_config_form(
+                        FETCH, listener, self._field("work_order"), self._record_config(),
+                    )
+                    html = widget.render("behaviors", BehaviorConfig().to_storage())
+                    # 3. Check translated text and stable machine-readable values.
+                    self.assertEqual(fetch["label"], f"{language}:Fetch")
+                    self.assertEqual(fetch["group"], f"{language}:Data lookup")
+                    self.assertEqual(str(form.fields["value_source"].label), f"{language}:Value to copy")
+                    self.assertIn(
+                        ("record", f"{language}:Matching record itself"),
+                        [(value, str(label)) for value, label in form.fields["value_source"].choices],
+                    )
+                    self.assertIn(f"{language}:Add behavior", html)
+                    self.assertIn(f"{language}:Clear all", html)
+                    self.assertEqual(self._record_config()["value_source"], "record")
 
     def _field(self, name: str) -> ApplicationField:
         """Resolve an invoice field used by an action or layout."""

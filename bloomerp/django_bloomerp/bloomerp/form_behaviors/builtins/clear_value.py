@@ -5,6 +5,7 @@ from typing import Any
 
 from django import forms
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
@@ -23,7 +24,7 @@ def public_empty_value(target: ApplicationField) -> Any:
     form_field = target.get_form_field()
     if form_field is None:
         raise forms.ValidationError(
-            f"Field '{target.field}' has no editable value contract."
+            _("Field '%(field)s' has no editable value contract.") % {'field': target.field}
         )
     form_field.required = False
     return serialize_form_value(form_field.clean(None))
@@ -35,7 +36,7 @@ def clear_value_config_form_factory(
 ) -> type[forms.Form]:
     """Build an empty form that derives the selected target's public empty value."""
     if target is None:
-        raise forms.ValidationError("Select a target field first.")
+        raise forms.ValidationError(_("Select a target field first."))
     empty_value = public_empty_value(target)
 
     class ClearValueForm(forms.Form):
@@ -68,8 +69,8 @@ def clear_value(
 
 CLEAR_VALUE = BehaviorActionDefinition(
     id="clear_value",
-    label="Clear value",
-    description="Clear the target using its field type's empty-value semantics.",
+    label=_("Clear value"),
+    description=_("Clear the target using its field type's empty-value semantics."),
     requires_target_field=True,
     execute=clear_value,
     config_form_factory=clear_value_config_form_factory,

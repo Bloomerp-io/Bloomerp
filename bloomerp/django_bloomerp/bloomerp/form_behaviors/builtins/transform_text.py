@@ -10,7 +10,9 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.utils.functional import Promise
 from django.utils.text import slugify
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
@@ -34,23 +36,23 @@ Transformation = Literal[
     "slug",
 ]
 
-TRANSFORMATION_CHOICES: tuple[tuple[Transformation, str], ...] = (
-    ("uppercase", "Uppercase"),
-    ("lowercase", "Lowercase"),
-    ("title_case", "Title case"),
-    ("sentence_case", "Sentence case"),
-    ("trim", "Trim"),
-    ("collapse_whitespace", "Collapse whitespace"),
-    ("upper_snake_case", "Upper snake case"),
-    ("lower_snake_case", "Lower snake case"),
-    ("slug", "Slug"),
+TRANSFORMATION_CHOICES: tuple[tuple[Transformation, str | Promise], ...] = (
+    ("uppercase", _("Uppercase")),
+    ("lowercase", _("Lowercase")),
+    ("title_case", _("Title case")),
+    ("sentence_case", _("Sentence case")),
+    ("trim", _("Trim")),
+    ("collapse_whitespace", _("Collapse whitespace")),
+    ("upper_snake_case", _("Upper snake case")),
+    ("lower_snake_case", _("Lower snake case")),
+    ("slug", _("Slug")),
 )
 
 
 class TransformTextForm(forms.Form):
     """Select one deterministic text normalization operation."""
 
-    transformation = forms.ChoiceField(choices=TRANSFORMATION_CHOICES)
+    transformation = forms.ChoiceField(label=_('Transformation'), choices=TRANSFORMATION_CHOICES)
 
 
 def _is_editable_text_field(field: ApplicationField) -> bool:
@@ -121,7 +123,7 @@ def transform_text(
     if value in (None, ""):
         transformed = ""
     elif not isinstance(value, str):
-        raise forms.ValidationError("Transform text requires a string listener value.")
+        raise forms.ValidationError(_("Transform text requires a string listener value."))
     else:
         transformed = _transform(value, cast(Transformation, config["transformation"]))
     return BehaviorResult(
@@ -140,8 +142,8 @@ def transform_text_config_form_factory(
 
 TRANSFORM_TEXT = BehaviorActionDefinition(
     id="transform_text",
-    label="Transform text",
-    description="Apply a deterministic text normalization to the listener value.",
+    label=_("Transform text"),
+    description=_("Apply a deterministic text normalization to the listener value."),
     requires_target_field=True,
     config_form_factory=transform_text_config_form_factory,
     get_listener_fields=text_fields,

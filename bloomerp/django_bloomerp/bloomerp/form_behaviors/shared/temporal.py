@@ -10,6 +10,7 @@ from django import forms
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import QuerySet
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.models.application_field import ApplicationField
 
@@ -46,7 +47,7 @@ def clean_temporal_value(field: ApplicationField, value: Any) -> date | datetime
     """Clean a temporal operand through its form contract, preserving empty dates."""
     if temporal_kind(field) is None:
         raise forms.ValidationError(
-            f"Field '{field.field}' is not an editable date or datetime."
+            _("Field '%(field)s' is not an editable date or datetime.") % {'field': field.field}
         )
     form_field = field.get_form_field()
     form_field.required = False
@@ -56,11 +57,11 @@ def clean_temporal_value(field: ApplicationField, value: Any) -> date | datetime
 def shift_temporal(value: date | datetime, offset: Decimal) -> date | datetime:
     """Add whole days to dates or whole minutes to datetimes within their range."""
     if not offset.is_finite() or offset != offset.to_integral_value():
-        raise forms.ValidationError("Date and datetime offsets must be a whole number.")
+        raise forms.ValidationError(_("Date and datetime offsets must be a whole number."))
     maximum = Decimal(999999999 * 24 * 60 if isinstance(value, datetime) else 999999999)
     if offset.copy_abs() > maximum:
         raise forms.ValidationError(
-            "The date or datetime offset is outside the supported range."
+            _("The date or datetime offset is outside the supported range.")
         )
     try:
         delta = (
@@ -73,5 +74,5 @@ def shift_temporal(value: date | datetime, offset: Decimal) -> date | datetime:
         return value + delta
     except (OverflowError, ValueError) as error:
         raise forms.ValidationError(
-            "The date or datetime offset is outside the supported range."
+            _("The date or datetime offset is outside the supported range.")
         ) from error

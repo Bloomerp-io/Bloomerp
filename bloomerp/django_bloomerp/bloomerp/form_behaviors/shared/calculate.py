@@ -9,10 +9,14 @@ from django import forms
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
 from django.db.models import QuerySet
+from django.utils.functional import Promise
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.shared.temporal import temporal_kind
 from bloomerp.models.application_field import ApplicationField
+
+DEFAULT_COLUMN_LABEL = _("Column")
 
 MAX_EXPRESSION_NODES = 100
 NUMERIC_MODEL_FIELDS = (
@@ -75,23 +79,23 @@ def calculation_target_fields(
     return fields.filter(pk__in=eligible_ids)
 
 
-def decimal_value(value: Any, operand_name: str, *, noun: str = "Column") -> Decimal:
+def decimal_value(value: Any, operand_name: str, *, noun: str | Promise = DEFAULT_COLUMN_LABEL) -> Decimal:
     """Convert one numeric operand to finite Decimal, treating blanks as zero."""
     if value in (None, ""):
         return Decimal(0)
     if isinstance(value, bool):
         raise forms.ValidationError(
-            f"{noun} '{operand_name}' does not contain a numeric value."
+            _("%(noun)s '%(operand_name)s' does not contain a numeric value.") % {'noun': noun, 'operand_name': operand_name}
         )
     try:
         converted = Decimal(str(value))
     except (DecimalException, TypeError, ValueError) as error:
         raise forms.ValidationError(
-            f"{noun} '{operand_name}' does not contain a numeric value."
+            _("%(noun)s '%(operand_name)s' does not contain a numeric value.") % {'noun': noun, 'operand_name': operand_name}
         ) from error
     if not converted.is_finite():
         raise forms.ValidationError(
-            f"{noun} '{operand_name}' does not contain a finite numeric value."
+            _("%(noun)s '%(operand_name)s' does not contain a finite numeric value.") % {'noun': noun, 'operand_name': operand_name}
         )
     return converted
 
@@ -108,23 +112,22 @@ def clean_numeric_destination(
             value = value.quantize(quantum, context=model_field.context)
         except DecimalException as error:
             raise forms.ValidationError(
-                f"Result does not fit destination column '{destination.field}'."
+                _("Result does not fit destination column '%(field)s'.") % {'field': destination.field}
             ) from error
     form_field = destination.get_form_field()
     if form_field is None:
         raise forms.ValidationError(
-            f"Destination column '{destination.field}' is not editable."
+            _("Destination column '%(field)s' is not editable.") % {'field': destination.field}
         )
     form_field.required = False
     try:
         cleaned = form_field.clean(value)
     except ValidationError as error:
         raise forms.ValidationError(
-            f"Result is invalid for destination column '{destination.field}': "
-            f"{'; '.join(error.messages)}"
+            _("Result is invalid for destination column '%(field)s': %(details)s") % {'field': destination.field, 'details': '; '.join(error.messages)}
         ) from error
     if isinstance(cleaned, (int, float, Decimal)) and not isinstance(cleaned, bool):
         return cleaned
     raise forms.ValidationError(
-        f"Destination column '{destination.field}' is not numeric."
+        _("Destination column '%(field)s' is not numeric.") % {'field': destination.field}
     )

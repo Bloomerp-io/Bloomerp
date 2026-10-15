@@ -9,6 +9,7 @@ from django import forms
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
@@ -45,29 +46,31 @@ def set_relative_date_config_form_factory(
 ) -> type[forms.Form]:
     """Build an integer offset editor whose unit follows the selected target."""
     if target is None:
-        raise forms.ValidationError("Select a target field first.")
+        raise forms.ValidationError(_("Select a target field first."))
     kind = temporal_kind(target)
     if kind is None:
         raise forms.ValidationError(
-            "Select an editable scalar date or datetime target field."
+            _("Select an editable scalar date or datetime target field.")
         )
-    unit = "days" if kind == "date" else "minutes"
-    anchor = "today in the current timezone" if kind == "date" else "the current time"
-    zero_anchor = "today" if kind == "date" else "now"
+    offset_label = _("Offset (days)") if kind == "date" else _("Offset (minutes)")
+    offset_help = (
+        _("Whole days relative to today in the current timezone. "
+        "Use a positive number for later, a negative number for earlier, or zero for today.")
+        if kind == "date"
+        else _("Whole minutes relative to the current time. "
+        "Use a positive number for later, a negative number for earlier, or zero for now.")
+    )
 
     class SetRelativeDateForm(forms.Form):
         """Validate a signed integer offset and scalar replacement policy."""
 
         offset = forms.IntegerField(
             initial=0,
-            label=f"Offset ({unit})",
-            help_text=(
-                f"Whole {unit} relative to {anchor}. "
-                "Use a positive number for later, a negative number for earlier, "
-                f"or zero for {zero_anchor}."
-            ),
+            label=offset_label,
+            help_text=offset_help,
         )
         write_policy = WritePolicyField(
+            label=_('Write policy'),
             allowed=("always", "if_empty"), default="always"
         )
 
@@ -101,14 +104,14 @@ def set_relative_date(
 
 SET_RELATIVE_DATE = BehaviorActionDefinition(
     id="set_relative_date",
-    label="Set relative date",
+    label=_("Set relative date"),
     description=(
-        "Set a date relative to today in whole days, or a datetime relative "
-        "to now in whole minutes."
+        _("Set a date relative to today in whole days, or a datetime relative "
+        "to now in whole minutes.")
     ),
     requires_target_field=True,
     execute=set_relative_date,
     config_form_factory=set_relative_date_config_form_factory,
     get_target_fields=set_relative_date_targets,
-    group="Field values",
+    group=_("Field values"),
 )

@@ -11,6 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
@@ -81,7 +82,7 @@ class ContentTypeChoiceField(forms.ModelChoiceField):
         if isinstance(value, str) and "." in value:
             content_type = _content_type_from_initial(value)
             if content_type is None:
-                raise forms.ValidationError("Select a valid source model.")
+                raise forms.ValidationError(_("Select a valid source model."))
             value = content_type.pk
         return super().clean(value)
 
@@ -93,7 +94,7 @@ def parse_filters(value: Any) -> Filters:
     try:
         return FILTERS_ADAPTER.validate_python(value)
     except PydanticValidationError as error:
-        raise forms.ValidationError("Select valid matching filters.") from error
+        raise forms.ValidationError(_("Select valid matching filters.")) from error
 
 
 def resolve_filter_values(
@@ -114,7 +115,7 @@ def resolve_filter_values(
                 scope, field_name = match.groups()
                 if field_name not in sources[scope]:
                     raise forms.ValidationError(
-                        f"The filter references unavailable {scope} field '{field_name}'."
+                        _("The filter references unavailable %(scope)s field '%(field_name)s'.") % {'scope': scope, 'field_name': field_name}
                     )
                 value = sources[scope][field_name]
             conditions.append(condition.model_copy(update={"value": value}))
@@ -155,7 +156,7 @@ def resolve_behavior_field_references(
         field = candidates.filter(field=field_name).first()
         if field is None:
             raise forms.ValidationError(
-                f"The filter references unknown {scope} field '{field_name}'."
+                _("The filter references unknown %(scope)s field '%(field_name)s'.") % {'scope': scope, 'field_name': field_name}
             )
         references.append(BehaviorFieldReference(field=field))
     return tuple(references)
@@ -193,7 +194,7 @@ def _ordered_records(
     if model is None or any(
         field.content_type_id != content_type.pk for field in source_fields
     ):
-        raise forms.ValidationError("The configured source model is unavailable.")
+        raise forms.ValidationError(_("The configured source model is unavailable."))
     permission_fields = source_fields + ((order_by,) if order_by is not None else ())
     manager = UserPolicyManager(user)
     try:
@@ -221,7 +222,7 @@ def _ordered_records(
             queryset[: MAX_FETCH_ROWS + 1] if fetch == "all" else queryset[:1]
         )
         if len(records) > MAX_FETCH_ROWS:
-            raise forms.ValidationError("The lookup matched more than 1000 rows.")
+            raise forms.ValidationError(_("The lookup matched more than 1000 rows."))
         for record in records:
             allowed_ids = set(
                 manager.get_accessible_fields_for_object(record, "view")
@@ -231,7 +232,7 @@ def _ordered_records(
             if any(field.pk not in allowed_ids for field in permission_fields):
                 raise PermissionDenied
     except PermissionDenied:
-        return permission_denied_result("you cannot read the configured lookup data")
+        return permission_denied_result(_("you cannot read the configured lookup data"))
     return records
 
 
@@ -240,7 +241,7 @@ def _record_value(record: Model, field: ApplicationField) -> Any:
     model_field = record._meta.get_field(field.field)
     if not model_field.concrete or model_field.many_to_many:
         raise forms.ValidationError(
-            "The configured source field is not a stored value."
+            _("The configured source field is not a stored value.")
         )
     return serialize_form_value(getattr(record, model_field.attname))
 
@@ -252,7 +253,7 @@ def fetch_config_form_factory(
 ) -> type[forms.Form]:
     """Build one editor with fields appropriate to its target and collection mode."""
     if target is None:
-        raise forms.ValidationError("Select a target field first.")
+        raise forms.ValidationError(_("Select a target field first."))
     is_collection = target.field_type == FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id
     target_columns = (
         rendered_value_columns(target)
@@ -265,61 +266,64 @@ def fetch_config_form_factory(
 
         refresh_fields = ("mode", "model", "target_column", "value_source")
         mode = forms.ChoiceField(
+            label=_('Mode'),
             choices=(
-                ("populate", "Populate collection"),
-                ("per_row", "Fetch for each existing row"),
+                ("populate", _("Populate collection")),
+                ("per_row", _("Fetch for each existing row")),
             ),
             required=False,
         )
         model = ContentTypeChoiceField(
             queryset=ContentType.objects.all(),
-            label="Source model",
+            label=_("Source model"),
             widget=ForeignFieldWidget(
                 model=ContentType, attrs={"class": "input w-full"}
             ),
         )
         value_source = forms.ChoiceField(
-            label="Value to copy",
+            label=_("Value to copy"),
             choices=(
-                ("field", "Field from matching record"),
-                ("record", "Matching record itself"),
+                ("field", _("Field from matching record")),
+                ("record", _("Matching record itself")),
             ),
             required=False,
             initial="field",
         )
         filters = forms.JSONField(
+            label=_('Filters'),
             required=False,
             widget=forms.HiddenInput(),
-            help_text="Use {{ object.field }} or, in per-row mode, {{ row.column }}.",
+            help_text=_("Use {{ object.field }} or, in per-row mode, {{ row.column }}."),
         )
         fetch = forms.ChoiceField(
-            choices=(("first", "First"), ("last", "Last"), ("all", "All"))
+            label=_('Fetch'),
+            choices=(("first", _("First")), ("last", _("Last")), ("all", _("All")))
         )
         order_by = forms.ModelChoiceField(
             queryset=ApplicationField.objects.none(),
             required=False,
-            label="Order by",
-            help_text="Defaults to record ID; first/last use this field with ID as a tie-breaker.",
+            label=_("Order by"),
+            help_text=_("Defaults to record ID; first/last use this field with ID as a tie-breaker."),
         )
         column = forms.ModelChoiceField(
             queryset=ApplicationField.objects.none(),
             required=False,
-            label="Source column",
+            label=_("Source column"),
         )
         target_column = forms.ModelChoiceField(
             queryset=target_columns,
             required=False,
-            label="Target column",
+            label=_("Target column"),
         )
         column_mappings = forms.JSONField(
             required=False,
-            label="Column mappings",
-            help_text='JSON object mapping target columns to source columns, for example {"quantity": "quantity"}.',
+            label=_("Column mappings"),
+            help_text=_('JSON object mapping target columns to source columns, for example {"quantity": "quantity"}.'),
             widget=CodeEditorWidget(
                 language="json"
             )
         )
-        write_policy = forms.ChoiceField(required=False)
+        write_policy = forms.ChoiceField(label=_('Write policy'), required=False)
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             """Scope dependent choices and hide controls irrelevant to this mode."""
@@ -336,10 +340,10 @@ def fetch_config_form_factory(
                 self.initial["value_source"] = "field"
                 self.initial["mode"] = mode
             if mode == "populate":
-                self.fields["fetch"].choices = (("all", "All matching records"),)
+                self.fields["fetch"].choices = (("all", _("All matching records")),)
                 self.fields["write_policy"].choices = (
-                    ("if_empty", "Only when the collection has no active rows"),
-                    ("replace_unsaved", "Replace unsaved rows only"),
+                    ("if_empty", _("Only when the collection has no active rows")),
+                    ("replace_unsaved", _("Replace unsaved rows only")),
                 )
                 self.fields["write_policy"].initial = "if_empty"
                 for field_name in ("column", "target_column"):
@@ -347,10 +351,10 @@ def fetch_config_form_factory(
                     self.initial[field_name] = None
                     self.fields[field_name].disabled = True
             else:
-                self.fields["fetch"].choices = (("first", "First"), ("last", "Last"))
+                self.fields["fetch"].choices = (("first", _("First")), ("last", _("Last")))
                 self.fields["write_policy"].choices = (
-                    ("always", "Always"),
-                    ("if_empty", "Only when empty"),
+                    ("always", _("Always")),
+                    ("if_empty", _("Only when empty")),
                 )
                 self.fields["write_policy"].initial = "always"
                 self.fields["column_mappings"].widget = forms.HiddenInput()
@@ -379,7 +383,7 @@ def fetch_config_form_factory(
             )
             if not record_compatible:
                 self.fields["value_source"].choices = (
-                    ("field", "Field from matching record"),
+                    ("field", _("Field from matching record")),
                 )
             if record_compatible and self.initial.get("value_source") == "record":
                 self.fields["column"].widget = forms.HiddenInput()
@@ -422,18 +426,18 @@ def fetch_config_form_factory(
             ):
                 self.add_error(
                     "value_source",
-                    "Selecting the matching record requires a relation target pointing to the source model.",
+                    _("Selecting the matching record requires a relation target pointing to the source model."),
                 )
             if mode == "populate":
                 if fetch != "all":
                     self.add_error(
                         "fetch",
-                        "Populating a collection requires all matching records.",
+                        _("Populating a collection requires all matching records."),
                     )
                 mappings = cleaned.get("column_mappings")
                 if not isinstance(mappings, dict) or not mappings:
                     self.add_error(
-                        "column_mappings", "Provide target-to-source column mappings."
+                        "column_mappings", _("Provide target-to-source column mappings.")
                     )
                 else:
                     resolved: dict[str, BehaviorFieldReference] = {}
@@ -458,7 +462,7 @@ def fetch_config_form_factory(
                         ):
                             self.add_error(
                                 "column_mappings",
-                                f"Invalid or incompatible mapping: {target_name} → {source_name}.",
+                                _('Invalid or incompatible mapping: %(target_name)s → %(source_name)s.') % {'target_name': target_name, 'source_name': source_name},
                             )
                             break
                         resolved[target_name] = BehaviorFieldReference(
@@ -472,9 +476,9 @@ def fetch_config_form_factory(
                     cleaned.get("target_column") if mode == "per_row" else target
                 )
                 if mode == "per_row" and destination is None:
-                    self.add_error("target_column", "Select a target column.")
+                    self.add_error("target_column", _("Select a target column."))
                 if column is None:
-                    self.add_error("column", "Select a source column.")
+                    self.add_error("column", _("Select a source column."))
                 elif (
                     destination is not None
                     and not compatible_columns(
@@ -482,7 +486,7 @@ def fetch_config_form_factory(
                     ).exists()
                 ):
                     self.add_error(
-                        "column", "Source and target columns are incompatible."
+                        "column", _("Source and target columns are incompatible.")
                     )
                 else:
                     cleaned["source_column"] = BehaviorFieldReference(
@@ -504,7 +508,7 @@ def fetch_config_form_factory(
                     scope == "row" for scope, _ in filter_value_references(filters)
                 ):
                     raise forms.ValidationError(
-                        "Row placeholders require per-row mode."
+                        _("Row placeholders require per-row mode.")
                     )
                 cleaned["filters"] = filters
                 cleaned["value_references"] = resolve_behavior_field_references(
@@ -618,7 +622,7 @@ def fetch(
             else new_rows
         )
         if len(rows) > MAX_FETCH_ROWS:
-            raise forms.ValidationError("The result would exceed 1000 collection rows.")
+            raise forms.ValidationError(_("The result would exceed 1000 collection rows."))
         return BehaviorResult(
             values=(FieldValueUpdate(field=context.target_field, value=rows),)
         )
@@ -638,11 +642,11 @@ def fetch(
 
 FETCH = BehaviorActionDefinition(
     id="fetch",
-    label="Fetch",
-    description="Find accessible records with filters and copy one value or populate collection rows.",
+    label=_("Fetch"),
+    description=_("Find accessible records with filters and copy one value or populate collection rows."),
     requires_target_field=True,
     config_form_factory=fetch_config_form_factory,
     get_target_fields=fetch_targets,
     execute=fetch,
-    group="Data lookup",
+    group=_("Data lookup"),
 )
